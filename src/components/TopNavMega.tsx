@@ -1,0 +1,273 @@
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
+
+export default function TopNavMega() {
+  const [open, setOpen] = useState<null | "comprar" | "alugar" | "vender">(null);
+  const { data: session, status } = useSession();
+  const user = (session as any)?.user || null;
+  const [stickyShadow, setStickyShadow] = useState(false);
+  const closeTimer = useRef<NodeJS.Timeout | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [anim, setAnim] = useState<'in'|'out'|'idle'>('idle');
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    function onScroll() {
+      setStickyShadow(window.scrollY > 4 || !!open);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [open]);
+
+  // Handle open/close animations and initial focus
+  useEffect(() => {
+    if (open) {
+      setAnim('in');
+      // focus first item after paint
+      setTimeout(() => {
+        const first = menuRef.current?.querySelector<HTMLAnchorElement>('a[href]');
+        first?.focus({ preventScroll: true });
+      }, 30);
+    } else if (anim !== 'idle') {
+      setAnim('out');
+      const t = setTimeout(() => setAnim('idle'), 120);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
+  // Keyboard navigation within menu (arrows, Home/End, Tab wrap)
+  function onMenuKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const keys = ['ArrowDown','ArrowUp','Home','End','Tab'];
+    if (!keys.includes(e.key)) return;
+    const links = Array.from(menuRef.current?.querySelectorAll<HTMLAnchorElement>('a[href]') || []);
+    if (!links.length) return;
+    const active = document.activeElement as HTMLElement | null;
+    let idx = Math.max(0, links.findIndex((el) => el === active));
+    if (e.key === 'ArrowDown') { e.preventDefault(); idx = (idx + 1) % links.length; links[idx].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); idx = (idx - 1 + links.length) % links.length; links[idx].focus(); }
+    else if (e.key === 'Home') { e.preventDefault(); links[0].focus(); }
+    else if (e.key === 'End') { e.preventDefault(); links[links.length - 1].focus(); }
+    else if (e.key === 'Tab') {
+      // cycle focus
+      e.preventDefault();
+      if (!e.shiftKey) { idx = (idx + 1) % links.length; } else { idx = (idx - 1 + links.length) % links.length; }
+      links[idx].focus();
+    }
+  }
+
+  return (
+    <header className={`bg-white/95 backdrop-blur-md border-b border-gray-200/60 sticky top-0 z-40 transition-all duration-300 ${stickyShadow ? 'shadow-lg border-gray-300/40' : ''}`}
+      onMouseEnter={()=> { if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; } }}
+      onMouseLeave={()=> { if (open) closeTimer.current = setTimeout(()=> setOpen(null), 120); }}
+    >
+      <div className="mx-auto max-w-7xl px-4 lg:px-6">
+        {/* Navigation Bar */}
+        <div className="h-16 flex items-center justify-between">
+          {/* Left Navigation */}
+          <nav className="hidden lg:flex items-center gap-1">
+            <button 
+              onMouseEnter={()=>setOpen("comprar")} 
+              onFocus={()=>setOpen("comprar")} 
+              className="btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all focus-ring"
+            >
+              Comprar
+            </button>
+            <button 
+              onMouseEnter={()=>setOpen("alugar")} 
+              onFocus={()=>setOpen("alugar")} 
+              className="btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all focus-ring"
+            >
+              Alugar
+            </button>
+            <button 
+              onMouseEnter={()=>setOpen("vender")} 
+              onFocus={()=>setOpen("vender")} 
+              className="btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all focus-ring"
+            >
+              Vender
+            </button>
+            <Link href="/financing" className="btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all">
+              Financiar
+            </Link>
+          </nav>
+
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </div>
+            <span className="hidden sm:block text-xl font-bold text-gray-900 group-hover:text-primary-600 transition-colors">
+              Zillowlike
+            </span>
+          </Link>
+
+          {/* Right Navigation */}
+          <div className="flex items-center gap-2">
+            {/* Favoritos - Visível apenas quando logado */}
+            {user && (
+              <Link 
+                href="/favorites" 
+                className="hidden lg:inline-flex items-center gap-2 btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                title="Meus Favoritos"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                <span className="hidden xl:inline">Favoritos</span>
+              </Link>
+            )}
+            
+            <Link href="/owner/new" className="hidden lg:inline-flex btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all">
+              Anunciar
+            </Link>
+            
+            {status === 'loading' ? (
+              <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
+            ) : user ? (
+              <div className="flex items-center gap-3">
+                <span className="hidden md:block text-sm text-gray-600">Olá, {user.name?.split(' ')[0]}</span>
+                <button 
+                  onClick={()=> signOut()} 
+                  className="btn btn-secondary text-sm px-4 py-2"
+                >
+                  Sair
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={()=> signIn('google', { callbackUrl: '/' })} 
+                className="btn btn-primary text-sm px-6 py-2"
+              >
+                Entrar
+              </button>
+            )}
+
+            {/* Mobile Menu Button */}
+            <button className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors">
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      {/* Mega menu */}
+      <div className="relative">
+        {open && (
+          <>
+          {/* overlay click-outside */}
+          <button aria-label="Fechar menu" className="fixed inset-0 z-[1000] bg-transparent" onClick={()=> setOpen(null)} />
+          <div
+            ref={menuRef}
+            onKeyDown={onMenuKeyDown}
+            role="menu"
+            aria-label="Menu principal"
+            className={`absolute inset-x-0 z-[1010] bg-white/98 backdrop-blur-lg border-t border-gray-200/60 shadow-2xl transition-all duration-200 ${anim==='in' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
+          >
+            <div className="mx-auto max-w-7xl px-6 py-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                {open === "comprar" && (
+                  <>
+                    <Section title="Imóveis à venda" icon={
+                      <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                      </svg>
+                    }>
+                      <Item href="/?type=HOUSE">Casas à venda</Item>
+                      <Item href="/?type=APARTMENT">Apartamentos</Item>
+                      <Item href="/">Todos os imóveis</Item>
+                    </Section>
+                    <Divider />
+                    <Section title="Novos & recentes" icon={
+                      <svg className="w-5 h-5 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    }>
+                      <Item href="/?sort=recent">Mais recentes</Item>
+                      <Item href="/">Explorar tudo</Item>
+                    </Section>
+                  </>
+                )}
+                {open === "alugar" && (
+                  <>
+                    <Section title="Locação" icon={
+                      <svg className="w-5 h-5 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                    }>
+                      <Item href="/?type=HOUSE">Casas para alugar</Item>
+                      <Item href="/?type=APARTMENT">Apartamentos</Item>
+                      <Item href="/?sort=recent">Mais recentes</Item>
+                    </Section>
+                  </>
+                )}
+                {open === "vender" && (
+                  <>
+                    <Section title="Opções de venda" icon={
+                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6" />
+                      </svg>
+                    }>
+                      <Item href="/owner/new">Anunciar imóvel</Item>
+                      <Item href="/guia/venda">Guia do vendedor</Item>
+                      <Item href="/estimar">Estimar preço</Item>
+                      <Item href="/mercado">Mercado imobiliário</Item>
+                    </Section>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          </>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="min-h-full">
+      <div className="flex items-center gap-3 text-gray-900 font-semibold mb-4">
+        {icon && <span className="flex-shrink-0">{icon}</span>}
+        <span className="text-base">{title}</span>
+      </div>
+      <ul className="space-y-2 text-gray-700">
+        {children}
+      </ul>
+    </div>
+  );
+}
+
+function Item({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <li>
+      <Link
+        href={href}
+        className="group inline-flex items-center w-full rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-primary-50 hover:text-primary-700 transition-all duration-150"
+      >
+        <span>{children}</span>
+        <svg className="ml-auto w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </Link>
+    </li>
+  );
+}
+
+function Divider() {
+  return <div className="hidden lg:block border-l border-gray-200/80" aria-hidden />;
+}

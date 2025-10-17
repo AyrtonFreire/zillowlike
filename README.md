@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zillowlike (Petrolina/PE & Juazeiro/BA)
 
-## Getting Started
+Site gratuito inspirado no Zillow para cadastrar e buscar imóveis com lista e mapa interativo (OpenStreetMap + Leaflet).
 
-First, run the development server:
+## Tecnologias
+- Next.js (App Router) + TypeScript
+- Tailwind (tema inline do template)
+- Prisma + SQLite (grátis, arquivo local)
+- Leaflet + React-Leaflet (mapa e marcadores com preço)
+- Nominatim (OpenStreetMap) para geocodificação grátis
 
+## Rodando localmente
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+Acesse `http://localhost:3000`.
+
+## Banco e ORM
+- Arquivo `.env` já aponta para SQLite local: `DATABASE_URL="file:./dev.db"`.
+- Schema em `prisma/schema.prisma`.
+- Gerar cliente após alterações no schema:
+```bash
+npx prisma migrate dev --name change
+npx prisma generate
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Funcionalidades
+- Cadastro de imóveis em `/owner/new` com:
+  - Título, descrição, preço (R$), tipo
+  - Endereço (com geocodificação gratuita pelo Nominatim)
+  - Imagens por URL (sem custo)
+- Busca com filtros (cidade, estado, tipo, preço) e palavra-chave
+- Lista + Mapa: marcadores mostram o preço e linkam para detalhes
+- Página de detalhes com galeria e mini mapa
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Limitações e custos
+- Nominatim tem limites de uso; evite abusos. Pode adicionar cache e debounce.
+- Imagens por URL (sem upload). Futuro: S3/Cloudinary; hoje mantemos grátis.
+- SQLite é local; para produção, use Postgres grátis (Neon/Supabase) e ajuste `DATABASE_URL`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Autenticação
+- Usa NextAuth com GitHub.
+- Crie um OAuth App no GitHub e defina envs:
+  - `GITHUB_ID`, `GITHUB_SECRET`
+  - `AUTH_SECRET` (use `openssl rand -base64 32`)
+- Em dev, o POST de imóveis permite sem login; em produção exige login.
 
-## Learn More
+### Variáveis de ambiente (local)
+```
+DATABASE_URL="file:./dev.db"
+AUTH_SECRET=changeme-dev
+GITHUB_ID=...
+GITHUB_SECRET=...
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Deploy (Vercel + Neon)
+1) Criar banco Postgres (Neon) e obter `DATABASE_URL` (pegar a URL de pool se disponível).
+2) No projeto Vercel, em Settings → Environment Variables, setar: `DATABASE_URL`, `AUTH_SECRET`, `GITHUB_ID`, `GITHUB_SECRET`.
+3) O build já roda `prisma migrate deploy` (via `package.json`).
+4) Opcional: rodar seed localmente (`npm run seed`) antes do deploy.
+5) Em produção, criação de imóvel exige login (GitHub OAuth callback: `/api/auth/callback/github`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Melhorias futuras
+- Autenticação para proprietários (GitHub/Email via NextAuth)
+- Upload de imagens (S3 compatível, ex: Cloudflare R2)
+- Desenho de área no mapa e filtros avançados (quartos, banheiros, m²)
+- SEO e metadados por imóvel
+- Paginação/infini-scroll e skeletons
+- Testes e monitoração
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estrutura
+- `src/app/page.tsx`: busca, filtros, lista + mapa
+- `src/app/owner/new/page.tsx`: formulário de cadastro
+- `src/app/property/[id]/page.tsx`: detalhes do imóvel
+- `src/app/api/properties/route.ts`: API (GET filtros, POST criar)
+- `src/components/Map.tsx`: componente de mapa com marcadores
+- `src/lib/prisma.ts`: cliente Prisma
+- `src/lib/geocode.ts`: util de geocodificação (Nominatim)
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Créditos
+- Baseado em Next.js + app-tw template.
+- Mapas por OpenStreetMap.

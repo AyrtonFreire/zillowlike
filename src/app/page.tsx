@@ -1,103 +1,466 @@
+"use client";
+
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import TopNavMega from "@/components/TopNavMega";
+import HeroSearchModern from "@/components/HeroSearchModern";
+import QuickCategories from "@/components/QuickCategories";
+import NeighborhoodGrid from "@/components/NeighborhoodGrid";
+import ContinueSearching from "@/components/ContinueSearching";
+import Guides from "@/components/Guides";
+import SiteFooter from "@/components/Footer";
+import PropertyDetailsModal from "@/components/PropertyDetailsModal";
+import PropertyCard from "@/components/PropertyCard";
+import SearchFiltersBar from "@/components/SearchFiltersBar";
 import Image from "next/image";
+import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
+import type { ApiProperty } from "@/types/api";
+
+type Property = ApiProperty;
+const MapWithPriceBubbles = dynamic(() => import("@/components/MapWithPriceBubbles"), { ssr: false });
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
+  const user = (session as any)?.user || null;
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  // Estados principais
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [featured, setFeatured] = useState<Property[]>([]);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+
+  // Estados do overlay
+  const [overlayId, setOverlayId] = useState<string | null>(null);
+  const [overlayItem, setOverlayItem] = useState<Property | null>(null);
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [overlayLoading, setOverlayLoading] = useState(false);
+
+  // Estados de busca e filtros
+  const [search, setSearch] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [type, setType] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [bedroomsMin, setBedroomsMin] = useState("");
+  const [bathroomsMin, setBathroomsMin] = useState("");
+  const [areaMin, setAreaMin] = useState("");
+  const [sort, setSort] = useState("recent");
+  const [page, setPage] = useState(1);
+
+  // Parse dos parâmetros da URL
+  useEffect(() => {
+    const filters = parseFiltersFromSearchParams(searchParams);
+    setSearch(filters.q || "");
+    setCity(filters.city || "");
+    setState(filters.state || "");
+    setType(filters.type || "");
+    setMinPrice(filters.minPrice || "");
+    setMaxPrice(filters.maxPrice || "");
+    setBedroomsMin(filters.bedroomsMin || "");
+    setBathroomsMin(filters.bathroomsMin || "");
+    setAreaMin(filters.areaMin || "");
+    setSort(filters.sort || "recent");
+    setPage(filters.page || 1);
+  }, [searchParams]);
+
+  // Verificar se há busca ativa
+  const hasSearched = useMemo(() => {
+    return !!(search || city || type || minPrice || maxPrice || bedroomsMin || bathroomsMin || areaMin);
+  }, [search, city, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin]);
+
+  // Carregar favoritos
+  useEffect(() => {
+    if (user) {
+      fetch('/api/favorites')
+        .then(res => res.json())
+        .then((data: any) => {
+          if (data.success) {
+            setFavorites(data.favorites || []);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [user]);
+
+  // Carregar propriedades em destaque
+  useEffect(() => {
+    if (!hasSearched) {
+      setFeaturedLoading(true);
+      fetch('/api/properties?pageSize=12')
+        .then(res => res.json())
+        .then((data: any) => {
+          if (data.success) {
+            setFeatured(data.properties || []);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setFeaturedLoading(false));
+    }
+  }, [hasSearched]);
+
+  // Carregar propriedades baseado na busca
+  useEffect(() => {
+    if (hasSearched) {
+      setIsLoading(true);
+      const params = buildSearchParams({
+        q: search,
+        city,
+        state,
+        type,
+        minPrice,
+        maxPrice,
+        bedroomsMin,
+        bathroomsMin,
+        areaMin,
+        sort,
+        page,
+        pageSize: 12
+      });
+
+      fetch(`/api/properties?${params}`)
+        .then(async res => {
+          if (!res.ok) {
+            const text = await res.text();
+            console.error('Search failed (HTTP error):', { status: res.status, statusText: res.statusText, body: text });
+            return null;
+          }
+          try {
+            return await res.json();
+          } catch (err) {
+            console.error('Search failed (JSON parse error):', err);
+            return null;
+          }
+        })
+        .then((data: any) => {
+          if (!data) {
+            setProperties([]);
+            setTotal(0);
+            return;
+          }
+          console.log('Search response:', data);
+          if (data.success) {
+            setProperties(data.properties || []);
+            setTotal(data.total || 0);
+          } else {
+            console.error('Search failed (no success flag):', data);
+            setProperties([]);
+            setTotal(0);
+          }
+        })
+        .catch(err => {
+          console.error('Search failed (network error):', err);
+          setProperties([]);
+          setTotal(0);
+        })
+        .finally(() => setIsLoading(false));
+    }
+  }, [hasSearched, search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page]);
+
+  // Funções de controle
+  const toggleFavorite = useCallback(async (propertyId: string) => {
+    if (!user) {
+      // Redirecionar para login se não estiver autenticado
+      router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.pathname));
+      return;
+    }
+
+    try {
+      const method = favorites.includes(propertyId) ? 'DELETE' : 'POST';
+      const res = await fetch('/api/favorites', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propertyId })
+      });
+
+      if (res.ok) {
+        setFavorites(prev => 
+          method === 'POST' 
+            ? [...prev, propertyId]
+            : prev.filter(id => id !== propertyId)
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
+  }, [user, favorites, router]);
+
+  const openOverlay = useCallback(async (propertyId: string) => {
+    setOverlayId(propertyId);
+    setOverlayOpen(true);
+    setOverlayLoading(true);
+
+    try {
+      const res = await fetch(`/api/properties?id=${propertyId}`);
+      const data = await res.json();
+      
+      if (data.item) {
+        setOverlayItem(data.item);
+      }
+    } catch (error) {
+      console.error('Error loading property:', error);
+    } finally {
+      setOverlayLoading(false);
+    }
+  }, []);
+
+  const closeOverlay = useCallback(() => {
+    setOverlayOpen(false);
+    setOverlayId(null);
+    setOverlayItem(null);
+  }, []);
+
+  // Listen for open-overlay events from ContinueSearching
+  useEffect(() => {
+    const handleOpenOverlay = (e: CustomEvent) => {
+      if (e.detail?.id) {
+        openOverlay(e.detail.id);
+      }
+    };
+    window.addEventListener('open-overlay', handleOpenOverlay as EventListener);
+    return () => window.removeEventListener('open-overlay', handleOpenOverlay as EventListener);
+  }, [openOverlay]);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <TopNavMega />
+      
+      {/* Hero Section */}
+      {!hasSearched && <HeroSearchModern />}
+      
+      {/* Quick Categories */}
+      {!hasSearched && <QuickCategories />}
+      
+      {/* Neighborhood Grid */}
+      {!hasSearched && <NeighborhoodGrid />}
+      
+      {/* Continue Searching */}
+      {!hasSearched && <ContinueSearching />}
+
+      {/* Search Results - Split Screen Layout */}
+      {hasSearched && (
+        <div className="flex h-[calc(100vh-80px)]">
+          {/* Left Side - Property List */}
+          <div className="w-full lg:w-1/2 overflow-y-auto">
+            {/* Filters Bar */}
+            <SearchFiltersBar
+              filters={{
+                minPrice,
+                maxPrice,
+                bedrooms: bedroomsMin,
+                bathrooms: bathroomsMin,
+                type,
+                areaMin,
+              }}
+              onFiltersChange={(newFilters) => {
+                setMinPrice(newFilters.minPrice);
+                setMaxPrice(newFilters.maxPrice);
+                setBedroomsMin(newFilters.bedrooms);
+                setBathroomsMin(newFilters.bathrooms);
+                setType(newFilters.type);
+                setAreaMin(newFilters.areaMin);
+                
+                // Atualizar URL com novos filtros
+                const params = buildSearchParams({
+                  q: search,
+                  city,
+                  state,
+                  type: newFilters.type,
+                  minPrice: newFilters.minPrice,
+                  maxPrice: newFilters.maxPrice,
+                  bedroomsMin: newFilters.bedrooms,
+                  bathroomsMin: newFilters.bathrooms,
+                  areaMin: newFilters.areaMin,
+                  sort,
+                  page: 1, // Reset para página 1 ao filtrar
+                });
+                router.push(`/?${params}`, { scroll: false });
+              }}
+              onClearFilters={() => {
+                setMinPrice("");
+                setMaxPrice("");
+                setBedroomsMin("");
+                setBathroomsMin("");
+                setType("");
+                setAreaMin("");
+                setPage(1);
+                
+                // Atualizar URL removendo filtros
+                const params = buildSearchParams({
+                  q: search,
+                  city,
+                  state,
+                  type: "",
+                  minPrice: "",
+                  maxPrice: "",
+                  bedroomsMin: "",
+                  bathroomsMin: "",
+                  areaMin: "",
+                  sort,
+                  page: 1,
+                });
+                router.push(`/?${params}`, { scroll: false });
+              }}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+
+            <div className="p-6 lg:p-8">
+              {/* Header */}
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  {total > 0 ? `${total} imóveis encontrados` : 'Nenhum imóvel encontrado'}
+                </h1>
+                {city && (
+                  <p className="text-gray-600">
+                    em <span className="font-medium">{city}, {state}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Property Cards - 2 Columns Grid */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {isLoading ? (
+                  [...Array(6)].map((_, i) => (
+                    <div key={i} className="card animate-pulse p-4">
+                      <div className="h-40 bg-gray-200 rounded-xl mb-3"></div>
+                      <div className="space-y-2">
+                        <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                        <div className="flex gap-4">
+                          <div className="h-4 bg-gray-200 rounded w-16"></div>
+                          <div className="h-4 bg-gray-200 rounded w-20"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : properties.length === 0 ? (
+                  <div className="col-span-full text-center py-16">
+                    <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <p className="text-lg font-medium text-gray-600">Nenhum imóvel encontrado</p>
+                    <p className="text-sm text-gray-500 mt-1">Tente ajustar os filtros de busca</p>
+                  </div>
+                ) : (
+                  properties.map((property) => (
+                    <PropertyCard
+                      key={property.id}
+                      property={property}
+                      onFavoriteToggle={toggleFavorite}
+                      onHover={setHoverId}
+                      onOpenOverlay={openOverlay}
+                      isFavorite={favorites.includes(property.id)}
+                      isHovered={hoverId === property.id}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Side - Interactive Map (Desktop Only) */}
+          <div className="hidden lg:block lg:w-1/2 sticky top-0 h-[calc(100vh-80px)]">
+            <MapWithPriceBubbles
+              items={properties}
+              isLoading={isLoading}
+              onBoundsChange={async (bounds) => {
+                // Fetch properties within the new map bounds
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('minLat', bounds.minLat.toString());
+                params.set('maxLat', bounds.maxLat.toString());
+                params.set('minLng', bounds.minLng.toString());
+                params.set('maxLng', bounds.maxLng.toString());
+                
+                console.log('Map bounds changed:', bounds);
+                console.log('Fetching with params:', params.toString());
+                
+                try {
+                  const res = await fetch(`/api/properties?${params.toString()}`);
+                  const data = await res.json();
+                  
+                  console.log('Map bounds response:', data);
+                  
+                  if (data.success) {
+                    setProperties(data.properties || []);
+                    setTotal(data.total || 0);
+                  }
+                } catch (error) {
+                  console.error('Error fetching properties by bounds:', error);
+                }
+              }}
+            />
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+
+      {/* Featured Listings (Homepage) */}
+      {!hasSearched && (
+        <div className="mx-auto max-w-7xl px-4 py-10">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Destaques</h2>
+            <Link href="#" className="text-primary-600 hover:text-primary-800 text-sm font-medium">Ver mais</Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featuredLoading ? (
+              [...Array(6)].map((_, i) => (
+                <div key={i} className="card animate-pulse">
+                  <div className="h-48 bg-gray-200 rounded-t-xl"></div>
+                  <div className="p-5 space-y-3">
+                    <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    <div className="flex gap-4">
+                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                      <div className="h-4 bg-gray-200 rounded w-20"></div>
+                    </div>
+                    <div className="h-10 bg-gray-200 rounded-lg"></div>
+                  </div>
+                </div>
+              ))
+            ) : featured.length === 0 ? (
+              <div className="col-span-full text-center text-gray-500 py-16">
+                <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <p className="text-lg font-medium">Sem destaques no momento</p>
+                <p className="text-sm mt-1">Novos imóveis serão exibidos aqui em breve</p>
+              </div>
+            ) : (
+              featured.map((property) => (
+                <PropertyCard
+                  key={property.id}
+                  property={property}
+                  onFavoriteToggle={toggleFavorite}
+                  onHover={setHoverId}
+                  onOpenOverlay={openOverlay}
+                  isFavorite={favorites.includes(property.id)}
+                  isHovered={hoverId === property.id}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Guides */}
+      {!hasSearched && <Guides />}
+
+      {/* Footer */}
+      <SiteFooter />
+
+      {/* Property Details Modal */}
+      <PropertyDetailsModal
+        propertyId={overlayItem?.id || null}
+        open={overlayOpen}
+        onClose={closeOverlay}
+      />
+
     </div>
   );
 }

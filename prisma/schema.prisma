@@ -1,0 +1,372 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Supported property types for filtering and UI
+enum PropertyType {
+  HOUSE
+  APARTMENT
+  CONDO
+  TOWNHOUSE
+  STUDIO
+  LAND
+  COMMERCIAL
+}
+
+// User roles for authorization
+enum Role {
+  USER
+  OWNER
+  REALTOR
+  ADMIN
+}
+
+// Property status
+enum PropertyStatus {
+  ACTIVE
+  PAUSED
+  DRAFT
+  SOLD
+  RENTED
+}
+
+// Lead status
+enum LeadStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  RESERVED  // Reservado para corretor prioritário
+  AVAILABLE // Disponível no mural
+}
+
+// Status do corretor na fila
+enum RealtorQueueStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+// Status da candidatura
+enum CandidatureStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  property   Property @relation(fields: [propertyId], references: [id])
+  propertyId String
+  createdAt  DateTime @default(now())
+  hidden     Boolean  @default(false)
+
+  @@unique([userId, propertyId])
+  @@index([userId])
+  @@index([propertyId])
+  @@map("favorites")
+}
+
+model Property {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  price       Int            // price in BRL cents for precision
+  type        PropertyType
+  status      PropertyStatus @default(ACTIVE)
+  ownerId     String?
+
+  // Location & address
+  street      String
+  neighborhood String?
+  city        String
+  state       String
+  postalCode  String?
+  latitude    Float
+  longitude   Float
+
+  // Optional details that improve UX in filters/cards
+  bedrooms    Int?
+  bathrooms   Float?
+  areaM2      Int?
+  // Amenities/extra metadata
+  suites        Int?
+  parkingSpots  Int?
+  floor         Int?
+  furnished     Boolean?
+  petFriendly   Boolean?
+  condoFee      Int?      // in cents
+  yearBuilt     Int?
+
+  images      Image[]
+  favorites   Favorite[]
+  leads       Lead[]
+  views       PropertyView[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([city, state])
+  @@index([price])
+  @@index([type])
+  @@index([ownerId])
+  @@index([status])
+  @@map("properties")
+}
+
+model Image {
+  id         String   @id @default(cuid())
+  url        String
+  alt        String?
+  sortOrder  Int      @default(0)
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId String
+
+  createdAt  DateTime @default(now())
+
+  @@index([propertyId])
+  @@map("images")
+}
+
+/// Saved searches per user
+model SavedSearch {
+  id        String   @id @default(cuid())
+  userId    String
+  label     String
+  params    String   // serialized querystring
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("saved_searches")
+}
+
+// NextAuth models (Prisma Adapter)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @map("refresh_token")
+  access_token      String?  @map("access_token")
+  expires_at        Int?     @map("expires_at")
+  token_type        String?  @map("token_type")
+  scope             String?
+  id_token          String?  @map("id_token")
+  session_state     String?  @map("session_state")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
+
+  accounts      Account[]
+  sessions      Session[]
+  leads         Lead[]
+  realtorLeads  Lead[]          @relation("RealtorLeads")
+  queue         RealtorQueue?
+  stats         RealtorStats?
+  ratings       RealtorRating[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Leads submitted from property detail pages
+model Lead {
+  id               String            @id @default(cuid())
+  property         Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId       String
+  user             User?             @relation(fields: [userId], references: [id])
+  userId           String?
+  realtor          User?             @relation("RealtorLeads", fields: [realtorId], references: [id])
+  realtorId        String?
+  contact          Contact?          @relation(fields: [contactId], references: [id])
+  contactId        String?
+  status           LeadStatus        @default(PENDING)
+  message          String?
+  createdAt        DateTime          @default(now())
+  respondedAt      DateTime?
+  reservedUntil    DateTime?         // Prazo de reserva para corretor prioritário
+  expiresAt        DateTime?         // Prazo de expiração do lead
+
+  candidatures     LeadCandidature[]
+  rating           RealtorRating?
+
+  @@index([propertyId])
+  @@index([userId])
+  @@index([realtorId])
+  @@index([status])
+  @@index([reservedUntil])
+  @@index([status, createdAt]) // Para filtrar leads por status + ordenar por data
+  @@index([realtorId, status]) // Para buscar leads de um corretor por status
+  @@index([status, reservedUntil]) // Para worker de reservas expiradas
+  @@map("leads")
+}
+
+// Contact information for leads
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  leads     Lead[]
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@map("contacts")
+}
+
+// Property views for analytics
+model PropertyView {
+  id         String   @id @default(cuid())
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId String
+  viewedAt   DateTime @default(now())
+  userId     String?  // Optional: track logged-in users
+  ipAddress  String?  // For anonymous tracking
+
+  @@index([propertyId])
+  @@index([viewedAt])
+  @@map("property_views")
+}
+
+// ============================================
+// SISTEMA DE FILA + MURAL DE LEADS
+// ============================================
+
+// Fila de corretores
+model RealtorQueue {
+  id             String              @id @default(cuid())
+  realtor        User                @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+  realtorId      String              @unique
+  position       Int                 // Posição na fila (1 = primeiro)
+  score          Int                 @default(0) // Pontuação do corretor
+  status         RealtorQueueStatus  @default(ACTIVE)
+  activeLeads    Int                 @default(0) // Leads ativos no momento
+  bonusLeads     Int                 @default(0) // Leads bônus simultâneos
+  totalAccepted  Int                 @default(0) // Total de leads aceitos
+  totalRejected  Int                 @default(0) // Total de leads recusados
+  totalExpired   Int                 @default(0) // Total de leads expirados
+  avgResponseTime Int?               // Tempo médio de resposta em minutos
+  lastActivity   DateTime            @default(now())
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  candidatures   LeadCandidature[]
+  scoreHistory   ScoreHistory[]
+
+  @@index([position])
+  @@index([score])
+  @@index([status])
+  @@index([status, position]) // Para buscar próximo corretor disponível
+  @@index([status, score]) // Para ordenar por pontuação
+  @@index([status, activeLeads]) // Para encontrar corretores disponíveis
+  @@map("realtor_queue")
+}
+
+// Candidaturas de corretores a leads
+model LeadCandidature {
+  id          String             @id @default(cuid())
+  lead        Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId      String
+  queue       RealtorQueue       @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  queueId     String
+  status      CandidatureStatus  @default(PENDING)
+  createdAt   DateTime           @default(now())
+  respondedAt DateTime?
+
+  @@unique([leadId, queueId])
+  @@index([leadId])
+  @@index([queueId])
+  @@index([status])
+  @@map("lead_candidatures")
+}
+
+// Histórico de pontuação
+model ScoreHistory {
+  id          String       @id @default(cuid())
+  queue       RealtorQueue @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  queueId     String
+  action      String       // Tipo de ação (ex: "ACCEPT_LEAD", "REJECT_LEAD")
+  points      Int          // Pontos ganhos/perdidos
+  description String?      // Descrição da ação
+  createdAt   DateTime     @default(now())
+
+  @@index([queueId])
+  @@index([createdAt])
+  @@index([queueId, createdAt]) // Para histórico de um corretor ordenado por data
+  @@map("score_history")
+}
+
+// Estatísticas de corretores
+model RealtorStats {
+  id                  String   @id @default(cuid())
+  realtor             User     @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+  realtorId           String   @unique
+  leadsAccepted       Int      @default(0)
+  leadsRejected       Int      @default(0)
+  leadsExpired        Int      @default(0)
+  leadsCompleted      Int      @default(0)
+  visitsScheduled     Int      @default(0)
+  visitsCompleted     Int      @default(0)
+  avgRating           Float?   // Avaliação média (0-5)
+  totalRatings        Int      @default(0)
+  avgResponseTime     Int?     // Em minutos
+  totalResponseTime   Int      @default(0) // Soma total para calcular média
+  lastLeadAcceptedAt  DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([realtorId])
+  @@map("realtor_stats")
+}
+
+// Avaliações de corretores
+model RealtorRating {
+  id          String   @id @default(cuid())
+  realtor     User     @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+  realtorId   String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId      String   @unique
+  rating      Int      // 1-5 estrelas
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  @@index([realtorId])
+  @@index([leadId])
+  @@map("realtor_ratings")
+}

@@ -24,3 +24,46 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.price-marker {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.2));
+}
+
+/* Global pointer for interactive elements */
+a,
+button,
+[role="button"],
+[aria-pressed],
+[aria-haspopup],
+summary,
+.clickable,
+.btn,
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* Map custom markers should also be pointer */
+.price-marker,
+.cluster-marker {
+  cursor: pointer;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Cluster pulse animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

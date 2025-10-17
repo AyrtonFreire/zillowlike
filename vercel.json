@@ -1,0 +1,6 @@
+{
+  "buildCommand": "npm run build",
+  "ignoreCommand": "echo 'use default'",
+  "installCommand": "npm ci"
+}
+

@@ -1,0 +1,84 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+
+const rateMap = new Map<string, { ts: number[] }>();
+const WINDOW_MS = 60_000; // 1 min
+const MAX_REQUESTS = 10; // per IP per window
+
+function getIp(req: NextRequest) {
+  const xfwd = req.headers.get("x-forwarded-for");
+  if (xfwd) return xfwd.split(',')[0].trim();
+  // @ts-ignore runtime may expose ip
+  return (req as any).ip || "unknown";
+}
+
+function checkRate(ip: string) {
+  const now = Date.now();
+  const rec = rateMap.get(ip) || { ts: [] };
+  rec.ts = rec.ts.filter((t) => now - t < WINDOW_MS);
+  if (rec.ts.length >= MAX_REQUESTS) return false;
+  rec.ts.push(now);
+  rateMap.set(ip, rec);
+  return true;
+}
+
+const LeadSchema = z.object({
+  propertyId: z.string().min(1),
+  name: z.string().min(2),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  message: z.string().min(5).max(2000),
+  turnstileToken: z.string().optional(),
+});
+
+async function verifyTurnstile(token?: string, ip?: string) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) return true; // bypass in dev if not configured
+  if (!token) return false;
+  try {
+    const body = new URLSearchParams();
+    body.set("secret", secret);
+    body.set("response", token);
+    if (ip) body.set("remoteip", ip);
+    const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    const data: any = await r.json();
+    return !!data.success;
+  } catch {
+    return false;
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const ip = getIp(req);
+  if (!checkRate(ip)) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
+  const json = await req.json().catch(() => null);
+  const parsed = LeadSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid payload", issues: parsed.error.issues }, { status: 400 });
+  }
+
+  const ok = await verifyTurnstile(parsed.data.turnstileToken, ip);
+  if (!ok) return NextResponse.json({ error: "Captcha failed" }, { status: 400 });
+
+  const { propertyId, name, email, phone, message } = parsed.data;
+  const prop = await prisma.property.findUnique({ where: { id: propertyId }, select: { id: true } });
+  if (!prop) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+
+  await prisma.lead.create({
+    data: {
+      propertyId,
+      name,
+      email,
+      phone,
+      message,
+    },
+  });
+
+  return NextResponse.json({ ok: true });
+}
