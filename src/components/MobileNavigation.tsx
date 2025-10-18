@@ -182,7 +182,7 @@ export default function MobileNavigation() {
                 ) : user ? (
                   <button
                     onClick={() => {
-                      signOut();
+                      signOut({ callbackUrl: '/' });
                       setIsOpen(false);
                     }}
                     className="w-full btn btn-secondary py-3 text-base font-medium"

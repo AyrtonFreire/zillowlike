@@ -33,7 +33,7 @@ export default function Header() {
               <>
                 <span className="hidden sm:inline text-gray-600">Olá, {user.name || user.email || 'usuário'}</span>
                 {role === 'ADMIN' && <Link href="/admin" className="hover:text-blue-700">Admin</Link>}
-                <button onClick={() => signOut()} className="hover:text-blue-700">Sair</button>
+                <button onClick={() => signOut({ callbackUrl: '/' })} className="hover:text-blue-700">Sair</button>
               </>
             ) : (
               <button onClick={() => signIn('google', { callbackUrl: '/', prompt: 'select_account' })} className="hover:text-blue-700">Entrar com Google</button>

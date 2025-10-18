@@ -179,7 +179,7 @@ export default function TopNavMega() {
               <div className="flex items-center gap-3">
                 <span className="hidden md:block text-sm text-gray-600">Olá, {user.name?.split(' ')[0]}</span>
                 <button 
-                  onClick={()=> signOut()} 
+                  onClick={() => signOut({ callbackUrl: '/' })} 
                   className="btn btn-secondary text-sm px-4 py-2"
                 >
                   Sair
