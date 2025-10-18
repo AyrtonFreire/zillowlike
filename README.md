@@ -1,28 +1,80 @@
-# Zillowlike (Petrolina/PE & Juazeiro/BA)
+# 🏠 Zillowlike - Plataforma de Imóveis (Petrolina/PE & Juazeiro/BA)
 
-Site gratuito inspirado no Zillow para cadastrar e buscar imóveis com lista e mapa interativo (OpenStreetMap + Leaflet).
+Plataforma completa de anúncios de imóveis com sistema de fila de corretores, mural de leads e notificações em tempo real.
 
-## Tecnologias
-- Next.js (App Router) + TypeScript
-- Tailwind (tema inline do template)
-- Prisma + SQLite (grátis, arquivo local)
-- Leaflet + React-Leaflet (mapa e marcadores com preço)
-- Nominatim (OpenStreetMap) para geocodificação grátis
+## 🚀 Stack Tecnológica
 
-## Rodando localmente
+### Frontend
+- **Next.js 15** (App Router) + TypeScript
+- **TailwindCSS 4** para estilização
+- **Leaflet + React-Leaflet** (mapa interativo com clusters)
+- **Recharts** (dashboards e gráficos)
+- **Pusher** (notificações tempo real)
+
+### Backend
+- **Prisma ORM** + **PostgreSQL** (Supabase)
+- **NextAuth.js** (autenticação OAuth - GitHub/Google)
+- **BullMQ** + **Redis** (filas de processamento)
+- **Cloudinary** (upload e otimização de imagens)
+
+### Infraestrutura
+- **Vercel** (hosting e deploy automático)
+- **Supabase** (PostgreSQL gerenciado)
+- **Upstash** (Redis serverless)
+- **Pusher** (WebSockets para tempo real)
+
+---
+
+## 📚 Documentação
+
+- **[Guia Rápido (QUICK_START.md)](./QUICK_START.md)** - Primeiros passos
+- **[Setup Ambiente Beta (DEV_ENVIROMENT_SETUP.md)](./DEV_ENVIROMENT_SETUP.md)** - Configuração completa local
+- **[Deploy Público (DEPLOY_BETA.md)](./DEPLOY_BETA.md)** - Deploy para produção/staging
+- **[Variáveis de Ambiente (ENV_PRODUCTION_TEMPLATE.md)](./ENV_PRODUCTION_TEMPLATE.md)** - Template de .env
+- **[Funções e Sistemas (FUNCOES_E_SISTEMAS.md)](./FUNCOES_E_SISTEMAS.md)** - Documentação técnica detalhada
+
+---
+
+## ⚡ Quick Start
+
+### Desenvolvimento Local
+
 ```bash
+# 1. Clone o repositório
+git clone https://github.com/AyrtonFreire/zillowlike.git
+cd zillowlike
+
+# 2. Instale dependências
 npm install
+
+# 3. Configure variáveis de ambiente
+cp .env.example .env
+# Edite .env com suas credenciais (Supabase, OAuth, etc.)
+
+# 4. Rode migrations
+npx prisma migrate dev
+
+# 5. Valide banco limpo
+npm run db:validate
+
+# 6. Crie seu admin
+npm run create-admin
+
+# 7. Inicie servidor
 npm run dev
 ```
-Acesse `http://localhost:3000`.
 
-## Banco e ORM
-- Arquivo `.env` já aponta para SQLite local: `DATABASE_URL="file:./dev.db"`.
-- Schema em `prisma/schema.prisma`.
-- Gerar cliente após alterações no schema:
+Acesse `http://localhost:3000`
+
+### Deploy Público (Beta/Staging)
+
+Ver guia completo em **[DEPLOY_BETA.md](./DEPLOY_BETA.md)**
+
 ```bash
-npx prisma migrate dev --name change
-npx prisma generate
+# Via Vercel CLI
+npm i -g vercel
+vercel login
+vercel
 ```
 
 ## Funcionalidades

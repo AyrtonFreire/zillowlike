@@ -7,12 +7,13 @@ import { withRateLimit } from "@/lib/rate-limiter";
 export const POST = withRateLimit(
   withErrorHandling(async (
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) => {
+    const { id } = await params;
     const body = await request.json();
     const { realtorId } = acceptLeadSchema.parse(body);
 
-    const lead = await LeadDistributionService.acceptLead(params.id, realtorId);
+    const lead = await LeadDistributionService.acceptLead(id, realtorId);
     return successResponse(lead, "Lead aceito com sucesso!");
   }),
   "leads"

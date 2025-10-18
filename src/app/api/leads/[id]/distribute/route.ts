@@ -3,10 +3,10 @@ import { LeadDistributionService } from "@/lib/lead-distribution-service";
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const leadId = params.id;
+    const { id: leadId } = await params;
     if (!leadId) {
       return NextResponse.json({ error: "Missing lead id" }, { status: 400 });
     }

@@ -1,0 +1,31 @@
+# === COLE ESTAS VARIÁVEIS NA VERCEL ===
+# Copie TUDO abaixo e cole na Vercel (Import .env)
+
+# === DATABASE ===
+DATABASE_URL=postgresql://postgres:Aofreire102030%23@db.uivqecwlalsqmdtqnthu.supabase.co:5432/postgres
+
+# === NEXTAUTH ===
+NEXTAUTH_URL=https://zillowlike.vercel.app
+NEXTAUTH_SECRET=e3af5a5811837912573292348b19cd97
+
+# === OAUTH GITHUB ===
+GITHUB_ID=Ov23liiit6Oc8RT1fcKE
+GITHUB_SECRET=ad6ff8d1953a7ad1e8204b70bf81fce86d75606a
+
+
+# ============================================
+# OPCIONAL (pode adicionar depois):
+# ============================================
+
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+# CLOUDINARY_CLOUD_NAME=
+# CLOUDINARY_API_KEY=
+# CLOUDINARY_API_SECRET=
+# REDIS_URL=
+# NEXT_PUBLIC_PUSHER_KEY=
+# NEXT_PUBLIC_PUSHER_CLUSTER=us2
+# PUSHER_APP_ID=
+# PUSHER_SECRET=
+# NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+# TURNSTILE_SECRET_KEY=

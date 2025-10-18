@@ -1,27 +1,37 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
- // Evita depender de Prisma.$Enums quando o client está desatualizado
- const PropertyType = {
-   HOUSE: "HOUSE",
-   APARTMENT: "APARTMENT",
-   CONDO: "CONDO",
-   TOWNHOUSE: "TOWNHOUSE",
-   STUDIO: "STUDIO",
-   LAND: "LAND",
-   COMMERCIAL: "COMMERCIAL",
- } as const;
-
 async function main() {
-  console.log("🌱 Starting seed (idempotent mode)...");
+  console.log("🌱 Starting database validation...");
   
-  // Seed agora é idempotente - usa upsert em vez de deleteMany
-  // Pode ser executado múltiplas vezes sem limpar o banco
-  console.log("ℹ️  Seed mode: UPSERT (idempotent)");
+  // Valida apenas que o banco está acessível e as tabelas foram criadas
+  console.log("ℹ️  Mode: VALIDATION ONLY (no fake data)");
 
-  // Real estate images from Unsplash - URLs testadas e validadas (22 imagens)
-  const PICS = [
+  // Verifica conectividade e estrutura
+  console.log("📊 Checking database structure...");
+  
+  // Test queries to validate schema
+  const userCount = await prisma.user.count();
+  const propertyCount = await prisma.property.count();
+  const leadCount = await prisma.lead.count();
+  
+  console.log(`✅ Database is ready!");
+  console.log(`   - Users: ${userCount}`);
+  console.log(`   - Properties: ${propertyCount}`);
+  console.log(`   - Leads: ${leadCount}`);
+  console.log("");
+  console.log("🎯 Next steps:");
+  console.log("   1. Run 'npm run create-admin' to create your first admin user");
+  console.log("   2. Start the dev server: 'npm run dev'");
+  console.log("   3. Access http://localhost:3000 and sign in");
+  console.log("");
+  console.log("💡 This is a CLEAN database ready for real users!");
+  
+  return; // Exit early - no fake data
+  
+  // OLD CODE BELOW (kept for reference, never executes)
+  const OLD_PICS = [
     // Modern Houses - Fachadas
     "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1280&q=80", // Casa moderna
     "https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=1280&q=80", // Casa luxo
@@ -628,14 +638,7 @@ async function main() {
     });
   }
 
-  console.log("✅ Seed completed!");
-  console.log(`   - ${createdProperties.length} properties created`);
-  console.log(`   - 2 users created (owner + realtor)`);
-  console.log(`   - ${contacts.length} contacts created`);
-  console.log(`   - 8 leads created`);
-  console.log(`   - 3 leads marked as available`);
-  console.log(`   - Property views created`);
-  console.log(`   - Realtor added to queue`);
+  // This code is unreachable - validation only mode
 }
 
 main().finally(async () => {

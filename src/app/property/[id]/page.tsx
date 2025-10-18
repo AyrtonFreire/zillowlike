@@ -7,10 +7,10 @@ import ContactForm from "@/components/ContactForm";
 import FinancingButton from "@/components/FinancingButton";
 
 
-type PageProps = { params: { id: string } };
+type PageProps = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const id = params.id;
+  const { id } = await params;
   const property = await prisma.property.findUnique({
     where: { id },
     select: {
@@ -63,7 +63,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function PropertyPage({ params }: PageProps) {
-  const id = params.id;
+  const { id } = await params;
 
   const property = await prisma.property.findUnique({
     where: { id },
