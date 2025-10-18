@@ -1,20 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   Home,
   Eye,
-  Users,
+  Heart,
   Plus,
+  MessageSquare,
+  Edit2,
+  Trash2,
+  MoreVertical,
   TrendingUp,
-  Crown,
-  BarChart3,
+  AlertCircle,
 } from "lucide-react";
-import MetricCard from "@/components/dashboard/MetricCard";
-import StatCard from "@/components/dashboard/StatCard";
-import PropertyListItem from "@/components/dashboard/PropertyListItem";
 import DashboardLayout from "@/components/DashboardLayout";
+import Image from "next/image";
 
 interface Metrics {
   activeProperties: number;
@@ -58,16 +60,18 @@ export default function OwnerDashboard() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { data: session, status } = useSession();
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (status === "authenticated") {
+      fetchDashboardData();
+    }
+  }, [status]);
 
   const fetchDashboardData = async () => {
     try {
-      // TODO: Get real userId from auth session
-      const userId = "demo-owner-id";
-      
-      const response = await fetch(`/api/metrics/owner?userId=${userId}`);
+      const response = await fetch(`/api/owner/properties`);
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
@@ -75,18 +79,61 @@ export default function OwnerDashboard() {
       
       const data = await response.json();
 
-      setMetrics(data.metrics || null);
-      setProperties(data.myProperties || []);
-      setViewsByProperty(data.viewsByProperty || []);
-      setContacts(data.recentContacts || []);
+      if (data.success) {
+        setMetrics(data.metrics);
+        setProperties(data.properties);
+      }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      // Set empty arrays to prevent undefined errors
       setProperties([]);
-      setViewsByProperty([]);
-      setContacts([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!deleteConfirm) {
+      setDeleteConfirm(id);
+      setTimeout(() => setDeleteConfirm(null), 5000); // Auto-cancel after 5s
+      return;
+    }
+
+    if (deleteConfirm !== id) return;
+
+    try {
+      const response = await fetch(`/api/owner/properties/${id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Remove from list
+        setProperties(prev => prev.filter(p => p.id !== id));
+        setDeleteConfirm(null);
+      } else {
+        alert("Erro ao excluir imóvel");
+      }
+    } catch (error) {
+      console.error("Error deleting property:", error);
+      alert("Erro ao excluir imóvel");
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/owner/properties/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        // Update in list
+        setProperties(prev =>
+          prev.map(p => (p.id === id ? { ...p, status: newStatus as any } : p))
+        );
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
     }
   };
 
