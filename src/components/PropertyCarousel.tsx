@@ -170,9 +170,9 @@ export default function PropertyCarousel({
                   </div>
                 </div>
               </div>
-          ))}
+            );
+          })}
         </div>
-      </div>
     </div>
   );
 }
