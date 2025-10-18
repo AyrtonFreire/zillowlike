@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heart, Search, User, Home } from "lucide-react";
+import DashboardLayout from "@/components/DashboardLayout";
 
 export default function UserDashboard() {
   const { data: session, status } = useSession();
@@ -48,36 +49,30 @@ export default function UserDashboard() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
+      <DashboardLayout
+        title="Meu Painel"
+        description="Bem-vindo ao seu painel pessoal"
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Painel" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Olá, {user?.name?.split(" ")[0] || "Usuário"}! 👋
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Bem-vindo ao seu painel pessoal
-              </p>
-            </div>
-            <Link
-              href="/"
-              className="btn btn-primary flex items-center gap-2"
-            >
-              <Home className="w-4 h-4" />
-              Voltar para Home
-            </Link>
-          </div>
-        </div>
-      </div>
+    <DashboardLayout
+      title={`Olá, ${user?.name?.split(" ")[0] || "Usuário"}! 👋`}
+      description="Bem-vindo ao seu painel pessoal"
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Painel" },
+      ]}
+    >
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Role Selection Card - Only for USER */}
@@ -224,6 +219,6 @@ export default function UserDashboard() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import {
   Home,
   Search,
-  ArrowLeft,
   CheckCircle,
   XCircle,
   Clock,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import DashboardLayout from "@/components/DashboardLayout";
 
 interface Property {
   id: string;
@@ -141,34 +141,34 @@ export default function AdminPropertiesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <DashboardLayout
+        title="Gerenciar Imóveis"
+        description="Visualizar e gerenciar todos os imóveis do sistema"
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Admin", href: "/admin" },
+          { label: "Imóveis" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-4 mb-4">
-            <Link
-              href="/admin"
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Gerenciar Imóveis
-              </h1>
-              <p className="text-gray-600 mt-1">
-                {filteredProperties.length} imóveis encontrados
-              </p>
-            </div>
-          </div>
-
+    <DashboardLayout
+      title="Gerenciar Imóveis"
+      description={`${filteredProperties.length} imóveis encontrados`}
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Admin", href: "/admin" },
+        { label: "Imóveis" },
+      ]}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
@@ -292,6 +292,6 @@ export default function AdminPropertiesPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
