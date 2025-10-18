@@ -34,45 +34,47 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  // REMOVED PrismaAdapter - we manage users manually in signIn callback
+  // This prevents the adapter from creating users with default role before our callback runs
   providers,
   session: { strategy: "jwt" },
-  // Allow linking accounts with the same email (Google + GitHub)
-  // This is safe in our case since both providers verify email
   pages: {
     signIn: '/auth/signin',
   },
   callbacks: {
     async signIn({ user, account, profile }) {
-      // Allow sign in with different OAuth providers for the same email
-      if (account?.provider && user?.email) {
-        const existingUser = await prisma.user.findUnique({
+      // Manually manage users and accounts (no PrismaAdapter)
+      if (!account?.provider || !user?.email) {
+        return false;
+      }
+
+      try {
+        // Check if user exists
+        let dbUser = await prisma.user.findUnique({
           where: { email: user.email },
           include: { accounts: true },
         });
 
-        if (existingUser) {
-          // CRITICAL: Update the user object with the existing user's role
-          // This ensures the JWT callback receives the correct role
-          (user as any).id = existingUser.id;
-          (user as any).role = existingUser.role;
+        if (dbUser) {
+          // EXISTING USER - Use role from database
+          (user as any).id = dbUser.id;
+          (user as any).role = dbUser.role;
           
-          console.log("SignIn Callback - Existing user found:", {
+          console.log("SignIn - Existing user:", {
             email: user.email,
-            id: existingUser.id,
-            role: existingUser.role,
+            role: dbUser.role,
           });
 
-          // Check if this provider is already linked
-          const accountExists = existingUser.accounts.some(
-            (acc) => acc.provider === account.provider
+          // Check if this OAuth account is linked
+          const accountExists = dbUser.accounts.some(
+            (acc) => acc.provider === account.provider && acc.providerAccountId === account.providerAccountId
           );
 
           if (!accountExists) {
-            // Link the new provider account to existing user
+            // Link new OAuth provider to existing user
             await prisma.account.create({
               data: {
-                userId: existingUser.id,
+                userId: dbUser.id,
                 type: account.type,
                 provider: account.provider,
                 providerAccountId: account.providerAccountId,
@@ -82,15 +84,54 @@ export const authOptions: NextAuthOptions = {
                 token_type: account.token_type,
                 scope: account.scope,
                 id_token: account.id_token,
-                session_state: account.session_state,
+                session_state: account.session_state as string | null,
               },
             });
+            console.log("SignIn - Linked new provider:", account.provider);
           }
         } else {
-          console.log("SignIn Callback - New user, will be created with role USER");
+          // NEW USER - Create with role USER
+          const newUser = await prisma.user.create({
+            data: {
+              email: user.email,
+              name: user.name,
+              image: user.image,
+              role: "USER",
+              emailVerified: new Date(),
+            },
+          });
+
+          // Create OAuth account
+          await prisma.account.create({
+            data: {
+              userId: newUser.id,
+              type: account.type,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+              refresh_token: account.refresh_token,
+              access_token: account.access_token,
+              expires_at: account.expires_at,
+              token_type: account.token_type,
+              scope: account.scope,
+              id_token: account.id_token,
+              session_state: account.session_state as string | null,
+            },
+          });
+
+          (user as any).id = newUser.id;
+          (user as any).role = "USER";
+          
+          console.log("SignIn - New user created:", {
+            email: user.email,
+            role: "USER",
+          });
         }
+
+        return true;
+      } catch (error) {
+        console.error("SignIn callback error:", error);
+        return false;
       }
-      return true;
     },
     async jwt({ token, user, trigger }) {
       // CRITICAL: Always fetch the latest role from database
