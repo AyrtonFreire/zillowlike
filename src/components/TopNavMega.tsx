@@ -9,6 +9,7 @@ export default function TopNavMega() {
   const [open, setOpen] = useState<null | "comprar" | "alugar" | "vender">(null);
   const { data: session, status } = useSession();
   const user = (session as any)?.user || null;
+  const role = (session as any)?.role || (session as any)?.user?.role || "USER";
   const [stickyShadow, setStickyShadow] = useState(false);
   const closeTimer = useRef<NodeJS.Timeout | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -116,6 +117,20 @@ export default function TopNavMega() {
 
           {/* Right Navigation */}
           <div className="flex items-center gap-2">
+            {/* Dashboard Link - Based on Role */}
+            {user && role !== "USER" && (
+              <Link 
+                href={role === "ADMIN" ? "/admin" : role === "REALTOR" ? "/broker/dashboard" : "/owner/dashboard"}
+                className="hidden lg:inline-flex items-center gap-2 btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
+                title="Meu Painel"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span className="hidden xl:inline">Painel</span>
+              </Link>
+            )}
+            
             {/* Favoritos - Visível apenas quando logado */}
             {user && (
               <Link 
@@ -175,7 +190,7 @@ export default function TopNavMega() {
             onKeyDown={onMenuKeyDown}
             role="menu"
             aria-label="Menu principal"
-            className={`absolute inset-x-0 z-[1010] bg-white/98 backdrop-blur-lg border-t border-gray-200/60 shadow-2xl transition-all duration-200 ${anim==='in' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
+            className={`absolute inset-x-0 z-[1010] bg-gradient-to-b from-white to-gray-50/95 backdrop-blur-xl border-t border-gray-200 shadow-2xl transition-all duration-200 ${anim==='in' ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}
           >
             <div className="mx-auto max-w-7xl px-6 py-10">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
@@ -241,11 +256,11 @@ export default function TopNavMega() {
 function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="min-h-full">
-      <div className="flex items-center gap-3 text-gray-900 font-semibold mb-4">
-        {icon && <span className="flex-shrink-0">{icon}</span>}
-        <span className="text-base">{title}</span>
+      <div className="flex items-center gap-3 text-gray-900 font-bold mb-5">
+        {icon && <span className="flex-shrink-0 p-2 bg-primary-50 rounded-lg">{icon}</span>}
+        <span className="text-lg">{title}</span>
       </div>
-      <ul className="space-y-2 text-gray-700">
+      <ul className="space-y-1 text-gray-700">
         {children}
       </ul>
     </div>
@@ -257,10 +272,10 @@ function Item({ href, children }: { href: string; children: React.ReactNode }) {
     <li>
       <Link
         href={href}
-        className="group inline-flex items-center w-full rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-primary-50 hover:text-primary-700 transition-all duration-150"
+        className="group flex items-center justify-between w-full rounded-xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-primary-100/50 hover:text-primary-700 hover:shadow-sm transition-all duration-200 hover:translate-x-1"
       >
         <span>{children}</span>
-        <svg className="ml-auto w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </Link>
