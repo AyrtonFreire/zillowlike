@@ -78,23 +78,29 @@ export default function TopNavMega() {
           {/* Left Navigation */}
           <nav className="hidden lg:flex items-center gap-1">
             <button 
-              onMouseEnter={()=>setOpen("comprar")} 
+              onMouseEnter={()=>{clearTimeout(closeTimer.current!); setOpen("comprar");}} 
               onFocus={()=>setOpen("comprar")} 
-              className="btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all focus-ring"
+              className={`btn btn-ghost px-4 py-2 text-sm font-medium transition-all focus-ring rounded-lg ${
+                open === "comprar" ? "text-primary-600 bg-primary-50" : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
+              }`}
             >
               Comprar
             </button>
             <button 
-              onMouseEnter={()=>setOpen("alugar")} 
+              onMouseEnter={()=>{clearTimeout(closeTimer.current!); setOpen("alugar");}} 
               onFocus={()=>setOpen("alugar")} 
-              className="btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all focus-ring"
+              className={`btn btn-ghost px-4 py-2 text-sm font-medium transition-all focus-ring rounded-lg ${
+                open === "alugar" ? "text-primary-600 bg-primary-50" : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
+              }`}
             >
               Alugar
             </button>
             <button 
-              onMouseEnter={()=>setOpen("vender")} 
+              onMouseEnter={()=>{clearTimeout(closeTimer.current!); setOpen("vender");}} 
               onFocus={()=>setOpen("vender")} 
-              className="btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all focus-ring"
+              className={`btn btn-ghost px-4 py-2 text-sm font-medium transition-all focus-ring rounded-lg ${
+                open === "vender" ? "text-primary-600 bg-primary-50" : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
+              }`}
             >
               Vender
             </button>
@@ -118,16 +124,21 @@ export default function TopNavMega() {
           {/* Right Navigation */}
           <div className="flex items-center gap-2">
             {/* Dashboard Link - Based on Role */}
-            {user && role !== "USER" && (
+            {user && (
               <Link 
-                href={role === "ADMIN" ? "/admin" : role === "REALTOR" ? "/broker/dashboard" : "/owner/dashboard"}
+                href={
+                  role === "ADMIN" ? "/admin" : 
+                  role === "REALTOR" ? "/broker/dashboard" : 
+                  role === "OWNER" ? "/owner/dashboard" : 
+                  "/onboarding"
+                }
                 className="hidden lg:inline-flex items-center gap-2 btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
-                title="Meu Painel"
+                title={role === "USER" ? "Complete seu perfil" : "Meu Painel"}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <span className="hidden xl:inline">Painel</span>
+                <span className="hidden xl:inline">{role === "USER" ? "Perfil" : "Painel"}</span>
               </Link>
             )}
             
