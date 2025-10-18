@@ -52,6 +52,17 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (existingUser) {
+          // CRITICAL: Update the user object with the existing user's role
+          // This ensures the JWT callback receives the correct role
+          (user as any).id = existingUser.id;
+          (user as any).role = existingUser.role;
+          
+          console.log("SignIn Callback - Existing user found:", {
+            email: user.email,
+            id: existingUser.id,
+            role: existingUser.role,
+          });
+
           // Check if this provider is already linked
           const accountExists = existingUser.accounts.some(
             (acc) => acc.provider === account.provider
@@ -75,31 +86,48 @@ export const authOptions: NextAuthOptions = {
               },
             });
           }
+        } else {
+          console.log("SignIn Callback - New user, will be created with role USER");
         }
       }
       return true;
     },
     async jwt({ token, user, trigger }) {
-      // On sign in, persist role into the token
-      if (user) {
-        // @ts-ignore user may have role
-        token.role = (user as any).role ?? token.role ?? "USER";
-      }
-      
-      // Always fetch fresh role from database to ensure updates are reflected
-      // This ensures role changes (like USER -> ADMIN) are picked up immediately
+      // CRITICAL: Always fetch the latest role from database
+      // This ensures role is always up-to-date and prevents stale data
       if (token.sub) {
         try {
-          const u = await prisma.user.findUnique({ where: { id: token.sub }, select: { role: true } });
-          console.log("JWT Callback - Fetched role from DB:", u?.role, "for user:", token.sub);
-          if (u?.role) {
-            // @ts-ignore augment token
-            token.role = u.role;
-            console.log("JWT Callback - Updated token.role to:", token.role);
+          const dbUser = await prisma.user.findUnique({ 
+            where: { id: token.sub }, 
+            select: { role: true, email: true } 
+          });
+          
+          if (dbUser) {
+            // Always use the role from database as source of truth
+            const oldRole = token.role;
+            token.role = dbUser.role;
+            
+            if (oldRole !== dbUser.role) {
+              console.log("JWT Callback - Role updated:", {
+                email: dbUser.email,
+                oldRole,
+                newRole: dbUser.role,
+              });
+            }
+          } else {
+            console.error("JWT Callback - User not found in database:", token.sub);
+            // Fallback to USER if user not found
+            token.role = "USER";
           }
         } catch (error) {
-          console.error("Error fetching user role:", error);
+          console.error("JWT Callback - Error fetching user role:", error);
+          // Keep existing role on error
+          token.role = token.role ?? "USER";
         }
+      } else if (user) {
+        // On first sign in, use the role from user object (set in signIn callback)
+        token.role = (user as any).role ?? "USER";
+        console.log("JWT Callback - Initial sign in, role:", token.role);
       }
       
       return token;
