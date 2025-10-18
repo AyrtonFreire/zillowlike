@@ -16,6 +16,11 @@ const roleBasedPaths: Record<string, string[]> = {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Skip onboarding page
+  if (pathname === "/onboarding") {
+    return NextResponse.next();
+  }
+
   // Checa se é uma rota protegida
   const isProtected = protectedPaths.some((path) => pathname.startsWith(path));
 
@@ -34,6 +39,11 @@ export async function middleware(request: NextRequest) {
     const url = new URL("/api/auth/signin", request.url);
     url.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(url);
+  }
+
+  // Se autenticado mas sem role definido, redireciona para onboarding
+  if (!token.role || token.role === "USER") {
+    return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 
   // Checa role-based access
