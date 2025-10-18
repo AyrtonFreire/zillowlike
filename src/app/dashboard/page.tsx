@@ -8,13 +8,20 @@ import { Heart, Search, User, Home } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 
 export default function UserDashboard() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
   const user = (session as any)?.user;
   const role = (session as any)?.user?.role || "USER";
   const [favorites, setFavorites] = useState<any[]>([]);
   const [savedSearches, setSavedSearches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Force session refresh on mount
+  useEffect(() => {
+    if (status === "authenticated") {
+      update();
+    }
+  }, []); // Only on mount
 
   useEffect(() => {
     if (status === "unauthenticated") {

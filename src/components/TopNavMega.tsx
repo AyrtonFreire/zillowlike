@@ -7,11 +7,18 @@ import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function TopNavMega() {
   const [open, setOpen] = useState<null | "comprar" | "alugar" | "vender">(null);
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const user = (session as any)?.user || null;
   // CRITICAL: Read role from session.user.role (set by session callback)
   const role = (session as any)?.user?.role || "USER";
   const [stickyShadow, setStickyShadow] = useState(false);
+  
+  // FORCE session refresh on mount to get latest data from server
+  useEffect(() => {
+    if (status === "authenticated") {
+      update();
+    }
+  }, []); // Only on mount
   
   // Debug: log role
   if (user) {
