@@ -79,18 +79,27 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       // On sign in, persist role into the token
       if (user) {
         // @ts-ignore user may have role
         token.role = (user as any).role ?? token.role ?? "USER";
-      } else if (!token.role && token.sub) {
+      }
+      
+      // Always fetch fresh role from database to ensure updates are reflected
+      // This ensures role changes (like USER -> ADMIN) are picked up immediately
+      if (token.sub) {
         try {
           const u = await prisma.user.findUnique({ where: { id: token.sub }, select: { role: true } });
-          // @ts-ignore augment token
-          token.role = u?.role ?? "USER";
-        } catch {}
+          if (u?.role) {
+            // @ts-ignore augment token
+            token.role = u.role;
+          }
+        } catch (error) {
+          console.error("Error fetching user role:", error);
+        }
       }
+      
       return token;
     },
     async session({ session, token }) {
