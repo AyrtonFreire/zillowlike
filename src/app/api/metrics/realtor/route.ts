@@ -189,8 +189,8 @@ export async function GET(request: NextRequest) {
       recentLeads: recentLeads.map((l) => ({
         id: l.id,
         propertyTitle: l.property.title,
-        contactName: l.contact.name,
-        contactPhone: l.contact.phone,
+        contactName: l.contact?.name || "N/A",
+        contactPhone: l.contact?.phone || "N/A",
         status: l.status,
         createdAt: l.createdAt,
       })),
