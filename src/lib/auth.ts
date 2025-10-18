@@ -91,9 +91,11 @@ export const authOptions: NextAuthOptions = {
       if (token.sub) {
         try {
           const u = await prisma.user.findUnique({ where: { id: token.sub }, select: { role: true } });
+          console.log("JWT Callback - Fetched role from DB:", u?.role, "for user:", token.sub);
           if (u?.role) {
             // @ts-ignore augment token
             token.role = u.role;
+            console.log("JWT Callback - Updated token.role to:", token.role);
           }
         } catch (error) {
           console.error("Error fetching user role:", error);
