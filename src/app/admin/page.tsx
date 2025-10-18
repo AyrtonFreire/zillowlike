@@ -18,6 +18,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import Link from "next/link";
+import DashboardLayout from "@/components/DashboardLayout";
 
 interface DashboardStats {
   users: {
@@ -73,44 +74,46 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <DashboardLayout
+        title="Painel Administrativo"
+        description="Visão geral e gerenciamento do sistema"
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Admin" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Painel Administrativo
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Visão geral e gerenciamento do sistema
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Link
-                href="/admin/users"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Gerenciar Usuários
-              </Link>
-              <Link
-                href="/admin/properties"
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Gerenciar Imóveis
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <DashboardLayout
+      title="Painel Administrativo"
+      description="Visão geral e gerenciamento do sistema"
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Admin" },
+      ]}
+      actions={
+        <>
+          <Link
+            href="/admin/users"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
+            Gerenciar Usuários
+          </Link>
+          <Link
+            href="/admin/properties"
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+          >
+            Gerenciar Imóveis
+          </Link>
+        </>
+      }
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -339,6 +342,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
