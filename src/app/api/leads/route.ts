@@ -70,12 +70,22 @@ export async function POST(req: NextRequest) {
   const prop = await prisma.property.findUnique({ where: { id: propertyId }, select: { id: true } });
   if (!prop) return NextResponse.json({ error: "Property not found" }, { status: 404 });
 
+  // Create or find contact
+  let contact = await prisma.contact.findFirst({
+    where: { email },
+  });
+  
+  if (!contact) {
+    contact = await prisma.contact.create({
+      data: { name, email, phone },
+    });
+  }
+
+  // Create lead with contact relation
   await prisma.lead.create({
     data: {
       propertyId,
-      name,
-      email,
-      phone,
+      contactId: contact.id,
       message,
     },
   });
