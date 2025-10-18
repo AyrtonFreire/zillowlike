@@ -174,13 +174,36 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
+      // CRITICAL: Must add role to BOTH session and session.user
+      // NextAuth client reads from session.user
       if (token?.sub) {
         (session as any).userId = token.sub;
+        if (session.user) {
+          (session.user as any).id = token.sub;
+        }
       }
+      
       if (token?.role) {
+        // Add to session root (for server-side)
         (session as any).role = token.role;
-        if ((session as any).user) (session as any).user.role = token.role as any;
+        
+        // Add to session.user (for client-side useSession hook)
+        if (session.user) {
+          (session.user as any).role = token.role;
+        }
+        
+        console.log("Session callback - Role set:", {
+          "token.role": token.role,
+          "session.role": (session as any).role,
+          "session.user.role": session.user ? (session.user as any).role : "no user object",
+        });
+      } else {
+        console.error("Session callback - NO ROLE IN TOKEN!", {
+          token,
+          hasRole: !!token?.role,
+        });
       }
+      
       return session;
     },
   },

@@ -11,7 +11,7 @@ export default function UserDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const user = (session as any)?.user;
-  const role = (session as any)?.role || (session as any)?.user?.role;
+  const role = (session as any)?.user?.role || "USER";
   const [favorites, setFavorites] = useState<any[]>([]);
   const [savedSearches, setSavedSearches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
