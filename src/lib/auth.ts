@@ -49,8 +49,18 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account, profile }) {
+      console.log("🔐 SignIn Callback START", {
+        email: user?.email,
+        provider: account?.provider,
+        hasAccount: !!account,
+      });
+      
       // Manually manage users and accounts (no PrismaAdapter)
       if (!account?.provider || !user?.email) {
+        console.error("❌ SignIn - Missing required data", { 
+          hasProvider: !!account?.provider, 
+          hasEmail: !!user?.email 
+        });
         return false;
       }
 
@@ -63,12 +73,19 @@ export const authOptions: NextAuthOptions = {
 
         if (dbUser) {
           // EXISTING USER - Use role from database
-          (user as any).id = dbUser.id;
+          console.log("✅ SignIn - EXISTING USER FOUND", {
+            email: user.email,
+            dbRole: dbUser.role,
+            userId: dbUser.id,
+          });
+          
+          // CRITICAL: Set user properties that will be passed to JWT callback
+          user.id = dbUser.id;
           (user as any).role = dbUser.role;
           
-          console.log("SignIn - Existing user:", {
-            email: user.email,
-            role: dbUser.role,
+          console.log("✅ SignIn - User object updated with DB role:", {
+            "user.id": user.id,
+            "user.role": (user as any).role,
           });
 
           // Check if this OAuth account is linked
@@ -77,6 +94,7 @@ export const authOptions: NextAuthOptions = {
           );
 
           if (!accountExists) {
+            console.log("🔗 SignIn - Linking new OAuth provider:", account.provider);
             // Link new OAuth provider to existing user
             await prisma.account.create({
               data: {
@@ -93,10 +111,14 @@ export const authOptions: NextAuthOptions = {
                 session_state: account.session_state as string | null,
               },
             });
-            console.log("SignIn - Linked new provider:", account.provider);
+            console.log("✅ SignIn - OAuth provider linked successfully");
+          } else {
+            console.log("✅ SignIn - OAuth account already linked");
           }
         } else {
           // NEW USER - Create with role USER
+          console.log("🆕 SignIn - Creating NEW user:", user.email);
+          
           const newUser = await prisma.user.create({
             data: {
               email: user.email,
@@ -124,19 +146,26 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
-          (user as any).id = newUser.id;
+          user.id = newUser.id;
           (user as any).role = "USER";
           
-          console.log("SignIn - New user created:", {
+          console.log("✅ SignIn - New user created successfully:", {
             email: user.email,
             role: "USER",
+            userId: newUser.id,
           });
         }
 
+        console.log("🔐 SignIn Callback SUCCESS - Returning true");
         return true;
       } catch (error) {
-        console.error("SignIn callback error:", error);
-        return false;
+        console.error("❌❌❌ SignIn callback FATAL ERROR:", error);
+        console.error("Error details:", {
+          message: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        // DO NOT return false - let the error propagate
+        throw error;
       }
     },
     async jwt({ token, user, trigger }) {
