@@ -16,6 +16,7 @@ import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
 import PropertyListItem from "@/components/dashboard/PropertyListItem";
 import LeadListItem from "@/components/dashboard/LeadListItem";
+import DashboardLayout from "@/components/DashboardLayout";
 
 interface Metrics {
   activeProperties: number;
@@ -93,41 +94,44 @@ export default function BrokerDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Carregando dashboard...</p>
+      <DashboardLayout
+        title="Dashboard do Corretor"
+        description="Aqui está um resumo do seu desempenho"
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Corretor", href: "/broker/dashboard" },
+          { label: "Dashboard" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Carregando dashboard...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {getGreeting()}, João 👋
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Aqui está um resumo do seu desempenho
-              </p>
-            </div>
-            <Link
-              href="/broker/properties/new"
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-sm"
-            >
-              <Plus className="w-5 h-5" />
-              Novo Imóvel
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
+    <DashboardLayout
+      title={`${getGreeting()}, João 👋`}
+      description="Aqui está um resumo do seu desempenho"
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Corretor", href: "/broker/dashboard" },
+        { label: "Dashboard" },
+      ]}
+      actions={
+        <Link
+          href="/broker/properties/new"
+          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-sm"
+        >
+          <Plus className="w-5 h-5" />
+          Novo Imóvel
+        </Link>
+      }
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -287,6 +291,6 @@ export default function BrokerDashboard() {
           </Link>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
