@@ -4,13 +4,14 @@ import { getToken } from "next-auth/jwt";
 import { applySecurityHeaders } from "@/lib/security-headers";
 
 // Rotas que requerem autenticação
-const protectedPaths = ["/broker", "/admin", "/owner"];
+const protectedPaths = ["/broker", "/admin", "/owner", "/dashboard"];
 
 // Mapeamento de paths para roles permitidos
 const roleBasedPaths: Record<string, string[]> = {
   "/admin": ["ADMIN"],
   "/broker": ["REALTOR", "ADMIN"],
   "/owner": ["OWNER", "ADMIN"],
+  "/dashboard": ["USER", "REALTOR", "OWNER", "ADMIN"], // Todos podem acessar
 };
 
 export async function middleware(request: NextRequest) {
@@ -41,9 +42,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Se autenticado mas sem role definido, redireciona para onboarding
-  if (!token.role || token.role === "USER") {
-    return NextResponse.redirect(new URL("/onboarding", request.url));
+  // Se autenticado mas sem role definido (apenas USER), redireciona para onboarding
+  // EXCETO se estiver tentando acessar /dashboard (que USER pode acessar)
+  if ((!token.role || token.role === "USER") && !pathname.startsWith("/dashboard")) {
+    // Só redireciona para onboarding se estiver tentando acessar rotas que requerem role específico
+    const requiresSpecificRole = ["/broker", "/admin", "/owner"].some(path => pathname.startsWith(path));
+    if (requiresSpecificRole) {
+      return NextResponse.redirect(new URL("/onboarding", request.url));
+    }
   }
 
   // Checa role-based access
