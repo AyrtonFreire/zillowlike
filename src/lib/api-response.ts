@@ -54,7 +54,7 @@ export function validationErrorResponse(error: ZodError) {
   return NextResponse.json(
     {
       error: "Validation error",
-      details: error.errors.map((err) => ({
+      details: error.issues.map((err) => ({
         path: err.path.join("."),
         message: err.message,
       })),
