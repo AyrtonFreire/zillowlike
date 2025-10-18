@@ -37,7 +37,13 @@ export const authOptions: NextAuthOptions = {
   // REMOVED PrismaAdapter - we manage users manually in signIn callback
   // This prevents the adapter from creating users with default role before our callback runs
   providers,
-  session: { strategy: "jwt" },
+  session: { 
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 days - JWT will be refreshed on each request
+  },
   pages: {
     signIn: '/auth/signin',
   },
@@ -134,6 +140,13 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async jwt({ token, user, trigger }) {
+      console.log("🔑 JWT Callback CALLED", { 
+        trigger, 
+        hasSub: !!token.sub,
+        hasUser: !!user,
+        currentRole: token.role,
+      });
+      
       // CRITICAL: Always fetch the latest role from database
       // This ensures role is always up-to-date and prevents stale data
       if (token.sub) {
@@ -148,32 +161,38 @@ export const authOptions: NextAuthOptions = {
             const oldRole = token.role;
             token.role = dbUser.role;
             
-            if (oldRole !== dbUser.role) {
-              console.log("JWT Callback - Role updated:", {
-                email: dbUser.email,
-                oldRole,
-                newRole: dbUser.role,
-              });
-            }
+            console.log("🔑 JWT Callback - Fetched from DB:", {
+              email: dbUser.email,
+              oldRole,
+              newRole: token.role,
+              changed: oldRole !== token.role,
+            });
           } else {
-            console.error("JWT Callback - User not found in database:", token.sub);
+            console.error("❌ JWT Callback - User not found in database:", token.sub);
             // Fallback to USER if user not found
             token.role = "USER";
           }
         } catch (error) {
-          console.error("JWT Callback - Error fetching user role:", error);
+          console.error("❌ JWT Callback - Error fetching user role:", error);
           // Keep existing role on error
           token.role = token.role ?? "USER";
         }
       } else if (user) {
         // On first sign in, use the role from user object (set in signIn callback)
         token.role = (user as any).role ?? "USER";
-        console.log("JWT Callback - Initial sign in, role:", token.role);
+        console.log("🔑 JWT Callback - Initial sign in, role:", token.role);
       }
       
+      console.log("🔑 JWT Callback DONE - Final role:", token.role);
       return token;
     },
     async session({ session, token }) {
+      console.log("📋 Session Callback CALLED", {
+        hasToken: !!token,
+        tokenRole: token?.role,
+        hasUser: !!session.user,
+      });
+      
       // CRITICAL: Must add role to BOTH session and session.user
       // NextAuth client reads from session.user
       if (token?.sub) {
@@ -192,18 +211,19 @@ export const authOptions: NextAuthOptions = {
           (session.user as any).role = token.role;
         }
         
-        console.log("Session callback - Role set:", {
+        console.log("✅ Session callback - Role set:", {
           "token.role": token.role,
           "session.role": (session as any).role,
           "session.user.role": session.user ? (session.user as any).role : "no user object",
         });
       } else {
-        console.error("Session callback - NO ROLE IN TOKEN!", {
+        console.error("❌ Session callback - NO ROLE IN TOKEN!", {
           token,
           hasRole: !!token?.role,
         });
       }
       
+      console.log("📋 Session Callback DONE");
       return session;
     },
   },
