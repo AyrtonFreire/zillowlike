@@ -26,7 +26,7 @@ export async function GET() {
 
     // Fetch owner data for each property
     const propertiesWithOwners = await Promise.all(
-      properties.map(async (property) => {
+      properties.map(async (property: any) => {
         const owner = property.ownerId
           ? await prisma.user.findUnique({
               where: { id: property.ownerId },

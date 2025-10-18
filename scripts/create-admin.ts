@@ -32,7 +32,7 @@ async function main() {
       
       console.log("");
       console.log("Existing admin(s):");
-      existingAdmins.forEach((admin) => {
+      existingAdmins.forEach((admin: any) => {
         console.log(`   - ${admin.name} (${admin.email})`);
       });
       console.log("");

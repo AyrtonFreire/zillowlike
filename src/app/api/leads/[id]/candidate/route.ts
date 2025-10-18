@@ -22,9 +22,16 @@ export async function POST(
       realtorId
     );
 
+    // Contar candidaturas diretamente
+    const { prisma } = await import("@/lib/prisma");
+    const totalCandidates = await prisma.leadCandidature.count({
+      where: { leadId: id },
+    });
+
     return NextResponse.json({
       success: true,
       candidature,
+      totalCandidates,
       message: "Candidatura enviada com sucesso!",
     });
   } catch (error: any) {

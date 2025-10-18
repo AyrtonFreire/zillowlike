@@ -28,7 +28,9 @@ const LeadSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   phone: z.string().optional(),
-  message: z.string().min(5).max(2000),
+  message: z.string().min(5).max(2000).optional(),
+  visitDate: z.string().optional(), // 🆕 Data da visita (ISO string)
+  visitTime: z.string().optional(), // 🆕 Horário (ex: "14:00")
   turnstileToken: z.string().optional(),
 });
 
@@ -66,10 +68,32 @@ export async function POST(req: NextRequest) {
   const ok = await verifyTurnstile(parsed.data.turnstileToken, ip);
   if (!ok) return NextResponse.json({ error: "Captcha failed" }, { status: 400 });
 
-  const { propertyId, name, email, phone, message } = parsed.data;
+  const { propertyId, name, email, phone, message, visitDate, visitTime } = parsed.data;
   const prop = await prisma.property.findUnique({ where: { id: propertyId }, select: { id: true } });
   if (!prop) return NextResponse.json({ error: "Property not found" }, { status: 404 });
 
+  // 🆕 Se tiver visitDate e visitTime, usar VisitSchedulingService
+  if (visitDate && visitTime) {
+    const { VisitSchedulingService } = await import("@/lib/visit-scheduling-service");
+    
+    try {
+      const lead = await VisitSchedulingService.createVisitRequest({
+        propertyId,
+        clientName: name,
+        clientEmail: email,
+        clientPhone: phone,
+        visitDate: new Date(visitDate),
+        visitTime,
+        clientNotes: message,
+      });
+
+      return NextResponse.json({ ok: true, leadId: lead.id });
+    } catch (error: any) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+  }
+
+  // Fluxo antigo (sem horário de visita)
   // Create or find contact
   let contact = await prisma.contact.findFirst({
     where: { email },
@@ -114,7 +138,7 @@ export async function POST(req: NextRequest) {
             userName: name,
             userEmail: email,
             userPhone: phone,
-            message,
+            message: message || "",
             propertyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://zillowlike.vercel.app'}/property/${propertyId}`,
           });
           

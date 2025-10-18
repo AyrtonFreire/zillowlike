@@ -145,6 +145,13 @@ export class LeadDistributionService {
       logger.info("Fast response bonus awarded", { leadId, realtorId, responseTime });
     }
 
+    // 🆕 Se lead tem horário de visita, solicita aprovação do proprietário
+    if (lead.visitDate && lead.visitTime) {
+      const { OwnerApprovalService } = await import("./owner-approval-service");
+      await OwnerApprovalService.requestApproval(leadId);
+      logger.info("Owner approval requested automatically", { leadId });
+    }
+
     // Envia notificação via Pusher
     try {
       const pusher = getPusherServer();
@@ -242,22 +249,8 @@ export class LeadDistributionService {
       throw new Error("Lead não encontrado");
     }
 
-    if (lead.status !== "AVAILABLE") {
+    if (lead.status !== "PENDING") {
       throw new Error("Lead não está disponível para candidatura");
-    }
-
-    // Verifica se já se candidatou
-    const existing = await prisma.leadCandidature.findUnique({
-      where: {
-        leadId_queueId: {
-          leadId,
-          queueId: realtorId,
-        },
-      },
-    });
-
-    if (existing) {
-      throw new Error("Você já se candidatou a este lead");
     }
 
     // Pega queue do corretor
@@ -269,20 +262,193 @@ export class LeadDistributionService {
       throw new Error("Corretor não está na fila");
     }
 
-    // Cria candidatura
+    // Verifica se já se candidatou
+    const existing = await prisma.leadCandidature.findUnique({
+      where: {
+        leadId_queueId: {
+          leadId,
+          queueId: queue.id,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new Error("Você já se candidatou a este lead");
+    }
+
+    // Cria candidatura com posição na fila
     const candidature = await prisma.leadCandidature.create({
       data: {
         leadId,
         queueId: queue.id,
+        queuePosition: queue.position, // 🆕 Salva posição atual
         status: "PENDING",
       },
+    });
+
+    // Incrementa contador de candidatos
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: {
+        candidatesCount: { increment: 1 },
+        status: "MATCHING", // 🆕 Muda para MATCHING quando tem candidatos
+      },
+    });
+
+    logger.info("Realtor applied to lead", { 
+      leadId, 
+      realtorId, 
+      position: queue.position 
     });
 
     return candidature;
   }
 
   /**
+   * 🆕 Seleciona corretor prioritário entre os candidatos
+   */
+  static async selectPriorityRealtor(leadId: string) {
+    // Busca candidatos ordenados por posição na fila
+    const candidatures = await prisma.leadCandidature.findMany({
+      where: {
+        leadId,
+        status: "PENDING",
+      },
+      include: {
+        queue: {
+          include: {
+            realtor: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        queuePosition: "asc", // Menor posição = prioridade
+      },
+    });
+
+    if (candidatures.length === 0) {
+      throw new Error("Nenhum candidato disponível");
+    }
+
+    // Pega o primeiro (menor posição)
+    const priority = candidatures[0];
+
+    // Reserva lead para este corretor (10 minutos)
+    const reservedUntil = new Date();
+    reservedUntil.setMinutes(reservedUntil.getMinutes() + 10);
+
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: {
+        status: "WAITING_REALTOR_ACCEPT",
+        realtorId: priority.queue.realtorId,
+        reservedUntil,
+      },
+    });
+
+    logger.info("Priority realtor selected", {
+      leadId,
+      realtorId: priority.queue.realtorId,
+      position: priority.queuePosition,
+    });
+
+    return priority.queue.realtor;
+  }
+
+  /**
+   * 🆕 Move para próximo candidato se atual não aceitar
+   */
+  static async moveToNextCandidate(leadId: string) {
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      select: { realtorId: true },
+    });
+
+    if (!lead?.realtorId) {
+      return null;
+    }
+
+    // Marca candidatura atual como expirada
+    await prisma.leadCandidature.updateMany({
+      where: {
+        leadId,
+        queue: {
+          realtorId: lead.realtorId,
+        },
+      },
+      data: {
+        status: "EXPIRED",
+        respondedAt: new Date(),
+      },
+    });
+
+    // Busca próximo candidato
+    const nextCandidate = await prisma.leadCandidature.findFirst({
+      where: {
+        leadId,
+        status: "PENDING",
+      },
+      include: {
+        queue: {
+          include: {
+            realtor: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        queuePosition: "asc",
+      },
+    });
+
+    if (!nextCandidate) {
+      // Sem mais candidatos, volta ao mural
+      await prisma.lead.update({
+        where: { id: leadId },
+        data: {
+          status: "PENDING",
+          realtorId: null,
+          reservedUntil: null,
+        },
+      });
+      return null;
+    }
+
+    // Reserva para próximo candidato
+    const reservedUntil = new Date();
+    reservedUntil.setMinutes(reservedUntil.getMinutes() + 10);
+
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: {
+        status: "WAITING_REALTOR_ACCEPT",
+        realtorId: nextCandidate.queue.realtorId,
+        reservedUntil,
+      },
+    });
+
+    logger.info("Moved to next candidate", {
+      leadId,
+      newRealtorId: nextCandidate.queue.realtorId,
+    });
+
+    return nextCandidate.queue.realtor;
+  }
+
+  /**
    * Lista leads disponíveis no mural
+   * 🆕 Filtro: NÃO mostra imóveis de corretores e leads diretos
    */
   static async getAvailableLeads(filters?: {
     city?: string;
@@ -292,7 +458,10 @@ export class LeadDistributionService {
     maxPrice?: number;
   }) {
     const where: any = {
-      status: "AVAILABLE",
+      status: {
+        in: ["AVAILABLE", "PENDING", "MATCHING"], // 🆕 Adicionado status novo
+      },
+      isDirect: false, // 🆕 REGRA: Apenas leads não-diretos vão ao mural
     };
 
     if (filters) {
@@ -310,6 +479,14 @@ export class LeadDistributionService {
         if (filters.maxPrice) where.property.price.lte = filters.maxPrice;
       }
     }
+
+    // 🆕 Adiciona filtro: Proprietário NÃO é REALTOR
+    where.property = where.property || {};
+    where.property.owner = {
+      role: {
+        not: "REALTOR", // 🆕 REGRA: Imóveis de corretores não vão ao mural
+      },
+    };
 
     const leads = await prisma.lead.findMany({
       where,
@@ -335,6 +512,7 @@ export class LeadDistributionService {
         contact: {
           select: {
             name: true,
+            email: true,
             phone: true,
           },
         },
@@ -400,13 +578,16 @@ export class LeadDistributionService {
 
   /**
    * Libera leads reservados que expiraram
+   * 🆕 Agora move automaticamente para o próximo candidato
    */
   static async releaseExpiredReservations() {
     const now = new Date();
 
     const expiredLeads = await prisma.lead.findMany({
       where: {
-        status: "RESERVED",
+        status: {
+          in: ["RESERVED", "WAITING_REALTOR_ACCEPT"],
+        },
         reservedUntil: {
           lt: now,
         },
@@ -414,22 +595,18 @@ export class LeadDistributionService {
     });
 
     for (const lead of expiredLeads) {
-      await prisma.lead.update({
-        where: { id: lead.id },
-        data: {
-          status: "AVAILABLE",
-          realtorId: null,
-          reservedUntil: null,
-        },
+      logger.info("Lead reservation expired", { 
+        leadId: lead.id, 
+        realtorId: lead.realtorId 
       });
 
-      // Penaliza corretor
+      // Penaliza corretor (pequena penalidade para não desencorajar)
       if (lead.realtorId) {
         await QueueService.updateScore(
           lead.realtorId,
-          -8,
+          -5, // Reduzido de -8 para -5 (menos pressão)
           "RESERVATION_EXPIRED",
-          "Deixou reserva expirar"
+          "Não aceitou lead no tempo"
         );
 
         await prisma.realtorStats.update({
@@ -437,6 +614,21 @@ export class LeadDistributionService {
           data: {
             leadsExpired: { increment: 1 },
           },
+        });
+      }
+
+      // 🆕 Tenta mover para próximo candidato automaticamente
+      const nextRealtor = await this.moveToNextCandidate(lead.id);
+
+      if (nextRealtor) {
+        logger.info("Moved to next candidate automatically", {
+          leadId: lead.id,
+          newRealtorId: nextRealtor.id,
+        });
+      } else {
+        // Sem mais candidatos, volta ao mural
+        logger.info("No more candidates, lead back to mural", {
+          leadId: lead.id,
         });
       }
     }

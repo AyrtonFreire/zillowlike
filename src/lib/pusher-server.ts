@@ -26,6 +26,8 @@ export const PUSHER_EVENTS = {
   LEAD_EXPIRED: "lead-expired",
   QUEUE_UPDATED: "queue-updated",
   SCORE_UPDATED: "score-updated",
+  VISIT_CONFIRMED: "visit-confirmed",
+  VISIT_REJECTED_BY_OWNER: "visit-rejected-by-owner",
 } as const;
 
 // Canais disponíveis

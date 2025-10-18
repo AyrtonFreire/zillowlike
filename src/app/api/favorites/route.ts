@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   const where: any = { userId };
   if (filter === 'hidden') where.hidden = true; else if (filter === 'visible') where.hidden = false;
   const favs = await prisma.favorite.findMany({ where, select: { propertyId: true } });
-  return NextResponse.json({ items: favs.map(f => f.propertyId) });
+  return NextResponse.json({ items: favs.map((f: { propertyId: string }) => f.propertyId) });
 }
 
 // POST: toggle favorite { propertyId }

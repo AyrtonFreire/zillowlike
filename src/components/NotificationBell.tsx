@@ -244,7 +244,7 @@ function NotificationContent({
   onDelete,
 }: {
   notification: Notification;
-  getIcon: (type: string) => JSX.Element;
+  getIcon: (type: string) => React.ReactElement;
   formatTime: (date: string) => string;
   onDelete: (e: React.MouseEvent) => void;
 }) {

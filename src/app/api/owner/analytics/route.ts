@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
           select: {
             views: {
               where: {
-                createdAt: { gte: startDate },
+                viewedAt: { gte: startDate },
               },
             },
             favorites: true,
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
         const prevViews = await prisma.propertyView.count({
           where: {
             propertyId: property.id,
-            createdAt: {
+            viewedAt: {
               gte: prevStartDate,
               lt: startDate,
             },

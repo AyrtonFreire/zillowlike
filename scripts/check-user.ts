@@ -30,7 +30,7 @@ async function main() {
   console.log(`   Email Verified: ${user.emailVerified}`);
   console.log(`   Accounts: ${user.accounts.length}`);
   
-  user.accounts.forEach((acc, i) => {
+  user.accounts.forEach((acc: any, i: number) => {
     console.log(`     ${i + 1}. ${acc.provider} (${acc.providerAccountId})`);
   });
   

@@ -184,7 +184,7 @@ export default function ComparePage() {
                         return (
                           <td key={property.id} className="p-4 text-center">
                             {value !== null && value !== undefined ? (
-                              <span className="text-gray-900">{value}</span>
+                              <span className="text-gray-900">{String(value)}</span>
                             ) : (
                               <span className="text-gray-400">—</span>
                             )}

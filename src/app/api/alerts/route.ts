@@ -72,8 +72,8 @@ export async function POST(req: NextRequest) {
     const alert = await prisma.savedSearch.create({
       data: {
         userId,
-        name: parsed.data.name,
-        filters: {
+        label: parsed.data.name,
+        params: JSON.stringify({
           city: parsed.data.city,
           state: parsed.data.state,
           minPrice: parsed.data.minPrice,
@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
           minBedrooms: parsed.data.minBedrooms,
           minBathrooms: parsed.data.minBathrooms,
           minArea: parsed.data.minArea,
-        },
-        frequency: parsed.data.frequency,
+          frequency: parsed.data.frequency,
+        }),
       },
     });
 

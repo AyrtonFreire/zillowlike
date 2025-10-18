@@ -2,14 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { Filter, RefreshCw } from "lucide-react";
-import LeadCard from "@/components/queue/LeadCard";
+import { useSession } from "next-auth/react";
+import LeadCardWithTime from "@/components/broker/LeadCardWithTime";
+import PriorityLeadModal from "@/components/broker/PriorityLeadModal";
 
 interface Lead {
   id: string;
-  status: "AVAILABLE" | "RESERVED" | "ACCEPTED";
+  status: string;
+  visitDate: string | null;
+  visitTime: string | null;
   createdAt: string;
   reservedUntil?: string | null;
   realtorId?: string | null;
+  candidatesCount: number;
   property: {
     id: string;
     title: string;
@@ -25,14 +30,13 @@ interface Lead {
   };
   contact?: {
     name: string;
+    email: string;
     phone?: string | null;
-  };
-  _count?: {
-    candidatures: number;
-  };
+  } | null;
 }
 
 export default function MuralLeadsPage() {
+  const { data: session } = useSession();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -43,9 +47,9 @@ export default function MuralLeadsPage() {
     maxPrice: "",
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [priorityLead, setPriorityLead] = useState<Lead | null>(null);
 
-  // TODO: Get from auth session
-  const realtorId = "demo-realtor-id";
+  const realtorId = (session?.user as any)?.id || "";
 
   useEffect(() => {
     fetchLeads();
@@ -74,6 +78,11 @@ export default function MuralLeadsPage() {
   };
 
   const handleCandidate = async (leadId: string) => {
+    if (!realtorId) {
+      alert("Você precisa estar logado como corretor");
+      return;
+    }
+
     try {
       const response = await fetch(`/api/leads/${leadId}/candidate`, {
         method: "POST",
@@ -84,7 +93,7 @@ export default function MuralLeadsPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("Candidatura enviada com sucesso!");
+        alert(`Candidatura enviada! Total de candidatos: ${data.totalCandidates}`);
         fetchLeads();
       } else {
         alert(data.error || "Erro ao candidatar-se");
@@ -243,7 +252,7 @@ export default function MuralLeadsPage() {
         </div>
       </div>
 
-      {/* Leads Grid */}
+      {/* Leads List */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {leads.length === 0 ? (
           <div className="text-center py-12">
@@ -253,20 +262,27 @@ export default function MuralLeadsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-4">
             {leads.map((lead) => (
-              <LeadCard
+              <LeadCardWithTime
                 key={lead.id}
-                lead={lead}
-                onCandidate={handleCandidate}
-                onAccept={handleAccept}
-                onReject={handleReject}
-                isReservedForMe={lead.realtorId === realtorId}
+                lead={lead as any}
+                onCandidate={() => handleCandidate(lead.id)}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Priority Lead Modal */}
+      {priorityLead && (
+        <PriorityLeadModal
+          lead={priorityLead as any}
+          onAccept={() => handleAccept(priorityLead.id)}
+          onReject={() => handleReject(priorityLead.id)}
+          onClose={() => setPriorityLead(null)}
+        />
+      )}
     </div>
   );
 }

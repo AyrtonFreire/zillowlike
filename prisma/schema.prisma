@@ -41,12 +41,19 @@ enum PropertyStatus {
 
 // Lead status
 enum LeadStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
-  EXPIRED
-  RESERVED  // Reservado para corretor prioritário
-  AVAILABLE // Disponível no mural
+  PENDING                // Aguardando candidaturas
+  MATCHING               // Buscando corretor (tem candidatos)
+  WAITING_REALTOR_ACCEPT // Aguardando corretor prioritário aceitar (10min)
+  WAITING_OWNER_APPROVAL // Aguardando proprietário aprovar horário
+  CONFIRMED              // Visita confirmada!
+  OWNER_REJECTED         // Proprietário recusou horário
+  CANCELLED              // Cliente cancelou
+  COMPLETED              // Visita realizada
+  EXPIRED                // Expirou
+  ACCEPTED               // Deprecated - manter compatibilidade
+  REJECTED               // Deprecated - manter compatibilidade
+  RESERVED               // Deprecated - manter compatibilidade
+  AVAILABLE              // Deprecated - manter compatibilidade
 }
 
 // Status do corretor na fila
@@ -86,6 +93,7 @@ model Property {
   type        PropertyType
   status      PropertyStatus @default(ACTIVE)
   ownerId     String?
+  owner       User?          @relation("PropertyOwner", fields: [ownerId], references: [id])
 
   // Location & address
   street      String
@@ -193,9 +201,11 @@ model User {
   sessions      Session[]
   leads         Lead[]
   realtorLeads  Lead[]          @relation("RealtorLeads")
+  properties    Property[]      @relation("PropertyOwner")
   queue         RealtorQueue?
   stats         RealtorStats?
   ratings       RealtorRating[]
+  phone         String?
 }
 
 model VerificationToken {
@@ -219,10 +229,35 @@ model Lead {
   contactId        String?
   status           LeadStatus        @default(PENDING)
   message          String?
+  
+  // 🆕 CAMPOS DE VISITA
+  visitDate        DateTime?         // Data da visita agendada
+  visitTime        String?           // Horário (ex: "14:00")
+  clientNotes      String?           // Observações do cliente
+  
+  // 🆕 TIPO DE LEAD
+  isDirect         Boolean           @default(false) // true = contato direto, não vai ao mural
+  
+  // 🆕 APROVAÇÃO DO PROPRIETÁRIO
+  ownerApproved       Boolean?       // null = pendente, true = aprovado, false = recusado
+  ownerApprovedAt     DateTime?
+  ownerRejectedAt     DateTime?
+  ownerRejectionReason String?
+  
+  // Timestamps
   createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   respondedAt      DateTime?
-  reservedUntil    DateTime?         // Prazo de reserva para corretor prioritário
+  confirmedAt      DateTime?         // Quando visita foi confirmada
+  completedAt      DateTime?         // Quando visita foi realizada
+  cancelledAt      DateTime?
+  
+  // Controle de tempo
+  reservedUntil    DateTime?         // Prazo de reserva para corretor prioritário (10min)
   expiresAt        DateTime?         // Prazo de expiração do lead
+  
+  // Contador de candidatos
+  candidatesCount  Int               @default(0)
 
   candidatures     LeadCandidature[]
   rating           RealtorRating?
@@ -232,9 +267,12 @@ model Lead {
   @@index([realtorId])
   @@index([status])
   @@index([reservedUntil])
+  @@index([visitDate, visitTime]) // Para buscar leads por horário
+  @@index([propertyId, visitDate]) // Para verificar conflitos de horário
   @@index([status, createdAt]) // Para filtrar leads por status + ordenar por data
   @@index([realtorId, status]) // Para buscar leads de um corretor por status
   @@index([status, reservedUntil]) // Para worker de reservas expiradas
+  @@index([status, visitDate]) // Para dashboard de visitas
   @@map("leads")
 }
 
@@ -301,19 +339,21 @@ model RealtorQueue {
 
 // Candidaturas de corretores a leads
 model LeadCandidature {
-  id          String             @id @default(cuid())
-  lead        Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  leadId      String
-  queue       RealtorQueue       @relation(fields: [queueId], references: [id], onDelete: Cascade)
-  queueId     String
-  status      CandidatureStatus  @default(PENDING)
-  createdAt   DateTime           @default(now())
-  respondedAt DateTime?
+  id            String             @id @default(cuid())
+  lead          Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId        String
+  queue         RealtorQueue       @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  queueId       String
+  queuePosition Int                // 🆕 Posição na fila no momento da candidatura
+  status        CandidatureStatus  @default(PENDING)
+  createdAt     DateTime           @default(now())
+  respondedAt   DateTime?
 
   @@unique([leadId, queueId])
   @@index([leadId])
   @@index([queueId])
   @@index([status])
+  @@index([leadId, queuePosition]) // Para ordenar candidatos por posição
   @@map("lead_candidatures")
 }
 

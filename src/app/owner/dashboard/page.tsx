@@ -14,8 +14,14 @@ import {
   MoreVertical,
   TrendingUp,
   AlertCircle,
+  Users,
+  Crown,
+  BarChart3,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import MetricCard from "@/components/dashboard/MetricCard";
+import StatCard from "@/components/dashboard/StatCard";
+import PropertyListItem from "@/components/dashboard/PropertyListItem";
 import Image from "next/image";
 
 interface Metrics {
@@ -291,9 +297,9 @@ export default function OwnerDashboard() {
                     <PropertyListItem
                       key={property.id}
                       {...property}
-                      onEdit={(id) => console.log("Edit", id)}
-                      onDelete={(id) => console.log("Delete", id)}
-                      onToggleStatus={(id) => console.log("Toggle", id)}
+                      onEdit={(id: string) => console.log("Edit", id)}
+                      onDelete={(id: string) => console.log("Delete", id)}
+                      onToggleStatus={(id: string) => console.log("Toggle", id)}
                     />
                   ))
                 ) : (

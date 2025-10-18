@@ -48,7 +48,7 @@ async function main() {
     console.log("   ⚠️  No OAuth accounts linked");
     console.log("   This user cannot login with OAuth");
   } else {
-    user.accounts.forEach((acc, i) => {
+    user.accounts.forEach((acc: any, i: number) => {
       console.log(`   ${i + 1}. ${acc.provider} (ID: ${acc.providerAccountId})`);
     });
   }
@@ -58,7 +58,7 @@ async function main() {
   if (user.sessions.length === 0) {
     console.log("   No active sessions");
   } else {
-    user.sessions.forEach((session, i) => {
+    user.sessions.forEach((session: any, i: number) => {
       console.log(`   ${i + 1}. Expires: ${session.expires}`);
     });
   }
