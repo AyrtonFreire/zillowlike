@@ -11,6 +11,9 @@ export default function TopNavMega() {
   const user = (session as any)?.user || null;
   const role = (session as any)?.role || (session as any)?.user?.role || "USER";
   const [stickyShadow, setStickyShadow] = useState(false);
+  
+  // Debug: log role to console
+  console.log("TopNavMega - User:", user?.email, "Role:", role);
   const closeTimer = useRef<NodeJS.Timeout | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [anim, setAnim] = useState<'in'|'out'|'idle'>('idle');
