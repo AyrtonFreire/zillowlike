@@ -157,6 +157,30 @@ export async function POST(req: NextRequest) {
     const { title, description, priceBRL, type, address, geo, details, images } = parsed.data;
 
     const price = Math.round(Number(priceBRL) * 100);
+    const userId = (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub;
+
+    // AUTO-PROMOTION: Check if user is USER and has no properties yet
+    if (userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+
+      // If user is USER, check if this is their first property → promote to OWNER
+      if (user && user.role === "USER") {
+        const propertyCount = await prisma.property.count({
+          where: { ownerId: userId },
+        });
+
+        if (propertyCount === 0) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { role: "OWNER" },
+          });
+          console.log("✨ Auto-promoted USER → OWNER:", userId);
+        }
+      }
+    }
 
     const created = await prisma.property.create({
       data: {
@@ -164,7 +188,7 @@ export async function POST(req: NextRequest) {
         description,
         price,
         type,
-        ownerId: (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub || undefined,
+        ownerId: userId || undefined,
         street: address.street,
         neighborhood: address.neighborhood ?? null,
         city: address.city,

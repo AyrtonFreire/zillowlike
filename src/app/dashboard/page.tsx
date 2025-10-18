@@ -82,44 +82,7 @@ export default function UserDashboard() {
     >
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Role Selection Card - Only for USER */}
-        {role === "USER" && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <User className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Complete seu perfil
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Escolha se você é corretor ou proprietário para acessar
-                  recursos exclusivos e gerenciar seus imóveis.
-                </p>
-                <Link
-                  href="/onboarding"
-                  className="btn btn-primary inline-flex items-center gap-2"
-                >
-                  Completar Perfil
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Auto-promotion: Users are automatically promoted to OWNER when they post their first property */}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
