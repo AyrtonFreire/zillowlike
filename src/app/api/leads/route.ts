@@ -81,8 +81,16 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Get property with owner info
+  const propertyWithOwner = await prisma.property.findUnique({
+    where: { id: propertyId },
+    include: {
+      images: { take: 1, orderBy: { sortOrder: "asc" } },
+    },
+  });
+
   // Create lead with contact relation
-  await prisma.lead.create({
+  const lead = await prisma.lead.create({
     data: {
       propertyId,
       contactId: contact.id,
@@ -90,5 +98,38 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ ok: true });
+  // Send email notification to owner (async, don't wait)
+  if (propertyWithOwner?.ownerId) {
+    (async () => {
+      try {
+        const owner = await prisma.user.findUnique({
+          where: { id: propertyWithOwner.ownerId! },
+          select: { email: true, name: true },
+        });
+
+        if (owner?.email) {
+          const { sendEmail, getLeadNotificationEmail } = await import("@/lib/email");
+          const emailData = getLeadNotificationEmail({
+            propertyTitle: propertyWithOwner.title,
+            userName: name,
+            userEmail: email,
+            userPhone: phone,
+            message,
+            propertyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://zillowlike.vercel.app'}/property/${propertyId}`,
+          });
+          
+          await sendEmail({
+            to: owner.email,
+            ...emailData,
+          });
+          
+          console.log("✅ Lead notification email sent to:", owner.email);
+        }
+      } catch (err) {
+        console.error("❌ Error sending lead email:", err);
+      }
+    })();
+  }
+
+  return NextResponse.json({ ok: true, leadId: lead.id });
 }
