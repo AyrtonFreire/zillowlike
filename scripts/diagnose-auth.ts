@@ -41,7 +41,6 @@ async function main() {
   console.log(`   Email: ${user.email}`);
   console.log(`   Role: ${user.role}`);
   console.log(`   Email Verified: ${user.emailVerified}`);
-  console.log(`   Created: ${user.createdAt || 'N/A'}`);
   
   // 2. Check OAuth accounts
   console.log("\n📱 OAuth Accounts:");
