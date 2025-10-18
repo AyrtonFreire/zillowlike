@@ -10,9 +10,9 @@ import {
   Ban,
   CheckCircle,
   XCircle,
-  ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import DashboardLayout from "@/components/DashboardLayout";
 
 interface User {
   id: string;
@@ -104,36 +104,37 @@ export default function AdminUsersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <DashboardLayout
+        title="Gerenciar Usuários"
+        description="Visualizar e gerenciar todos os usuários do sistema"
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Admin", href: "/admin" },
+          { label: "Usuários" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-4 mb-4">
-            <Link
-              href="/admin"
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Gerenciar Usuários
-              </h1>
-              <p className="text-gray-600 mt-1">
-                {filteredUsers.length} usuários encontrados
-              </p>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4">
+    <DashboardLayout
+      title="Gerenciar Usuários"
+      description={`${filteredUsers.length} usuários encontrados`}
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Admin", href: "/admin" },
+        { label: "Usuários" },
+      ]}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
@@ -155,12 +156,10 @@ export default function AdminUsersPage() {
               <option value="OWNER">Proprietários</option>
               <option value="USER">Usuários</option>
             </select>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Users Table */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Users Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -248,6 +247,7 @@ export default function AdminUsersPage() {
             </table>
           </div>
         </div>
+        </div>
       </div>
 
       {/* Role Change Modal */}
@@ -297,6 +297,6 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }
