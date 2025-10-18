@@ -43,7 +43,7 @@ function getRedisClient(): Redis | null {
     }
 
     redis.on("error", (err) => {
-      logger.error({ err }, "Redis connection error");
+      logger.error("Redis connection error", { err });
     });
 
     redis.on("connect", () => {
@@ -52,7 +52,7 @@ function getRedisClient(): Redis | null {
 
     return redis;
   } catch (err) {
-    logger.error({ err }, "Failed to initialize Redis cache");
+    logger.error("Failed to initialize Redis cache", { err });
     return null;
   }
 }
@@ -94,7 +94,7 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
 
     return JSON.parse(value) as T;
   } catch (err) {
-    logger.warn({ err, key }, "Cache get failed");
+    logger.warn("Cache get failed", { err, key });
     return null;
   }
 }
@@ -115,7 +115,7 @@ export async function cacheSet(
     await client.setex(key, ttl, serialized);
     return true;
   } catch (err) {
-    logger.warn({ err, key }, "Cache set failed");
+    logger.warn("Cache set failed", { err, key });
     return false;
   }
 }
@@ -132,7 +132,7 @@ export async function cacheDel(key: string | string[]): Promise<boolean> {
     await client.del(...keys);
     return true;
   } catch (err) {
-    logger.warn({ err, key }, "Cache delete failed");
+    logger.warn("Cache delete failed", { err, key });
     return false;
   }
 }
@@ -149,10 +149,10 @@ export async function cacheInvalidatePattern(pattern: string): Promise<number> {
     if (keys.length === 0) return 0;
 
     await client.del(...keys);
-    logger.info({ pattern, count: keys.length }, "Cache invalidated by pattern");
+    logger.info("Cache invalidated by pattern", { pattern, count: keys.length });
     return keys.length;
   } catch (err) {
-    logger.warn({ err, pattern }, "Cache invalidate pattern failed");
+    logger.warn("Cache invalidate pattern failed", { err, pattern });
     return 0;
   }
 }
@@ -175,17 +175,17 @@ export async function withCache<T>(
   // Try cache first
   const cached = await cacheGet<T>(key);
   if (cached !== null) {
-    logger.debug({ key }, "Cache hit");
+    logger.debug("Cache hit", { key });
     return cached;
   }
 
   // Cache miss - execute function
-  logger.debug({ key }, "Cache miss");
+  logger.debug("Cache miss", { key });
   const result = await fn();
 
   // Store in cache (fire and forget)
   cacheSet(key, result, ttl).catch((err) => {
-    logger.warn({ err, key }, "Failed to cache result");
+    logger.warn("Failed to cache result", { err, key });
   });
 
   return result;

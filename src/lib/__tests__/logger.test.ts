@@ -22,20 +22,19 @@ describe("Logger", () => {
   it("should log error messages with context", () => {
     const spy = vi.spyOn(logger, "error");
     const error = new Error("Test error");
-    // Pino accepts object as first param, message as second
-    logger.error({ err: error } as any, "Error occurred");
+    logger.error("Error occurred", { err: error });
     expect(spy).toHaveBeenCalled();
   });
 
   it("should log warnings", () => {
     const spy = vi.spyOn(logger, "warn");
-    logger.warn({ key: "value" } as any, "Warning message");
+    logger.warn("Warning message", { key: "value" });
     expect(spy).toHaveBeenCalled();
   });
 
   it("should handle structured logging", () => {
     const spy = vi.spyOn(logger, "info");
-    logger.info({ userId: "123", action: "login" } as any, "User logged in");
+    logger.info("User logged in", { userId: "123", action: "login" });
     expect(spy).toHaveBeenCalled();
   });
 });
