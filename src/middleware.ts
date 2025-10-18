@@ -16,8 +16,8 @@ const roleBasedPaths: Record<string, string[]> = {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip onboarding page
-  if (pathname === "/onboarding") {
+  // Skip onboarding page and home page
+  if (pathname === "/onboarding" || pathname === "/" || pathname === "/auth/signin") {
     return NextResponse.next();
   }
 

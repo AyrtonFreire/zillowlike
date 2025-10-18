@@ -37,7 +37,48 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers,
   session: { strategy: "jwt" },
+  // Allow linking accounts with the same email (Google + GitHub)
+  // This is safe in our case since both providers verify email
+  pages: {
+    signIn: '/auth/signin',
+  },
   callbacks: {
+    async signIn({ user, account, profile }) {
+      // Allow sign in with different OAuth providers for the same email
+      if (account?.provider && user?.email) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email },
+          include: { accounts: true },
+        });
+
+        if (existingUser) {
+          // Check if this provider is already linked
+          const accountExists = existingUser.accounts.some(
+            (acc) => acc.provider === account.provider
+          );
+
+          if (!accountExists) {
+            // Link the new provider account to existing user
+            await prisma.account.create({
+              data: {
+                userId: existingUser.id,
+                type: account.type,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+                refresh_token: account.refresh_token,
+                access_token: account.access_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+                id_token: account.id_token,
+                session_state: account.session_state,
+              },
+            });
+          }
+        }
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       // On sign in, persist role into the token
       if (user) {
