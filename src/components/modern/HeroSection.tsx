@@ -1,54 +1,60 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Search, TrendingUp, MapPin } from "lucide-react";
+import { Search, MapPin, TrendingUp, Home, Users } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function HeroSection() {
   const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // Implementar lógica de busca
-    console.log("Searching for:", searchQuery);
+    if (searchQuery.trim()) {
+      router.push(`/?q=${encodeURIComponent(searchQuery)}`);
+    }
   };
 
   return (
-    <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-      {/* Background com gradiente animado */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500">
-        <div className="absolute inset-0 opacity-20" 
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }}
+    <div className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0">
+        <Image
+          src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2000"
+          alt="Beautiful home"
+          fill
+          className="object-cover"
+          priority
         />
+        {/* Dark overlay for better text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
       </div>
 
-      {/* Blobs animados */}
+      {/* Subtle animated elements */}
       <motion.div
         animate={{
-          scale: [1, 1.2, 1],
-          rotate: [0, 90, 0],
+          opacity: [0.3, 0.5, 0.3],
         }}
         transition={{
-          duration: 20,
+          duration: 8,
           repeat: Infinity,
-          ease: "linear"
+          ease: "easeInOut"
         }}
-        className="absolute top-20 right-20 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl"
+        className="absolute top-20 left-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl"
       />
-
       <motion.div
         animate={{
-          scale: [1.2, 1, 1.2],
-          rotate: [0, -90, 0],
+          opacity: [0.3, 0.5, 0.3],
         }}
         transition={{
-          duration: 15,
+          duration: 10,
           repeat: Infinity,
-          ease: "linear"
+          ease: "easeInOut",
+          delay: 1
         }}
-        className="absolute bottom-20 left-20 w-80 h-80 bg-blue-500/30 rounded-full blur-3xl"
+        className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"
       />
 
       <div className="container mx-auto px-4 relative z-10">
@@ -147,6 +153,6 @@ export default function HeroSection() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
         </svg>
       </motion.div>
-    </section>
+    </div>
   );
 }
