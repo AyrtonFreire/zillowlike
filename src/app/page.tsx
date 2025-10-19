@@ -5,15 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import TopNavMega from "@/components/TopNavMega";
-import HeroSearchModern from "@/components/HeroSearchModern";
+import { ModernNavbar, HeroSection, ThemeToggle, PropertyCardPremium, FilterDrawer } from "@/components/modern";
 import QuickCategories from "@/components/QuickCategories";
 import NeighborhoodGrid from "@/components/NeighborhoodGrid";
 import ContinueSearching from "@/components/ContinueSearching";
 import Guides from "@/components/Guides";
 import SiteFooter from "@/components/Footer";
 import PropertyDetailsModal from "@/components/PropertyDetailsModal";
-import PropertyCard from "@/components/PropertyCard";
 import SearchFiltersBar from "@/components/SearchFiltersBar";
 import Image from "next/image";
 import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
@@ -231,10 +229,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <TopNavMega />
+      <ModernNavbar />
       
       {/* Hero Section */}
-      {!hasSearched && <HeroSearchModern />}
+      {!hasSearched && <HeroSection />}
       
       {/* Quick Categories */}
       {!hasSearched && <QuickCategories />}
@@ -350,14 +348,9 @@ export default function Home() {
                   </div>
                 ) : (
                   properties.map((property) => (
-                    <PropertyCard
+                    <PropertyCardPremium
                       key={property.id}
                       property={property}
-                      onFavoriteToggle={toggleFavorite}
-                      onHover={setHoverId}
-                      onOpenOverlay={openOverlay}
-                      isFavorite={favorites.includes(property.id)}
-                      isHovered={hoverId === property.id}
                     />
                   ))
                 )}
@@ -433,14 +426,9 @@ export default function Home() {
               </div>
             ) : (
               featured.map((property) => (
-                <PropertyCard
+                <PropertyCardPremium
                   key={property.id}
                   property={property}
-                  onFavoriteToggle={toggleFavorite}
-                  onHover={setHoverId}
-                  onOpenOverlay={openOverlay}
-                  isFavorite={favorites.includes(property.id)}
-                  isHovered={hoverId === property.id}
                 />
               ))
             )}
@@ -460,6 +448,24 @@ export default function Home() {
         open={overlayOpen}
         onClose={closeOverlay}
       />
+
+      {/* Theme Toggle - Fixed position */}
+      <div className="fixed bottom-8 left-8 z-40">
+        <ThemeToggle />
+      </div>
+
+      {/* Filter Drawer - Only show when searching */}
+      {hasSearched && (
+        <FilterDrawer
+          onApplyFilters={(filters) => {
+            if (filters.minPrice) setMinPrice(filters.minPrice);
+            if (filters.maxPrice) setMaxPrice(filters.maxPrice);
+            if (filters.propertyType) setType(filters.propertyType);
+            if (filters.bedrooms) setBedroomsMin(filters.bedrooms);
+            if (filters.bathrooms) setBathroomsMin(filters.bathrooms);
+          }}
+        />
+      )}
 
     </div>
   );

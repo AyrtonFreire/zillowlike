@@ -10,6 +10,19 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* Custom Gradients */
+  --color-gradient-primary-from: #667eea;
+  --color-gradient-primary-to: #764ba2;
+  --color-gradient-success-from: #f093fb;
+  --color-gradient-success-to: #f5576c;
+  --color-gradient-hero-from: #4facfe;
+  --color-gradient-hero-to: #00f2fe;
+  
+  /* Custom Animations */
+  --animate-shimmer: shimmer 2s infinite;
+  --animate-float: float 3s ease-in-out infinite;
+  --animate-glow: glow 2s ease-in-out infinite alternate;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,6 +71,38 @@ summary,
   display: none;
 }
 
+/* ===== MODERN ANIMATIONS ===== */
+
+/* Shimmer effect for loading states */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Float animation for blobs */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.05);
+  }
+}
+
+/* Glow effect */
+@keyframes glow {
+  from {
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+  }
+  to {
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.8);
+  }
+}
+
 /* Cluster pulse animation */
 @keyframes pulse {
   0%, 100% {
@@ -66,4 +111,68 @@ summary,
   50% {
     opacity: 0.5;
   }
+}
+
+/* ===== MODERN UTILITIES ===== */
+
+/* Glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Soft shadow */
+.shadow-soft {
+  box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 
+              0 10px 20px -2px rgba(0, 0, 0, 0.04);
+}
+
+/* Glow shadow */
+.shadow-glow {
+  box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Neumorphic shadow */
+.shadow-neumorphic {
+  box-shadow: 8px 8px 16px #d1d9e6, 
+              -8px -8px 16px #ffffff;
+}
+
+/* Modern button effect */
+.btn-modern {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.btn-modern::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn-modern:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
