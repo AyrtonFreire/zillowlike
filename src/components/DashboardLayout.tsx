@@ -1,8 +1,9 @@
 "use client";
 
-import TopNavMega from "./TopNavMega";
+import { ModernNavbar } from "./modern";
 import Link from "next/link";
 import { ReactNode } from "react";
+import { motion } from "framer-motion";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -21,23 +22,27 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Main Header - TopNavMega */}
-      <TopNavMega />
+      {/* Modern Header */}
+      <ModernNavbar />
 
-      {/* Context Bar - Breadcrumbs and Actions */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+      {/* Modern Context Bar with Gradient */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between"
+          >
             <div className="flex-1 min-w-0">
               {/* Breadcrumbs */}
               {breadcrumbs && breadcrumbs.length > 0 && (
-                <nav className="flex mb-2" aria-label="Breadcrumb">
+                <nav className="flex mb-3" aria-label="Breadcrumb">
                   <ol className="flex items-center space-x-2 text-sm">
                     {breadcrumbs.map((crumb, index) => (
                       <li key={index} className="flex items-center">
                         {index > 0 && (
                           <svg
-                            className="w-4 h-4 mx-2 text-gray-400"
+                            className="w-4 h-4 mx-2 text-white/60"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -53,12 +58,12 @@ export default function DashboardLayout({
                         {crumb.href ? (
                           <Link
                             href={crumb.href}
-                            className="text-gray-600 hover:text-primary-600 transition-colors"
+                            className="text-white/80 hover:text-white transition-colors font-medium"
                           >
                             {crumb.label}
                           </Link>
                         ) : (
-                          <span className="text-gray-900 font-medium">
+                          <span className="text-white font-semibold">
                             {crumb.label}
                           </span>
                         )}
@@ -70,11 +75,11 @@ export default function DashboardLayout({
 
               {/* Title and Description */}
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 truncate">
+                <h1 className="text-3xl font-bold text-white truncate">
                   {title}
                 </h1>
                 {description && (
-                  <p className="text-sm text-gray-600 mt-1">{description}</p>
+                  <p className="text-white/90 mt-2">{description}</p>
                 )}
               </div>
             </div>
@@ -85,7 +90,7 @@ export default function DashboardLayout({
                 {actions}
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
       </div>
 

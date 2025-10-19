@@ -29,7 +29,7 @@ export default function HeroSection() {
           priority
         />
         {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
       </div>
 
       {/* Subtle animated elements */}
@@ -133,10 +133,10 @@ export default function HeroSection() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9 + i * 0.1 }}
-                className="text-center"
+                className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20"
               >
-                <div className="text-4xl font-bold mb-2">{stat.value}</div>
-                <div className="text-blue-100 text-sm md:text-base">{stat.label}</div>
+                <div className="text-4xl font-bold mb-2 text-white">{stat.value}</div>
+                <div className="text-white/90 text-sm md:text-base font-medium">{stat.label}</div>
               </motion.div>
             ))}
           </motion.div>

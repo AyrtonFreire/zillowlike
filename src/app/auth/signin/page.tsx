@@ -6,9 +6,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 const IMAGES = [
-  "/hero-login.jpg",
-  "/hero-login-2.jpg",
-  "/hero-login-3.jpg",
+  "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2000",
+  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2000",
+  "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2000",
 ];
 
 export default function SignInPage() {
