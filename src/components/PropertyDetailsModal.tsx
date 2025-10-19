@@ -518,53 +518,43 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                       </div>
                     </div>
 
-                    {/* Quick Stats - Tons Neutros e Suaves */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="p-5 bg-white rounded-2xl border border-gray-200/60 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 bg-blue-50 rounded-xl">
-                            <Bed className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <span className="text-2xl font-semibold text-gray-800">{property.bedrooms}</span>
+                    {/* Quick Stats - Elegant Neutral */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {property.bedrooms && (
+                        <div className="p-6 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all">
+                          <Bed className="w-5 h-5 text-gray-600 mb-3" />
+                          <div className="text-3xl font-bold text-gray-900 mb-1">{property.bedrooms}</div>
+                          <div className="text-sm font-medium text-gray-600">Quartos</div>
                         </div>
-                        <span className="text-sm text-gray-500 font-medium">Quartos</span>
-                      </div>
+                      )}
                       
-                      <div className="p-5 bg-white rounded-2xl border border-gray-200/60 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 bg-blue-50 rounded-xl">
-                            <Bath className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <span className="text-2xl font-semibold text-gray-800">{property.bathrooms}</span>
+                      {property.bathrooms && (
+                        <div className="p-6 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all">
+                          <Bath className="w-5 h-5 text-gray-600 mb-3" />
+                          <div className="text-3xl font-bold text-gray-900 mb-1">{property.bathrooms}</div>
+                          <div className="text-sm font-medium text-gray-600">Banheiros</div>
                         </div>
-                        <span className="text-sm text-gray-500 font-medium">Banheiros</span>
-                      </div>
+                      )}
                       
-                      <div className="p-5 bg-white rounded-2xl border border-gray-200/60 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 bg-blue-50 rounded-xl">
-                            <Maximize2 className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <span className="text-2xl font-semibold text-gray-800">{property.areaM2}</span>
+                      {property.areaM2 && (
+                        <div className="p-6 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all">
+                          <Maximize2 className="w-5 h-5 text-gray-600 mb-3" />
+                          <div className="text-3xl font-bold text-gray-900 mb-1">{property.areaM2}</div>
+                          <div className="text-sm font-medium text-gray-600">m²</div>
                         </div>
-                        <span className="text-sm text-gray-500 font-medium">m²</span>
-                      </div>
+                      )}
                       
-                      {property.parkingSpots ? (
-                        <div className="p-5 bg-white rounded-2xl border border-gray-200/60 shadow-sm hover:shadow-md transition-shadow">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-blue-50 rounded-xl">
-                              <Car className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <span className="text-2xl font-semibold text-gray-800">{property.parkingSpots}</span>
-                          </div>
-                          <span className="text-sm text-gray-500 font-medium">Vagas</span>
+                      {property.parkingSpots && (
+                        <div className="p-6 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all">
+                          <Car className="w-5 h-5 text-gray-600 mb-3" />
+                          <div className="text-3xl font-bold text-gray-900 mb-1">{property.parkingSpots}</div>
+                          <div className="text-sm font-medium text-gray-600">Vagas</div>
                         </div>
-                      ) : null}
+                      )}
                     </div>
 
                     {/* Description */}
-                    <div className="p-6 bg-gray-50 rounded-2xl border border-gray-200">
+                    <div className="p-8 bg-gray-50 rounded-xl border border-gray-200">
                       <h2 className="text-2xl font-bold text-gray-900 mb-4">Sobre este imóvel</h2>
                       <p className="text-gray-700 leading-relaxed text-lg">
                         {property.description}
@@ -572,31 +562,31 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                     </div>
 
                     {/* Features */}
-                    <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-sm">
+                    <div className="p-8 bg-white rounded-xl border border-gray-200">
                       <h2 className="text-2xl font-bold text-gray-900 mb-6">Características</h2>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {property.suites && (
-                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                            <Home className="w-5 h-5 text-blue-600" />
-                            <span className="text-gray-700 font-medium">{property.suites} Suítes</span>
+                          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+                            <Home className="w-5 h-5 text-gray-600" />
+                            <span className="text-gray-900 font-medium">{property.suites} Suítes</span>
                           </div>
                         )}
                         {property.furnished !== undefined && (
-                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                            <Home className="w-5 h-5 text-blue-600" />
-                            <span className="text-gray-700 font-medium">{property.furnished ? 'Mobiliado' : 'Não mobiliado'}</span>
+                          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+                            <Home className="w-5 h-5 text-gray-600" />
+                            <span className="text-gray-900 font-medium">{property.furnished ? 'Mobiliado' : 'Não mobiliado'}</span>
                           </div>
                         )}
                         {property.petFriendly !== undefined && (
-                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                            <Home className="w-5 h-5 text-blue-600" />
-                            <span className="text-gray-700 font-medium">{property.petFriendly ? 'Aceita pets' : 'Não aceita pets'}</span>
+                          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+                            <Home className="w-5 h-5 text-gray-600" />
+                            <span className="text-gray-900 font-medium">{property.petFriendly ? 'Aceita pets' : 'Não aceita pets'}</span>
                           </div>
                         )}
                         {property.yearBuilt && (
-                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                            <Calendar className="w-5 h-5 text-blue-600" />
-                            <span className="text-gray-700 font-medium">Construído em {property.yearBuilt}</span>
+                          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-all">
+                            <Calendar className="w-5 h-5 text-gray-600" />
+                            <span className="text-gray-900 font-medium">Construído em {property.yearBuilt}</span>
                           </div>
                         )}
                       </div>

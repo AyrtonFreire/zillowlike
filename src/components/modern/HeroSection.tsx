@@ -1,20 +1,118 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Search, MapPin, TrendingUp, Home, Users } from "lucide-react";
-import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, MapPin, TrendingUp, Home, Users, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
+interface LocationSuggestion {
+  label: string;
+  city: string;
+  state: string;
+  neighborhood: string | null;
+  count: number;
+}
+
 export default function HeroSection() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const router = useRouter();
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Buscar sugestões da API quando o usuário digita
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (searchQuery.length > 0) {
+        setIsFetchingSuggestions(true);
+        try {
+          const response = await fetch(`/api/locations?q=${encodeURIComponent(searchQuery)}`);
+          const data = await response.json();
+          if (data.success) {
+            setSuggestions(data.suggestions || []);
+            setShowSuggestions(true);
+          }
+        } catch (error) {
+          console.error('Error fetching suggestions:', error);
+          setSuggestions([]);
+        } finally {
+          setIsFetchingSuggestions(false);
+        }
+      } else {
+        // Buscar sugestões populares (sem filtro)
+        setIsFetchingSuggestions(true);
+        try {
+          const response = await fetch('/api/locations');
+          const data = await response.json();
+          if (data.success) {
+            setSuggestions(data.suggestions?.slice(0, 5) || []);
+          }
+        } catch (error) {
+          console.error('Error fetching popular suggestions:', error);
+        } finally {
+          setIsFetchingSuggestions(false);
+        }
+      }
+    };
+
+    const debounce = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(debounce);
+  }, [searchQuery]);
+
+  // Fechar sugestões ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/?q=${encodeURIComponent(searchQuery)}`);
+      setIsLoading(true);
+      // Parse cidade e estado do query
+      const parts = searchQuery.split(',').map(p => p.trim());
+      let params = new URLSearchParams();
+      
+      if (parts.length >= 2) {
+        // Formato: "Cidade, Estado" ou "Bairro, Cidade, Estado"
+        const state = parts[parts.length - 1];
+        const city = parts[parts.length - 2];
+        params.set('city', city);
+        params.set('state', state);
+        if (parts.length === 3) {
+          params.set('q', parts[0]); // Bairro como query geral
+        }
+      } else {
+        // Busca geral
+        params.set('q', searchQuery);
+      }
+      
+      router.push(`/?${params.toString()}`);
     }
+  };
+
+  const handleSuggestionClick = (suggestion: LocationSuggestion) => {
+    setSearchQuery(suggestion.label);
+    setShowSuggestions(false);
+    setIsLoading(true);
+    
+    // Construir URL com cidade e estado
+    const params = new URLSearchParams();
+    params.set('city', suggestion.city);
+    params.set('state', suggestion.state);
+    if (suggestion.neighborhood) {
+      params.set('q', suggestion.neighborhood);
+    }
+    
+    router.push(`/?${params.toString()}`);
   };
 
   return (
@@ -84,36 +182,111 @@ export default function HeroSection() {
             Milhares de imóveis incríveis esperando por você
           </motion.p>
 
-          {/* Search Bar Moderna */}
+          {/* Search Bar Moderna com Autocomplete */}
           <motion.div
+            ref={searchRef}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="max-w-4xl mx-auto"
+            className="max-w-4xl mx-auto relative"
           >
             <form onSubmit={handleSearch} className="glass rounded-2xl p-2 shadow-2xl">
               <div className="flex flex-col md:flex-row gap-2">
-                <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-4 py-3">
+                <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-4 py-3 relative">
                   <MapPin className="text-gray-400 flex-shrink-0" />
                   <input
                     type="text"
                     placeholder="Cidade, bairro ou região..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 outline-none text-gray-800"
+                    onFocus={() => setShowSuggestions(true)}
+                    className="flex-1 outline-none text-gray-800 placeholder:text-gray-400"
                   />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setShowSuggestions(false);
+                      }}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   type="submit"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-glow transition-all flex items-center justify-center gap-2"
+                  disabled={isLoading}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-glow transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Search className="w-5 h-5" />
-                  Buscar
+                  {isLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Buscando...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-5 h-5" />
+                      Buscar
+                    </>
+                  )}
                 </motion.button>
               </div>
             </form>
+
+            {/* Autocomplete Dropdown */}
+            <AnimatePresence>
+              {showSuggestions && suggestions.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
+                >
+                  <div className="p-2">
+                    {searchQuery.length === 0 && (
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Buscas Populares
+                      </div>
+                    )}
+                    {isFetchingSuggestions ? (
+                      <div className="px-4 py-8 text-center text-gray-400">
+                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                      </div>
+                    ) : suggestions.length === 0 && searchQuery.length > 0 ? (
+                      <div className="px-4 py-8 text-center text-gray-400">
+                        Nenhuma cidade encontrada
+                      </div>
+                    ) : (
+                      suggestions.map((suggestion, index) => (
+                        <motion.button
+                          key={index}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-blue-50 rounded-xl transition-all text-left group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <MapPin className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                            <span className="text-gray-700 group-hover:text-blue-600 font-medium">
+                              {suggestion.label}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-400 group-hover:text-blue-600">
+                            {suggestion.count} {suggestion.count === 1 ? 'imóvel' : 'imóveis'}
+                          </span>
+                        </motion.button>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* Stats */}

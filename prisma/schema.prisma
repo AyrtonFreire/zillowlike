@@ -116,6 +116,7 @@ model Property {
   petFriendly   Boolean?
   condoFee      Int?      // in cents
   yearBuilt     Int?
+  conditionTags String[]  @default([]) // Tags: Mobiliado, Novo, Em construção, etc.
 
   images      Image[]
   favorites   Favorite[]

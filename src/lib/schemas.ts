@@ -10,6 +10,14 @@ export const PropertyTypeEnum = z.enum([
   "COMMERCIAL",
 ]);
 
+export const ConditionTagEnum = z.enum([
+  "Mobiliado",
+  "Semi-mobiliado",
+  "Novo",
+  "Em construção",
+  "Condomínio fechado",
+]);
+
 export const PropertyCreateSchema = z.object({
   title: z.string().min(3).max(160),
   description: z.string().min(10).max(5000),
@@ -36,6 +44,7 @@ export const PropertyCreateSchema = z.object({
       areaM2: z.number().int().min(0).max(100000).nullable().optional(),
     })
     .optional(),
+  conditionTags: z.array(ConditionTagEnum).max(5).optional(),
   images: z
     .array(
       z.object({

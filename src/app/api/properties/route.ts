@@ -60,8 +60,8 @@ export async function GET(req: NextRequest) {
     const areaMin = Number(searchParams.get("areaMin") || 0);
 
     const where: any = {};
-    if (city) where.city = { equals: city };
-    if (state) where.state = { equals: state };
+    if (city) where.city = { equals: city, mode: 'insensitive' as Prisma.QueryMode };
+    if (state) where.state = { equals: state, mode: 'insensitive' as Prisma.QueryMode };
     if (type) where.type = type as any;
     if (minPrice || maxPrice) {
       where.price = {};
@@ -73,11 +73,11 @@ export async function GET(req: NextRequest) {
     if (areaMin) where.areaM2 = { gte: areaMin };
     if (q) {
       where.OR = [
-        { title: { contains: q } },
-        { description: { contains: q } },
-        { street: { contains: q } },
-        { neighborhood: { contains: q } },
-        { city: { contains: q } },
+        { title: { contains: q, mode: 'insensitive' as Prisma.QueryMode } },
+        { description: { contains: q, mode: 'insensitive' as Prisma.QueryMode } },
+        { street: { contains: q, mode: 'insensitive' as Prisma.QueryMode } },
+        { neighborhood: { contains: q, mode: 'insensitive' as Prisma.QueryMode } },
+        { city: { contains: q, mode: 'insensitive' as Prisma.QueryMode } },
       ];
     }
 

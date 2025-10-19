@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { ModernNavbar, HeroSection, ThemeToggle, PropertyCardPremium, FilterDrawer } from "@/components/modern";
+import { ModernNavbar, HeroSection, ThemeToggle, PropertyCardPremium } from "@/components/modern";
 import QuickCategories from "@/components/QuickCategories";
 import NeighborhoodGrid from "@/components/NeighborhoodGrid";
 import ContinueSearching from "@/components/ContinueSearching";
@@ -322,8 +322,8 @@ export default function Home() {
                 )}
               </div>
 
-              {/* Property Cards - 2 Columns Grid */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {/* Property Cards - 3 Columns Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {isLoading ? (
                   [...Array(6)].map((_, i) => (
                     <div key={i} className="card animate-pulse p-4">
@@ -351,6 +351,7 @@ export default function Home() {
                     <PropertyCardPremium
                       key={property.id}
                       property={property}
+                      onOpenOverlay={openOverlay}
                     />
                   ))
                 )}
@@ -359,7 +360,7 @@ export default function Home() {
           </div>
 
           {/* Right Side - Interactive Map (Desktop Only) */}
-          <div className="hidden lg:block lg:w-1/2 sticky top-0 h-[calc(100vh-80px)]">
+          <div className="hidden lg:block lg:w-1/2 sticky top-20 h-[calc(100vh-80px)]">
             <MapWithPriceBubbles
               items={properties}
               isLoading={isLoading}
@@ -400,7 +401,7 @@ export default function Home() {
             <h2 className="text-2xl font-bold text-gray-900">Destaques</h2>
             <Link href="#" className="text-primary-600 hover:text-primary-800 text-sm font-medium">Ver mais</Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
             {featuredLoading ? (
               [...Array(6)].map((_, i) => (
                 <div key={i} className="card animate-pulse">
@@ -429,6 +430,7 @@ export default function Home() {
                 <PropertyCardPremium
                   key={property.id}
                   property={property}
+                  onOpenOverlay={openOverlay}
                 />
               ))
             )}
@@ -453,19 +455,6 @@ export default function Home() {
       <div className="fixed bottom-8 left-8 z-40">
         <ThemeToggle />
       </div>
-
-      {/* Filter Drawer - Only show when searching */}
-      {hasSearched && (
-        <FilterDrawer
-          onApplyFilters={(filters) => {
-            if (filters.minPrice) setMinPrice(filters.minPrice);
-            if (filters.maxPrice) setMaxPrice(filters.maxPrice);
-            if (filters.propertyType) setType(filters.propertyType);
-            if (filters.bedrooms) setBedroomsMin(filters.bedrooms);
-            if (filters.bathrooms) setBathroomsMin(filters.bathrooms);
-          }}
-        />
-      )}
 
     </div>
   );

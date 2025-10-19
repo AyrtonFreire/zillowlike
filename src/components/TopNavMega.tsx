@@ -91,8 +91,10 @@ export default function TopNavMega() {
           {/* Left Navigation */}
           <nav className="hidden lg:flex items-center gap-1">
             <button 
+              type="button"
               onMouseEnter={()=>{clearTimeout(closeTimer.current!); setOpen("comprar");}} 
-              onFocus={()=>setOpen("comprar")} 
+              onFocus={()=>setOpen("comprar")}
+              onClick={()=>setOpen(open === "comprar" ? null : "comprar")}
               className={`btn btn-ghost px-4 py-2 text-sm font-medium transition-all focus-ring rounded-lg ${
                 open === "comprar" ? "text-primary-600 bg-primary-50" : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
               }`}
@@ -100,8 +102,10 @@ export default function TopNavMega() {
               Comprar
             </button>
             <button 
+              type="button"
               onMouseEnter={()=>{clearTimeout(closeTimer.current!); setOpen("alugar");}} 
-              onFocus={()=>setOpen("alugar")} 
+              onFocus={()=>setOpen("alugar")}
+              onClick={()=>setOpen(open === "alugar" ? null : "alugar")}
               className={`btn btn-ghost px-4 py-2 text-sm font-medium transition-all focus-ring rounded-lg ${
                 open === "alugar" ? "text-primary-600 bg-primary-50" : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
               }`}
@@ -109,8 +113,10 @@ export default function TopNavMega() {
               Alugar
             </button>
             <button 
+              type="button"
               onMouseEnter={()=>{clearTimeout(closeTimer.current!); setOpen("vender");}} 
-              onFocus={()=>setOpen("vender")} 
+              onFocus={()=>setOpen("vender")}
+              onClick={()=>setOpen(open === "vender" ? null : "vender")}
               className={`btn btn-ghost px-4 py-2 text-sm font-medium transition-all focus-ring rounded-lg ${
                 open === "vender" ? "text-primary-600 bg-primary-50" : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
               }`}
@@ -226,44 +232,101 @@ export default function TopNavMega() {
                       </svg>
                     }>
                       <Item href="/?type=HOUSE">Casas à venda</Item>
-                      <Item href="/?type=APARTMENT">Apartamentos</Item>
+                      <Item href="/?type=APARTMENT">Apartamentos à venda</Item>
+                      <Item href="/?type=CONDO">Condomínios</Item>
+                      <Item href="/?type=LAND">Terrenos</Item>
+                      <Item href="/?type=COMMERCIAL">Comercial</Item>
                       <Item href="/">Todos os imóveis</Item>
                     </Section>
                     <Divider />
-                    <Section title="Novos & recentes" icon={
+                    <Section title="Recursos" icon={
                       <svg className="w-5 h-5 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                     }>
-                      <Item href="/?sort=recent">Mais recentes</Item>
-                      <Item href="/">Explorar tudo</Item>
+                      <Item href="/?sort=recent">Novos imóveis</Item>
+                      <Item href="/?sort=price_asc">Menor preço</Item>
+                      <Item href="/financing">Financiamento</Item>
+                      <Item href="/guia/compra">Guia do comprador</Item>
+                    </Section>
+                    <Divider />
+                    <Section title="Ferramentas" icon={
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    }>
+                      <Item href="/calculadora">Calculadora de financiamento</Item>
+                      <Item href="/saved-searches">Buscas salvas</Item>
+                      <Item href="/favorites">Meus favoritos</Item>
                     </Section>
                   </>
                 )}
                 {open === "alugar" && (
                   <>
-                    <Section title="Locação" icon={
+                    <Section title="Imóveis para alugar" icon={
                       <svg className="w-5 h-5 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                       </svg>
                     }>
-                      <Item href="/?type=HOUSE">Casas para alugar</Item>
-                      <Item href="/?type=APARTMENT">Apartamentos</Item>
-                      <Item href="/?sort=recent">Mais recentes</Item>
+                      <Item href="/?status=RENT&type=HOUSE">Casas para alugar</Item>
+                      <Item href="/?status=RENT&type=APARTMENT">Apartamentos para alugar</Item>
+                      <Item href="/?status=RENT&type=CONDO">Condomínios</Item>
+                      <Item href="/?status=RENT&type=STUDIO">Studios</Item>
+                      <Item href="/?status=RENT">Todos para alugar</Item>
+                    </Section>
+                    <Divider />
+                    <Section title="Recursos" icon={
+                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    }>
+                      <Item href="/?status=RENT&sort=recent">Novos anúncios</Item>
+                      <Item href="/?status=RENT&sort=price_asc">Menor aluguel</Item>
+                      <Item href="/guia/locacao">Guia do inquilino</Item>
+                    </Section>
+                    <Divider />
+                    <Section title="Ferramentas" icon={
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    }>
+                      <Item href="/calculadora-aluguel">Calculadora de aluguel</Item>
+                      <Item href="/saved-searches">Buscas salvas</Item>
+                      <Item href="/favorites">Meus favoritos</Item>
                     </Section>
                   </>
                 )}
                 {open === "vender" && (
                   <>
-                    <Section title="Opções de venda" icon={
-                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6" />
+                    <Section title="Vender seu imóvel" icon={
+                      <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                       </svg>
                     }>
-                      <Item href="/owner/new">Anunciar imóvel</Item>
+                      <Item href="/owner/new">Anunciar imóvel grátis</Item>
+                      <Item href="/owner/properties">Meus anúncios</Item>
+                      <Item href="/owner/dashboard">Painel do proprietário</Item>
+                      <Item href="/owner/leads">Meus leads</Item>
+                    </Section>
+                    <Divider />
+                    <Section title="Recursos" icon={
+                      <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    }>
                       <Item href="/guia/venda">Guia do vendedor</Item>
-                      <Item href="/estimar">Estimar preço</Item>
-                      <Item href="/mercado">Mercado imobiliário</Item>
+                      <Item href="/owner/analytics">Análise de mercado</Item>
+                      <Item href="/dicas/venda">Dicas para vender</Item>
+                    </Section>
+                    <Divider />
+                    <Section title="Ferramentas" icon={
+                      <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    }>
+                      <Item href="/estimador">Estimar valor do imóvel</Item>
+                      <Item href="/comparador">Comparar preços</Item>
+                      <Item href="/fotografo">Contratar fotógrafo</Item>
                     </Section>
                   </>
                 )}

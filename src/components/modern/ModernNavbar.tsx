@@ -1,21 +1,26 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Menu, X, User, Heart, Bell } from "lucide-react";
+import { Menu, X, User, Heart, Bell, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useSession, signIn } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function ModernNavbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [megaMenu, setMegaMenu] = useState<"comprar" | "alugar" | "vender" | null>(null);
   const { data: session } = useSession();
+  const router = useRouter();
   const { scrollY } = useScroll();
+  
+  const role = (session as any)?.user?.role || "USER";
   
   const backgroundColor = useTransform(
     scrollY,
     [0, 100],
-    ["rgba(255, 255, 255, 0)", "rgba(255, 255, 255, 0.95)"]
+    ["rgba(255, 255, 255, 1)", "rgba(255, 255, 255, 1)"]
   );
 
   useEffect(() => {
@@ -26,11 +31,24 @@ export default function ModernNavbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Close mega menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.mega-menu-container')) {
+        setMegaMenu(null);
+      }
+    };
+    if (megaMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [megaMenu]);
+
   const menuItems = [
-    { label: "Comprar", href: "/properties" },
-    { label: "Alugar", href: "/properties?type=rent" },
-    { label: "Vender", href: "/sell" },
-    { label: "Corretores", href: "/realtors" },
+    { label: "Comprar", key: "comprar" as const },
+    { label: "Alugar", key: "alugar" as const },
+    { label: "Vender", key: "vender" as const },
   ];
 
   return (
@@ -57,16 +75,22 @@ export default function ModernNavbar() {
           </Link>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-8 mega-menu-container">
             {menuItems.map((item) => (
-              <Link
+              <button
                 key={item.label}
-                href={item.href}
-                className="text-gray-700 hover:text-blue-600 font-medium transition-colors relative group"
+                type="button"
+                onMouseEnter={() => setMegaMenu(item.key)}
+                onClick={() => setMegaMenu(megaMenu === item.key ? null : item.key)}
+                className={`text-gray-900 hover:text-blue-600 font-semibold transition-colors relative group ${
+                  megaMenu === item.key ? 'text-blue-600' : ''
+                }`}
               >
                 {item.label}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300" />
-              </Link>
+                <span className={`absolute -bottom-1 left-0 h-0.5 bg-blue-600 transition-all duration-300 ${
+                  megaMenu === item.key ? 'w-full' : 'w-0 group-hover:w-full'
+                }`} />
+              </button>
             ))}
           </div>
 
@@ -87,13 +111,34 @@ export default function ModernNavbar() {
             )}
             
             {session ? (
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold hover:shadow-glow transition-all"
-              >
-                <User className="w-4 h-4" />
-                Dashboard
-              </Link>
+              <>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    const dashboardUrl = 
+                      role === "ADMIN" ? "/admin" :
+                      role === "REALTOR" ? "/realtor" :
+                      role === "OWNER" ? "/owner" :
+                      "/dashboard";
+                    router.push(dashboardUrl);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold hover:shadow-glow transition-all"
+                >
+                  <User className="w-4 h-4" />
+                  Dashboard
+                </motion.button>
+                
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  className="flex items-center gap-2 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-full font-semibold hover:bg-gray-100 hover:border-gray-400 transition-all"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sair
+                </motion.button>
+              </>
             ) : (
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -112,10 +157,126 @@ export default function ModernNavbar() {
             onClick={() => setIsOpen(!isOpen)}
             className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isOpen ? <X className="w-6 h-6 text-gray-900" /> : <Menu className="w-6 h-6 text-gray-900" />}
           </button>
         </div>
       </div>
+
+      {/* Mega Menu Dropdown */}
+      {megaMenu && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="absolute top-full left-0 right-0 bg-white border-t border-gray-200 shadow-2xl mega-menu-container"
+          onMouseLeave={() => setMegaMenu(null)}
+        >
+          <div className="container mx-auto px-4 py-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+              {megaMenu === "comprar" && (
+                <>
+                  <MegaMenuSection
+                    title="Imóveis à venda"
+                    icon="🏠"
+                    items={[
+                      { label: "Casas à venda", href: "/?type=HOUSE" },
+                      { label: "Apartamentos à venda", href: "/?type=APARTMENT" },
+                      { label: "Condomínios", href: "/?type=CONDO" },
+                      { label: "Terrenos", href: "/?type=LAND" },
+                      { label: "Comercial", href: "/?type=COMMERCIAL" },
+                      { label: "Todos os imóveis", href: "/" },
+                    ]}
+                  />
+                  <MegaMenuSection
+                    title="Recursos"
+                    icon="⚡"
+                    items={[
+                      { label: "Novos imóveis", href: "/?sort=recent" },
+                      { label: "Menor preço", href: "/?sort=price_asc" },
+                      { label: "Financiamento", href: "/financing" },
+                      { label: "Guia do comprador", href: "/guia/compra" },
+                    ]}
+                  />
+                  <MegaMenuSection
+                    title="Ferramentas"
+                    icon="🔧"
+                    items={[
+                      { label: "Calculadora de financiamento", href: "/calculadora" },
+                      { label: "Buscas salvas", href: "/saved-searches" },
+                      { label: "Meus favoritos", href: "/favorites" },
+                    ]}
+                  />
+                </>
+              )}
+              {megaMenu === "alugar" && (
+                <>
+                  <MegaMenuSection
+                    title="Imóveis para alugar"
+                    icon="🔑"
+                    items={[
+                      { label: "Casas para alugar", href: "/?status=RENT&type=HOUSE" },
+                      { label: "Apartamentos para alugar", href: "/?status=RENT&type=APARTMENT" },
+                      { label: "Condomínios", href: "/?status=RENT&type=CONDO" },
+                      { label: "Studios", href: "/?status=RENT&type=STUDIO" },
+                      { label: "Todos para alugar", href: "/?status=RENT" },
+                    ]}
+                  />
+                  <MegaMenuSection
+                    title="Recursos"
+                    icon="📋"
+                    items={[
+                      { label: "Novos anúncios", href: "/?status=RENT&sort=recent" },
+                      { label: "Menor aluguel", href: "/?status=RENT&sort=price_asc" },
+                      { label: "Guia do inquilino", href: "/guia/locacao" },
+                    ]}
+                  />
+                  <MegaMenuSection
+                    title="Ferramentas"
+                    icon="💰"
+                    items={[
+                      { label: "Calculadora de aluguel", href: "/calculadora-aluguel" },
+                      { label: "Buscas salvas", href: "/saved-searches" },
+                      { label: "Meus favoritos", href: "/favorites" },
+                    ]}
+                  />
+                </>
+              )}
+              {megaMenu === "vender" && (
+                <>
+                  <MegaMenuSection
+                    title="Vender seu imóvel"
+                    icon="🏡"
+                    items={[
+                      { label: "Anunciar imóvel grátis", href: "/owner/new" },
+                      { label: "Meus anúncios", href: "/owner/properties" },
+                      { label: "Painel do proprietário", href: "/owner/dashboard" },
+                      { label: "Meus leads", href: "/owner/leads" },
+                    ]}
+                  />
+                  <MegaMenuSection
+                    title="Recursos"
+                    icon="📊"
+                    items={[
+                      { label: "Guia do vendedor", href: "/guia/venda" },
+                      { label: "Análise de mercado", href: "/owner/analytics" },
+                      { label: "Dicas para vender", href: "/dicas/venda" },
+                    ]}
+                  />
+                  <MegaMenuSection
+                    title="Ferramentas"
+                    icon="🛠️"
+                    items={[
+                      { label: "Estimar valor do imóvel", href: "/estimador" },
+                      { label: "Comparar preços", href: "/comparador" },
+                      { label: "Contratar fotógrafo", href: "/fotografo" },
+                    ]}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Mobile Menu */}
       <motion.div
@@ -125,23 +286,44 @@ export default function ModernNavbar() {
       >
         <div className="container mx-auto px-4 py-4 space-y-4">
           {menuItems.map((item) => (
-            <Link
+            <button
               key={item.label}
-              href={item.href}
-              onClick={() => setIsOpen(false)}
-              className="block py-2 text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              type="button"
+              onClick={() => {
+                setMegaMenu(item.key);
+                setIsOpen(false);
+              }}
+              className="block w-full text-left py-2 text-gray-700 hover:text-blue-600 font-medium transition-colors"
             >
               {item.label}
-            </Link>
+            </button>
           ))}
           {session ? (
-            <Link
-              href="/dashboard"
-              onClick={() => setIsOpen(false)}
-              className="block w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-center"
-            >
-              Dashboard
-            </Link>
+            <>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  const dashboardUrl = 
+                    role === "ADMIN" ? "/admin" :
+                    role === "REALTOR" ? "/realtor" :
+                    role === "OWNER" ? "/owner" :
+                    "/dashboard";
+                  router.push(dashboardUrl);
+                }}
+                className="block w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-center"
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  signOut({ callbackUrl: "/" });
+                }}
+                className="block w-full py-3 border-2 border-blue-600 text-blue-600 rounded-xl font-semibold text-center hover:bg-blue-50"
+              >
+                Sair
+              </button>
+            </>
           ) : (
             <button
               onClick={() => {
@@ -156,5 +338,29 @@ export default function ModernNavbar() {
         </div>
       </motion.div>
     </motion.nav>
+  );
+}
+
+// Mega Menu Section Component
+function MegaMenuSection({ title, icon, items }: { title: string; icon: string; items: { label: string; href: string }[] }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-2xl">{icon}</span>
+        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+      </div>
+      <ul className="space-y-2">
+        {items.map((item, index) => (
+          <li key={index}>
+            <Link
+              href={item.href}
+              className="block px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all font-medium"
+            >
+              {item.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

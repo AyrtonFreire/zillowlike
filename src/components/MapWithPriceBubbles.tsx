@@ -427,10 +427,17 @@ export default function MapWithPriceBubbles({ items, isLoading, onBoundsChange }
       className="w-full h-full"
       zoomControl={true}
       scrollWheelZoom={true}
+      doubleClickZoom={true}
+      touchZoom={true}
+      dragging={true}
+      zoomSnap={0.5}
+      zoomDelta={1}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        maxZoom={19}
+        minZoom={3}
       />
       <MapController items={items} onBoundsChange={onBoundsChange} />
     </MapContainer>

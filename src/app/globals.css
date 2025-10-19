@@ -176,3 +176,53 @@ summary,
 .transition-smooth {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* ===== LEAFLET MAP CONTROLS ===== */
+
+/* Ensure Leaflet controls are clickable and visible */
+.leaflet-control-zoom,
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  background-color: white !important;
+  border: 2px solid rgba(0,0,0,0.2) !important;
+  border-radius: 8px !important;
+}
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 34px !important;
+  font-size: 20px !important;
+  font-weight: bold !important;
+  color: #374151 !important;
+  transition: all 0.2s ease !important;
+}
+
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+  transform: scale(1.05);
+}
+
+.leaflet-control-zoom-in:active,
+.leaflet-control-zoom-out:active {
+  background-color: #e5e7eb !important;
+  transform: scale(0.95);
+}
+
+/* Ensure the container allows pointer events */
+.leaflet-container {
+  pointer-events: auto !important;
+}
+
+.leaflet-control-container {
+  pointer-events: none !important;
+}
+
+.leaflet-control {
+  pointer-events: auto !important;
+}
