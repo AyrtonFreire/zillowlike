@@ -308,6 +308,23 @@ export default function AdminDashboard() {
           </Link>
 
           <Link
+            href="/admin/realtor-applications"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-orange-100 rounded-lg">
+                <Users className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Aplicações de Corretores</h3>
+                <p className="text-sm text-gray-600">
+                  Aprovar novos corretores
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
             href="/admin/logs"
             className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
           >

@@ -198,15 +198,17 @@ model User {
   image         String?
   role          Role      @default(USER)
 
-  accounts      Account[]
-  sessions      Session[]
-  leads         Lead[]
-  realtorLeads  Lead[]          @relation("RealtorLeads")
-  properties    Property[]      @relation("PropertyOwner")
-  queue         RealtorQueue?
-  stats         RealtorStats?
-  ratings       RealtorRating[]
-  phone         String?
+  accounts            Account[]
+  sessions            Session[]
+  leads               Lead[]
+  realtorLeads        Lead[]                @relation("RealtorLeads")
+  properties          Property[]            @relation("PropertyOwner")
+  queue               RealtorQueue?
+  stats               RealtorStats?
+  ratings             RealtorRating[]
+  phone               String?
+  realtorApplication  RealtorApplication?
+  reviewedApplications RealtorApplication[] @relation("ReviewedApplications")
 }
 
 model VerificationToken {
@@ -411,4 +413,48 @@ model RealtorRating {
   @@index([realtorId])
   @@index([leadId])
   @@map("realtor_ratings")
+}
+
+// Status de aplicação de corretor
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Aplicações para se tornar corretor
+model RealtorApplication {
+  id                  String            @id @default(cuid())
+  userId              String            @unique
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Dados profissionais
+  creci               String
+  creciState          String            // UF do CRECI (PE, BA, etc)
+  creciExpiry         DateTime
+  phone               String
+  
+  // Documentos (URLs no storage)
+  creciDocumentUrl    String?
+  identityDocumentUrl String?
+  
+  // Informações adicionais
+  experience          Int               // Anos de experiência
+  specialties         String[]          // Residencial, Comercial, Rural, etc
+  bio                 String?
+  
+  // Status e revisão
+  status              ApplicationStatus @default(PENDING)
+  reviewedBy          String?
+  reviewer            User?             @relation("ReviewedApplications", fields: [reviewedBy], references: [id])
+  reviewedAt          DateTime?
+  rejectionReason     String?
+  
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("realtor_applications")
 }
