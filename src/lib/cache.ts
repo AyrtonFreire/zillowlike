@@ -15,30 +15,40 @@ import { logger } from "./logger";
 let redis: Redis | null = null;
 
 function getRedisClient(): Redis | null {
-  // Don't connect during build time
-  if (typeof window === 'undefined' && process.env.NEXT_PHASE === 'phase-production-build') {
+  // Never initialize during Next.js build (SSG on Vercel)
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
     return null;
   }
 
   if (redis) return redis;
 
-  const redisUrl = process.env.REDIS_URL;
-  const redisHost = process.env.REDIS_HOST || "localhost";
-  const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
+  const redisUrl = process.env.REDIS_URL?.trim();
+  const redisHostEnv = process.env.REDIS_HOST?.trim();
+  const redisPortEnv = process.env.REDIS_PORT?.trim();
+
+  // Require explicit configuration. Do NOT fallback to localhost in production/Vercel.
+  const hasUrl = !!redisUrl;
+  const hasHostPort = !!redisHostEnv && !!redisPortEnv;
+
+  if (!hasUrl && !hasHostPort) {
+    // No Redis configured; operate without cache
+    return null;
+  }
 
   try {
-    if (redisUrl) {
-      redis = new Redis(redisUrl, {
+    if (hasUrl) {
+      redis = new Redis(redisUrl!, {
         maxRetriesPerRequest: 3,
         retryStrategy: (times) => {
           if (times > 3) return null;
           return Math.min(times * 100, 2000);
         },
       });
-    } else {
+    } else if (hasHostPort) {
+      const redisPort = parseInt(redisPortEnv!, 10);
       redis = new Redis({
-        host: redisHost,
-        port: redisPort,
+        host: redisHostEnv!,
+        port: Number.isFinite(redisPort) ? redisPort : 6379,
         maxRetriesPerRequest: 3,
         retryStrategy: (times) => {
           if (times > 3) return null;
@@ -47,15 +57,17 @@ function getRedisClient(): Redis | null {
       });
     }
 
-    redis.on("error", (err) => {
-      logger.error("Redis connection error", { err });
-    });
+    if (redis) {
+      redis.on("error", (err) => {
+        logger.error("Redis connection error", { err });
+      });
 
-    redis.on("connect", () => {
-      logger.info("Redis cache connected");
-    });
+      redis.on("connect", () => {
+        logger.info("Redis cache connected");
+      });
+    }
 
-    return redis;
+    return redis ?? null;
   } catch (err) {
     logger.error("Failed to initialize Redis cache", { err });
     return null;
