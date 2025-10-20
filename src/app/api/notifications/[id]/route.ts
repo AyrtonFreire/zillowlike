@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   
@@ -12,9 +12,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   // TODO: Delete from database
   // await prisma.notification.delete({
-  //   where: { id: params.id, userId: session.user.id }
+  //   where: { id, userId: session.user.id }
   // });
 
   return NextResponse.json({ success: true });
