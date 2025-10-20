@@ -29,6 +29,25 @@ export default function UserDashboard() {
     }
   }, [status, router]);
 
+  // CRITICAL: Redirect users to their correct dashboard based on role
+  useEffect(() => {
+    if (status === "authenticated" && role) {
+      console.log("🔀 Dashboard redirect check:", { role });
+      
+      if (role === "ADMIN") {
+        console.log("🔀 Redirecting ADMIN to /admin");
+        router.push("/admin");
+      } else if (role === "REALTOR") {
+        console.log("🔀 Redirecting REALTOR to /realtor");
+        router.push("/realtor");
+      } else if (role === "OWNER") {
+        console.log("🔀 Redirecting OWNER to /owner");
+        router.push("/owner");
+      }
+      // USER stays on /dashboard
+    }
+  }, [status, role, router]);
+
   useEffect(() => {
     if (user) {
       // Load favorites

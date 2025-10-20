@@ -1,7 +1,6 @@
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
 const providers = [] as any[];
@@ -90,7 +89,7 @@ export const authOptions: NextAuthOptions = {
 
           // Check if this OAuth account is linked
           const accountExists = dbUser.accounts.some(
-            (acc) => acc.provider === account.provider && acc.providerAccountId === account.providerAccountId
+            (acc: any) => acc.provider === account.provider && acc.providerAccountId === account.providerAccountId
           );
 
           if (!accountExists) {
