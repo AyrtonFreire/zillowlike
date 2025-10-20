@@ -42,16 +42,17 @@ interface Lead {
 
 interface RealtorQueue {
   id: string;
-  userId: string;
+  realtorId: string;
   status: string;
-  priority: number;
-  lastLeadAt: string | null;
-  user: {
+  position: number;
+  activeLeads: number;
+  lastActivity: string;
+  realtor: {
     name: string;
     email: string;
   };
   _count: {
-    leads: number;
+    candidatures: number;
   };
 }
 
@@ -268,8 +269,8 @@ export default function AdminLeadsPage() {
                   <tr key={queue.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-medium text-gray-900">{queue.user.name}</p>
-                        <p className="text-sm text-gray-500">{queue.user.email}</p>
+                        <p className="font-medium text-gray-900">{queue.realtor.name}</p>
+                        <p className="text-sm text-gray-500">{queue.realtor.email}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -280,13 +281,13 @@ export default function AdminLeadsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-gray-900 font-medium">{queue.priority}</span>
+                      <span className="text-gray-900 font-medium">{queue.position}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-gray-900 font-medium">{queue._count.leads}</span>
+                      <span className="text-gray-900 font-medium">{queue.activeLeads}</span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {queue.lastLeadAt ? new Date(queue.lastLeadAt).toLocaleString('pt-BR') : "Nunca"}
+                      {new Date(queue.lastActivity).toLocaleString('pt-BR')}
                     </td>
                   </tr>
                 ))}

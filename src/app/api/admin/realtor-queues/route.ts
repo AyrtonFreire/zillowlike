@@ -25,7 +25,7 @@ export async function GET() {
     // Fetch all realtor queues
     const queues = await prisma.realtorQueue.findMany({
       include: {
-        user: {
+        realtor: {
           select: {
             name: true,
             email: true,
@@ -33,12 +33,12 @@ export async function GET() {
         },
         _count: {
           select: {
-            leads: true,
+            candidatures: true,
           },
         },
       },
       orderBy: {
-        priority: "asc",
+        position: "asc",
       },
     });
 
