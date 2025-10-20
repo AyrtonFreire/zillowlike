@@ -25,6 +25,7 @@ interface Application {
     name: string;
     email: string;
   };
+  cpf: string;
   creci: string;
   creciState: string;
   creciExpiry: string;
