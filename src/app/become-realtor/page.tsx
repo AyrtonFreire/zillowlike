@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ModernNavbar } from "@/components/modern";
 import { validateCPF, formatCPF } from "@/lib/validators/cpf";
+import { validateCRECI, checkCRECIExpiry } from "@/lib/validators/creci";
 import { 
   Upload, 
   FileText, 
@@ -15,7 +16,8 @@ import {
   Briefcase,
   CheckCircle,
   AlertCircle,
-  Loader2
+  Loader2,
+  Info
 } from "lucide-react";
 
 const BRAZILIAN_STATES = [
@@ -41,6 +43,7 @@ export default function BecomeRealtorPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     cpf: "",
@@ -113,15 +116,10 @@ export default function BecomeRealtorPage() {
     }
   };
 
-  const validateCRECI = (creci: string): boolean => {
-    // CRECI format: XXXXXX or XXXXXX-F (6 digits optionally followed by -F)
-    const creciRegex = /^\d{4,6}(-F)?$/;
-    return creciRegex.test(creci);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setWarnings([]);
     setLoading(true);
 
     try {
@@ -131,9 +129,24 @@ export default function BecomeRealtorPage() {
         throw new Error("CPF inválido");
       }
 
-      // 2. Validar CRECI
-      if (!validateCRECI(formData.creci)) {
-        throw new Error("CRECI inválido. Use o formato: 123456 ou 123456-F");
+      // 2. Validar CRECI avançado
+      const creciValidation = validateCRECI(formData.creci, formData.creciState);
+      if (!creciValidation.valid) {
+        throw new Error(creciValidation.message || "CRECI inválido");
+      }
+      
+      // Adiciona warnings do CRECI
+      if (creciValidation.warnings) {
+        setWarnings(prev => [...prev, ...creciValidation.warnings!]);
+      }
+
+      // 3. Verifica validade do CRECI
+      const expiryCheck = checkCRECIExpiry(new Date(formData.creciExpiry));
+      if (expiryCheck.isExpired) {
+        throw new Error("CRECI expirado. Renove antes de aplicar.");
+      }
+      if (expiryCheck.isExpiringSoon) {
+        setWarnings(prev => [...prev, `CRECI expira em ${expiryCheck.daysUntilExpiry} dias. Considere renovar.`]);
       }
 
       if (!formData.creciState) {
@@ -247,6 +260,20 @@ export default function BecomeRealtorPage() {
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-red-800">{error}</p>
+            </div>
+          )}
+
+          {warnings.length > 0 && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-3 mb-2">
+                <Info className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <p className="font-semibold text-yellow-800">Avisos:</p>
+              </div>
+              <ul className="ml-8 space-y-1">
+                {warnings.map((warning, idx) => (
+                  <li key={idx} className="text-sm text-yellow-700">• {warning}</li>
+                ))}
+              </ul>
             </div>
           )}
 
