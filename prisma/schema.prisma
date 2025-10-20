@@ -429,6 +429,7 @@ model RealtorApplication {
   user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   // Dados profissionais
+  cpf                 String
   creci               String
   creciState          String            // UF do CRECI (PE, BA, etc)
   creciExpiry         DateTime

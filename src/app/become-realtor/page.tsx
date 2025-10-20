@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ModernNavbar } from "@/components/modern";
+import { validateCPF, formatCPF } from "@/lib/validators/cpf";
 import { 
   Upload, 
   FileText, 
@@ -42,6 +43,7 @@ export default function BecomeRealtorPage() {
   const [success, setSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
+    cpf: "",
     creci: "",
     creciState: "",
     creciExpiry: "",
@@ -124,6 +126,12 @@ export default function BecomeRealtorPage() {
 
     try {
       // Validations
+      // 1. Validar CPF
+      if (!validateCPF(formData.cpf)) {
+        throw new Error("CPF inválido");
+      }
+
+      // 2. Validar CRECI
       if (!validateCRECI(formData.creci)) {
         throw new Error("CRECI inválido. Use o formato: 123456 ou 123456-F");
       }
@@ -250,6 +258,26 @@ export default function BecomeRealtorPage() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* CPF */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  CPF *
+                </label>
+                <input
+                  type="text"
+                  name="cpf"
+                  value={formData.cpf}
+                  onChange={(e) => {
+                    const formatted = formatCPF(e.target.value);
+                    setFormData(prev => ({ ...prev, cpf: formatted }));
+                  }}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
               {/* CRECI */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

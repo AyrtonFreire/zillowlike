@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     const application = await prisma.realtorApplication.create({
       data: {
         userId,
+        cpf: data.cpf,
         creci: data.creci,
         creciState: data.creciState,
         creciExpiry: new Date(data.creciExpiry),
