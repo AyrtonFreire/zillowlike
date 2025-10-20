@@ -187,7 +187,7 @@ export default function GuiaVendaPage() {
             <div className="space-y-3 text-sm">
               <p>🏆 <strong>Primeira impressão:</strong> Os primeiros 15 dias de anúncio são cruciais. Capriche!</p>
               <p>📱 <strong>Responda rápido:</strong> Interessados procuram vários imóveis. Seja ágil nas respostas.</p>
-              <p>🤝 <strong>Flexibilidade:</strong> Esteja aberto a negociar. Venda rápida > Preço perfeito.</p>
+              <p>🤝 <strong>Flexibilidade:</strong> Esteja aberto a negociar. Venda rápida &gt; Preço perfeito.</p>
               <p>📄 <strong>Documentação em dia:</strong> IPTU, matrícula, condomínio. Acelera a venda.</p>
               <p>🎯 <strong>Considere corretor:</strong> Se não tem tempo, um corretor pode valer a pena.</p>
             </div>
