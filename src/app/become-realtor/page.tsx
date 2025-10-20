@@ -4,6 +4,9 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ModernNavbar } from "@/components/modern";
+import { validateCPF, formatCPF } from "@/lib/validators/cpf";
+import { validateCRECI, checkCRECIExpiry } from "@/lib/validators/creci";
+import { checkImageQuality, validateCRECIDocument } from "@/lib/ocr/document-reader";
 import { 
   Upload, 
   FileText, 
@@ -14,7 +17,8 @@ import {
   Briefcase,
   CheckCircle,
   AlertCircle,
-  Loader2
+  Loader2,
+  Info
 } from "lucide-react";
 
 const BRAZILIAN_STATES = [
@@ -42,6 +46,7 @@ export default function BecomeRealtorPage() {
   const [success, setSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
+    cpf: "",
     creci: "",
     creciState: "",
     creciExpiry: "",
@@ -51,6 +56,9 @@ export default function BecomeRealtorPage() {
     bio: "",
     acceptedTerms: false,
   });
+
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [ocrProgress, setOcrProgress] = useState<string>("");
 
   const [files, setFiles] = useState({
     creciDocument: null as File | null,
@@ -90,42 +98,78 @@ export default function BecomeRealtorPage() {
     }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: "creciDocument" | "identityDocument") => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, field: "creciDocument" | "identityDocument") => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError("Arquivo muito grande. Tamanho máximo: 5MB");
-        return;
-      }
-      
-      // Validate file type
-      const validTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
-      if (!validTypes.includes(file.type)) {
-        setError("Tipo de arquivo inválido. Use JPG, PNG ou PDF");
-        return;
-      }
-      
-      setFiles(prev => ({ ...prev, [field]: file }));
-      setError("");
-    }
-  };
+    if (!file) return;
 
-  const validateCRECI = (creci: string): boolean => {
-    // CRECI format: XXXXXX or XXXXXX-F (6 digits optionally followed by -F)
-    const creciRegex = /^\d{4,6}(-F)?$/;
-    return creciRegex.test(creci);
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Arquivo muito grande. Tamanho máximo: 5MB");
+      return;
+    }
+    
+    // Validate file type
+    const validTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
+    if (!validTypes.includes(file.type)) {
+      setError("Tipo de arquivo inválido. Use JPG, PNG ou PDF");
+      return;
+    }
+
+    setFiles(prev => ({ ...prev, [field]: file }));
+    setError("");
+
+    // Check image quality
+    const quality = await checkImageQuality(file);
+    if (!quality.isGoodQuality) {
+      setWarnings(prev => [...prev, ...quality.issues]);
+    }
+
+    // OCR para documento CRECI
+    if (field === "creciDocument" && formData.creci && file.type.startsWith("image/")) {
+      setOcrProgress("Analisando documento CRECI...");
+      try {
+        const ocrResult = await validateCRECIDocument(file, formData.creci);
+        setOcrProgress("");
+        
+        if (!ocrResult.valid && ocrResult.confidence > 50) {
+          setWarnings(prev => [...prev, "CRECI não encontrado no documento. Verifique se o número está correto."]);
+        }
+      } catch (err) {
+        setOcrProgress("");
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setWarnings([]);
     setLoading(true);
 
     try {
-      // Validations
-      if (!validateCRECI(formData.creci)) {
-        throw new Error("CRECI inválido. Use o formato: 123456 ou 123456-F");
+      // 1. Validação de CPF
+      if (!validateCPF(formData.cpf)) {
+        throw new Error("CPF inválido");
+      }
+
+      // 2. Validação avançada de CRECI
+      const creciValidation = validateCRECI(formData.creci, formData.creciState);
+      if (!creciValidation.valid) {
+        throw new Error(creciValidation.message || "CRECI inválido");
+      }
+      
+      // Adiciona warnings do CRECI
+      if (creciValidation.warnings) {
+        setWarnings(prev => [...prev, ...creciValidation.warnings!]);
+      }
+
+      // 3. Verifica validade do CRECI
+      const expiryCheck = checkCRECIExpiry(new Date(formData.creciExpiry));
+      if (expiryCheck.isExpired) {
+        throw new Error("CRECI expirado. Renove antes de aplicar.");
+      }
+      if (expiryCheck.isExpiringSoon) {
+        setWarnings(prev => [...prev, `CRECI expira em ${expiryCheck.daysUntilExpiry} dias. Considere renovar.`]);
       }
 
       if (!formData.creciState) {
