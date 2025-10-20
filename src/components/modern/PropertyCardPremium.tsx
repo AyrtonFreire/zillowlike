@@ -250,11 +250,12 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
 
             {/* Share Button */}
             <motion.button
-              whileTap={{ scale: 0.9 }}
+              whileTap={{ scale: 0.95 }}
               onClick={handleShare}
-              className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-2 rounded-full shadow-md hover:shadow-lg transition-all opacity-70 hover:opacity-100"
+              className="p-1.5 rounded-md transition-colors hover:bg-gray-50"
+              aria-label="Compartilhar"
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-5 h-5 text-purple-600 hover:text-blue-600 transition-colors" />
             </motion.button>
           </div>
 

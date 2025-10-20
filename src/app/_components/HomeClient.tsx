@@ -35,6 +35,7 @@ export default function HomeClient() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [savedSearches, setSavedSearches] = useState<Array<{label: string; params: string; ts: number}>>([]);
   const [toast, setToast] = useState<{ message: string; type?: "success" | "error" | "info" } | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const queryString = useMemo(() => {
     return buildSearchParams({
@@ -410,7 +411,7 @@ export default function HomeClient() {
               </div>
             ) : (
               items.map((p) => (
-                <div key={p.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+                <div key={p.id} onMouseEnter={() => setHoveredId(p.id)} onMouseLeave={() => setHoveredId(null)} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group">
                   <div className="relative">
                     <div className="aspect-w-16 aspect-h-12">
                       {p.images?.[0]?.url ? (
@@ -501,7 +502,7 @@ export default function HomeClient() {
           </div>
         ) : (
           <div className="h-[600px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <Map items={items} />
+            <Map items={items} highlightId={hoveredId ?? undefined} onHoverChange={(id) => setHoveredId(id)} />
           </div>
         )}
     </div>
