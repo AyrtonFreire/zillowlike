@@ -39,7 +39,7 @@ function getRedisClient(): Redis | null {
     if (hasUrl) {
       redis = new Redis(redisUrl!, {
         maxRetriesPerRequest: 3,
-        retryStrategy: (times) => {
+        retryStrategy: (times: number): number | null => {
           if (times > 3) return null;
           return Math.min(times * 100, 2000);
         },
@@ -50,7 +50,7 @@ function getRedisClient(): Redis | null {
         host: redisHostEnv!,
         port: Number.isFinite(redisPort) ? redisPort : 6379,
         maxRetriesPerRequest: 3,
-        retryStrategy: (times) => {
+        retryStrategy: (times: number): number | null => {
           if (times > 3) return null;
           return Math.min(times * 100, 2000);
         },
@@ -58,7 +58,7 @@ function getRedisClient(): Redis | null {
     }
 
     if (redis) {
-      redis.on("error", (err) => {
+      redis.on("error", (err: unknown) => {
         logger.error("Redis connection error", { err });
       });
 
@@ -68,7 +68,7 @@ function getRedisClient(): Redis | null {
     }
 
     return redis ?? null;
-  } catch (err) {
+  } catch (err: unknown) {
     logger.error("Failed to initialize Redis cache", { err });
     return null;
   }

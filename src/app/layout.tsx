@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import "../styles/design-system.css";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ClientProviders from "./ClientProviders";
 
@@ -42,7 +43,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body

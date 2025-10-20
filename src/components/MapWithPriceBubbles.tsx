@@ -17,6 +17,8 @@ type MapProps = {
   items: Item[];
   isLoading?: boolean;
   onBoundsChange?: (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => void;
+  autoFitOnItemsChange?: boolean; // default: false (não mover automaticamente)
+  onHoverChange?: (id: string | null) => void; // notifica página para destacar card
 };
 
 function PriceBubbleIcon(price: number, isHighlighted: boolean) {
@@ -140,7 +142,7 @@ function offsetPosition(lat: number, lng: number, index: number, total: number):
   return [offsetLat, offsetLng];
 }
 
-function MapController({ items, onBoundsChange }: { items: Item[]; onBoundsChange?: (bounds: any) => void }) {
+function MapController({ items, onBoundsChange, autoFitOnItemsChange = false, onHoverChange }: { items: Item[]; onBoundsChange?: (bounds: any) => void; autoFitOnItemsChange?: boolean; onHoverChange?: (id: string | null) => void }) {
   const map = useMap();
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(map.getZoom());
@@ -261,33 +263,25 @@ function MapController({ items, onBoundsChange }: { items: Item[]; onBoundsChang
     return initialClusters;
   }, [items, zoom]);
 
-  // Fit bounds on initial load - only when items change significantly
+  // Não mover automaticamente: só mover se explicitamente habilitado
   const prevItemsCountRef = useRef(0);
-  
   useEffect(() => {
+    if (!autoFitOnItemsChange) return;
     if (items.length === 0) return;
-    
-    // Only fit bounds if:
-    // 1. First load (prevCount was 0)
-    // 2. Number of items changed significantly (not just from map movement)
     const prevCount = prevItemsCountRef.current;
     const shouldFit = prevCount === 0 || Math.abs(items.length - prevCount) > items.length * 0.3;
-    
-    if (shouldFit) {
-      if (items.length === 1) {
-        // For single item, only set view if we're not already zoomed in
-        const currentZoom = map.getZoom();
-        if (currentZoom < 13) {
-          map.setView([items[0].latitude, items[0].longitude], 13);
-        }
-      } else {
-        const bounds = L.latLngBounds(items.map(p => [p.latitude, p.longitude] as [number, number]));
-        map.fitBounds(bounds, { padding: [50, 50] });
+    if (!shouldFit) return;
+    if (items.length === 1) {
+      const currentZoom = map.getZoom();
+      if (currentZoom < 13) {
+        map.setView([items[0].latitude, items[0].longitude], 13);
       }
-      
-      prevItemsCountRef.current = items.length;
+    } else {
+      const bounds = L.latLngBounds(items.map(p => [p.latitude, p.longitude] as [number, number]));
+      map.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [items, map]);
+    prevItemsCountRef.current = items.length;
+  }, [items, map, autoFitOnItemsChange]);
 
   // Listen for highlight events
   useEffect(() => {
@@ -298,6 +292,10 @@ function MapController({ items, onBoundsChange }: { items: Item[]; onBoundsChang
 
     const handleUnhighlight = () => {
       setHighlightedId(null);
+      try {
+        window.dispatchEvent(new CustomEvent('list-highlight-card', { detail: { id: null } }));
+      } catch {}
+      onHoverChange?.(null);
     };
 
     window.addEventListener('map-highlight-marker', handleHighlight);
@@ -359,11 +357,16 @@ function MapController({ items, onBoundsChange }: { items: Item[]; onBoundsChang
                 mouseover: () => {
                   // Highlight first item in cluster
                   if (cluster.items[0]) {
-                    setHighlightedId(cluster.items[0].id);
+                    const firstId = cluster.items[0].id;
+                    setHighlightedId(firstId);
+                    try { window.dispatchEvent(new CustomEvent('list-highlight-card', { detail: { id: firstId } })); } catch {}
+                    onHoverChange?.(firstId);
                   }
                 },
                 mouseout: () => {
                   setHighlightedId(null);
+                  try { window.dispatchEvent(new CustomEvent('list-highlight-card', { detail: { id: null } })); } catch {}
+                  onHoverChange?.(null);
                 },
               }}
             />
@@ -389,9 +392,13 @@ function MapController({ items, onBoundsChange }: { items: Item[]; onBoundsChang
                   },
                   mouseover: () => {
                     setHighlightedId(item.id);
+                    try { window.dispatchEvent(new CustomEvent('list-highlight-card', { detail: { id: item.id } })); } catch {}
+                    onHoverChange?.(item.id);
                   },
                   mouseout: () => {
                     setHighlightedId(null);
+                    try { window.dispatchEvent(new CustomEvent('list-highlight-card', { detail: { id: null } })); } catch {}
+                    onHoverChange?.(null);
                   },
                 }}
               />
@@ -403,11 +410,14 @@ function MapController({ items, onBoundsChange }: { items: Item[]; onBoundsChang
   );
 }
 
-export default function MapWithPriceBubbles({ items, isLoading, onBoundsChange }: MapProps) {
-  const center = useMemo(() => {
-    if (items.length > 0) return [items[0].latitude, items[0].longitude] as [number, number];
-    return [-9.4048, -40.5058] as [number, number]; // Petrolina/Juazeiro
-  }, [items.length > 0 ? items[0]?.id : null]);
+export default function MapWithPriceBubbles({ items, isLoading, onBoundsChange, autoFitOnItemsChange = false, onHoverChange }: MapProps) {
+  // Centro inicial fixo: não recenter quando os itens mudarem
+  const initialCenterRef = useRef<[number, number]>(
+    items.length > 0
+      ? [items[0].latitude, items[0].longitude]
+      : ([-9.4048, -40.5058] as [number, number])
+  );
+  const center = initialCenterRef.current;
 
   if (isLoading) {
     return (
@@ -439,7 +449,7 @@ export default function MapWithPriceBubbles({ items, isLoading, onBoundsChange }
         maxZoom={19}
         minZoom={3}
       />
-      <MapController items={items} onBoundsChange={onBoundsChange} />
+      <MapController items={items} onBoundsChange={onBoundsChange} autoFitOnItemsChange={autoFitOnItemsChange} onHoverChange={onHoverChange} />
     </MapContainer>
   );
 }

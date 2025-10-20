@@ -119,7 +119,17 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
   };
 
   return (
-    <div onClick={handleClick} style={{ cursor: 'pointer' }} className="h-full">
+    <div
+      onClick={handleClick}
+      onMouseEnter={() => {
+        try { window.dispatchEvent(new CustomEvent('map-highlight-marker', { detail: { id: property.id } })); } catch {}
+      }}
+      onMouseLeave={() => {
+        try { window.dispatchEvent(new CustomEvent('map-unhighlight-marker')); } catch {}
+      }}
+      style={{ cursor: 'pointer' }}
+      className="h-full"
+    >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -34,6 +34,7 @@ export default function Home() {
   const [featuredLoading, setFeaturedLoading] = useState(true);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [hoverId, setHoverId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'split' | 'list'>('split');
 
   // Estados do overlay
   const [overlayId, setOverlayId] = useState<string | null>(null);
@@ -163,6 +164,17 @@ export default function Home() {
     }
   }, [hasSearched, search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page]);
 
+  // Ouvir eventos de destaque vindos do mapa
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent;
+      const id = ce?.detail?.id ?? null;
+      setHoverId(id);
+    };
+    window.addEventListener('list-highlight-card', handler as EventListener);
+    return () => window.removeEventListener('list-highlight-card', handler as EventListener);
+  }, []);
+
   // Funções de controle
   const toggleFavorite = useCallback(async (propertyId: string) => {
     if (!user) {
@@ -245,9 +257,9 @@ export default function Home() {
 
       {/* Search Results - Split Screen Layout */}
       {hasSearched && (
-        <div className="flex h-[calc(100vh-80px)]">
+        <div className={`${viewMode === 'split' ? 'flex' : ''} h-[calc(100vh-80px)]`}>
           {/* Left Side - Property List */}
-          <div className="w-full lg:w-1/2 overflow-y-auto">
+          <div className={`w-full ${viewMode === 'split' ? 'lg:w-1/2' : 'lg:w-full'} overflow-y-auto`}> 
             {/* Filters Bar */}
             <SearchFiltersBar
               filters={{
@@ -320,10 +332,24 @@ export default function Home() {
                     em <span className="font-medium">{city}, {state}</span>
                   </p>
                 )}
+                <div className="mt-4 inline-flex bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('split')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${viewMode === 'split' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                  >
+                    Lista + Mapa
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                  >
+                    Somente Lista
+                  </button>
+                </div>
               </div>
 
-              {/* Property Cards - 3 Columns Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {/* Property Cards Grid */}
+              <div className={`grid gap-6 ${viewMode === 'list' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
                 {isLoading ? (
                   [...Array(6)].map((_, i) => (
                     <div key={i} className="card animate-pulse p-4">
@@ -348,49 +374,49 @@ export default function Home() {
                   </div>
                 ) : (
                   properties.map((property) => (
-                    <PropertyCardPremium
+                    <div
                       key={property.id}
-                      property={property}
-                      onOpenOverlay={openOverlay}
-                    />
+                      className={`rounded-xl transition-all duration-200 ${hoverId === property.id ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-white' : ''}`}
+                    >
+                      <PropertyCardPremium
+                        property={property}
+                        onOpenOverlay={openOverlay}
+                      />
+                    </div>
                   ))
                 )}
               </div>
             </div>
           </div>
 
-          {/* Right Side - Interactive Map (Desktop Only) */}
-          <div className="hidden lg:block lg:w-1/2 sticky top-20 h-[calc(100vh-80px)]">
-            <MapWithPriceBubbles
-              items={properties}
-              isLoading={isLoading}
-              onBoundsChange={async (bounds) => {
-                // Fetch properties within the new map bounds
-                const params = new URLSearchParams(searchParams.toString());
-                params.set('minLat', bounds.minLat.toString());
-                params.set('maxLat', bounds.maxLat.toString());
-                params.set('minLng', bounds.minLng.toString());
-                params.set('maxLng', bounds.maxLng.toString());
-                
-                console.log('Map bounds changed:', bounds);
-                console.log('Fetching with params:', params.toString());
-                
-                try {
-                  const res = await fetch(`/api/properties?${params.toString()}`);
-                  const data = await res.json();
-                  
-                  console.log('Map bounds response:', data);
-                  
-                  if (data.success) {
-                    setProperties(data.properties || []);
-                    setTotal(data.total || 0);
+          {/* Right Side - Interactive Map (Desktop Only, oculto se 'Somente Lista') */}
+          {viewMode === 'split' && (
+            <div className="hidden lg:block lg:w-1/2 sticky top-20 h-[calc(100vh-80px)]">
+              <MapWithPriceBubbles
+                items={properties}
+                isLoading={isLoading}
+                onBoundsChange={async (bounds) => {
+                  // Fetch properties within the new map bounds
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set('minLat', bounds.minLat.toString());
+                  params.set('maxLat', bounds.maxLat.toString());
+                  params.set('minLng', bounds.minLng.toString());
+                  params.set('maxLng', bounds.maxLng.toString());
+                  try {
+                    const res = await fetch(`/api/properties?${params.toString()}`);
+                    const data = await res.json();
+                    if (data.success) {
+                      setProperties(data.properties || []);
+                      setTotal(data.total || 0);
+                    }
+                  } catch (error) {
+                    console.error('Error fetching properties by bounds:', error);
                   }
-                } catch (error) {
-                  console.error('Error fetching properties by bounds:', error);
-                }
-              }}
-            />
-          </div>
+                }}
+                onHoverChange={(id) => setHoverId(id)}
+              />
+            </div>
+          )}
         </div>
       )}
 

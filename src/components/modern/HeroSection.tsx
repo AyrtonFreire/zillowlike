@@ -263,24 +263,33 @@ export default function HeroSection() {
                       </div>
                     ) : (
                       suggestions.map((suggestion, index) => (
-                        <motion.button
-                          key={index}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          onClick={() => handleSuggestionClick(suggestion)}
-                          className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-blue-50 rounded-xl transition-all text-left group"
-                        >
-                          <div className="flex items-center gap-3">
-                            <MapPin className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors" />
-                            <span className="text-gray-700 group-hover:text-blue-600 font-medium">
-                              {suggestion.label}
+                        <div key={index}>
+                          {/* Cabeçalhos: primeira linha = Cidade; resto = Bairros */}
+                          {index === 0 && (
+                            <div className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Cidade</div>
+                          )}
+                          {index === 1 && suggestions[0] && suggestions[0].neighborhood === null && (
+                            <div className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Bairros</div>
+                          )}
+
+                          <motion.button
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            onClick={() => handleSuggestionClick(suggestion)}
+                            className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-blue-50 rounded-xl transition-all text-left group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <MapPin className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                              <span className="text-gray-700 group-hover:text-blue-600 font-medium">
+                                {suggestion.label}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-400 group-hover:text-blue-600">
+                              {suggestion.count} {suggestion.count === 1 ? 'imóvel' : 'imóveis'}
                             </span>
-                          </div>
-                          <span className="text-xs text-gray-400 group-hover:text-blue-600">
-                            {suggestion.count} {suggestion.count === 1 ? 'imóvel' : 'imóveis'}
-                          </span>
-                        </motion.button>
+                          </motion.button>
+                        </div>
                       ))
                     )}
                   </div>
