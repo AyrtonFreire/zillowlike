@@ -1,10 +1,14 @@
 import { Worker } from "bullmq";
-import { QUEUE_NAMES, redisConnection } from "@/lib/queue/config";
+import { QUEUE_NAMES, getRedisConnection } from "@/lib/queue/config";
 import { LeadDistributionService } from "@/lib/lead-distribution-service";
 import { PrismaClient } from "@prisma/client";
 import { QueueService } from "@/lib/queue-service";
 
 const prisma = new PrismaClient();
+const connection = getRedisConnection();
+
+// If Redis is not configured (or during build), do not initialize workers
+if (connection) {
 
 new Worker(
   QUEUE_NAMES.LEAD_DISTRIBUTION,
@@ -12,7 +16,7 @@ new Worker(
     const { leadId } = job.data as { leadId: string };
     await LeadDistributionService.distributeNewLead(leadId);
   },
-  { connection: redisConnection, concurrency: 5 }
+  { connection, concurrency: 5 }
 );
 
 new Worker(
@@ -20,7 +24,7 @@ new Worker(
   async () => {
     await LeadDistributionService.releaseExpiredReservations();
   },
-  { connection: redisConnection, concurrency: 1 }
+  { connection, concurrency: 1 }
 );
 
 new Worker(
@@ -40,7 +44,7 @@ new Worker(
       }
     }
   },
-  { connection: redisConnection, concurrency: 1 }
+  { connection, concurrency: 1 }
 );
 
 new Worker(
@@ -51,7 +55,7 @@ new Worker(
       await prisma.realtorQueue.update({ where: { id: queues[i].id }, data: { position: i + 1 } });
     }
   },
-  { connection: redisConnection, concurrency: 1 }
+  { connection, concurrency: 1 }
 );
 
 new Worker(
@@ -62,5 +66,7 @@ new Worker(
     await prisma.scoreHistory.deleteMany({ where: { createdAt: { lt: thirtyDaysAgo } } });
     await prisma.lead.deleteMany({ where: { status: "EXPIRED", expiresAt: { lt: thirtyDaysAgo } } });
   },
-  { connection: redisConnection, concurrency: 1 }
+  { connection, concurrency: 1 }
 );
+
+}
