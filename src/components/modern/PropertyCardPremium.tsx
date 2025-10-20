@@ -83,7 +83,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
       style: "currency",
       currency: "BRL",
       minimumFractionDigits: 0,
-    }).format(property.price)}\n\nLocalização: ${property.city}/${property.state}\n\nVeja mais em: ${url}`);
+    }).format(property.price / 100)}\n\nLocalização: ${property.city}/${property.state}\n\nVeja mais em: ${url}`);
     window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
   };
 
@@ -96,7 +96,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
       style: "currency",
       currency: "BRL",
       minimumFractionDigits: 0,
-    }).format(property.price)}\n\nLocalização: ${property.city}/${property.state}\n\nVeja mais em: ${url}`);
+    }).format(property.price / 100)}\n\nLocalização: ${property.city}/${property.state}\n\nVeja mais em: ${url}`);
     window.open(`https://outlook.live.com/mail/0/deeplink/compose?subject=${subject}&body=${body}`, '_blank');
   };
 
@@ -245,7 +245,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
                 style: "currency",
                 currency: "BRL",
                 minimumFractionDigits: 0,
-              }).format(property.price)}
+              }).format(property.price / 100)}
             </span>
 
             {/* Share Button */}
@@ -382,7 +382,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
                 style: "currency",
                 currency: "BRL",
                 minimumFractionDigits: 0,
-              }).format(property.price / property.areaM2)}/m²
+              }).format((property.price / 100) / property.areaM2)}/m²
             </div>
           )}
         </div>

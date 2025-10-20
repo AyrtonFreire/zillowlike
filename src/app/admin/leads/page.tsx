@@ -16,6 +16,7 @@ import {
   Eye,
   RefreshCw
 } from "lucide-react";
+import { ModernNavbar } from "@/components/modern";
 
 interface Lead {
   id: string;
@@ -173,9 +174,10 @@ export default function AdminLeadsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-gray-50">
+      <ModernNavbar />
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>

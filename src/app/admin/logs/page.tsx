@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Activity, AlertCircle, Info, CheckCircle } from "lucide-react";
 import Link from "next/link";
+import { ModernNavbar } from "@/components/modern";
 
 interface Log {
   id: string;
@@ -74,8 +75,9 @@ export default function AdminLogsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ModernNavbar />
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4 mb-4">
             <Link

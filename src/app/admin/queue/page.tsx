@@ -15,6 +15,7 @@ import {
   Award,
   Clock
 } from "lucide-react";
+import { ModernNavbar } from "@/components/modern";
 
 interface RealtorQueue {
   id: string;
@@ -123,7 +124,7 @@ export default function AdminQueuePage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-gray-600">Carregando fila...</p>
@@ -133,9 +134,10 @@ export default function AdminQueuePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
+    <div className="min-h-screen bg-gray-50">
+      <ModernNavbar />
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
