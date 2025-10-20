@@ -1,59 +1,43 @@
 import { Queue } from "bullmq";
-import { QUEUE_NAMES, redisConnection, defaultJobOptions } from "./config";
+import { QUEUE_NAMES, getRedisConnection, defaultJobOptions } from "./config";
 
 /**
  * Queue para distribuição de novos leads
  */
-export const leadDistributionQueue = new Queue(
-  QUEUE_NAMES.LEAD_DISTRIBUTION,
-  {
-    connection: redisConnection,
-    defaultJobOptions,
-  }
-);
+const connection = getRedisConnection();
+
+const maybeQueue = (name: string) =>
+  connection
+    ? new Queue(name, { connection, defaultJobOptions })
+    : null;
+
+export const leadDistributionQueue = maybeQueue(QUEUE_NAMES.LEAD_DISTRIBUTION);
 
 /**
  * Queue para liberar reservas expiradas
  */
-export const reservationExpiryQueue = new Queue(
-  QUEUE_NAMES.RESERVATION_EXPIRY,
-  {
-    connection: redisConnection,
-    defaultJobOptions,
-  }
-);
+export const reservationExpiryQueue = maybeQueue(QUEUE_NAMES.RESERVATION_EXPIRY);
 
 /**
  * Queue para expirar leads antigos
  */
-export const leadExpiryQueue = new Queue(QUEUE_NAMES.LEAD_EXPIRY, {
-  connection: redisConnection,
-  defaultJobOptions,
-});
+export const leadExpiryQueue = maybeQueue(QUEUE_NAMES.LEAD_EXPIRY);
 
 /**
  * Queue para recalcular posições na fila
  */
-export const queueRecalculationQueue = new Queue(
-  QUEUE_NAMES.QUEUE_RECALCULATION,
-  {
-    connection: redisConnection,
-    defaultJobOptions,
-  }
-);
+export const queueRecalculationQueue = maybeQueue(QUEUE_NAMES.QUEUE_RECALCULATION);
 
 /**
  * Queue para limpeza de dados antigos
  */
-export const cleanupQueue = new Queue(QUEUE_NAMES.CLEANUP, {
-  connection: redisConnection,
-  defaultJobOptions,
-});
+export const cleanupQueue = maybeQueue(QUEUE_NAMES.CLEANUP);
 
 /**
  * Adicionar job para distribuir lead
  */
 export async function scheduleLeadDistribution(leadId: string) {
+  if (!leadDistributionQueue) return Promise.resolve();
   return leadDistributionQueue.add(
     "distribute-lead",
     { leadId },
@@ -67,6 +51,7 @@ export async function scheduleLeadDistribution(leadId: string) {
  * Adicionar job recorrente para checar reservas expiradas
  */
 export async function scheduleReservationCheck() {
+  if (!reservationExpiryQueue) return Promise.resolve();
   return reservationExpiryQueue.add(
     "check-expired-reservations",
     {},
@@ -83,6 +68,7 @@ export async function scheduleReservationCheck() {
  * Adicionar job recorrente para expirar leads
  */
 export async function scheduleLeadExpiryCheck() {
+  if (!leadExpiryQueue) return Promise.resolve();
   return leadExpiryQueue.add(
     "check-expired-leads",
     {},
@@ -99,6 +85,7 @@ export async function scheduleLeadExpiryCheck() {
  * Adicionar job recorrente para recalcular fila
  */
 export async function scheduleQueueRecalculation() {
+  if (!queueRecalculationQueue) return Promise.resolve();
   return queueRecalculationQueue.add(
     "recalculate-queue",
     {},
@@ -115,6 +102,7 @@ export async function scheduleQueueRecalculation() {
  * Adicionar job recorrente para distribuir leads pendentes
  */
 export async function schedulePendingDistribution() {
+  if (!leadDistributionQueue) return Promise.resolve();
   return leadDistributionQueue.add(
     "distribute-pending",
     {},
@@ -131,6 +119,7 @@ export async function schedulePendingDistribution() {
  * Adicionar job recorrente para limpeza
  */
 export async function scheduleCleanup() {
+  if (!cleanupQueue) return Promise.resolve();
   return cleanupQueue.add(
     "cleanup-old-data",
     {},
@@ -147,6 +136,7 @@ export async function scheduleCleanup() {
  * Inicializar todos os jobs recorrentes
  */
 export async function initializeRecurringJobs() {
+  if (!connection) return; // queues desabilitadas
   await Promise.all([
     scheduleReservationCheck(),
     scheduleLeadExpiryCheck(),

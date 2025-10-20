@@ -11,26 +11,29 @@ export async function GET() {
 
     const queues = getQueues();
     const stats = await Promise.all(
-      Object.entries(queues).map(async ([name, queue]) => {
-        const [waiting, active, completed, failed, delayed, isPaused] = await Promise.all([
-          queue.getWaitingCount(),
-          queue.getActiveCount(),
-          queue.getCompletedCount(),
-          queue.getFailedCount(),
-          queue.getDelayedCount(),
-          queue.isPaused(),
-        ]);
+      Object.entries(queues)
+        .filter(([, queue]) => !!queue)
+        .map(async ([name, queue]) => {
+          const q = queue!;
+          const [waiting, active, completed, failed, delayed, isPaused] = await Promise.all([
+            q.getWaitingCount(),
+            q.getActiveCount(),
+            q.getCompletedCount(),
+            q.getFailedCount(),
+            q.getDelayedCount(),
+            q.isPaused(),
+          ]);
 
-        return {
-          name,
-          waiting,
-          active,
-          completed,
-          failed,
-          delayed,
-          paused: isPaused,
-        };
-      })
+          return {
+            name,
+            waiting,
+            active,
+            completed,
+            failed,
+            delayed,
+            paused: isPaused,
+          };
+        })
     );
 
     return NextResponse.json({ queues: stats });

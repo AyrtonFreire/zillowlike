@@ -1,14 +1,34 @@
 import { ConnectionOptions } from "bullmq";
 
 /**
- * Configuração de conexão Redis para BullMQ
+ * Obtém a configuração de conexão Redis para BullMQ de forma segura.
+ * - Não usa fallback para localhost em produção/build
+ * - Retorna null quando não configurado (desabilita filas)
+ * - Não inicializa durante o build da Vercel
  */
-export const redisConnection: ConnectionOptions = {
-  host: process.env.REDIS_HOST || "localhost",
-  port: parseInt(process.env.REDIS_PORT || "6379"),
-  password: process.env.REDIS_PASSWORD,
-  maxRetriesPerRequest: null, // Recomendado para BullMQ
-};
+export function getRedisConnection(): ConnectionOptions | null {
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return null;
+  }
+
+  const host = process.env.REDIS_HOST?.trim();
+  const portStr = process.env.REDIS_PORT?.trim();
+  const password = process.env.REDIS_PASSWORD?.trim();
+
+  if (!host || !portStr) {
+    return null;
+  }
+
+  const port = parseInt(portStr, 10);
+  if (!Number.isFinite(port)) return null;
+
+  return {
+    host,
+    port,
+    password,
+    maxRetriesPerRequest: null, // Recomendado para BullMQ
+  } satisfies ConnectionOptions;
+}
 
 /**
  * Nomes das queues

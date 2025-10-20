@@ -8,15 +8,24 @@ export async function GET() {
 
     // Check Redis (if configured)
     let redisStatus = "not_configured";
-    if (process.env.REDIS_HOST) {
+    const isBuild = process.env.NEXT_PHASE === "phase-production-build";
+    const hasUrl = !!process.env.REDIS_URL;
+    const hasHostPort = !!process.env.REDIS_HOST && !!process.env.REDIS_PORT;
+
+    if (!isBuild && (hasUrl || hasHostPort)) {
       try {
         const Redis = require("ioredis");
-        const redis = new Redis({
-          host: process.env.REDIS_HOST || "localhost",
-          port: parseInt(process.env.REDIS_PORT || "6379"),
-          maxRetriesPerRequest: 1,
-          connectTimeout: 2000,
-        });
+        const redis = hasUrl
+          ? new Redis(process.env.REDIS_URL as string, {
+              maxRetriesPerRequest: 1,
+              connectTimeout: 2000,
+            })
+          : new Redis({
+              host: process.env.REDIS_HOST as string,
+              port: parseInt(process.env.REDIS_PORT as string, 10),
+              maxRetriesPerRequest: 1,
+              connectTimeout: 2000,
+            });
         await redis.ping();
         redis.disconnect();
         redisStatus = "healthy";
