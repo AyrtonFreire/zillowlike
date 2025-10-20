@@ -34,6 +34,7 @@
     "helmet": "^8.1.0",
     "ioredis": "^5.8.1",
     "leaflet": "^1.9.4",
+    "lightningcss": "^1.28.2",
     "lucide-react": "^0.545.0",
     "nanoid": "^5.1.6",
     "next": "15.5.4",
