@@ -286,6 +286,27 @@ export default function BecomeRealtorPage() {
             </div>
           )}
 
+          {warnings.length > 0 && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-3 mb-2">
+                <Info className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <p className="font-semibold text-yellow-800">Avisos:</p>
+              </div>
+              <ul className="ml-8 space-y-1">
+                {warnings.map((warning, idx) => (
+                  <li key={idx} className="text-sm text-yellow-700">• {warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {ocrProgress && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+              <p className="text-blue-800">{ocrProgress}</p>
+            </div>
+          )}
+
           {/* Dados Profissionais */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -294,6 +315,26 @@ export default function BecomeRealtorPage() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* CPF */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  CPF *
+                </label>
+                <input
+                  type="text"
+                  name="cpf"
+                  value={formData.cpf}
+                  onChange={(e) => {
+                    const formatted = formatCPF(e.target.value);
+                    setFormData(prev => ({ ...prev, cpf: formatted }));
+                  }}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
               {/* CRECI */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
