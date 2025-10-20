@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   
@@ -12,9 +12,11 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   // TODO: Update database
   // await prisma.notification.update({
-  //   where: { id: params.id, userId: session.user.id },
+  //   where: { id, userId: session.user.id },
   //   data: { read: true }
   // });
 
