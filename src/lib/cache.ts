@@ -15,6 +15,11 @@ import { logger } from "./logger";
 let redis: Redis | null = null;
 
 function getRedisClient(): Redis | null {
+  // Don't connect during build time
+  if (typeof window === 'undefined' && process.env.NEXT_PHASE === 'phase-production-build') {
+    return null;
+  }
+
   if (redis) return redis;
 
   const redisUrl = process.env.REDIS_URL;
