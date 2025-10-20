@@ -291,6 +291,23 @@ export default function AdminDashboard() {
           </Link>
 
           <Link
+            href="/admin/queue"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-indigo-100 rounded-lg">
+                <Users className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Controle de Fila</h3>
+                <p className="text-sm text-gray-600">
+                  Gerenciar ordem dos corretores
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
             href="/admin/logs"
             className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
           >
