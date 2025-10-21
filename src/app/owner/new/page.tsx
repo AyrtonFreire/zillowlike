@@ -995,6 +995,8 @@ export default function NewPropertyPage() {
                 neighborhood,
                 conditionTags,
                 type,
+                description: description,
+                purpose: 'SALE',
               }}
             />
           </aside>

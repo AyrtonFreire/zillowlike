@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { city, state, type, q, minPrice, maxPrice } = parsed.data as any;
+    const { city, state, type, purpose, q, minPrice, maxPrice } = parsed.data as any;
     const pageRaw = Number(parsed.data.page ?? 1);
     const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
     const pageSizeRaw = Number(parsed.data.pageSize ?? 24);
@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
     if (city) where.city = { equals: city, mode: 'insensitive' as Prisma.QueryMode };
     if (state) where.state = { equals: state, mode: 'insensitive' as Prisma.QueryMode };
     if (type) where.type = type as any;
+    if (purpose) where.purpose = purpose as any;
     if (minPrice || maxPrice) {
       where.price = {};
       if (minPrice) where.price.gte = Number(minPrice);
@@ -127,7 +128,7 @@ export async function GET(req: NextRequest) {
       }),
       prisma.property.count({ where }),
     ]);
-    console.log("api/properties GET", { filters: { city, state, type, q, bedroomsMin, bathroomsMin, areaMin, status: where.status }, total });
+    console.log("api/properties GET", { filters: { city, state, type, purpose, q, bedroomsMin, bathroomsMin, areaMin, status: where.status }, total });
     return NextResponse.json({ 
       success: true,
       properties: items, 
@@ -163,7 +164,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { title, description, priceBRL, type, address, geo, details, images } = parsed.data;
+    const { title, description, priceBRL, type, purpose, address, geo, details, images } = parsed.data;
 
     const price = Math.round(Number(priceBRL) * 100);
     const userId = (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub;
@@ -195,36 +196,38 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const createData: any = {
+      title,
+      description,
+      price,
+      type,
+      ...(purpose ? { purpose } : {}),
+      ownerId: userId || undefined,
+      street: address.street,
+      neighborhood: address.neighborhood ?? null,
+      city: address.city,
+      state: address.state,
+      postalCode: address.postalCode ?? null,
+      latitude: geo.lat,
+      longitude: geo.lng,
+      bedrooms: details?.bedrooms ?? null,
+      bathrooms: details?.bathrooms ?? null,
+      areaM2: details?.areaM2 ?? null,
+      images:
+        Array.isArray(images) && images.length > 0
+          ? {
+              create: images
+                .filter((img: any) => !!img?.url)
+                .map((img: any, idx: number) => ({
+                  url: img.url,
+                  alt: img.alt ?? null,
+                  sortOrder: img.sortOrder ?? idx,
+                })),
+            }
+          : undefined,
+    };
     const created = await prisma.property.create({
-      data: {
-        title,
-        description,
-        price,
-        type,
-        ownerId: userId || undefined,
-        street: address.street,
-        neighborhood: address.neighborhood ?? null,
-        city: address.city,
-        state: address.state,
-        postalCode: address.postalCode ?? null,
-        latitude: geo.lat,
-        longitude: geo.lng,
-        bedrooms: details?.bedrooms ?? null,
-        bathrooms: details?.bathrooms ?? null,
-        areaM2: details?.areaM2 ?? null,
-        images:
-          Array.isArray(images) && images.length > 0
-            ? {
-                create: images
-                  .filter((img: any) => !!img?.url)
-                  .map((img: any, idx: number) => ({
-                    url: img.url,
-                    alt: img.alt ?? null,
-                    sortOrder: img.sortOrder ?? idx,
-                  })),
-              }
-            : undefined,
-      },
+      data: createData,
       include: { images: true },
     });
     console.log("api/properties POST created", { id: created.id, ownerId: created.ownerId, city: created.city, state: created.state, status: created.status });

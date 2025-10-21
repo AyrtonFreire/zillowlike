@@ -10,6 +10,8 @@ export const PropertyTypeEnum = z.enum([
   "COMMERCIAL",
 ]);
 
+export const PurposeEnum = z.enum(["SALE", "RENT"]);
+
 export const ConditionTagEnum = z.enum([
   "Mobiliado",
   "Semi-mobiliado",
@@ -29,6 +31,7 @@ export const PropertyCreateSchema = z.object({
     .positive()
     .max(1_000_000_000), // até R$ 1 bi (inteiro em reais)
   type: PropertyTypeEnum,
+  purpose: PurposeEnum.optional(),
   address: z.object({
     street: z.string().min(1).max(200),
     neighborhood: z.string().max(120).optional().nullable(),
@@ -66,6 +69,7 @@ export const PropertyQuerySchema = z.object({
   city: z.string().max(120).optional(),
   state: z.string().max(10).optional(),
   type: PropertyTypeEnum.optional(),
+  purpose: PurposeEnum.optional(),
   q: z.string().max(200).optional(),
   minPrice: z.string().regex(/^\d+$/).optional(), // em centavos
   maxPrice: z.string().regex(/^\d+$/).optional(), // em centavos

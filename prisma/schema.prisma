@@ -39,6 +39,12 @@ enum PropertyStatus {
   RENTED
 }
 
+// Finalidade do anúncio
+enum Purpose {
+  SALE
+  RENT
+}
+
 // Lead status
 enum LeadStatus {
   PENDING                // Aguardando candidaturas
@@ -92,6 +98,7 @@ model Property {
   price       Int            // price in BRL cents for precision
   type        PropertyType
   status      PropertyStatus @default(ACTIVE)
+  purpose     Purpose?
   ownerId     String?
   owner       User?          @relation("PropertyOwner", fields: [ownerId], references: [id])
 
@@ -129,6 +136,7 @@ model Property {
   @@index([city, state])
   @@index([price])
   @@index([type])
+  @@index([purpose])
   @@index([ownerId])
   @@index([status])
   @@map("properties")

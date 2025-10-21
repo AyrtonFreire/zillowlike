@@ -18,10 +18,11 @@ interface PropertyCardPremiumProps {
     areaM2?: number | null;
     isFeatured?: boolean;
     type?: string;
-    status?: string; // SALE or RENT
+    purpose?: "SALE" | "RENT";
     neighborhood?: string | null;
     parkingSpots?: number | null;
     conditionTags?: string[];
+    description?: string;
   };
   onOpenOverlay?: (id: string) => void;
 }
@@ -327,14 +328,9 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
             )}
           </AnimatePresence>
 
-          {/* Title */}
-          <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-            {property.title}
-          </h3>
-
-          {/* Type Badge */}
-          {property.type && (
-            <div className="flex items-center gap-2 mb-2">
+          {/* Tags row: Tipo + Finalidade (Venda/Aluguel) */}
+          <div className="flex items-center gap-2 mb-2">
+            {property.type && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full border border-gray-300">
                 <Home className="w-3 h-3 text-gray-600" />
                 <span className="text-xs font-bold text-gray-700 uppercase">
@@ -346,8 +342,15 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
                    property.type === 'STUDIO' ? 'Studio' : property.type}
                 </span>
               </div>
-            </div>
-          )}
+            )}
+            {property.purpose && (
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full border border-gray-300">
+                <span className="text-xs font-bold text-gray-700 uppercase">
+                  {property.purpose === 'RENT' ? 'Aluguel' : 'Venda'}
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Location */}
           <div className="flex items-center gap-1 text-gray-600 text-sm mb-2">
@@ -358,43 +361,11 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
             </span>
           </div>
 
-          {/* Features */}
-          <div className="flex items-center gap-3 text-gray-700 text-xs mb-2">
-            {property.bedrooms && (
-              <div className="flex items-center gap-1">
-                <Bed className="w-3.5 h-3.5" />
-                <span className="font-medium">{property.bedrooms}</span>
-              </div>
-            )}
-            {property.bathrooms && (
-              <div className="flex items-center gap-1">
-                <Bath className="w-3.5 h-3.5" />
-                <span className="font-medium">{property.bathrooms}</span>
-              </div>
-            )}
-            {property.areaM2 && (
-              <div className="flex items-center gap-1">
-                <Maximize className="w-3.5 h-3.5" />
-                <span className="font-medium">{property.areaM2}m²</span>
-              </div>
-            )}
-            {property.parkingSpots && (
-              <div className="flex items-center gap-1">
-                <Car className="w-3.5 h-3.5" />
-                <span className="font-medium">{property.parkingSpots}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Price per m² - Only for SALE properties */}
-          {property.areaM2 && property.status === 'SALE' && (
-            <div className="text-xs text-gray-500 mt-1">
-              {new Intl.NumberFormat("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-                minimumFractionDigits: 0,
-              }).format((property.price / 100) / property.areaM2)}/m²
-            </div>
+          {/* Description - clamped to 2 lines */}
+          {property.description && (
+            <p className="text-sm text-gray-700 line-clamp-2 mt-1">
+              {property.description}
+            </p>
           )}
         </div>
       </motion.div>
