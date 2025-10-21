@@ -6,8 +6,9 @@ import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, s
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis, restrictToParentElement, restrictToWindowEdges } from "@dnd-kit/modifiers";
 import Link from "next/link";
+import DashboardLayout from "@/components/DashboardLayout";
 import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
-import { geocodeAddress, geocodeAddressParts } from "@/lib/geocode";
+import { geocodeAddressParts } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import Toast from "@/components/Toast";
 
@@ -455,21 +456,27 @@ export default function NewPropertyPage() {
   const prevStep = () => {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
-
   return (
-    <>
-    <div className="min-h-screen bg-gray-50">
+    <DashboardLayout
+      title="Cadastrar Imóvel"
+      description="Preencha as informações do seu imóvel para publicá-lo na plataforma."
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Proprietário", href: "/owner/dashboard" },
+        { label: "Novo Anúncio" },
+      ]}
+      actions={
+        <Link
+          href="/owner/properties"
+          className="px-4 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50 border border-blue-100"
+        >
+          Meus Anúncios
+        </Link>
+      }
+    >
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="mx-auto max-w-7xl px-4 py-4">
-          <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200">
-            ← Voltar à busca
-          </Link>
-        </div>
-      </div>
 
       <div className="mx-auto max-w-6xl px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -993,46 +1000,45 @@ export default function NewPropertyPage() {
           </aside>
         </div>
       </div>
-    </div>
-    {lightbox.open && images[lightbox.index]?.url && (
-      <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={closeLightbox}>
-        <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
-          <img
-            src={images[lightbox.index].url}
-            alt={images[lightbox.index].alt || `Imagem ${lightbox.index + 1}`}
-            className="w-full max-h-[80vh] object-contain rounded-lg shadow-2xl bg-black"
-          />
-          <button onClick={closeLightbox} className="absolute top-3 right-3 p-2 rounded-md bg-white/80 hover:bg-white shadow" aria-label="Fechar">
-            ✕
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); prevLightbox(); }} className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white shadow" aria-label="Anterior">‹</button>
-          <button onClick={(e) => { e.stopPropagation(); nextLightbox(); }} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white shadow" aria-label="Próxima">›</button>
-        </div>
-      </div>
-    )}
-    {confirmDelete.open && confirmDelete.index !== null && (
-      <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setConfirmDelete({ open: false, index: null })}>
-        <div className="relative w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-          <h3 className="text-base font-semibold text-gray-900 mb-2">Remover imagem?</h3>
-          <p className="text-sm text-gray-600 mb-4">Essa ação não pode ser desfeita.</p>
-          <div className="flex justify-end gap-3">
-            <button ref={confirmCancelRef} type="button" className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50" onClick={() => setConfirmDelete({ open: false, index: null })}>Cancelar</button>
-            <button
-              type="button"
-              className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
-              onClick={() => {
-                if (confirmDelete.index !== null) {
-                  setImages((prev) => prev.filter((_, idx) => idx !== confirmDelete.index));
-                }
-                setConfirmDelete({ open: false, index: null });
-              }}
-            >
-              Remover
-            </button>
+
+      {lightbox.open && images[lightbox.index]?.url && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={closeLightbox}>
+          <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={images[lightbox.index].url}
+              alt={images[lightbox.index].alt || `Imagem ${lightbox.index + 1}`}
+              className="w-full max-h-[80vh] object-contain rounded-lg shadow-2xl bg-black"
+            />
+            <button onClick={closeLightbox} className="absolute top-3 right-3 p-2 rounded-md bg-white/80 hover:bg-white shadow" aria-label="Fechar">✕</button>
+            <button onClick={(e) => { e.stopPropagation(); prevLightbox(); }} className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white shadow" aria-label="Anterior">‹</button>
+            <button onClick={(e) => { e.stopPropagation(); nextLightbox(); }} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white shadow" aria-label="Próxima">›</button>
           </div>
         </div>
-      </div>
-    )}
-    </>
+      )}
+
+      {confirmDelete.open && confirmDelete.index !== null && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setConfirmDelete({ open: false, index: null })}>
+          <div className="relative w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-gray-900 mb-2">Remover imagem?</h3>
+            <p className="text-sm text-gray-600 mb-4">Essa ação não pode ser desfeita.</p>
+            <div className="flex justify-end gap-3">
+              <button ref={confirmCancelRef} type="button" className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50" onClick={() => setConfirmDelete({ open: false, index: null })}>Cancelar</button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+                onClick={() => {
+                  if (confirmDelete.index !== null) {
+                    setImages((prev) => prev.filter((_, idx) => idx !== confirmDelete.index));
+                  }
+                  setConfirmDelete({ open: false, index: null });
+                }}
+              >
+                Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </DashboardLayout>
   );
 }
