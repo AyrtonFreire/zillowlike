@@ -440,23 +440,7 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={handleGeocode}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-                    >
-                      Verificar endereço
-                    </button>
-                    {geoPreview && (
-                      <span className="text-sm text-gray-600 truncate">{geoPreview}</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-600 mt-2">
-                    Verificamos se o endereço está correto para exibir no mapa.
-                  </p>
-                </div>
+                {/* Bloco de verificação de endereço removido: CEP já realiza autofill e bloqueio visual */}
               </div>
             )}
 
@@ -529,14 +513,20 @@ export default function NewPropertyPage() {
                     <SortableContext items={images.map((_, i) => `img-${i}`)} strategy={verticalListSortingStrategy}>
                   {images.map((img, idx) => (
                     <SortableItem key={`img-${idx}`} id={`img-${idx}`}>
-                      <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <span className="text-sm text-gray-600">Imagem {idx + 1}</span>
+                      <div className="border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200 bg-white">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-700">Imagem {idx + 1}</span>
+                          <span className="text-xs text-gray-400 cursor-grab select-none" title="Arraste para reordenar">⋮⋮</span>
+                        </div>
                         {images.length > 1 && (
                           <button
                             type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
                             onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
-                            className="text-sm text-red-600 hover:text-red-700"
+                            className="inline-flex items-center gap-1 text-sm text-red-600 hover:text-red-700 px-2 py-1 rounded-md hover:bg-red-50"
+                            aria-label={`Remover imagem ${idx + 1}`}
                           >
                             Remover
                           </button>
@@ -544,35 +534,6 @@ export default function NewPropertyPage() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="md:col-span-2">
-                          <div className="flex items-center gap-3 mb-2">
-                            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                              <input
-                                type="checkbox"
-                                checked={!!img.useUrl}
-                                onChange={(e) =>
-                                  setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, useUrl: e.target.checked } : it)))
-                                }
-                              />
-                              Usar URL (opcional)
-                            </label>
-                            <span className="ml-auto text-xs text-gray-400 cursor-grab select-none" title="Arraste para reordenar">⋮⋮</span>
-                          </div>
-                          {img.useUrl && (
-                            <>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                URL da imagem {idx + 1}
-                              </label>
-                              <input
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                placeholder="https://exemplo.com/imagem.jpg"
-                                value={img.url}
-                                onChange={(e) => {
-                                  const v = e.target.value;
-                                  setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, url: v } : it)));
-                                }}
-                              />
-                            </>
-                          )}
                           {/* Upload via Cloudinary */}
                           <div className="mt-3 flex items-center gap-3">
                             <input
