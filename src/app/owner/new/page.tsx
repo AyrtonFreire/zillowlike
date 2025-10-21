@@ -10,7 +10,7 @@ import { geocodeAddress } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import Toast from "@/components/Toast";
 
-type ImageInput = { url: string; alt?: string; useUrl?: boolean };
+type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string };
 
 export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -36,6 +36,7 @@ export default function NewPropertyPage() {
   const confirmCancelRef = useRef<HTMLButtonElement | null>(null);
   const [images, setImages] = useState<ImageInput[]>([{ url: "", useUrl: false }]);
   const dragIndex = useRef<number | null>(null);
+  const [isFileDragOver, setIsFileDragOver] = useState(false);
 
   const openLightbox = (i: number) => setLightbox({ open: true, index: i });
   const closeLightbox = () => setLightbox({ open: false, index: 0 });
@@ -74,6 +75,65 @@ export default function NewPropertyPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox.open, images]);
+
+  // Evita que soltar arquivo fora do dropzone navegue para a imagem
+  useEffect(() => {
+    const onDragOver = (e: DragEvent) => {
+      if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
+        e.preventDefault();
+      }
+    };
+    const onDrop = (e: DragEvent) => {
+      if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('dragover', onDragOver as any);
+    window.addEventListener('drop', onDrop as any);
+    return () => {
+      window.removeEventListener('dragover', onDragOver as any);
+      window.removeEventListener('drop', onDrop as any);
+    };
+  }, []);
+
+  async function handleDroppedFiles(fileList: FileList) {
+    const files = Array.from(fileList).filter((f) => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    for (const file of files) {
+      // encontra primeiro slot vazio, senão adiciona novo
+      let targetIndex = images.findIndex((it) => !it.url);
+      if (targetIndex === -1) {
+        setImages((prev) => [...prev, { url: "" }]);
+        targetIndex = images.length;
+      }
+      const localUrl = URL.createObjectURL(file);
+      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined } : it)));
+      try {
+        const sigRes = await fetch('/api/upload/cloudinary-sign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder: 'zillowlike' }),
+        });
+        if (!sigRes.ok) throw new Error('Falha ao assinar upload.');
+        const sig = await sigRes.json();
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('api_key', sig.apiKey);
+        fd.append('timestamp', String(sig.timestamp));
+        fd.append('signature', sig.signature);
+        fd.append('folder', sig.folder);
+        const up = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, { method: 'POST', body: fd });
+        const data = await up.json();
+        if (!up.ok || !data.secure_url) throw new Error('Upload falhou.');
+        URL.revokeObjectURL(localUrl);
+        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: data.secure_url, pending: false, error: undefined } : it)));
+      } catch (err) {
+        // mantém preview local, mas sinaliza erro
+        setToast({ message: 'Erro ao enviar imagem', type: 'error' });
+        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, pending: false, error: 'Falha no upload' } : it)));
+      }
+    }
+  }
 
   useEffect(() => {
     if (confirmDelete.open) {
@@ -308,7 +368,9 @@ export default function NewPropertyPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-4xl px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
         {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -548,7 +610,38 @@ export default function NewPropertyPage() {
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Fotos do imóvel</h2>
                 
-                <div className="space-y-4">
+                <div
+                  className={`space-y-4 ${isFileDragOver ? 'ring-2 ring-blue-400 rounded-lg' : ''}`}
+                  onDragOver={(e) => {
+                    if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
+                      e.preventDefault();
+                      setIsFileDragOver(true);
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    setIsFileDragOver(false);
+                  }}
+                  onDrop={(e) => {
+                    if (e.dataTransfer && e.dataTransfer.files?.length) {
+                      e.preventDefault();
+                      setIsFileDragOver(false);
+                      handleDroppedFiles(e.dataTransfer.files);
+                    }
+                  }}
+                >
+                  <div className={`w-full rounded-lg border-2 border-dashed ${isFileDragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-gray-50'} p-6 text-center`}
+                       onClick={() => setImages((imgs) => [...imgs, { url: "" }])}
+                       role="button" tabIndex={0}
+                  >
+                    <div className="flex items-center justify-center gap-3 text-gray-600">
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                      </svg>
+                      <span className="text-sm">Arraste suas imagens aqui ou clique para adicionar</span>
+                    </div>
+                  </div>
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -598,6 +691,9 @@ export default function NewPropertyPage() {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
                                 try {
+                                  // Preview local imediato
+                                  const localUrl = URL.createObjectURL(file);
+                                  setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, url: localUrl, pending: true, error: undefined } : it)));
                                   setToast({ message: "Enviando imagem...", type: "info" });
                                   const sigRes = await fetch('/api/upload/cloudinary-sign', {
                                     method: 'POST',
@@ -615,10 +711,12 @@ export default function NewPropertyPage() {
                                   const up = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, { method: 'POST', body: fd });
                                   const data = await up.json();
                                   if (!up.ok || !data.secure_url) throw new Error('Upload falhou.');
-                                  setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, url: data.secure_url } : it)));
+                                  URL.revokeObjectURL(localUrl);
+                                  setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, url: data.secure_url, pending: false, error: undefined } : it)));
                                   setToast({ message: 'Imagem enviada!', type: 'success' });
                                 } catch (err: any) {
                                   setToast({ message: err?.message || 'Erro no upload.', type: 'error' });
+                                  setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, pending: false, error: 'Falha no upload' } : it)));
                                 }
                               }}
                             />
@@ -631,6 +729,15 @@ export default function NewPropertyPage() {
                                 alt={img.alt || `Pré-visualização ${idx + 1}`}
                                 className="w-full h-40 object-cover rounded-lg border"
                               />
+                              {img.pending && (
+                                <div className="mt-2 text-xs text-gray-500">Enviando...</div>
+                              )}
+                              {img.error && (
+                                <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-red-50 text-red-700 text-xs px-2 py-1 border border-red-200">
+                                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                                  <span>{img.error}</span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -760,6 +867,25 @@ export default function NewPropertyPage() {
               )}
             </div>
           </form>
+        </div>
+          </div>
+          <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start">
+            <div className="bg-white rounded-xl shadow-lg p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Pré-visualização do anúncio</h3>
+              <div className="aspect-video w-full overflow-hidden rounded-lg border bg-gray-100">
+                {images[0]?.url ? (
+                  <img src={images[0].url} alt={images[0].alt || 'Capa'} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">Sem imagem</div>
+                )}
+              </div>
+              <div className="mt-3 space-y-1">
+                <div className="text-base font-medium text-gray-900 truncate">{title || 'Título do anúncio'}</div>
+                <div className="text-blue-700 font-semibold">{priceBRL ? `R$ ${priceBRL}` : 'R$ 0'}</div>
+                <div className="text-sm text-gray-600 truncate">{addressString || 'Endereço aparecerá aqui'}</div>
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
     </div>
