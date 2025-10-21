@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { PropertyCreateSchema, PropertyQuerySchema } from "@/lib/schemas";
 import { Prisma } from "@prisma/client";
 
@@ -141,7 +142,7 @@ export async function POST(req: NextRequest) {
     if (!checkRateLimit(req)) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session && process.env.NODE_ENV !== "development") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

@@ -162,6 +162,51 @@ export default function NewPropertyPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // Helper: limpa todos os campos para um novo cadastro
+  const resetForm = () => {
+    setCurrentStep(1);
+    setIsSubmitting(false);
+    setToast(null);
+    setSubmitIntent(false);
+    setTitle("");
+    setDescription("");
+    setPriceBRL("");
+    setType("HOUSE");
+    setConditionTags([]);
+    setStreet("");
+    setNeighborhood("");
+    setCity("Petrolina");
+    setState("PE");
+    setPostalCode("");
+    setAddressNumber("");
+    setBedrooms("");
+    setBathrooms("");
+    setAreaM2("");
+    setImages([{ url: "", useUrl: false }]);
+    setGeo(null);
+    setGeoPreview("");
+    setCepValid(false);
+    if (typeof window !== "undefined") {
+      try { window.localStorage.removeItem(SAVE_KEY); } catch {}
+    }
+  };
+
+  // Garante formulário limpo quando a página monta e quando volta do bfcache
+  useEffect(() => {
+    resetForm();
+    const onPageShow = (e: any) => {
+      if (e && e.persisted) resetForm();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("pageshow", onPageShow);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("pageshow", onPageShow);
+      }
+    };
+  }, []);
+
   function SortableItem({ id, children }: { id: string; children: ReactNode }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
     const style: React.CSSProperties = {
@@ -368,6 +413,7 @@ export default function NewPropertyPage() {
 
       await res.json();
       setToast({ message: "Imóvel publicado com sucesso!", type: "success" });
+      resetForm();
       window.location.href = "/?city=" + encodeURIComponent(city) + "&state=" + state;
     } finally {
       setIsSubmitting(false);
