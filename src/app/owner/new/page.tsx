@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -43,7 +43,7 @@ export default function NewPropertyPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
+  function SortableItem({ id, children }: { id: string; children: ReactNode }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
     const style: React.CSSProperties = {
       transform: CSS.Transform.toString(transform),
@@ -54,7 +54,7 @@ export default function NewPropertyPage() {
       cursor: isDragging ? 'grabbing' : 'grab',
     };
     return (
-      <div ref={setNodeRef} style={style} className={isDragging ? 'ring-2 ring-blue-500 scale-[1.01]' : ''} {...attributes} {...listeners}>
+      <div ref={setNodeRef} style={style} className={isDragging ? 'ring-2 ring-blue-500' : ''} {...attributes} {...listeners}>
         {children}
       </div>
     );
@@ -644,7 +644,6 @@ export default function NewPropertyPage() {
                     </svg>
                     <span className="text-gray-600">Adicionar mais fotos</span>
                   </button>
-                </div>
               </div>
             )}
 
