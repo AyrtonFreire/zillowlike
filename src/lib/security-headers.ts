@@ -22,8 +22,8 @@ export function applySecurityHeaders(
     "img-src 'self' data: blob: https: https://res.cloudinary.com",
     // Fontes locais + Google Fonts
     "font-src 'self' data: https://fonts.gstatic.com",
-    // Conexões XHR/fetch/WebSocket necessárias (Vercel vitals, Cloudinary API, Supabase, Pusher)
-    "connect-src 'self' https://vitals.vercel-insights.com https://api.cloudinary.com https://*.supabase.co https://*.pusher.com wss://*.pusher.com",
+    // Conexões XHR/fetch/WebSocket necessárias (Vercel vitals, Cloudinary API, Supabase, Pusher, Nominatim)
+    "connect-src 'self' https://vitals.vercel-insights.com https://api.cloudinary.com https://*.supabase.co https://*.pusher.com wss://*.pusher.com https://nominatim.openstreetmap.org",
     // Ifra mes bloqueados
     "frame-ancestors 'none'",
   ];

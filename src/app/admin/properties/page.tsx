@@ -250,7 +250,7 @@ export default function AdminPropertiesPage() {
                 </p>
 
                 <div className="text-xs text-gray-500 mb-4">
-                  Proprietário: {property.owner.name || property.owner.email}
+                  Proprietário: {property.owner?.name || property.owner?.email || "—"}
                 </div>
 
                 {/* Actions */}
