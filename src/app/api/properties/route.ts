@@ -61,15 +61,23 @@ export async function GET(req: NextRequest) {
     const areaMin = Number(searchParams.get("areaMin") || 0);
 
     const where: any = {};
-    // Public API: por padrão, retornar apenas propriedades ATIVAS.
-    // Permitir override via query ?status=ANY ou ?status=PAUSED/DRAFT/SOLD/RENTED
-    const statusParam = (searchParams.get("status") || "ACTIVE").toUpperCase();
+    // Public API: por padrão, NÃO filtra por status para garantir visibilidade de registros de teste/legados.
+    // Permitir override via query ?status=ACTIVE/PAUSED/DRAFT/SOLD/RENTED ou ?status=ANY
+    const statusParam = (searchParams.get("status") || "ANY").toUpperCase();
     if (statusParam !== "ANY") {
       const allowedStatuses = new Set(["ACTIVE","PAUSED","DRAFT","SOLD","RENTED"]);
       const effective = allowedStatuses.has(statusParam) ? statusParam : "ACTIVE";
       if (effective === "ACTIVE") {
-        // Include legacy rows where status might be NULL (treat as ACTIVE)
-        (where.AND ||= [] as any[]).push({ OR: [{ status: "ACTIVE" }, { status: null as any }] });
+        // Show anything that is not sold/rented/draft/paused and also legacy null/empty
+        (where.AND ||= [] as any[]).push({
+          OR: [
+            { status: "ACTIVE" },
+            { status: null as any },
+            { status: undefined as any },
+            // Fallback for legacy empty-string stored incorrectly
+            { status: { equals: "" as any } },
+          ],
+        });
       } else {
         where.status = effective;
       }

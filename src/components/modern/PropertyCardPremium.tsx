@@ -352,6 +352,28 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
             )}
           </div>
 
+          {/* Features row: quartos, banheiros, área */}
+          <div className="flex items-center gap-3 text-gray-700 text-xs mb-2">
+            {property.bedrooms != null && (
+              <div className="flex items-center gap-1" title="Quartos">
+                <Bed className="w-3.5 h-3.5" />
+                <span className="font-medium">{property.bedrooms}</span>
+              </div>
+            )}
+            {property.bathrooms != null && (
+              <div className="flex items-center gap-1" title="Banheiros">
+                <Bath className="w-3.5 h-3.5" />
+                <span className="font-medium">{property.bathrooms}</span>
+              </div>
+            )}
+            {property.areaM2 != null && (
+              <div className="flex items-center gap-1" title="Área">
+                <Maximize className="w-3.5 h-3.5" />
+                <span className="font-medium">{property.areaM2}m²</span>
+              </div>
+            )}
+          </div>
+
           {/* Location */}
           <div className="flex items-center gap-1 text-gray-600 text-sm mb-2">
             <MapPin className="w-3.5 h-3.5" />
