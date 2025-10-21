@@ -135,7 +135,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         whileHover={{ y: -8 }}
-        className="group relative bg-white rounded-2xl shadow-soft hover:shadow-2xl transition-all duration-300 cursor-pointer h-full flex flex-col"
+        className="group relative bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300 cursor-pointer h-full flex flex-col"
         style={{ overflow: showShareModal ? 'visible' : 'hidden' }}
       >
         {/* Badges and Tags - Top Left */}
@@ -167,7 +167,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={handleFavorite}
-          className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-white transition-all"
+          className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-purple-100/50 transition-colors"
         >
           <Heart
             className={`w-5 h-5 transition-colors ${
@@ -250,8 +250,8 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
         {/* Content */}
         <div className="p-3 flex flex-col flex-1 relative">
           {/* Price and Share Button */}
-          <div className="mb-1 flex items-center justify-between">
-            <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <div className="mb-3 mt-0.5 flex items-center justify-between">
+            <span className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               {new Intl.NumberFormat("pt-BR", {
                 style: "currency",
                 currency: "BRL",
@@ -352,42 +352,53 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
             )}
           </div>
 
-          {/* Features row: quartos, banheiros, área */}
-          <div className="flex items-center gap-3 text-gray-700 text-xs mb-2">
+          {/* Features row: quartos, banheiros, área (compact with separators) */}
+          <div className="flex items-center text-gray-600 text-[11px] mb-2">
             {property.bedrooms != null && (
               <div className="flex items-center gap-1" title="Quartos">
-                <Bed className="w-3.5 h-3.5" />
+                <Bed className="w-3 h-3 text-gray-500" />
                 <span className="font-medium">{property.bedrooms}</span>
               </div>
             )}
+            {property.bedrooms != null && (property.bathrooms != null || property.areaM2 != null) && (
+              <span className="mx-2 text-gray-400">•</span>
+            )}
             {property.bathrooms != null && (
               <div className="flex items-center gap-1" title="Banheiros">
-                <Bath className="w-3.5 h-3.5" />
+                <Bath className="w-3 h-3 text-gray-500" />
                 <span className="font-medium">{property.bathrooms}</span>
               </div>
             )}
+            {property.bathrooms != null && property.areaM2 != null && (
+              <span className="mx-2 text-gray-400">•</span>
+            )}
             {property.areaM2 != null && (
               <div className="flex items-center gap-1" title="Área">
-                <Maximize className="w-3.5 h-3.5" />
+                <Maximize className="w-3 h-3 text-gray-500" />
                 <span className="font-medium">{property.areaM2}m²</span>
               </div>
             )}
           </div>
 
-          {/* Location */}
-          <div className="flex items-center gap-1 text-gray-600 text-sm mb-2">
-            <MapPin className="w-3.5 h-3.5" />
-            <span className="text-xs">
+          {/* Location (smaller, cleaner) */}
+          <div className="flex items-center gap-1.5 text-gray-600 text-[11px] mb-2">
+            <MapPin className="w-3 h-3 text-gray-500" />
+            <span className="">
               {property.neighborhood && `${property.neighborhood}, `}
               {property.city}/{property.state}
             </span>
           </div>
 
-          {/* Description - clamped to 2 lines */}
+          {/* Divider and Description with subtle background and fade-out */}
           {property.description && (
-            <p className="text-sm text-gray-700 line-clamp-2 mt-1">
-              {property.description}
-            </p>
+            <div className="border-t border-gray-200 mt-3 pt-2 rounded-b-2xl bg-gray-50">
+              <div className="relative">
+                <p className="text-sm leading-relaxed text-gray-700 line-clamp-3 pr-2">
+                  {property.description}
+                </p>
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-gray-50 to-transparent rounded-b-2xl" />
+              </div>
+            </div>
           )}
         </div>
       </motion.div>
