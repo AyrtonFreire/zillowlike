@@ -16,10 +16,15 @@ export const ConditionTagEnum = z.enum([
   "Mobiliado",
   "Semi-mobiliado",
   "Novo",
+  "Em obras",
   "Em construção",
+  "Na planta",
+  "Condomínio",
   "Condomínio fechado",
   "Reformado",
   "Pronto para morar",
+  "Aceita pets",
+  "Aceita permuta",
 ]);
 
 export const PropertyCreateSchema = z.object({

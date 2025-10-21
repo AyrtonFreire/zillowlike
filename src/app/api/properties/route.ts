@@ -66,7 +66,13 @@ export async function GET(req: NextRequest) {
     const statusParam = (searchParams.get("status") || "ACTIVE").toUpperCase();
     if (statusParam !== "ANY") {
       const allowedStatuses = new Set(["ACTIVE","PAUSED","DRAFT","SOLD","RENTED"]);
-      where.status = allowedStatuses.has(statusParam) ? statusParam : "ACTIVE";
+      const effective = allowedStatuses.has(statusParam) ? statusParam : "ACTIVE";
+      if (effective === "ACTIVE") {
+        // Include legacy rows where status might be NULL (treat as ACTIVE)
+        (where.AND ||= [] as any[]).push({ OR: [{ status: "ACTIVE" }, { status: null as any }] });
+      } else {
+        where.status = effective;
+      }
     }
     if (city) where.city = { equals: city, mode: 'insensitive' as Prisma.QueryMode };
     if (state) where.state = { equals: state, mode: 'insensitive' as Prisma.QueryMode };
@@ -128,7 +134,7 @@ export async function GET(req: NextRequest) {
       }),
       prisma.property.count({ where }),
     ]);
-    console.log("api/properties GET", { filters: { city, state, type, purpose, q, bedroomsMin, bathroomsMin, areaMin, status: where.status }, total });
+    console.log("api/properties GET", { filters: { city, state, type, purpose, q, bedroomsMin, bathroomsMin, areaMin, status: (where as any).status || "ACTIVE|null" }, total });
     return NextResponse.json({ 
       success: true,
       properties: items, 
@@ -164,7 +170,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { title, description, priceBRL, type, purpose, address, geo, details, images } = parsed.data;
+    const { title, description, priceBRL, type, purpose, address, geo, details, images, conditionTags } = parsed.data;
 
     const price = Math.round(Number(priceBRL) * 100);
     const userId = (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub;
@@ -213,6 +219,7 @@ export async function POST(req: NextRequest) {
       bedrooms: details?.bedrooms ?? null,
       bathrooms: details?.bathrooms ?? null,
       areaM2: details?.areaM2 ?? null,
+      conditionTags: Array.isArray(conditionTags) ? conditionTags : undefined,
       images:
         Array.isArray(images) && images.length > 0
           ? {
@@ -226,10 +233,20 @@ export async function POST(req: NextRequest) {
             }
           : undefined,
     };
-    const created = await prisma.property.create({
-      data: createData,
-      include: { images: true },
-    });
+    let created;
+    try {
+      created = await prisma.property.create({ data: createData, include: { images: true } });
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      const looksLikePurposeMissing = msg.includes("Unknown arg `purpose`") || msg.includes("column \"purpose\"") || msg.includes("Invalid value for argument") && msg.includes("purpose");
+      if (looksLikePurposeMissing && createData.purpose) {
+        console.warn("/api/properties POST: purpose not supported by current DB schema. Retrying without purpose.");
+        const { purpose: _omit, ...withoutPurpose } = createData;
+        created = await prisma.property.create({ data: withoutPurpose as any, include: { images: true } });
+      } else {
+        throw err;
+      }
+    }
     console.log("api/properties POST created", { id: created.id, ownerId: created.ownerId, city: created.city, state: created.state, status: created.status });
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
@@ -252,7 +269,7 @@ export async function PATCH(req: NextRequest) {
     if (existing.ownerId && existing.ownerId !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     // allow limited fields update
     const allowed: any = {};
-    const fields = ["title","description","price","type","street","neighborhood","city","state","postalCode","latitude","longitude","bedrooms","bathrooms","areaM2"];
+    const fields = ["title","description","price","type","purpose","conditionTags","street","neighborhood","city","state","postalCode","latitude","longitude","bedrooms","bathrooms","areaM2"];
     for (const k of fields) if (k in data) allowed[k] = data[k];
 
     // Update property core fields first

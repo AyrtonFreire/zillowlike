@@ -20,11 +20,37 @@ export default function NewPropertyPage() {
   const [toast, setToast] = useState<{ message: string; type?: "success"|"error"|"info" } | null>(null);
   const [submitIntent, setSubmitIntent] = useState(false);
   
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(""); // será gerado automaticamente no submit
   const [description, setDescription] = useState("");
   const [priceBRL, setPriceBRL] = useState("");
   const [type, setType] = useState("HOUSE");
+  const [purpose, setPurpose] = useState<"SALE"|"RENT"|"">("");
   const [conditionTags, setConditionTags] = useState<string[]>([]);
+  const TAG_OPTIONS: string[] = useMemo(() => [
+    "Novo",
+    "Condomínio",
+    "Aceita pets",
+    "Aceita permuta",
+    "Mobiliado",
+    "Semi-mobiliado",
+    "Em obras",
+    "Em construção",
+    "Na planta",
+    "Reformado",
+    "Pronto para morar",
+  ], []);
+
+  function toggleTag(tag: string) {
+    setConditionTags((prev) => {
+      const has = prev.includes(tag);
+      if (has) return prev.filter((t) => t !== tag);
+      if (prev.length >= 3) {
+        setToast({ message: "Você pode selecionar no máximo 3 tags.", type: "error" });
+        return prev;
+      }
+      return [...prev, tag];
+    });
+  }
 
   const [street, setStreet] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
@@ -252,10 +278,10 @@ export default function NewPropertyPage() {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return;
       const d = JSON.parse(raw);
-      if (d.title) setTitle(d.title);
       if (d.description) setDescription(d.description);
       if (d.priceBRL) setPriceBRL(d.priceBRL);
       if (d.type) setType(d.type);
+      if (d.purpose) setPurpose(d.purpose);
       if (d.street) setStreet(d.street);
       if (d.neighborhood) setNeighborhood(d.neighborhood);
       if (d.city) setCity(d.city);
@@ -273,7 +299,7 @@ export default function NewPropertyPage() {
     const id = setTimeout(() => {
       try {
         const payload = {
-          title, description, priceBRL, type,
+          description, priceBRL, type, purpose,
           street, neighborhood, city, state, postalCode,
           bedrooms, bathrooms, areaM2, images, addressNumber,
         };
@@ -281,7 +307,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [title, description, priceBRL, type, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images]);
+  }, [description, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -375,11 +401,24 @@ export default function NewPropertyPage() {
         return;
       }
 
+      // Validar finalidade
+      if (!purpose) {
+        setToast({ message: "Selecione se é Venda ou Aluguel.", type: "error" });
+        setCurrentStep(1);
+        return;
+      }
+
+      // título gerado automaticamente (não exibido ao usuário)
+      const typeLabel = type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type === 'CONDO' ? 'Condomínio' : type === 'LAND' ? 'Terreno' : type === 'COMMERCIAL' ? 'Comercial' : type === 'STUDIO' ? 'Studio' : 'Imóvel';
+      const purposeLabel = purpose === 'RENT' ? 'Aluguel' : 'Venda';
+      const autoTitle = `${typeLabel} ${purposeLabel}${city && state ? ` - ${city}/${state}` : ''}`.trim();
+
       const payload = {
-        title,
+        title: autoTitle,
         description,
         priceBRL: parseBRLToNumber(priceBRL),
         type,
+        purpose,
         address: { street, neighborhood, city, state, postalCode, number: addressNumber || undefined },
         geo: { lat: geo.lat, lng: geo.lng },
         details: {
@@ -493,6 +532,8 @@ export default function NewPropertyPage() {
                 }`}>
                   {step.id}
                 </div>
+
+                
                 <div className="ml-3 hidden sm:block">
                   <div className={`text-sm font-medium ${
                     currentStep >= step.id ? 'text-blue-600' : 'text-gray-500'
@@ -522,18 +563,12 @@ export default function NewPropertyPage() {
                 <h2 className="text-xl font-semibold text-gray-900">Informações básicas</h2>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Título do anúncio *
-                  </label>
-                  <input
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    placeholder="Ex: Casa com 3 quartos próximo ao centro"
-                    value={title}
-                    maxLength={70}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                  />
-                  <div className="mt-1 text-xs text-gray-500">{title.length}/70</div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Finalidade *</label>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setPurpose('SALE')} className={`px-4 py-2 rounded-lg border ${purpose==='SALE' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Venda</button>
+                    <button type="button" onClick={() => setPurpose('RENT')} className={`px-4 py-2 rounded-lg border ${purpose==='RENT' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Aluguel</button>
+                  </div>
+                  {purpose === '' && <p className="mt-1 text-xs text-red-600">Selecione a finalidade.</p>}
                 </div>
 
                 <div>
@@ -996,7 +1031,7 @@ export default function NewPropertyPage() {
                 conditionTags,
                 type,
                 description: description,
-                purpose: 'SALE',
+                purpose: (purpose || 'SALE') as 'SALE' | 'RENT',
               }}
             />
           </aside>
