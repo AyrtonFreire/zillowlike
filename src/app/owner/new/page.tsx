@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import Link from "next/link";
 import { geocodeAddress } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import Toast from "@/components/Toast";
 
-type ImageInput = { url: string; alt?: string };
+type ImageInput = { url: string; alt?: string; useUrl?: boolean };
 
 export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -28,25 +32,53 @@ export default function NewPropertyPage() {
   const [bathrooms, setBathrooms] = useState<number | "">("");
   const [areaM2, setAreaM2] = useState<number | "">("");
 
-  const [images, setImages] = useState<ImageInput[]>([{ url: "" }]);
+  const [images, setImages] = useState<ImageInput[]>([{ url: "", useUrl: false }]);
   const dragIndex = useRef<number | null>(null);
   const SAVE_KEY = "owner_new_draft";
 
+  // dnd-kit: sensors e item ordenável
+  const sensors = useSensors(
+    useSensor(MouseSensor),
+    useSensor(TouchSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+    const style: React.CSSProperties = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.95 : 1,
+      boxShadow: isDragging ? '0 12px 30px rgba(0,0,0,0.2)' : undefined,
+      borderRadius: '0.75rem',
+      cursor: isDragging ? 'grabbing' : 'grab',
+    };
+    return (
+      <div ref={setNodeRef} style={style} className={isDragging ? 'ring-2 ring-blue-500 scale-[1.01]' : ''} {...attributes} {...listeners}>
+        {children}
+      </div>
+    );
+  }
+
   function formatBRLInput(raw: string) {
-    // Keep digits only, format as BRL without currency symbol
+    // Máscara sem centavos: mantém apenas dígitos e separa milhares com ponto
     const digits = raw.replace(/\D+/g, "");
     if (!digits) return "";
-    const v = (Number(digits) / 100).toFixed(2);
-    const [int, dec] = v.split(".");
-    const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return `${intFmt},${dec}`; // 1.234,56
+    const intFmt = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return intFmt; // 1.234.567
+  }
+
+  function formatCEP(raw: string) {
+    const digits = raw.replace(/\D+/g, "").slice(0, 8);
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0,5)}-${digits.slice(5)}`;
   }
 
   function parseBRLToNumber(input: string) {
     if (!input) return 0;
-    const norm = input.replace(/\./g, "").replace(",", ".");
-    const n = Number(norm);
-    return isNaN(n) ? 0 : n;
+    const digits = input.replace(/\D+/g, "");
+    const n = Number(digits);
+    return isNaN(n) ? 0 : n; // inteiro em reais
   }
 
   // Load draft
@@ -86,6 +118,29 @@ export default function NewPropertyPage() {
     return () => clearTimeout(id);
   }, [title, description, priceBRL, type, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images]);
 
+  // CEP: validação em tempo real com debounce quando atingir 8 dígitos
+  useEffect(() => {
+    const cepDigits = postalCode.replace(/\D+/g, "");
+    if (cepDigits.length !== 8) return;
+    const id = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`);
+        const data = await res.json();
+        if (data?.erro) {
+          setToast({ message: "CEP não encontrado", type: "error" });
+          return;
+        }
+        setStreet((s) => s || data.logradouro || "");
+        setNeighborhood((b) => b || data.bairro || "");
+        setCity(data.localidade || city);
+        setState(data.uf || state);
+      } catch {
+        setToast({ message: "Falha ao buscar CEP", type: "error" });
+      }
+    }, 400);
+    return () => clearTimeout(id);
+  }, [postalCode]);
+
   const [geoPreview, setGeoPreview] = useState<string>("");
   const addressString = useMemo(
     () =>
@@ -113,6 +168,14 @@ export default function NewPropertyPage() {
     setIsSubmitting(true);
     
     try {
+      // Validação: exigir ao menos uma imagem com URL preenchida (upload concluído ou URL manual)
+      const hasAtLeastOneImage = images.some((img) => img.url && img.url.trim().length > 0);
+      if (!hasAtLeastOneImage) {
+        setToast({ message: "Adicione pelo menos uma foto antes de publicar.", type: "error" });
+        setCurrentStep(4);
+        return;
+      }
+
       const geo = await geocodeAddress(addressString);
       if (!geo) {
         setToast({ message: "Endereço não encontrado. Tente ser mais específico.", type: "error" });
@@ -122,7 +185,7 @@ export default function NewPropertyPage() {
       const payload = {
         title,
         description,
-        priceBRL: Number(priceBRL.replace(/[^0-9.,]/g, "").replace(",", ".")),
+        priceBRL: parseBRLToNumber(priceBRL),
         type,
         address: { street, neighborhood, city, state, postalCode },
         geo: { lat: geo.lat, lng: geo.lng },
@@ -131,6 +194,7 @@ export default function NewPropertyPage() {
           bathrooms: bathrooms === "" ? null : Number(bathrooms),
           areaM2: areaM2 === "" ? null : Number(areaM2),
         },
+        images: images.map((img, i) => ({ url: img.url, alt: img.alt, sortOrder: i })),
       };
 
       const parsed = PropertyCreateSchema.safeParse(payload);
@@ -233,9 +297,11 @@ export default function NewPropertyPage() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                     placeholder="Ex: Casa com 3 quartos próximo ao centro"
                     value={title}
+                    maxLength={70}
                     onChange={(e) => setTitle(e.target.value)}
                     required
                   />
+                  <div className="mt-1 text-xs text-gray-500">{title.length}/70</div>
                 </div>
 
                 <div>
@@ -244,7 +310,7 @@ export default function NewPropertyPage() {
                   </label>
                   <input
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    placeholder="450.000,00"
+                    placeholder="450.000"
                     inputMode="numeric"
                     value={priceBRL}
                     onChange={(e) => setPriceBRL(formatBRLInput(e.target.value))}
@@ -346,7 +412,25 @@ export default function NewPropertyPage() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       placeholder="56300-000"
                       value={postalCode}
-                      onChange={(e) => setPostalCode(e.target.value)}
+                      onChange={(e) => setPostalCode(formatCEP(e.target.value))}
+                      onBlur={async () => {
+                        const cep = postalCode.replace(/\D+/g, "");
+                        if (cep.length !== 8) return;
+                        try {
+                          const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                          const data = await res.json();
+                          if (data?.erro) {
+                            setToast({ message: "CEP não encontrado", type: "error" });
+                            return;
+                          }
+                          setStreet((s) => s || data.logradouro || "");
+                          setNeighborhood((b) => b || data.bairro || "");
+                          setCity(data.localidade || city);
+                          setState(data.uf || state);
+                        } catch {
+                          setToast({ message: "Falha ao buscar CEP", type: "error" });
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -424,22 +508,66 @@ export default function NewPropertyPage() {
                 <h2 className="text-xl font-semibold text-gray-900">Fotos do imóvel</h2>
                 
                 <div className="space-y-4">
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    modifiers={[restrictToVerticalAxis]}
+                    onDragEnd={({ active, over }) => {
+                      if (!over || active.id === over.id) return;
+                      const ids = images.map((_, i) => `img-${i}`);
+                      const oldIndex = ids.indexOf(String(active.id));
+                      const newIndex = ids.indexOf(String(over.id));
+                      if (oldIndex === -1 || newIndex === -1) return;
+                      setImages((prev) => arrayMove(prev, oldIndex, newIndex));
+                    }}
+                  >
+                    <SortableContext items={images.map((_, i) => `img-${i}`)} strategy={verticalListSortingStrategy}>
                   {images.map((img, idx) => (
-                    <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                    <SortableItem key={`img-${idx}`} id={`img-${idx}`}>
+                      <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="text-sm text-gray-600">Imagem {idx + 1}</span>
+                        {images.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
+                            className="text-sm text-red-600 hover:text-red-700"
+                          >
+                            Remover
+                          </button>
+                        )}
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            URL da imagem {idx + 1}
-                          </label>
-                          <input
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                            placeholder="https://exemplo.com/imagem.jpg"
-                            value={img.url}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, url: v } : it)));
-                            }}
-                          />
+                          <div className="flex items-center gap-3 mb-2">
+                            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                              <input
+                                type="checkbox"
+                                checked={!!img.useUrl}
+                                onChange={(e) =>
+                                  setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, useUrl: e.target.checked } : it)))
+                                }
+                              />
+                              Usar URL (opcional)
+                            </label>
+                            <span className="ml-auto text-xs text-gray-400 cursor-grab select-none" title="Arraste para reordenar">⋮⋮</span>
+                          </div>
+                          {img.useUrl && (
+                            <>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                URL da imagem {idx + 1}
+                              </label>
+                              <input
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                placeholder="https://exemplo.com/imagem.jpg"
+                                value={img.url}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, url: v } : it)));
+                                }}
+                              />
+                            </>
+                          )}
                           {/* Upload via Cloudinary */}
                           <div className="mt-3 flex items-center gap-3">
                             <input
@@ -474,6 +602,16 @@ export default function NewPropertyPage() {
                               }}
                             />
                           </div>
+                          {/* Preview */}
+                          {img.url && (
+                            <div className="mt-3">
+                              <img
+                                src={img.url}
+                                alt={img.alt || `Pré-visualização ${idx + 1}`}
+                                className="w-full h-40 object-cover rounded-lg border"
+                              />
+                            </div>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -490,9 +628,12 @@ export default function NewPropertyPage() {
                           />
                         </div>
                       </div>
-                    </div>
+                      </div>
+                    </SortableItem>
                   ))}
-                  
+                    </SortableContext>
+                  </DndContext>
+                </div>
                   <button
                     type="button"
                     onClick={() => setImages((imgs) => [...imgs, { url: "" }])}

@@ -19,12 +19,13 @@ export const ConditionTagEnum = z.enum([
 ]);
 
 export const PropertyCreateSchema = z.object({
-  title: z.string().min(3).max(160),
+  title: z.string().min(3).max(70),
   description: z.string().min(10).max(5000),
   priceBRL: z
     .number()
+    .int()
     .positive()
-    .max(1_000_000_000), // R$1 bi (centavos depois no server)
+    .max(1_000_000_000), // até R$ 1 bi (inteiro em reais)
   type: PropertyTypeEnum,
   address: z.object({
     street: z.string().min(1).max(200),
@@ -48,7 +49,7 @@ export const PropertyCreateSchema = z.object({
   images: z
     .array(
       z.object({
-        url: z.string().url().max(1000),
+        url: z.string().url().max(1000).optional().or(z.literal("")),
         alt: z.string().max(200).optional(),
         sortOrder: z.number().int().min(0).optional(),
       })

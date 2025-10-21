@@ -1,6 +1,6 @@
 "use client";
 
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents, ZoomControl } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -435,7 +435,7 @@ export default function MapWithPriceBubbles({ items, isLoading, onBoundsChange, 
       center={center}
       zoom={13}
       className="w-full h-full"
-      zoomControl={true}
+      zoomControl={false}
       scrollWheelZoom={true}
       doubleClickZoom={true}
       touchZoom={true}
@@ -449,6 +449,7 @@ export default function MapWithPriceBubbles({ items, isLoading, onBoundsChange, 
         maxZoom={19}
         minZoom={3}
       />
+      <ZoomControl position="bottomright" />
       <MapController items={items} onBoundsChange={onBoundsChange} autoFitOnItemsChange={autoFitOnItemsChange} onHoverChange={onHoverChange} />
     </MapContainer>
   );

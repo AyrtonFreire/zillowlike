@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -35,6 +35,31 @@ export default function Home() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'split' | 'list'>('split');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersRef = useRef<HTMLDivElement | null>(null);
+
+  // Fecha dropdown ao clicar fora ou pressionar ESC
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const handleClick = (e: Event) => {
+      if (!filtersRef.current) return;
+      const target = e.target as Node | null;
+      if (target && !filtersRef.current.contains(target)) {
+        setFiltersOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFiltersOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick as EventListener, true);
+    document.addEventListener('touchstart', handleClick as EventListener, true);
+    document.addEventListener('keydown', handleKey as EventListener, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClick as EventListener, true);
+      document.removeEventListener('touchstart', handleClick as EventListener, true);
+      document.removeEventListener('keydown', handleKey as EventListener, true);
+    };
+  }, [filtersOpen]);
 
   // Estados do overlay
   const [overlayId, setOverlayId] = useState<string | null>(null);
@@ -260,91 +285,105 @@ export default function Home() {
         <div className={`${viewMode === 'split' ? 'flex' : ''} h-[calc(100vh-80px)]`}>
           {/* Left Side - Property List */}
           <div className={`w-full ${viewMode === 'split' ? 'lg:w-1/2' : 'lg:w-full'} overflow-y-auto`}> 
-            {/* Filters Bar */}
-            <SearchFiltersBar
-              filters={{
-                minPrice,
-                maxPrice,
-                bedrooms: bedroomsMin,
-                bathrooms: bathroomsMin,
-                type,
-                areaMin,
-              }}
-              onFiltersChange={(newFilters) => {
-                setMinPrice(newFilters.minPrice);
-                setMaxPrice(newFilters.maxPrice);
-                setBedroomsMin(newFilters.bedrooms);
-                setBathroomsMin(newFilters.bathrooms);
-                setType(newFilters.type);
-                setAreaMin(newFilters.areaMin);
-                
-                // Atualizar URL com novos filtros
-                const params = buildSearchParams({
-                  q: search,
-                  city,
-                  state,
-                  type: newFilters.type,
-                  minPrice: newFilters.minPrice,
-                  maxPrice: newFilters.maxPrice,
-                  bedroomsMin: newFilters.bedrooms,
-                  bathroomsMin: newFilters.bathrooms,
-                  areaMin: newFilters.areaMin,
-                  sort,
-                  page: 1, // Reset para página 1 ao filtrar
-                });
-                router.push(`/?${params}`, { scroll: false });
-              }}
-              onClearFilters={() => {
-                setMinPrice("");
-                setMaxPrice("");
-                setBedroomsMin("");
-                setBathroomsMin("");
-                setType("");
-                setAreaMin("");
-                setPage(1);
-                
-                // Atualizar URL removendo filtros
-                const params = buildSearchParams({
-                  q: search,
-                  city,
-                  state,
-                  type: "",
-                  minPrice: "",
-                  maxPrice: "",
-                  bedroomsMin: "",
-                  bathroomsMin: "",
-                  areaMin: "",
-                  sort,
-                  page: 1,
-                });
-                router.push(`/?${params}`, { scroll: false });
-              }}
-            />
-
-            <div className="p-6 lg:p-8">
-              {/* Header */}
-              <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                  {total > 0 ? `${total} imóveis encontrados` : 'Nenhum imóvel encontrado'}
-                </h1>
-                {city && (
-                  <p className="text-gray-600">
-                    em <span className="font-medium">{city}, {state}</span>
-                  </p>
-                )}
-                <div className="mt-4 inline-flex bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => setViewMode('split')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${viewMode === 'split' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
-                  >
-                    Lista + Mapa
-                  </button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
-                  >
-                    Somente Lista
-                  </button>
+            <div className="pt-20 px-6 lg:px-8">
+              {/* Header + Controles */}
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                    {total > 0 ? `${total} imóveis encontrados` : 'Nenhum imóvel encontrado'}
+                  </h1>
+                  {city && (
+                    <p className="text-gray-600">
+                      em <span className="font-medium">{city}, {state}</span>
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setViewMode('split')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${viewMode === 'split' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                    >
+                      Lista + Mapa
+                    </button>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                    >
+                      Somente Lista
+                    </button>
+                  </div>
+                  <div className="relative" ref={filtersRef}>
+                    <button
+                      onClick={() => setFiltersOpen((v) => !v)}
+                      className="px-4 py-2 rounded-md text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50"
+                    >
+                      Filtros
+                    </button>
+                    {filtersOpen && (
+                      <div className="absolute right-0 mt-2 z-50">
+                        <SearchFiltersBar
+                          compact
+                          open
+                          variant="dropdown"
+                          onClose={() => setFiltersOpen(false)}
+                          filters={{
+                            minPrice,
+                            maxPrice,
+                            bedrooms: bedroomsMin,
+                            bathrooms: bathroomsMin,
+                            type,
+                            areaMin,
+                          }}
+                          onFiltersChange={(newFilters) => {
+                            setMinPrice(newFilters.minPrice);
+                            setMaxPrice(newFilters.maxPrice);
+                            setBedroomsMin(newFilters.bedrooms);
+                            setBathroomsMin(newFilters.bathrooms);
+                            setType(newFilters.type);
+                            setAreaMin(newFilters.areaMin);
+                            const params = buildSearchParams({
+                              q: search,
+                              city,
+                              state,
+                              type: newFilters.type,
+                              minPrice: newFilters.minPrice,
+                              maxPrice: newFilters.maxPrice,
+                              bedroomsMin: newFilters.bedrooms,
+                              bathroomsMin: newFilters.bathrooms,
+                              areaMin: newFilters.areaMin,
+                              sort,
+                              page: 1,
+                            });
+                            router.push(`/?${params}`, { scroll: false });
+                          }}
+                          onClearFilters={() => {
+                            setMinPrice("");
+                            setMaxPrice("");
+                            setBedroomsMin("");
+                            setBathroomsMin("");
+                            setType("");
+                            setAreaMin("");
+                            setPage(1);
+                            const params = buildSearchParams({
+                              q: search,
+                              city,
+                              state,
+                              type: "",
+                              minPrice: "",
+                              maxPrice: "",
+                              bedroomsMin: "",
+                              bathroomsMin: "",
+                              areaMin: "",
+                              sort,
+                              page: 1,
+                            });
+                            router.push(`/?${params}`, { scroll: false });
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -391,7 +430,7 @@ export default function Home() {
 
           {/* Right Side - Interactive Map (Desktop Only, oculto se 'Somente Lista') */}
           {viewMode === 'split' && (
-            <div className="hidden lg:block lg:w-1/2 sticky top-20 h-[calc(100vh-80px)]">
+            <div className="hidden lg:block lg:w-1/2 sticky top-24 h-[calc(100vh-96px)]">
               <MapWithPriceBubbles
                 items={properties}
                 isLoading={isLoading}
@@ -482,6 +521,7 @@ export default function Home() {
         <ThemeToggle />
       </div>
 
+      {/* Dropdown já renderizado próximo ao botão */}
     </div>
   );
 }
