@@ -14,9 +14,10 @@ export function applySecurityHeaders(
     "default-src 'self'",
     "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js precisa de unsafe-eval
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https:",
+    "img-src 'self' data: blob: https:", // permite previews blob: e imagens remotas
     "font-src 'self' data:",
-    "connect-src 'self' https://vitals.vercel-insights.com",
+    // permite chamadas para Vercel vitals e Cloudinary API; adicione outros backends aqui se necessário
+    "connect-src 'self' https://vitals.vercel-insights.com https://api.cloudinary.com",
     "frame-ancestors 'none'",
   ];
   

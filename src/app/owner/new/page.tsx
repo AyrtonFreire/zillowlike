@@ -17,6 +17,7 @@ export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type?: "success"|"error"|"info" } | null>(null);
+  const [submitIntent, setSubmitIntent] = useState(false);
   
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -286,6 +287,11 @@ export default function NewPropertyPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!submitIntent) {
+      // Evita submits involuntários causados por Enter ou interações não intencionais
+      return;
+    }
+    setSubmitIntent(false);
     setIsSubmitting(true);
     
     try {
@@ -408,7 +414,7 @@ export default function NewPropertyPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Cadastrar Imóvel</h1>
           <p className="text-gray-600 mb-8">Preencha as informações do seu imóvel para publicá-lo na plataforma.</p>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} onKeyDown={(e) => { if ((e as any).key === 'Enter' && currentStep < 4) { e.preventDefault(); } }} className="space-y-8">
             {/* Step 1: Basic Info */}
             {currentStep === 1 && (
               <div className="space-y-6">
@@ -862,6 +868,7 @@ export default function NewPropertyPage() {
               ) : (
                 <button
                   type="submit"
+                  onClick={() => setSubmitIntent(true)}
                   disabled={isSubmitting}
                   className="px-8 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg font-medium transition-all duration-200"
                 >
