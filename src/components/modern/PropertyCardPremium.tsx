@@ -352,12 +352,12 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
             )}
           </div>
 
-          {/* Features row: quartos, banheiros, área (compact with separators) */}
-          <div className="flex items-center text-gray-600 text-[11px] mb-2">
+          {/* Features row: quartos, banheiros, área (readable) */}
+          <div className="flex items-center text-gray-700 text-sm mb-2">
             {property.bedrooms != null && (
               <div className="flex items-center gap-1" title="Quartos">
-                <Bed className="w-3 h-3 text-gray-500" />
-                <span className="font-medium">{property.bedrooms}</span>
+                <Bed className="w-4 h-4 text-gray-600" />
+                <span className="font-semibold">{property.bedrooms}</span>
               </div>
             )}
             {property.bedrooms != null && (property.bathrooms != null || property.areaM2 != null) && (
@@ -365,8 +365,8 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
             )}
             {property.bathrooms != null && (
               <div className="flex items-center gap-1" title="Banheiros">
-                <Bath className="w-3 h-3 text-gray-500" />
-                <span className="font-medium">{property.bathrooms}</span>
+                <Bath className="w-4 h-4 text-gray-600" />
+                <span className="font-semibold">{property.bathrooms}</span>
               </div>
             )}
             {property.bathrooms != null && property.areaM2 != null && (
@@ -374,32 +374,21 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
             )}
             {property.areaM2 != null && (
               <div className="flex items-center gap-1" title="Área">
-                <Maximize className="w-3 h-3 text-gray-500" />
-                <span className="font-medium">{property.areaM2}m²</span>
+                <Maximize className="w-4 h-4 text-gray-600" />
+                <span className="font-semibold">{property.areaM2}m²</span>
               </div>
             )}
           </div>
 
-          {/* Location (smaller, cleaner) */}
-          <div className="flex items-center gap-1.5 text-gray-600 text-[11px] mb-2">
-            <MapPin className="w-3 h-3 text-gray-500" />
-            <span className="">
+          {/* Location (clean, readable) */}
+          <div className="flex items-center gap-1.5 text-gray-700 text-sm mb-1.5">
+            <MapPin className="w-4 h-4 text-gray-600" />
+            <span>
               {property.neighborhood && `${property.neighborhood}, `}
               {property.city}/{property.state}
             </span>
           </div>
-
-          {/* Divider and Description with subtle background and fade-out */}
-          {property.description && (
-            <div className="border-t border-gray-200 mt-3 pt-2 rounded-b-2xl bg-gray-50">
-              <div className="relative">
-                <p className="text-sm leading-relaxed text-gray-700 line-clamp-3 pr-2">
-                  {property.description}
-                </p>
-                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-gray-50 to-transparent rounded-b-2xl" />
-              </div>
-            </div>
-          )}
+          {/* No description: keep info concise up to the address */}
         </div>
       </motion.div>
     </div>

@@ -67,6 +67,7 @@ export default function NewPropertyPage() {
   const [images, setImages] = useState<ImageInput[]>([{ url: "", useUrl: false }]);
   const dragIndex = useRef<number | null>(null);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
+  const dropInputRef = useRef<HTMLInputElement | null>(null);
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
 
@@ -291,6 +292,7 @@ export default function NewPropertyPage() {
       if (typeof d.bathrooms !== 'undefined') setBathrooms(d.bathrooms);
       if (typeof d.areaM2 !== 'undefined') setAreaM2(d.areaM2);
       if (Array.isArray(d.images)) setImages(d.images);
+      if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
     } catch {}
   }, []);
 
@@ -302,12 +304,13 @@ export default function NewPropertyPage() {
           description, priceBRL, type, purpose,
           street, neighborhood, city, state, postalCode,
           bedrooms, bathrooms, areaM2, images, addressNumber,
+          conditionTags,
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images]);
+  }, [description, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images, conditionTags]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -617,6 +620,34 @@ export default function NewPropertyPage() {
                     required
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Diferenciais (até 3)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {TAG_OPTIONS.map((tag) => {
+                      const selected = conditionTags.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleTag(tag)}
+                          className={
+                            `px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ` +
+                            (selected
+                              ? "border-transparent text-white bg-gradient-to-r from-purple-600 to-blue-600"
+                              : "border-gray-300 text-gray-700 bg-white hover:bg-gray-50")
+                          }
+                          aria-pressed={selected}
+                        >
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {conditionTags.length > 0 && (
+                    <p className="mt-1 text-xs text-gray-500">Selecionadas: {conditionTags.join(", ")}</p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -775,7 +806,7 @@ export default function NewPropertyPage() {
                   }}
                 >
                   <div className={`w-full rounded-lg border-2 border-dashed ${isFileDragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-gray-50'} p-6 text-center`}
-                       onClick={() => setImages((imgs) => [...imgs, { url: "" }])}
+                       onClick={() => dropInputRef.current?.click()}
                        role="button" tabIndex={0}
                   >
                     <div className="flex items-center justify-center gap-3 text-gray-600">
@@ -786,6 +817,19 @@ export default function NewPropertyPage() {
                       </svg>
                       <span className="text-sm">Arraste suas imagens aqui ou clique para adicionar</span>
                     </div>
+                    <input
+                      ref={dropInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length) {
+                          handleDroppedFiles(e.target.files);
+                          e.currentTarget.value = "";
+                        }
+                      }}
+                    />
                   </div>
                   <DndContext
                     sensors={sensors}
@@ -832,9 +876,17 @@ export default function NewPropertyPage() {
                             <input
                               type="file"
                               accept="image/*"
+                              multiple
                               onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
+                                const fl = e.target.files;
+                                if (!fl || fl.length === 0) return;
+                                if (fl.length > 1) {
+                                  // Upload em lote: usa fluxo do dropzone e mantém imagens existentes
+                                  await handleDroppedFiles(fl);
+                                  e.currentTarget.value = "";
+                                  return;
+                                }
+                                const file = fl[0];
                                 try {
                                   // Preview local imediato
                                   const localUrl = URL.createObjectURL(file);
