@@ -27,6 +27,8 @@ export default function NewPropertyPage() {
   const [city, setCity] = useState("Petrolina");
   const [state, setState] = useState("PE");
   const [postalCode, setPostalCode] = useState("");
+  const [addressNumber, setAddressNumber] = useState("");
+  const numberInputRef = useRef<HTMLInputElement | null>(null);
 
   const [bedrooms, setBedrooms] = useState<number | "">("");
   const [bathrooms, setBathrooms] = useState<number | "">("");
@@ -110,7 +112,7 @@ export default function NewPropertyPage() {
         const payload = {
           title, description, priceBRL, type,
           street, neighborhood, city, state, postalCode,
-          bedrooms, bathrooms, areaM2, images,
+          bedrooms, bathrooms, areaM2, images, addressNumber,
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
       } catch {}
@@ -124,16 +126,19 @@ export default function NewPropertyPage() {
     if (cepDigits.length !== 8) return;
     const id = setTimeout(async () => {
       try {
-        const res = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`);
+        const res = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`, { cache: 'no-store' });
         const data = await res.json();
         if (data?.erro) {
           setToast({ message: "CEP não encontrado", type: "error" });
           return;
         }
-        setStreet((s) => s || data.logradouro || "");
-        setNeighborhood((b) => b || data.bairro || "");
+        setStreet(data.logradouro || "");
+        setNeighborhood(data.bairro || "");
         setCity(data.localidade || city);
         setState(data.uf || state);
+        // Avança automaticamente para endereço e foca no Número
+        setCurrentStep(2);
+        setTimeout(() => numberInputRef.current?.focus(), 50);
       } catch {
         setToast({ message: "Falha ao buscar CEP", type: "error" });
       }
@@ -187,7 +192,7 @@ export default function NewPropertyPage() {
         description,
         priceBRL: parseBRLToNumber(priceBRL),
         type,
-        address: { street, neighborhood, city, state, postalCode },
+        address: { street, neighborhood, city, state, postalCode, number: addressNumber || undefined },
         geo: { lat: geo.lat, lng: geo.lng },
         details: {
           bedrooms: bedrooms === "" ? null : Number(bedrooms),
@@ -288,6 +293,17 @@ export default function NewPropertyPage() {
             {currentStep === 1 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Informações básicas</h2>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">CEP</label>
+                  <input
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    placeholder="56300-000"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(formatCEP(e.target.value))}
+                    inputMode="numeric"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Digite apenas números; formatamos automaticamente (99999-999).</p>
+                </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -372,6 +388,17 @@ export default function NewPropertyPage() {
                     />
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Número *</label>
+                    <input
+                      ref={numberInputRef}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      placeholder="123"
+                      value={addressNumber}
+                      onChange={(e) => setAddressNumber(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Bairro
                     </label>
@@ -404,35 +431,7 @@ export default function NewPropertyPage() {
                       required
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      CEP
-                    </label>
-                    <input
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      placeholder="56300-000"
-                      value={postalCode}
-                      onChange={(e) => setPostalCode(formatCEP(e.target.value))}
-                      onBlur={async () => {
-                        const cep = postalCode.replace(/\D+/g, "");
-                        if (cep.length !== 8) return;
-                        try {
-                          const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-                          const data = await res.json();
-                          if (data?.erro) {
-                            setToast({ message: "CEP não encontrado", type: "error" });
-                            return;
-                          }
-                          setStreet((s) => s || data.logradouro || "");
-                          setNeighborhood((b) => b || data.bairro || "");
-                          setCity(data.localidade || city);
-                          setState(data.uf || state);
-                        } catch {
-                          setToast({ message: "Falha ao buscar CEP", type: "error" });
-                        }
-                      }}
-                    />
-                  </div>
+                  
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
