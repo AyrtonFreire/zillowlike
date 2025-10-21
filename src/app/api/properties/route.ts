@@ -268,11 +268,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Ensure type is a valid enum fallback
+    const validTypes = new Set(["HOUSE","APARTMENT","CONDO","LAND","COMMERCIAL","STUDIO"]);
+    const safeType = validTypes.has(type as any) ? type : "HOUSE";
+
     const createData: any = {
       title,
       description,
       price,
-      type,
+      type: safeType,
       ...(purpose ? { purpose } : {}),
       ownerId: userId || undefined,
       street: address.street,
@@ -304,11 +308,12 @@ export async function POST(req: NextRequest) {
       created = await prisma.property.create({ data: createData, include: { images: true } });
     } catch (err: any) {
       const msg = String(err?.message || err);
-      const looksLikePurposeMissing = msg.includes("Unknown arg `purpose`") || msg.includes("column \"purpose\"") || msg.includes("Invalid value for argument") && msg.includes("purpose");
-      if (looksLikePurposeMissing && createData.purpose) {
-        console.warn("/api/properties POST: purpose not supported by current DB schema. Retrying without purpose.");
-        const { purpose: _omit, ...withoutPurpose } = createData;
-        created = await prisma.property.create({ data: withoutPurpose as any, include: { images: true } });
+      const looksLikePurposeMissing = msg.includes("Unknown arg `purpose`") || msg.includes("column \"purpose\"") || (msg.includes("Invalid value for argument") && msg.includes("purpose"));
+      const looksLikeConditionTagsMissing = msg.includes("Unknown arg `conditionTags`") || msg.includes("column \"conditionTags\"");
+      if ((looksLikePurposeMissing && createData.purpose) || (looksLikeConditionTagsMissing && createData.conditionTags)) {
+        console.warn("/api/properties POST: optional fields not supported by current DB schema. Retrying without them.");
+        const { purpose: _omitP, conditionTags: _omitC, ...withoutOptional } = createData;
+        created = await prisma.property.create({ data: withoutOptional as any, include: { images: true } });
       } else {
         throw err;
       }

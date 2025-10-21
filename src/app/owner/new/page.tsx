@@ -12,7 +12,7 @@ import { geocodeAddressParts } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import Toast from "@/components/Toast";
 
-type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string };
+type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean };
 
 export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -129,8 +129,37 @@ export default function NewPropertyPage() {
     };
   }, []);
 
-  async function handleDroppedFiles(fileList: FileList) {
-    const files = Array.from(fileList).filter((f) => f.type.startsWith('image/'));
+  // Paste-from-clipboard support (Step 4)
+  useEffect(() => {
+    if (currentStep !== 4) return;
+    const onPaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files: File[] = [];
+      for (const it of Array.from(items)) {
+        if (it.kind === 'file') {
+          const blob = it.getAsFile();
+          if (blob && blob.type.startsWith('image/')) {
+            files.push(new File([blob], `pasted-${Date.now()}.png`, { type: blob.type }));
+          }
+        }
+      }
+      if (files.length > 0) {
+        e.preventDefault();
+        await handleDroppedFiles(files);
+      }
+    };
+    window.addEventListener('paste', onPaste as any);
+    return () => window.removeEventListener('paste', onPaste as any);
+  }, [currentStep, images]);
+
+  function toFiles(list: FileList | File[]): File[] {
+    if (Array.isArray(list)) return list as File[];
+    return Array.from(list) as File[];
+  }
+
+  async function handleDroppedFiles(fileList: FileList | File[]) {
+    const files: File[] = toFiles(fileList).filter((f: File) => f.type.startsWith('image/'));
     if (files.length === 0) return;
     for (const file of files) {
       // encontra primeiro slot vazio, senão adiciona novo
@@ -139,7 +168,7 @@ export default function NewPropertyPage() {
         setImages((prev) => [...prev, { url: "" }]);
         targetIndex = images.length;
       }
-      const localUrl = URL.createObjectURL(file);
+      const localUrl = URL.createObjectURL(file as File);
       setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined } : it)));
       try {
         const sigRes = await fetch('/api/upload/cloudinary-sign', {
@@ -150,7 +179,7 @@ export default function NewPropertyPage() {
         if (!sigRes.ok) throw new Error('Falha ao assinar upload.');
         const sig = await sigRes.json();
         const fd = new FormData();
-        fd.append('file', file);
+        fd.append('file', file as File);
         fd.append('api_key', sig.apiKey);
         fd.append('timestamp', String(sig.timestamp));
         fd.append('signature', sig.signature);
@@ -831,207 +860,110 @@ export default function NewPropertyPage() {
                       }}
                     />
                   </div>
+                  {/* Modern gallery */}
+                  <h3 className="text-sm font-medium text-gray-700 mt-6 mb-2">Galeria</h3>
+                  <p className="text-xs text-gray-500 mb-3">Arraste para reordenar. Clique para editar legenda. Cole imagens (Ctrl/Cmd+V) diretamente aqui.</p>
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
-                    modifiers={[restrictToVerticalAxis]}
+                    modifiers={[restrictToParentElement, restrictToWindowEdges]}
                     onDragEnd={({ active, over }) => {
                       if (!over || active.id === over.id) return;
-                      const ids = images.map((_, i) => `img-${i}`);
+                      const ids = images.map((_, i) => `thumb-${i}`);
                       const oldIndex = ids.indexOf(String(active.id));
                       const newIndex = ids.indexOf(String(over.id));
                       if (oldIndex === -1 || newIndex === -1) return;
                       setImages((prev) => arrayMove(prev, oldIndex, newIndex));
                     }}
                   >
-                    <SortableContext items={images.map((_, i) => `img-${i}`)} strategy={verticalListSortingStrategy}>
-                  {images.map((img, idx) => (
-                    <SortableItem key={`img-${idx}`} id={`img-${idx}`}>
-                      <div className="border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200 bg-white">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-700">Imagem {idx + 1}</span>
-                          <span className="text-xs text-gray-400 cursor-grab select-none" title="Arraste para reordenar">⋮⋮</span>
-                        </div>
-                        {images.length > 1 && (
-                          <button
-                            type="button"
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => { lastFocusRef.current = e.currentTarget as HTMLElement; setConfirmDelete({ open: true, index: idx }); }}
-                            className="inline-flex items-center text-red-600 hover:text-red-700 p-2 rounded-md hover:bg-red-50"
-                            aria-label={`Remover imagem ${idx + 1}`}
-                            title="Remover"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                              <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 1 0 0 2H6v11a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7h.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9zm2 3V5h2v1h-2zM8 7h8v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V7z" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="md:col-span-2">
-                          {/* Upload via Cloudinary */}
-                          <div className="mt-3 flex items-center gap-3">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              onChange={async (e) => {
-                                const fl = e.target.files;
-                                if (!fl || fl.length === 0) return;
-                                if (fl.length > 1) {
-                                  // Upload em lote: usa fluxo do dropzone e mantém imagens existentes
-                                  await handleDroppedFiles(fl);
-                                  e.currentTarget.value = "";
-                                  return;
-                                }
-                                const file = fl[0];
-                                try {
-                                  // Preview local imediato
-                                  const localUrl = URL.createObjectURL(file);
-                                  setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, url: localUrl, pending: true, error: undefined } : it)));
-                                  setToast({ message: "Enviando imagem...", type: "info" });
-                                  const sigRes = await fetch('/api/upload/cloudinary-sign', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ folder: 'zillowlike' }),
-                                  });
-                                  if (!sigRes.ok) throw new Error('Falha ao assinar upload.');
-                                  const sig = await sigRes.json();
-                                  const fd = new FormData();
-                                  fd.append('file', file);
-                                  fd.append('api_key', sig.apiKey);
-                                  fd.append('timestamp', String(sig.timestamp));
-                                  fd.append('signature', sig.signature);
-                                  fd.append('folder', sig.folder);
-                                  const up = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, { method: 'POST', body: fd });
-                                  const data = await up.json();
-                                  if (!up.ok || !data.secure_url) throw new Error('Upload falhou.');
-                                  URL.revokeObjectURL(localUrl);
-                                  setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, url: data.secure_url, pending: false, error: undefined } : it)));
-                                  setToast({ message: 'Imagem enviada!', type: 'success' });
-                                } catch (err: any) {
-                                  setToast({ message: err?.message || 'Erro no upload.', type: 'error' });
-                                  setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, pending: false, error: 'Falha no upload' } : it)));
-                                }
-                              }}
-                            />
-                          </div>
-                          {/* Preview */}
-                          {img.url && (
-                            <div className="mt-3">
-                              <img
-                                src={img.url}
-                                alt={img.alt || `Pré-visualização ${idx + 1}`}
-                                className="w-full h-40 object-cover rounded-lg border"
-                              />
-                              {img.pending && (
-                                <div className="mt-2 text-xs text-gray-500">Enviando...</div>
-                              )}
-                              {img.error && (
-                                <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-red-50 text-red-700 text-xs px-2 py-1 border border-red-200">
-                                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
-                                  <span>{img.error}</span>
+                    <SortableContext items={images.map((img, i) => img.url ? `thumb-${i}` : null).filter(Boolean) as string[]} strategy={verticalListSortingStrategy}>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {images.map((img, i) => (
+                          img.url ? (
+                            <SortableItem key={`thumb-${i}`} id={`thumb-${i}`}>
+                              <div className="group relative overflow-hidden rounded-lg border bg-white">
+                                <img
+                                  src={img.url}
+                                  alt={img.alt || `Imagem ${i + 1}`}
+                                  className="w-full h-36 object-cover"
+                                  draggable={false}
+                                />
+                                <div className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-white/90 text-gray-700 shadow">
+                                  {i === 0 ? <span>Capa</span> : <span>#{i + 1}</span>}
                                 </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Descrição (opcional)
-                          </label>
-                          <input
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                            placeholder="Sala de estar"
-                            value={img.alt || ""}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setImages((prev) => prev.map((it, i) => (i === idx ? { ...it, alt: v } : it)));
-                            }}
-                          />
-                        </div>
+                                <div className="absolute top-2 right-2 flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setImages((prev) => arrayMove(prev, i, 0)); }}
+                                    className="p-2 rounded-md bg-white/90 hover:bg-white text-yellow-600 shadow"
+                                    aria-label="Definir capa"
+                                    title="Definir capa"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M12 .587l3.668 7.431 8.2 1.193-5.934 5.787 1.401 8.168L12 18.896l-7.335 3.87 1.401-8.168L.132 9.211l8.2-1.193L12 .587z"/></svg>
+                                  </button>
+                                  {images.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget as HTMLElement; setConfirmDelete({ open: true, index: i }); }}
+                                      className="p-2 rounded-md bg-white/90 hover:bg-white text-red-600 shadow"
+                                      aria-label="Remover imagem"
+                                      title="Remover"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 1 0 0 2H6v11a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7h.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9zm2 3V5h2v1h-2zM8 7h8v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V7z"/></svg>
+                                    </button>
+                                  )}
+                                </div>
+                                {/* Caption overlay editable */}
+                                <button
+                                  type="button"
+                                  onClick={() => setImages((prev) => prev.map((it, idx) => idx === i ? { ...it, editing: !(it as any).editing } as any : it))}
+                                  className="absolute bottom-2 left-2 px-2 py-0.5 text-[11px] rounded bg-white/90 text-gray-700 shadow hover:bg-white"
+                                >
+                                  {(img as any).editing ? 'Fechar' : (img.alt ? 'Editar legenda' : 'Adicionar legenda')}
+                                </button>
+                                {(img as any).editing && (
+                                  <div className="absolute inset-x-2 bottom-2 p-2 rounded-md bg-white/95 shadow flex items-center gap-2">
+                                    <input
+                                      value={img.alt || ''}
+                                      onChange={(e) => setImages((prev) => prev.map((it, idx) => idx === i ? { ...it, alt: e.target.value } : it))}
+                                      placeholder="Legenda curta"
+                                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                                      maxLength={60}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setImages((prev) => prev.map((it, idx) => idx === i ? { ...it, editing: undefined } as any : it))}
+                                      className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
+                                    >Salvar</button>
+                                  </div>
+                                )}
+                              </div>
+                            </SortableItem>
+                          ) : null
+                        ))}
                       </div>
-                      </div>
-                    </SortableItem>
-                  ))}
                     </SortableContext>
                   </DndContext>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setImages((imgs) => [...imgs, { url: "" }])}
+                    onClick={() => dropInputRef.current?.click()}
                     className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 hover:bg-blue-50 transition-all duration-200"
                   >
-                    <svg className="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
+                    <svg className="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                     <span className="text-gray-600">Adicionar mais fotos</span>
                   </button>
-                  {images.some((it) => it.url && it.url.trim().length > 0) && (
-                    <div className="mt-6">
-                      <h3 className="text-sm font-medium text-gray-700 mb-3">Pré-visualização</h3>
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        modifiers={[restrictToParentElement, restrictToWindowEdges]}
-                        onDragEnd={({ active, over }) => {
-                          if (!over || active.id === over.id) return;
-                          const ids = images.map((_, i) => `thumb-${i}`);
-                          const oldIndex = ids.indexOf(String(active.id));
-                          const newIndex = ids.indexOf(String(over.id));
-                          if (oldIndex === -1 || newIndex === -1) return;
-                          setImages((prev) => arrayMove(prev, oldIndex, newIndex));
-                        }}
-                      >
-                        <SortableContext items={images.map((img, i) => img.url ? `thumb-${i}` : null).filter(Boolean) as string[]} strategy={verticalListSortingStrategy}>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {images.map((img, i) => (
-                              img.url ? (
-                                <SortableItem key={`thumb-${i}`} id={`thumb-${i}`}>
-                                  <div className="group relative overflow-hidden rounded-lg border bg-white cursor-pointer" onClick={() => openLightbox(i)}>
-                                    <img
-                                      src={img.url}
-                                      alt={img.alt || `Pré-visualização ${i + 1}`}
-                                      className="w-full h-32 object-cover group-hover:opacity-95"
-                                      draggable={false}
-                                    />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
-                                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget as HTMLElement; setConfirmDelete({ open: true, index: i }); }}
-                                        className="p-2 rounded-md bg-white/80 hover:bg-white text-red-600 shadow"
-                                        aria-label="Remover imagem"
-                                        title="Remover"
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                                          <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 1 0 0 2H6v11a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7h.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9zm2 3V5h2v1h-2zM8 7h8v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V7z" />
-                                        </svg>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); setImages((prev) => arrayMove(prev, i, 0)); }}
-                                        className="p-2 rounded-md bg-white/80 hover:bg-white text-yellow-600 shadow"
-                                        aria-label="Definir capa"
-                                        title="Definir capa"
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                                          <path d="M12 .587l3.668 7.431 8.2 1.193-5.934 5.787 1.401 8.168L12 18.896l-7.335 3.87 1.401-8.168L.132 9.211l8.2-1.193L12 .587z"/>
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  </div>
-                                </SortableItem>
-                              ) : null
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
-                    </div>
-                  )}
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => dropInputRef.current?.click()}
+                    className="w-full border border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-all duration-200"
+                    title="Abrirá o seletor de arquivos; use Ctrl/Cmd + A para selecionar todas"
+                  >
+                    <span className="text-gray-700">Selecionar todas</span>
+                  </button>
+                </div>
+                </div>
             )}
 
             {/* Navigation */}
