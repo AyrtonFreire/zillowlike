@@ -29,6 +29,7 @@ export default function NewPropertyPage() {
   const [postalCode, setPostalCode] = useState("");
   const [addressNumber, setAddressNumber] = useState("");
   const numberInputRef = useRef<HTMLInputElement | null>(null);
+  const [cepValid, setCepValid] = useState(false);
 
   const [bedrooms, setBedrooms] = useState<number | "">("");
   const [bathrooms, setBathrooms] = useState<number | "">("");
@@ -123,24 +124,26 @@ export default function NewPropertyPage() {
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
     const cepDigits = postalCode.replace(/\D+/g, "");
-    if (cepDigits.length !== 8) return;
+    if (cepDigits.length !== 8) { setCepValid(false); return; }
     const id = setTimeout(async () => {
       try {
         const res = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`, { cache: 'no-store' });
         const data = await res.json();
         if (data?.erro) {
           setToast({ message: "CEP não encontrado", type: "error" });
+          setCepValid(false);
           return;
         }
         setStreet(data.logradouro || "");
         setNeighborhood(data.bairro || "");
         setCity(data.localidade || city);
         setState(data.uf || state);
-        // Avança automaticamente para endereço e foca no Número
-        setCurrentStep(2);
+        setCepValid(true);
+        // Focar no número
         setTimeout(() => numberInputRef.current?.focus(), 50);
       } catch {
         setToast({ message: "Falha ao buscar CEP", type: "error" });
+        setCepValid(false);
       }
     }, 400);
     return () => clearTimeout(id);
@@ -293,17 +296,6 @@ export default function NewPropertyPage() {
             {currentStep === 1 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Informações básicas</h2>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">CEP</label>
-                  <input
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    placeholder="56300-000"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(formatCEP(e.target.value))}
-                    inputMode="numeric"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Digite apenas números; formatamos automaticamente (99999-999).</p>
-                </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -373,6 +365,17 @@ export default function NewPropertyPage() {
             {currentStep === 2 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Localização</h2>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">CEP</label>
+                  <input
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    placeholder="56300-000"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(formatCEP(e.target.value))}
+                    inputMode="numeric"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Digite apenas números; formatamos automaticamente (99999-999).</p>
+                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -380,10 +383,11 @@ export default function NewPropertyPage() {
                       Rua *
                     </label>
                     <input
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent'}`}
                       placeholder="Rua das Flores, 123"
                       value={street}
                       onChange={(e) => setStreet(e.target.value)}
+                      disabled
                       required
                     />
                   </div>
@@ -395,7 +399,7 @@ export default function NewPropertyPage() {
                       placeholder="123"
                       value={addressNumber}
                       onChange={(e) => setAddressNumber(e.target.value)}
-                      required
+                      // número é opcional
                     />
                   </div>
                   <div>
@@ -403,10 +407,11 @@ export default function NewPropertyPage() {
                       Bairro
                     </label>
                     <input
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent'}`}
                       placeholder="Centro"
                       value={neighborhood}
                       onChange={(e) => setNeighborhood(e.target.value)}
+                      disabled
                     />
                   </div>
                   <div>
@@ -414,9 +419,10 @@ export default function NewPropertyPage() {
                       Cidade *
                     </label>
                     <input
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent'}`}
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
+                      disabled
                       required
                     />
                   </div>
@@ -425,13 +431,13 @@ export default function NewPropertyPage() {
                       Estado *
                     </label>
                     <input
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent'}`}
                       value={state}
                       onChange={(e) => setState(e.target.value)}
+                      disabled
                       required
                     />
                   </div>
-                  
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
