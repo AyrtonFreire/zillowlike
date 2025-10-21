@@ -6,6 +6,7 @@ import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, s
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis, restrictToParentElement, restrictToWindowEdges } from "@dnd-kit/modifiers";
 import Link from "next/link";
+import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
 import { geocodeAddress } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import Toast from "@/components/Toast";
@@ -21,6 +22,7 @@ export default function NewPropertyPage() {
   const [description, setDescription] = useState("");
   const [priceBRL, setPriceBRL] = useState("");
   const [type, setType] = useState("HOUSE");
+  const [conditionTags, setConditionTags] = useState<string[]>([]);
 
   const [street, setStreet] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
@@ -124,7 +126,7 @@ export default function NewPropertyPage() {
         fd.append('folder', sig.folder);
         const up = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, { method: 'POST', body: fd });
         const data = await up.json();
-        if (!up.ok || !data.secure_url) throw new Error('Upload falhou.');
+        if (!up.ok || !data.secure_url) throw new Error(data?.error?.message || 'Upload falhou.');
         URL.revokeObjectURL(localUrl);
         setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: data.secure_url, pending: false, error: undefined } : it)));
       } catch (err) {
@@ -313,6 +315,7 @@ export default function NewPropertyPage() {
           bathrooms: bathrooms === "" ? null : Number(bathrooms),
           areaM2: areaM2 === "" ? null : Number(areaM2),
         },
+        conditionTags,
         images: images.map((img, i) => ({ url: img.url, alt: img.alt, sortOrder: i })),
       };
 
@@ -870,21 +873,22 @@ export default function NewPropertyPage() {
         </div>
           </div>
           <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start">
-            <div className="bg-white rounded-xl shadow-lg p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Pré-visualização do anúncio</h3>
-              <div className="aspect-video w-full overflow-hidden rounded-lg border bg-gray-100">
-                {images[0]?.url ? (
-                  <img src={images[0].url} alt={images[0].alt || 'Capa'} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">Sem imagem</div>
-                )}
-              </div>
-              <div className="mt-3 space-y-1">
-                <div className="text-base font-medium text-gray-900 truncate">{title || 'Título do anúncio'}</div>
-                <div className="text-blue-700 font-semibold">{priceBRL ? `R$ ${priceBRL}` : 'R$ 0'}</div>
-                <div className="text-sm text-gray-600 truncate">{addressString || 'Endereço aparecerá aqui'}</div>
-              </div>
-            </div>
+            <PropertyCardPremium
+              property={{
+                id: 'preview',
+                title: title || 'Título do anúncio',
+                price: parseBRLToNumber(priceBRL) * 100,
+                images: images.filter((i)=>i.url).map((i)=>({ url: i.url })),
+                city,
+                state,
+                bedrooms: bedrooms === '' ? undefined : Number(bedrooms),
+                bathrooms: bathrooms === '' ? undefined : Number(bathrooms),
+                areaM2: areaM2 === '' ? undefined : Number(areaM2),
+                neighborhood,
+                conditionTags,
+                type,
+              }}
+            />
           </aside>
         </div>
       </div>
