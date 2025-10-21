@@ -266,10 +266,10 @@ export default function NewPropertyPage() {
   const [geoPreview, setGeoPreview] = useState<string>("");
   const addressString = useMemo(
     () =>
-      [street, neighborhood, city, state, postalCode]
+      [street && addressNumber ? `${street}, ${addressNumber}` : street, neighborhood, city, state, postalCode]
         .filter(Boolean)
         .join(", "),
-    [street, neighborhood, city, state, postalCode]
+    [street, addressNumber, neighborhood, city, state, postalCode]
   );
 
   const steps = [
@@ -354,7 +354,21 @@ export default function NewPropertyPage() {
     }
   }
 
-  const nextStep = () => {
+  const nextStep = async () => {
+    // Validação de endereço no Step 2 antes de avançar
+    if (currentStep === 2) {
+      const full = addressString;
+      if (!full || !street || !city || !state) {
+        setToast({ message: "Preencha o endereço antes de avançar.", type: "error" });
+        return;
+      }
+      const geo = await geocodeAddress(full);
+      if (!geo) {
+        setToast({ message: "Endereço não encontrado. Tente ser mais específico.", type: "error" });
+        return;
+      }
+      setGeoPreview(`${geo.lat},${geo.lng}`);
+    }
     if (currentStep < 4) setCurrentStep(currentStep + 1);
   };
 
