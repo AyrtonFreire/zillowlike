@@ -173,7 +173,7 @@ export default function OwnerDashboard() {
 
   return (
     <DashboardLayout
-      title={`${getGreeting()}, Maria 👋`}
+      title={`${getGreeting()}, ${session?.user?.name ?? "Proprietário"} 👋`}
       description="Veja o desempenho dos seus imóveis"
       breadcrumbs={[
         { label: "Home", href: "/" },

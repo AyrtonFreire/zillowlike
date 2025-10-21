@@ -61,6 +61,13 @@ export async function GET(req: NextRequest) {
     const areaMin = Number(searchParams.get("areaMin") || 0);
 
     const where: any = {};
+    // Public API: por padrão, retornar apenas propriedades ATIVAS.
+    // Permitir override via query ?status=ANY ou ?status=PAUSED/DRAFT/SOLD/RENTED
+    const statusParam = (searchParams.get("status") || "ACTIVE").toUpperCase();
+    if (statusParam !== "ANY") {
+      const allowedStatuses = new Set(["ACTIVE","PAUSED","DRAFT","SOLD","RENTED"]);
+      where.status = allowedStatuses.has(statusParam) ? statusParam : "ACTIVE";
+    }
     if (city) where.city = { equals: city, mode: 'insensitive' as Prisma.QueryMode };
     if (state) where.state = { equals: state, mode: 'insensitive' as Prisma.QueryMode };
     if (type) where.type = type as any;
@@ -120,7 +127,7 @@ export async function GET(req: NextRequest) {
       }),
       prisma.property.count({ where }),
     ]);
-
+    console.log("api/properties GET", { filters: { city, state, type, q, bedroomsMin, bathroomsMin, areaMin, status: where.status }, total });
     return NextResponse.json({ 
       success: true,
       properties: items, 
@@ -143,7 +150,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
     const session = await getServerSession(authOptions);
-    if (!session && process.env.NODE_ENV !== "development") {
+    if (!session) {
+      console.warn("api/properties POST unauthorized: no session");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const body = await req.json();
@@ -159,6 +167,10 @@ export async function POST(req: NextRequest) {
 
     const price = Math.round(Number(priceBRL) * 100);
     const userId = (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub;
+    if (!userId) {
+      console.error("api/properties POST: session present but userId missing");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     // AUTO-PROMOTION: Check if user is USER and has no properties yet
     if (userId) {
@@ -215,7 +227,7 @@ export async function POST(req: NextRequest) {
       },
       include: { images: true },
     });
-
+    console.log("api/properties POST created", { id: created.id, ownerId: created.ownerId, city: created.city, state: created.state, status: created.status });
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
     console.error(err);
@@ -226,7 +238,7 @@ export async function POST(req: NextRequest) {
 // PATCH /api/properties  body: { id, data: Partial<Property> }
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const userId = (session as any).user?.id || (session as any).userId || (session as any).user?.sub;
     const body = await req.json();
@@ -242,6 +254,7 @@ export async function PATCH(req: NextRequest) {
 
     // Update property core fields first
     const updated = await prisma.property.update({ where: { id }, data: allowed });
+    console.log("api/properties PATCH updated", { id, ownerId: existing.ownerId, fields: Object.keys(allowed) });
 
     // Optionally replace images when provided
     if (Array.isArray(data.images)) {
@@ -271,7 +284,7 @@ export async function PATCH(req: NextRequest) {
 // DELETE /api/properties  body: { id }
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const userId = (session as any).user?.id || (session as any).userId || (session as any).user?.sub;
     const body = await req.json();
@@ -282,6 +295,7 @@ export async function DELETE(req: NextRequest) {
     if (existing.ownerId && existing.ownerId !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     await prisma.image.deleteMany({ where: { propertyId: id } });
     await prisma.property.delete({ where: { id } });
+    console.log("api/properties DELETE", { id, ownerId: existing.ownerId });
     return NextResponse.json({ status: "deleted" });
   } catch (e) {
     console.error(e);
