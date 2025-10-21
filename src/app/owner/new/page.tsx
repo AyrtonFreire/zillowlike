@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { restrictToVerticalAxis, restrictToParentElement, restrictToWindowEdges } from "@dnd-kit/modifiers";
 import Link from "next/link";
 import { geocodeAddress } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
@@ -30,18 +30,69 @@ export default function NewPropertyPage() {
   const [addressNumber, setAddressNumber] = useState("");
   const numberInputRef = useRef<HTMLInputElement | null>(null);
   const [cepValid, setCepValid] = useState(false);
+  const [lightbox, setLightbox] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; index: number | null }>({ open: false, index: null });
+  const lastFocusRef = useRef<HTMLElement | null>(null);
+  const confirmCancelRef = useRef<HTMLButtonElement | null>(null);
+  const [images, setImages] = useState<ImageInput[]>([{ url: "", useUrl: false }]);
+  const dragIndex = useRef<number | null>(null);
+
+  const openLightbox = (i: number) => setLightbox({ open: true, index: i });
+  const closeLightbox = () => setLightbox({ open: false, index: 0 });
+  const nextLightbox = () => {
+    setLightbox((lb) => {
+      const n = images.length;
+      if (!n) return { open: false, index: 0 };
+      let j = lb.index;
+      for (let k = 0; k < n; k++) {
+        j = (j + 1) % n;
+        if (images[j]?.url) break;
+      }
+      return { open: true, index: j };
+    });
+  };
+  const prevLightbox = () => {
+    setLightbox((lb) => {
+      const n = images.length;
+      if (!n) return { open: false, index: 0 };
+      let j = lb.index;
+      for (let k = 0; k < n; k++) {
+        j = (j - 1 + n) % n;
+        if (images[j]?.url) break;
+      }
+      return { open: true, index: j };
+    });
+  };
+
+  useEffect(() => {
+    if (!lightbox.open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowRight") nextLightbox();
+      if (e.key === "ArrowLeft") prevLightbox();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox.open, images]);
+
+  useEffect(() => {
+    if (confirmDelete.open) {
+      // Foca botão cancelar quando modal abre
+      setTimeout(() => confirmCancelRef.current?.focus(), 0);
+    } else {
+      // Restaura foco ao botão que abriu o modal
+      lastFocusRef.current?.focus?.();
+    }
+  }, [confirmDelete.open]);
 
   const [bedrooms, setBedrooms] = useState<number | "">("");
   const [bathrooms, setBathrooms] = useState<number | "">("");
   const [areaM2, setAreaM2] = useState<number | "">("");
-
-  const [images, setImages] = useState<ImageInput[]>([{ url: "", useUrl: false }]);
-  const dragIndex = useRef<number | null>(null);
   const SAVE_KEY = "owner_new_draft";
 
   // dnd-kit: sensors e item ordenável
   const sensors = useSensors(
-    useSensor(MouseSensor),
+    useSensor(MouseSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
     useSensor(TouchSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
@@ -50,14 +101,14 @@ export default function NewPropertyPage() {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
     const style: React.CSSProperties = {
       transform: CSS.Transform.toString(transform),
-      transition,
+      transition: transition || 'transform 200ms ease, opacity 200ms ease, box-shadow 200ms ease',
       opacity: isDragging ? 0.95 : 1,
       boxShadow: isDragging ? '0 12px 30px rgba(0,0,0,0.2)' : undefined,
       borderRadius: '0.75rem',
       cursor: isDragging ? 'grabbing' : 'grab',
     };
     return (
-      <div ref={setNodeRef} style={style} className={isDragging ? 'ring-2 ring-blue-500' : ''} {...attributes} {...listeners}>
+      <div ref={setNodeRef} style={style} className={isDragging ? 'ring-2 ring-blue-500 shadow-lg scale-105' : ''} {...attributes} {...listeners}>
         {children}
       </div>
     );
@@ -243,6 +294,7 @@ export default function NewPropertyPage() {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50">
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
@@ -524,11 +576,14 @@ export default function NewPropertyPage() {
                             type="button"
                             onPointerDown={(e) => e.stopPropagation()}
                             onMouseDown={(e) => e.stopPropagation()}
-                            onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
-                            className="inline-flex items-center gap-1 text-sm text-red-600 hover:text-red-700 px-2 py-1 rounded-md hover:bg-red-50"
+                            onClick={(e) => { lastFocusRef.current = e.currentTarget as HTMLElement; setConfirmDelete({ open: true, index: idx }); }}
+                            className="inline-flex items-center text-red-600 hover:text-red-700 p-2 rounded-md hover:bg-red-50"
                             aria-label={`Remover imagem ${idx + 1}`}
+                            title="Remover"
                           >
-                            Remover
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                              <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 1 0 0 2H6v11a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7h.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9zm2 3V5h2v1h-2zM8 7h8v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V7z" />
+                            </svg>
                           </button>
                         )}
                       </div>
@@ -610,6 +665,68 @@ export default function NewPropertyPage() {
                     </svg>
                     <span className="text-gray-600">Adicionar mais fotos</span>
                   </button>
+                  {images.some((it) => it.url && it.url.trim().length > 0) && (
+                    <div className="mt-6">
+                      <h3 className="text-sm font-medium text-gray-700 mb-3">Pré-visualização</h3>
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        modifiers={[restrictToParentElement, restrictToWindowEdges]}
+                        onDragEnd={({ active, over }) => {
+                          if (!over || active.id === over.id) return;
+                          const ids = images.map((_, i) => `thumb-${i}`);
+                          const oldIndex = ids.indexOf(String(active.id));
+                          const newIndex = ids.indexOf(String(over.id));
+                          if (oldIndex === -1 || newIndex === -1) return;
+                          setImages((prev) => arrayMove(prev, oldIndex, newIndex));
+                        }}
+                      >
+                        <SortableContext items={images.map((img, i) => img.url ? `thumb-${i}` : null).filter(Boolean) as string[]} strategy={verticalListSortingStrategy}>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            {images.map((img, i) => (
+                              img.url ? (
+                                <SortableItem key={`thumb-${i}`} id={`thumb-${i}`}>
+                                  <div className="group relative overflow-hidden rounded-lg border bg-white cursor-pointer" onClick={() => openLightbox(i)}>
+                                    <img
+                                      src={img.url}
+                                      alt={img.alt || `Pré-visualização ${i + 1}`}
+                                      className="w-full h-32 object-cover group-hover:opacity-95"
+                                      draggable={false}
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
+                                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); lastFocusRef.current = e.currentTarget as HTMLElement; setConfirmDelete({ open: true, index: i }); }}
+                                        className="p-2 rounded-md bg-white/80 hover:bg-white text-red-600 shadow"
+                                        aria-label="Remover imagem"
+                                        title="Remover"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                          <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 1 0 0 2H6v11a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7h.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9zm2 3V5h2v1h-2zM8 7h8v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V7z" />
+                                        </svg>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setImages((prev) => arrayMove(prev, i, 0)); }}
+                                        className="p-2 rounded-md bg-white/80 hover:bg-white text-yellow-600 shadow"
+                                        aria-label="Definir capa"
+                                        title="Definir capa"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                          <path d="M12 .587l3.668 7.431 8.2 1.193-5.934 5.787 1.401 8.168L12 18.896l-7.335 3.87 1.401-8.168L.132 9.211l8.2-1.193L12 .587z"/>
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </SortableItem>
+                              ) : null
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    </div>
+                  )}
               </div>
             )}
 
@@ -646,5 +763,45 @@ export default function NewPropertyPage() {
         </div>
       </div>
     </div>
+    {lightbox.open && images[lightbox.index]?.url && (
+      <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={closeLightbox}>
+        <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
+          <img
+            src={images[lightbox.index].url}
+            alt={images[lightbox.index].alt || `Imagem ${lightbox.index + 1}`}
+            className="w-full max-h-[80vh] object-contain rounded-lg shadow-2xl bg-black"
+          />
+          <button onClick={closeLightbox} className="absolute top-3 right-3 p-2 rounded-md bg-white/80 hover:bg-white shadow" aria-label="Fechar">
+            ✕
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); prevLightbox(); }} className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white shadow" aria-label="Anterior">‹</button>
+          <button onClick={(e) => { e.stopPropagation(); nextLightbox(); }} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white shadow" aria-label="Próxima">›</button>
+        </div>
+      </div>
+    )}
+    {confirmDelete.open && confirmDelete.index !== null && (
+      <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setConfirmDelete({ open: false, index: null })}>
+        <div className="relative w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <h3 className="text-base font-semibold text-gray-900 mb-2">Remover imagem?</h3>
+          <p className="text-sm text-gray-600 mb-4">Essa ação não pode ser desfeita.</p>
+          <div className="flex justify-end gap-3">
+            <button ref={confirmCancelRef} type="button" className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50" onClick={() => setConfirmDelete({ open: false, index: null })}>Cancelar</button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+              onClick={() => {
+                if (confirmDelete.index !== null) {
+                  setImages((prev) => prev.filter((_, idx) => idx !== confirmDelete.index));
+                }
+                setConfirmDelete({ open: false, index: null });
+              }}
+            >
+              Remover
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
