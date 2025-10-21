@@ -7,7 +7,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis, restrictToParentElement, restrictToWindowEdges } from "@dnd-kit/modifiers";
 import Link from "next/link";
 import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
-import { geocodeAddress } from "@/lib/geocode";
+import { geocodeAddress, geocodeAddressParts } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import Toast from "@/components/Toast";
 
@@ -40,6 +40,8 @@ export default function NewPropertyPage() {
   const [images, setImages] = useState<ImageInput[]>([{ url: "", useUrl: false }]);
   const dragIndex = useRef<number | null>(null);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
+  const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
 
   const openLightbox = (i: number) => setLightbox({ open: true, index: i });
   const closeLightbox = () => setLightbox({ open: false, index: 0 });
@@ -281,8 +283,26 @@ export default function NewPropertyPage() {
 
   async function handleGeocode() {
     if (!addressString) return;
-    const result = await geocodeAddress(addressString);
-    setGeoPreview(result?.displayName || "");
+    setIsGeocoding(true);
+    try {
+      const result = await geocodeAddressParts({
+        street,
+        number: addressNumber,
+        neighborhood,
+        city,
+        state,
+        postalCode,
+      });
+      if (result) {
+        setGeo({ lat: result.lat, lng: result.lng });
+        setGeoPreview(result.displayName || `${result.lat},${result.lng}`);
+      } else {
+        setGeo(null);
+        setGeoPreview("");
+      }
+    } finally {
+      setIsGeocoding(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -293,9 +313,8 @@ export default function NewPropertyPage() {
     }
     setSubmitIntent(false);
     setIsSubmitting(true);
-    
     try {
-      // Validação: exigir ao menos uma imagem com URL preenchida (upload concluído ou URL manual)
+      // Exige ao menos uma imagem válida
       const hasAtLeastOneImage = images.some((img) => img.url && img.url.trim().length > 0);
       if (!hasAtLeastOneImage) {
         setToast({ message: "Adicione pelo menos uma foto antes de publicar.", type: "error" });
@@ -303,9 +322,10 @@ export default function NewPropertyPage() {
         return;
       }
 
-      const geo = await geocodeAddress(addressString);
+      // Não valida endereço no Step 4: apenas impede e volta para Step 2 se faltou geocodificar
       if (!geo) {
-        setToast({ message: "Endereço não encontrado. Tente ser mais específico.", type: "error" });
+        setToast({ message: "Valide o endereço no passo de Localização antes de publicar.", type: "error" });
+        setCurrentStep(2);
         return;
       }
 
@@ -345,8 +365,8 @@ export default function NewPropertyPage() {
         setToast({ message: "Falha ao criar imóvel", type: "error" });
         return;
       }
-      
-      const created = await res.json();
+
+      await res.json();
       setToast({ message: "Imóvel publicado com sucesso!", type: "success" });
       window.location.href = "/?city=" + encodeURIComponent(city) + "&state=" + state;
     } finally {
@@ -357,17 +377,31 @@ export default function NewPropertyPage() {
   const nextStep = async () => {
     // Validação de endereço no Step 2 antes de avançar
     if (currentStep === 2) {
-      const full = addressString;
-      if (!full || !street || !city || !state) {
-        setToast({ message: "Preencha o endereço antes de avançar.", type: "error" });
+      // Campos obrigatórios: CEP válido, rua, bairro, cidade, estado
+      if (!cepValid || !postalCode) {
+        setToast({ message: "Informe um CEP válido.", type: "error" });
         return;
       }
-      const geo = await geocodeAddress(full);
-      if (!geo) {
-        setToast({ message: "Endereço não encontrado. Tente ser mais específico.", type: "error" });
+      if (!street || !neighborhood || !city || !state) {
+        setToast({ message: "Preencha rua, bairro, cidade e estado.", type: "error" });
         return;
       }
-      setGeoPreview(`${geo.lat},${geo.lng}`);
+      setIsGeocoding(true);
+      const res = await geocodeAddressParts({
+        street,
+        number: addressNumber || undefined, // opcional
+        neighborhood,
+        city,
+        state,
+        postalCode,
+      });
+      setIsGeocoding(false);
+      if (!res) {
+        setToast({ message: "Endereço não encontrado. Ajuste os dados ou tente um CEP diferente.", type: "error" });
+        return;
+      }
+      setGeo({ lat: res.lat, lng: res.lng });
+      setGeoPreview(res.displayName || `${res.lat},${res.lng}`);
     }
     if (currentStep < 4) setCurrentStep(currentStep + 1);
   };
@@ -877,7 +911,7 @@ export default function NewPropertyPage() {
                   onClick={nextStep}
                   className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200"
                 >
-                  Próximo
+                  {isGeocoding && currentStep === 2 ? "Validando endereço..." : "Próximo"}
                 </button>
               ) : (
                 <button
