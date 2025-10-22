@@ -150,7 +150,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
           
           {/* Condition Tags */}
           {property.conditionTags && property.conditionTags.length > 0 && (
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col items-start gap-1.5">
               {property.conditionTags.map((tag, index) => (
                 <span
                   key={index}

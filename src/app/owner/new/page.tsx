@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis, restrictToParentElement, restrictToWindowEdges } from "@dnd-kit/modifiers";
 import Link from "next/link";
@@ -162,11 +162,15 @@ export default function NewPropertyPage() {
     const files: File[] = toFiles(fileList).filter((f: File) => f.type.startsWith('image/'));
     if (files.length === 0) return;
     for (const file of files) {
-      // encontra primeiro slot vazio, senão adiciona novo
       let targetIndex = images.findIndex((it) => !it.url);
       if (targetIndex === -1) {
-        setImages((prev) => [...prev, { url: "" }]);
-        targetIndex = images.length;
+        // captura o índice real após append
+        let capturedIndex = -1;
+        setImages((prev) => {
+          capturedIndex = prev.length;
+          return [...prev, { url: "" }];
+        });
+        targetIndex = capturedIndex;
       }
       const localUrl = URL.createObjectURL(file as File);
       setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined } : it)));
@@ -493,6 +497,22 @@ export default function NewPropertyPage() {
   }
 
   const nextStep = async () => {
+    // Step 1: validações básicas
+    if (currentStep === 1) {
+      if (!purpose) {
+        setToast({ message: "Selecione a finalidade (Venda/Aluguel).", type: "error" });
+        return;
+      }
+      const price = parseBRLToNumber(priceBRL);
+      if (!price || price <= 0) {
+        setToast({ message: "Informe um preço válido (maior que zero).", type: "error" });
+        return;
+      }
+      if (!type) {
+        setToast({ message: "Selecione o tipo de imóvel.", type: "error" });
+        return;
+      }
+    }
     // Validação de endereço no Step 2 antes de avançar
     if (currentStep === 2) {
       // Campos obrigatórios: CEP válido, rua, bairro, cidade, estado
@@ -520,6 +540,26 @@ export default function NewPropertyPage() {
       }
       setGeo({ lat: res.lat, lng: res.lng });
       setGeoPreview(res.displayName || `${res.lat},${res.lng}`);
+    }
+    // Step 3: sanidade dos números (quando fornecidos)
+    if (currentStep === 3) {
+      const invalidNum = (v: any) => typeof v === 'number' && (isNaN(v) || v < 0);
+      if (invalidNum(bedrooms) || invalidNum(bathrooms) || invalidNum(areaM2)) {
+        setToast({ message: "Valores de quartos, banheiros e área devem ser não negativos.", type: "error" });
+        return;
+      }
+      if (typeof areaM2 === 'number' && areaM2 > 20000) {
+        setToast({ message: "Área muito grande. Verifique o valor informado.", type: "error" });
+        return;
+      }
+    }
+    // Step 4: ao menos 1 imagem
+    if (currentStep === 4) {
+      const hasImage = images.some((it) => it.url && it.url.trim().length > 0);
+      if (!hasImage) {
+        setToast({ message: "Adicione ao menos uma foto do imóvel.", type: "error" });
+        return;
+      }
     }
     if (currentStep < 4) setCurrentStep(currentStep + 1);
   };
@@ -646,7 +686,6 @@ export default function NewPropertyPage() {
                     placeholder="Descreva o imóvel, suas características e o que o torna especial..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    required
                   />
                 </div>
 
@@ -876,7 +915,7 @@ export default function NewPropertyPage() {
                       setImages((prev) => arrayMove(prev, oldIndex, newIndex));
                     }}
                   >
-                    <SortableContext items={images.map((img, i) => img.url ? `thumb-${i}` : null).filter(Boolean) as string[]} strategy={verticalListSortingStrategy}>
+                    <SortableContext items={images.map((img, i) => img.url ? `thumb-${i}` : null).filter(Boolean) as string[]} strategy={rectSortingStrategy}>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                         {images.map((img, i) => (
                           img.url ? (
