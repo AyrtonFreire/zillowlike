@@ -12,7 +12,7 @@ import { geocodeAddressParts } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import Toast from "@/components/Toast";
 
-type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean };
+type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number };
 
 export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -173,13 +173,9 @@ export default function NewPropertyPage() {
         targetIndex = capturedIndex;
       }
       const localUrl = URL.createObjectURL(file as File);
-      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined } : it)));
+      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1 } : it)));
       try {
-        const sigRes = await fetch('/api/upload/cloudinary-sign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folder: 'zillowlike' }),
-        });
+        const sigRes = await fetch('/api/upload/cloudinary-sign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: 'zillowlike' }) });
         if (!sigRes.ok) throw new Error('Falha ao assinar upload.');
         const sig = await sigRes.json();
         const fd = new FormData();
@@ -188,15 +184,39 @@ export default function NewPropertyPage() {
         fd.append('timestamp', String(sig.timestamp));
         fd.append('signature', sig.signature);
         fd.append('folder', sig.folder);
-        const up = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, { method: 'POST', body: fd });
-        const data = await up.json();
-        if (!up.ok || !data.secure_url) throw new Error(data?.error?.message || 'Upload falhou.');
+        // XHR para acompanhar progresso
+        const uploadedUrl: string = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`);
+          xhr.upload.onprogress = (ev) => {
+            if (ev.lengthComputable) {
+              const pct = Math.min(99, Math.round((ev.loaded / ev.total) * 100));
+              setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, progress: pct } : it)));
+            }
+          };
+          xhr.onreadystatechange = () => {
+            if (xhr.readyState === 4) {
+              try {
+                const data = JSON.parse(xhr.responseText || '{}');
+                if (xhr.status >= 200 && xhr.status < 300 && data.secure_url) {
+                  resolve(data.secure_url as string);
+                } else {
+                  reject(new Error(data?.error?.message || 'Upload falhou.'));
+                }
+              } catch (e) {
+                reject(new Error('Upload falhou.'));
+              }
+            }
+          };
+          xhr.onerror = () => reject(new Error('Falha de rede no upload.'));
+          xhr.send(fd);
+        });
         URL.revokeObjectURL(localUrl);
-        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: data.secure_url, pending: false, error: undefined } : it)));
+        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: uploadedUrl, pending: false, error: undefined, progress: 100 } : it)));
       } catch (err) {
         // mantém preview local, mas sinaliza erro
         setToast({ message: 'Erro ao enviar imagem', type: 'error' });
-        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, pending: false, error: 'Falha no upload' } : it)));
+        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, pending: false, error: 'Falha no upload', progress: undefined } : it)));
       }
     }
   }
@@ -678,7 +698,7 @@ export default function NewPropertyPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Descrição *
+                    Descrição (opcional)
                   </label>
                   <textarea
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
@@ -930,6 +950,16 @@ export default function NewPropertyPage() {
                                 <div className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-white/90 text-gray-700 shadow">
                                   {i === 0 ? <span>Capa</span> : <span>#{i + 1}</span>}
                                 </div>
+                                {/* Status icon */}
+                                <div className="absolute top-2 left-20">
+                                  {img.error ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-red-600 text-white shadow">Erro</span>
+                                  ) : img.pending ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-yellow-500 text-white shadow">Enviando</span>
+                                  ) : img.progress === 100 ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-green-600 text-white shadow">OK</span>
+                                  ) : null}
+                                </div>
                                 <div className="absolute top-2 right-2 flex gap-2">
                                   <button
                                     type="button"
@@ -952,6 +982,15 @@ export default function NewPropertyPage() {
                                     </button>
                                   )}
                                 </div>
+                                {/* Progress bar */}
+                                {typeof img.progress === 'number' && !img.error && (
+                                  <div className="absolute left-0 right-0 bottom-0 h-1 bg-gray-200">
+                                    <div
+                                      className={`${img.progress < 100 ? 'bg-yellow-500' : 'bg-green-600'} h-full transition-all`}
+                                      style={{ width: `${Math.max(1, Math.min(100, img.progress))}%` }}
+                                    />
+                                  </div>
+                                )}
                                 {/* Caption overlay editable */}
                                 <button
                                   type="button"

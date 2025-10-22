@@ -29,7 +29,7 @@ export const ConditionTagEnum = z.enum([
 
 export const PropertyCreateSchema = z.object({
   title: z.string().min(3).max(70),
-  description: z.string().min(10).max(5000),
+  description: z.string().max(5000).optional().or(z.literal("")),
   priceBRL: z
     .number()
     .int()
