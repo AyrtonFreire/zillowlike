@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import ContactForm from "@/components/ContactForm";
 import FinancingButton from "@/components/FinancingButton";
+import FinancingModal from "@/components/FinancingModal";
 
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -116,15 +117,25 @@ export default async function PropertyPage({ params }: PageProps) {
     }
   };
 
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001').replace(/\/$/, '');
+  const pageUrl = `${siteUrl}/property/${property.id}`;
+  const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || ""; // e.g. 5599999999999
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* Header */}
-      <div className="bg-white border-b">
-        <div className="mx-auto max-w-7xl px-4 py-4">
+      <div className="bg-white/90 backdrop-blur border-b">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
           <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200">
             ← Voltar à busca
           </Link>
+          <div className="hidden md:flex items-center gap-2">
+            <button onClick={async()=>{ try { if (navigator.share) await navigator.share({ title: property.title, url: pageUrl }); else await navigator.clipboard.writeText(pageUrl); } catch{} }} className="px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100">Compartilhar</button>
+            {whatsapp && (
+              <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Olá! Tenho interesse no imóvel: ${property.title} - ${pageUrl}`)}`} target="_blank" className="px-3 py-2 rounded-lg text-sm text-green-700 hover:bg-green-50">WhatsApp</a>
+            )}
+          </div>
         </div>
       </div>
 
@@ -132,112 +143,104 @@ export default async function PropertyPage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Property Header */}
-            <div className="bg-white rounded-xl shadow-lg p-8">
-              <div className="mb-4">
-                <span className="inline-block bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-                  {property.type === 'HOUSE' ? 'Casa' : 
-                   property.type === 'APARTMENT' ? 'Apartamento' :
-                   property.type === 'CONDO' ? 'Condomínio' :
-                   property.type === 'TOWNHOUSE' ? 'Sobrado' :
-                   property.type === 'STUDIO' ? 'Studio' :
-                   property.type === 'LAND' ? 'Terreno' :
-                   property.type === 'COMMERCIAL' ? 'Comercial' : property.type}
-                </span>
-              </div>
-              
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">{property.title}</h1>
-              
-              <div className="flex items-center text-gray-600 mb-4">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                </svg>
-                <span>{property.street}{property.neighborhood ? ", " + property.neighborhood : ""} - {property.city}/{property.state}</span>
-              </div>
-
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="text-4xl font-bold text-blue-600">
-                  R$ {(property.price / 100).toLocaleString("pt-BR")}
-                </div>
-                <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
-                  <FinancingButton 
-                    propertyId={property.id} 
-                    propertyValue={property.price}
-                  />
-                  <div className="text-right">
-                    <div className="text-sm text-gray-500">Publicado em</div>
-                    <div className="font-medium">{new Date(property.createdAt).toLocaleDateString('pt-BR')}</div>
+            {/* Header/Card */}
+            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+              {/* Gallery */}
+              {property.images.length > 0 && (
+                <div className="relative">
+                  <Image src={property.images[0].url} alt={property.title} width={1600} height={900} className="w-full h-[320px] md:h-[440px] object-cover"/>
+                  {/* Overlay actions */}
+                  <div className="absolute top-3 right-3 flex gap-2">
+                    <button title="Favoritar" className="p-2 rounded-full bg-white/90 hover:bg-white shadow">
+                      <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364 4.318 12.682z"/></svg>
+                    </button>
+                    <button title="Compartilhar" onClick={async()=>{ try { if (navigator.share) await navigator.share({ title: property.title, url: pageUrl }); else await navigator.clipboard.writeText(pageUrl); } catch{} }} className="p-2 rounded-full bg-white/90 hover:bg-white shadow">
+                      <svg className="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v14"/></svg>
+                    </button>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Property Details */}
-            <div className="bg-white rounded-xl shadow-lg p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Detalhes do imóvel</h2>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-                {property.bedrooms != null && (
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{property.bedrooms}</div>
-                    <div className="text-sm text-gray-600">Quartos</div>
-                  </div>
-                )}
-                {property.bathrooms != null && (
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{Number(property.bathrooms)}</div>
-                    <div className="text-sm text-gray-600">Banheiros</div>
-                  </div>
-                )}
-                {property.areaM2 != null && (
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{property.areaM2}</div>
-                    <div className="text-sm text-gray-600">m²</div>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Descrição</h3>
-                <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                  {property.description}
-                </p>
-              </div>
-            </div>
-
-            {/* Image Gallery */}
-            {property.images.length > 0 && (
-              <div className="bg-white rounded-xl shadow-lg p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Fotos do imóvel</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {property.images.map((img, index) => (
-                    <div key={img.id} className="relative group cursor-pointer">
-                      <Image
-                        src={img.url}
-                        alt={img.alt || property.title}
-                        width={800}
-                        height={480}
-                        className="w-full h-48 object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 rounded-lg flex items-center justify-center">
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 12a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
+                  {/* Thumbnails */}
+                  {property.images.length > 1 && (
+                    <div className="absolute bottom-3 left-0 right-0 mx-3 hidden md:block">
+                      <div className="flex gap-2 overflow-x-auto px-2 py-2 rounded-lg bg-black/20 backdrop-blur">
+                        {property.images.slice(0,8).map((im,i)=> (
+                          <Image key={i} src={im.url} alt={property.title+" thumb"} width={160} height={90} className="h-16 w-28 object-cover rounded-md ring-1 ring-white/60"/>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  )}
+                </div>
+              )}
+              <div className="p-6 md:p-8">
+                <div className="mb-3">
+                  <span className="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full border border-blue-100">
+                    {property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'TOWNHOUSE' ? 'Sobrado' : property.type === 'STUDIO' ? 'Studio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type}
+                  </span>
+                </div>
+                <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight mb-3">{property.title}</h1>
+                <div className="flex items-center text-gray-600 mb-5">
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/></svg>
+                  <span>{property.street}{property.neighborhood ? ", " + property.neighborhood : ""} - {property.city}/{property.state}</span>
+                </div>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="text-4xl md:text-5xl font-extrabold text-blue-700">R$ {(property.price / 100).toLocaleString('pt-BR')}</div>
+                    <div className="text-xs text-gray-500 mt-1">Publicado em {new Date(property.createdAt).toLocaleDateString('pt-BR')}</div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <FinancingButton propertyId={property.id} propertyValue={property.price} />
+                    <FinancingModal amountCents={property.price} />
+                    {whatsapp && (
+                      <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Olá! Tenho interesse no imóvel: ${property.title} - ${pageUrl}`)}`} target="_blank" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium shadow">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.52 3.48A11.77 11.77 0 0012 0C5.37 0 0 5.37 0 12a11.9 11.9 0 001.62 6L0 24l6.1-1.6A11.9 11.9 0 0012 24c6.63 0 12-5.37 12-12 0-3.14-1.22-6.09-3.48-8.52zM12 22a9.9 9.9 0 01-5.05-1.4l-.36-.2-3 .78.8-2.92-.2-.37A10 10 0 1122 12 10 10 0 0112 22zm5.47-7.6c-.3-.16-1.77-.87-2.04-.96-.27-.1-.47-.16-.68.16-.2.3-.78.96-.96 1.16-.18.2-.36.22-.66.08-.3-.16-1.29-.48-2.47-1.53-.91-.77-1.52-1.73-1.7-2.02-.18-.3-.02-.46.14-.62.15-.14.3-.36.45-.54.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.54-.08-.16-.68-1.63-.93-2.23-.24-.58-.5-.5-.68-.5h-.58c-.2 0-.5.08-.76.38-.27.3-1 1-1 2.44 0 1.43 1.02 2.82 1.16 3.02.15.2 2.02 3.07 4.9 4.3.68.3 1.2.48 1.6.62.68.22 1.3.18 1.78.1.54-.08 1.78-.72 2.03-1.42.25-.7.25-1.3.18-1.42-.07-.12-.27-.2-.57-.36z"/></svg>
+                        WhatsApp
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* Highlights & Details */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 shadow-sm">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Destaques deste imóvel</h2>
+                <div className="flex flex-wrap gap-2">
+                  {Array.isArray(property.conditionTags) && property.conditionTags.length > 0 ? (
+                    property.conditionTags.map((tag, i) => (
+                      <span key={i} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-gray-200 shadow-sm text-sm text-gray-700">
+                        <span>🏷️</span>{tag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-gray-600">Sem destaques informados.</span>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Características</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {property.bedrooms != null && <Chip icon="🛏️" label={`${property.bedrooms} quartos`} />}
+                  {property.bathrooms != null && <Chip icon="🛁" label={`${Number(property.bathrooms)} banheiros`} />}
+                  {property.areaM2 != null && <Chip icon="📐" label={`${property.areaM2} m²`} />}
+                  {property.parkingSpots != null && <Chip icon="🚗" label={`${property.parkingSpots} vagas`} />}
+                  {property.furnished && <Chip icon="🛋️" label="Mobiliado" />}
+                  {property.petFriendly && <Chip icon="🐾" label="Aceita pets" />}
+                  {property.condoFee != null && <Chip icon="🏢" label={`Condomínio R$ ${Number(property.condoFee).toLocaleString('pt-BR')}`} />}
+                  {property.yearBuilt != null && <Chip icon="📅" label={`Construído em ${property.yearBuilt}`} />}
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Sobre este imóvel</h2>
+              <p className="text-gray-700 leading-relaxed whitespace-pre-line">{property.description}</p>
+            </div>
           </div>
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Map */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
               <div className="p-4 border-b">
                 <h3 className="font-semibold text-gray-900">Localização</h3>
               </div>
@@ -245,53 +248,63 @@ export default async function PropertyPage({ params }: PageProps) {
                 <MapClient items={items} hideRefitButton />
               </div>
             </div>
-
-            {/* Contact Card */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Interessado?</h3>
-              <p className="text-gray-600 mb-4">
-                Envie uma mensagem e retornaremos rapidamente.
-              </p>
-              <ContactForm propertyId={property.id} />
-            </div>
-
-            {/* Property Info */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tipo:</span>
-                  <span className="font-medium">
-                    {property.type === 'HOUSE' ? 'Casa' : 
-                     property.type === 'APARTMENT' ? 'Apartamento' :
-                     property.type === 'CONDO' ? 'Condomínio' :
-                     property.type === 'TOWNHOUSE' ? 'Sobrado' :
-                     property.type === 'STUDIO' ? 'Studio' :
-                     property.type === 'LAND' ? 'Terreno' :
-                     property.type === 'COMMERCIAL' ? 'Comercial' : property.type}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Cidade:</span>
-                  <span className="font-medium">{property.city}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Estado:</span>
-                  <span className="font-medium">{property.state}</span>
-                </div>
-                {property.postalCode && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">CEP:</span>
-                    <span className="font-medium">{property.postalCode}</span>
-                  </div>
+              <p className="text-gray-600 mb-4">Envie uma mensagem e retornaremos rapidamente.</p>
+              <div className="flex flex-col gap-3">
+                <ContactForm propertyId={property.id} />
+                {whatsapp && (
+                  <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Tenho interesse no imóvel: ${property.title} - ${pageUrl}`)}`} target="_blank" className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium shadow">
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.52 3.48A11.77 11.77 0 0012 0C5.37 0 0 5.37 0 12a11.9 11.9 0 001.62 6L0 24l6.1-1.6A11.9 11.9 0 0012 24c6.63 0 12-5.37 12-12 0-3.14-1.22-6.09-3.48-8.52zM12 22a9.9 9.9 0 01-5.05-1.4l-.36-.2-3 .78.8-2.92-.2-.37A10 10 0 1122 12 10 10 0 0112 22zm5.47-7.6c-.3-.16-1.77-.87-2.04-.96-.27-.1-.47-.16-.68.16-.2.3-.78.96-.96 1.16-.18.2-.36.22-.66.08-.3-.16-1.29-.48-2.47-1.53-.91-.77-1.52-1.73-1.7-2.02-.18-.3-.02-.46.14-.62.15-.14.3-.36.45-.54.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.54-.08-.16-.68-1.63-.93-2.23-.24-.58-.5-.5-.68-.5h-.58c-.2 0-.5.08-.76.38-.27.3-1 1-1 2.44 0 1.43 1.02 2.82 1.16 3.02.15.2 2.02 3.07 4.9 4.3.68.3 1.2.48 1.6.62.68.22 1.3.18 1.78.1.54-.08 1.78-.72 2.03-1.42.25-.7.25-1.3.18-1.42-.07-.12-.27-.2-.57-.36z"/></svg>
+                    Falar no WhatsApp
+                  </a>
                 )}
               </div>
             </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações</h3>
+              <div className="space-y-3">
+                <InfoRow k="Tipo" v={property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'TOWNHOUSE' ? 'Sobrado' : property.type === 'STUDIO' ? 'Studio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type} />
+                <InfoRow k="Cidade" v={property.city} />
+                <InfoRow k="Estado" v={property.state} />
+                {property.postalCode && <InfoRow k="CEP" v={property.postalCode} />}
+              </div>
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Sticky mobile CTA */}
+      <div className="fixed inset-x-0 bottom-0 z-30 md:hidden bg-white/90 backdrop-blur border-t p-3 flex items-center justify-between">
+        <div>
+          <div className="text-sm text-gray-600">A partir de</div>
+          <div className="text-xl font-bold text-blue-700">R$ {(property.price/100).toLocaleString('pt-BR')}</div>
+        </div>
+        <div className="flex gap-2">
+          <Link href={`/property/${property.id}/schedule-visit`} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium shadow">Agendar visita</Link>
+          {whatsapp && <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Tenho interesse no imóvel: ${property.title} - ${pageUrl}`)}`} target="_blank" className="px-4 py-2 rounded-lg bg-green-600 text-white font-medium shadow">WhatsApp</a>}
         </div>
       </div>
     </div>
   );
 }
 
+
+function Chip({ icon, label }: { icon: string; label: string }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-700">
+      <span>{icon}</span>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function InfoRow({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-600">{k}:</span>
+      <span className="font-medium text-gray-900">{v}</span>
+    </div>
+  );
+}
 
