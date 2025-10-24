@@ -161,23 +161,16 @@ export default function NewPropertyPage() {
   async function handleDroppedFiles(fileList: FileList | File[]) {
     const files: File[] = toFiles(fileList).filter((f: File) => f.type.startsWith('image/'));
     if (files.length === 0) return;
-    // 1) Alocar slots marcando como reservados (sem setar URL fictícia)
-    const targetIndices: number[] = [];
-    setImages((prev) => {
-      const arr = [...prev];
-      for (let k = 0; k < files.length; k++) {
-        let idx = arr.findIndex((it) => (!it.url || it.url.startsWith('blob:')) && !it.reserved);
-        if (idx === -1) {
-          arr.push({ url: "", reserved: true });
-          idx = arr.length - 1;
-        } else {
-          arr[idx] = { ...arr[idx], reserved: true };
-        }
-        targetIndices.push(idx);
-      }
-      return arr;
-    });
-    // 2) Subir cada arquivo sequencialmente no slot reservado
+    // 1) Determinar índices-alvo: sempre APPEND para evitar colisões/off-by-one
+    const startIndex = (!images.length || (images.length === 1 && !images[0].url)) ? 0 : images.length;
+    const targetIndices: number[] = Array.from({ length: files.length }, (_, k) => startIndex + k);
+    // Se havia apenas 1 slot vazio inicial, substituí-lo por placeholders
+    if (images.length === 1 && !images[0].url) {
+      setImages(() => files.map(() => ({ url: "", reserved: true })) as ImageInput[]);
+    } else {
+      setImages((prev) => [...prev, ...files.map(() => ({ url: "", reserved: true }))]);
+    }
+    // 2) Upload sequencial preenchendo cada índice
     for (let k = 0; k < files.length; k++) {
       const file = files[k];
       const targetIndex = targetIndices[k];
@@ -451,6 +444,12 @@ export default function NewPropertyPage() {
     setSubmitIntent(false);
     setIsSubmitting(true);
     try {
+      // Impede publicar enquanto houver uploads pendentes
+      if (images.some((img) => img.pending)) {
+        setToast({ message: "Aguarde terminar o envio das imagens antes de publicar.", type: "error" });
+        setCurrentStep(4);
+        return;
+      }
       // Exige ao menos uma imagem válida
       const hasAtLeastOneImage = images.some((img) => img.url && img.url.trim().length > 0);
       if (!hasAtLeastOneImage) {
@@ -514,7 +513,9 @@ export default function NewPropertyPage() {
         return;
       }
       if (!res.ok) {
-        setToast({ message: "Falha ao criar imóvel", type: "error" });
+        let msg = "Falha ao criar imóvel";
+        try { const j = await res.json(); if (j?.error) msg = j.error; } catch {}
+        setToast({ message: msg, type: "error" });
         return;
       }
 
