@@ -3,7 +3,9 @@ import MapClient from "@/components/MapClient";
 import Link from "next/link";
 import type { Metadata } from "next";
 import Image from "next/image";
+import GalleryCarousel from "@/components/GalleryCarousel";
 import ContactForm from "@/components/ContactForm";
+import FavoriteButton from "../../../components/FavoriteButton";
 import FinancingButton from "@/components/FinancingButton";
 import FinancingModal from "@/components/FinancingModal";
 
@@ -94,6 +96,50 @@ export default async function PropertyPage({ params }: PageProps) {
     },
   ];
 
+  const hasGeo = typeof property.latitude === 'number' && typeof property.longitude === 'number';
+  let nearby: Array<{ id: string; title: string; price: number; city: string; state: string; latitude: number | null; longitude: number | null; image?: string; distanceKm?: number; }>
+    = [];
+  if (hasGeo) {
+    const lat = property.latitude as number;
+    const lng = property.longitude as number;
+    const radiusKm = 10;
+    const latDelta = radiusKm / 111;
+    const lngDelta = radiusKm / (111 * Math.cos((lat * Math.PI) / 180));
+    const candidates = await prisma.property.findMany({
+      where: {
+        id: { not: property.id },
+        latitude: { gte: lat - latDelta, lte: lat + latDelta },
+        longitude: { gte: lng - lngDelta, lte: lng + lngDelta },
+        status: { in: ["ACTIVE", "PUBLISHED"] as any },
+      },
+      select: {
+        id: true,
+        title: true,
+        price: true,
+        city: true,
+        state: true,
+        latitude: true,
+        longitude: true,
+        images: { take: 1, orderBy: { sortOrder: "asc" }, select: { url: true } },
+      },
+      take: 24,
+    });
+    nearby = candidates
+      .map((p) => {
+        const d = distanceKm(lat, lng, p.latitude ?? 0, p.longitude ?? 0);
+        return { id: p.id, title: p.title, price: p.price, city: p.city, state: p.state, latitude: p.latitude, longitude: p.longitude, image: p.images[0]?.url, distanceKm: d };
+      })
+      .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0))
+      .slice(0, 6);
+  } else {
+    const candidates = await prisma.property.findMany({
+      where: { id: { not: property.id }, city: property.city, state: property.state, status: { in: ["ACTIVE", "PUBLISHED"] as any } },
+      select: { id: true, title: true, price: true, city: true, state: true, latitude: true, longitude: true, images: { take: 1, orderBy: { sortOrder: "asc" }, select: { url: true } } },
+      take: 6,
+    });
+    nearby = candidates.map((p) => ({ id: p.id, title: p.title, price: p.price, city: p.city, state: p.state, latitude: p.latitude, longitude: p.longitude, image: p.images[0]?.url }));
+  }
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Offer',
@@ -148,26 +194,13 @@ export default async function PropertyPage({ params }: PageProps) {
               {/* Gallery */}
               {property.images.length > 0 && (
                 <div className="relative">
-                  <Image src={property.images[0].url} alt={property.title} width={1600} height={900} className="w-full h-[320px] md:h-[440px] object-cover"/>
-                  {/* Overlay actions */}
+                  <GalleryCarousel images={property.images.map(i=>({ url: i.url, alt: i.alt || property.title, blurDataURL: (i as any).blurDataURL }))} title={property.title} />
                   <div className="absolute top-3 right-3 flex gap-2">
-                    <button title="Favoritar" className="p-2 rounded-full bg-white/90 hover:bg-white shadow">
-                      <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364 4.318 12.682z"/></svg>
-                    </button>
-                    <button title="Compartilhar" onClick={async()=>{ try { if (navigator.share) await navigator.share({ title: property.title, url: pageUrl }); else await navigator.clipboard.writeText(pageUrl); } catch{} }} className="p-2 rounded-full bg-white/90 hover:bg-white shadow">
+                    <FavoriteButton propertyId={property.id} />
+                    <button aria-label="Compartilhar este imóvel" title="Compartilhar" onClick={async()=>{ try { if (navigator.share) await navigator.share({ title: property.title, url: pageUrl }); else await navigator.clipboard.writeText(pageUrl); } catch{} }} className="p-2 rounded-full bg-white/90 hover:bg-white shadow">
                       <svg className="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v14"/></svg>
                     </button>
                   </div>
-                  {/* Thumbnails */}
-                  {property.images.length > 1 && (
-                    <div className="absolute bottom-3 left-0 right-0 mx-3 hidden md:block">
-                      <div className="flex gap-2 overflow-x-auto px-2 py-2 rounded-lg bg-black/20 backdrop-blur">
-                        {property.images.slice(0,8).map((im,i)=> (
-                          <Image key={i} src={im.url} alt={property.title+" thumb"} width={160} height={90} className="h-16 w-28 object-cover rounded-md ring-1 ring-white/60"/>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
               <div className="p-6 md:p-8">
@@ -236,6 +269,26 @@ export default async function PropertyPage({ params }: PageProps) {
               <h2 className="text-xl font-bold text-gray-900 mb-3">Sobre este imóvel</h2>
               <p className="text-gray-700 leading-relaxed whitespace-pre-line">{property.description}</p>
             </div>
+
+            {nearby.length > 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Imóveis próximos</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {nearby.map((n) => (
+                    <Link prefetch={false} key={n.id} href={`/property/${n.id}`} className="group rounded-xl overflow-hidden border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-white transition-all shadow-sm hover:shadow-md">
+                      {n.image && (
+                        <Image src={n.image} alt={n.title} width={640} height={360} className="h-40 w-full object-cover" />
+                      )}
+                      <div className="p-3">
+                        <div className="text-sm text-gray-600">{n.city}/{n.state}{typeof n.distanceKm === 'number' ? ` · ${n.distanceKm.toFixed(1)} km` : ''}</div>
+                        <div className="font-semibold text-gray-900 line-clamp-1">{n.title}</div>
+                        <div className="text-blue-700 font-bold">R$ {(n.price/100).toLocaleString('pt-BR')}</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -275,13 +328,13 @@ export default async function PropertyPage({ params }: PageProps) {
       </div>
 
       {/* Sticky mobile CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-30 md:hidden bg-white/90 backdrop-blur border-t p-3 flex items-center justify-between">
+      <div className="fixed inset-x-0 bottom-0 z-30 md:hidden bg-white/90 backdrop-blur border-t p-3 flex items-center justify-between pb-[max(env(safe-area-inset-bottom),12px)]">
         <div>
           <div className="text-sm text-gray-600">A partir de</div>
           <div className="text-xl font-bold text-blue-700">R$ {(property.price/100).toLocaleString('pt-BR')}</div>
         </div>
         <div className="flex gap-2">
-          <Link href={`/property/${property.id}/schedule-visit`} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium shadow">Agendar visita</Link>
+          <Link prefetch={false} href={`/property/${property.id}/schedule-visit?pref=${encodeURIComponent(nextDay1530())}`} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium shadow">Agendar visita</Link>
           {whatsapp && <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Tenho interesse no imóvel: ${property.title} - ${pageUrl}`)}`} target="_blank" className="px-4 py-2 rounded-lg bg-green-600 text-white font-medium shadow">WhatsApp</a>}
         </div>
       </div>
@@ -306,5 +359,32 @@ function InfoRow({ k, v }: { k: string; v: string }) {
       <span className="font-medium text-gray-900">{v}</span>
     </div>
   );
+}
+
+function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function nextDay1530() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(15, 30, 0, 0);
+  // Return local ISO without seconds for nicer query param, e.g., 2025-10-25T15:30
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const y = d.getFullYear();
+  const m = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const h = pad(d.getHours());
+  const min = pad(d.getMinutes());
+  return `${y}-${m}-${day}T${h}:${min}`;
 }
 
