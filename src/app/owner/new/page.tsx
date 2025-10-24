@@ -12,7 +12,7 @@ import { geocodeAddressParts } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import Toast from "@/components/Toast";
 
-type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean };
+type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File };
 
 export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -175,7 +175,7 @@ export default function NewPropertyPage() {
       const file = files[k];
       const targetIndex = targetIndices[k];
       const localUrl = URL.createObjectURL(file as File);
-      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1, reserved: true } : it)));
+      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1, reserved: true, file } : it)));
       try {
         const sigRes = await fetch('/api/upload/cloudinary-sign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: 'zillowlike' }) });
         if (!sigRes.ok) throw new Error('Falha ao assinar upload.');
@@ -214,12 +214,62 @@ export default function NewPropertyPage() {
           xhr.send(fd);
         });
         URL.revokeObjectURL(localUrl);
-        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: uploadedUrl, pending: false, error: undefined, progress: 100, reserved: false } : it)));
+        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: uploadedUrl, pending: false, error: undefined, progress: 100, reserved: false, file: undefined } : it)));
       } catch (err) {
         // mantém preview local, mas sinaliza erro
         setToast({ message: 'Erro ao enviar imagem', type: 'error' });
         setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, pending: false, error: 'Falha no upload', progress: undefined, reserved: false } : it)));
       }
+    }
+  }
+
+  async function retryUpload(targetIndex: number) {
+    const item = images[targetIndex];
+    const file = item?.file;
+    if (!file) return;
+    try {
+      const localUrl = URL.createObjectURL(file);
+      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1 } : it)));
+      const sigRes = await fetch('/api/upload/cloudinary-sign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: 'zillowlike' }) });
+      if (!sigRes.ok) throw new Error('Falha ao assinar upload.');
+      const sig = await sigRes.json();
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('api_key', sig.apiKey);
+      fd.append('timestamp', String(sig.timestamp));
+      fd.append('signature', sig.signature);
+      fd.append('folder', sig.folder);
+      const uploadedUrl: string = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`);
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) {
+            const pct = Math.min(99, Math.round((ev.loaded / ev.total) * 100));
+            setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, progress: pct } : it)));
+          }
+        };
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === 4) {
+            try {
+              const data = JSON.parse(xhr.responseText || '{}');
+              if (xhr.status >= 200 && xhr.status < 300 && data.secure_url) {
+                resolve(data.secure_url as string);
+              } else {
+                reject(new Error(data?.error?.message || 'Upload falhou.'));
+              }
+            } catch (e) {
+              reject(new Error('Upload falhou.'));
+            }
+          }
+        };
+        xhr.onerror = () => reject(new Error('Falha de rede no upload.'));
+        xhr.send(fd);
+      });
+      URL.revokeObjectURL(localUrl);
+      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: uploadedUrl, pending: false, error: undefined, progress: 100, file: undefined } : it)));
+    } catch (e) {
+      setToast({ message: 'Erro ao enviar imagem', type: 'error' });
+      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, pending: false, error: 'Falha no upload', progress: undefined } : it)));
     }
   }
 
@@ -1079,10 +1129,11 @@ export default function NewPropertyPage() {
                 <button
                   type="submit"
                   onClick={() => setSubmitIntent(true)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || images.some((i) => i.pending)}
+                  title={images.some((i) => i.pending) ? "Aguarde terminar o envio das imagens" : undefined}
                   className="px-8 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg font-medium transition-all duration-200"
                 >
-                  {isSubmitting ? "Publicando..." : "Publicar Imóvel"}
+                  {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando imagens..." : "Publicar Imóvel"}
                 </button>
               )}
             </div>

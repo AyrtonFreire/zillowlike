@@ -1,0 +1,9 @@
+-- Formal sync migration (no-op) to record prior schema alignment applied via patch.
+-- The production DB was patched to include:
+-- - Purpose enum and properties.purpose column
+-- - properties.conditionTags (text[])
+-- If your environment already has these, this migration is intentionally empty.
+-- Otherwise, create them via:
+--   CREATE TYPE "Purpose" AS ENUM ('SALE','RENT');
+--   ALTER TABLE "properties" ADD COLUMN IF NOT EXISTS "purpose" "Purpose";
+--   ALTER TABLE "properties" ADD COLUMN IF NOT EXISTS "conditionTags" text[] DEFAULT '{}'::text[];

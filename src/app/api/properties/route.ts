@@ -29,6 +29,7 @@ function checkRateLimit(req: NextRequest): boolean {
 // GET /api/properties?city=&state=&minPrice=&maxPrice=&type=&q=&page=&pageSize=&sort=&bedroomsMin=&bathroomsMin=&areaMin=
 export async function GET(req: NextRequest) {
   try {
+    const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (id) {
@@ -66,7 +67,10 @@ export async function GET(req: NextRequest) {
         },
       });
       if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
-      return NextResponse.json({ item });
+      const res = NextResponse.json({ item });
+      res.headers.set("x-request-id", requestId);
+      res.headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
+      return res;
     }
     const qp = Object.fromEntries(searchParams.entries());
     const parsed = PropertyQuerySchema.safeParse(qp);
@@ -201,13 +205,16 @@ export async function GET(req: NextRequest) {
       prisma.property.count({ where }),
     ]);
     console.log("api/properties GET", { filters: { city, state, type, purpose, q, bedroomsMin, bathroomsMin, areaMin, status: (where as any).status || "ACTIVE|null" }, total });
-    return NextResponse.json({ 
+    const res = NextResponse.json({ 
       success: true,
       properties: items, 
       total, 
       page, 
       pageSize 
     });
+    res.headers.set("x-request-id", requestId);
+    res.headers.set("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
+    return res;
   } catch (e: any) {
     console.error("/api/properties GET error:", e?.message || e);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
@@ -218,9 +225,12 @@ export async function GET(req: NextRequest) {
 // Body: { title, description, priceBRL, type, address, geo, details, images }
 export async function POST(req: NextRequest) {
   try {
+    const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     // rate limit
     if (!checkRateLimit(req)) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      const res = NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      res.headers.set("x-request-id", requestId);
+      return res;
     }
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -228,12 +238,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const body = await req.json();
+    // Defensive validation for images before zod (limit and URL)
+    if (Array.isArray(body?.images)) {
+      const imgs = body.images as any[];
+      if (imgs.length < 1 || imgs.length > 20) {
+        const res = NextResponse.json({ error: "Images count must be between 1 and 20" }, { status: 400 });
+        res.headers.set("x-request-id", requestId);
+        return res;
+      }
+      const urlOk = (u: any) => typeof u === 'string' && /^https?:\/\//.test(u);
+      for (const it of imgs) {
+        if (!it?.url || !urlOk(it.url)) {
+          const res = NextResponse.json({ error: "Invalid image URL in payload" }, { status: 400 });
+          res.headers.set("x-request-id", requestId);
+          return res;
+        }
+      }
+    }
     const parsed = PropertyCreateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
+      const res = NextResponse.json(
         { error: "Invalid body", issues: parsed.error.issues },
         { status: 400 }
       );
+      res.headers.set("x-request-id", requestId);
+      return res;
     }
 
     const { title, description, priceBRL, type, purpose, address, geo, details, images, conditionTags } = parsed.data;
@@ -303,52 +332,17 @@ export async function POST(req: NextRequest) {
             }
           : undefined,
     };
-    let created;
-    try {
-      created = await prisma.property.create({ data: createData, include: { images: true } });
-    } catch (err: any) {
-      const msg = String(err?.message || err);
-      const looksLikePurposeMissing =
-        msg.includes("Unknown arg `purpose`") ||
-        msg.includes("column \"purpose\"") ||
-        msg.includes("column `purpose`") ||
-        msg.includes("`purpose`") ||
-        (msg.includes("Invalid value for argument") && msg.includes("purpose"));
-      const looksLikeConditionTagsMissing =
-        msg.includes("Unknown arg `conditionTags`") ||
-        msg.includes("column \"conditionTags\"") ||
-        msg.includes("column `conditionTags`") ||
-        msg.includes("`conditionTags`");
-      const looksLikeImagesProblem = msg.includes("Unknown arg `images`") || msg.includes("Relation") || msg.includes("foreign key") || msg.includes("images") && msg.includes("create");
-      if ((looksLikePurposeMissing && createData.purpose) || (looksLikeConditionTagsMissing && createData.conditionTags)) {
-        console.warn("/api/properties POST: optional fields not supported by current DB schema. Retrying without them.");
-        const { purpose: _omitP, conditionTags: _omitC, ...withoutOptional } = createData;
-        try {
-          created = await prisma.property.create({ data: withoutOptional as any, include: { images: true } });
-        } catch (e2: any) {
-          const msg2 = String(e2?.message || e2);
-          if (looksLikeImagesProblem) {
-            console.warn("/api/properties POST: images relation failed. Retrying without images.");
-            const { images: _omitImages, ...withoutImages } = withoutOptional as any;
-            created = await prisma.property.create({ data: withoutImages as any, include: { images: true } });
-          } else {
-            throw e2;
-          }
-        }
-      } else if (looksLikeImagesProblem) {
-        console.warn("/api/properties POST: images relation failed. Retrying without images.");
-        const { images: _omitImages, ...withoutImages } = createData as any;
-        created = await prisma.property.create({ data: withoutImages as any, include: { images: true } });
-      } else {
-        throw err;
-      }
-    }
-    console.log("api/properties POST created", { id: created.id, ownerId: created.ownerId, city: created.city, state: created.state, status: created.status });
-    return NextResponse.json(created, { status: 201 });
+    const created = await prisma.property.create({ data: createData, include: { images: true } });
+    console.log("api/properties POST created", { id: created.id, ownerId: created.ownerId, city: created.city, state: created.state, status: created.status, requestId });
+    const res = NextResponse.json(created, { status: 201 });
+    res.headers.set("x-request-id", requestId);
+    return res;
   } catch (err: any) {
-    const msg = String(err?.message || err);
-    console.error("/api/properties POST error", msg);
-    return NextResponse.json({ error: msg || "Failed to create property" }, { status: 500 });
+    const rid = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    console.error("/api/properties POST error", err?.message || err);
+    const res = NextResponse.json({ error: "Failed to create property" }, { status: 500 });
+    res.headers.set("x-request-id", rid);
+    return res;
   }
 }
 

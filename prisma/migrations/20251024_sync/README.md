@@ -1,0 +1,1 @@
+This migration is a formal synchronization marker. Production received a direct patch to add `purpose` (enum) and `conditionTags` to `properties`. The SQL here is a no-op to keep environments in sync and avoid future drift.
