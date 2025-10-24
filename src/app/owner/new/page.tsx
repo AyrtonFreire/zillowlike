@@ -12,7 +12,7 @@ import { geocodeAddressParts } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import Toast from "@/components/Toast";
 
-type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number };
+type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean };
 
 export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -161,19 +161,28 @@ export default function NewPropertyPage() {
   async function handleDroppedFiles(fileList: FileList | File[]) {
     const files: File[] = toFiles(fileList).filter((f: File) => f.type.startsWith('image/'));
     if (files.length === 0) return;
-    for (const file of files) {
-      let targetIndex = images.findIndex((it) => !it.url);
-      if (targetIndex === -1) {
-        // captura o índice real após append
-        let capturedIndex = -1;
-        setImages((prev) => {
-          capturedIndex = prev.length;
-          return [...prev, { url: "" }];
-        });
-        targetIndex = capturedIndex;
+    // 1) Alocar slots marcando como reservados (sem setar URL fictícia)
+    const targetIndices: number[] = [];
+    setImages((prev) => {
+      const arr = [...prev];
+      for (let k = 0; k < files.length; k++) {
+        let idx = arr.findIndex((it) => (!it.url || it.url.startsWith('blob:')) && !it.reserved);
+        if (idx === -1) {
+          arr.push({ url: "", reserved: true });
+          idx = arr.length - 1;
+        } else {
+          arr[idx] = { ...arr[idx], reserved: true };
+        }
+        targetIndices.push(idx);
       }
+      return arr;
+    });
+    // 2) Subir cada arquivo sequencialmente no slot reservado
+    for (let k = 0; k < files.length; k++) {
+      const file = files[k];
+      const targetIndex = targetIndices[k];
       const localUrl = URL.createObjectURL(file as File);
-      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1 } : it)));
+      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1, reserved: true } : it)));
       try {
         const sigRes = await fetch('/api/upload/cloudinary-sign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: 'zillowlike' }) });
         if (!sigRes.ok) throw new Error('Falha ao assinar upload.');
@@ -212,11 +221,11 @@ export default function NewPropertyPage() {
           xhr.send(fd);
         });
         URL.revokeObjectURL(localUrl);
-        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: uploadedUrl, pending: false, error: undefined, progress: 100 } : it)));
+        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: uploadedUrl, pending: false, error: undefined, progress: 100, reserved: false } : it)));
       } catch (err) {
         // mantém preview local, mas sinaliza erro
         setToast({ message: 'Erro ao enviar imagem', type: 'error' });
-        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, pending: false, error: 'Falha no upload', progress: undefined } : it)));
+        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, pending: false, error: 'Falha no upload', progress: undefined, reserved: false } : it)));
       }
     }
   }
@@ -483,7 +492,9 @@ export default function NewPropertyPage() {
           areaM2: areaM2 === "" ? null : Number(areaM2),
         },
         conditionTags,
-        images: images.map((img, i) => ({ url: img.url, alt: img.alt, sortOrder: i })),
+        images: images
+          .filter((img) => typeof img.url === 'string' && /^https?:\/\//.test(img.url))
+          .map((img, i) => ({ url: img.url, alt: img.alt, sortOrder: i })),
       };
 
       const parsed = PropertyCreateSchema.safeParse(payload);
