@@ -12,6 +12,8 @@ export default function TopNavMega() {
   // CRITICAL: Read role from session.user.role (set by session callback)
   const role = (session as any)?.user?.role || "USER";
   const [stickyShadow, setStickyShadow] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
   
   // FORCE session refresh on mount to get latest data from server
   useEffect(() => {
@@ -30,7 +32,7 @@ export default function TopNavMega() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(null);
+      if (e.key === 'Escape') { setOpen(null); setUserMenuOpen(false); }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -142,23 +144,43 @@ export default function TopNavMega() {
 
           {/* Right Navigation */}
           <div className="flex items-center gap-2">
-            {/* Dashboard Link - Based on Role */}
+            {/* Dashboard Dropdown - Based on Role */}
             {user && (
-              <Link 
-                href={
-                  role === "ADMIN" ? "/admin" : 
-                  role === "REALTOR" ? "/broker/dashboard" : 
-                  role === "OWNER" ? "/owner/dashboard" : 
-                  "/dashboard"
-                }
-                className="hidden lg:inline-flex items-center gap-2 btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
-                title="Meu Painel"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <span className="hidden xl:inline">Painel</span>
-              </Link>
+              <div className="relative hidden lg:block" ref={userMenuRef}>
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-600 shadow hover:shadow-md transition-all ${userMenuOpen ? 'ring-2 ring-indigo-300' : ''}`}
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={userMenuOpen}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  Dashboard
+                  <svg className={`w-4 h-4 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd"/></svg>
+                </button>
+                {userMenuOpen && (
+                  <div
+                    role="menu"
+                    tabIndex={-1}
+                    className="absolute right-0 mt-2 w-72 rounded-xl border border-gray-200 bg-white shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1"
+                  >
+                    <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b">
+                      <div className="text-xs uppercase tracking-wide text-gray-500">Acessos rápidos</div>
+                    </div>
+                    <div className="p-2 grid grid-cols-1">
+                      {quickLinksByRole(role).map((item) => (
+                        <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300" onClick={()=> setUserMenuOpen(false)}>
+                          <span className="shrink-0">{item.icon}</span>
+                          <span className="flex-1">{item.label}</span>
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             
             {/* Favoritos - Visível apenas quando logado */}
@@ -372,4 +394,44 @@ function Item({ href, children }: { href: string; children: React.ReactNode }) {
 
 function Divider() {
   return <div className="hidden lg:block border-l border-gray-200/80" aria-hidden />;
+}
+
+type QuickItem = { href: string; label: string; icon: React.ReactNode };
+function quickLinksByRole(role: string): QuickItem[] {
+  const ico = (path: string) => (
+    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} />
+    </svg>
+  );
+  if (role === "ADMIN") {
+    return [
+      { href: "/admin", label: "Dashboard Admin", icon: ico("M3 3h18v4H3zM3 9h18v12H3z") },
+      { href: "/admin/properties", label: "Gerir imóveis", icon: ico("M4 6h16M4 10h16M4 14h10") },
+      { href: "/admin/users", label: "Gerir usuários", icon: ico("M5 8a4 4 0 118 0 4 4 0 01-8 0z M3 20a6 6 0 1112 0H3z") },
+      { href: "/admin/logs", label: "Logs", icon: ico("M4 4h16v16H4z") },
+    ];
+  }
+  if (role === "REALTOR") {
+    return [
+      { href: "/broker/dashboard", label: "Painel do corretor", icon: ico("M3 12l2-2 7-7 7 7-2 2v7a1 1 0 01-1 1H6a1 1 0 01-1-1v-7z") },
+      { href: "/broker/leads", label: "Meus leads", icon: ico("M16 12a4 4 0 10-8 0 4 4 0 008 0z M12 14v7") },
+      { href: "/saved-searches", label: "Buscas salvas", icon: ico("M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z") },
+      { href: "/favorites", label: "Favoritos", icon: ico("M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364 4.318 12.682z") },
+    ];
+  }
+  if (role === "OWNER") {
+    return [
+      { href: "/owner/dashboard", label: "Painel do proprietário", icon: ico("M3 12l2-2 7-7 7 7-2 2v7a1 1 0 01-1 1H6a1 1 0 01-1-1v-7z") },
+      { href: "/owner/new", label: "Cadastrar novo imóvel", icon: ico("M12 4v16m8-8H4") },
+      { href: "/owner/properties", label: "Meus anúncios", icon: ico("M4 6h16M4 10h16M4 14h10") },
+      { href: "/owner/leads", label: "Leads recebidos", icon: ico("M16 12a4 4 0 10-8 0 4 4 0 008 0z M12 14v7") },
+    ];
+  }
+  // USER (default)
+  return [
+    { href: "/favorites", label: "Favoritos", icon: ico("M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364 4.318 12.682z") },
+    { href: "/saved-searches", label: "Buscas salvas", icon: ico("M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z") },
+    { href: "/owner/new", label: "Anunciar imóvel", icon: ico("M12 4v16m8-8H4") },
+    { href: "/dashboard", label: "Meu painel", icon: ico("M4 4h16v16H4z") },
+  ];
 }
