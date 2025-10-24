@@ -310,19 +310,36 @@ export async function POST(req: NextRequest) {
       const msg = String(err?.message || err);
       const looksLikePurposeMissing = msg.includes("Unknown arg `purpose`") || msg.includes("column \"purpose\"") || (msg.includes("Invalid value for argument") && msg.includes("purpose"));
       const looksLikeConditionTagsMissing = msg.includes("Unknown arg `conditionTags`") || msg.includes("column \"conditionTags\"");
+      const looksLikeImagesProblem = msg.includes("Unknown arg `images`") || msg.includes("Relation") || msg.includes("foreign key") || msg.includes("images") && msg.includes("create");
       if ((looksLikePurposeMissing && createData.purpose) || (looksLikeConditionTagsMissing && createData.conditionTags)) {
         console.warn("/api/properties POST: optional fields not supported by current DB schema. Retrying without them.");
         const { purpose: _omitP, conditionTags: _omitC, ...withoutOptional } = createData;
-        created = await prisma.property.create({ data: withoutOptional as any, include: { images: true } });
+        try {
+          created = await prisma.property.create({ data: withoutOptional as any, include: { images: true } });
+        } catch (e2: any) {
+          const msg2 = String(e2?.message || e2);
+          if (looksLikeImagesProblem) {
+            console.warn("/api/properties POST: images relation failed. Retrying without images.");
+            const { images: _omitImages, ...withoutImages } = withoutOptional as any;
+            created = await prisma.property.create({ data: withoutImages as any, include: { images: true } });
+          } else {
+            throw e2;
+          }
+        }
+      } else if (looksLikeImagesProblem) {
+        console.warn("/api/properties POST: images relation failed. Retrying without images.");
+        const { images: _omitImages, ...withoutImages } = createData as any;
+        created = await prisma.property.create({ data: withoutImages as any, include: { images: true } });
       } else {
         throw err;
       }
     }
     console.log("api/properties POST created", { id: created.id, ownerId: created.ownerId, city: created.city, state: created.state, status: created.status });
     return NextResponse.json(created, { status: 201 });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Failed to create property" }, { status: 500 });
+  } catch (err: any) {
+    const msg = String(err?.message || err);
+    console.error("/api/properties POST error", msg);
+    return NextResponse.json({ error: msg || "Failed to create property" }, { status: 500 });
   }
 }
 
