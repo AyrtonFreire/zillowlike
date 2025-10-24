@@ -308,8 +308,17 @@ export async function POST(req: NextRequest) {
       created = await prisma.property.create({ data: createData, include: { images: true } });
     } catch (err: any) {
       const msg = String(err?.message || err);
-      const looksLikePurposeMissing = msg.includes("Unknown arg `purpose`") || msg.includes("column \"purpose\"") || (msg.includes("Invalid value for argument") && msg.includes("purpose"));
-      const looksLikeConditionTagsMissing = msg.includes("Unknown arg `conditionTags`") || msg.includes("column \"conditionTags\"");
+      const looksLikePurposeMissing =
+        msg.includes("Unknown arg `purpose`") ||
+        msg.includes("column \"purpose\"") ||
+        msg.includes("column `purpose`") ||
+        msg.includes("`purpose`") ||
+        (msg.includes("Invalid value for argument") && msg.includes("purpose"));
+      const looksLikeConditionTagsMissing =
+        msg.includes("Unknown arg `conditionTags`") ||
+        msg.includes("column \"conditionTags\"") ||
+        msg.includes("column `conditionTags`") ||
+        msg.includes("`conditionTags`");
       const looksLikeImagesProblem = msg.includes("Unknown arg `images`") || msg.includes("Relation") || msg.includes("foreign key") || msg.includes("images") && msg.includes("create");
       if ((looksLikePurposeMissing && createData.purpose) || (looksLikeConditionTagsMissing && createData.conditionTags)) {
         console.warn("/api/properties POST: optional fields not supported by current DB schema. Retrying without them.");
