@@ -35,6 +35,7 @@ export default function Home() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'split' | 'list'>('split');
+  const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement | null>(null);
 
@@ -515,6 +516,60 @@ export default function Home() {
         open={overlayOpen}
         onClose={closeOverlay}
       />
+
+      {/* Floating mobile map button */}
+      {hasSearched && (
+        <button
+          aria-label="Abrir mapa"
+          onClick={() => setMobileMapOpen(true)}
+          className="lg:hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-full bg-white border shadow-sm flex items-center gap-2"
+        >
+          <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A2 2 0 013 15.382V6.618a2 2 0 011.553-1.894L9 2m0 18l6-3m-6 3V2m6 15l5.447 2.724A2 2 0 0021 18.382V9.618a2 2 0 00-1.553-1.894L15 6m0 11V6M9 2l6 4"/></svg>
+          <span className="font-medium text-gray-800">Mapa</span>
+        </button>
+      )}
+
+      {/* Mobile full-screen map overlay */}
+      {mobileMapOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-white">
+          <div className="h-14 px-3 flex items-center justify-between border-b bg-white/95 backdrop-blur">
+            <button
+              aria-label="Voltar para lista"
+              onClick={() => setMobileMapOpen(false)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-white"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+              <span>Lista</span>
+            </button>
+            <div className="text-sm text-gray-600">{total} imóveis</div>
+            <div className="w-[80px]" />
+          </div>
+          <div className="absolute inset-x-0 top-14 bottom-0">
+            <MapWithPriceBubbles
+              items={properties}
+              isLoading={isLoading}
+              onBoundsChange={async (bounds) => {
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('minLat', bounds.minLat.toString());
+                params.set('maxLat', bounds.maxLat.toString());
+                params.set('minLng', bounds.minLng.toString());
+                params.set('maxLng', bounds.maxLng.toString());
+                try {
+                  const res = await fetch(`/api/properties?${params.toString()}`);
+                  const data = await res.json();
+                  if (data.success) {
+                    setProperties(data.properties || []);
+                    setTotal(data.total || 0);
+                  }
+                } catch (error) {
+                  console.error('Error fetching properties by bounds (mobile):', error);
+                }
+              }}
+              onHoverChange={(id) => setHoverId(id)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Theme Toggle - Fixed position */}
       <div className="fixed bottom-8 left-8 z-40">
