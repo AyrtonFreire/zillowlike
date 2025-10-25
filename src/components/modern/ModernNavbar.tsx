@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Menu, X, User, Heart, Bell, LogOut, ChevronDown } from "lucide-react";
+import { Menu, X, User, Heart, Bell, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -147,51 +147,90 @@ export default function ModernNavbar() {
                 {userMenuOpen && (
                   <div
                     id="user-menu-dropdown"
-                    className="absolute right-0 mt-2 w-64 rounded-xl border border-gray-200 bg-white shadow-2xl overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-80 rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-[0_20px_60px_-15px_rgba(0,0,0,0.35)] overflow-hidden z-50"
                   >
-                    <div className="px-4 py-3 border-b">
-                      <div className="text-sm text-gray-500">Logado como</div>
-                      <div className="text-sm font-semibold text-gray-900 truncate">{(session as any)?.user?.email || 'Conta'}</div>
+                    {/* Header */}
+                    <div className="px-4 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-white flex items-center justify-center font-bold">
+                          {(session as any)?.user?.name?.[0]?.toUpperCase?.() || (session as any)?.user?.email?.[0]?.toUpperCase?.() || 'U'}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-gray-900 truncate">{(session as any)?.user?.name || (session as any)?.user?.email || 'Conta'}</div>
+                          <div className="text-[11px] text-gray-600 truncate">{(session as any)?.user?.email}</div>
+                          <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-white text-gray-700">{role}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="py-1">
+                    {/* Body */}
+                    <div className="py-2">
                       {role === 'ADMIN' && (
                         <>
-                          <Link href="/admin" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Painel Admin</Link>
-                          <Link href="/admin/properties" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Gerenciar imóveis</Link>
-                          <Link href="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Usuários</Link>
-                          <Link href="/admin/realtor-applications" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Aplicações de corretores</Link>
-                          <div className="my-1 border-t" />
+                          <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">Administração</div>
+                          <Link href="/admin" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <LayoutDashboard className="w-4 h-4 text-blue-600"/> Painel Admin
+                          </Link>
+                          <Link href="/admin/properties" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <Building2 className="w-4 h-4 text-blue-600"/> Gerenciar imóveis
+                          </Link>
+                          <Link href="/admin/users" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <Users className="w-4 h-4 text-blue-600"/> Usuários
+                          </Link>
+                          <Link href="/admin/realtor-applications" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <ClipboardList className="w-4 h-4 text-blue-600"/> Aplicações de corretores
+                          </Link>
+                          <div className="my-2 border-t" />
                         </>
                       )}
                       {role === 'OWNER' && (
                         <>
-                          <Link href="/owner/dashboard" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Painel do proprietário</Link>
-                          <Link href="/owner/new" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Anunciar imóvel</Link>
-                          <Link href="/owner/properties" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Meus anúncios</Link>
-                          <Link href="/owner/leads" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Meus leads</Link>
-                          <Link href="/owner/analytics" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Analytics</Link>
-                          <div className="my-1 border-t" />
+                          <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">Proprietário</div>
+                          <Link href="/owner/dashboard" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <LayoutDashboard className="w-4 h-4 text-blue-600"/> Painel do proprietário
+                          </Link>
+                          <Link href="/owner/new" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <Megaphone className="w-4 h-4 text-blue-600"/> Anunciar imóvel
+                          </Link>
+                          <Link href="/owner/properties" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <Building2 className="w-4 h-4 text-blue-600"/> Meus anúncios
+                          </Link>
+                          <Link href="/owner/leads" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <ClipboardList className="w-4 h-4 text-blue-600"/> Meus leads
+                          </Link>
+                          <Link href="/owner/analytics" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <LineChart className="w-4 h-4 text-blue-600"/> Analytics
+                          </Link>
+                          <div className="my-2 border-t" />
                         </>
                       )}
                       {role === 'REALTOR' && (
                         <>
-                          <Link href="/realtor" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Painel do corretor</Link>
-                          <Link href="/alerts" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Alertas</Link>
-                          <div className="my-1 border-t" />
+                          <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">Corretor</div>
+                          <Link href="/realtor" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <LayoutDashboard className="w-4 h-4 text-blue-600"/> Painel do corretor
+                          </Link>
+                          <Link href="/alerts" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <Bell className="w-4 h-4 text-blue-600"/> Alertas
+                          </Link>
+                          <div className="my-2 border-t" />
                         </>
                       )}
                       {role === 'USER' && (
                         <>
-                          <Link href="/owner/new" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Anunciar imóvel</Link>
-                          <div className="my-1 border-t" />
+                          <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">Começar</div>
+                          <Link href="/owner/new" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <Megaphone className="w-4 h-4 text-blue-600"/> Anunciar imóvel
+                          </Link>
+                          <div className="my-2 border-t" />
                         </>
                       )}
-                      <Link href="/favorites" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Favoritos</Link>
-                      <Link href="/saved-searches" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Buscas salvas</Link>
-                      <Link href="/profile" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Perfil e conta</Link>
+                      <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">Conta</div>
+                      <Link href="/favorites" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50"><Star className="w-4 h-4 text-blue-600"/> Favoritos</Link>
+                      <Link href="/saved-searches" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50"><Bookmark className="w-4 h-4 text-blue-600"/> Buscas salvas</Link>
+                      <Link href="/profile" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50"><Settings className="w-4 h-4 text-blue-600"/> Perfil e conta</Link>
                     </div>
                     <div className="border-t">
-                      <button onClick={() => { setUserMenuOpen(false); signOut({ callbackUrl: "/" }); }} className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50">Sair</button>
+                      <button onClick={() => { setUserMenuOpen(false); signOut({ callbackUrl: "/" }); }} className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 font-semibold">Sair</button>
                     </div>
                   </div>
                 )}

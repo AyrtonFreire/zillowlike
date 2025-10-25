@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { city, state, type, purpose, q, minPrice, maxPrice } = parsed.data as any;
+    const tag = (searchParams.get("tag") || "").toLowerCase();
     const pageRaw = Number(parsed.data.page ?? 1);
     const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
     const pageSizeRaw = Number(parsed.data.pageSize ?? 24);
@@ -156,7 +157,7 @@ export async function GET(req: NextRequest) {
       where.longitude = { gte: Math.min(minLng, maxLng), lte: Math.max(minLng, maxLng) };
     }
 
-    const orderBy: Prisma.PropertyOrderByWithRelationInput =
+    let orderBy: Prisma.PropertyOrderByWithRelationInput =
       sort === "price_asc"
         ? { price: "asc" }
         : sort === "price_desc"
@@ -164,6 +165,28 @@ export async function GET(req: NextRequest) {
         : sort === "area_desc"
         ? { areaM2: "desc" }
         : { createdAt: "desc" };
+
+    // Map quick-filter tag into WHERE/ORDER
+    if (tag) {
+      const now = new Date();
+      if (tag === 'new') {
+        const d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 dias
+        (where.createdAt as any) = { gte: d };
+        orderBy = { createdAt: 'desc' };
+      } else if (tag === 'price_drop') {
+        // Sem histórico de preço: heurística -> registros atualizados recentemente e com updatedAt > createdAt
+        const d = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000); // 14 dias
+        (where.AND ||= [] as any[]).push({ updatedAt: { gte: d } }, { updatedAt: { gt: (where as any).createdAt?.gte || new Date(0) } });
+        orderBy = { updatedAt: 'desc' };
+      } else if (tag === 'pet_friendly') {
+        (where.petFriendly as any) = true;
+      } else if (tag === 'garage') {
+        (where.parkingSpots as any) = { gte: 1 };
+      } else if (tag === 'ready_to_move') {
+        // Interpretamos como mobiliado (furnished)
+        (where.furnished as any) = true;
+      }
+    }
 
     const [items, total] = await Promise.all([
       prisma.property.findMany({

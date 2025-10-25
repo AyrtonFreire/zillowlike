@@ -141,29 +141,31 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
                   }}
                   className="range-input absolute left-0 right-0 w-full appearance-none bg-transparent outline-none"
                 />
-                {/* Chips de valor acima das alças */}
-                <div
-                  className="absolute -top-2 text-[11px] font-bold text-gray-800"
-                  style={{ left: `${pct(currentMin)}%`, transform: 'translate(-50%, -100%)' }}
-                >
-                  <span className="px-2 py-1 bg-white rounded-md shadow ring-1 ring-gray-200">{fmtBRL(currentMin)}</span>
-                </div>
+                {/* Chips de valor acima das alças (min só aparece se > 0) */}
+                {currentMin > PRICE_MIN && (
+                  <div
+                    className="absolute -top-2 text-[11px] font-bold text-gray-800"
+                    style={{ left: `${pct(currentMin)}%`, transform: 'translate(-50%, -100%)' }}
+                  >
+                    <span className="px-2 py-1 bg-white rounded-md shadow ring-1 ring-gray-200">{fmtBRL(currentMin)}</span>
+                  </div>
+                )}
                 <div
                   className="absolute -top-2 text-[11px] font-bold text-gray-800"
                   style={{ left: `${pct(currentMax)}%`, transform: 'translate(-50%, -100%)' }}
                 >
-                  <span className="px-2 py-1 bg-white rounded-md shadow ring-1 ring-gray-200">{currentMax === PRICE_MAX ? 'Sem limite' : fmtBRL(currentMax)}</span>
+                  <span className="px-2 py-1 bg-white rounded-md shadow ring-1 ring-gray-200">{currentMax === PRICE_MAX ? '∞' : fmtBRL(currentMax)}</span>
                 </div>
                 {/* Rótulos mínimos/máximos nas extremidades */}
                 <div className="absolute -bottom-5 left-0 text-[11px] text-gray-500">R$ 0</div>
-                <div className="absolute -bottom-5 right-0 text-[11px] text-gray-500">{fmtBRL(PRICE_MAX)}</div>
+                <div className="absolute -bottom-5 right-0 text-[11px] text-gray-500">∞</div>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {['100000', '300000', '500000', '1000000'].map(price => (
                 <button
                   key={price}
-                  onClick={() => onFiltersChange({ ...filters, maxPrice: price })}
+                  onClick={() => onFiltersChange({ ...filters, minPrice: '0', maxPrice: price })}
                   className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-all"
                 >
                   {Number(price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })}
@@ -393,7 +395,7 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
                     </div>
                     {/* Rótulos mínimos/máximos nas extremidades */}
                     <div className="absolute -bottom-5 left-0 text-[11px] text-gray-500">R$ 0</div>
-                    <div className="absolute -bottom-5 right-0 text-[11px] text-gray-500">{fmtBRL(PRICE_MAX)}</div>
+                    <div className="absolute -bottom-5 right-0 text-[11px] text-gray-500">∞</div>
                   </div>
                   {/* Estilos do input range */}
                   <style jsx>{`
@@ -419,7 +421,7 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
                   {['100000', '300000', '500000', '1000000'].map(price => (
                     <button
                       key={price}
-                      onClick={() => onFiltersChange({ ...filters, maxPrice: price })}
+                      onClick={() => onFiltersChange({ ...filters, minPrice: '0', maxPrice: price })}
                       className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-all"
                     >
                       {Number(price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })}

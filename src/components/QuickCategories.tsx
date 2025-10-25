@@ -9,7 +9,7 @@ type Chip = {
 };
 
 const CHIPS: Chip[] = [
-  { id: "new", label: "Novidades", qs: { sort: "recent" } },
+  { id: "new", label: "Novidades", qs: { tag: "new" } },
   { id: "price_drop", label: "Preço reduzido", qs: { tag: "price_drop" } },
   { id: "pet", label: "Pet friendly", qs: { tag: "pet_friendly" } },
   { id: "garage", label: "Com garagem", qs: { tag: "garage" } },
@@ -25,6 +25,8 @@ export default function QuickCategories({ active }: { active?: URLSearchParams }
       if (v) sp.set(k, v);
       else sp.delete(k);
     }
+    // Resetar paginação quando aplicar chip
+    sp.set('page', '1');
     const url = sp.toString() ? `/?${sp.toString()}` : "/";
     router.push(url);
   }
@@ -33,6 +35,7 @@ export default function QuickCategories({ active }: { active?: URLSearchParams }
 
   return (
     <div className="mx-auto max-w-7xl px-4 mt-6">
+      <div className="mb-2 text-sm text-gray-600">Sugestões inteligentes para sua região</div>
       <div className="flex flex-wrap gap-2">
         {CHIPS.map((c) => {
           const isActive = !!activeTag && c.qs.tag === activeTag;
@@ -47,6 +50,7 @@ export default function QuickCategories({ active }: { active?: URLSearchParams }
               className={`${base} ${cls}`}
               aria-pressed={activeTag ? c.qs.tag === activeTag : undefined}
               role="button"
+              aria-label={`Aplicar filtro rápido: ${c.label}`}
             >
               {c.label}
             </button>

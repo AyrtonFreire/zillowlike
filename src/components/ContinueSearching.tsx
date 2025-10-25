@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { ApiProperty } from "@/types/api";
 import { Heart, MapPin, Bed, Bath, Maximize2 } from "lucide-react";
+import PropertyCard from "@/components/PropertyCard";
 
 export default function ContinueSearching() {
   const { data: session } = useSession();
@@ -67,15 +68,11 @@ export default function ContinueSearching() {
     return () => { ignore = true; };
   }, [params]);
   
-  const toggleFavorite = async (propertyId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
+  async function toggleFavoriteById(propertyId: string) {
     if (!user) {
       router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.pathname));
       return;
     }
-
     try {
       const method = favorites.includes(propertyId) ? 'DELETE' : 'POST';
       const res = await fetch('/api/favorites', {
@@ -83,18 +80,11 @@ export default function ContinueSearching() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ propertyId })
       });
-
       if (res.ok) {
-        setFavorites(prev => 
-          method === 'POST' 
-            ? [...prev, propertyId]
-            : prev.filter(id => id !== propertyId)
-        );
+        setFavorites(prev => method === 'POST' ? [...prev, propertyId] : prev.filter(id => id !== propertyId));
       }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-    }
-  };
+    } catch (err) { console.error(err); }
+  }
 
   if (!params) return null;
 
@@ -158,113 +148,15 @@ export default function ContinueSearching() {
           <div className="text-gray-500">Sem resultados salvos para continuar.</div>
         ) : (
           items.map((p) => (
-            <Link
-              key={p.id}
-              href={`/property/${p.id}`}
-              className="min-w-[320px] snap-start cursor-pointer block group"
-              onClick={(e) => {
-                if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches && !(e as any).metaKey && !(e as any).ctrlKey && !(e as any).shiftKey) {
-                  e.preventDefault();
-                  window.dispatchEvent(new CustomEvent('open-overlay', { detail: { id: p.id } }));
-                }
-              }}
-            >
-              {/* Card Container com Sombra Suave - Mesmo estilo do PropertyCard */}
-              <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
-                
-                {/* Image Container - 70% da altura */}
-                <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
-                  {p.images?.[0]?.url ? (
-                    <Image 
-                      src={p.images[0].url} 
-                      alt={p.title} 
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-700"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 flex items-center justify-center">
-                      <div className="text-center text-gray-400">
-                        <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-sm">Sem foto</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tag Flutuante - Canto Superior Esquerdo */}
-                  <div className="absolute top-3 left-3">
-                    <span className="inline-flex items-center px-3 py-1 bg-white/95 backdrop-blur-sm text-gray-800 text-xs font-semibold rounded-full shadow-md">
-                      {p.type === 'HOUSE' ? 'Casa' : 
-                       p.type === 'APARTMENT' ? 'Apartamento' :
-                       p.type === 'CONDO' ? 'Condomínio' :
-                       p.type === 'STUDIO' ? 'Studio' :
-                       p.type === 'LAND' ? 'Terreno' :
-                       p.type === 'COMMERCIAL' ? 'Comercial' : 'Imóvel'}
-                    </span>
-                  </div>
-
-                  {/* Botão Favoritar - Canto Superior Direito */}
-                  <button 
-                    onClick={(e) => toggleFavorite(p.id, e)} 
-                    className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all duration-200 z-10 hover:scale-110 ${
-                      favorites.includes(p.id)
-                        ? 'bg-red-500 text-white'
-                        : 'bg-white/90 text-gray-700 hover:bg-white'
-                    }`}
-                    aria-label={favorites.includes(p.id) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-                    title={favorites.includes(p.id) ? "Remover dos favoritos" : "Salvar imóvel"}
-                  >
-                    <Heart className={`w-5 h-5 ${favorites.includes(p.id) ? 'fill-current' : ''}`} />
-                  </button>
-                </div>
-
-                {/* Conteúdo - 30% da altura */}
-                <div className="p-4">
-                  {/* Preço em Destaque */}
-                  <div className="mb-3">
-                    <p className="text-2xl font-semibold text-gray-900">
-                      R$ {(p.price / 100).toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-
-                  {/* Features Compactas */}
-                  <div className="flex items-center gap-3 mb-3 text-sm text-gray-600">
-                    {p.bedrooms != null && (
-                      <div className="flex items-center gap-1">
-                        <Bed className="w-4 h-4" />
-                        <span className="font-medium">{p.bedrooms}</span>
-                      </div>
-                    )}
-                    {p.bathrooms != null && (
-                      <div className="flex items-center gap-1">
-                        <Bath className="w-4 h-4" />
-                        <span className="font-medium">{Number(p.bathrooms)}</span>
-                      </div>
-                    )}
-                    {p.areaM2 && (
-                      <div className="flex items-center gap-1">
-                        <Maximize2 className="w-4 h-4" />
-                        <span className="font-medium">{p.areaM2} m²</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Endereço com Ícone */}
-                  <div className="flex items-start gap-1.5 text-sm text-gray-600 mb-2">
-                    <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-gray-400" />
-                    <span className="line-clamp-1">
-                      {p.street}{p.neighborhood ? `, ${p.neighborhood}` : ""}
-                    </span>
-                  </div>
-
-                  {/* Cidade/Estado */}
-                  <p className="text-xs text-gray-500">
-                    {p.city}, {p.state}
-                  </p>
-                </div>
-              </div>
-            </Link>
+            <div key={p.id} className="min-w-[320px] snap-start">
+              <PropertyCard
+                property={p}
+                onFavoriteToggle={toggleFavoriteById}
+                isFavorite={favorites.includes(p.id)}
+                onOpenOverlay={(id) => window.dispatchEvent(new CustomEvent('open-overlay', { detail: { id } }))}
+                className=""
+              />
+            </div>
           ))
         )}
       </div>
