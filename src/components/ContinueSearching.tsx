@@ -3,11 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
 import type { ApiProperty } from "@/types/api";
-import { Heart, MapPin, Bed, Bath, Maximize2 } from "lucide-react";
-import PropertyCard from "@/components/PropertyCard";
+import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
 
 export default function ContinueSearching() {
   const { data: session } = useSession();
@@ -19,7 +16,6 @@ export default function ContinueSearching() {
   const [items, setItems] = useState<ApiProperty[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState<number>(0);
-  const [favorites, setFavorites] = useState<string[]>([]);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -32,19 +28,7 @@ export default function ContinueSearching() {
     } catch {}
   }, []);
 
-  // Carregar favoritos
-  useEffect(() => {
-    if (user) {
-      fetch('/api/favorites')
-        .then(res => res.json())
-        .then((data: any) => {
-          if (data.success) {
-            setFavorites(data.favorites || []);
-          }
-        })
-        .catch(console.error);
-    }
-  }, [user]);
+  // (Removido) favoritos locais para simplificar o card
 
   useEffect(() => {
     let ignore = false;
@@ -68,23 +52,7 @@ export default function ContinueSearching() {
     return () => { ignore = true; };
   }, [params]);
   
-  async function toggleFavoriteById(propertyId: string) {
-    if (!user) {
-      router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.pathname));
-      return;
-    }
-    try {
-      const method = favorites.includes(propertyId) ? 'DELETE' : 'POST';
-      const res = await fetch('/api/favorites', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ propertyId })
-      });
-      if (res.ok) {
-        setFavorites(prev => method === 'POST' ? [...prev, propertyId] : prev.filter(id => id !== propertyId));
-      }
-    } catch (err) { console.error(err); }
-  }
+  // (Removido) toggleFavoriteById – PropertyCardPremium já lida com UI interna de favorito
 
   if (!params) return null;
 
@@ -149,12 +117,9 @@ export default function ContinueSearching() {
         ) : (
           items.map((p) => (
             <div key={p.id} className="min-w-[320px] snap-start">
-              <PropertyCard
+              <PropertyCardPremium
                 property={p}
-                onFavoriteToggle={toggleFavoriteById}
-                isFavorite={favorites.includes(p.id)}
                 onOpenOverlay={(id) => window.dispatchEvent(new CustomEvent('open-overlay', { detail: { id } }))}
-                className=""
               />
             </div>
           ))

@@ -26,6 +26,7 @@ export default function NewPropertyPage() {
   const [type, setType] = useState("HOUSE");
   const [purpose, setPurpose] = useState<"SALE"|"RENT"|"">("");
   const [conditionTags, setConditionTags] = useState<string[]>([]);
+  const [featureSuggestions, setFeatureSuggestions] = useState<string[]>([]);
   const TAG_OPTIONS: string[] = useMemo(() => [
     "Novo",
     "Condomínio",
@@ -40,12 +41,31 @@ export default function NewPropertyPage() {
     "Pronto para morar",
   ], []);
 
+  // Conflicts map (simple opposites)
+  const CONFLICTS: Record<string, string[]> = {
+    "Mobiliado": ["Não mobiliado", "Semi-mobiliado"],
+    "Não mobiliado": ["Mobiliado", "Semi-mobiliado"],
+    "Aceita pets": ["Não aceita pets"],
+    "Não aceita pets": ["Aceita pets"],
+  };
+
+  function hasConflict(tag: string, current: string[]): string | null {
+    const opps = CONFLICTS[tag] || [];
+    const found = current.find((t) => opps.includes(t));
+    return found || null;
+  }
+
   function toggleTag(tag: string) {
     setConditionTags((prev) => {
       const has = prev.includes(tag);
       if (has) return prev.filter((t) => t !== tag);
-      if (prev.length >= 3) {
-        setToast({ message: "Você pode selecionar no máximo 3 tags.", type: "error" });
+      if (prev.length >= 12) {
+        setToast({ message: "Máximo de 12 características.", type: "error" });
+        return prev;
+      }
+      const conflict = hasConflict(tag, prev);
+      if (conflict) {
+        setToast({ message: `Conflito com "${conflict}". Remova o conflito ou escolha outra opção.`, type: 'error' });
         return prev;
       }
       return [...prev, tag];
@@ -503,7 +523,7 @@ export default function NewPropertyPage() {
       // Exige ao menos uma imagem válida
       const hasAtLeastOneImage = images.some((img) => img.url && img.url.trim().length > 0);
       if (!hasAtLeastOneImage) {
-        setToast({ message: "Adicione pelo menos uma foto antes de publicar.", type: "error" });
+        setToast({ message: "Adicione pelo menos uma foto do imóvel.", type: "error" });
         setCurrentStep(4);
         return;
       }
@@ -649,6 +669,98 @@ export default function NewPropertyPage() {
   const prevStep = () => {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
+
+  function extractFeaturesFromText(text: string): string[] {
+    const f: string[] = [];
+    const add = (s: string) => {
+      const t = s.trim();
+      if (!t) return;
+      if (!f.some((x) => x.toLowerCase() === t.toLowerCase())) f.push(t);
+    };
+    const lower = text.toLowerCase();
+    const norm = lower.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+
+    // Helpers
+    const title = (s: string) => s.replace(/(^|\s)\S/g, (m) => m.toUpperCase());
+    const numWords: Record<string, number> = {
+      'uma':1,'um':1,'duas':2,'dois':2,'três':3,'tres':3,'quatro':4,'cinco':5,'seis':6,'sete':7,'oito':8,'nove':9,'dez':10,
+    };
+    const wordToNum = (w: string) => numWords[w] ?? null;
+    const findWordNum = (pattern: RegExp, txt: string) => {
+      const m = pattern.exec(txt);
+      if (!m) return null;
+      const g = m[1];
+      const n = Number(g);
+      if (!isNaN(n)) return n;
+      return wordToNum(g) ?? null;
+    };
+
+    // Quantitativos
+    const suitesNum = findWordNum(/\b(\d{1,2}|uma|um|duas|dois|tres|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez)\s*(su[ií]tes?|suite)\b/i, norm);
+    if (suitesNum) add(`${suitesNum} Suítes`);
+    const vagasNum = findWordNum(/\b(\d{1,2}|uma|um|duas|dois|tres|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez)\s*(vagas?|garagens?)\b/i, norm);
+    if (vagasNum) add(`${vagasNum} vagas de garagem`);
+    const quartosNum = findWordNum(/\b(\d{1,2}|uma|um|duas|dois|tres|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez)\s*(quartos?|dormit[óo]rios?)\b/i, norm);
+    if (quartosNum) add(`${quartosNum} Quartos`);
+    const banhNum = findWordNum(/\b(\d{1,2}|uma|um|duas|dois|tres|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez)\s*(banheiros?)\b/i, norm);
+    if (banhNum) add(`${banhNum} Banheiros`);
+    if (/\b(lavabo|meio\s*banheiro|half\s*bath)\b/i.test(norm)) add('Lavabo');
+
+    // Booleans comuns
+    if (/pet\s*(friendly|aceito|permite)/i.test(norm)) add('Aceita pets');
+    if (/(nao\s*aceita\s*pets|sem\s*pets)/i.test(norm)) add('Não aceita pets');
+    if (/(mobiliado|mobilhado)/i.test(norm)) add('Mobiliado');
+    if (/(nao\s*mobiliado|sem\s*moveis)/i.test(norm)) add('Não mobiliado');
+    if (/(semi\s*-?mobiliado)/i.test(norm)) add('Semi-mobiliado');
+    if (/(varanda\s*gourmet)/i.test(norm)) add('Varanda gourmet');
+    if (/(varanda|terraco|terra[cç]o)/i.test(norm)) add('Varanda');
+    if (/(churrasqueira)/i.test(lower)) add('Churrasqueira');
+    if (/(piscina)/i.test(norm)) add('Piscina');
+    if (/(academia|fitness)/i.test(lower)) add('Academia');
+    if (/(elevador)/i.test(norm)) add('Elevador');
+    if (/(sem\s*elevador)/i.test(norm)) add('Sem elevador');
+    if (/(portaria\s*24h|24\s*h|seguranca\s*24)/i.test(norm)) add('Portaria 24h');
+    if (/(closet)/i.test(lower)) add('Closet');
+    if (/(escrit[óo]rio)/i.test(lower)) add('Escritório');
+    if (/(lareira)/i.test(lower)) add('Lareira');
+    if (/(pe-?direito\s*alto|teto\s*alto|soaring\s*ceilings)/i.test(norm)) add('Pé-direito alto');
+    if (/(rooftop|terraco\s*na\s*cobertura)/i.test(norm)) add('Rooftop');
+    if (/(jardim|garden)/i.test(norm)) add('Jardim');
+    if (/(vista\s*mar|sea\s*view|vista\s*panoramica)/i.test(norm)) add('Vista panorâmica');
+    if (/(reformado|reforma\s*recente)/i.test(norm)) add('Reformado');
+    if (/(pronto\s*para\s*morar)/i.test(norm)) add('Pronto para morar');
+    if (/(condominio\s*fechado)/i.test(norm)) add('Condomínio fechado');
+    if (/(area\s*de\s*servico|lavanderia)/i.test(norm)) add('Área de serviço');
+    if (/(gourmet)/i.test(norm)) add('Espaço gourmet');
+    // Regionais e complementares
+    if (/(sacada)/i.test(norm)) add('Sacada');
+    if (/(quintal|patio)/i.test(norm)) add('Quintal');
+    if (/(playground|brinquedoteca)/i.test(norm)) add('Playground');
+    if (/(salao\s*de\s*festas)/i.test(norm)) add('Salão de festas');
+    if (/(salao\s*de\s*jogos)/i.test(norm)) add('Salão de jogos');
+    if (/(bicicletario)/i.test(norm)) add('Bicicletário');
+    if (/(quadra\s*(poliesportiva|de\s*tenis))/i.test(norm)) add('Quadra esportiva');
+    if (/(sauna)/i.test(norm)) add('Sauna');
+    if (/(piscina\s*aquecida)/i.test(norm)) add('Piscina aquecida');
+    if (/(pet\s*place)/i.test(norm)) add('Pet place');
+    if (/(vaga\s*demarcada|garagem\s*coberta|vaga\s*coberta)/i.test(norm)) add('Vaga coberta');
+    if (/(deposito|box\s*privativo)/i.test(norm)) add('Depósito privativo');
+    if (/(despensa)/i.test(norm)) add('Despensa');
+    if (/(energia\s*solar|placas?\s*solares)/i.test(norm)) add('Energia solar');
+    if (/(gas\s*encanado)/i.test(norm)) add('Gás encanado');
+    if (/(hidrometros?\s*individuais|agua\s*individualizada)/i.test(norm)) add('Água individual');
+    if (/(rua\s*tranquila|cul-?de-?sac)/i.test(norm)) add('Rua tranquila');
+    if (/(condominio\s*clube)/i.test(norm)) add('Condomínio clube');
+    if (/(frente\s*mar|pe\s*na\s*areia|beira\s*mar)/i.test(norm)) add('Frente mar');
+    if (/(home\s*office|escritorio\s*em\s*casa)/i.test(norm)) add('Home office');
+    if (/(smart\s*home|automatica|automacao\s*residencial)/i.test(norm)) add('Automação residencial');
+
+    // Title-case final, cap 12
+    return f.slice(0, 12).map((s) => title(s));
+  }
+
+  
+
   return (
     <DashboardLayout
       title="Cadastrar Imóvel"
@@ -769,10 +881,51 @@ export default function NewPropertyPage() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />
+                  {featureSuggestions.length > 0 && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Sugestões de características detectadas</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const remaining = 12 - conditionTags.length;
+                            if (remaining <= 0) { setToast({ message: 'Limite de 12 características atingido.', type: 'error' }); return; }
+                            const toAdd = featureSuggestions.filter(s => !conditionTags.includes(s)).slice(0, remaining);
+                            if (toAdd.length) setConditionTags([...conditionTags, ...toAdd]);
+                          }}
+                          className="text-xs px-2 py-1 rounded-md border border-gray-300 hover:bg-gray-50"
+                        >
+                          Adicionar todas
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {featureSuggestions.map((sug) => {
+                          const exists = conditionTags.includes(sug);
+                          return (
+                            <button
+                              key={sug}
+                              type="button"
+                              onClick={() => {
+                                if (exists) return;
+                                if (conditionTags.length >= 12) { setToast({ message: 'Máximo de 12 características.', type: 'error' }); return; }
+                                const conflict = hasConflict(sug, conditionTags);
+                                if (conflict) { setToast({ message: `Conflito com "${conflict}". Remova o conflito ou escolha outra opção.`, type: 'error' }); return; }
+                                setConditionTags([...conditionTags, sug]);
+                              }}
+                              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${exists ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-default' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                              aria-disabled={exists}
+                            >
+                              {sug}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Diferenciais (até 3)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Características/Diferenciais (até 12)</label>
                   <div className="flex flex-wrap gap-2">
                     {TAG_OPTIONS.map((tag) => {
                       const selected = conditionTags.includes(tag);

@@ -10,7 +10,8 @@ import { useRouter } from "next/navigation";
 export default function ModernNavbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [megaMenu, setMegaMenu] = useState<"comprar" | "alugar" | "vender" | null>(null);
+  const [megaMenu, setMegaMenu] = useState<"comprar" | "alugar" | "anunciar" | null>(null);
+  const [primary, setPrimary] = useState<"comprar" | "alugar" | "anunciar">("comprar");
   const { data: session } = useSession();
   const router = useRouter();
   const { scrollY } = useScroll();
@@ -68,7 +69,7 @@ export default function ModernNavbar() {
   const menuItems = [
     { label: "Comprar", key: "comprar" as const },
     { label: "Alugar", key: "alugar" as const },
-    { label: "Vender", key: "vender" as const },
+    { label: "Anunciar imóvel", key: "anunciar" as const },
   ];
 
   return (
@@ -79,9 +80,29 @@ export default function ModernNavbar() {
       }`}
     >
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-20">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
+        <div className="grid grid-cols-3 items-center h-20">
+          {/* Left: Primary tabs with mega dropdown triggers */}
+          <div className="hidden md:flex items-center gap-8 mega-menu-container">
+            {menuItems.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onMouseEnter={() => { setMegaMenu(item.key); setPrimary(item.key); }}
+                onClick={() => { setMegaMenu(megaMenu === item.key ? null : item.key); setPrimary(item.key); }}
+                className={`text-gray-900 hover:text-blue-600 font-semibold transition-colors relative group ${
+                  primary === item.key ? 'text-blue-600' : ''
+                }`}
+              >
+                {item.label}
+                <span className={`absolute -bottom-1 left-0 h-0.5 bg-blue-600 transition-all duration-300 ${
+                  primary === item.key ? 'w-full' : 'w-0 group-hover:w-full'
+                }`} />
+              </button>
+            ))}
+          </div>
+
+          {/* Center: Logo */}
+          <Link href="/" className="flex items-center gap-2 justify-center">
             <motion.div
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.5 }}
@@ -93,43 +114,35 @@ export default function ModernNavbar() {
               ZillowLike
             </span>
           </Link>
-
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-8 mega-menu-container">
-            {menuItems.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                onMouseEnter={() => setMegaMenu(item.key)}
-                onClick={() => setMegaMenu(megaMenu === item.key ? null : item.key)}
-                className={`text-gray-900 hover:text-blue-600 font-semibold transition-colors relative group ${
-                  megaMenu === item.key ? 'text-blue-600' : ''
-                }`}
-              >
-                {item.label}
-                <span className={`absolute -bottom-1 left-0 h-0.5 bg-blue-600 transition-all duration-300 ${
-                  megaMenu === item.key ? 'w-full' : 'w-0 group-hover:w-full'
-                }`} />
-              </button>
-            ))}
-          </div>
-
-          {/* Actions */}
-          <div className="hidden md:flex items-center gap-4">
-            <Link href="/favorites" className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
-              <Heart className="w-5 h-5 text-gray-700" />
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold">
-                0
-              </span>
-            </Link>
-            
-            {session && (
-              <Link href="/notifications" className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
-                <Bell className="w-5 h-5 text-gray-700" />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
+          
+          {/* Right: Context links (3) + account */}
+          <div className="hidden md:flex items-center justify-end gap-4">
+            {/* Context links vary by primary */}
+            {(
+              primary === 'comprar'
+                ? [
+                    { label: 'Financiamento', href: '/calculadora' },
+                    { label: 'Encontrar corretor', href: '/realtor' },
+                    { label: 'Favoritos', href: '/favorites' },
+                  ]
+                : primary === 'alugar'
+                ? [
+                    { label: 'Alertas', href: '/alerts' },
+                    { label: 'Buscas salvas', href: '/saved-searches' },
+                    { label: 'Favoritos', href: '/favorites' },
+                  ]
+                : [
+                    { label: 'Anunciar', href: '/owner/new' },
+                    { label: 'Meus anúncios', href: '/owner/properties' },
+                    { label: 'Leads', href: '/owner/leads' },
+                  ]
+            ).map((a) => (
+              <Link key={a.label} href={a.href} className="text-sm font-semibold text-gray-800 hover:text-blue-600">
+                {a.label}
               </Link>
-            )}
-            
+            ))}
+
+            {/* Account actions */}
             {session ? (
               <div className="relative">
                 <motion.button
@@ -337,10 +350,10 @@ export default function ModernNavbar() {
                   />
                 </>
               )}
-              {megaMenu === "vender" && (
+              {megaMenu === "anunciar" && (
                 <>
                   <MegaMenuSection
-                    title="Vender seu imóvel"
+                    title="Anunciar seu imóvel"
                     icon="🏡"
                     items={[
                       { label: "Anunciar imóvel grátis", href: "/owner/new" },
