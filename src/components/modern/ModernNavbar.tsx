@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Menu, X, User, Heart, Bell, LogOut } from "lucide-react";
+import { Menu, X, User, Heart, Bell, LogOut, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -16,6 +16,7 @@ export default function ModernNavbar() {
   const { scrollY } = useScroll();
   
   const role = (session as any)?.user?.role || "USER";
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   
   const backgroundColor = useTransform(
     scrollY,
@@ -29,6 +30,25 @@ export default function ModernNavbar() {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const onDoc = (e: Event) => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      if (!t.closest('#user-menu-trigger') && !t.closest('#user-menu-dropdown')) {
+        setUserMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setUserMenuOpen(false); };
+    document.addEventListener('mousedown', onDoc as EventListener, true);
+    document.addEventListener('touchstart', onDoc as EventListener, true);
+    document.addEventListener('keydown', onKey as EventListener, true);
+    return () => {
+      document.removeEventListener('mousedown', onDoc as EventListener, true);
+      document.removeEventListener('touchstart', onDoc as EventListener, true);
+      document.removeEventListener('keydown', onKey as EventListener, true);
+    };
   }, []);
 
   // Close mega menu when clicking outside
@@ -111,34 +131,71 @@ export default function ModernNavbar() {
             )}
             
             {session ? (
-              <>
+              <div className="relative">
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    const dashboardUrl = 
-                      role === "ADMIN" ? "/admin" :
-                      role === "REALTOR" ? "/realtor" :
-                      role === "OWNER" ? "/owner" :
-                      "/dashboard";
-                    router.push(dashboardUrl);
-                  }}
+                  id="user-menu-trigger"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  aria-expanded={userMenuOpen}
                   className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold hover:shadow-glow transition-all"
                 >
                   <User className="w-4 h-4" />
                   Dashboard
+                  <ChevronDown className={`w-4 h-4 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                 </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => signOut({ callbackUrl: "/" })}
-                  className="flex items-center gap-2 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-full font-semibold hover:bg-gray-100 hover:border-gray-400 transition-all"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sair
-                </motion.button>
-              </>
+                {userMenuOpen && (
+                  <div
+                    id="user-menu-dropdown"
+                    className="absolute right-0 mt-2 w-64 rounded-xl border border-gray-200 bg-white shadow-2xl overflow-hidden z-50"
+                  >
+                    <div className="px-4 py-3 border-b">
+                      <div className="text-sm text-gray-500">Logado como</div>
+                      <div className="text-sm font-semibold text-gray-900 truncate">{(session as any)?.user?.email || 'Conta'}</div>
+                    </div>
+                    <div className="py-1">
+                      {role === 'ADMIN' && (
+                        <>
+                          <Link href="/admin" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Painel Admin</Link>
+                          <Link href="/admin/properties" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Gerenciar imóveis</Link>
+                          <Link href="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Usuários</Link>
+                          <Link href="/admin/realtor-applications" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Aplicações de corretores</Link>
+                          <div className="my-1 border-t" />
+                        </>
+                      )}
+                      {role === 'OWNER' && (
+                        <>
+                          <Link href="/owner/dashboard" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Painel do proprietário</Link>
+                          <Link href="/owner/new" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Anunciar imóvel</Link>
+                          <Link href="/owner/properties" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Meus anúncios</Link>
+                          <Link href="/owner/leads" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Meus leads</Link>
+                          <Link href="/owner/analytics" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Analytics</Link>
+                          <div className="my-1 border-t" />
+                        </>
+                      )}
+                      {role === 'REALTOR' && (
+                        <>
+                          <Link href="/realtor" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Painel do corretor</Link>
+                          <Link href="/alerts" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Alertas</Link>
+                          <div className="my-1 border-t" />
+                        </>
+                      )}
+                      {role === 'USER' && (
+                        <>
+                          <Link href="/owner/new" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Anunciar imóvel</Link>
+                          <div className="my-1 border-t" />
+                        </>
+                      )}
+                      <Link href="/favorites" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Favoritos</Link>
+                      <Link href="/saved-searches" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Buscas salvas</Link>
+                      <Link href="/profile" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">Perfil e conta</Link>
+                    </div>
+                    <div className="border-t">
+                      <button onClick={() => { setUserMenuOpen(false); signOut({ callbackUrl: "/" }); }} className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50">Sair</button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -300,26 +357,45 @@ export default function ModernNavbar() {
           ))}
           {session ? (
             <>
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  const dashboardUrl = 
-                    role === "ADMIN" ? "/admin" :
-                    role === "REALTOR" ? "/realtor" :
-                    role === "OWNER" ? "/owner" :
-                    "/dashboard";
-                  router.push(dashboardUrl);
-                }}
-                className="block w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-center"
-              >
-                Dashboard
-              </button>
+              <div className="space-y-2">
+                {role === 'ADMIN' && (
+                  <>
+                    <Link href="/admin" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-blue-50 rounded-lg font-medium text-blue-700">Painel Admin</Link>
+                    <Link href="/admin/properties" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Gerenciar imóveis</Link>
+                    <Link href="/admin/users" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Usuários</Link>
+                    <Link href="/admin/realtor-applications" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Aplicações de corretores</Link>
+                  </>
+                )}
+                {role === 'OWNER' && (
+                  <>
+                    <Link href="/owner/dashboard" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-blue-50 rounded-lg font-medium text-blue-700">Painel do proprietário</Link>
+                    <Link href="/owner/new" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Anunciar imóvel</Link>
+                    <Link href="/owner/properties" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Meus anúncios</Link>
+                    <Link href="/owner/leads" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Meus leads</Link>
+                    <Link href="/owner/analytics" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Analytics</Link>
+                  </>
+                )}
+                {role === 'REALTOR' && (
+                  <>
+                    <Link href="/realtor" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-blue-50 rounded-lg font-medium text-blue-700">Painel do corretor</Link>
+                    <Link href="/alerts" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Alertas</Link>
+                  </>
+                )}
+                {role === 'USER' && (
+                  <>
+                    <Link href="/owner/new" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-blue-50 rounded-lg font-medium text-blue-700">Anunciar imóvel</Link>
+                  </>
+                )}
+                <Link href="/favorites" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Favoritos</Link>
+                <Link href="/saved-searches" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Buscas salvas</Link>
+                <Link href="/profile" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Perfil e conta</Link>
+              </div>
               <button
                 onClick={() => {
                   setIsOpen(false);
                   signOut({ callbackUrl: "/" });
                 }}
-                className="block w-full py-3 border-2 border-blue-600 text-blue-600 rounded-xl font-semibold text-center hover:bg-blue-50"
+                className="mt-3 block w-full py-3 border-2 border-red-600 text-red-600 rounded-xl font-semibold text-center hover:bg-red-50"
               >
                 Sair
               </button>

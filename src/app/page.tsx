@@ -175,6 +175,14 @@ export default function Home() {
           if (data.success) {
             setProperties(data.properties || []);
             setTotal(data.total || 0);
+            try {
+              const labelParts: string[] = [];
+              if (city) labelParts.push(city);
+              if (state) labelParts.push(state);
+              if (type) labelParts.push(type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type);
+              const label = labelParts.length ? labelParts.join(', ') : 'Sua última busca';
+              localStorage.setItem('lastSearch', JSON.stringify({ label, params: params.toString() }));
+            } catch {}
           } else {
             console.error('Search failed (no success flag):', data);
             setProperties([]);
@@ -271,15 +279,12 @@ export default function Home() {
       
       {/* Hero Section */}
       {!hasSearched && <HeroSection />}
-      
+
+      {/* Continue Searching (logo abaixo do hero) */}
+      {!hasSearched && <ContinueSearching />}
+
       {/* Quick Categories */}
       {!hasSearched && <QuickCategories />}
-      
-      {/* Neighborhood Grid */}
-      {!hasSearched && <NeighborhoodGrid />}
-      
-      {/* Continue Searching */}
-      {!hasSearched && <ContinueSearching />}
 
       {/* Search Results - Split Screen Layout */}
       {hasSearched && (
