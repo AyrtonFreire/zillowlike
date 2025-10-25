@@ -147,6 +147,7 @@ model Image {
   url        String
   alt        String?
   sortOrder  Int      @default(0)
+  blurDataURL String?
 
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   propertyId String

@@ -8,6 +8,11 @@ import ContactForm from "@/components/ContactForm";
 import FavoriteButton from "../../../components/FavoriteButton";
 import FinancingButton from "@/components/FinancingButton";
 import FinancingModal from "@/components/FinancingModal";
+import StatCard from "@/components/StatCard";
+import StickyActions from "@/components/StickyActions";
+import PropertyStickyHeader from "@/components/PropertyStickyHeader";
+import FeatureChips from "@/components/FeatureChips";
+import ReadMore from "@/components/ReadMore";
 
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -70,7 +75,10 @@ export default async function PropertyPage({ params }: PageProps) {
 
   const property = await prisma.property.findUnique({
     where: { id },
-    include: { images: { orderBy: { sortOrder: "asc" } } },
+    include: { 
+      images: { orderBy: { sortOrder: "asc" } },
+      owner: { select: { phone: true } },
+    },
   });
 
   if (!property) {
@@ -166,10 +174,19 @@ export default async function PropertyPage({ params }: PageProps) {
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001').replace(/\/$/, '');
   const pageUrl = `${siteUrl}/property/${property.id}`;
   const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || ""; // e.g. 5599999999999
+  const scheduleHref = `/property/${property.id}/schedule-visit?pref=${encodeURIComponent(nextDay1530())}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <PropertyStickyHeader
+        title={property.title}
+        priceCents={property.price}
+        image={property.images?.[0]?.url}
+        scheduleHref={scheduleHref}
+        propertyId={property.id}
+        pageUrl={pageUrl}
+      />
       {/* Header */}
       <div className="bg-white/90 backdrop-blur border-b">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
@@ -216,7 +233,14 @@ export default async function PropertyPage({ params }: PageProps) {
                 </div>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <div className="text-4xl md:text-5xl font-extrabold text-blue-700">R$ {(property.price / 100).toLocaleString('pt-BR')}</div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-4xl md:text-5xl font-extrabold text-blue-700">R$ {(property.price / 100).toLocaleString('pt-BR')}</div>
+                      {property.status && (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${property.status === 'ACTIVE' ? 'bg-green-50 text-green-700 border-green-200' : property.status === 'PAUSED' ? 'bg-yellow-50 text-yellow-800 border-yellow-200' : property.status === 'DRAFT' ? 'bg-gray-50 text-gray-700 border-gray-200' : (property.status === 'SOLD' || property.status === 'RENTED') ? 'bg-red-50 text-red-700 border-red-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                          {property.status === 'ACTIVE' ? 'Ativo' : property.status === 'PAUSED' ? 'Reservado' : property.status === 'DRAFT' ? 'Rascunho' : property.status === 'SOLD' ? 'Vendido' : property.status === 'RENTED' ? 'Alugado' : String(property.status)}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-gray-500 mt-1">Publicado em {new Date(property.createdAt).toLocaleDateString('pt-BR')}</div>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -229,6 +253,21 @@ export default async function PropertyPage({ params }: PageProps) {
                       </a>
                     )}
                   </div>
+                </div>
+                {/* Stat Cards */}
+                <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {property.bedrooms != null && (
+                    <StatCard icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12h18M5 12V7a2 2 0 012-2h10a2 2 0 012 2v5"/></svg>} label="Quartos" value={property.bedrooms} />
+                  )}
+                  {property.bathrooms != null && (
+                    <StatCard icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 10V6a2 2 0 012-2h6a2 2 0 012 2v4"/></svg>} label="Banheiros" value={Number(property.bathrooms)} />
+                  )}
+                  {property.areaM2 != null && (
+                    <StatCard icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h18v18H3z"/></svg>} label="Área" value={property.areaM2} unit="m²" />
+                  )}
+                  {property.parkingSpots != null && (
+                    <StatCard icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 16l3-9h12l3 9M5 16h14M7 16v2m10-2v2"/></svg>} label="Vagas" value={property.parkingSpots} />
+                  )}
                 </div>
               </div>
             </div>
@@ -251,23 +290,25 @@ export default async function PropertyPage({ params }: PageProps) {
               </div>
               <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Características</h2>
-                <div className="grid grid-cols-2 gap-3">
-                  {property.bedrooms != null && <Chip icon="🛏️" label={`${property.bedrooms} quartos`} />}
-                  {property.bathrooms != null && <Chip icon="🛁" label={`${Number(property.bathrooms)} banheiros`} />}
-                  {property.areaM2 != null && <Chip icon="📐" label={`${property.areaM2} m²`} />}
-                  {property.parkingSpots != null && <Chip icon="🚗" label={`${property.parkingSpots} vagas`} />}
-                  {property.furnished && <Chip icon="🛋️" label="Mobiliado" />}
-                  {property.petFriendly && <Chip icon="🐾" label="Aceita pets" />}
-                  {property.condoFee != null && <Chip icon="🏢" label={`Condomínio R$ ${Number(property.condoFee).toLocaleString('pt-BR')}`} />}
-                  {property.yearBuilt != null && <Chip icon="📅" label={`Construído em ${property.yearBuilt}`} />}
-                </div>
+                <FeatureChips
+                  items={[
+                    ...(property.bedrooms != null ? [{ icon: '🛏️', label: `${property.bedrooms} quartos` }] : []),
+                    ...(property.bathrooms != null ? [{ icon: '🛁', label: `${Number(property.bathrooms)} banheiros` }] : []),
+                    ...(property.areaM2 != null ? [{ icon: '📐', label: `${property.areaM2} m²` }] : []),
+                    ...(property.parkingSpots != null ? [{ icon: '🚗', label: `${property.parkingSpots} vagas` }] : []),
+                    ...(property.furnished ? [{ icon: '🛋️', label: 'Mobiliado' }] : []),
+                    ...(property.petFriendly ? [{ icon: '🐾', label: 'Aceita pets' }] : []),
+                    ...(property.condoFee != null ? [{ icon: '🏢', label: `Condomínio R$ ${Number(property.condoFee).toLocaleString('pt-BR')}` }] : []),
+                    ...(property.yearBuilt != null ? [{ icon: '📅', label: `Construído em ${property.yearBuilt}` }] : []),
+                  ]}
+                />
               </div>
             </div>
 
             {/* Description */}
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 mb-3">Sobre este imóvel</h2>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-line">{property.description}</p>
+              <ReadMore text={property.description} maxChars={360} />
             </div>
 
             {nearby.length > 0 && (
@@ -293,6 +334,13 @@ export default async function PropertyPage({ params }: PageProps) {
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
+            <StickyActions
+              priceCents={property.price}
+              scheduleHref={scheduleHref}
+              phone={(property as any)?.owner?.phone ?? null}
+              whatsapp={whatsapp || null}
+              financingHint={{ perMonth: Math.max(1, Math.round((property.price/100) / 240)), lender: 'Caixa', rateLabel: '10.5% a.a.' }}
+            />
             <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
               <div className="p-4 border-b">
                 <h3 className="font-semibold text-gray-900">Localização</h3>

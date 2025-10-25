@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
           conditionTags: true,
           createdAt: true,
           updatedAt: true,
-          images: { select: { id: true, url: true, alt: true, sortOrder: true }, orderBy: { sortOrder: 'asc' } },
+          images: { select: { id: true, url: true, alt: true, sortOrder: true, blurDataURL: true }, orderBy: { sortOrder: 'asc' } },
         },
       });
       if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -196,7 +196,7 @@ export async function GET(req: NextRequest) {
           conditionTags: true,
           createdAt: true,
           updatedAt: true,
-          images: { select: { id: true, url: true, alt: true, sortOrder: true }, orderBy: { sortOrder: 'asc' } },
+          images: { select: { id: true, url: true, alt: true, sortOrder: true, blurDataURL: true }, orderBy: { sortOrder: 'asc' } },
         },
         orderBy,
         skip: (page - 1) * pageSize,
@@ -328,6 +328,7 @@ export async function POST(req: NextRequest) {
                   url: img.url,
                   alt: img.alt ?? null,
                   sortOrder: img.sortOrder ?? idx,
+                  blurDataURL: img.blurDataURL ?? null,
                 })),
             }
           : undefined,
@@ -376,6 +377,7 @@ export async function PATCH(req: NextRequest) {
           url: img.url,
           alt: img.alt ?? null,
           sortOrder: img.sortOrder ?? idx,
+          blurDataURL: img.blurDataURL ?? null,
           propertyId: id,
         }));
       if (toCreate.length > 0) {

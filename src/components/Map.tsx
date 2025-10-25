@@ -48,7 +48,12 @@ function useIconCache() {
   return { getPriceIcon, getClusterIcon };
 }
 
-export default function Map({ items, centerZoom, onViewChange, highlightId, onHoverChange, autoFit, hideRefitButton, isLoading }: { items: Item[]; centerZoom?: { center: [number, number]; zoom: number }; onViewChange?: (v: { center: [number, number]; zoom: number; bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number } }) => void; highlightId?: string; onHoverChange?: (id: string | null) => void; autoFit?: boolean; hideRefitButton?: boolean; isLoading?: boolean }) {
+type Poi = { lat: number; lng: number; label: string; emoji?: string };
+type PoisProp =
+  | { mode: 'list'; items: Poi[] }
+  | { mode: 'auto'; center: [number, number]; radius?: number };
+
+export default function Map({ items, centerZoom, onViewChange, highlightId, onHoverChange, autoFit, hideRefitButton, isLoading, pois }: { items: Item[]; centerZoom?: { center: [number, number]; zoom: number }; onViewChange?: (v: { center: [number, number]; zoom: number; bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number } }) => void; highlightId?: string; onHoverChange?: (id: string | null) => void; autoFit?: boolean; hideRefitButton?: boolean; isLoading?: boolean; pois?: PoisProp }) {
   const center = useMemo(() => {
     if (items.length > 0) return [items[0].latitude, items[0].longitude] as [number, number];
     // Default to Petrolina/Juazeiro midpoint
@@ -73,6 +78,52 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
       map.fitBounds(bounds, { padding: [40, 40] });
     }, [points, map]);
     return null;
+  }
+
+  function PoiMarkers({ config }: { config?: PoisProp }) {
+    const map = useMap();
+    const [list, setList] = useState<Poi[]>([]);
+    useEffect(() => {
+      let ignore = false;
+      async function loadAuto(center: [number, number], radius: number) {
+        try {
+          const [lat, lng] = center;
+          const query = `\n            [out:json];\n            (\n              node(around:${radius},${lat},${lng})[amenity=school];\n              node(around:${radius},${lat},${lng})[shop=supermarket];\n              node(around:${radius},${lat},${lng})[amenity=hospital];\n              node(around:${radius},${lat},${lng})[amenity=pharmacy];\n              node(around:${radius},${lat},${lng})[amenity=bus_station];\n            );\n            out center 20;\n          `;
+          const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query, headers: { 'Content-Type': 'text/plain' } });
+          if (!res.ok) return;
+          const data = await res.json();
+          const pts: Poi[] = (data.elements || []).slice(0, 50).map((el: any) => ({
+            lat: el.lat, lng: el.lon, label: el.tags?.name || el.tags?.amenity || el.tags?.shop || 'Ponto',
+            emoji: el.tags?.shop === 'supermarket' ? '🛒' : el.tags?.amenity === 'school' ? '🏫' : el.tags?.amenity === 'hospital' ? '🏥' : el.tags?.amenity === 'pharmacy' ? '💊' : el.tags?.amenity === 'bus_station' ? '🚌' : '📍',
+          }));
+          if (!ignore) setList(pts);
+        } catch {}
+      }
+      if (!config) { setList([]); return; }
+      if (config.mode === 'list') {
+        setList(config.items || []);
+      } else if (config.mode === 'auto') {
+        const r = Math.max(200, Math.min(2000, Number(config.radius) || 1000));
+        loadAuto(config.center, r);
+      }
+      return () => { ignore = true; };
+    }, [config]);
+    if (!list || list.length === 0) return null;
+    return (
+      <>
+        {list.map((p, i) => (
+          <Marker
+            key={`poi-${i}`}
+            position={[p.lat, p.lng]}
+            icon={L.divIcon({
+              className: 'poi-marker',
+              html: `<div style="background:#fff;color:#111;border:1px solid #e5e7eb;padding:2px 6px;border-radius:9999px;box-shadow:0 6px 16px rgba(0,0,0,.18);font-weight:700;font-size:11px;white-space:nowrap">${(p.emoji || '📍') + ' ' + p.label}</div>`,
+              iconSize: [0, 0], iconAnchor: [0, 12]
+            })}
+          />
+        ))}
+      </>
+    );
   }
 
   // Extra safety: after map load, invalidate again to avoid any subpixel gap
@@ -299,6 +350,8 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ClusterMarkers points={items} />
+        <PoiMarkers config={pois}
+        />
         {/* Compact custom attribution */}
       </MapContainer>
       {isLoading && (
