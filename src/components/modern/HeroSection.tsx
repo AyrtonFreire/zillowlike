@@ -16,6 +16,7 @@ interface LocationSuggestion {
 
 export default function HeroSection() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [mode, setMode] = useState<'buy' | 'rent' | 'sell'>('buy');
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -117,6 +118,71 @@ export default function HeroSection() {
 
   return (
     <div className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+      {/* Top Hero Nav (Zillow-like) */}
+      <div className="absolute top-0 inset-x-0 z-20">
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="mt-4 mb-2 rounded-full bg-white/95 backdrop-blur border border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between px-4 py-2 text-sm text-gray-800">
+              {/* Left: primary intents */}
+              <nav className="flex items-center gap-4">
+                {[
+                  { id: 'buy', label: 'Comprar' },
+                  { id: 'rent', label: 'Alugar' },
+                  { id: 'sell', label: 'Vender' },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setMode(t.id as any)}
+                    className={`px-3 py-1.5 rounded-full font-semibold transition-colors ${
+                      mode === t.id ? 'bg-gray-900 text-white' : 'hover:bg-gray-100'
+                    }`}
+                    aria-pressed={mode === t.id}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </nav>
+
+              {/* Center: brand/logo */}
+              <div className="flex items-center gap-2 select-none">
+                <div className="w-6 h-6 rounded-sm bg-gradient-to-br from-blue-600 to-purple-600" />
+                <span className="font-extrabold tracking-tight text-gray-900 text-base">Zillowlike</span>
+              </div>
+
+              {/* Right: context actions per mode */}
+              <div className="flex items-center gap-4">
+                {(
+                  mode === 'buy'
+                    ? [
+                        { label: 'Financiamento', href: '#financiamento' },
+                        { label: 'Encontrar corretor', href: '#corretores' },
+                        { label: 'Ajuda', href: '#ajuda' },
+                      ]
+                    : mode === 'rent'
+                    ? [
+                        { label: 'Gerenciar aluguel', href: '#aluguel' },
+                        { label: 'Anunciar aluguel', href: '/owner/new' },
+                        { label: 'Ajuda', href: '#ajuda' },
+                      ]
+                    : [
+                        { label: 'Anunciar imóvel', href: '/owner/new' },
+                        { label: 'Avaliar preço', href: '#avaliar-preco' },
+                        { label: 'Ajuda', href: '#ajuda' },
+                      ]
+                ).map((a) => (
+                  <a
+                    key={a.label}
+                    href={a.href}
+                    className="px-3 py-1.5 rounded-full font-semibold hover:bg-gray-100"
+                  >
+                    {a.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       {/* Background Image with Overlay */}
       <div className="absolute inset-0">
         <Image
