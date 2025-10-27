@@ -79,10 +79,10 @@ export default function ModernNavbar() {
         isScrolled ? "shadow-lg backdrop-blur-lg" : ""
       }`}
     >
-      <div className="container mx-auto px-4">
+      <div className="mx-auto max-w-7xl px-4">
         <div className="grid grid-cols-3 items-center h-20">
           {/* Left: Primary tabs with mega dropdown triggers */}
-          <div className="hidden md:flex items-center justify-end gap-8 mega-menu-container pr-4">
+          <div className="hidden md:flex items-center justify-start gap-7 mega-menu-container">
             {menuItems.map((item) => (
               <button
                 key={item.label}
@@ -116,27 +116,37 @@ export default function ModernNavbar() {
           </Link>
           
           {/* Right: Context links (3) + account */}
-          <div className="hidden md:flex items-center justify-start gap-4 pl-4">
+          <div className="hidden md:flex items-center justify-end gap-3 pr-4">
             {/* Context links vary by primary */}
-            {(
-              primary === 'comprar'
-                ? [
-                    { label: 'Financiamento', href: '/calculadora' },
-                    { label: 'Encontrar corretor', href: '/realtor' },
-                    { label: 'Favoritos', href: '/favorites' },
-                  ]
-                : primary === 'alugar'
-                ? [
-                    { label: 'Alertas', href: '/alerts' },
-                    { label: 'Buscas salvas', href: '/saved-searches' },
-                    { label: 'Favoritos', href: '/favorites' },
-                  ]
-                : [
-                    { label: 'Anunciar', href: '/owner/new' },
-                    { label: 'Meus anúncios', href: '/owner/properties' },
-                    { label: 'Leads', href: '/owner/leads' },
-                  ]
-            ).map((a) => (
+            {(() => {
+              const role = (session as any)?.user?.role || 'USER';
+              if (role === 'ADMIN') {
+                return [
+                  { label: 'Painel admin', href: '/admin' },
+                  { label: 'Propriedades', href: '/admin/properties' },
+                  { label: 'Usuários', href: '/admin/users' },
+                ];
+              }
+              if (primary === 'comprar') {
+                return [
+                  { label: 'Financiamento', href: '/calculadora' },
+                  { label: 'Encontrar corretor', href: '/realtor' },
+                  { label: 'Favoritos', href: '/favorites' },
+                ];
+              }
+              if (primary === 'alugar') {
+                return [
+                  { label: 'Alertas', href: '/alerts' },
+                  { label: 'Buscas salvas', href: '/saved-searches' },
+                  { label: 'Favoritos', href: '/favorites' },
+                ];
+              }
+              return [
+                { label: 'Anunciar', href: '/owner/new' },
+                { label: 'Meus anúncios', href: '/owner/properties' },
+                { label: 'Leads', href: '/owner/leads' },
+              ];
+            })().map((a) => (
               <Link key={a.label} href={a.href} className="text-[15px] font-semibold text-gray-800 hover:text-blue-600">
                 {a.label}
               </Link>
@@ -151,11 +161,11 @@ export default function ModernNavbar() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setUserMenuOpen((v) => !v)}
                   aria-expanded={userMenuOpen}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold text-[15px] hover:shadow-glow transition-all"
+                  className="flex items-center gap-2 px-2 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold text-[13px] hover:shadow-glow transition-all"
                 >
-                  <User className="w-4 h-4" />
-                  Dashboard
-                  <ChevronDown className={`w-4 h-4 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                  <User className="w-3.5 h-3.5" />
+                  <span>Dashboard</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                 </motion.button>
                 {userMenuOpen && (
                   <div

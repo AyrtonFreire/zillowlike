@@ -117,9 +117,9 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+    <div className="relative min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden">
       {/* Top Hero Nav (Zillow-like) */}
-      <div className="absolute top-0 inset-x-0 z-20">
+      <div className="absolute top-0 inset-x-0 z-20 hidden md:block">
         <div className="mx-auto max-w-7xl px-4">
           <div className="mt-4 mb-2 rounded-full bg-white/95 backdrop-blur border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between px-4 py-2 text-sm text-gray-800">
@@ -229,7 +229,7 @@ export default function HeroSection() {
           className="text-center text-white max-w-5xl mx-auto"
         >
           <motion.h1
-            className="text-5xl md:text-7xl font-bold mb-6"
+            className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -240,7 +240,7 @@ export default function HeroSection() {
           </motion.h1>
 
           <motion.p
-            className="text-xl md:text-2xl mb-12 text-blue-100"
+            className="text-lg sm:text-xl md:text-2xl mb-8 md:mb-12 text-blue-100"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
@@ -266,7 +266,7 @@ export default function HeroSection() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => setShowSuggestions(true)}
-                    className="flex-1 outline-none text-gray-800 placeholder:text-gray-400"
+                    className="flex-1 outline-none text-gray-800 placeholder:text-gray-400 text-base"
                   />
                   {searchQuery && (
                     <button
@@ -286,7 +286,7 @@ export default function HeroSection() {
                   whileTap={{ scale: 0.95 }}
                   type="submit"
                   disabled={isLoading}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-glow transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 md:px-8 py-3 rounded-xl font-semibold hover:shadow-glow transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <>
@@ -369,7 +369,7 @@ export default function HeroSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="grid grid-cols-3 gap-8 max-w-2xl mx-auto mt-16"
+            className="grid grid-cols-3 sm:grid-cols-3 gap-6 sm:gap-8 max-w-2xl mx-auto mt-10 md:mt-16"
           >
             {[
               { label: "Imóveis", value: "10k+" },
