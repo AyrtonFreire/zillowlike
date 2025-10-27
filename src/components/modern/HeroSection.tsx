@@ -117,7 +117,7 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="relative min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden pt-24 md:pt-0">
+    <div className="relative min-h-[70vh] sm:min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden pt-24 md:pt-0 pb-8 md:pb-0">
       {/* Top Hero Nav (Zillow-like) */}
       <div className="absolute top-0 inset-x-0 z-20 hidden md:block">
         <div className="mx-auto max-w-7xl px-4">
@@ -229,7 +229,7 @@ export default function HeroSection() {
           className="text-center text-white max-w-5xl mx-auto"
         >
           <motion.h1
-            className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6"
+            className="text-3xl sm:text-5xl md:text-7xl font-bold mb-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -369,7 +369,7 @@ export default function HeroSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="grid grid-cols-3 sm:grid-cols-3 gap-6 sm:gap-8 max-w-2xl mx-auto mt-10 md:mt-16"
+            className="hidden md:grid grid-cols-3 gap-8 max-w-2xl mx-auto mt-16"
           >
             {[
               { label: "Imóveis", value: "10k+" },
