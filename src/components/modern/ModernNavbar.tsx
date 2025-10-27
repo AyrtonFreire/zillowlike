@@ -82,14 +82,14 @@ export default function ModernNavbar() {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-3 items-center h-20">
           {/* Left: Primary tabs with mega dropdown triggers */}
-          <div className="hidden md:flex items-center gap-8 mega-menu-container">
+          <div className="hidden md:flex items-center justify-end gap-8 mega-menu-container pr-4">
             {menuItems.map((item) => (
               <button
                 key={item.label}
                 type="button"
                 onMouseEnter={() => { setMegaMenu(item.key); setPrimary(item.key); }}
                 onClick={() => { setMegaMenu(megaMenu === item.key ? null : item.key); setPrimary(item.key); }}
-                className={`text-gray-900 hover:text-blue-600 font-semibold transition-colors relative group ${
+                className={`text-gray-900 hover:text-blue-600 font-semibold text-[15px] transition-colors relative group ${
                   primary === item.key ? 'text-blue-600' : ''
                 }`}
               >
@@ -116,7 +116,7 @@ export default function ModernNavbar() {
           </Link>
           
           {/* Right: Context links (3) + account */}
-          <div className="hidden md:flex items-center justify-end gap-4">
+          <div className="hidden md:flex items-center justify-start gap-4 pl-4">
             {/* Context links vary by primary */}
             {(
               primary === 'comprar'
@@ -137,7 +137,7 @@ export default function ModernNavbar() {
                     { label: 'Leads', href: '/owner/leads' },
                   ]
             ).map((a) => (
-              <Link key={a.label} href={a.href} className="text-sm font-semibold text-gray-800 hover:text-blue-600">
+              <Link key={a.label} href={a.href} className="text-[15px] font-semibold text-gray-800 hover:text-blue-600">
                 {a.label}
               </Link>
             ))}
@@ -151,7 +151,7 @@ export default function ModernNavbar() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setUserMenuOpen((v) => !v)}
                   aria-expanded={userMenuOpen}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold hover:shadow-glow transition-all"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold text-[15px] hover:shadow-glow transition-all"
                 >
                   <User className="w-4 h-4" />
                   Dashboard
