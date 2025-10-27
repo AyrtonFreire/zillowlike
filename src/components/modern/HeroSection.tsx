@@ -117,7 +117,7 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="relative min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden">
+    <div className="relative min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden pt-24 md:pt-0">
       {/* Top Hero Nav (Zillow-like) */}
       <div className="absolute top-0 inset-x-0 z-20 hidden md:block">
         <div className="mx-auto max-w-7xl px-4">
@@ -206,7 +206,7 @@ export default function HeroSection() {
           repeat: Infinity,
           ease: "easeInOut"
         }}
-        className="absolute top-20 left-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl"
+        className="hidden md:block absolute top-20 left-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl"
       />
       <motion.div
         animate={{
@@ -218,7 +218,7 @@ export default function HeroSection() {
           ease: "easeInOut",
           delay: 1
         }}
-        className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"
+        className="hidden md:block absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"
       />
 
       <div className="container mx-auto px-4 relative z-10">
