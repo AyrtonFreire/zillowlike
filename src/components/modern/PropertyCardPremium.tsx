@@ -33,6 +33,9 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
   const [showShareModal, setShowShareModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const shareModalRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number | null>(null);
+  const touchMoved = useRef(false);
+  const didSwipe = useRef(false);
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -102,21 +105,64 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
   };
 
   const handleClick = () => {
+    if (didSwipe.current) {
+      didSwipe.current = false;
+      return; // ignore click after swipe
+    }
     if (onOpenOverlay) {
       onOpenOverlay(property.id);
     }
   };
 
+  const goNext = () => {
+    setCurrentImage((prev) => (prev + 1) % property.images.length);
+  };
+
+  const goPrev = () => {
+    setCurrentImage((prev) => (prev - 1 + property.images.length) % property.images.length);
+  };
+
   const nextImage = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setCurrentImage((prev) => (prev + 1) % property.images.length);
+    goNext();
   };
 
   const prevImage = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setCurrentImage((prev) => (prev - 1 + property.images.length) % property.images.length);
+    goPrev();
+  };
+
+  // Touch swipe handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchMoved.current = false;
+    didSwipe.current = false;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current == null) return;
+    const dx = e.touches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 10) touchMoved.current = true;
+  };
+
+  const onTouchEnd = () => {
+    if (touchStartX.current == null) return;
+    const dx = (window as any)?.event?.changedTouches?.[0]?.clientX != null ? ((window as any).event.changedTouches[0].clientX - touchStartX.current) : 0;
+    // Fallback threshold without relying on global event
+    const threshold = 40;
+    if (touchMoved.current) {
+      if (dx <= -threshold) {
+        goNext();
+        didSwipe.current = true;
+      } else if (dx >= threshold) {
+        goPrev();
+        didSwipe.current = true;
+      }
+    }
+    touchStartX.current = null;
+    touchMoved.current = false;
   };
 
   return (
@@ -177,7 +223,12 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
         </motion.button>
 
         {/* Image Carousel */}
-        <div className="relative h-48 overflow-hidden rounded-t-2xl">
+        <div
+          className="relative h-48 overflow-hidden rounded-t-2xl"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
           {property.images && property.images.length > 0 ? (
             <>
               <motion.div

@@ -23,6 +23,7 @@ export default function HeroSection() {
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const router = useRouter();
   const searchRef = useRef<HTMLDivElement>(null);
+  const [isMdUp, setIsMdUp] = useState(false);
 
   // Buscar sugestões da API quando o usuário digita
   useEffect(() => {
@@ -74,6 +75,17 @@ export default function HeroSection() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Track viewport to only render hero top nav on >= md
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 768px)');
+    const apply = () => setIsMdUp(mql.matches);
+    apply();
+    mql.addEventListener ? mql.addEventListener('change', apply) : mql.addListener(apply as any);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener('change', apply) : mql.removeListener(apply as any);
+    };
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -117,9 +129,10 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="relative min-h-[70vh] sm:min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden pt-24 md:pt-0 pb-8 md:pb-0">
+    <div className="relative min-h-[70vh] sm:min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden pt-28 md:pt-0 pb-8 md:pb-0">
       {/* Top Hero Nav (Zillow-like) */}
-      <div className="absolute top-0 inset-x-0 z-20 hidden md:block">
+      {isMdUp && (
+      <div className="absolute top-0 inset-x-0 z-20">
         <div className="mx-auto max-w-7xl px-4">
           <div className="mt-4 mb-2 rounded-full bg-white/95 backdrop-blur border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between px-4 py-2 text-sm text-gray-800">
@@ -183,6 +196,7 @@ export default function HeroSection() {
           </div>
         </div>
       </div>
+      )}
       {/* Background Image with Overlay */}
       <div className="absolute inset-0">
         <Image
@@ -395,7 +409,7 @@ export default function HeroSection() {
       <motion.div
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/50"
+        className="hidden md:block absolute bottom-8 left-1/2 -translate-x-1/2 text-white/50"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
