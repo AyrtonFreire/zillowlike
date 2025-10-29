@@ -90,6 +90,8 @@ export default function NewPropertyPage() {
   const dropInputRef = useRef<HTMLInputElement | null>(null);
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  // Tips toggle (persisted)
+  const [showTips, setShowTips] = useState<boolean>(true);
 
   const openLightbox = (i: number) => setLightbox({ open: true, index: i });
   const closeLightbox = () => setLightbox({ open: false, index: 0 });
@@ -119,6 +121,11 @@ export default function NewPropertyPage() {
   };
 
   useEffect(() => {
+    // Tips preference
+    try {
+      const pref = localStorage.getItem("owner_post_tips");
+      if (pref !== null) setShowTips(pref === "1");
+    } catch {}
     if (!lightbox.open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeLightbox();
@@ -128,6 +135,11 @@ export default function NewPropertyPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox.open, images]);
+
+  // Persist tips preference
+  useEffect(() => {
+    try { localStorage.setItem("owner_post_tips", showTips ? "1" : "0"); } catch {}
+  }, [showTips]);
 
   // Evita que soltar arquivo fora do dropzone navegue para a imagem
   useEffect(() => {
@@ -480,6 +492,37 @@ export default function NewPropertyPage() {
     { id: 3, name: "Detalhes", description: "Quartos, banheiros e área" },
     { id: 4, name: "Fotos", description: "Imagens do imóvel" },
   ];
+
+  function tipsForStep(step: number): string[] {
+    switch (step) {
+      case 1:
+        return [
+          "Defina Venda ou Aluguel primeiro para orientar os campos.",
+          "Preço sem centavos: use pontos para milhares (ex.: 450.000).",
+          "Escolha o tipo certo (Casa, Apto, etc.) para filtros funcionarem bem.",
+        ];
+      case 2:
+        return [
+          "Use um CEP válido para preencher rua/bairro automaticamente.",
+          "Se o número ainda não existe, deixe em branco e valide o CEP mesmo assim.",
+          "Clique em Validar/Próximo para geolocalizar e melhorar a busca no mapa.",
+        ];
+      case 3:
+        return [
+          "Informe quartos/banheiros/área quando souber: ajuda o interessado a decidir.",
+          "Tags como 'Reformado', 'Vaga coberta' e 'Varanda' aumentam relevância.",
+          "Evite números exagerados; transparência gera melhores contatos.",
+        ];
+      case 4:
+        return [
+          "Adicione ao menos 1 foto; 8–15 fotos boas geram mais visitas.",
+          "Prefira luz natural; mantenha os ambientes organizados.",
+          "Arraste para ordenar; dá destaque às melhores fotos primeiro.",
+        ];
+      default:
+        return [];
+    }
+  }
 
   async function handleGeocode() {
     if (!addressString) return;
@@ -1312,6 +1355,30 @@ export default function NewPropertyPage() {
                 purpose: (purpose || 'SALE') as 'SALE' | 'RENT',
               }}
             />
+            {/* Contextual tips panel */}
+            <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-900">Dicas para este passo</h3>
+                <label className="text-xs text-gray-600 inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded border-gray-300"
+                    checked={showTips}
+                    onChange={(e) => setShowTips(e.target.checked)}
+                  />
+                  Mostrar dicas
+                </label>
+              </div>
+              {showTips ? (
+                <ul className="mt-3 text-sm text-gray-700 space-y-1 list-disc ml-4">
+                  {tipsForStep(currentStep).map((t, i) => (
+                    <li key={i}>{t}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-xs text-gray-500">Dicas ocultas. Você pode ativá-las quando quiser.</p>
+              )}
+            </div>
           </aside>
         </div>
       </div>
