@@ -36,6 +36,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
   const touchStartX = useRef<number | null>(null);
   const touchMoved = useRef(false);
   const didSwipe = useRef(false);
+  const lastTouchX = useRef<number | null>(null);
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -139,18 +140,19 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
     touchStartX.current = e.touches[0].clientX;
     touchMoved.current = false;
     didSwipe.current = false;
+    lastTouchX.current = e.touches[0].clientX;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
     if (touchStartX.current == null) return;
     const dx = e.touches[0].clientX - touchStartX.current;
     if (Math.abs(dx) > 10) touchMoved.current = true;
+    lastTouchX.current = e.touches[0].clientX;
   };
 
   const onTouchEnd = () => {
-    if (touchStartX.current == null) return;
-    const dx = (window as any)?.event?.changedTouches?.[0]?.clientX != null ? ((window as any).event.changedTouches[0].clientX - touchStartX.current) : 0;
-    // Fallback threshold without relying on global event
+    if (touchStartX.current == null || lastTouchX.current == null) return;
+    const dx = lastTouchX.current - touchStartX.current;
     const threshold = 40;
     if (touchMoved.current) {
       if (dx <= -threshold) {
@@ -162,6 +164,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
       }
     }
     touchStartX.current = null;
+    lastTouchX.current = null;
     touchMoved.current = false;
   };
 
@@ -228,6 +231,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
+          style={{ touchAction: 'pan-y' }}
         >
           {property.images && property.images.length > 0 ? (
             <>

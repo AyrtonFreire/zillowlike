@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ModernNavbar, HeroSection, ThemeToggle, PropertyCardPremium } from "@/components/modern";
+import HowItWorksPostCard from "@/components/landing/HowItWorksPostCard";
 import QuickCategories from "@/components/QuickCategories";
 import NeighborhoodGrid from "@/components/NeighborhoodGrid";
 import ContinueSearching from "@/components/ContinueSearching";
@@ -279,6 +280,9 @@ export default function Home() {
       
       {/* Hero Section */}
       {!hasSearched && <HeroSection />}
+
+      {/* How it works card */}
+      {!hasSearched && <HowItWorksPostCard />}
 
       {/* Continue Searching (logo abaixo do hero) */}
       {!hasSearched && <ContinueSearching />}
