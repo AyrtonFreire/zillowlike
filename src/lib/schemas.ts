@@ -11,6 +11,8 @@ export const PropertyTypeEnum = z.enum([
 ]);
 
 export const PurposeEnum = z.enum(["SALE", "RENT"]);
+export const FinishFloorEnum = z.enum(["PORCELANATO","MADEIRA","VINILICO","OUTRO"]);
+export const SunOrientationEnum = z.enum(["NASCENTE","POENTE","OUTRA"]);
 
 // Free-form condition/features tags (display-only), capped by length and count
 export const ConditionTagEnum = z.string().min(1).max(60);
@@ -41,6 +43,50 @@ export const PropertyCreateSchema = z.object({
       bedrooms: z.number().int().min(0).max(50).nullable().optional(),
       bathrooms: z.number().min(0).max(50).nullable().optional(),
       areaM2: z.number().int().min(0).max(100000).nullable().optional(),
+      suites: z.number().int().min(0).max(50).nullable().optional(),
+      parkingSpots: z.number().int().min(0).max(50).nullable().optional(),
+      floor: z.number().int().min(0).max(200).nullable().optional(),
+      yearBuilt: z.number().int().min(1800).max(2100).nullable().optional(),
+      // Lazer / Condomínio
+      hasBalcony: z.boolean().optional(),
+      hasElevator: z.boolean().optional(),
+      hasPool: z.boolean().optional(),
+      hasGym: z.boolean().optional(),
+      hasPlayground: z.boolean().optional(),
+      hasPartyRoom: z.boolean().optional(),
+      hasGourmet: z.boolean().optional(),
+      hasConcierge24h: z.boolean().optional(),
+      // Acessibilidade
+      accRamps: z.boolean().optional(),
+      accWideDoors: z.boolean().optional(),
+      accAccessibleElevator: z.boolean().optional(),
+      accTactile: z.boolean().optional(),
+      // Conforto / Energia
+      comfortAC: z.boolean().optional(),
+      comfortHeating: z.boolean().optional(),
+      comfortSolar: z.boolean().optional(),
+      comfortNoiseWindows: z.boolean().optional(),
+      comfortLED: z.boolean().optional(),
+      comfortWaterReuse: z.boolean().optional(),
+      // Acabamentos
+      finishFloor: FinishFloorEnum.nullable().optional(),
+      finishCabinets: z.boolean().optional(),
+      finishCounterGranite: z.boolean().optional(),
+      finishCounterQuartz: z.boolean().optional(),
+      // Vista / Posição
+      viewSea: z.boolean().optional(),
+      viewCity: z.boolean().optional(),
+      positionFront: z.boolean().optional(),
+      positionBack: z.boolean().optional(),
+      sunByRoomNote: z.string().max(500).optional(),
+      // Pets / Políticas
+      petsSmall: z.boolean().optional(),
+      petsLarge: z.boolean().optional(),
+      condoRules: z.string().max(1000).optional(),
+      // Outros
+      sunOrientation: SunOrientationEnum.nullable().optional(),
+      yearRenovated: z.number().int().min(1800).max(2100).nullable().optional(),
+      totalFloors: z.number().int().min(0).max(200).nullable().optional(),
     })
     .optional(),
   conditionTags: z.array(ConditionTagEnum).max(12).optional(),

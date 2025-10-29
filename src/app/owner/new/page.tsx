@@ -809,6 +809,18 @@ export default function NewPropertyPage() {
       const purposeLabel = purpose === 'RENT' ? 'Aluguel' : 'Venda';
       const autoTitle = `${typeLabel} ${purposeLabel}${city && state ? ` - ${city}/${state}` : ''}`.trim();
 
+      const amenityTags = [
+        hasBalcony && 'Varanda',
+        hasElevator && 'Elevador',
+        hasPool && 'Piscina',
+        hasGym && 'Academia',
+        hasPlayground && 'Playground',
+        hasPartyRoom && 'Salão de festas',
+        hasGourmet && 'Espaço gourmet',
+        hasConcierge24h && 'Portaria 24h',
+      ].filter(Boolean) as string[];
+      const mergedTags = Array.from(new Set([...(conditionTags || []), ...amenityTags]));
+
       const payload = {
         title: autoTitle,
         description,
@@ -821,8 +833,52 @@ export default function NewPropertyPage() {
           bedrooms: bedrooms === "" ? null : Number(bedrooms),
           bathrooms: bathrooms === "" ? null : Number(bathrooms),
           areaM2: areaM2 === "" ? null : Number(areaM2),
+          suites: suites === "" ? null : Number(suites as any),
+          parkingSpots: parkingSpots === "" ? null : Number(parkingSpots as any),
+          floor: floor === "" ? null : Number(floor as any),
+          yearBuilt: yearBuilt === "" ? null : Number(yearBuilt as any),
+          // Lazer / Condomínio
+          hasBalcony,
+          hasElevator,
+          hasPool,
+          hasGym,
+          hasPlayground,
+          hasPartyRoom,
+          hasGourmet,
+          hasConcierge24h,
+          // Acessibilidade
+          accRamps,
+          accWideDoors,
+          accAccessibleElevator,
+          accTactile,
+          // Conforto / Energia
+          comfortAC,
+          comfortHeating,
+          comfortSolar,
+          comfortNoiseWindows,
+          comfortLED,
+          comfortWaterReuse,
+          // Acabamentos
+          finishFloor: !finishFloor ? null : (finishFloor === 'porcelanato' ? 'PORCELANATO' : finishFloor === 'madeira' ? 'MADEIRA' : finishFloor === 'vinilico' ? 'VINILICO' : 'OUTRO'),
+          finishCabinets,
+          finishCounterGranite,
+          finishCounterQuartz,
+          // Vista / Posição
+          viewSea,
+          viewCity,
+          positionFront,
+          positionBack,
+          sunByRoomNote,
+          // Pets / Políticas
+          petsSmall,
+          petsLarge,
+          condoRules,
+          // Outros
+          sunOrientation: !sunOrientation ? null : (sunOrientation.toUpperCase() === 'NASCENTE' ? 'NASCENTE' : sunOrientation.toUpperCase() === 'POENTE' ? 'POENTE' : 'OUTRA'),
+          yearRenovated: yearRenovated === "" ? null : Number(yearRenovated as any),
+          totalFloors: totalFloors === "" ? null : Number(totalFloors as any),
         },
-        conditionTags,
+        conditionTags: mergedTags,
         images: images
           .filter((img) => typeof img.url === 'string' && /^https?:\/\//.test(img.url))
           .map((img, i) => ({ url: img.url, alt: img.alt, sortOrder: i })),
@@ -1444,81 +1500,81 @@ export default function NewPropertyPage() {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Detalhes do imóvel</h2>
-                <div className="text-xs text-gray-500">🏠 Interno • 🧱 Estrutura • 🎯 Lazer • 🏢 Condomínio</div>
+                <div className="text-xs text-gray-500">Campos principais</div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="relative">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Quartos</label>
                     <input
-                      className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       type="number"
-                      placeholder=" "
+                      placeholder="Ex: 3"
                       value={bedrooms as any}
                       onChange={(e) => setBedrooms(e.target.value)}
                     />
-                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Quartos</label>
                   </div>
-                  <div className="relative">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Banheiros</label>
                     <input
-                      className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       type="number"
                       step="0.5"
-                      placeholder=" "
+                      placeholder="Ex: 3"
                       value={bathrooms as any}
                       onChange={(e) => setBathrooms(e.target.value)}
                     />
-                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Banheiros</label>
                   </div>
-                  <div className="relative">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Área (m²)</label>
                     <input
-                      className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       type="number"
-                      placeholder=" "
+                      placeholder="Ex: 330"
                       value={areaM2 as any}
                       onChange={(e) => setAreaM2(e.target.value)}
                     />
-                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Área (m²)</label>
                   </div>
                 </div>
 
                 {/* Interno / Estrutura */}
                 {/* Campos principais (texto/números) */}
                 <div className="pt-2 grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="relative">
-                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={parkingSpots as any} onChange={(e)=>setParkingSpots(e.target.value === '' ? '' : Number(e.target.value))} />
-                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Vagas</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Vagas</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 2" value={parkingSpots as any} onChange={(e)=>setParkingSpots(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
-                  <div className="relative">
-                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={suites as any} onChange={(e)=>setSuites(e.target.value === '' ? '' : Number(e.target.value))} />
-                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Suítes</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Suítes</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 1" value={suites as any} onChange={(e)=>setSuites(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
-                  <div className="relative">
-                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={floor as any} onChange={(e)=>setFloor(e.target.value === '' ? '' : Number(e.target.value))} />
-                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Andar</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Andar</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 5" value={floor as any} onChange={(e)=>setFloor(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="relative">
-                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={totalFloors as any} onChange={(e)=>setTotalFloors(e.target.value === '' ? '' : Number(e.target.value))} />
-                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Total de andares</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Total de andares</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 10" value={totalFloors as any} onChange={(e)=>setTotalFloors(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Orientação solar (opcional)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Orientação solar (opcional)</label>
                     <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" value={sunOrientation} onChange={(e)=>setSunOrientation(e.target.value)}>
                       <option value="">Selecione</option>
                       <option value="Nascente">Nascente</option>
                       <option value="Poente">Poente</option>
                     </select>
                   </div>
-                  <div className="relative">
-                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={yearBuilt as any} onChange={(e)=>setYearBuilt(e.target.value === '' ? '' : Number(e.target.value))} />
-                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Ano de construção (opcional)</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ano de construção (opcional)</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 2015" value={yearBuilt as any} onChange={(e)=>setYearBuilt(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="relative">
-                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={yearRenovated as any} onChange={(e)=>setYearRenovated(e.target.value === '' ? '' : Number(e.target.value))} />
-                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Ano de reforma (opcional)</label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ano de reforma (opcional)</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 2022" value={yearRenovated as any} onChange={(e)=>setYearRenovated(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                 </div>
 
@@ -1537,25 +1593,7 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
 
-                {/* Extras */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Orientação solar (opcional)</label>
-                    <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" value={sunOrientation} onChange={(e)=>setSunOrientation(e.target.value)}>
-                      <option value="">Selecione</option>
-                      <option value="Nascente">Nascente</option>
-                      <option value="Poente">Poente</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Ano de construção (opcional)</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="2015" value={yearBuilt as any} onChange={(e)=>setYearBuilt(e.target.value === '' ? '' : Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Ano de reforma (opcional)</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="2022" value={yearRenovated as any} onChange={(e)=>setYearRenovated(e.target.value === '' ? '' : Number(e.target.value))} />
-                  </div>
-                </div>
+                {/* Extras removidos: campos duplicados eliminados */}
 
                 {/* Accordions */}
                 <div className="space-y-3">

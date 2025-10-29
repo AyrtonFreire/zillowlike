@@ -46,6 +46,21 @@ enum Purpose {
   RENT
 }
 
+// Floor finish types (from form)
+enum FinishFloor {
+  PORCELANATO
+  MADEIRA
+  VINILICO
+  OUTRO
+}
+
+// Sun orientation
+enum SunOrientation {
+  NASCENTE
+  POENTE
+  OUTRA
+}
+
 // Lead status
 enum LeadStatus {
   PENDING                // Aguardando candidaturas
@@ -125,6 +140,56 @@ model Property {
   condoFee      Int?      // in cents
   yearBuilt     Int?
   conditionTags String[]  @default([]) // Tags: Mobiliado, Novo, Em construção, etc.
+
+  // ============================
+  // EXTRA FIELDS FROM OWNER FORM
+  // ============================
+  // Lazer / Condomínio
+  hasBalcony       Boolean?
+  hasElevator      Boolean?
+  hasPool          Boolean?
+  hasGym           Boolean?
+  hasPlayground    Boolean?
+  hasPartyRoom     Boolean?
+  hasGourmet       Boolean?
+  hasConcierge24h  Boolean?
+
+  // Acessibilidade
+  accRamps               Boolean?
+  accWideDoors           Boolean?
+  accAccessibleElevator  Boolean?
+  accTactile             Boolean?
+
+  // Conforto / Energia
+  comfortAC           Boolean?
+  comfortHeating      Boolean?
+  comfortSolar        Boolean?
+  comfortNoiseWindows Boolean?
+  comfortLED          Boolean?
+  comfortWaterReuse   Boolean?
+
+  // Acabamentos
+  finishFloor         FinishFloor?
+  finishCabinets      Boolean?
+  finishCounterGranite Boolean?
+  finishCounterQuartz Boolean?
+
+  // Vista / Posição
+  viewSea         Boolean?
+  viewCity        Boolean?
+  positionFront   Boolean?
+  positionBack    Boolean?
+  sunByRoomNote   String?
+
+  // Pets / Políticas
+  petsSmall       Boolean?
+  petsLarge       Boolean?
+  condoRules      String?
+
+  // Outros
+  sunOrientation  SunOrientation?
+  yearRenovated   Int?
+  totalFloors     Int?
 
   images      Image[]
   favorites   Favorite[]
