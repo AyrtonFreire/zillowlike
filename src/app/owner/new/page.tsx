@@ -46,6 +46,7 @@ export default function NewPropertyPage() {
   const [sunOrientation, setSunOrientation] = useState(""); // nascente/poente
   const [yearBuilt, setYearBuilt] = useState<string | number>("");
   const [yearRenovated, setYearRenovated] = useState<string | number>("");
+  const [sunByRoomNote, setSunByRoomNote] = useState("");
   // Extra grouped toggles
   const [accRamps, setAccRamps] = useState(false);
   const [accWideDoors, setAccWideDoors] = useState(false);
@@ -74,6 +75,25 @@ export default function NewPropertyPage() {
   const [secElectricFence, setSecElectricFence] = useState(false);
   // Accordion visibility
   const [openAcc, setOpenAcc] = useState<{[k:string]:boolean}>({});
+
+  // Auto-open accordions if any inner field is filled
+  useEffect(() => {
+    const next = { ...openAcc } as any;
+    const accFilled = accRamps || accWideDoors || accAccessibleElevator || accTactile;
+    if (accFilled) next.acc_acc = true;
+    const ceFilled = comfortAC || comfortHeating || comfortSolar || comfortNoiseWindows || comfortLED || comfortWaterReuse;
+    if (ceFilled) next.acc_ce = true;
+    const finFilled = !!finishFloor || finishCabinets || finishCounterGranite || finishCounterQuartz;
+    if (finFilled) next.acc_fin = true;
+    const viewFilled = viewSea || viewCity || positionFront || positionBack || !!sunByRoomNote;
+    if (viewFilled) next.acc_view = true;
+    const petsFilled = petsSmall || petsLarge || !!condoRules;
+    if (petsFilled) next.acc_pets = true;
+    const secFilled = secCCTV || secSallyPort || secNightGuard || secElectricFence;
+    if (secFilled) next.acc_sec = true;
+    setOpenAcc(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence]);
   const TAG_OPTIONS: string[] = useMemo(() => [
     "Novo",
     "Condomínio",
@@ -1056,35 +1076,99 @@ export default function NewPropertyPage() {
                   <div className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600" style={{ width: `${completionPercent()}%` }} />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="rounded-xl border p-4 space-y-3 text-sm">
-                    <div className="font-semibold text-gray-800">Básico</div>
-                    <div>Finalidade: <span className="font-medium">{purpose === 'RENT' ? 'Aluguel' : 'Venda'}</span></div>
-                    <div>Preço: <span className="font-medium">R$ {priceBRL || '—'}</span></div>
-                    <div>Tipo: <span className="font-medium">{type}</span></div>
-                    <div>Título: <span className="font-medium">{title || '—'}</span></div>
-                    <div className="pt-2 font-semibold text-gray-800">Localização</div>
-                    <div>{street ? `${street}, ${addressNumber || ''}` : '—'}</div>
-                    <div>{neighborhood ? `${neighborhood}, ` : ''}{city}/{state} — CEP {postalCode || '—'}</div>
-                    <div>Geo: {geo ? `${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)}` : '—'}</div>
-                    <div className="pt-2 font-semibold text-gray-800">Detalhes</div>
-                    <div>Quartos: {bedrooms || '—'} • Banheiros: {bathrooms || '—'} • Área: {areaM2 || '—'} m²</div>
-                    <div>Vagas: {parkingSpots || '—'} • Suítes: {suites || '—'} • Varanda: {hasBalcony ? 'Sim' : 'Não'}</div>
-                    <div>Elevador: {hasElevator ? 'Sim' : 'Não'} • Andar: {floor || '—'} / {totalFloors || '—'}</div>
-                    <div>Condomínio: {hasPool ? 'Piscina ' : ''}{hasGym ? 'Academia ' : ''}{hasPlayground ? 'Playground ' : ''}{hasPartyRoom ? 'Salão de festas ' : ''}{hasGourmet ? 'Gourmet ' : ''}{hasConcierge24h ? 'Portaria 24h ' : ''}</div>
-                    <div>Solar: {sunOrientation || '—'} • Construção: {yearBuilt || '—'} • Reforma: {yearRenovated || '—'}</div>
-                    <div>Diferencial: {conditionTags[0] || '—'}</div>
-                    <div className="pt-2 font-semibold text-gray-800">Preferências de contato</div>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      <button type="button" className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${contactMode==='DIRECT'?'bg-white text-gray-800 border-gray-300':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`} onClick={()=>setContactMode('DIRECT')}>Contato direto</button>
-                      <button type="button" className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${contactMode==='BROKER'?'bg-white text-gray-800 border-gray-300':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`} onClick={()=>setContactMode('BROKER')}>Com apoio do corretor</button>
+                  <div className="rounded-xl p-4 ring-1 ring-black/5 bg-white/70 backdrop-blur-sm space-y-5 text-sm">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-1">Básico</div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>Finalidade: <span className="font-medium">{purpose === 'RENT' ? 'Aluguel' : 'Venda'}</span></li>
+                        <li>Preço: <span className="font-medium">R$ {priceBRL || '—'}</span></li>
+                        <li>Tipo: <span className="font-medium">{type}</span></li>
+                        {conditionTags[0] && <li>Diferencial: {conditionTags[0]}</li>}
+                      </ul>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      <input className="px-3 py-2 border border-gray-300 rounded-lg" placeholder="Horários preferidos (ex.: 9h–18h)" value={contactPrefs.preferredHours || ''} onChange={(e)=>setContactPrefs({...contactPrefs, preferredHours: e.target.value})} />
-                      <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={!!contactPrefs.chatFirst} onChange={(e)=>setContactPrefs({...contactPrefs, chatFirst: e.target.checked})} /> Chat primeiro</label>
-                      <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={!!contactPrefs.noCall} onChange={(e)=>setContactPrefs({...contactPrefs, noCall: e.target.checked})} /> Sem ligações</label>
+
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-1">Localização</div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>{street ? `${street}, ${addressNumber || ''}` : '—'}</li>
+                        <li>{neighborhood ? `${neighborhood}, ` : ''}{city}/{state} — CEP {postalCode || '—'}</li>
+                        <li>Geo: {geo ? `${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)}` : '—'}</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-1">Detalhes</div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>Quartos: {bedrooms || '—'} • Banheiros: {bathrooms || '—'} • Área: {areaM2 || '—'} m²</li>
+                        <li>Vagas: {parkingSpots || '—'} • Suítes: {suites || '—'}</li>
+                        <li>Andar: {floor || '—'} / {totalFloors || '—'}</li>
+                        <li>Varanda: {hasBalcony ? 'Sim' : 'Não'} • Elevador: {hasElevator ? 'Sim' : 'Não'}</li>
+                        <li>Construção: {yearBuilt || '—'} • Reforma: {yearRenovated || '—'}</li>
+                        {sunOrientation && <li>Orientação solar: {sunOrientation}</li>}
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-1">Lazer/Condomínio</div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>{[hasPool && 'Piscina', hasGym && 'Academia', hasPlayground && 'Playground', hasPartyRoom && 'Salão de festas', hasGourmet && 'Espaço gourmet', hasConcierge24h && 'Portaria 24h'].filter(Boolean).join(' • ') || '—'}</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-1">Acessibilidade</div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>{[accRamps && 'Rampas', accWideDoors && 'Portas largas', accAccessibleElevator && 'Elevador acessível', accTactile && 'Sinalização tátil'].filter(Boolean).join(' • ') || '—'}</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-1">Conforto/Energia</div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>{[comfortAC && 'Ar-condicionado', comfortHeating && 'Aquecimento', comfortSolar && 'Aquecimento solar', comfortNoiseWindows && 'Janelas antirruído', comfortLED && 'Iluminação LED', comfortWaterReuse && 'Reuso de água'].filter(Boolean).join(' • ') || '—'}</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-1">Acabamentos</div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>{[finishFloor && `Piso: ${finishFloor}`, finishCabinets && 'Armários planejados', finishCounterGranite && 'Bancadas: granito', finishCounterQuartz && 'Bancadas: quartzo'].filter(Boolean).join(' • ') || '—'}</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-1">Vista/Posição</div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>{[viewSea && 'Vista mar', viewCity && 'Vista cidade', positionFront && 'Frente', positionBack && 'Fundos'].filter(Boolean).join(' • ') || '—'}</li>
+                        {sunByRoomNote && <li>{sunByRoomNote}</li>}
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-1">Pets/Políticas</div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>{[petsSmall && 'Pets pequeno porte', petsLarge && 'Pets grande porte'].filter(Boolean).join(' • ') || '—'}</li>
+                        {condoRules && <li>{condoRules}</li>}
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-1">Segurança</div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>{[secCCTV && 'CFTV', secSallyPort && 'Clausura', secNightGuard && 'Vigia noturno', secElectricFence && 'Cerca elétrica'].filter(Boolean).join(' • ') || '—'}</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-gray-800 mb-1">Contato</div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>Modo: {contactMode === 'DIRECT' ? 'Contato direto' : 'Com apoio do corretor'}</li>
+                        <li>Horários: {contactPrefs.preferredHours || '—'}</li>
+                        <li>Chat primeiro: {contactPrefs.chatFirst ? 'Sim' : 'Não'} • Sem ligações: {contactPrefs.noCall ? 'Sim' : 'Não'}</li>
+                      </ul>
                     </div>
                   </div>
-                  <div className="rounded-xl border p-4">
+                  <div className="rounded-xl p-4 ring-1 ring-black/5 bg-gradient-to-br from-white to-purple-50">
                     <div className="text-sm text-gray-600 mb-2">Pré-visualização na vitrine</div>
                     <PropertyCardPremium
                       property={{
@@ -1114,9 +1198,9 @@ export default function NewPropertyPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Cadastrar Imóvel</h1>
-          <p className="text-gray-600 mb-8">Preencha as informações do seu imóvel para publicá-lo na plataforma.</p>
+        <div className="rounded-xl p-8 bg-gradient-to-br from-blue-50 to-purple-50 ring-1 ring-black/5">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-purple-700 mb-2">Cadastrar Imóvel</h1>
+          <p className="text-gray-700/90 mb-8">Preencha as informações do seu imóvel para publicá-lo na plataforma.</p>
 
           <form onSubmit={handleSubmit} onKeyDown={(e) => { if ((e as any).key === 'Enter' && currentStep < 4) { e.preventDefault(); } }} className="space-y-8">
             {/* Step 1: Basic Info */}
@@ -1174,29 +1258,7 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
 
-                {/* Título sugerido */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Título (opcional)</label>
-                  <div className="flex gap-2">
-                    <input
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Ex.: Apartamento no Centro - 80 m²"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const typeLabel = type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type === 'CONDO' ? 'Condomínio' : type === 'LAND' ? 'Terreno' : type === 'COMMERCIAL' ? 'Comercial' : type === 'TOWNHOUSE' ? 'Sobrado' : 'Imóvel';
-                        const parts = [typeLabel, neighborhood && `em ${neighborhood}`, areaM2 && typeof areaM2 === 'number' && `${areaM2} m²`].filter(Boolean);
-                        setTitle(parts.join(' - '));
-                      }}
-                      className="px-4 py-3 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm"
-                    >
-                      Gerar título
-                    </button>
-                  </div>
-                </div>
+                
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1387,86 +1449,94 @@ export default function NewPropertyPage() {
                 <div className="text-xs text-gray-500">Interno • Estrutura • Lazer • Condomínio</div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Quartos
-                    </label>
+                  <div className="relative">
                     <input
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent"
                       type="number"
-                      placeholder="3"
+                      placeholder=" "
                       value={bedrooms}
                       onChange={(e) => setBedrooms(e.target.value === "" ? "" : Number(e.target.value))}
                     />
+                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Quartos</label>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Banheiros
-                    </label>
+                  <div className="relative">
                     <input
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent"
                       type="number"
                       step="0.5"
-                      placeholder="2"
+                      placeholder=" "
                       value={bathrooms}
                       onChange={(e) => setBathrooms(e.target.value === "" ? "" : Number(e.target.value))}
                     />
+                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Banheiros</label>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Área (m²)
-                    </label>
+                  <div className="relative">
                     <input
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent"
                       type="number"
-                      placeholder="120"
+                      placeholder=" "
                       value={areaM2}
                       onChange={(e) => setAreaM2(e.target.value === "" ? "" : Number(e.target.value))}
                     />
+                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Área (m²)</label>
                   </div>
                 </div>
 
                 {/* Interno / Estrutura */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Vagas</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="2" value={parkingSpots as any} onChange={(e)=>setParkingSpots(e.target.value === '' ? '' : Number(e.target.value))} />
+                {/* Campos principais (texto/números) */}
+                <div className="pt-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="relative">
+                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={parkingSpots as any} onChange={(e)=>setParkingSpots(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Vagas</label>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Suítes</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="1" value={suites as any} onChange={(e)=>setSuites(e.target.value === '' ? '' : Number(e.target.value))} />
+                  <div className="relative">
+                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={suites as any} onChange={(e)=>setSuites(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Suítes</label>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Varanda</label>
-                    <div className="h-[42px] flex items-center"><input type="checkbox" className="rounded" checked={hasBalcony} onChange={(e)=>setHasBalcony(e.target.checked)} /></div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Elevador</label>
-                    <div className="h-[42px] flex items-center"><input type="checkbox" className="rounded" checked={hasElevator} onChange={(e)=>setHasElevator(e.target.checked)} /></div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Andar</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="5" value={floor as any} onChange={(e)=>setFloor(e.target.value === '' ? '' : Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Total de andares</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="12" value={totalFloors as any} onChange={(e)=>setTotalFloors(e.target.value === '' ? '' : Number(e.target.value))} />
+                  <div className="relative">
+                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={floor as any} onChange={(e)=>setFloor(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Andar</label>
                   </div>
                 </div>
 
-                {/* Lazer / Condomínio */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPool} onChange={(e)=>setHasPool(e.target.checked)} /> Piscina</label>
-                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasGym} onChange={(e)=>setHasGym(e.target.checked)} /> Academia</label>
-                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPlayground} onChange={(e)=>setHasPlayground(e.target.checked)} /> Playground</label>
+                  <div className="relative">
+                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={totalFloors as any} onChange={(e)=>setTotalFloors(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Total de andares</label>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Orientação solar (opcional)</label>
+                    <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" value={sunOrientation} onChange={(e)=>setSunOrientation(e.target.value)}>
+                      <option value="">Selecione</option>
+                      <option value="Nascente">Nascente</option>
+                      <option value="Poente">Poente</option>
+                    </select>
+                  </div>
+                  <div className="relative">
+                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={yearBuilt as any} onChange={(e)=>setYearBuilt(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Ano de construção (opcional)</label>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPartyRoom} onChange={(e)=>setHasPartyRoom(e.target.checked)} /> Salão de festas</label>
-                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasGourmet} onChange={(e)=>setHasGourmet(e.target.checked)} /> Espaço gourmet/Churrasqueira</label>
-                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasConcierge24h} onChange={(e)=>setHasConcierge24h(e.target.checked)} /> Portaria 24h</label>
+                  <div className="relative">
+                    <input className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent" type="number" placeholder=" " value={yearRenovated as any} onChange={(e)=>setYearRenovated(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Ano de reforma (opcional)</label>
+                  </div>
+                </div>
+
+                {/* Recursos e facilidades (checkboxes) */}
+                <div className="pt-2">
+                  <div className="text-sm font-medium text-gray-800 mb-2">Recursos e facilidades</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasBalcony} onChange={(e)=>setHasBalcony(e.target.checked)} /> Varanda</label>
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasElevator} onChange={(e)=>setHasElevator(e.target.checked)} /> Elevador</label>
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPool} onChange={(e)=>setHasPool(e.target.checked)} /> Piscina</label>
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasGym} onChange={(e)=>setHasGym(e.target.checked)} /> Academia</label>
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPlayground} onChange={(e)=>setHasPlayground(e.target.checked)} /> Playground</label>
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPartyRoom} onChange={(e)=>setHasPartyRoom(e.target.checked)} /> Salão de festas</label>
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasGourmet} onChange={(e)=>setHasGourmet(e.target.checked)} /> Espaço gourmet/Churrasqueira</label>
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasConcierge24h} onChange={(e)=>setHasConcierge24h(e.target.checked)} /> Portaria 24h</label>
+                  </div>
                 </div>
 
                 {/* Extras */}
@@ -1486,6 +1556,117 @@ export default function NewPropertyPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Ano de reforma (opcional)</label>
                     <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="2022" value={yearRenovated as any} onChange={(e)=>setYearRenovated(e.target.value === '' ? '' : Number(e.target.value))} />
+                  </div>
+                </div>
+
+                {/* Accordions */}
+                <div className="space-y-3">
+                  {/* Acessibilidade */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc:true, acc_acc:!a.acc_acc}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                      <span>Acessibilidade</span>
+                      <span>{openAcc.acc_acc ? '−' : '+'}</span>
+                    </button>
+                    {openAcc.acc_acc && (
+                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accRamps} onChange={(e)=>setAccRamps(e.target.checked)} /> Rampas</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accWideDoors} onChange={(e)=>setAccWideDoors(e.target.checked)} /> Portas largas</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accAccessibleElevator} onChange={(e)=>setAccAccessibleElevator(e.target.checked)} /> Elevador acessível</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accTactile} onChange={(e)=>setAccTactile(e.target.checked)} /> Sinalização tátil</label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Conforto/Energia */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc_ce:!a.acc_ce}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                      <span>Conforto/Energia</span>
+                      <span>{openAcc.acc_ce ? '−' : '+'}</span>
+                    </button>
+                    {openAcc.acc_ce && (
+                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortAC} onChange={(e)=>setComfortAC(e.target.checked)} /> Ar-condicionado</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortHeating} onChange={(e)=>setComfortHeating(e.target.checked)} /> Aquecimento</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortSolar} onChange={(e)=>setComfortSolar(e.target.checked)} /> Aquecimento solar</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortNoiseWindows} onChange={(e)=>setComfortNoiseWindows(e.target.checked)} /> Janelas antirruído</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortLED} onChange={(e)=>setComfortLED(e.target.checked)} /> Iluminação LED</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortWaterReuse} onChange={(e)=>setComfortWaterReuse(e.target.checked)} /> Reuso de água</label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Acabamentos */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc_fin:!a.acc_fin}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                      <span>Acabamentos</span>
+                      <span>{openAcc.acc_fin ? '−' : '+'}</span>
+                    </button>
+                    {openAcc.acc_fin && (
+                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Piso</label>
+                          <select className="w-full px-3 py-2 border rounded" value={finishFloor} onChange={(e)=>setFinishFloor(e.target.value)}>
+                            <option value="">Selecione</option>
+                            <option value="porcelanato">Porcelanato</option>
+                            <option value="madeira">Madeira</option>
+                            <option value="vinilico">Vinílico</option>
+                          </select>
+                        </div>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={finishCabinets} onChange={(e)=>setFinishCabinets(e.target.checked)} /> Armários planejados</label>
+                        <div className="flex flex-col gap-2">
+                          <label className="inline-flex items-center gap-2"><input type="checkbox" checked={finishCounterGranite} onChange={(e)=>setFinishCounterGranite(e.target.checked)} /> Bancadas em granito</label>
+                          <label className="inline-flex items-center gap-2"><input type="checkbox" checked={finishCounterQuartz} onChange={(e)=>setFinishCounterQuartz(e.target.checked)} /> Bancadas em quartzo</label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Vista/Posição */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc_view:!a.acc_view}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                      <span>Vista/Posição</span>
+                      <span>{openAcc.acc_view ? '−' : '+'}</span>
+                    </button>
+                    {openAcc.acc_view && (
+                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={viewSea} onChange={(e)=>setViewSea(e.target.checked)} /> Vista mar</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={viewCity} onChange={(e)=>setViewCity(e.target.checked)} /> Vista cidade</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={positionFront} onChange={(e)=>setPositionFront(e.target.checked)} /> Frente</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={positionBack} onChange={(e)=>setPositionBack(e.target.checked)} /> Fundos</label>
+                        <input className="px-3 py-2 border rounded" placeholder="Posição do sol por cômodo (opcional)" value={sunByRoomNote} onChange={(e)=>setSunByRoomNote(e.target.value)} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pets/Políticas */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc_pets:!a.acc_pets}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                      <span>Pets/Políticas</span>
+                      <span>{openAcc.acc_pets ? '−' : '+'}</span>
+                    </button>
+                    {openAcc.acc_pets && (
+                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={petsSmall} onChange={(e)=>setPetsSmall(e.target.checked)} /> Permite pets pequeno porte</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={petsLarge} onChange={(e)=>setPetsLarge(e.target.checked)} /> Permite pets grande porte</label>
+                        <textarea className="sm:col-span-2 px-3 py-2 border rounded" rows={2} placeholder="Regras do condomínio (opcional)" value={condoRules} onChange={(e)=>setCondoRules(e.target.value)} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Segurança */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc_sec:!a.acc_sec}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                      <span>Segurança</span>
+                      <span>{openAcc.acc_sec ? '−' : '+'}</span>
+                    </button>
+                    {openAcc.acc_sec && (
+                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secCCTV} onChange={(e)=>setSecCCTV(e.target.checked)} /> CFTV</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secSallyPort} onChange={(e)=>setSecSallyPort(e.target.checked)} /> Clausura</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secNightGuard} onChange={(e)=>setSecNightGuard(e.target.checked)} /> Vigia noturno</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secElectricFence} onChange={(e)=>setSecElectricFence(e.target.checked)} /> Cerca elétrica</label>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1696,7 +1877,7 @@ export default function NewPropertyPage() {
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-colors duration-200 shadow"
                 >
                   {isGeocoding && currentStep === 2 ? "Validando endereço..." : "Próximo"}
                 </button>
@@ -1706,7 +1887,7 @@ export default function NewPropertyPage() {
                   onClick={() => setSubmitIntent(true)}
                   disabled={isSubmitting || images.some((i) => i.pending)}
                   title={images.some((i) => i.pending) ? "Aguarde terminar o envio das imagens" : undefined}
-                  className="px-8 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg font-medium transition-all duration-200"
+                  className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 disabled:from-emerald-400 disabled:to-green-400 text-white rounded-lg font-medium transition-all duration-200 shadow"
                 >
                   {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando imagens..." : "Publicar Imóvel"}
                 </button>
