@@ -25,9 +25,10 @@ interface PropertyCardPremiumProps {
     description?: string;
   };
   onOpenOverlay?: (id: string) => void;
+  watermark?: boolean;
 }
 
-export default function PropertyCardPremium({ property, onOpenOverlay }: PropertyCardPremiumProps) {
+export default function PropertyCardPremium({ property, onOpenOverlay, watermark }: PropertyCardPremiumProps) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -200,7 +201,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
           {/* Condition Tags */}
           {property.conditionTags && property.conditionTags.length > 0 && (
             <div className="flex flex-col items-start gap-1.5">
-              {property.conditionTags.map((tag, index) => (
+              {property.conditionTags.slice(0, 1).map((tag, index) => (
                 <span
                   key={index}
                   className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg backdrop-blur-sm"
@@ -251,6 +252,13 @@ export default function PropertyCardPremium({ property, onOpenOverlay }: Propert
                   </div>
                 ))}
               </motion.div>
+
+              {/* Watermark (preview only) */}
+              {watermark && (
+                <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-2">
+                  <span className="text-[10px] font-semibold text-white/80 bg-black/30 px-2 py-1 rounded-md">Zillowlike</span>
+                </div>
+              )}
 
               {/* Navigation Arrows */}
               {property.images.length > 1 && (

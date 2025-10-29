@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -20,13 +21,15 @@ export default function NewPropertyPage() {
   const [toast, setToast] = useState<{ message: string; type?: "success"|"error"|"info" } | null>(null);
   const [submitIntent, setSubmitIntent] = useState(false);
   
-  const [title, setTitle] = useState(""); // será gerado automaticamente no submit
+  const [title, setTitle] = useState(""); // gerado via botão + fallback automático no submit
   const [description, setDescription] = useState("");
   const [priceBRL, setPriceBRL] = useState("");
   const [type, setType] = useState("HOUSE");
   const [purpose, setPurpose] = useState<"SALE"|"RENT"|"">("");
   const [conditionTags, setConditionTags] = useState<string[]>([]);
   const [featureSuggestions, setFeatureSuggestions] = useState<string[]>([]);
+  const [condoFeeBRL, setCondoFeeBRL] = useState("");
+  const [iptuYearBRL, setIptuYearBRL] = useState("");
   const TAG_OPTIONS: string[] = useMemo(() => [
     "Novo",
     "Condomínio",
@@ -55,20 +58,51 @@ export default function NewPropertyPage() {
     return found || null;
   }
 
+  // Heurística: sugerir capa movendo imagem com nome/fachada
+  function suggestCover() {
+    const keys = ['fachada', 'frente', 'exterior', 'frontal', 'fachada-', 'frente-'];
+    const idx = images.findIndex((img) => {
+      const url = img.url || '';
+      const lower = url.toLowerCase();
+      return keys.some(k => lower.includes(k));
+    });
+    if (idx > 0) {
+      setImages((prev) => {
+        const arr = [...prev];
+        const [item] = arr.splice(idx, 1);
+        arr.unshift(item);
+        return arr;
+      });
+      setToast({ message: 'Capa sugerida aplicada.', type: 'info' });
+    } else {
+      setToast({ message: 'Não encontramos uma fachada claramente identificada. Ajuste manualmente se desejar.', type: 'info' });
+    }
+  }
+
+  // Completion indicator (simple): percent of key fields filled
+  function completionPercent(): number {
+    let total = 0; let ok = 0;
+    const add = (cond: boolean) => { total++; if (cond) ok++; };
+    add(!!purpose);
+    add(parseBRLToNumber(priceBRL) > 0);
+    add(!!type);
+    add(!!geo);
+    add(bedrooms !== '' || bathrooms !== '' || areaM2 !== '');
+    add(images.some(i => i.url));
+    return Math.round((ok / total) * 100);
+  }
+
   function toggleTag(tag: string) {
     setConditionTags((prev) => {
       const has = prev.includes(tag);
-      if (has) return prev.filter((t) => t !== tag);
-      if (prev.length >= 12) {
-        setToast({ message: "Máximo de 12 características.", type: "error" });
-        return prev;
-      }
+      if (has) return [];
+      // Limite: 1 tag selecionada
       const conflict = hasConflict(tag, prev);
       if (conflict) {
         setToast({ message: `Conflito com "${conflict}". Remova o conflito ou escolha outra opção.`, type: 'error' });
         return prev;
       }
-      return [...prev, tag];
+      return [tag];
     });
   }
 
@@ -92,6 +126,14 @@ export default function NewPropertyPage() {
   const [isGeocoding, setIsGeocoding] = useState(false);
   // Tips toggle (persisted)
   const [showTips, setShowTips] = useState<boolean>(true);
+  const [showWatermark, setShowWatermark] = useState<boolean>(false);
+  const [contactMode, setContactMode] = useState<'DIRECT' | 'BROKER'>('DIRECT');
+  const [contactPrefs, setContactPrefs] = useState<{ preferredHours?: string; chatFirst?: boolean; noCall?: boolean }>({ chatFirst: true });
+  // Leaflet
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const leafletMap = useRef<any>(null);
+  const leafletMarker = useRef<any>(null);
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   const openLightbox = (i: number) => setLightbox({ open: true, index: i });
   const closeLightbox = () => setLightbox({ open: false, index: 0 });
@@ -126,6 +168,20 @@ export default function NewPropertyPage() {
       const pref = localStorage.getItem("owner_post_tips");
       if (pref !== null) setShowTips(pref === "1");
     } catch {}
+    // Load Leaflet once
+    (async () => {
+      if (typeof window === 'undefined') return;
+      if ((window as any).L) { setLeafletLoaded(true); return; }
+      const css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(css);
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.async = true;
+      script.onload = () => setLeafletLoaded(true);
+      document.body.appendChild(script);
+    })();
     if (!lightbox.open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeLightbox();
@@ -160,6 +216,32 @@ export default function NewPropertyPage() {
       window.removeEventListener('drop', onDrop as any);
     };
   }, []);
+
+  // Initialize/Update Leaflet map when on Step 2 and geo available
+  useEffect(() => {
+    if (!leafletLoaded || currentStep !== 2) return;
+    const L = (window as any).L;
+    if (!L || !mapContainerRef.current) return;
+    // Create map once
+    if (!leafletMap.current) {
+      const center = geo ? [geo.lat, geo.lng] : [-9.3986, -40.5017]; // Petrolina as default
+      leafletMap.current = L.map(mapContainerRef.current).setView(center, 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' }).addTo(leafletMap.current);
+    }
+    // Ensure marker exists
+    if (geo && !leafletMarker.current) {
+      leafletMarker.current = (window as any).L.marker([geo.lat, geo.lng], { draggable: true }).addTo(leafletMap.current);
+      leafletMarker.current.on('dragend', () => {
+        const p = leafletMarker.current.getLatLng();
+        setGeo({ lat: p.lat, lng: p.lng });
+      });
+    }
+    // Sync marker/center on geo change
+    if (geo && leafletMarker.current) {
+      leafletMarker.current.setLatLng([geo.lat, geo.lng]);
+      leafletMap.current.setView([geo.lat, geo.lng]);
+    }
+  }, [leafletLoaded, currentStep, geo]);
 
   // Paste-from-clipboard support (Step 4)
   useEffect(() => {
@@ -212,6 +294,18 @@ export default function NewPropertyPage() {
         const sigRes = await fetch('/api/upload/cloudinary-sign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: 'zillowlike' }) });
         if (!sigRes.ok) throw new Error('Falha ao assinar upload.');
         const sig = await sigRes.json();
+        // Checagem básica de qualidade
+        try {
+          const imgMeta = await new Promise<{ w: number; h: number }>((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve({ w: img.width, h: img.height });
+            img.src = localUrl;
+          });
+          const portrait = imgMeta.h > imgMeta.w;
+          const lowRes = imgMeta.w < 800 || imgMeta.h < 600;
+          if (portrait) setToast({ message: 'Foto vertical detectada. Prefira horizontais para melhor vitrine.', type: 'info' });
+          if (lowRes) setToast({ message: 'Foto com baixa resolução. Pode impactar a visibilidade.', type: 'info' });
+        } catch {}
         const fd = new FormData();
         fd.append('file', file as File);
         fd.append('api_key', sig.apiKey);
@@ -491,6 +585,7 @@ export default function NewPropertyPage() {
     { id: 2, name: "Localização", description: "Endereço completo" },
     { id: 3, name: "Detalhes", description: "Quartos, banheiros e área" },
     { id: 4, name: "Fotos", description: "Imagens do imóvel" },
+    { id: 5, name: "Revisão", description: "Conferir dados e publicar" },
   ];
 
   function tipsForStep(step: number): string[] {
@@ -841,6 +936,19 @@ export default function NewPropertyPage() {
                 }`}>
                   {step.id}
                 </div>
+                {/* Preferências de contato */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Preferências de contato</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <button type="button" className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${contactMode==='DIRECT'?'bg-white text-gray-800 border-gray-300':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`} onClick={()=>setContactMode('DIRECT')}>Contato direto</button>
+                    <button type="button" className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${contactMode==='BROKER'?'bg-white text-gray-800 border-gray-300':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`} onClick={()=>setContactMode('BROKER')}>Com apoio do corretor</button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <input className="px-3 py-2 border border-gray-300 rounded-lg" placeholder="Horários preferidos (ex.: 9h–18h)" value={contactPrefs.preferredHours || ''} onChange={(e)=>setContactPrefs({...contactPrefs, preferredHours: e.target.value})} />
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={!!contactPrefs.chatFirst} onChange={(e)=>setContactPrefs({...contactPrefs, chatFirst: e.target.checked})} /> Chat primeiro</label>
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={!!contactPrefs.noCall} onChange={(e)=>setContactPrefs({...contactPrefs, noCall: e.target.checked})} /> Sem ligações</label>
+                  </div>
+                </div>
 
                 
                 <div className="ml-3 hidden sm:block">
@@ -856,6 +964,57 @@ export default function NewPropertyPage() {
                     currentStep > step.id ? 'bg-blue-600' : 'bg-gray-300'
                   }`} />
                 )}
+
+            {/* Step 5: Review */}
+            {currentStep === 5 && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-semibold text-gray-900">Revisão final</h2>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600" style={{ width: `${completionPercent()}%` }} />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="rounded-xl border p-4 space-y-3 text-sm">
+                    <div className="font-semibold text-gray-800">Básico</div>
+                    <div>Finalidade: <span className="font-medium">{purpose === 'RENT' ? 'Aluguel' : 'Venda'}</span></div>
+                    <div>Preço: <span className="font-medium">R$ {priceBRL || '—'}</span></div>
+                    <div>Tipo: <span className="font-medium">{type}</span></div>
+                    <div>Título: <span className="font-medium">{title || '—'}</span></div>
+                    <div className="pt-2 font-semibold text-gray-800">Localização</div>
+                    <div>{street ? `${street}, ${addressNumber || ''}` : '—'}</div>
+                    <div>{neighborhood ? `${neighborhood}, ` : ''}{city}/{state} — CEP {postalCode || '—'}</div>
+                    <div>Geo: {geo ? `${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)}` : '—'}</div>
+                    <div className="pt-2 font-semibold text-gray-800">Detalhes</div>
+                    <div>Quartos: {bedrooms || '—'} • Banheiros: {bathrooms || '—'} • Área: {areaM2 || '—'} m²</div>
+                    <div>Diferencial: {conditionTags[0] || '—'}</div>
+                    <div className="pt-2 font-semibold text-gray-800">Preferências de contato</div>
+                    <div>Modo: {contactMode === 'DIRECT' ? 'Contato direto' : 'Com apoio do corretor'}</div>
+                    <div>Horários: {contactPrefs.preferredHours || '—'} • Chat primeiro: {contactPrefs.chatFirst ? 'Sim' : 'Não'} • Sem ligações: {contactPrefs.noCall ? 'Sim' : 'Não'}</div>
+                  </div>
+                  <div className="rounded-xl border p-4">
+                    <div className="text-sm text-gray-600 mb-2">Pré-visualização na vitrine</div>
+                    <PropertyCardPremium
+                      property={{
+                        id: 'preview-review',
+                        title: title || 'Título do anúncio',
+                        price: parseBRLToNumber(priceBRL) * 100,
+                        images: images.filter((i)=>i.url).map((i)=>({ url: i.url })),
+                        city,
+                        state,
+                        bedrooms: bedrooms === '' ? undefined : Number(bedrooms),
+                        bathrooms: bathrooms === '' ? undefined : Number(bathrooms),
+                        areaM2: areaM2 === '' ? undefined : Number(areaM2),
+                        neighborhood,
+                        conditionTags,
+                        type,
+                        description: description,
+                        purpose: (purpose || 'SALE') as 'SALE' | 'RENT',
+                      }}
+                      watermark
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
               </div>
             ))}
           </div>
@@ -898,19 +1057,51 @@ export default function NewPropertyPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tipo de imóvel *
                   </label>
-                  <select
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                  >
-                    <option value="HOUSE">Casa</option>
-                    <option value="APARTMENT">Apartamento</option>
-                    <option value="CONDO">Condomínio</option>
-                    <option value="TOWNHOUSE">Sobrado</option>
-                    <option value="STUDIO">Studio</option>
-                    <option value="LAND">Terreno</option>
-                    <option value="COMMERCIAL">Comercial</option>
-                  </select>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: 'HOUSE', label: 'Casa', Icon: House },
+                      { id: 'APARTMENT', label: 'Apartamento', Icon: Building2 },
+                      { id: 'CONDO', label: 'Condomínio', Icon: Landmark },
+                      { id: 'TOWNHOUSE', label: 'Sobrado', Icon: Home },
+                      { id: 'STUDIO', label: 'Studio', Icon: Building },
+                      { id: 'LAND', label: 'Terreno', Icon: Warehouse },
+                      { id: 'COMMERCIAL', label: 'Comercial', Icon: Building },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setType(opt.id)}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${type === opt.id ? 'border-transparent text-white bg-gradient-to-r from-blue-600 to-purple-600' : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'}`}
+                        aria-pressed={type === opt.id}
+                      >
+                        <opt.Icon className="w-4 h-4" /> {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Título sugerido */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Título (opcional)</label>
+                  <div className="flex gap-2">
+                    <input
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      placeholder="Ex.: Apartamento no Centro - 80 m²"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const typeLabel = type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type === 'CONDO' ? 'Condomínio' : type === 'LAND' ? 'Terreno' : type === 'COMMERCIAL' ? 'Comercial' : type === 'TOWNHOUSE' ? 'Sobrado' : 'Imóvel';
+                        const parts = [typeLabel, neighborhood && `em ${neighborhood}`, areaM2 && typeof areaM2 === 'number' && `${areaM2} m²`].filter(Boolean);
+                        setTitle(parts.join(' - '));
+                      }}
+                      className="px-4 py-3 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm"
+                    >
+                      Gerar título
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -928,18 +1119,7 @@ export default function NewPropertyPage() {
                     <div className="mt-3">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-gray-700">Sugestões de características detectadas</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const remaining = 12 - conditionTags.length;
-                            if (remaining <= 0) { setToast({ message: 'Limite de 12 características atingido.', type: 'error' }); return; }
-                            const toAdd = featureSuggestions.filter(s => !conditionTags.includes(s)).slice(0, remaining);
-                            if (toAdd.length) setConditionTags([...conditionTags, ...toAdd]);
-                          }}
-                          className="text-xs px-2 py-1 rounded-md border border-gray-300 hover:bg-gray-50"
-                        >
-                          Adicionar todas
-                        </button>
+                        <span className="text-xs text-gray-500">Clique para aplicar (1)</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {featureSuggestions.map((sug) => {
@@ -948,13 +1128,7 @@ export default function NewPropertyPage() {
                             <button
                               key={sug}
                               type="button"
-                              onClick={() => {
-                                if (exists) return;
-                                if (conditionTags.length >= 12) { setToast({ message: 'Máximo de 12 características.', type: 'error' }); return; }
-                                const conflict = hasConflict(sug, conditionTags);
-                                if (conflict) { setToast({ message: `Conflito com "${conflict}". Remova o conflito ou escolha outra opção.`, type: 'error' }); return; }
-                                setConditionTags([...conditionTags, sug]);
-                              }}
+                              onClick={() => { setConditionTags([sug]); }}
                               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${exists ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-default' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
                               aria-disabled={exists}
                             >
@@ -968,7 +1142,7 @@ export default function NewPropertyPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Características/Diferenciais (até 12)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Características/Diferenciais (1)</label>
                   <div className="flex flex-wrap gap-2">
                     {TAG_OPTIONS.map((tag) => {
                       const selected = conditionTags.includes(tag);
@@ -993,6 +1167,17 @@ export default function NewPropertyPage() {
                   {conditionTags.length > 0 && (
                     <p className="mt-1 text-xs text-gray-500">Selecionadas: {conditionTags.join(", ")}</p>
                   )}
+                </div>
+                {/* Campos opcionais financeiros */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Condomínio (R$) (opcional)</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="350" value={condoFeeBRL} onChange={(e)=>setCondoFeeBRL(formatBRLInput(e.target.value))} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">IPTU anual (R$) (opcional)</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="900" value={iptuYearBRL} onChange={(e)=>setIptuYearBRL(formatBRLInput(e.target.value))} />
+                  </div>
                 </div>
               </div>
             )}
@@ -1076,7 +1261,25 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
 
-                {/* Bloco de verificação de endereço removido: CEP já realiza autofill e bloqueio visual */}
+                {/* Mini mapa e coordenadas */
+                }
+                <div className="rounded-xl border p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="inline-flex items-center gap-2 text-sm text-gray-700"><MapPinIcon className="w-4 h-4" /> Posição aproximada</div>
+                    <span className="text-xs text-gray-500">Ajuste disponível após geolocalizar</span>
+                  </div>
+                  <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-tr from-blue-50 to-purple-50">
+                    {/* Leaflet map container */}
+                    <div ref={mapContainerRef} className="w-full h-full" />
+                  </div>
+                  {geo && (
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                      <input className="px-3 py-2 border border-gray-300 rounded-lg" value={geo.lat} onChange={(e)=>setGeo({ lat: Number(e.target.value)||0, lng: geo.lng })} />
+                      <input className="px-3 py-2 border border-gray-300 rounded-lg" value={geo.lng} onChange={(e)=>setGeo({ lat: geo.lat, lng: Number(e.target.value)||0 })} />
+                    </div>
+                  )}
+                </div>
+
               </div>
             )}
 
@@ -1084,6 +1287,7 @@ export default function NewPropertyPage() {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Detalhes do imóvel</h2>
+                <div className="text-xs text-gray-500">Interno • Estrutura • Lazer • Condomínio</div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
@@ -1131,6 +1335,21 @@ export default function NewPropertyPage() {
             {currentStep === 4 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Fotos do imóvel</h2>
+                {/* Dicas contextuais e watermark toggle */}
+                <div className="rounded-xl border p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium text-gray-800">Dicas</div>
+                    <label className="inline-flex items-center gap-2 text-xs text-gray-600"><input type="checkbox" className="rounded" checked={showWatermark} onChange={(e)=>setShowWatermark(e.target.checked)} /> Watermark Zillowlike</label>
+                  </div>
+                  <ul className="mt-2 text-sm text-gray-700 space-y-1">
+                    <li className="flex items-center gap-2"><Camera className="w-4 h-4 text-purple-600" /> Priorize ambientes principais: fachada, sala, cozinha.</li>
+                    <li className="flex items-center gap-2"><ImageIcon className="w-4 h-4 text-purple-600" /> Prefira fotos horizontais e boa iluminação natural.</li>
+                    <li className="flex items-center gap-2"><Camera className="w-4 h-4 text-purple-600" /> Arraste para ordenar: capa primeiro.</li>
+                  </ul>
+                </div>
+                <div className="flex justify-end">
+                  <button type="button" onClick={suggestCover} className="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50">Sugerir capa</button>
+                </div>
                 
                 <div
                   className={`space-y-4 ${isFileDragOver ? 'ring-2 ring-blue-400 rounded-lg' : ''}`}
@@ -1313,7 +1532,7 @@ export default function NewPropertyPage() {
                 Anterior
               </button>
               
-              {currentStep < 4 ? (
+              {currentStep < 5 ? (
                 <button
                   type="button"
                   onClick={nextStep}
@@ -1354,30 +1573,48 @@ export default function NewPropertyPage() {
                 description: description,
                 purpose: (purpose || 'SALE') as 'SALE' | 'RENT',
               }}
+              watermark={showWatermark}
             />
-            {/* Contextual tips panel */}
-            <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-900">Dicas para este passo</h3>
-                <label className="text-xs text-gray-600 inline-flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="rounded border-gray-300"
-                    checked={showTips}
-                    onChange={(e) => setShowTips(e.target.checked)}
-                  />
-                  Mostrar dicas
-                </label>
+            {/* Contextual tips panel (modern glass/gradient) */}
+            <div className="mt-4">
+              <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-blue-600/25 to-purple-600/25">
+                <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
+                  <div className="flex items-center justify-between px-4 pt-4">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-r from-blue-600/10 to-purple-600/10 text-blue-700">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/></svg>
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-900">Dicas do passo</h3>
+                        <p className="text-[11px] text-gray-500 leading-4">Orientações rápidas para deixar seu anúncio melhor</p>
+                      </div>
+                    </div>
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-gray-600">
+                      <span>Mostrar</span>
+                      <input type="checkbox" className="sr-only peer" checked={showTips} onChange={(e)=>setShowTips(e.target.checked)} />
+                      <span className="w-10 h-5 rounded-full bg-gray-300 peer-checked:bg-gradient-to-r peer-checked:from-blue-600 peer-checked:to-purple-600 relative transition-colors">
+                        <span className="absolute top-1/2 -translate-y-1/2 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-all peer-checked:left-[1.375rem]"></span>
+                      </span>
+                    </label>
+                  </div>
+                  {showTips ? (
+                    <ul className="px-4 pb-4 pt-3 text-[13px] text-gray-800 space-y-2">
+                      {tipsForStep(currentStep).map((t, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="mt-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-r from-blue-600/15 to-purple-600/15 text-blue-700">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                          </span>
+                          <span>{t}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="px-4 pb-4 pt-3">
+                      <p className="text-[12px] text-gray-500">Dicas ocultas. Ative quando desejar.</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              {showTips ? (
-                <ul className="mt-3 text-sm text-gray-700 space-y-1 list-disc ml-4">
-                  {tipsForStep(currentStep).map((t, i) => (
-                    <li key={i}>{t}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-3 text-xs text-gray-500">Dicas ocultas. Você pode ativá-las quando quiser.</p>
-              )}
             </div>
           </aside>
         </div>
