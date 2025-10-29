@@ -1241,6 +1241,88 @@ export default function NewPropertyPage() {
               </div>
             )}
 
+            {/* Step 5: Review */}
+            {currentStep === 5 && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-semibold text-gray-900">Revisão final</h2>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600" style={{ width: `${completionPercent()}%` }} />
+                </div>
+                <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="rounded-xl p-4 ring-1 ring-black/5 bg-white/80 backdrop-blur-sm space-y-4 text-sm">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="text-sm font-semibold text-gray-800">Básico</div>
+                        <button type="button" onClick={()=>setCurrentStep(1)} className="text-xs text-blue-600 hover:underline">Editar</button>
+                      </div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>Finalidade: <span className="font-medium">{purpose === 'RENT' ? 'Aluguel' : 'Venda'}</span></li>
+                        <li>Preço: <span className="font-medium">R$ {priceBRL || '—'}</span></li>
+                        <li>Tipo: <span className="font-medium">{type}</span></li>
+                        {conditionTags[0] && <li>Diferencial: {conditionTags[0]}</li>}
+                      </ul>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="text-sm font-semibold text-gray-800">Localização</div>
+                        <button type="button" onClick={()=>setCurrentStep(2)} className="text-xs text-blue-600 hover:underline">Editar</button>
+                      </div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>{street ? `${street}, ${addressNumber || ''}` : '—'}</li>
+                        <li>{neighborhood ? `${neighborhood}, ` : ''}{city}/{state} — CEP {postalCode || '—'}</li>
+                        <li>Geo: {geo ? `${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)}` : '—'}</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="text-sm font-semibold text-gray-800">Detalhes</div>
+                        <button type="button" onClick={()=>setCurrentStep(3)} className="text-xs text-blue-600 hover:underline">Editar</button>
+                      </div>
+                      <ul className="list-disc ml-5 space-y-1 md:columns-2 [li:break-inside-avoid]">
+                        <li>Quartos: {bedrooms || '—'} • Banheiros: {bathrooms || '—'} • Área: {areaM2 || '—'} m²</li>
+                        <li>Vagas: {parkingSpots || '—'} • Suítes: {suites || '—'}</li>
+                        <li>Andar: {floor || '—'} / {totalFloors || '—'}</li>
+                        <li>Varanda: {hasBalcony ? 'Sim' : 'Não'} • Elevador: {hasElevator ? 'Sim' : 'Não'}</li>
+                        {yearBuilt && <li>Construção: {yearBuilt}</li>}
+                        {yearRenovated && <li>Reforma: {yearRenovated}</li>}
+                      </ul>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="text-sm font-semibold text-gray-800">Lazer/Condomínio</div>
+                        <button type="button" onClick={()=>setCurrentStep(3)} className="text-xs text-blue-600 hover:underline">Editar</button>
+                      </div>
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>{[hasPool && 'Piscina', hasGym && 'Academia', hasPlayground && 'Playground', hasPartyRoom && 'Salão de festas', hasGourmet && 'Espaço gourmet', hasConcierge24h && 'Portaria 24h'].filter(Boolean).join(' • ') || '—'}</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="rounded-xl p-4 ring-1 ring-black/5 bg-gradient-to-br from-white to-purple-50">
+                    <div className="text-sm text-gray-600 mb-2">Pré-visualização na vitrine</div>
+                    <PropertyCardPremium
+                      property={{
+                        id: 'preview-review',
+                        title: title || 'Título do anúncio',
+                        price: parseBRLToNumber(priceBRL) * 100,
+                        images: images.filter((i)=>i.url).map((i)=>({ url: i.url })),
+                        city,
+                        state,
+                        bedrooms: bedrooms === '' ? undefined : Number(bedrooms),
+                        bathrooms: bathrooms === '' ? undefined : Number(bathrooms),
+                        areaM2: areaM2 === '' ? undefined : Number(areaM2),
+                        neighborhood,
+                        conditionTags,
+                        type,
+                        description: description,
+                        purpose: (purpose || 'SALE') as 'SALE' | 'RENT',
+                      }}
+                      watermark={showWatermark}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Step 2: Location */}
             {currentStep === 2 && (
               <div className="space-y-6">
@@ -1811,6 +1893,7 @@ export default function NewPropertyPage() {
           </form>
         </div>
           </div>
+          {currentStep !== 5 && (
           <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start">
             <PropertyCardPremium
               property={{
@@ -1873,6 +1956,7 @@ export default function NewPropertyPage() {
               </div>
             </div>
           </aside>
+          )}
         </div>
       </div>
 
