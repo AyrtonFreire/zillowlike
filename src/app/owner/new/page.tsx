@@ -1038,167 +1038,71 @@ export default function NewPropertyPage() {
 
       <div className="mx-auto max-w-6xl px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
-                  currentStep >= step.id 
-                    ? 'bg-blue-600 border-blue-600 text-white' 
-                    : 'bg-white border-gray-300 text-gray-500'
-                }`}>
-                  {step.id}
-                </div>
-                
-
-                
-                <div className="ml-3 hidden sm:block">
-                  <div className={`text-sm font-medium ${
-                    currentStep >= step.id ? 'text-blue-600' : 'text-gray-500'
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40 px-2 py-3 rounded-xl ring-1 ring-black/5 overflow-x-auto">
+            <div className="flex items-center w-max gap-4">
+              {steps.map((step, index) => (
+                <div key={step.id} className="flex items-center">
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
+                    currentStep >= step.id 
+                      ? 'bg-blue-600 border-blue-600 text-white' 
+                      : 'bg-white border-gray-300 text-gray-500'
                   }`}>
-                    {step.name}
+                    {step.id}
                   </div>
-                  <div className="text-xs text-gray-500">{step.description}</div>
+                  <div className="ml-3 hidden sm:block min-w-[120px]">
+                    <div className={`text-sm font-medium ${
+                      currentStep >= step.id ? 'text-blue-600' : 'text-gray-500'
+                    }`}>
+                      {step.name}
+                    </div>
+                    <div className="text-xs text-gray-500">{step.description}</div>
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div className={`w-12 sm:w-16 h-0.5 mx-2 sm:mx-4 transition-all duration-200 ${
+                      currentStep > step.id ? 'bg-blue-600' : 'bg-gray-300'
+                    }`} />
+                  )}
                 </div>
-                {index < steps.length - 1 && (
-                  <div className={`w-16 h-0.5 mx-4 transition-all duration-200 ${
-                    currentStep > step.id ? 'bg-blue-600' : 'bg-gray-300'
-                  }`} />
+              ))}
+            </div>
+          </div> // Added this line to close the stepper container div
+          
+          {/* Mobile sticky nav */}
+            <div className="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/90 backdrop-blur border-t p-3">
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  disabled={currentStep === 1}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                {currentStep < 5 ? (
+                  <button
+                    type="button"
+                    onClick={nextStep}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow"
+                  >
+                    {isGeocoding && currentStep === 2 ? "Validando..." : "Próximo"}
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    onClick={() => setSubmitIntent(true)}
+                    disabled={isSubmitting || images.some((i) => i.pending)}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg shadow disabled:opacity-70"
+                  >
+                    {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando" : "Publicar"}
+                  </button>
                 )}
-
-            {/* Step 5: Review */}
-            {currentStep === 5 && (
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900">Revisão final</h2>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600" style={{ width: `${completionPercent()}%` }} />
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="rounded-xl p-4 ring-1 ring-black/5 bg-white/70 backdrop-blur-sm space-y-5 text-sm">
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-1">Básico</div>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>Finalidade: <span className="font-medium">{purpose === 'RENT' ? 'Aluguel' : 'Venda'}</span></li>
-                        <li>Preço: <span className="font-medium">R$ {priceBRL || '—'}</span></li>
-                        <li>Tipo: <span className="font-medium">{type}</span></li>
-                        {conditionTags[0] && <li>Diferencial: {conditionTags[0]}</li>}
-                      </ul>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-1">Localização</div>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>{street ? `${street}, ${addressNumber || ''}` : '—'}</li>
-                        <li>{neighborhood ? `${neighborhood}, ` : ''}{city}/{state} — CEP {postalCode || '—'}</li>
-                        <li>Geo: {geo ? `${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)}` : '—'}</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-1">Detalhes</div>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>Quartos: {bedrooms || '—'} • Banheiros: {bathrooms || '—'} • Área: {areaM2 || '—'} m²</li>
-                        <li>Vagas: {parkingSpots || '—'} • Suítes: {suites || '—'}</li>
-                        <li>Andar: {floor || '—'} / {totalFloors || '—'}</li>
-                        <li>Varanda: {hasBalcony ? 'Sim' : 'Não'} • Elevador: {hasElevator ? 'Sim' : 'Não'}</li>
-                        <li>Construção: {yearBuilt || '—'} • Reforma: {yearRenovated || '—'}</li>
-                        {sunOrientation && <li>Orientação solar: {sunOrientation}</li>}
-                      </ul>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-1">Lazer/Condomínio</div>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>{[hasPool && 'Piscina', hasGym && 'Academia', hasPlayground && 'Playground', hasPartyRoom && 'Salão de festas', hasGourmet && 'Espaço gourmet', hasConcierge24h && 'Portaria 24h'].filter(Boolean).join(' • ') || '—'}</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-1">Acessibilidade</div>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>{[accRamps && 'Rampas', accWideDoors && 'Portas largas', accAccessibleElevator && 'Elevador acessível', accTactile && 'Sinalização tátil'].filter(Boolean).join(' • ') || '—'}</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-1">Conforto/Energia</div>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>{[comfortAC && 'Ar-condicionado', comfortHeating && 'Aquecimento', comfortSolar && 'Aquecimento solar', comfortNoiseWindows && 'Janelas antirruído', comfortLED && 'Iluminação LED', comfortWaterReuse && 'Reuso de água'].filter(Boolean).join(' • ') || '—'}</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-1">Acabamentos</div>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>{[finishFloor && `Piso: ${finishFloor}`, finishCabinets && 'Armários planejados', finishCounterGranite && 'Bancadas: granito', finishCounterQuartz && 'Bancadas: quartzo'].filter(Boolean).join(' • ') || '—'}</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-1">Vista/Posição</div>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>{[viewSea && 'Vista mar', viewCity && 'Vista cidade', positionFront && 'Frente', positionBack && 'Fundos'].filter(Boolean).join(' • ') || '—'}</li>
-                        {sunByRoomNote && <li>{sunByRoomNote}</li>}
-                      </ul>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-1">Pets/Políticas</div>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>{[petsSmall && 'Pets pequeno porte', petsLarge && 'Pets grande porte'].filter(Boolean).join(' • ') || '—'}</li>
-                        {condoRules && <li>{condoRules}</li>}
-                      </ul>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-1">Segurança</div>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>{[secCCTV && 'CFTV', secSallyPort && 'Clausura', secNightGuard && 'Vigia noturno', secElectricFence && 'Cerca elétrica'].filter(Boolean).join(' • ') || '—'}</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-gray-800 mb-1">Contato</div>
-                      <ul className="list-disc ml-5 space-y-1">
-                        <li>Modo: {contactMode === 'DIRECT' ? 'Contato direto' : 'Com apoio do corretor'}</li>
-                        <li>Horários: {contactPrefs.preferredHours || '—'}</li>
-                        <li>Chat primeiro: {contactPrefs.chatFirst ? 'Sim' : 'Não'} • Sem ligações: {contactPrefs.noCall ? 'Sim' : 'Não'}</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div className="rounded-xl p-4 ring-1 ring-black/5 bg-gradient-to-br from-white to-purple-50">
-                    <div className="text-sm text-gray-600 mb-2">Pré-visualização na vitrine</div>
-                    <PropertyCardPremium
-                      property={{
-                        id: 'preview-review',
-                        title: title || 'Título do anúncio',
-                        price: parseBRLToNumber(priceBRL) * 100,
-                        images: images.filter((i)=>i.url).map((i)=>({ url: i.url })),
-                        city,
-                        state,
-                        bedrooms: bedrooms === '' ? undefined : Number(bedrooms),
-                        bathrooms: bathrooms === '' ? undefined : Number(bathrooms),
-                        areaM2: areaM2 === '' ? undefined : Number(areaM2),
-                        neighborhood,
-                        conditionTags,
-                        type,
-                        description: description,
-                        purpose: (purpose || 'SALE') as 'SALE' | 'RENT',
-                      }}
-                      watermark
-                    />
-                  </div>
-                </div>
               </div>
-            )}
-              </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        <div className="rounded-xl p-8 bg-gradient-to-br from-blue-50 to-purple-50 ring-1 ring-black/5">
+        
+
+        <div className="rounded-xl p-6 sm:p-8 bg-gradient-to-br from-blue-50 to-purple-50 ring-1 ring-black/5">
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-purple-700 mb-2">Cadastrar Imóvel</h1>
           <p className="text-gray-700/90 mb-8">Preencha as informações do seu imóvel para publicá-lo na plataforma.</p>
 
@@ -1417,18 +1321,22 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
 
-                {/* Mini mapa e coordenadas */
-                }
+                {/* Mini mapa e coordenadas */}
                 <div className="rounded-xl border p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="inline-flex items-center gap-2 text-sm text-gray-700"><MapPinIcon className="w-4 h-4" /> Posição aproximada</div>
                     <span className="text-xs text-gray-500">Ajuste disponível após geolocalizar</span>
                   </div>
-                  <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-tr from-blue-50 to-purple-50 flex items-center justify-center text-xs text-gray-600">
+                  <div className="relative h-60 sm:aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-tr from-blue-50 to-purple-50 flex items-center justify-center text-xs text-gray-600">
                     {geo ? (
                       <div ref={mapContainerRef} className="w-full h-full" />
                     ) : (
                       <span>Valide o endereço para exibir o mapa</span>
+                    )}
+                    {isGeocoding && (
+                      <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-200 to-purple-200 animate-pulse" />
+                      </div>
                     )}
                   </div>
                   {geo && (
@@ -1528,14 +1436,14 @@ export default function NewPropertyPage() {
                 <div className="pt-2">
                   <div className="text-sm font-medium text-gray-800 mb-2">Recursos e facilidades</div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasBalcony} onChange={(e)=>setHasBalcony(e.target.checked)} /> Varanda</label>
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasElevator} onChange={(e)=>setHasElevator(e.target.checked)} /> Elevador</label>
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPool} onChange={(e)=>setHasPool(e.target.checked)} /> Piscina</label>
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasGym} onChange={(e)=>setHasGym(e.target.checked)} /> Academia</label>
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPlayground} onChange={(e)=>setHasPlayground(e.target.checked)} /> Playground</label>
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPartyRoom} onChange={(e)=>setHasPartyRoom(e.target.checked)} /> Salão de festas</label>
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasGourmet} onChange={(e)=>setHasGourmet(e.target.checked)} /> Espaço gourmet/Churrasqueira</label>
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasConcierge24h} onChange={(e)=>setHasConcierge24h(e.target.checked)} /> Portaria 24h</label>
+                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasBalcony} onChange={(e)=>setHasBalcony(e.target.checked)} /> Varanda</label>
+                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasElevator} onChange={(e)=>setHasElevator(e.target.checked)} /> Elevador</label>
+                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasPool} onChange={(e)=>setHasPool(e.target.checked)} /> Piscina</label>
+                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasGym} onChange={(e)=>setHasGym(e.target.checked)} /> Academia</label>
+                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasPlayground} onChange={(e)=>setHasPlayground(e.target.checked)} /> Playground</label>
+                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasPartyRoom} onChange={(e)=>setHasPartyRoom(e.target.checked)} /> Salão de festas</label>
+                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasGourmet} onChange={(e)=>setHasGourmet(e.target.checked)} /> Espaço gourmet/Churrasqueira</label>
+                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasConcierge24h} onChange={(e)=>setHasConcierge24h(e.target.checked)} /> Portaria 24h</label>
                   </div>
                 </div>
 
@@ -1563,41 +1471,41 @@ export default function NewPropertyPage() {
                 <div className="space-y-3">
                   {/* Acessibilidade */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc:true, acc_acc:!a.acc_acc}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_acc ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
                       <span>Acessibilidade</span>
                       <span>{openAcc.acc_acc ? '−' : '+'}</span>
                     </button>
                     {openAcc.acc_acc && (
                       <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accRamps} onChange={(e)=>setAccRamps(e.target.checked)} /> Rampas</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accWideDoors} onChange={(e)=>setAccWideDoors(e.target.checked)} /> Portas largas</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accAccessibleElevator} onChange={(e)=>setAccAccessibleElevator(e.target.checked)} /> Elevador acessível</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accTactile} onChange={(e)=>setAccTactile(e.target.checked)} /> Sinalização tátil</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accRamps} onChange={(e)=>{setAccRamps(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Rampas</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accWideDoors} onChange={(e)=>{setAccWideDoors(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Portas largas</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accAccessibleElevator} onChange={(e)=>{setAccAccessibleElevator(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Elevador acessível</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accTactile} onChange={(e)=>{setAccTactile(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Sinalização tátil</label>
                       </div>
                     )}
                   </div>
 
                   {/* Conforto/Energia */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc_ce:!a.acc_ce}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_ce ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
                       <span>Conforto/Energia</span>
                       <span>{openAcc.acc_ce ? '−' : '+'}</span>
                     </button>
                     {openAcc.acc_ce && (
                       <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortAC} onChange={(e)=>setComfortAC(e.target.checked)} /> Ar-condicionado</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortHeating} onChange={(e)=>setComfortHeating(e.target.checked)} /> Aquecimento</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortSolar} onChange={(e)=>setComfortSolar(e.target.checked)} /> Aquecimento solar</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortNoiseWindows} onChange={(e)=>setComfortNoiseWindows(e.target.checked)} /> Janelas antirruído</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortLED} onChange={(e)=>setComfortLED(e.target.checked)} /> Iluminação LED</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortWaterReuse} onChange={(e)=>setComfortWaterReuse(e.target.checked)} /> Reuso de água</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortAC} onChange={(e)=>{setComfortAC(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Ar-condicionado</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortHeating} onChange={(e)=>{setComfortHeating(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Aquecimento</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortSolar} onChange={(e)=>{setComfortSolar(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Aquecimento solar</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortNoiseWindows} onChange={(e)=>{setComfortNoiseWindows(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Janelas antirruído</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortLED} onChange={(e)=>{setComfortLED(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Iluminação LED</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortWaterReuse} onChange={(e)=>{setComfortWaterReuse(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Reuso de água</label>
                       </div>
                     )}
                   </div>
 
                   {/* Acabamentos */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc_fin:!a.acc_fin}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_fin ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:true, acc_view:false, acc_pets:false, acc_sec:false })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
                       <span>Acabamentos</span>
                       <span>{openAcc.acc_fin ? '−' : '+'}</span>
                     </button>
@@ -1605,7 +1513,7 @@ export default function NewPropertyPage() {
                       <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">Piso</label>
-                          <select className="w-full px-3 py-2 border rounded" value={finishFloor} onChange={(e)=>setFinishFloor(e.target.value)}>
+                          <select className="w-full px-3 py-2 border rounded" value={finishFloor} onChange={(e)=>{setFinishFloor(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:true, acc_view:false, acc_pets:false, acc_sec:false});}}>
                             <option value="">Selecione</option>
                             <option value="porcelanato">Porcelanato</option>
                             <option value="madeira">Madeira</option>
@@ -1623,48 +1531,48 @@ export default function NewPropertyPage() {
 
                   {/* Vista/Posição */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc_view:!a.acc_view}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_view ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
                       <span>Vista/Posição</span>
                       <span>{openAcc.acc_view ? '−' : '+'}</span>
                     </button>
                     {openAcc.acc_view && (
                       <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={viewSea} onChange={(e)=>setViewSea(e.target.checked)} /> Vista mar</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={viewCity} onChange={(e)=>setViewCity(e.target.checked)} /> Vista cidade</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={positionFront} onChange={(e)=>setPositionFront(e.target.checked)} /> Frente</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={positionBack} onChange={(e)=>setPositionBack(e.target.checked)} /> Fundos</label>
-                        <input className="px-3 py-2 border rounded" placeholder="Posição do sol por cômodo (opcional)" value={sunByRoomNote} onChange={(e)=>setSunByRoomNote(e.target.value)} />
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={viewSea} onChange={(e)=>{setViewSea(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} /> Vista mar</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={viewCity} onChange={(e)=>{setViewCity(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} /> Vista cidade</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={positionFront} onChange={(e)=>{setPositionFront(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} /> Frente</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={positionBack} onChange={(e)=>{setPositionBack(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} /> Fundos</label>
+                        <input className="px-3 py-2 border rounded" placeholder="Posição do sol por cômodo (opcional)" value={sunByRoomNote} onChange={(e)=>{setSunByRoomNote(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
                       </div>
                     )}
                   </div>
 
                   {/* Pets/Políticas */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc_pets:!a.acc_pets}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_pets ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
                       <span>Pets/Políticas</span>
                       <span>{openAcc.acc_pets ? '−' : '+'}</span>
                     </button>
                     {openAcc.acc_pets && (
                       <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={petsSmall} onChange={(e)=>setPetsSmall(e.target.checked)} /> Permite pets pequeno porte</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={petsLarge} onChange={(e)=>setPetsLarge(e.target.checked)} /> Permite pets grande porte</label>
-                        <textarea className="sm:col-span-2 px-3 py-2 border rounded" rows={2} placeholder="Regras do condomínio (opcional)" value={condoRules} onChange={(e)=>setCondoRules(e.target.value)} />
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={petsSmall} onChange={(e)=>{setPetsSmall(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} /> Permite pets pequeno porte</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={petsLarge} onChange={(e)=>{setPetsLarge(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} /> Permite pets grande porte</label>
+                        <textarea className="sm:col-span-2 px-3 py-2 border rounded" rows={2} placeholder="Regras do condomínio (opcional)" value={condoRules} onChange={(e)=>{setCondoRules(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} />
                       </div>
                     )}
                   </div>
 
                   {/* Segurança */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(a=>({...a, acc_sec:!a.acc_sec}))} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
+                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_sec ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
                       <span>Segurança</span>
                       <span>{openAcc.acc_sec ? '−' : '+'}</span>
                     </button>
                     {openAcc.acc_sec && (
                       <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secCCTV} onChange={(e)=>setSecCCTV(e.target.checked)} /> CFTV</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secSallyPort} onChange={(e)=>setSecSallyPort(e.target.checked)} /> Clausura</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secNightGuard} onChange={(e)=>setSecNightGuard(e.target.checked)} /> Vigia noturno</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secElectricFence} onChange={(e)=>setSecElectricFence(e.target.checked)} /> Cerca elétrica</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secCCTV} onChange={(e)=>{setSecCCTV(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} /> CFTV</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secSallyPort} onChange={(e)=>{setSecSallyPort(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} /> Clausura</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secNightGuard} onChange={(e)=>{setSecNightGuard(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} /> Vigia noturno</label>
+                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secElectricFence} onChange={(e)=>{setSecElectricFence(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} /> Cerca elétrica</label>
                       </div>
                     )}
                   </div>
@@ -1688,9 +1596,17 @@ export default function NewPropertyPage() {
                     <li className="flex items-center gap-2"><Camera className="w-4 h-4 text-purple-600" /> Arraste para ordenar: capa primeiro.</li>
                   </ul>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end sm:justify-between gap-3">
+                  <button type="button" onClick={() => dropInputRef.current?.click()} className="sm:hidden px-4 py-2 rounded-lg border border-gray-300 text-sm bg-white">Adicionar fotos</button>
                   <button type="button" onClick={suggestCover} className="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50">Sugerir capa</button>
                 </div>
+                {images.some((i)=>i.pending) && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {Array.from({length:6}).map((_,i)=>(
+                      <div key={i} className="h-24 sm:h-32 rounded-lg bg-gradient-to-r from-gray-200 to-gray-100 animate-pulse" />
+                    ))}
+                  </div>
+                )}
                 
                 <div
                   className={`space-y-4 ${isFileDragOver ? 'ring-2 ring-blue-400 rounded-lg' : ''}`}
@@ -1863,7 +1779,7 @@ export default function NewPropertyPage() {
             )}
 
             {/* Navigation */}
-            <div className="flex justify-between pt-6 border-t">
+            <div className="sm:flex justify-between pt-6 border-t hidden">
               <button
                 type="button"
                 onClick={prevStep}
