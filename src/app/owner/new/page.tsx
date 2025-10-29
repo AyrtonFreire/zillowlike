@@ -30,6 +30,50 @@ export default function NewPropertyPage() {
   const [featureSuggestions, setFeatureSuggestions] = useState<string[]>([]);
   const [condoFeeBRL, setCondoFeeBRL] = useState("");
   const [iptuYearBRL, setIptuYearBRL] = useState("");
+  // Optional extended details
+  const [parkingSpots, setParkingSpots] = useState<string | number>("");
+  const [suites, setSuites] = useState<string | number>("");
+  const [floor, setFloor] = useState<string | number>("");
+  const [totalFloors, setTotalFloors] = useState<string | number>("");
+  const [hasElevator, setHasElevator] = useState(false);
+  const [hasBalcony, setHasBalcony] = useState(false);
+  const [hasGourmet, setHasGourmet] = useState(false);
+  const [hasPool, setHasPool] = useState(false);
+  const [hasGym, setHasGym] = useState(false);
+  const [hasPlayground, setHasPlayground] = useState(false);
+  const [hasPartyRoom, setHasPartyRoom] = useState(false);
+  const [hasConcierge24h, setHasConcierge24h] = useState(false);
+  const [sunOrientation, setSunOrientation] = useState(""); // nascente/poente
+  const [yearBuilt, setYearBuilt] = useState<string | number>("");
+  const [yearRenovated, setYearRenovated] = useState<string | number>("");
+  // Extra grouped toggles
+  const [accRamps, setAccRamps] = useState(false);
+  const [accWideDoors, setAccWideDoors] = useState(false);
+  const [accAccessibleElevator, setAccAccessibleElevator] = useState(false);
+  const [accTactile, setAccTactile] = useState(false);
+  const [comfortAC, setComfortAC] = useState(false);
+  const [comfortHeating, setComfortHeating] = useState(false);
+  const [comfortSolar, setComfortSolar] = useState(false);
+  const [comfortNoiseWindows, setComfortNoiseWindows] = useState(false);
+  const [comfortLED, setComfortLED] = useState(false);
+  const [comfortWaterReuse, setComfortWaterReuse] = useState(false);
+  const [finishFloor, setFinishFloor] = useState(''); // porcelanato/madeira/vinílico
+  const [finishCabinets, setFinishCabinets] = useState(false);
+  const [finishCounterGranite, setFinishCounterGranite] = useState(false);
+  const [finishCounterQuartz, setFinishCounterQuartz] = useState(false);
+  const [viewSea, setViewSea] = useState(false);
+  const [viewCity, setViewCity] = useState(false);
+  const [positionFront, setPositionFront] = useState(false); // frente
+  const [positionBack, setPositionBack] = useState(false); // fundos
+  const [petsSmall, setPetsSmall] = useState(false);
+  const [petsLarge, setPetsLarge] = useState(false);
+  const [condoRules, setCondoRules] = useState('');
+  const [secCCTV, setSecCCTV] = useState(false);
+  const [secSallyPort, setSecSallyPort] = useState(false);
+  const [secNightGuard, setSecNightGuard] = useState(false);
+  const [secElectricFence, setSecElectricFence] = useState(false);
+  // Accordion visibility
+  const [openAcc, setOpenAcc] = useState<{[k:string]:boolean}>({});
   const TAG_OPTIONS: string[] = useMemo(() => [
     "Novo",
     "Condomínio",
@@ -228,8 +272,8 @@ export default function NewPropertyPage() {
       leafletMap.current = L.map(mapContainerRef.current).setView(center, 14);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' }).addTo(leafletMap.current);
     }
-    // Ensure marker exists
-    if (geo && !leafletMarker.current) {
+    // Ensure marker exists only when we have a house number
+    if (geo && addressNumber && !leafletMarker.current) {
       leafletMarker.current = (window as any).L.marker([geo.lat, geo.lng], { draggable: true }).addTo(leafletMap.current);
       leafletMarker.current.on('dragend', () => {
         const p = leafletMarker.current.getLatLng();
@@ -237,11 +281,62 @@ export default function NewPropertyPage() {
       });
     }
     // Sync marker/center on geo change
-    if (geo && leafletMarker.current) {
-      leafletMarker.current.setLatLng([geo.lat, geo.lng]);
+    if (geo) {
+      // Always center map
       leafletMap.current.setView([geo.lat, geo.lng]);
+      // Update marker position only if it exists
+      if (leafletMarker.current) {
+        leafletMarker.current.setLatLng([geo.lat, geo.lng]);
+      }
     }
   }, [leafletLoaded, currentStep, geo]);
+
+  // Helper to geocode with or without number
+  async function geocodeNow(withNumber: boolean) {
+    if (!street || !city || !state) return;
+    setIsGeocoding(true);
+    try {
+      const result = await geocodeAddressParts({
+        street,
+        number: withNumber ? addressNumber : '',
+        neighborhood,
+        city,
+        state,
+        postalCode,
+      });
+      if (result && result.lat && result.lng) {
+        setGeo({ lat: result.lat, lng: result.lng });
+        // if we don't have number, ensure no marker yet
+        if (!withNumber && leafletMarker.current && leafletMap.current) {
+          try { leafletMap.current.removeLayer(leafletMarker.current); } catch {}
+          leafletMarker.current = null;
+        }
+      }
+    } catch (e) {
+      console.error('Auto geocode failed', e);
+    } finally {
+      setIsGeocoding(false);
+    }
+  }
+
+  // When CEP becomes valid (and street/city are filled), center map on the street (no marker)
+  useEffect(() => {
+    if (currentStep !== 2) return;
+    if (!cepValid || !postalCode) return;
+    if (!street || !city || !state) return;
+    // geocode without number
+    geocodeNow(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, cepValid, postalCode, street, city, state]);
+
+  // When number is provided, place/update marker precisely on the address
+  useEffect(() => {
+    if (currentStep !== 2) return;
+    if (!cepValid || !postalCode) return;
+    if (!addressNumber || String(addressNumber).trim() === '') return;
+    geocodeNow(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, cepValid, postalCode, addressNumber]);
 
   // Paste-from-clipboard support (Step 4)
   useEffect(() => {
@@ -801,7 +896,7 @@ export default function NewPropertyPage() {
         return;
       }
     }
-    if (currentStep < 4) setCurrentStep(currentStep + 1);
+    if (currentStep < 5) setCurrentStep(currentStep + 1);
   };
 
   const prevStep = () => {
@@ -973,6 +1068,10 @@ export default function NewPropertyPage() {
                     <div>Geo: {geo ? `${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)}` : '—'}</div>
                     <div className="pt-2 font-semibold text-gray-800">Detalhes</div>
                     <div>Quartos: {bedrooms || '—'} • Banheiros: {bathrooms || '—'} • Área: {areaM2 || '—'} m²</div>
+                    <div>Vagas: {parkingSpots || '—'} • Suítes: {suites || '—'} • Varanda: {hasBalcony ? 'Sim' : 'Não'}</div>
+                    <div>Elevador: {hasElevator ? 'Sim' : 'Não'} • Andar: {floor || '—'} / {totalFloors || '—'}</div>
+                    <div>Condomínio: {hasPool ? 'Piscina ' : ''}{hasGym ? 'Academia ' : ''}{hasPlayground ? 'Playground ' : ''}{hasPartyRoom ? 'Salão de festas ' : ''}{hasGourmet ? 'Gourmet ' : ''}{hasConcierge24h ? 'Portaria 24h ' : ''}</div>
+                    <div>Solar: {sunOrientation || '—'} • Construção: {yearBuilt || '—'} • Reforma: {yearRenovated || '—'}</div>
                     <div>Diferencial: {conditionTags[0] || '—'}</div>
                     <div className="pt-2 font-semibold text-gray-800">Preferências de contato</div>
                     <div className="flex flex-wrap gap-2 mb-2">
@@ -1324,6 +1423,69 @@ export default function NewPropertyPage() {
                       value={areaM2}
                       onChange={(e) => setAreaM2(e.target.value === "" ? "" : Number(e.target.value))}
                     />
+                  </div>
+                </div>
+
+                {/* Interno / Estrutura */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Vagas</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="2" value={parkingSpots as any} onChange={(e)=>setParkingSpots(e.target.value === '' ? '' : Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Suítes</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="1" value={suites as any} onChange={(e)=>setSuites(e.target.value === '' ? '' : Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Varanda</label>
+                    <div className="h-[42px] flex items-center"><input type="checkbox" className="rounded" checked={hasBalcony} onChange={(e)=>setHasBalcony(e.target.checked)} /></div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Elevador</label>
+                    <div className="h-[42px] flex items-center"><input type="checkbox" className="rounded" checked={hasElevator} onChange={(e)=>setHasElevator(e.target.checked)} /></div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Andar</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="5" value={floor as any} onChange={(e)=>setFloor(e.target.value === '' ? '' : Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Total de andares</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="12" value={totalFloors as any} onChange={(e)=>setTotalFloors(e.target.value === '' ? '' : Number(e.target.value))} />
+                  </div>
+                </div>
+
+                {/* Lazer / Condomínio */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPool} onChange={(e)=>setHasPool(e.target.checked)} /> Piscina</label>
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasGym} onChange={(e)=>setHasGym(e.target.checked)} /> Academia</label>
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPlayground} onChange={(e)=>setHasPlayground(e.target.checked)} /> Playground</label>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasPartyRoom} onChange={(e)=>setHasPartyRoom(e.target.checked)} /> Salão de festas</label>
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasGourmet} onChange={(e)=>setHasGourmet(e.target.checked)} /> Espaço gourmet/Churrasqueira</label>
+                  <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={hasConcierge24h} onChange={(e)=>setHasConcierge24h(e.target.checked)} /> Portaria 24h</label>
+                </div>
+
+                {/* Extras */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Orientação solar (opcional)</label>
+                    <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" value={sunOrientation} onChange={(e)=>setSunOrientation(e.target.value)}>
+                      <option value="">Selecione</option>
+                      <option value="Nascente">Nascente</option>
+                      <option value="Poente">Poente</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Ano de construção (opcional)</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="2015" value={yearBuilt as any} onChange={(e)=>setYearBuilt(e.target.value === '' ? '' : Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Ano de reforma (opcional)</label>
+                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="2022" value={yearRenovated as any} onChange={(e)=>setYearRenovated(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                 </div>
               </div>
