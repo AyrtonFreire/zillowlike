@@ -125,7 +125,7 @@ export default function NewPropertyPage() {
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
   // Tips toggle (persisted)
-  const [showTips, setShowTips] = useState<boolean>(true);
+  const [showTips, setShowTips] = useState<boolean>(false);
   const [showWatermark, setShowWatermark] = useState<boolean>(false);
   const [contactMode, setContactMode] = useState<'DIRECT' | 'BROKER'>('DIRECT');
   const [contactPrefs, setContactPrefs] = useState<{ preferredHours?: string; chatFirst?: boolean; noCall?: boolean }>({ chatFirst: true });
@@ -936,19 +936,7 @@ export default function NewPropertyPage() {
                 }`}>
                   {step.id}
                 </div>
-                {/* Preferências de contato */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Preferências de contato</label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    <button type="button" className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${contactMode==='DIRECT'?'bg-white text-gray-800 border-gray-300':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`} onClick={()=>setContactMode('DIRECT')}>Contato direto</button>
-                    <button type="button" className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${contactMode==='BROKER'?'bg-white text-gray-800 border-gray-300':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`} onClick={()=>setContactMode('BROKER')}>Com apoio do corretor</button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    <input className="px-3 py-2 border border-gray-300 rounded-lg" placeholder="Horários preferidos (ex.: 9h–18h)" value={contactPrefs.preferredHours || ''} onChange={(e)=>setContactPrefs({...contactPrefs, preferredHours: e.target.value})} />
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={!!contactPrefs.chatFirst} onChange={(e)=>setContactPrefs({...contactPrefs, chatFirst: e.target.checked})} /> Chat primeiro</label>
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={!!contactPrefs.noCall} onChange={(e)=>setContactPrefs({...contactPrefs, noCall: e.target.checked})} /> Sem ligações</label>
-                  </div>
-                </div>
+                
 
                 
                 <div className="ml-3 hidden sm:block">
@@ -987,8 +975,15 @@ export default function NewPropertyPage() {
                     <div>Quartos: {bedrooms || '—'} • Banheiros: {bathrooms || '—'} • Área: {areaM2 || '—'} m²</div>
                     <div>Diferencial: {conditionTags[0] || '—'}</div>
                     <div className="pt-2 font-semibold text-gray-800">Preferências de contato</div>
-                    <div>Modo: {contactMode === 'DIRECT' ? 'Contato direto' : 'Com apoio do corretor'}</div>
-                    <div>Horários: {contactPrefs.preferredHours || '—'} • Chat primeiro: {contactPrefs.chatFirst ? 'Sim' : 'Não'} • Sem ligações: {contactPrefs.noCall ? 'Sim' : 'Não'}</div>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      <button type="button" className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${contactMode==='DIRECT'?'bg-white text-gray-800 border-gray-300':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`} onClick={()=>setContactMode('DIRECT')}>Contato direto</button>
+                      <button type="button" className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${contactMode==='BROKER'?'bg-white text-gray-800 border-gray-300':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`} onClick={()=>setContactMode('BROKER')}>Com apoio do corretor</button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <input className="px-3 py-2 border border-gray-300 rounded-lg" placeholder="Horários preferidos (ex.: 9h–18h)" value={contactPrefs.preferredHours || ''} onChange={(e)=>setContactPrefs({...contactPrefs, preferredHours: e.target.value})} />
+                      <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={!!contactPrefs.chatFirst} onChange={(e)=>setContactPrefs({...contactPrefs, chatFirst: e.target.checked})} /> Chat primeiro</label>
+                      <label className="inline-flex items-center gap-2"><input type="checkbox" className="rounded" checked={!!contactPrefs.noCall} onChange={(e)=>setContactPrefs({...contactPrefs, noCall: e.target.checked})} /> Sem ligações</label>
+                    </div>
                   </div>
                   <div className="rounded-xl border p-4">
                     <div className="text-sm text-gray-600 mb-2">Pré-visualização na vitrine</div>
@@ -1268,9 +1263,12 @@ export default function NewPropertyPage() {
                     <div className="inline-flex items-center gap-2 text-sm text-gray-700"><MapPinIcon className="w-4 h-4" /> Posição aproximada</div>
                     <span className="text-xs text-gray-500">Ajuste disponível após geolocalizar</span>
                   </div>
-                  <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-tr from-blue-50 to-purple-50">
-                    {/* Leaflet map container */}
-                    <div ref={mapContainerRef} className="w-full h-full" />
+                  <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-tr from-blue-50 to-purple-50 flex items-center justify-center text-xs text-gray-600">
+                    {geo ? (
+                      <div ref={mapContainerRef} className="w-full h-full" />
+                    ) : (
+                      <span>Valide o endereço para exibir o mapa</span>
+                    )}
                   </div>
                   {geo && (
                     <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
