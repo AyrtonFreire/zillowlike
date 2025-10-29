@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Megaphone, FileText, Users, Rocket, PlayCircle, Camera, Image as ImageIcon, Lightbulb, Handshake, Mail, Phone, Globe } from "lucide-react";
+import { Megaphone, FileText, Users, Rocket, PlayCircle, Camera, Image as ImageIcon, Lightbulb, Handshake, Mail, Phone, Globe, Upload, MapPin } from "lucide-react";
 import Link from "next/link";
 
 export default function HowItWorksPostCard() {
   const [expanded, setExpanded] = useState(false);
-  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+  const [dir, setDir] = useState<1 | -1>(1);
 
   const goOpen = () => { setExpanded(true); setStep(0); };
   const goClose = () => { setExpanded(false); };
-  const next = () => setStep((s) => (Math.min(2, s + 1) as 0 | 1 | 2));
-  const prev = () => setStep((s) => (Math.max(0, s - 1) as 0 | 1 | 2));
+  const next = () => { setDir(1); setStep((s) => (Math.min(3, s + 1) as 0 | 1 | 2 | 3)); };
+  const prev = () => { setDir(-1); setStep((s) => (Math.max(0, s - 1) as 0 | 1 | 2 | 3)); };
 
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
@@ -77,7 +78,7 @@ export default function HowItWorksPostCard() {
             </motion.div>
           )}
 
-          {/* Expandido: stepper de 3 páginas */}
+          {/* Expandido: storyboard de 4 cenas com transição horizontal */}
           {expanded && (
             <motion.div
               key="expanded"
@@ -88,47 +89,26 @@ export default function HowItWorksPostCard() {
               className="relative z-10 p-6 sm:p-10"
             >
               <div className="flex items-start justify-between">
-                <div className="text-xs text-gray-500">Passo {step + 1} de 3</div>
+                <div className="text-xs text-gray-500">Cena {step + 1} de 4</div>
                 <button onClick={goClose} className="text-sm text-gray-600 hover:text-gray-800">Fechar</button>
               </div>
 
               <div className="mt-4">
                 <AnimatePresence mode="wait" initial={false}>
-                  {step === 0 && (
-                    <StepPage key="step-0" title="Capriche no anúncio" subtitle="Fotos que encantam, informações que ajudam" icon={<Camera className="w-6 h-6" />}>
-                      <Tips
-                        items={[
-                          { icon: <Camera className="w-4 h-4" />, text: "Iluminação natural e ambientes organizados." },
-                          { icon: <ImageIcon className="w-4 h-4" />, text: "Fotos horizontais, resolução nítida." },
-                          { icon: <Lightbulb className="w-4 h-4" />, text: "Destaque diferenciais: varanda, suíte, vaga." },
-                        ]}
-                      />
-                      <p className="mt-3 text-sm text-gray-600">Em poucos minutos você adiciona fotos, descrição, preço e detalhes (quartos, banheiros, metragem). Publicou? Já aparece nas buscas.</p>
-                    </StepPage>
-                  )}
-                  {step === 1 && (
-                    <StepPage key="step-1" title="Escolha como quer ser contatado" subtitle="Contato direto ou match com corretor" icon={<Handshake className="w-6 h-6" />}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <OptionCard title="Contato direto" points={["Interessados falam com você", "Você combina a visita", "Sem intermediação"]} icon={<Mail className="w-4 h-4" />} />
-                        <OptionCard title="Com apoio do corretor" points={["Nós conectamos o interessado ao corretor", "Profissional acompanha a visita", "Você tem menos trabalho"]} icon={<Phone className="w-4 h-4" />} />
-                      </div>
-                      <p className="mt-3 text-sm text-gray-600">Quando o cliente demonstra interesse, o sistema atribui um corretor disponível e alinhado para acompanhar a visita — sem competição, só conexão.</p>
-                    </StepPage>
-                  )}
-                  {step === 2 && (
-                    <StepPage key="step-2" title="Máxima exposição sem sair de casa" subtitle="Seu imóvel visto por quem importa" icon={<Globe className="w-6 h-6" />}>
-                      <ul className="text-sm text-gray-700 list-disc ml-5 space-y-1">
-                        <li>Visível para usuários, corretores e imobiliárias</li>
-                        <li>Melhor posição nas buscas com conteúdo caprichado</li>
-                        <li>Nenhuma despesa com impulsionamento externo</li>
-                      </ul>
-                      <div className="mt-5">
-                        <Link href="/owner/new" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 shadow hover:shadow-md">
-                          <Rocket className="w-5 h-5" /> Começar anúncio agora
-                        </Link>
-                      </div>
-                    </StepPage>
-                  )}
+                  <motion.div key={step} initial={{ x: dir === 1 ? 40 : -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: dir === 1 ? -40 : 40, opacity: 0 }} transition={{ duration: 0.35 }}>
+                    {step === 0 && (
+                      <SceneUpload />
+                    )}
+                    {step === 1 && (
+                      <SceneDetails />
+                    )}
+                    {step === 2 && (
+                      <SceneContact />
+                    )}
+                    {step === 3 && (
+                      <SceneExposure />
+                    )}
+                  </motion.div>
                 </AnimatePresence>
               </div>
 
@@ -136,11 +116,11 @@ export default function HowItWorksPostCard() {
               <div className="mt-6 flex items-center justify-between">
                 <button onClick={prev} disabled={step === 0} className={`px-4 py-2 rounded-lg border text-sm ${step === 0 ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-50"}`}>Anterior</button>
                 <div className="flex items-center gap-2">
-                  {[0,1,2].map((i) => (
+                  {[0,1,2,3].map((i) => (
                     <span key={i} className={`h-2 w-2 rounded-full ${i === step ? "bg-purple-600" : "bg-gray-300"}`} />
                   ))}
                 </div>
-                <button onClick={next} disabled={step === 2} className={`px-4 py-2 rounded-lg text-sm text-white ${step === 2 ? "opacity-40 cursor-not-allowed bg-gradient-to-r from-blue-600 to-purple-600" : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-95"}`}>{step === 2 ? "Concluído" : "Próximo"}</button>
+                <button onClick={next} disabled={step === 3} className={`px-4 py-2 rounded-lg text-sm text-white ${step === 3 ? "opacity-40 cursor-not-allowed bg-gradient-to-r from-blue-600 to-purple-600" : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-95"}`}>{step === 3 ? "Concluído" : "Próximo"}</button>
               </div>
             </motion.div>
           )}
@@ -150,24 +130,122 @@ export default function HowItWorksPostCard() {
   );
 }
 
-function StepPage({ title, subtitle, icon, children }: { title: string; subtitle: string; icon: React.ReactNode; children: React.ReactNode }) {
+// Scenes
+function SceneUpload() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.3 }}
-      className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
-    >
-      <div className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 text-blue-700 p-2">
-        {icon}
-        <span className="font-semibold">{title}</span>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <div>
+        <div className="text-xl font-bold text-gray-900">Upload de fotos com dicas</div>
+        <p className="text-gray-600 mt-1 text-sm">Arraste suas fotos, ordene e melhore o anúncio com dicas rápidas.</p>
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="aspect-[4/3] rounded-lg bg-gradient-to-tr from-blue-50 to-purple-50 border border-gray-100" />
+          ))}
+        </div>
+        <div className="mt-3 inline-flex items-center gap-2 text-sm text-gray-600"><Upload className="w-4 h-4" /> Arraste e solte ou clique para enviar</div>
       </div>
-      <p className="mt-2 text-gray-600 text-sm">{subtitle}</p>
-      <div className="mt-3">
-        {children}
+      <div>
+        <div className="rounded-xl border p-4">
+          <div className="text-sm font-medium text-gray-800 mb-2">Dicas contextuais</div>
+          <Tips items={[
+            { icon: <Camera className="w-4 h-4" />, text: "Use luz natural, evite contraluz." },
+            { icon: <ImageIcon className="w-4 h-4" />, text: "Horizontais, ambiente organizado." },
+            { icon: <Lightbulb className="w-4 h-4" />, text: "Destaque diferenciais (varanda, suíte)." },
+          ]} />
+        </div>
       </div>
-    </motion.div>
+    </div>
+  );
+}
+
+function SceneDetails() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <div className="rounded-xl border p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Título" />
+          <Field label="Preço" />
+          <Field label="Quartos" />
+          <Field label="Banheiros" />
+        </div>
+        <div className="mt-3"><Field label="Descrição" long /></div>
+      </div>
+      <div>
+        <div className="text-sm text-gray-600 mb-2">Pré-visualização do anúncio</div>
+        <PropertyPreview />
+      </div>
+    </div>
+  );
+}
+
+function SceneContact() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <div>
+        <div className="text-xl font-bold text-gray-900">Como quer ser contatado?</div>
+        <p className="text-gray-600 mt-1 text-sm">Contato direto ou conexão com corretor disponível. Sem disputa, só conexão.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <OptionCard title="Contato direto" points={["Interessados falam com você","Você combina a visita","Sem intermediação"]} icon={<Mail className="w-4 h-4" />} />
+          <OptionCard title="Com apoio do corretor" points={["Conectamos ao corretor disponível","Profissional acompanha a visita","Menos trabalho para você"]} icon={<Phone className="w-4 h-4" />} />
+        </div>
+      </div>
+      <div className="rounded-xl border p-4">
+        <div className="text-sm font-medium text-gray-800 mb-2">Como o match acontece</div>
+        <ul className="text-sm text-gray-700 space-y-1">
+          <li>• Cliente demonstra interesse no seu anúncio</li>
+          <li>• Sistema identifica corretor disponível e alinhado</li>
+          <li>• Visita é combinada sem leilão e sem pressão</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function SceneExposure() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <div>
+        <div className="text-xl font-bold text-gray-900">Máxima exposição</div>
+        <p className="text-gray-600 mt-1 text-sm">Seu imóvel visto por usuários, corretores e imobiliárias — sem gastar com divulgação externa.</p>
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          {[...Array(6)].map((_, i) => (<PropertyPreview key={i} compact />))}
+        </div>
+      </div>
+      <div className="rounded-xl border p-4">
+        <div className="text-sm text-gray-600 mb-2">Mapa</div>
+        <div className="aspect-[4/3] rounded-lg bg-gradient-to-tr from-blue-50 to-purple-50 flex items-center justify-center">
+          <MapPin className="w-6 h-6 text-purple-600" />
+        </div>
+        <div className="mt-5">
+          <Link href="/owner/new" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 shadow hover:shadow-md"><Rocket className="w-5 h-5" /> Começar anúncio agora</Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PropertyPreview({ compact }: { compact?: boolean }) {
+  return (
+    <div className={`rounded-xl border border-gray-200 bg-white ${compact ? 'p-3' : 'p-4'} shadow-sm`}>
+      <div className={`w-full ${compact ? 'h-20' : 'h-36'} rounded-lg bg-gray-100 mb-3`} />
+      <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
+      <div className="h-3 bg-gray-200 rounded w-1/2 mb-3" />
+      <div className="flex gap-2">
+        <span className="h-5 w-12 bg-gray-100 rounded"></span>
+        <span className="h-5 w-16 bg-gray-100 rounded"></span>
+        <span className="h-5 w-10 bg-gray-100 rounded"></span>
+      </div>
+    </div>
+  );
+}
+
+// Simple Field used for mocks
+function Field({ label, long }: { label: string; long?: boolean }) {
+  return (
+    <div>
+      <div className="text-xs text-gray-500 mb-1">{label}</div>
+      <div className={`rounded-md border border-gray-200 ${long ? 'h-20' : 'h-9'} bg-white`}></div>
+    </div>
   );
 }
 
