@@ -103,7 +103,7 @@ export default function ContinueSearching() {
       >
         {loading ? (
           [...Array(6)].map((_, i) => (
-            <div key={i} className="min-w-[320px] md:min-w-[340px] snap-start">
+            <div key={i} className="w-[300px] md:w-[320px] flex-shrink-0 snap-start">
               <div className="rounded-2xl overflow-hidden shadow-md animate-pulse bg-white">
                 <div className="h-44 bg-gray-200" />
                 <div className="p-4 space-y-3">
@@ -121,7 +121,7 @@ export default function ContinueSearching() {
           <div className="text-gray-500">Sem resultados salvos para continuar.</div>
         ) : (
           items.map((p) => (
-            <div key={p.id} className="min-w-[320px] md:min-w-[340px] snap-start">
+            <div key={p.id} className="w-[300px] md:w-[320px] flex-shrink-0 snap-start">
               <PropertyCardPremium
                 property={p}
                 onOpenOverlay={(id) => window.dispatchEvent(new CustomEvent('open-overlay', { detail: { id } }))}

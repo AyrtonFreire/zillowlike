@@ -226,14 +226,20 @@ export default function ModernNavbar() {
                           <div className="my-2 border-t" />
                         </>
                       )}
-                      {role === 'REALTOR' && (
+                      {(role === 'REALTOR' || role === 'AGENCY') && (
                         <>
-                          <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">Corretor</div>
+                          <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">{role === 'AGENCY' ? 'Imobiliária' : 'Corretor'}</div>
                           <Link href="/realtor" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <LayoutDashboard className="w-4 h-4 text-blue-600"/> Painel do corretor
+                            <LayoutDashboard className="w-4 h-4 text-blue-600"/> {role === 'AGENCY' ? 'Painel da imobiliária' : 'Painel do corretor'}
                           </Link>
                           <Link href="/alerts" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
                             <Bell className="w-4 h-4 text-blue-600"/> Alertas
+                          </Link>
+                          <Link href="/owner/new" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <Megaphone className="w-4 h-4 text-blue-600"/> Anunciar imóvel
+                          </Link>
+                          <Link href="/owner/properties" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
+                            <Building2 className="w-4 h-4 text-blue-600"/> {role === 'AGENCY' ? 'Anúncios da imobiliária' : 'Meus anúncios'}
                           </Link>
                           <div className="my-2 border-t" />
                         </>
@@ -437,10 +443,12 @@ export default function ModernNavbar() {
                     <Link href="/owner/analytics" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Analytics</Link>
                   </>
                 )}
-                {role === 'REALTOR' && (
+                {(role === 'REALTOR' || role === 'AGENCY') && (
                   <>
-                    <Link href="/realtor" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-blue-50 rounded-lg font-medium text-blue-700">Painel do corretor</Link>
+                    <Link href="/realtor" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-blue-50 rounded-lg font-medium text-blue-700">{role === 'AGENCY' ? 'Painel da imobiliária' : 'Painel do corretor'}</Link>
                     <Link href="/alerts" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Alertas</Link>
+                    <Link href="/owner/new" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Anunciar imóvel</Link>
+                    <Link href="/owner/properties" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">{role === 'AGENCY' ? 'Anúncios da imobiliária' : 'Meus anúncios'}</Link>
                   </>
                 )}
                 {role === 'USER' && (

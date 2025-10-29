@@ -319,6 +319,37 @@ export default function Home() {
                       Somente Lista
                     </button>
                   </div>
+                  {/* Sort control */}
+                  <div>
+                    <select
+                      aria-label="Ordenar resultados"
+                      className="px-3 py-2 rounded-md text-sm font-medium border border-gray-300 bg-white hover:bg-gray-50"
+                      value={sort}
+                      onChange={(e) => {
+                        const newSort = e.target.value;
+                        setSort(newSort);
+                        const params = buildSearchParams({
+                          q: search,
+                          city,
+                          state,
+                          type,
+                          minPrice,
+                          maxPrice,
+                          bedroomsMin,
+                          bathroomsMin,
+                          areaMin,
+                          sort: newSort,
+                          page: 1,
+                        });
+                        router.push(`/?${params}`, { scroll: false });
+                      }}
+                    >
+                      <option value="recent">Mais recentes</option>
+                      <option value="price_asc">Menor preço</option>
+                      <option value="price_desc">Maior preço</option>
+                      <option value="area_desc">Maior área</option>
+                    </select>
+                  </div>
                   <div className="relative" ref={filtersRef}>
                     <button
                       onClick={() => setFiltersOpen((v) => !v)}

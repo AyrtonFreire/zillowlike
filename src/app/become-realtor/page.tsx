@@ -208,7 +208,7 @@ export default function BecomeRealtorPage() {
 
       setSuccess(true);
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push("/realtor");
       }, 3000);
 
     } catch (err: any) {

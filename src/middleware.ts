@@ -4,14 +4,15 @@ import { getToken } from "next-auth/jwt";
 import { applySecurityHeaders } from "@/lib/security-headers";
 
 // Rotas que requerem autenticação
-const protectedPaths = ["/broker", "/admin", "/owner", "/dashboard"];
+const protectedPaths = ["/broker", "/admin", "/owner", "/dashboard", "/realtor"];
 
 // Mapeamento de paths para roles permitidos
 const roleBasedPaths: Record<string, string[]> = {
   "/admin": ["ADMIN"],
-  "/broker": ["REALTOR", "ADMIN"],
-  "/owner": ["OWNER", "ADMIN"],
-  "/dashboard": ["USER", "REALTOR", "OWNER", "ADMIN"], // Todos podem acessar
+  "/broker": ["REALTOR", "AGENCY", "ADMIN"],
+  "/realtor": ["REALTOR", "AGENCY", "ADMIN"],
+  "/owner": ["OWNER", "REALTOR", "AGENCY", "ADMIN"],
+  "/dashboard": ["USER", "REALTOR", "AGENCY", "OWNER", "ADMIN"], // Todos autenticados
 };
 
 export async function middleware(request: NextRequest) {
@@ -46,7 +47,7 @@ export async function middleware(request: NextRequest) {
   // EXCETO se estiver tentando acessar /dashboard (que USER pode acessar)
   if ((!token.role || token.role === "USER") && !pathname.startsWith("/dashboard")) {
     // Só redireciona para onboarding se estiver tentando acessar rotas que requerem role específico
-    const requiresSpecificRole = ["/broker", "/admin", "/owner"].some(path => pathname.startsWith(path));
+    const requiresSpecificRole = ["/broker", "/admin", "/owner", "/realtor"].some(path => pathname.startsWith(path));
     if (requiresSpecificRole) {
       return NextResponse.redirect(new URL("/onboarding", request.url));
     }

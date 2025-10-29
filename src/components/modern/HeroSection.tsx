@@ -23,7 +23,6 @@ export default function HeroSection() {
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const router = useRouter();
   const searchRef = useRef<HTMLDivElement>(null);
-  const [isMdUp, setIsMdUp] = useState(false);
 
   // Buscar sugestões da API quando o usuário digita
   useEffect(() => {
@@ -75,16 +74,6 @@ export default function HeroSection() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Track viewport to only render hero top nav on >= md
-  useEffect(() => {
-    const mql = window.matchMedia('(min-width: 768px)');
-    const apply = () => setIsMdUp(mql.matches);
-    apply();
-    mql.addEventListener ? mql.addEventListener('change', apply) : mql.addListener(apply as any);
-    return () => {
-      mql.removeEventListener ? mql.removeEventListener('change', apply) : mql.removeListener(apply as any);
-    };
-  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,8 +120,7 @@ export default function HeroSection() {
   return (
     <div className="relative min-h-[70vh] sm:min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden pt-28 md:pt-0 pb-8 md:pb-0">
       {/* Top Hero Nav (Zillow-like) */}
-      {isMdUp && (
-      <div className="absolute top-0 inset-x-0 z-20">
+      <div className="absolute top-0 inset-x-0 z-20 hidden md:block">
         <div className="mx-auto max-w-7xl px-4">
           <div className="mt-4 mb-2 rounded-full bg-white/95 backdrop-blur border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between px-4 py-2 text-sm text-gray-800">
@@ -196,7 +184,6 @@ export default function HeroSection() {
           </div>
         </div>
       </div>
-      )}
       {/* Background Image with Overlay */}
       <div className="absolute inset-0">
         <Image
@@ -243,7 +230,7 @@ export default function HeroSection() {
           className="text-center text-white max-w-5xl mx-auto"
         >
           <motion.h1
-            className="text-3xl sm:text-5xl md:text-7xl font-bold mb-6"
+            className="text-3xl sm:text-5xl md:text-7xl font-bold mb-6 px-2"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -254,7 +241,7 @@ export default function HeroSection() {
           </motion.h1>
 
           <motion.p
-            className="text-lg sm:text-xl md:text-2xl mb-8 md:mb-12 text-blue-100"
+            className="text-lg sm:text-xl md:text-2xl mb-8 md:mb-12 text-blue-100 px-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
@@ -268,7 +255,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="max-w-4xl mx-auto relative"
+            className="w-full max-w-xl sm:max-w-2xl mx-auto relative"
           >
             <form onSubmit={handleSearch} className="glass rounded-2xl p-2 shadow-2xl">
               <div className="flex flex-col md:flex-row gap-2">
