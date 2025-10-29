@@ -221,10 +221,15 @@ export default async function PropertyPage({ params }: PageProps) {
                 </div>
               )}
               <div className="p-6 md:p-8">
-                <div className="mb-3">
+                <div className="mb-3 flex items-center gap-2">
                   <span className="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full border border-blue-100">
                     {property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'TOWNHOUSE' ? 'Sobrado' : property.type === 'STUDIO' ? 'Studio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type}
                   </span>
+                  {property as any && (property as any).purpose && (
+                    <span className="inline-block bg-purple-50 text-purple-700 text-xs font-semibold px-3 py-1 rounded-full border border-purple-100">
+                      {(property as any).purpose === 'RENT' ? 'Aluguel' : 'Venda'}
+                    </span>
+                  )}
                 </div>
                 <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight mb-3">{property.title}</h1>
                 <div className="flex items-center text-gray-600 mb-5">
@@ -264,6 +269,9 @@ export default async function PropertyPage({ params }: PageProps) {
                   )}
                   {property.areaM2 != null && (
                     <StatCard icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h18v18H3z"/></svg>} label="Área" value={property.areaM2} unit="m²" />
+                  )}
+                  {(property as any)?.suites != null && (
+                    <StatCard icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12h18M5 12V7a2 2 0 012-2h10a2 2 0 012 2v5"/></svg>} label="Suítes" value={(property as any).suites} />
                   )}
                   {property.parkingSpots != null && (
                     <StatCard icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 16l3-9h12l3 9M5 16h14M7 16v2m10-2v2"/></svg>} label="Vagas" value={property.parkingSpots} />

@@ -291,6 +291,15 @@ export default function NewPropertyPage() {
       const center = geo ? [geo.lat, geo.lng] : [-9.3986, -40.5017]; // Petrolina as default
       leafletMap.current = L.map(mapContainerRef.current).setView(center, 14);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' }).addTo(leafletMap.current);
+      // Ensure correct sizing after render
+      setTimeout(() => { try { leafletMap.current.invalidateSize(); } catch {} }, 0);
+      // Invalidate on resize
+      const onResize = () => { try { leafletMap.current.invalidateSize(); } catch {} };
+      window.addEventListener('resize', onResize);
+      // Cleanup
+      try {
+        return () => { window.removeEventListener('resize', onResize); };
+      } catch {}
     }
     // Ensure marker exists only when we have a house number
     if (geo && addressNumber && !leafletMarker.current) {
@@ -524,9 +533,9 @@ export default function NewPropertyPage() {
     }
   }, [confirmDelete.open]);
 
-  const [bedrooms, setBedrooms] = useState<number | "">("");
-  const [bathrooms, setBathrooms] = useState<number | "">("");
-  const [areaM2, setAreaM2] = useState<number | "">("");
+  const [bedrooms, setBedrooms] = useState<string>("");
+  const [bathrooms, setBathrooms] = useState<string>("");
+  const [areaM2, setAreaM2] = useState<string>("");
   const SAVE_KEY = "owner_new_draft";
 
   // dnd-kit: sensors e item ordenável
@@ -1408,7 +1417,7 @@ export default function NewPropertyPage() {
                     <div className="inline-flex items-center gap-2 text-sm text-gray-700"><MapPinIcon className="w-4 h-4" /> Posição aproximada</div>
                     <span className="text-xs text-gray-500">Ajuste disponível após geolocalizar</span>
                   </div>
-                  <div className="relative h-60 sm:aspect-[4/3] rounded-lg overflow-hidden bg-gradient-to-tr from-blue-50 to-purple-50 flex items-center justify-center text-xs text-gray-600">
+                  <div className="relative aspect-square md:aspect-square min-h-80 sm:min-h-96 rounded-lg overflow-hidden bg-gradient-to-tr from-blue-50 to-purple-50 flex items-center justify-center text-xs text-gray-600">
                     {geo ? (
                       <div ref={mapContainerRef} className="w-full h-full" />
                     ) : (
@@ -1435,7 +1444,7 @@ export default function NewPropertyPage() {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Detalhes do imóvel</h2>
-                <div className="text-xs text-gray-500">Interno • Estrutura • Lazer • Condomínio</div>
+                <div className="text-xs text-gray-500">🏠 Interno • 🧱 Estrutura • 🎯 Lazer • 🏢 Condomínio</div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="relative">
@@ -1443,8 +1452,8 @@ export default function NewPropertyPage() {
                       className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent"
                       type="number"
                       placeholder=" "
-                      value={bedrooms}
-                      onChange={(e) => setBedrooms(e.target.value === "" ? "" : Number(e.target.value))}
+                      value={bedrooms as any}
+                      onChange={(e) => setBedrooms(e.target.value)}
                     />
                     <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Quartos</label>
                   </div>
@@ -1454,8 +1463,8 @@ export default function NewPropertyPage() {
                       type="number"
                       step="0.5"
                       placeholder=" "
-                      value={bathrooms}
-                      onChange={(e) => setBathrooms(e.target.value === "" ? "" : Number(e.target.value))}
+                      value={bathrooms as any}
+                      onChange={(e) => setBathrooms(e.target.value)}
                     />
                     <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Banheiros</label>
                   </div>
@@ -1464,8 +1473,8 @@ export default function NewPropertyPage() {
                       className="peer w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-transparent"
                       type="number"
                       placeholder=" "
-                      value={areaM2}
-                      onChange={(e) => setAreaM2(e.target.value === "" ? "" : Number(e.target.value))}
+                      value={areaM2 as any}
+                      onChange={(e) => setAreaM2(e.target.value)}
                     />
                     <label className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 bg-white px-1 text-sm text-gray-500 transition-all peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-xs">Área (m²)</label>
                   </div>
