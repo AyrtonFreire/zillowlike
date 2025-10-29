@@ -7,6 +7,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ModernNavbar, HeroSection, ThemeToggle, PropertyCardPremium } from "@/components/modern";
 import HowItWorksPostCard from "@/components/landing/HowItWorksPostCard";
+import MatchFlowSection from "@/components/landing/MatchFlowSection";
 import QuickCategories from "@/components/QuickCategories";
 import NeighborhoodGrid from "@/components/NeighborhoodGrid";
 import ContinueSearching from "@/components/ContinueSearching";
@@ -283,6 +284,9 @@ export default function Home() {
 
       {/* How it works card */}
       {!hasSearched && <HowItWorksPostCard />}
+
+      {/* Match flow detailed section */}
+      {!hasSearched && <MatchFlowSection />}
 
       {/* Continue Searching (logo abaixo do hero) */}
       {!hasSearched && <ContinueSearching />}
