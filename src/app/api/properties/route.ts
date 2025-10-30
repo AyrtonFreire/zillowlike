@@ -414,6 +414,46 @@ export async function POST(req: NextRequest) {
       parkingSpots: (details as any)?.parkingSpots ?? null,
       floor: (details as any)?.floor ?? null,
       yearBuilt: (details as any)?.yearBuilt ?? null,
+      // Lazer / Condomínio
+      hasBalcony: (details as any)?.hasBalcony ?? null,
+      hasElevator: (details as any)?.hasElevator ?? null,
+      hasPool: (details as any)?.hasPool ?? null,
+      hasGym: (details as any)?.hasGym ?? null,
+      hasPlayground: (details as any)?.hasPlayground ?? null,
+      hasPartyRoom: (details as any)?.hasPartyRoom ?? null,
+      hasGourmet: (details as any)?.hasGourmet ?? null,
+      hasConcierge24h: (details as any)?.hasConcierge24h ?? null,
+      // Acessibilidade
+      accRamps: (details as any)?.accRamps ?? null,
+      accWideDoors: (details as any)?.accWideDoors ?? null,
+      accAccessibleElevator: (details as any)?.accAccessibleElevator ?? null,
+      accTactile: (details as any)?.accTactile ?? null,
+      // Conforto / Energia
+      comfortAC: (details as any)?.comfortAC ?? null,
+      comfortHeating: (details as any)?.comfortHeating ?? null,
+      comfortSolar: (details as any)?.comfortSolar ?? null,
+      comfortNoiseWindows: (details as any)?.comfortNoiseWindows ?? null,
+      comfortLED: (details as any)?.comfortLED ?? null,
+      comfortWaterReuse: (details as any)?.comfortWaterReuse ?? null,
+      // Acabamentos
+      finishFloor: (details as any)?.finishFloor ?? null,
+      finishCabinets: (details as any)?.finishCabinets ?? null,
+      finishCounterGranite: (details as any)?.finishCounterGranite ?? null,
+      finishCounterQuartz: (details as any)?.finishCounterQuartz ?? null,
+      // Vista / Posição
+      viewSea: (details as any)?.viewSea ?? null,
+      viewCity: (details as any)?.viewCity ?? null,
+      positionFront: (details as any)?.positionFront ?? null,
+      positionBack: (details as any)?.positionBack ?? null,
+      sunByRoomNote: (details as any)?.sunByRoomNote ?? null,
+      // Pets / Políticas
+      petsSmall: (details as any)?.petsSmall ?? null,
+      petsLarge: (details as any)?.petsLarge ?? null,
+      condoRules: (details as any)?.condoRules ?? null,
+      // Outros
+      sunOrientation: (details as any)?.sunOrientation ?? null,
+      yearRenovated: (details as any)?.yearRenovated ?? null,
+      totalFloors: (details as any)?.totalFloors ?? null,
       conditionTags: Array.isArray(conditionTags) ? conditionTags : undefined,
       images:
         Array.isArray(images) && images.length > 0
