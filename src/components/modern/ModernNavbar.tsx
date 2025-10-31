@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useScroll } from "framer-motion";
+import { motion, useScroll, AnimatePresence } from "framer-motion";
 import { Menu, X, User, Heart, Bell, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
@@ -397,12 +397,15 @@ export default function ModernNavbar() {
       )}
 
       {/* Mobile Menu */}
-      <motion.div
-        initial={false}
-        animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
-        transition={{ duration: 0.3 }}
-        className="md:hidden overflow-hidden bg-white border-t border-gray-200 fixed inset-x-0 top-[64px] bottom-0 z-50 overflow-y-auto"
-      >
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden bg-white border-t border-gray-200 fixed inset-x-0 top-16 sm:top-20 bottom-0 z-50 overflow-y-auto"
+          >
         <div className="container mx-auto px-4 py-4 space-y-2">
           <button onClick={() => setIsOpen(false)} className="w-full text-right px-4 py-2 text-gray-600 hover:text-gray-900 font-medium">
             Fechar ×
@@ -476,7 +479,9 @@ export default function ModernNavbar() {
             </button>
           )}
         </div>
-      </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.nav>
   );
 }
