@@ -417,7 +417,7 @@ export default function PropertyOverlay({ item, open, loading, onClose, onOpenGa
                       <input type="date" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" value={tourDate} onChange={(e)=>setTourDate(e.target.value)} />
                       <input type="time" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" value={tourTime} onChange={(e)=>setTourTime(e.target.value)} />
                     </div>
-                    <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-semibold shadow-sm">Solicitar tour</button>
+                    <button className="w-full glass-teal text-white px-4 py-3 rounded-xl font-semibold shadow-sm">Solicitar tour</button>
                     <button className="mt-2 w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 px-4 py-3 rounded-xl font-semibold" onClick={()=>setContactOpen(true)}>Falar com agente</button>
                   </div>
                   <div className="rounded-2xl border border-gray-200 p-5 text-sm text-gray-600 shadow-sm">
@@ -446,7 +446,7 @@ export default function PropertyOverlay({ item, open, loading, onClose, onOpenGa
                 <input value={name} onChange={(e)=>setName(e.target.value)} placeholder="Seu nome" className="px-3 py-2 rounded-lg border border-gray-300" />
                 <input value={phone} onChange={(e)=>setPhone(e.target.value)} placeholder="Telefone" className="px-3 py-2 rounded-lg border border-gray-300" />
                 <textarea value={message} onChange={(e)=>setMessage(e.target.value)} placeholder="Mensagem" className="px-3 py-2 rounded-lg border border-gray-300 min-h-[90px]" />
-                <button className="mt-1 w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-semibold">Enviar</button>
+                <button className="mt-1 w-full glass-teal text-white px-4 py-3 rounded-xl font-semibold">Enviar</button>
               </div>
             </div>
           </div>

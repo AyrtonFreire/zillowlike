@@ -245,7 +245,7 @@ export default function QueueDashboardPage() {
                     onClick={() => setJobType(type)}
                     className={`px-4 py-2 rounded ${
                       jobType === type
-                        ? "bg-blue-600 text-white"
+                        ? "glass-teal text-white"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
@@ -280,7 +280,7 @@ export default function QueueDashboardPage() {
                         {jobType === "failed" && (
                           <button
                             onClick={() => handleRetryJob(job.id)}
-                            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                            className="px-3 py-1 text-sm glass-teal text-white rounded hover:bg-blue-700"
                           >
                             Retry
                           </button>

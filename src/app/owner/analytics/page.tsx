@@ -162,7 +162,7 @@ export default function AnalyticsPage() {
               onClick={() => setSelectedPeriod(period.value)}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 selectedPeriod === period.value
-                  ? "bg-blue-600 text-white"
+                  ? "bg-teal text-white"
                   : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
               }`}
             >
@@ -230,7 +230,7 @@ export default function AnalyticsPage() {
             </p>
             <Link
               href="/owner/new"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
             >
               Publicar Imóvel
             </Link>

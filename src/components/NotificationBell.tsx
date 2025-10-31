@@ -282,7 +282,7 @@ function NotificationContent({
           </span>
           {!notification.read && (
             <span className="flex items-center gap-1 text-xs text-blue-600 font-medium">
-              <span className="w-2 h-2 bg-blue-600 rounded-full" />
+              <span className="w-2 h-2 glass-teal rounded-full" />
               Nova
             </span>
           )}

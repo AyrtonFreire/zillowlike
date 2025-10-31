@@ -111,8 +111,8 @@ export default function QueuePage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Activity className="w-10 h-10 text-blue-600" />
+          <div className="w-20 h-20 glass-teal rounded-full flex items-center justify-center mx-auto mb-4">
+            <Activity className="w-10 h-10 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Você não está na fila
@@ -122,7 +122,7 @@ export default function QueuePage() {
           </p>
           <button
             onClick={handleJoinQueue}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            className="px-6 py-3 glass-teal text-white font-medium rounded-lg transition-colors"
           >
             Entrar na Fila
           </button>
@@ -145,7 +145,7 @@ export default function QueuePage() {
             </div>
             <button
               onClick={fetchData}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 glass-teal text-white font-medium rounded-lg transition-colors"
             >
               <RefreshCw className="w-5 h-5" />
               Atualizar
@@ -160,13 +160,13 @@ export default function QueuePage() {
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-8 text-white mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm font-medium mb-2">
+              <p className="text-white/80 text-sm font-medium mb-2">
                 Sua posição na fila
               </p>
               <h2 className="text-6xl font-bold mb-4">
                 #{position.actualPosition}
               </h2>
-              <p className="text-blue-100">
+              <p className="text-white/80">
                 {position.actualPosition === 1
                   ? "Você é o próximo!"
                   : `${position.actualPosition - 1} ${
@@ -178,7 +178,7 @@ export default function QueuePage() {
             </div>
             <div className="text-right">
               <ScoreBadge score={position.score} size="lg" />
-              <p className="text-blue-100 text-sm mt-2">Pontuação total</p>
+              <p className="text-white/80 text-sm mt-2">Pontuação total</p>
             </div>
           </div>
         </div>
@@ -229,8 +229,8 @@ export default function QueuePage() {
 
           <div className="bg-white rounded-xl p-6 border border-gray-200">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <Award className="w-6 h-6 text-purple-600" />
+              <div className="p-3 glass-teal rounded-lg">
+                <Award className="w-6 h-6 text-white" />
               </div>
               <div>
                 <p className="text-gray-600 text-sm">Taxa de Aceitação</p>

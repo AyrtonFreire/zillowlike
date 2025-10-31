@@ -202,7 +202,7 @@ export default function RealtorApplicationsPage() {
               onClick={() => setFilter(status)}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 filter === status
-                  ? "bg-blue-600 text-white"
+                  ? "glass-teal text-white"
                   : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
               }`}
             >

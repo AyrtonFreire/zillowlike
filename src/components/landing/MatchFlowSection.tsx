@@ -18,8 +18,8 @@ export default function MatchFlowSection() {
 
       <div className="relative overflow-hidden rounded-3xl bg-white ring-1 ring-gray-200 shadow-lg">
         <div className="absolute inset-0 pointer-events-none" aria-hidden>
-          <motion.div className="absolute -top-24 -left-24 h-60 w-60 rounded-full bg-emerald-500/10 blur-3xl" animate={{ y: [0, 10, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} />
-          <motion.div className="absolute -bottom-24 -right-24 h-60 w-60 rounded-full bg-emerald-600/10 blur-3xl" animate={{ y: [0, -10, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }} />
+          <motion.div className="absolute -top-24 -left-24 h-60 w-60 rounded-full bg-teal-light/10 blur-3xl" animate={{ y: [0, 10, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} />
+          <motion.div className="absolute -bottom-24 -right-24 h-60 w-60 rounded-full bg-teal/10 blur-3xl" animate={{ y: [0, -10, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }} />
         </div>
 
         <div className="relative z-10 p-6 sm:p-10">
@@ -85,7 +85,7 @@ export default function MatchFlowSection() {
           <div className="mt-8 flex items-center justify-center">
             <a
               href="/owner/new"
-              className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-gradient-to-r from-teal-light to-teal shadow hover:shadow-md"
+              className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white glass-teal"
             >
               <Megaphone className="w-5 h-5" />
               Anunciar agora
@@ -257,7 +257,7 @@ function InteractivePanel({ tab }: { tab: Tab }) {
             )}
           </ul>
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <a href="/owner/new" className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to purple-600 shadow hover:shadow-md">Anunciar agora</a>
+            <a href="/owner/new" className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-teal to-teal-dark shadow hover:shadow-md">Anunciar agora</a>
             <span className="text-xs text-gray-500">Sem taxas escondidas • Você controla o ritmo</span>
           </div>
         </div>

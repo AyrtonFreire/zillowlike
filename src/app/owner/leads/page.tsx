@@ -99,10 +99,10 @@ export default function OwnerLeadsPage() {
 
   const getStatusBadge = (status: string) => {
     const config = {
-      NEW: { label: "Novo", color: "bg-blue-100 text-blue-800", icon: Clock },
-      CONTACTED: { label: "Contatado", color: "bg-yellow-100 text-yellow-800", icon: MessageSquare },
-      QUALIFIED: { label: "Qualificado", color: "bg-green-100 text-green-800", icon: CheckCircle },
-      CLOSED: { label: "Fechado", color: "bg-gray-100 text-gray-800", icon: XCircle },
+      NEW: { label: "Novo", color: "glass-teal text-blue-800", icon: Clock },
+      CONTACTED: { label: "Contatado", color: "glass-teal text-yellow-800", icon: MessageSquare },
+      QUALIFIED: { label: "Qualificado", color: "glass-teal text-green-800", icon: CheckCircle },
+      CLOSED: { label: "Fechado", color: "glass-teal text-gray-800", icon: XCircle },
     };
     const { label, color, icon: Icon } = config[status as keyof typeof config] || config.NEW;
     return (
@@ -220,7 +220,7 @@ export default function OwnerLeadsPage() {
                   onClick={() => setFilter(item.value)}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     filter === item.value
-                      ? "bg-blue-600 text-white"
+                      ? "glass-teal text-white"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >

@@ -125,8 +125,8 @@ export default function HeroSearchModern() {
 
       {/* Floating Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-24 left-12 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-24 right-12 w-48 h-48 bg-green-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-24 left-12 w-40 h-40 glass-teal/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-24 right-12 w-48 h-48 glass-teal/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
       {/* Main Content */}
@@ -302,7 +302,7 @@ export default function HeroSearchModern() {
                           className="group text-left p-4 bg-white border border-gray-200 hover:border-blue-500 hover:bg-blue-50 rounded-xl transition-all"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 group-hover:bg-blue-600 rounded-full flex items-center justify-center transition-all flex-shrink-0">
+                            <div className="w-10 h-10 bg-blue-100 group-hover:glass-teal rounded-full flex items-center justify-center transition-all flex-shrink-0">
                               <MapPin className="w-5 h-5 text-blue-600 group-hover:text-white transition-colors" />
                             </div>
                             <div className="flex-1 min-w-0">

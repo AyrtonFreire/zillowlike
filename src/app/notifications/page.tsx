@@ -154,7 +154,7 @@ export default function NotificationsPage() {
               onClick={() => setFilter("all")}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
                 filter === "all"
-                  ? "bg-blue-600 text-white"
+                  ? "glass-teal text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
@@ -164,7 +164,7 @@ export default function NotificationsPage() {
               onClick={() => setFilter("unread")}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
                 filter === "unread"
-                  ? "bg-blue-600 text-white"
+                  ? "glass-teal text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >

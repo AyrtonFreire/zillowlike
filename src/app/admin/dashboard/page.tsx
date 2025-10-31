@@ -109,7 +109,7 @@ export default function AdminDashboard() {
                 setRefreshing(true);
                 fetchMetrics(false);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 glass-teal text-white font-medium rounded-lg transition-colors"
             >
               <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "Atualizando..." : "Atualizar"}
@@ -175,10 +175,10 @@ export default function AdminDashboard() {
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white">
-            <p className="text-blue-100 text-sm mb-2">Taxa de Conversão</p>
+          <div className="glass-teal rounded-xl p-6 text-white">
+            <p className="text-white/80 text-sm mb-2">Taxa de Conversão</p>
             <p className="text-4xl font-bold mb-2">{overview.conversionRate}%</p>
-            <p className="text-blue-100 text-sm">Leads aceitos vs total</p>
+            <p className="text-white/80 text-sm">Leads aceitos vs total</p>
           </div>
 
           <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-6 text-white">
@@ -187,10 +187,10 @@ export default function AdminDashboard() {
             <p className="text-green-100 text-sm">Leads respondidos</p>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-6 text-white">
-            <p className="text-purple-100 text-sm mb-2">Leads Disponíveis</p>
+          <div className="bg-gradient-to-br from-teal to-teal-dark rounded-xl p-6 text-white">
+            <p className="text-white/80 text-sm mb-2">Leads Disponíveis</p>
             <p className="text-4xl font-bold mb-2">{overview.availableLeads}</p>
-            <p className="text-purple-100 text-sm">No mural agora</p>
+            <p className="text-white/80 text-sm">No mural agora</p>
           </div>
         </div>
 

@@ -22,7 +22,7 @@ export default function UnauthorizedPage() {
         <div className="space-y-4">
           <Link
             href="/"
-            className="block w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            className="block w-full px-6 py-3 glass-teal text-white font-medium rounded-lg transition-colors"
           >
             Voltar para Home
           </Link>

@@ -41,7 +41,7 @@ export default function QuickCategories({ active }: { active?: URLSearchParams }
           const isActive = !!activeTag && c.qs.tag === activeTag;
           const base = "px-4 py-2 rounded-full text-sm font-bold transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98]";
           const cls = isActive
-            ? "bg-blue-600 text-white shadow-md hover:shadow-lg border border-transparent"
+            ? "glass-teal text-white shadow-md hover:shadow-lg border border-transparent"
             : "bg-white text-gray-800 shadow-[0_1px_2px_rgba(0,0,0,0.06)] hover:shadow-md border border-gray-200 hover:border-gray-300";
           return (
             <button

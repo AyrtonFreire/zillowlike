@@ -30,7 +30,7 @@ export default function StickyActions({
         </div>
         <motion.div whileTap={{ scale: 0.98 }}>
           <Link prefetch={false} href={scheduleHref} aria-label="Agendar visita" onClick={() => { try { track({ name: 'filters_apply', payload: { action: 'schedule_visit' } }); } catch {} }}>
-            <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:bg-blue-700">
+            <Button className="w-full bg-gradient-to-r glass-teal hover:bg-blue-700">
               Agendar Visita
             </Button>
           </Link>

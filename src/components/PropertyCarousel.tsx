@@ -111,7 +111,7 @@ export default function PropertyCarousel({
                     </div>
                   )}
                   {property.similarityScore !== undefined && (
-                    <div className="absolute bottom-3 left-3 px-3 py-1 bg-blue-600/95 backdrop-blur-md rounded-lg text-xs font-semibold text-white">
+                    <div className="absolute bottom-3 left-3 px-3 py-1 glass-teal/95 backdrop-blur-md rounded-lg text-xs font-semibold text-white">
                       {Math.round(property.similarityScore)}% similar
                     </div>
                   )}

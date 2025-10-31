@@ -22,7 +22,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
           <div className="text-center max-w-md">
             <h2 className="text-xl font-semibold text-gray-900">Ocorreu um erro inesperado</h2>
             <p className="text-gray-600 mt-2">Tente atualizar a página ou voltar para a tela inicial.</p>
-            <button className="mt-4 px-4 py-2 rounded bg-blue-600 text-white" onClick={() => location.reload()}>Recarregar</button>
+            <button className="mt-4 px-4 py-2 rounded glass-teal text-white" onClick={() => location.reload()}>Recarregar</button>
           </div>
         </div>
       );

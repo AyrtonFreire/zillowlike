@@ -149,7 +149,7 @@ export default function TopNavMega() {
               <div className="relative hidden lg:block" ref={userMenuRef}>
                 <button
                   type="button"
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-600 shadow hover:shadow-md transition-all ${userMenuOpen ? 'ring-2 ring-indigo-300' : ''}`}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-glass-teal to-glass-teal shadow hover:shadow-md transition-all ${userMenuOpen ? 'ring-2 ring-glass-teal' : ''}`}
                   onClick={() => setUserMenuOpen((v) => !v)}
                   aria-haspopup="menu"
                   aria-expanded={userMenuOpen}
@@ -171,7 +171,7 @@ export default function TopNavMega() {
                     </div>
                     <div className="p-2 grid grid-cols-1">
                       {quickLinksByRole(role).map((item) => (
-                        <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300" onClick={()=> setUserMenuOpen(false)}>
+                        <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-glass-teal" onClick={()=> setUserMenuOpen(false)}>
                           <span className="shrink-0">{item.icon}</span>
                           <span className="flex-1">{item.label}</span>
                           <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
@@ -273,7 +273,7 @@ export default function TopNavMega() {
                     </Section>
                     <Divider />
                     <Section title="Ferramentas" icon={
-                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-glass-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                       </svg>
                     }>
@@ -298,7 +298,7 @@ export default function TopNavMega() {
                     </Section>
                     <Divider />
                     <Section title="Recursos" icon={
-                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-glass-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     }>

@@ -366,7 +366,7 @@ export default function HeroSearch() {
                       {/* Footer ações */}
                       <div className="mx-auto w-full max-w-2xl flex items-center justify-end gap-3 mt-4 px-2">
                         <button type="button" onClick={()=> setOpenPanel(false)} className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50">Fechar</button>
-                        <button type="submit" className="px-5 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-medium shadow">Buscar</button>
+                        <button type="submit" className="px-5 py-2 rounded-full glass-teal text-white font-medium shadow">Buscar</button>
                       </div>
                     </div>
                   </div>
@@ -460,7 +460,7 @@ export default function HeroSearch() {
                       <button type="button" onClick={()=> setShowAdvanced(false)} className="text-gray-600 hover:text-gray-800">Voltar</button>
                       <div className="flex items-center gap-3">
                         <button type="button" onClick={()=> setOpenPanel(false)} className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50">Fechar</button>
-                        <button type="submit" className="px-5 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-medium shadow">Buscar</button>
+                        <button type="submit" className="px-5 py-2 rounded-full glass-teal text-white font-medium shadow">Buscar</button>
                       </div>
                     </div>
                   </div>

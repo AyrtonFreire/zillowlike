@@ -144,7 +144,7 @@ export default async function PropertyPage({ params }: PageProps) {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Imóvel não encontrado</h1>
           <p className="text-gray-600 mb-6">O imóvel que você está procurando não existe ou foi removido.</p>
-          <Link href="/" className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
+          <Link href="/" className="inline-flex items-center px-6 py-3 glass-teal text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
             ← Voltar à busca
           </Link>
         </div>
@@ -279,11 +279,11 @@ export default async function PropertyPage({ params }: PageProps) {
               )}
               <div className="p-6 md:p-8">
                 <div className="mb-3 flex items-center gap-2">
-                  <span className="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full border border-blue-100">
+                  <span className="inline-block glass-teal text-blue-700 text-xs font-semibold px-3 py-1 rounded-full border border-blue-100">
                     {property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'TOWNHOUSE' ? 'Sobrado' : property.type === 'STUDIO' ? 'Studio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type}
                   </span>
                   {property as any && (property as any).purpose && (
-                    <span className="inline-block bg-purple-50 text-purple-700 text-xs font-semibold px-3 py-1 rounded-full border border-purple-100">
+                    <span className="inline-block glass-teal text-purple-700 text-xs font-semibold px-3 py-1 rounded-full border border-purple-100">
                       {(property as any).purpose === 'RENT' ? 'Aluguel' : 'Venda'}
                     </span>
                   )}
@@ -501,7 +501,7 @@ export default async function PropertyPage({ params }: PageProps) {
           <div className="text-xl font-bold text-blue-700">R$ {(property.price/100).toLocaleString('pt-BR')}</div>
         </div>
         <div className="flex gap-2">
-          <Link prefetch={false} href={`/property/${property.id}/schedule-visit?pref=${encodeURIComponent(nextDay1530())}`} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium shadow">Agendar visita</Link>
+          <Link prefetch={false} href={`/property/${property.id}/schedule-visit?pref=${encodeURIComponent(nextDay1530())}`} className="px-4 py-2 rounded-lg glass-teal text-white font-medium shadow">Agendar visita</Link>
           {whatsapp && <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Tenho interesse no imóvel: ${property.title} - ${pageUrl}`)}`} target="_blank" className="px-4 py-2 rounded-lg bg-green-600 text-white font-medium shadow">WhatsApp</a>}
         </div>
       </div>

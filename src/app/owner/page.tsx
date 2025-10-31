@@ -32,7 +32,7 @@ export default async function OwnerDashboardPage() {
         <div className="mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-blue-600 hover:text-blue-800">← Voltar à busca</Link>
-            <Link href="/owner/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Novo imóvel</Link>
+            <Link href="/owner/new" className="glass-teal text-white px-4 py-2 rounded-lg hover:bg-blue-700">Novo imóvel</Link>
           </div>
         </div>
       </div>

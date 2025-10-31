@@ -104,7 +104,7 @@ export default function FavoritesPage() {
           </p>
           <Link
             href="/api/auth/signin"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Fazer Login
           </Link>
@@ -196,7 +196,7 @@ export default function FavoritesPage() {
             </p>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Explorar Imóveis
             </Link>

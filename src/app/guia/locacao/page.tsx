@@ -173,7 +173,7 @@ export default function GuiaLocacaoPage() {
             <h2 className="text-xl font-bold text-gray-900 mb-4">Encontre seu Imóvel</h2>
             <Link 
               href="/?status=RENT" 
-              className="block p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-center font-semibold transition-colors"
+              className="block p-4 glass-teal hover:bg-purple-700 text-white rounded-xl text-center font-semibold transition-colors"
             >
               Buscar Imóveis para Alugar →
             </Link>

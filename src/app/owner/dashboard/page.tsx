@@ -183,7 +183,7 @@ export default function OwnerDashboard() {
       actions={
         <Link
           href="/owner/new"
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-sm"
+          className="flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
         >
           <Plus className="w-5 h-5" />
           Novo Anúncio
@@ -233,14 +233,14 @@ export default function OwnerDashboard() {
         </div>
 
         {/* Premium CTA */}
-        <div className="mb-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
+        <div className="mb-8 glass-teal rounded-2xl p-8 text-white">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Crown className="w-6 h-6" />
                 <h3 className="text-2xl font-bold">Destaque seu anúncio</h3>
               </div>
-              <p className="text-blue-100 mb-4">
+              <p className="text-white/80 mb-4">
                 Apareça no topo das buscas e receba até 3x mais visualizações
               </p>
               <ul className="space-y-2 mb-6">
@@ -313,7 +313,7 @@ export default function OwnerDashboard() {
                     </p>
                     <Link
                       href="/owner/new"
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
+                      className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
                     >
                       <Plus className="w-5 h-5" />
                       Criar Anúncio
@@ -340,7 +340,7 @@ export default function OwnerDashboard() {
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                        className="bg-teal h-2 rounded-full transition-all duration-500"
                         style={{
                           width: `${Math.min((item.views / Math.max(...viewsByProperty.map(v => v.views))) * 100, 100)}%`,
                         }}

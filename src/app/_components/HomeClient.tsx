@@ -237,7 +237,7 @@ export default function HomeClient() {
                       <button
                         aria-label="Buscar imóveis"
                         onClick={handleSearchClick}
-                        className="absolute right-2 top-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-1.5 rounded-md text-sm font-medium transition-colors duration-200"
+                        className="absolute right-2 top-2 glass-teal text-white px-6 py-1.5 rounded-md text-sm font-medium transition-colors duration-200"
                       >
                         Buscar
                       </button>

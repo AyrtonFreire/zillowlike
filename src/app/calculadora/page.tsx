@@ -161,7 +161,7 @@ export default function CalculadoraPage() {
                     onClick={() => setPrazo(m.toString())}
                     className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                       prazo === m.toString()
-                        ? "bg-blue-600 text-white"
+                        ? "glass-teal text-white"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
@@ -234,7 +234,7 @@ export default function CalculadoraPage() {
           {/* Resultados */}
           <div className="space-y-6">
             {/* Parcela Mensal */}
-            <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg p-8 text-white">
+            <div className="bg-gradient-to-br glass-teal rounded-2xl shadow-lg p-8 text-white">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-5 h-5" />
                 <h3 className="text-lg font-semibold">

@@ -48,7 +48,7 @@ export default function PropertyStickyHeader({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link prefetch={false} href={scheduleHref} className="hidden sm:inline-flex px-3 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold shadow">
+            <Link prefetch={false} href={scheduleHref} className="hidden sm:inline-flex px-3 py-2 rounded-lg bg-gradient-to-r glass-teal text-white text-sm font-semibold shadow">
               Agendar
             </Link>
             <button

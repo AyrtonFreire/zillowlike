@@ -472,7 +472,7 @@ export default function ModernNavbar() {
                 setIsOpen(false);
                 signIn();
               }}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold"
+              className="w-full py-3 bg-gradient-to-r glass-teal text-white rounded-xl font-semibold"
             >
               Entrar
             </button>

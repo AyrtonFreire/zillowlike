@@ -144,7 +144,7 @@ export default function OwnerConfirmedVisitsPage() {
               return (
                 <div key={dateKey}>
                   {/* Date Header */}
-                  <div className="bg-blue-600 text-white px-6 py-3 rounded-t-xl">
+                  <div className="glass-teal text-white px-6 py-3 rounded-t-xl">
                     <h2 className="text-xl font-bold capitalize flex items-center gap-2">
                       <Calendar className="w-5 h-5" />
                       {formatDate(date.toISOString())}

@@ -44,7 +44,7 @@ export default function ContactForm({ propertyId }: { propertyId: string }) {
       <input className="w-full border rounded px-3 py-2 text-sm" type="email" placeholder="Seu e-mail" value={email} onChange={(e)=>setEmail(e.target.value)} required />
       <input className="w-full border rounded px-3 py-2 text-sm" placeholder="Telefone (opcional)" value={phone} onChange={(e)=>setPhone(e.target.value)} />
       <textarea className="w-full border rounded px-3 py-2 text-sm" rows={4} placeholder="Mensagem" value={message} onChange={(e)=>setMessage(e.target.value)} required />
-      <button disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-2 rounded text-sm">{loading ? 'Enviando...' : 'Enviar mensagem'}</button>
+      <button disabled={loading} className="w-full glass-teal disabled:opacity-50 text-white py-2 rounded text-sm">{loading ? 'Enviando...' : 'Enviar mensagem'}</button>
     </form>
   );
 }

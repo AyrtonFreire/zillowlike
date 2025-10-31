@@ -192,7 +192,7 @@ export default function OwnerPropertiesPage() {
       actions={
         <Link
           href="/owner/new"
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-sm"
+          className="flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
         >
           <Plus className="w-5 h-5" />
           Novo Anúncio
@@ -263,7 +263,7 @@ export default function OwnerPropertiesPage() {
                   onClick={() => setFilter(item.value)}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     filter === item.value
-                      ? "bg-blue-600 text-white"
+                      ? "bg-teal text-white"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
@@ -289,7 +289,7 @@ export default function OwnerPropertiesPage() {
             {!search && filter === "ALL" && (
               <Link
                 href="/owner/new"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
               >
                 <Plus className="w-5 h-5" />
                 Publicar Imóvel

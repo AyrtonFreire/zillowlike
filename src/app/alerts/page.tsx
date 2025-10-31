@@ -151,7 +151,7 @@ export default function AlertsPage() {
       actions={
         <button
           onClick={() => setShowNewAlert(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors"
+          className="flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
         >
           <Plus className="w-5 h-5" />
           Novo Alerta
@@ -301,7 +301,7 @@ export default function AlertsPage() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                    className="flex-1 px-6 py-3 glass-teal text-white font-medium rounded-lg transition-colors"
                   >
                     Criar Alerta
                   </button>
@@ -323,7 +323,7 @@ export default function AlertsPage() {
             </p>
             <button
               onClick={() => setShowNewAlert(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
             >
               <Plus className="w-5 h-5" />
               Criar Primeiro Alerta

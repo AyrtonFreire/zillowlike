@@ -286,7 +286,7 @@ export default function GuiaCompraPage() {
           </div>
 
           {/* Checklist */}
-          <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg p-8 text-white">
+          <div className="bg-gradient-to-br glass-teal rounded-2xl shadow-lg p-8 text-white">
             <h2 className="text-2xl font-bold mb-4">Checklist do Comprador</h2>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">

@@ -168,7 +168,7 @@ export default function MyLeadsPage() {
               </Link>
               <button
                 onClick={fetchLeads}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 glass-teal text-white font-medium rounded-lg transition-colors"
               >
                 <RefreshCw className="w-5 h-5" />
                 Atualizar
@@ -182,7 +182,7 @@ export default function MyLeadsPage() {
               onClick={() => setFilter("all")}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 filter === "all"
-                  ? "bg-blue-600 text-white"
+                  ? "glass-teal text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
@@ -219,7 +219,7 @@ export default function MyLeadsPage() {
             <p className="text-gray-500 text-lg">Nenhum lead ativo no momento</p>
             <Link
               href="/broker/leads/mural"
-              className="inline-block mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              className="inline-block mt-4 px-6 py-3 glass-teal text-white font-medium rounded-lg transition-colors"
             >
               Ver Mural de Leads
             </Link>
@@ -366,7 +366,7 @@ export default function MyLeadsPage() {
                         )}
                         {lead.status === "ACCEPTED" && (
                           <>
-                            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                            <button className="flex items-center gap-2 px-4 py-2 glass-teal text-white font-medium rounded-lg transition-colors">
                               <Calendar className="w-5 h-5" />
                               Marcar Visita
                             </button>

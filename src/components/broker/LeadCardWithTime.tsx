@@ -154,7 +154,7 @@ export default function LeadCardWithTime({ lead, onCandidate }: LeadCardWithTime
               </Link>
               <button
                 onClick={onCandidate}
-                className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                className="flex-1 px-6 py-2 glass-teal text-white font-semibold rounded-lg transition-colors"
               >
                 ME CANDIDATAR
               </button>

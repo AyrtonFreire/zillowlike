@@ -68,7 +68,7 @@ export default function OnboardingPage() {
           >
             <div className="flex items-start gap-4">
               <div className={`p-3 rounded-lg ${
-                selectedRole === "REALTOR" ? "bg-blue-600" : "bg-gray-100"
+                selectedRole === "REALTOR" ? "glass-teal" : "bg-gray-100"
               }`}>
                 <Briefcase className={`w-6 h-6 ${
                   selectedRole === "REALTOR" ? "text-white" : "text-gray-600"
@@ -84,15 +84,15 @@ export default function OnboardingPage() {
                 </p>
                 <ul className="mt-4 space-y-2 text-sm text-gray-700">
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+                    <span className="w-1.5 h-1.5 glass-teal rounded-full"></span>
                     Receber leads qualificados
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+                    <span className="w-1.5 h-1.5 glass-teal rounded-full"></span>
                     Sistema de fila inteligente
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+                    <span className="w-1.5 h-1.5 glass-teal rounded-full"></span>
                     Dashboard de métricas
                   </li>
                 </ul>
@@ -150,7 +150,7 @@ export default function OnboardingPage() {
             disabled={!selectedRole || loading}
             className={`px-8 py-3 rounded-lg font-semibold text-white transition-all duration-200 ${
               selectedRole && !loading
-                ? "bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl"
+                ? "glass-teal shadow-lg hover:shadow-xl"
                 : "bg-gray-300 cursor-not-allowed"
             }`}
           >

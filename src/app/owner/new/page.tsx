@@ -1113,7 +1113,7 @@ export default function NewPropertyPage() {
                 <div key={step.id} className="flex items-center">
                   <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
                     currentStep >= step.id 
-                      ? 'bg-blue-600 border-blue-600 text-white' 
+                      ? 'glass-teal border-blue-600 text-white' 
                       : 'bg-white border-gray-300 text-gray-500'
                   }`}>
                     {step.id}
@@ -1128,7 +1128,7 @@ export default function NewPropertyPage() {
                   </div>
                   {index < steps.length - 1 && (
                     <div className={`w-12 sm:w-16 h-0.5 mx-2 sm:mx-4 transition-all duration-200 ${
-                      currentStep > step.id ? 'bg-blue-600' : 'bg-gray-300'
+                      currentStep > step.id ? 'glass-teal' : 'bg-gray-300'
                     }`} />
                   )}
                 </div>
@@ -1159,7 +1159,7 @@ export default function NewPropertyPage() {
                     type="submit"
                     onClick={() => setSubmitIntent(true)}
                     disabled={isSubmitting || images.some((i) => i.pending)}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-teal to-green-600 text-white rounded-lg shadow disabled:opacity-70"
+                    className="flex-1 px-4 py-3 glass-teal text-white rounded-lg disabled:opacity-70"
                   >
                     {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando" : "Publicar"}
                   </button>
@@ -1182,8 +1182,8 @@ export default function NewPropertyPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Finalidade *</label>
                   <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => setPurpose('SALE')} className={`px-4 py-2 rounded-lg border ${purpose==='SALE' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Venda</button>
-                    <button type="button" onClick={() => setPurpose('RENT')} className={`px-4 py-2 rounded-lg border ${purpose==='RENT' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Aluguel</button>
+                    <button type="button" onClick={() => setPurpose('SALE')} className={`px-4 py-2 rounded-lg border ${purpose==='SALE' ? 'glass-teal text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Venda</button>
+                    <button type="button" onClick={() => setPurpose('RENT')} className={`px-4 py-2 rounded-lg border ${purpose==='RENT' ? 'glass-teal text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Aluguel</button>
                   </div>
                   {purpose === '' && <p className="mt-1 text-xs text-red-600">Selecione a finalidade.</p>}
                 </div>
@@ -1484,7 +1484,7 @@ export default function NewPropertyPage() {
                     )}
                     {isGeocoding && (
                       <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-200 to-purple-200 animate-pulse" />
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-teal-light/50 to-teal/50 animate-pulse" />
                       </div>
                     )}
                   </div>
@@ -1883,7 +1883,7 @@ export default function NewPropertyPage() {
                                     <button
                                       type="button"
                                       onClick={() => setImages((prev) => prev.map((it, idx) => idx === i ? { ...it, editing: undefined } as any : it))}
-                                      className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
+                                      className="px-2 py-1 text-xs rounded glass-teal text-white hover:bg-blue-700"
                                     >Salvar</button>
                                   </div>
                                 )}
@@ -1941,7 +1941,7 @@ export default function NewPropertyPage() {
                   onClick={() => setSubmitIntent(true)}
                   disabled={isSubmitting || images.some((i) => i.pending)}
                   title={images.some((i) => i.pending) ? "Aguarde terminar o envio das imagens" : undefined}
-                  className="px-8 py-3 bg-gradient-to-r from-teal to-green-600 hover:from-teal-dark hover:to-green-700 disabled:from-teal-light disabled:to-green-400 text-white rounded-lg font-medium transition-all duration-200 shadow"
+                  className="px-8 py-3 glass-teal text-white rounded-lg font-medium transition-all duration-200 disabled:opacity-50"
                 >
                   {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando imagens..." : "Publicar Imóvel"}
                 </button>
@@ -1973,11 +1973,11 @@ export default function NewPropertyPage() {
             />
             {/* Contextual tips panel (modern glass/gradient) */}
             <div className="mt-4">
-              <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-blue-600/25 to-purple-600/25">
+              <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
                 <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
                   <div className="flex items-center justify-between px-4 pt-4">
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-r from-blue-600/10 to-purple-600/10 text-blue-700">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/></svg>
                       </span>
                       <div>
@@ -1988,7 +1988,7 @@ export default function NewPropertyPage() {
                     <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-gray-600">
                       <span>Mostrar</span>
                       <input type="checkbox" className="sr-only peer" checked={showTips} onChange={(e)=>setShowTips(e.target.checked)} />
-                      <span className="w-10 h-5 rounded-full bg-gray-300 peer-checked:bg-gradient-to-r peer-checked:from-blue-600 peer-checked:to-purple-600 relative transition-colors">
+                      <span className="w-10 h-5 rounded-full bg-gray-300 peer-checked:bg-teal relative transition-colors">
                         <span className="absolute top-1/2 -translate-y-1/2 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-all peer-checked:left-[1.375rem]"></span>
                       </span>
                     </label>
@@ -1997,7 +1997,7 @@ export default function NewPropertyPage() {
                     <ul className="px-4 pb-4 pt-3 text-[13px] text-gray-800 space-y-2">
                       {tipsForStep(currentStep).map((t, i) => (
                         <li key={i} className="flex items-start gap-2">
-                          <span className="mt-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-r from-blue-600/15 to-purple-600/15 text-blue-700">
+                          <span className="mt-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-r from-teal/15 to-teal-dark/15 text-teal">
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                           </span>
                           <span>{t}</span>

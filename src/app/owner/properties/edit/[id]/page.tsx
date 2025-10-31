@@ -176,7 +176,7 @@ export default function EditPropertyPage() {
           <button
             onClick={handleSubmit}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
+            className="flex items-center gap-2 px-6 py-2.5 glass-teal hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
           >
             <Save className="w-5 h-5" />
             {saving ? "Salvando..." : "Salvar Alterações"}

@@ -127,7 +127,7 @@ export default function PriorityLeadModal({
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
               <div
                 className={`h-full transition-all duration-200 ${
-                  timeLeft < 60 ? 'bg-red-600' : timeLeft < 180 ? 'bg-orange-500' : 'bg-blue-600'
+                  timeLeft < 60 ? 'bg-red-600' : timeLeft < 180 ? 'bg-orange-500' : 'glass-teal'
                 }`}
                 style={{ width: `${percentage}%` }}
               />

@@ -125,7 +125,7 @@ export default function BrokerDashboard() {
       actions={
         <Link
           href="/broker/properties/new"
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-sm"
+          className="flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors shadow-sm"
         >
           <Plus className="w-5 h-5" />
           Novo Imóvel

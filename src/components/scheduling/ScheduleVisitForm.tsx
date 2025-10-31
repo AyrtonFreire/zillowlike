@@ -225,7 +225,7 @@ export default function ScheduleVisitForm({
       <button
         type="submit"
         disabled={loading || !selectedTime}
-        className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+        className="w-full py-3 px-6 glass-teal disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">

@@ -619,7 +619,7 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                         <p className="text-gray-600 mb-6 text-sm">Entre em contato e agende uma visita</p>
                         
                         <div className="space-y-2.5">
-                          <button className="w-full flex items-center justify-center gap-2.5 px-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all shadow-sm hover:shadow-md">
+                          <button className="w-full flex items-center justify-center gap-2.5 px-5 py-3.5 glass-teal text-white rounded-xl font-medium transition-all shadow-sm hover:shadow-md">
                             <Calendar className="w-4 h-4" />
                             Agendar Visita
                           </button>

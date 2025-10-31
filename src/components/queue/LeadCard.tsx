@@ -155,7 +155,7 @@ export default function LeadCard({
             {status === "AVAILABLE" && onCandidate && (
               <button
                 onClick={() => onCandidate(lead.id)}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                className="flex-1 px-4 py-2 glass-teal text-white font-medium rounded-lg transition-colors"
               >
                 Candidatar-se
               </button>

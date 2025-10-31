@@ -209,7 +209,7 @@ export default function ProfilePage() {
                   </div>
                   
                   {/* Upload Button */}
-                  <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg cursor-pointer hover:bg-blue-700 transition-colors">
+                  <label className="absolute bottom-0 right-0 p-2 glass-teal text-white rounded-full shadow-lg cursor-pointer hover:bg-blue-700 transition-colors">
                     {uploadingImage ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
@@ -347,7 +347,7 @@ export default function ProfilePage() {
                   <button
                     onClick={handleSave}
                     disabled={saving || name === profile.name}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-6 py-2.5 glass-teal disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors"
                   >
                     <Save className="w-5 h-5" />
                     {saving ? "Salvando..." : "Salvar Alterações"}

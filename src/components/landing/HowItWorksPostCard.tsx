@@ -139,7 +139,7 @@ function SceneUpload() {
         <p className="text-gray-600 mt-1 text-sm">Arraste suas fotos, ordene e melhore o anúncio com dicas rápidas.</p>
         <div className="mt-4 grid grid-cols-3 gap-3">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="aspect-[4/3] rounded-lg bg-emerald-50/40 border border-gray-100" />
+            <div key={i} className="aspect-[4/3] rounded-lg bg-teal/5 border border-gray-100" />
           ))}
         </div>
         <div className="mt-3 inline-flex items-center gap-2 text-sm text-gray-600"><Upload className="w-4 h-4" /> Arraste e solte ou clique para enviar</div>
@@ -213,7 +213,7 @@ function SceneExposure() {
       </div>
       <div className="rounded-xl border p-4">
         <div className="text-sm text-gray-600 mb-2">Mapa</div>
-        <div className="aspect-[4/3] rounded-lg bg-emerald-50/40 flex items-center justify-center">
+        <div className="aspect-[4/3] rounded-lg bg-teal/5 flex items-center justify-center">
           <MapPin className="w-6 h-6 text-teal" />
         </div>
         <div className="mt-5">
