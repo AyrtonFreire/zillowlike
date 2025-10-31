@@ -601,7 +601,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
               {/* Explore the Area */}
               <div className="pt-4 border-t border-teal/10">
-                <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Explore a Região</h3>
+                <h3 className="text-2xl font-display font-normal text-gray-900 mb-2">Explore a Região</h3>
+                <p className="text-sm text-gray-600 mb-4">Alguns pontos de interesse perto do imóvel</p>
                 <div className="text-gray-700 mb-4">
                   {property.street}, {property.city}, {property.state}
                 </div>
@@ -710,6 +711,14 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 >
                   Ver no Google Maps →
                 </a>
+
+                {/* Nearby properties you may like - reintroduced under POIs */}
+                {similarProperties.length > 0 && (
+                  <div className="mt-8 border-t border-teal/10 pt-6">
+                    <h4 className="text-xl font-display font-normal text-gray-900 mb-4">Imóveis próximos que podem te interessar</h4>
+                    <SimilarCarousel properties={similarProperties} />
+                  </div>
+                )}
               </div>
             </div>
 
