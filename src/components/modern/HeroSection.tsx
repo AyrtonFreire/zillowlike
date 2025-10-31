@@ -230,74 +230,76 @@ export default function HeroSection() {
           className="text-center text-white max-w-5xl mx-auto"
         >
           <motion.h1
-            className="text-3xl sm:text-5xl md:text-7xl font-bold mb-6 px-2"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-normal mb-4 px-2 leading-tight"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <span className="bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
-              Encontre seu Lar dos Sonhos
-            </span>
+            Explore os Melhores Imóveis do Brasil
           </motion.h1>
 
           <motion.p
-            className="text-lg sm:text-xl md:text-2xl mb-8 md:mb-12 text-blue-100 px-3"
+            className="text-xs sm:text-sm md:text-base tracking-wider mb-8 md:mb-10 text-white/90 px-3 font-medium uppercase"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            Milhares de imóveis incríveis esperando por você
+            Explore milhares de casas, mansões e imóveis de luxo em todo o Brasil em uma simples busca
           </motion.p>
 
-          {/* Search Bar Moderna com Autocomplete */}
+          {/* Search Bar JamesEdition Style - Horizontal 3 campos */}
           <motion.div
             ref={searchRef}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="w-full max-w-xl sm:max-w-2xl mx-auto relative"
+            className="w-full max-w-4xl mx-auto relative"
           >
-            <form onSubmit={handleSearch} className="glass rounded-2xl p-2 shadow-2xl">
-              <div className="flex flex-col md:flex-row gap-2">
-                <div className="flex-1 flex items-center gap-3 bg-white rounded-xl px-4 py-3 relative">
-                  <MapPin className="text-gray-400 flex-shrink-0" />
+            <form onSubmit={handleSearch} className="bg-white/95 backdrop-blur rounded-full p-1.5 shadow-2xl">
+              <div className="flex flex-col sm:flex-row items-center gap-1.5">
+                {/* Campo Localização */}
+                <div className="flex-1 flex items-center gap-3 px-6 py-3 bg-transparent rounded-full w-full">
+                  <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
                   <input
                     type="text"
-                    placeholder="Cidade, bairro ou região..."
+                    placeholder="Cidade, Região ou País"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => setShowSuggestions(true)}
-                    className="flex-1 outline-none text-gray-800 placeholder:text-gray-400 text-base"
+                    className="flex-1 outline-none text-gray-800 placeholder:text-gray-500 text-sm bg-transparent"
                   />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setShowSuggestions(false);
-                      }}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
                 </div>
+                
+                {/* Separador */}
+                <div className="hidden sm:block h-8 w-px bg-gray-300"></div>
+                
+                {/* Campo Preço */}
+                <div className="flex items-center gap-2 px-6 py-3 rounded-full w-full sm:w-auto">
+                  <span className="text-sm text-gray-500">Qualquer preço</span>
+                </div>
+                
+                {/* Separador */}
+                <div className="hidden sm:block h-8 w-px bg-gray-300"></div>
+                
+                {/* Campo Quartos */}
+                <div className="flex items-center gap-2 px-6 py-3 rounded-full w-full sm:w-auto">
+                  <span className="text-sm text-gray-500">Qualquer quarto</span>
+                </div>
+                
+                {/* Botão Search */}
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={isLoading}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 md:px-8 py-3 rounded-xl font-semibold hover:shadow-glow transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-full font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 w-full sm:w-auto"
                 >
                   {isLoading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Buscando...
-                    </>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>
                       <Search className="w-5 h-5" />
-                      Buscar
+                      <span className="hidden sm:inline">Search</span>
                     </>
                   )}
                 </motion.button>
@@ -365,30 +367,7 @@ export default function HeroSection() {
             </AnimatePresence>
           </motion.div>
 
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="hidden md:grid grid-cols-3 gap-8 max-w-2xl mx-auto mt-16"
-          >
-            {[
-              { label: "Imóveis", value: "10k+" },
-              { label: "Corretores", value: "500+" },
-              { label: "Cidades", value: "50+" }
-            ].map((stat, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.9 + i * 0.1 }}
-                className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20"
-              >
-                <div className="text-4xl font-bold mb-2 text-white">{stat.value}</div>
-                <div className="text-white/90 text-sm md:text-base font-medium">{stat.label}</div>
-              </motion.div>
-            ))}
-          </motion.div>
+          {/* Remover stats - JamesEdition não tem */}
         </motion.div>
       </div>
 

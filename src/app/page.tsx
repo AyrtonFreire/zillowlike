@@ -19,7 +19,7 @@ import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
 import Trustbar from "@/components/landing/Trustbar";
 import EditorialHighlight from "@/components/landing/EditorialHighlight";
-import PropertyDetailsModal from "@/components/PropertyDetailsModal";
+import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
 import SearchFiltersBar from "@/components/SearchFiltersBar";
 import Image from "next/image";
 import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
@@ -345,15 +345,8 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       <ModernNavbar />
       
-      {/* Hero Section + Premium Search Overlay */}
-      {!hasSearched && (
-        <div className="relative">
-          <HeroSection />
-          <div className="absolute inset-x-0 bottom-6 px-4">
-            <HeroSearch />
-          </div>
-        </div>
-      )}
+      {/* Hero Section */}
+      {!hasSearched && <HeroSection />}
 
       
 
@@ -873,7 +866,7 @@ export default function Home() {
       <SiteFooter />
 
       {/* Property Details Modal */}
-      <PropertyDetailsModal
+      <PropertyDetailsModalJames
         propertyId={overlayItem?.id || null}
         open={overlayOpen}
         onClose={closeOverlay}
