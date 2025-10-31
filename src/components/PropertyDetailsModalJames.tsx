@@ -99,7 +99,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     let ignore = false;
     (async () => {
       try {
-        const radius = 1000; // 1km (reduzido)
+        const radius = 2000; // 2km - mostrar os mais próximos
         const query = `
           [out:json][timeout:5];
           (
@@ -663,7 +663,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   </div>
                 ) : (
                   <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
-                    <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (1 km).</p>
+                    <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
                     <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
                   </div>
                 )}

@@ -246,36 +246,38 @@ export default function HeroSection() {
             transition={{ delay: 0.6 }}
             className="w-full max-w-4xl mx-auto relative"
           >
-            <form onSubmit={handleSearch} className="bg-white/95 backdrop-blur rounded-3xl p-4 sm:p-5 shadow-2xl">
-              {/* Purpose Toggle - Comprar/Alugar - Centralizado e mais visível */}
-              <div className="flex gap-6 mb-4 justify-center border-b border-gray-200 pb-3">
-                <button
-                  type="button"
-                  onClick={() => setPurpose('SALE')}
-                  className={`px-4 pb-2 text-base font-bold transition-all ${
-                    purpose === 'SALE'
-                      ? 'text-teal-700 border-b-3 border-teal-600 scale-105'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Comprar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPurpose('RENT')}
-                  className={`px-4 pb-2 text-base font-bold transition-all ${
-                    purpose === 'RENT'
-                      ? 'text-teal-700 border-b-3 border-teal-600 scale-105'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Alugar
-                </button>
-              </div>
+            <form onSubmit={handleSearch} className="bg-white/95 backdrop-blur rounded-3xl shadow-2xl">
+              {/* Desktop: Full form */}
+              <div className="hidden sm:block p-5">
+                {/* Purpose Toggle - Comprar/Alugar - Centralizado e mais visível */}
+                <div className="flex gap-6 mb-4 justify-center border-b border-gray-200 pb-3">
+                  <button
+                    type="button"
+                    onClick={() => setPurpose('SALE')}
+                    className={`px-4 pb-2 text-base font-bold transition-all ${
+                      purpose === 'SALE'
+                        ? 'text-teal-700 border-b-3 border-teal-600 scale-105'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Comprar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPurpose('RENT')}
+                    className={`px-4 pb-2 text-base font-bold transition-all ${
+                      purpose === 'RENT'
+                        ? 'text-teal-700 border-b-3 border-teal-600 scale-105'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Alugar
+                  </button>
+                </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-1">
-                {/* Campo Localização */}
-                <div ref={searchRef} className="flex-1 flex items-center gap-3 px-4 sm:px-6 py-3 bg-transparent rounded-2xl sm:rounded-full w-full border border-gray-200 sm:border-0">
+                <div className="flex flex-row items-center gap-1">
+                  {/* Campo Localização */}
+                  <div ref={searchRef} className="flex-1 flex items-center gap-3 px-6 py-3 bg-transparent rounded-full w-full">
                   <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
                   <input
                     type="text"
@@ -437,9 +439,25 @@ export default function HeroSection() {
                   )}
                 </motion.button>
               </div>
+              </div>
+
+              {/* Mobile: Simple search bar only */}
+              <div className="sm:hidden p-3">
+                <div ref={searchRef} className="flex items-center gap-3 px-4 py-3.5 bg-white rounded-full border border-gray-200">
+                  <Search className="text-gray-400 flex-shrink-0 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Enter an address, neighborhood, city, or ZIP code"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setShowSuggestions(true)}
+                    className="flex-1 outline-none text-gray-800 placeholder:text-gray-400 text-sm bg-transparent"
+                  />
+                </div>
+              </div>
             </form>
 
-            {/* Autocomplete Dropdown - Layout horizontal compacto */}
+            {/* Autocomplete Dropdown - Layout horizontal compacto - FORA do form para "derramar" */}
             <AnimatePresence>
               {showSuggestions && suggestions.length > 0 && (
                 <motion.div
@@ -447,7 +465,7 @@ export default function HeroSection() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-y-auto z-[100] max-h-[280px]"
+                  className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-y-auto z-[100] max-h-[60vh] sm:max-h-[280px]"
                 >
                   {isFetchingSuggestions ? (
                     <div className="px-4 py-8 text-center text-gray-400">

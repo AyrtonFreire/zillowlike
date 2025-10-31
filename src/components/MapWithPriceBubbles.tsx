@@ -263,20 +263,25 @@ function MapController({ items, onBoundsChange, autoFitOnItemsChange = false, on
     return initialClusters;
   }, [items, zoom]);
 
-  // Auto-fit map to items when they change - SEMPRE ajustar quando items mudam
+  // Auto-fit map to items ONLY on autoFitOnItemsChange or significant change
   const prevItemsCountRef = useRef(0);
   const prevFirstItemRef = useRef<string | undefined>(undefined);
+  const hasAutoFittedRef = useRef(false);
+  
   useEffect(() => {
     const currentFirstId = items[0]?.id;
-    const itemsChanged = items.length !== prevItemsCountRef.current || currentFirstId !== prevFirstItemRef.current;
+    const significantChange = currentFirstId !== prevFirstItemRef.current && currentFirstId !== undefined;
     
-    if (items.length > 0 && itemsChanged) {
+    // Only auto-fit if: explicitly enabled OR first load OR city changed (first item ID changed)
+    if (items.length > 0 && (autoFitOnItemsChange || !hasAutoFittedRef.current || significantChange)) {
       const bounds = L.latLngBounds(items.map(p => [p.latitude, p.longitude] as [number, number]));
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      hasAutoFittedRef.current = true;
     }
+    
     prevItemsCountRef.current = items.length;
     prevFirstItemRef.current = currentFirstId;
-  }, [items, map]);
+  }, [items, map, autoFitOnItemsChange]);
 
   // Listen for highlight events
   useEffect(() => {
