@@ -88,22 +88,28 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
       async function loadAuto(center: [number, number], radius: number) {
         try {
           const [lat, lng] = center;
-          const query = `\n            [out:json];\n            (\n              node(around:${radius},${lat},${lng})[amenity=school];\n              node(around:${radius},${lat},${lng})[shop=supermarket];\n              node(around:${radius},${lat},${lng})[amenity=hospital];\n              node(around:${radius},${lat},${lng})[amenity=pharmacy];\n              node(around:${radius},${lat},${lng})[amenity=bus_station];\n            );\n            out center 20;\n          `;
-          const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query, headers: { 'Content-Type': 'text/plain' } });
-          if (!res.ok) return;
+          const url = `/api/pois?lat=${lat}&lng=${lng}&radius=${radius}&perCat=3`;
+          const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+          if (!res.ok) { console.warn('POIs unavailable'); return; }
           const data = await res.json();
-          const pts: Poi[] = (data.elements || []).slice(0, 50).map((el: any) => ({
-            lat: el.lat, lng: el.lon, label: el.tags?.name || el.tags?.amenity || el.tags?.shop || 'Ponto',
-            emoji: el.tags?.shop === 'supermarket' ? '🛒' : el.tags?.amenity === 'school' ? '🏫' : el.tags?.amenity === 'hospital' ? '🏥' : el.tags?.amenity === 'pharmacy' ? '💊' : el.tags?.amenity === 'bus_station' ? '🚌' : '📍',
-          }));
+          const pts: Poi[] = [];
+          const push = (arr: any[], emoji: string) => {
+            (arr || []).forEach((p: any) => pts.push({ lat: p.lat, lng: p.lng, label: p.name, emoji }));
+          };
+          push(data.schools, '🏫');
+          push(data.markets, '🛒');
+          push(data.pharmacies, '💊');
+          push(data.restaurants, '🍽️');
           if (!ignore) setList(pts);
-        } catch {}
+        } catch (err) {
+          console.warn('POIs load failed (silent):', err);
+        }
       }
       if (!config) { setList([]); return; }
       if (config.mode === 'list') {
         setList(config.items || []);
       } else if (config.mode === 'auto') {
-        const r = Math.max(200, Math.min(2000, Number(config.radius) || 1000));
+        const r = Math.max(600, Math.min(1200, Number(config.radius) || 1000));
         loadAuto(config.center, r);
       }
       return () => { ignore = true; };
@@ -117,10 +123,15 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
             position={[p.lat, p.lng]}
             icon={L.divIcon({
               className: 'poi-marker',
-              html: `<div style="background:#fff;color:#111;border:1px solid #e5e7eb;padding:2px 6px;border-radius:9999px;box-shadow:0 6px 16px rgba(0,0,0,.18);font-weight:700;font-size:11px;white-space:nowrap">${(p.emoji || '📍') + ' ' + p.label}</div>`,
-              iconSize: [0, 0], iconAnchor: [0, 12]
+              html: `<div style="width:24px;height:24px;background:#fff;color:#111;border:2px solid #e5e7eb;display:flex;align-items:center;justify-content:center;border-radius:9999px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px">${p.emoji || '📍'}</div>`,
+              iconSize: [24, 24], 
+              iconAnchor: [12, 12]
             })}
-          />
+          >
+            <Tooltip direction="top" offset={[0, -12]} opacity={0.95}>
+              <span className="text-xs font-medium">{p.label}</span>
+            </Tooltip>
+          </Marker>
         ))}
       </>
     );

@@ -88,7 +88,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       .finally(() => setLoading(false));
   }, [propertyId, open]);
 
-  // Load nearby places (free Overpass API)
+  // Load nearby places (free Overpass API) - otimizado
   useEffect(() => {
     const lat = (property as any)?.latitude;
     const lng = (property as any)?.longitude;
@@ -96,28 +96,63 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     let ignore = false;
     (async () => {
       try {
-        const radius = 1200; // 1.2km
+        const radius = 1000; // 1km (reduzido)
         const query = `
-          [out:json];
+          [out:json][timeout:5];
           (
             node(around:${radius},${lat},${lng})[amenity=school];
             node(around:${radius},${lat},${lng})[shop=supermarket];
             node(around:${radius},${lat},${lng})[amenity=pharmacy];
             node(around:${radius},${lat},${lng})[amenity=restaurant];
           );
-          out center 30;
+          out center 20;
         `;
-        const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query, headers: { 'Content-Type': 'text/plain' } });
-        if (!res.ok) return;
+        const res = await fetch('https://overpass-api.de/api/interpreter', { 
+          method: 'POST', 
+          body: query, 
+          headers: { 'Content-Type': 'text/plain' },
+          signal: AbortSignal.timeout(8000) // timeout 8s
+        });
+        if (!res.ok) { 
+          console.warn('POIs unavailable'); 
+          if (!ignore) setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [] });
+          return; 
+        }
         const data = await res.json();
         const elements: any[] = data.elements || [];
-        const pick = (filter: (el: any)=>boolean) => elements.filter(filter).slice(0, 6).map(el => ({ name: el.tags?.name || el.tags?.brand || 'Local', lat: el.lat, lng: el.lon }));
+        
+        // Filtrar e normalizar: limitar a 3 por categoria, remover "Local" e vazios
+        const pick = (filter: (el: any)=>boolean) => {
+          const filtered = elements.filter(filter);
+          const mapped = filtered.map(el => {
+            const name = el.tags?.name || el.tags?.brand || '';
+            return { name, lat: el.lat, lng: el.lon };
+          });
+          // Remover vazios e "Local"
+          const cleaned = mapped.filter(p => p.name && p.name.toLowerCase() !== 'local');
+          // Dedupe por nome
+          const seen = new Set<string>();
+          const unique = cleaned.filter(p => {
+            if (seen.has(p.name)) return false;
+            seen.add(p.name);
+            return true;
+          });
+          // Truncar nomes longos
+          return unique.slice(0, 3).map(p => ({
+            ...p,
+            name: p.name.length > 35 ? p.name.slice(0, 32) + '...' : p.name
+          }));
+        };
+        
         const schools = pick(el => el.tags?.amenity === 'school');
         const markets = pick(el => el.tags?.shop === 'supermarket');
         const pharmacies = pick(el => el.tags?.amenity === 'pharmacy');
         const restaurants = pick(el => el.tags?.amenity === 'restaurant');
         if (!ignore) setNearbyPlaces({ schools, markets, pharmacies, restaurants });
-      } catch {}
+      } catch (err) {
+        console.warn('POIs load failed (silent):', err);
+        if (!ignore) setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [] });
+      }
     })();
     return () => { ignore = true; };
   }, [open, property]);
@@ -592,49 +627,80 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   </div>
                 )}
                 
-                {/* Locais próximos com nomes (gratuito via OSM) */}
-                <div className="grid md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <div className="flex items-center gap-2 font-medium text-gray-800 mb-1"><span className="text-lg">🏫</span><span>Escolas próximas</span></div>
-                    {nearbyPlaces.schools.length > 0 ? (
-                      <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
-                        {nearbyPlaces.schools.map((p,i)=>(<li key={`s-${i}`}>{p.name}</li>))}
-                      </ul>
-                    ) : (
-                      <div className="text-sm text-gray-500">Nada encontrado nos últimos 1,2 km</div>
+                {/* Locais próximos - UI otimizada */}
+                {(nearbyPlaces.schools.length > 0 || nearbyPlaces.markets.length > 0 || nearbyPlaces.pharmacies.length > 0 || nearbyPlaces.restaurants.length > 0) ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                    {nearbyPlaces.schools.length > 0 && (
+                      <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2">
+                          <span className="text-xl">🏫</span>
+                          <span className="text-sm">Escolas</span>
+                        </div>
+                        <ul className="text-sm text-gray-700 space-y-1.5">
+                          {nearbyPlaces.schools.map((p,i)=>(
+                            <li key={`s-${i}`} className="flex items-start gap-2">
+                              <span className="text-emerald-600 mt-0.5">•</span>
+                              <span className="flex-1">{p.name}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {nearbyPlaces.markets.length > 0 && (
+                      <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2">
+                          <span className="text-xl">🛒</span>
+                          <span className="text-sm">Supermercados</span>
+                        </div>
+                        <ul className="text-sm text-gray-700 space-y-1.5">
+                          {nearbyPlaces.markets.map((p,i)=>(
+                            <li key={`m-${i}`} className="flex items-start gap-2">
+                              <span className="text-emerald-600 mt-0.5">•</span>
+                              <span className="flex-1">{p.name}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {nearbyPlaces.pharmacies.length > 0 && (
+                      <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2">
+                          <span className="text-xl">💊</span>
+                          <span className="text-sm">Farmácias</span>
+                        </div>
+                        <ul className="text-sm text-gray-700 space-y-1.5">
+                          {nearbyPlaces.pharmacies.map((p,i)=>(
+                            <li key={`p-${i}`} className="flex items-start gap-2">
+                              <span className="text-emerald-600 mt-0.5">•</span>
+                              <span className="flex-1">{p.name}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {nearbyPlaces.restaurants.length > 0 && (
+                      <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2">
+                          <span className="text-xl">🍽️</span>
+                          <span className="text-sm">Restaurantes</span>
+                        </div>
+                        <ul className="text-sm text-gray-700 space-y-1.5">
+                          {nearbyPlaces.restaurants.map((p,i)=>(
+                            <li key={`r-${i}`} className="flex items-start gap-2">
+                              <span className="text-emerald-600 mt-0.5">•</span>
+                              <span className="flex-1">{p.name}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 font-medium text-gray-800 mb-1"><span className="text-lg">🛒</span><span>Supermercados</span></div>
-                    {nearbyPlaces.markets.length > 0 ? (
-                      <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
-                        {nearbyPlaces.markets.map((p,i)=>(<li key={`m-${i}`}>{p.name}</li>))}
-                      </ul>
-                    ) : (
-                      <div className="text-sm text-gray-500">Nada encontrado nos últimos 1,2 km</div>
-                    )}
+                ) : (
+                  <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
+                    <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (1 km).</p>
+                    <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 font-medium text-gray-800 mb-1"><span className="text-lg">💊</span><span>Farmácias</span></div>
-                    {nearbyPlaces.pharmacies.length > 0 ? (
-                      <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
-                        {nearbyPlaces.pharmacies.map((p,i)=>(<li key={`p-${i}`}>{p.name}</li>))}
-                      </ul>
-                    ) : (
-                      <div className="text-sm text-gray-500">Nada encontrado nos últimos 1,2 km</div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 font-medium text-gray-800 mb-1"><span className="text-lg">🍽️</span><span>Restaurantes</span></div>
-                    {nearbyPlaces.restaurants.length > 0 ? (
-                      <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
-                        {nearbyPlaces.restaurants.map((p,i)=>(<li key={`r-${i}`}>{p.name}</li>))}
-                      </ul>
-                    ) : (
-                      <div className="text-sm text-gray-500">Nada encontrado nos últimos 1,2 km</div>
-                    )}
-                  </div>
-                </div>
+                )}
                 
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.street}, ${property.city}, ${property.state}`)}`}
