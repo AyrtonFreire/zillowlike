@@ -156,7 +156,7 @@ export default function ModernNavbar() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setUserMenuOpen((v) => !v)}
                   aria-expanded={userMenuOpen}
-                  className="flex items-center gap-2 px-2 py-1.5 bg-teal text-white rounded-full font-semibold text-[13px] hover:bg-teal-dark hover:shadow-md transition-all"
+                  className="flex items-center gap-2 px-2 py-1.5 glass-teal text-white rounded-full font-semibold text-[13px] transition-all"
                 >
                   <User className="w-3.5 h-3.5" />
                   <span>Dashboard</span>
@@ -264,7 +264,7 @@ export default function ModernNavbar() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => signIn()}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold hover:shadow-glow transition-all"
+                className="flex items-center gap-2 px-4 py-2 glass-teal text-white rounded-full font-semibold transition-all"
               >
                 <User className="w-4 h-4" />
                 Entrar

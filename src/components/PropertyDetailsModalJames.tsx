@@ -754,7 +754,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                       placeholder={`Tenho interesse em\n${property.title}`}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent resize-none"
                     />
-                    <Button className="w-full bg-teal hover:bg-teal-dark shadow-md hover:shadow-lg">
+                    <Button className="w-full glass-teal">
                       Entrar em Contato
                     </Button>
                     <div className="space-y-2 text-xs text-gray-600">

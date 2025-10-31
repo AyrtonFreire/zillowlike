@@ -248,7 +248,7 @@ export default function HeroSection() {
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={isLoading}
-                  className="bg-teal hover:bg-teal-dark text-white px-8 py-3 rounded-full font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 w-full sm:w-auto shadow-md hover:shadow-lg"
+                  className="glass-teal text-white px-8 py-3 rounded-full font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 w-full sm:w-auto"
                 >
                   {isLoading ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

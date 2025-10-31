@@ -45,7 +45,7 @@ export default function HowItWorksPostCard() {
                     <button
                       type="button"
                       onClick={goOpen}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-teal hover:bg-teal-dark shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-teal-light"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white glass-teal focus:outline-none focus:ring-2 focus:ring-teal-light"
                     >
                       <PlayCircle className="w-5 h-5" />
                       Veja como é fácil
@@ -120,7 +120,7 @@ export default function HowItWorksPostCard() {
                     <span key={i} className={`h-2 w-2 rounded-full ${i === step ? "bg-teal" : "bg-gray-300"}`} />
                   ))}
                 </div>
-                <button onClick={next} disabled={step === 3} className={`px-4 py-2 rounded-lg text-sm text-white ${step === 3 ? "opacity-40 cursor-not-allowed bg-teal" : "bg-teal hover:bg-teal-dark"}`}>{step === 3 ? "Concluído" : "Próximo"}</button>
+                <button onClick={next} disabled={step === 3} className={`px-4 py-2 rounded-lg text-sm text-white ${step === 3 ? "opacity-40 cursor-not-allowed bg-teal" : "glass-teal"}`}>{step === 3 ? "Concluído" : "Próximo"}</button>
               </div>
             </motion.div>
           )}
@@ -217,7 +217,7 @@ function SceneExposure() {
           <MapPin className="w-6 h-6 text-teal" />
         </div>
         <div className="mt-5">
-          <Link href="/owner/new" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-teal hover:bg-teal-dark shadow hover:shadow-md"><Rocket className="w-5 h-5" /> Começar anúncio agora</Link>
+          <Link href="/owner/new" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white glass-teal"><Rocket className="w-5 h-5" /> Começar anúncio agora</Link>
         </div>
       </div>
     </div>
