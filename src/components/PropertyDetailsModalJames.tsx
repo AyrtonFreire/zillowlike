@@ -691,11 +691,10 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   Ver no Google Maps →
                 </a>
 
-                {/* Nearby homes - Imóveis Próximos */}
+                {/* Imóveis Próximos */}
                 {nearbyProperties.length > 0 ? (
                   <div className="border-t border-teal/10 pt-8 mt-8">
-                    <h3 className="text-2xl font-display font-normal text-gray-900 mb-6">Nearby homes</h3>
-                    <SimilarCarousel properties={nearbyProperties} />
+                    <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" />
                   </div>
                 ) : (
                   <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
@@ -703,11 +702,10 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   </div>
                 )}
 
-                {/* Similar homes - Imóveis Similares */}
+                {/* Imóveis similares */}
                 {similarProperties.length > 0 ? (
                   <div className="border-t border-teal/10 pt-8 mt-8">
-                    <h3 className="text-2xl font-display font-normal text-gray-900 mb-6">Similar homes</h3>
-                    <SimilarCarousel properties={similarProperties} />
+                    <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" />
                   </div>
                 ) : (
                   <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
@@ -757,26 +755,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
                 {/* Contact Form */}
                 <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
-                  {/* Financing Card - Clickable - Only for SALE */}
-                  {property.purpose === 'SALE' && property.price && property.price > 0 && (
-                    <a
-                      href={`/financing/${property.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block mb-4 rounded-xl border-2 border-teal/20 p-4 bg-gradient-to-br from-teal/5 to-blue/5 hover:from-teal/10 hover:to-blue/10 transition-all cursor-pointer group"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold text-gray-700">💰 Financiamento</span>
-                        <span className="text-teal group-hover:translate-x-1 transition-transform">→</span>
-                      </div>
-                      <div className="text-2xl font-bold text-teal mb-1">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(((property.price * 0.8) / 100) / 360)}
-                        <span className="text-sm text-gray-600 font-normal">/mês</span>
-                      </div>
-                      <p className="text-xs text-gray-500">Parcelas em até 360x</p>
-                    </a>
-                  )}
-                  
                   <div className="space-y-3">
                     <input
                       type="text"
@@ -817,16 +795,30 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   </div>
                 </div>
 
-                {/* Agent Listings */}
-                <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-light to-teal" />
-                    <div>
-                      <h4 className="font-semibold text-gray-900 text-sm">Zillowlike Imóveis</h4>
-                      <p className="text-xs text-gray-600">300 imóveis à venda</p>
+                {/* Financing Installment Card BELOW the contact form */}
+                {property.purpose === 'SALE' && property.price && property.price > 0 && (
+                  <a
+                    href={`/financing/${property.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block rounded-xl border-2 border-teal/20 p-5 bg-gradient-to-br from-teal/5 to-blue/5 hover:from-teal/10 hover:to-blue/10 transition-all cursor-pointer group"
+                    aria-label="Ver opções de financiamento"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-800">💰 Estimativa de parcela</div>
+                        <div className="text-xs text-gray-500">Clique para ver opções de bancos</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-teal">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(((property.price * 0.8) / 100) / 360)}
+                          <span className="text-sm text-gray-600 font-normal">/mês</span>
+                        </div>
+                        <div className="text-xs text-gray-500">Entrada estimada: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format((property.price * 0.2) / 100)}</div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </a>
+                )}
               </div>
             </div>
           </div>
