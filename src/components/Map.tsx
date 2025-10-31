@@ -53,7 +53,7 @@ type PoisProp =
   | { mode: 'list'; items: Poi[] }
   | { mode: 'auto'; center: [number, number]; radius?: number };
 
-export default function Map({ items, centerZoom, onViewChange, highlightId, onHoverChange, autoFit, hideRefitButton, isLoading, pois }: { items: Item[]; centerZoom?: { center: [number, number]; zoom: number }; onViewChange?: (v: { center: [number, number]; zoom: number; bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number } }) => void; highlightId?: string; onHoverChange?: (id: string | null) => void; autoFit?: boolean; hideRefitButton?: boolean; isLoading?: boolean; pois?: PoisProp }) {
+export default function Map({ items, centerZoom, onViewChange, highlightId, onHoverChange, autoFit, hideRefitButton, isLoading, pois, simplePin }: { items: Item[]; centerZoom?: { center: [number, number]; zoom: number }; onViewChange?: (v: { center: [number, number]; zoom: number; bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number } }) => void; highlightId?: string; onHoverChange?: (id: string | null) => void; autoFit?: boolean; hideRefitButton?: boolean; isLoading?: boolean; pois?: PoisProp; simplePin?: boolean }) {
   const center = useMemo(() => {
     if (items.length > 0) return [items[0].latitude, items[0].longitude] as [number, number];
     // Default to Petrolina/Juazeiro midpoint
@@ -294,6 +294,26 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
         {clusters.map((arr, idx) => {
           if (arr.length === 1) {
             const p = arr[0];
+            // Simple pin mode: render a minimal round marker without tooltip/link
+            if (simplePin) {
+              const pin = L.divIcon({
+                className: 'pin-marker',
+                html: `<div style="width:14px;height:14px;border-radius:9999px;background:#2563eb;border:2px solid white;box-shadow:0 4px 10px rgba(0,0,0,.25)"></div>`,
+                iconSize: [0, 0],
+                iconAnchor: [0, 9],
+              });
+              return (
+                <Marker
+                  key={p.id}
+                  position={[p.latitude, p.longitude]}
+                  icon={pin}
+                  eventHandlers={{
+                    mouseover: () => onHoverChange?.(p.id),
+                    mouseout: () => onHoverChange?.(null),
+                  }}
+                />
+              );
+            }
             return (
               <Marker
                 key={p.id}

@@ -8,13 +8,17 @@
   --color-background: #ffffff;
   --color-foreground: #171717;
   
-  /* Custom Gradients */
-  --color-gradient-primary-from: #667eea;
-  --color-gradient-primary-to: #764ba2;
-  --color-gradient-success-from: #f093fb;
-  --color-gradient-success-to: #f5576c;
-  --color-gradient-hero-from: #4facfe;
-  --color-gradient-hero-to: #00f2fe;
+  /* Paleta B - Charcoal + Emerald (JamesEdition-inspired) */
+  --brand-charcoal: #0B1220;
+  --brand-text: #0B0F19;
+  --brand-accent: #059669; /* Emerald 600 */
+  --brand-accent-hover: #047857; /* Emerald 700 */
+  --brand-accent-light: #10B981; /* Emerald 500 */
+  --brand-neutral-50: #F5F5F4; /* Stone 100 */
+  --brand-neutral-100: #E7E5E4; /* Stone 200 */
+  --brand-neutral-400: #A8A29E; /* Stone 400 */
+  --brand-neutral-600: #78716C; /* Stone 500 */
+  --brand-neutral-900: #1C1917; /* Stone 900 */
   
   /* Custom Animations */
   --animate-shimmer: shimmer 2s infinite;
@@ -90,13 +94,13 @@ summary,
   }
 }
 
-/* Glow effect */
+/* Glow effect - Emerald */
 @keyframes glow {
   from {
-    box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 0 20px rgba(5, 150, 105, 0.3);
   }
   to {
-    box-shadow: 0 0 30px rgba(102, 126, 234, 0.8);
+    box-shadow: 0 0 30px rgba(5, 150, 105, 0.5);
   }
 }
 
@@ -125,9 +129,9 @@ summary,
               0 10px 20px -2px rgba(0, 0, 0, 0.04);
 }
 
-/* Glow shadow */
+/* Glow shadow - Emerald */
 .shadow-glow {
-  box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 0 20px rgba(5, 150, 105, 0.3);
 }
 
 /* Neumorphic shadow */
@@ -161,9 +165,9 @@ summary,
   height: 300px;
 }
 
-/* Gradient text */
+/* Gradient text - Subtle Emerald */
 .gradient-text {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

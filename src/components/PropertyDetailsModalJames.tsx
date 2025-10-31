@@ -57,6 +57,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [showMore, setShowMore] = useState(false);
   const [nearbyProperties, setNearbyProperties] = useState<any[]>([]);
   const [similarProperties, setSimilarProperties] = useState<any[]>([]);
+  const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [] });
 
   // Fetch property data
   useEffect(() => {
@@ -86,6 +87,40 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [propertyId, open]);
+
+  // Load nearby places (free Overpass API)
+  useEffect(() => {
+    const lat = (property as any)?.latitude;
+    const lng = (property as any)?.longitude;
+    if (!open || !lat || !lng) return;
+    let ignore = false;
+    (async () => {
+      try {
+        const radius = 1200; // 1.2km
+        const query = `
+          [out:json];
+          (
+            node(around:${radius},${lat},${lng})[amenity=school];
+            node(around:${radius},${lat},${lng})[shop=supermarket];
+            node(around:${radius},${lat},${lng})[amenity=pharmacy];
+            node(around:${radius},${lat},${lng})[amenity=restaurant];
+          );
+          out center 30;
+        `;
+        const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query, headers: { 'Content-Type': 'text/plain' } });
+        if (!res.ok) return;
+        const data = await res.json();
+        const elements: any[] = data.elements || [];
+        const pick = (filter: (el: any)=>boolean) => elements.filter(filter).slice(0, 6).map(el => ({ name: el.tags?.name || el.tags?.brand || 'Local', lat: el.lat, lng: el.lon }));
+        const schools = pick(el => el.tags?.amenity === 'school');
+        const markets = pick(el => el.tags?.shop === 'supermarket');
+        const pharmacies = pick(el => el.tags?.amenity === 'pharmacy');
+        const restaurants = pick(el => el.tags?.amenity === 'restaurant');
+        if (!ignore) setNearbyPlaces({ schools, markets, pharmacies, restaurants });
+      } catch {}
+    })();
+    return () => { ignore = true; };
+  }, [open, property]);
 
   // Reset on close
   useEffect(() => {
@@ -157,13 +192,14 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   return (
     <AnimatePresence>
       {open && <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />}
-      <motion.div 
-        initial={{ x: "100%" }}
-        animate={{ x: open ? 0 : "100%" }}
-        exit={{ x: "100%" }}
-        transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="fixed right-0 top-0 bottom-0 w-full md:w-[85%] lg:w-[75%] xl:w-[70%] bg-white z-50 overflow-y-auto shadow-2xl"
-      >
+      <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-0 md:p-6 pointer-events-none">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.98 }}
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          className="pointer-events-auto w-full md:w-[92vw] lg:w-[85vw] xl:w-[75vw] max-w-[1400px] max-h-[95vh] bg-white rounded-none md:rounded-2xl shadow-2xl overflow-y-auto"
+        >
         {/* Header */}
         <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -280,7 +316,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   {property.description.length > 400 && (
                     <button
                       onClick={() => setShowMore(!showMore)}
-                      className="text-blue-600 hover:text-blue-800 font-medium mt-2 inline-flex items-center gap-1"
+                      className="text-emerald-600 hover:text-emerald-700 font-medium mt-2 inline-flex items-center gap-1"
                     >
                       {showMore ? "Ver menos" : "Ver mais"} →
                     </button>
@@ -429,6 +465,102 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                       <span className="text-gray-700">Vista para Cidade</span>
                     </div>
                   )}
+                  {(property as any).positionFront && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">⬆️</span>
+                      <span className="text-gray-700">Frente</span>
+                    </div>
+                  )}
+                  {(property as any).positionBack && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">⬇️</span>
+                      <span className="text-gray-700">Fundos</span>
+                    </div>
+                  )}
+                  {(property as any).accRamps && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🛞</span>
+                      <span className="text-gray-700">Rampa de Acesso</span>
+                    </div>
+                  )}
+                  {(property as any).accWideDoors && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🚪</span>
+                      <span className="text-gray-700">Portas Largas</span>
+                    </div>
+                  )}
+                  {(property as any).accAccessibleElevator && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">♿</span>
+                      <span className="text-gray-700">Elevador Acessível</span>
+                    </div>
+                  )}
+                  {(property as any).accTactile && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🟨</span>
+                      <span className="text-gray-700">Piso Tátil</span>
+                    </div>
+                  )}
+                  {(property as any).comfortNoiseWindows && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🔇</span>
+                      <span className="text-gray-700">Janelas Antirruído</span>
+                    </div>
+                  )}
+                  {(property as any).comfortLED && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">💡</span>
+                      <span className="text-gray-700">Iluminação LED</span>
+                    </div>
+                  )}
+                  {(property as any).comfortWaterReuse && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🚿</span>
+                      <span className="text-gray-700">Reuso de Água</span>
+                    </div>
+                  )}
+                  {(property as any).finishCabinets && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🗄️</span>
+                      <span className="text-gray-700">Armários Planejados</span>
+                    </div>
+                  )}
+                  {(property as any).finishCounterGranite && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🪨</span>
+                      <span className="text-gray-700">Bancada em Granito</span>
+                    </div>
+                  )}
+                  {(property as any).finishCounterQuartz && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">💎</span>
+                      <span className="text-gray-700">Bancada em Quartzo</span>
+                    </div>
+                  )}
+                  {(property as any).finishFloor && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🏠</span>
+                      <span className="text-gray-700">Piso: {String((property as any).finishFloor).toLowerCase() === 'porcelanato' ? 'Porcelanato' : String((property as any).finishFloor).toLowerCase() === 'madeira' ? 'Madeira' : String((property as any).finishFloor).toLowerCase() === 'vinilico' ? 'Vinílico' : 'Outro'}</span>
+                    </div>
+                  )}
+                  {(property as any).sunOrientation && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🧭</span>
+                      <span className="text-gray-700">Sol: {String((property as any).sunOrientation).toLowerCase() === 'nascente' ? 'Nascente' : String((property as any).sunOrientation).toLowerCase() === 'poente' ? 'Poente' : 'Outro'}</span>
+                    </div>
+                  )}
+                  {(property as any).petsSmall && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🐶</span>
+                      <span className="text-gray-700">Aceita Pets Pequenos</span>
+                    </div>
+                  )}
+                  {(property as any).petsLarge && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🐕</span>
+                      <span className="text-gray-700">Aceita Pets Grandes</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -455,27 +587,52 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                         radius: 1000
                       }}
                       hideRefitButton
+                      simplePin
                     />
                   </div>
                 )}
                 
-                {/* Locais próximos */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="text-lg">🏫</span>
-                    <span>Escolas próximas</span>
+                {/* Locais próximos com nomes (gratuito via OSM) */}
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 font-medium text-gray-800 mb-1"><span className="text-lg">🏫</span><span>Escolas próximas</span></div>
+                    {nearbyPlaces.schools.length > 0 ? (
+                      <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                        {nearbyPlaces.schools.map((p,i)=>(<li key={`s-${i}`}>{p.name}</li>))}
+                      </ul>
+                    ) : (
+                      <div className="text-sm text-gray-500">Nada encontrado nos últimos 1,2 km</div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="text-lg">🛒</span>
-                    <span>Supermercados</span>
+                  <div>
+                    <div className="flex items-center gap-2 font-medium text-gray-800 mb-1"><span className="text-lg">🛒</span><span>Supermercados</span></div>
+                    {nearbyPlaces.markets.length > 0 ? (
+                      <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                        {nearbyPlaces.markets.map((p,i)=>(<li key={`m-${i}`}>{p.name}</li>))}
+                      </ul>
+                    ) : (
+                      <div className="text-sm text-gray-500">Nada encontrado nos últimos 1,2 km</div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="text-lg">💊</span>
-                    <span>Farmácias</span>
+                  <div>
+                    <div className="flex items-center gap-2 font-medium text-gray-800 mb-1"><span className="text-lg">💊</span><span>Farmácias</span></div>
+                    {nearbyPlaces.pharmacies.length > 0 ? (
+                      <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                        {nearbyPlaces.pharmacies.map((p,i)=>(<li key={`p-${i}`}>{p.name}</li>))}
+                      </ul>
+                    ) : (
+                      <div className="text-sm text-gray-500">Nada encontrado nos últimos 1,2 km</div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="text-lg">🍽️</span>
-                    <span>Restaurantes</span>
+                  <div>
+                    <div className="flex items-center gap-2 font-medium text-gray-800 mb-1"><span className="text-lg">🍽️</span><span>Restaurantes</span></div>
+                    {nearbyPlaces.restaurants.length > 0 ? (
+                      <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                        {nearbyPlaces.restaurants.map((p,i)=>(<li key={`r-${i}`}>{p.name}</li>))}
+                      </ul>
+                    ) : (
+                      <div className="text-sm text-gray-500">Nada encontrado nos últimos 1,2 km</div>
+                    )}
                   </div>
                 </div>
                 
@@ -483,7 +640,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.street}, ${property.city}, ${property.state}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
+                  className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 font-medium"
                 >
                   Ver no Google Maps →
                 </a>
@@ -511,27 +668,27 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                     <input
                       type="text"
                       placeholder="Nome"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
                     <input
                       type="email"
                       placeholder="E-mail"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
-                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
                       <option>+55</option>
                     </select>
                     <input
                       type="tel"
                       placeholder="Telefone (opcional)"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
                     <textarea
                       rows={4}
                       placeholder={`Tenho interesse em\n${property.title}`}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
                     />
-                    <Button className="w-full bg-teal-600 hover:bg-teal-700">
+                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 shadow-md hover:shadow-lg">
                       Entrar em Contato
                     </Button>
                     <div className="space-y-2 text-xs text-gray-600">
@@ -577,7 +734,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             </div>
           )}
         </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </AnimatePresence>
   );
 }

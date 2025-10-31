@@ -84,12 +84,12 @@ export default function ModernNavbar() {
                 type="button"
                 onMouseEnter={() => { setMegaMenu(item.key); setPrimary(item.key); }}
                 onClick={() => { setMegaMenu(megaMenu === item.key ? null : item.key); setPrimary(item.key); }}
-                className={`text-gray-900 hover:text-blue-600 font-semibold text-[15px] transition-colors relative group ${
-                  primary === item.key ? 'text-blue-600' : ''
+                className={`text-gray-900 hover:text-emerald-600 font-semibold text-[15px] transition-colors relative group ${
+                  primary === item.key ? 'text-emerald-600' : ''
                 }`}
               >
                 {item.label}
-                <span className={`absolute -bottom-1 left-0 h-0.5 bg-blue-600 transition-all duration-300 ${
+                <span className={`absolute -bottom-1 left-0 h-0.5 bg-emerald-600 transition-all duration-300 ${
                   primary === item.key ? 'w-full' : 'w-0 group-hover:w-full'
                 }`} />
               </button>
@@ -101,11 +101,11 @@ export default function ModernNavbar() {
             <motion.div
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.5 }}
-              className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center"
+              className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center shadow-md"
             >
               <span className="text-white font-bold text-xl">Z</span>
             </motion.div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <span className="text-2xl font-bold text-stone-900">
               ZillowLike
             </span>
           </Link>
@@ -142,7 +142,7 @@ export default function ModernNavbar() {
                 { label: 'Leads', href: '/owner/leads' },
               ];
             })().map((a) => (
-              <Link key={a.label} href={a.href} className="text-[15px] font-semibold text-gray-800 hover:text-blue-600">
+              <Link key={a.label} href={a.href} className="text-[15px] font-semibold text-gray-800 hover:text-emerald-600">
                 {a.label}
               </Link>
             ))}
@@ -156,7 +156,7 @@ export default function ModernNavbar() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setUserMenuOpen((v) => !v)}
                   aria-expanded={userMenuOpen}
-                  className="flex items-center gap-2 px-2 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold text-[13px] hover:shadow-glow transition-all"
+                  className="flex items-center gap-2 px-2 py-1.5 bg-emerald-600 text-white rounded-full font-semibold text-[13px] hover:bg-emerald-700 hover:shadow-md transition-all"
                 >
                   <User className="w-3.5 h-3.5" />
                   <span>Dashboard</span>
@@ -168,9 +168,9 @@ export default function ModernNavbar() {
                     className="absolute right-0 mt-2 w-80 rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-[0_20px_60px_-15px_rgba(0,0,0,0.35)] overflow-hidden z-50"
                   >
                     {/* Header */}
-                    <div className="px-4 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
+                    <div className="px-4 py-4 bg-stone-50 border-b">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-white flex items-center justify-center font-bold">
+                        <div className="h-10 w-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold shadow-md">
                           {(session as any)?.user?.name?.[0]?.toUpperCase?.() || (session as any)?.user?.email?.[0]?.toUpperCase?.() || 'U'}
                         </div>
                         <div className="min-w-0">
@@ -185,17 +185,17 @@ export default function ModernNavbar() {
                       {role === 'ADMIN' && (
                         <>
                           <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">Administração</div>
-                          <Link href="/admin" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <LayoutDashboard className="w-4 h-4 text-blue-600"/> Painel Admin
+                          <Link href="/admin" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <LayoutDashboard className="w-4 h-4 text-emerald-600"/> Painel Admin
                           </Link>
-                          <Link href="/admin/properties" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <Building2 className="w-4 h-4 text-blue-600"/> Gerenciar imóveis
+                          <Link href="/admin/properties" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <Building2 className="w-4 h-4 text-emerald-600"/> Gerenciar imóveis
                           </Link>
-                          <Link href="/admin/users" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <Users className="w-4 h-4 text-blue-600"/> Usuários
+                          <Link href="/admin/users" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <Users className="w-4 h-4 text-emerald-600"/> Usuários
                           </Link>
-                          <Link href="/admin/realtor-applications" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <ClipboardList className="w-4 h-4 text-blue-600"/> Aplicações de corretores
+                          <Link href="/admin/realtor-applications" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <ClipboardList className="w-4 h-4 text-emerald-600"/> Aplicações de corretores
                           </Link>
                           <div className="my-2 border-t" />
                         </>
@@ -203,20 +203,20 @@ export default function ModernNavbar() {
                       {role === 'OWNER' && (
                         <>
                           <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">Proprietário</div>
-                          <Link href="/owner/dashboard" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <LayoutDashboard className="w-4 h-4 text-blue-600"/> Painel do proprietário
+                          <Link href="/owner/dashboard" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <LayoutDashboard className="w-4 h-4 text-emerald-600"/> Painel do proprietário
                           </Link>
-                          <Link href="/owner/new" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <Megaphone className="w-4 h-4 text-blue-600"/> Anunciar imóvel
+                          <Link href="/owner/new" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <Megaphone className="w-4 h-4 text-emerald-600"/> Anunciar imóvel
                           </Link>
-                          <Link href="/owner/properties" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <Building2 className="w-4 h-4 text-blue-600"/> Meus anúncios
+                          <Link href="/owner/properties" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <Building2 className="w-4 h-4 text-emerald-600"/> Meus anúncios
                           </Link>
-                          <Link href="/owner/leads" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <ClipboardList className="w-4 h-4 text-blue-600"/> Meus leads
+                          <Link href="/owner/leads" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <ClipboardList className="w-4 h-4 text-emerald-600"/> Meus leads
                           </Link>
-                          <Link href="/owner/analytics" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <LineChart className="w-4 h-4 text-blue-600"/> Analytics
+                          <Link href="/owner/analytics" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <LineChart className="w-4 h-4 text-emerald-600"/> Analytics
                           </Link>
                           <div className="my-2 border-t" />
                         </>
@@ -224,17 +224,17 @@ export default function ModernNavbar() {
                       {(role === 'REALTOR' || role === 'AGENCY') && (
                         <>
                           <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">{role === 'AGENCY' ? 'Imobiliária' : 'Corretor'}</div>
-                          <Link href="/realtor" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <LayoutDashboard className="w-4 h-4 text-blue-600"/> {role === 'AGENCY' ? 'Painel da imobiliária' : 'Painel do corretor'}
+                          <Link href="/realtor" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <LayoutDashboard className="w-4 h-4 text-emerald-600"/> {role === 'AGENCY' ? 'Painel da imobiliária' : 'Painel do corretor'}
                           </Link>
-                          <Link href="/alerts" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <Bell className="w-4 h-4 text-blue-600"/> Alertas
+                          <Link href="/alerts" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <Bell className="w-4 h-4 text-emerald-600"/> Alertas
                           </Link>
-                          <Link href="/owner/new" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <Megaphone className="w-4 h-4 text-blue-600"/> Anunciar imóvel
+                          <Link href="/owner/new" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <Megaphone className="w-4 h-4 text-emerald-600"/> Anunciar imóvel
                           </Link>
-                          <Link href="/owner/properties" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <Building2 className="w-4 h-4 text-blue-600"/> {role === 'AGENCY' ? 'Anúncios da imobiliária' : 'Meus anúncios'}
+                          <Link href="/owner/properties" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <Building2 className="w-4 h-4 text-emerald-600"/> {role === 'AGENCY' ? 'Anúncios da imobiliária' : 'Meus anúncios'}
                           </Link>
                           <div className="my-2 border-t" />
                         </>
@@ -242,16 +242,16 @@ export default function ModernNavbar() {
                       {role === 'USER' && (
                         <>
                           <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">Começar</div>
-                          <Link href="/owner/new" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50">
-                            <Megaphone className="w-4 h-4 text-blue-600"/> Anunciar imóvel
+                          <Link href="/owner/new" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50">
+                            <Megaphone className="w-4 h-4 text-emerald-600"/> Anunciar imóvel
                           </Link>
                           <div className="my-2 border-t" />
                         </>
                       )}
                       <div className="px-4 pb-1 text-[11px] uppercase tracking-wider text-gray-500">Conta</div>
-                      <Link href="/favorites" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50"><Star className="w-4 h-4 text-blue-600"/> Favoritos</Link>
-                      <Link href="/saved-searches" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50"><Bookmark className="w-4 h-4 text-blue-600"/> Buscas salvas</Link>
-                      <Link href="/profile" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-blue-50"><Settings className="w-4 h-4 text-blue-600"/> Perfil e conta</Link>
+                      <Link href="/favorites" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50"><Star className="w-4 h-4 text-emerald-600"/> Favoritos</Link>
+                      <Link href="/saved-searches" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50"><Bookmark className="w-4 h-4 text-emerald-600"/> Buscas salvas</Link>
+                      <Link href="/profile" className="flex items-center gap-2 px-4 py-2.5 text-gray-800 hover:bg-emerald-50"><Settings className="w-4 h-4 text-emerald-600"/> Perfil e conta</Link>
                     </div>
                     <div className="border-t">
                       <button onClick={() => { setUserMenuOpen(false); signOut({ callbackUrl: "/" }); }} className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 font-semibold">Sair</button>
@@ -414,7 +414,7 @@ export default function ModernNavbar() {
               key={item.label}
               href="/"
               onClick={() => setIsOpen(false)}
-              className="block w-full text-left px-4 py-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50 font-medium transition-colors rounded-lg"
+              className="block w-full text-left px-4 py-3 text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 font-medium transition-colors rounded-lg"
             >
               {item.label}
             </Link>
@@ -424,7 +424,7 @@ export default function ModernNavbar() {
               <div className="space-y-2">
                 {role === 'ADMIN' && (
                   <>
-                    <Link href="/admin" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-blue-50 rounded-lg font-medium text-blue-700">Painel Admin</Link>
+                    <Link href="/admin" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-emerald-50 rounded-lg font-medium text-emerald-700">Painel Admin</Link>
                     <Link href="/admin/properties" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Gerenciar imóveis</Link>
                     <Link href="/admin/users" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Usuários</Link>
                     <Link href="/admin/realtor-applications" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Aplicações de corretores</Link>
@@ -432,7 +432,7 @@ export default function ModernNavbar() {
                 )}
                 {role === 'OWNER' && (
                   <>
-                    <Link href="/owner/dashboard" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-blue-50 rounded-lg font-medium text-blue-700">Painel do proprietário</Link>
+                    <Link href="/owner/dashboard" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-emerald-50 rounded-lg font-medium text-emerald-700">Painel do proprietário</Link>
                     <Link href="/owner/new" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Anunciar imóvel</Link>
                     <Link href="/owner/properties" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Meus anúncios</Link>
                     <Link href="/owner/leads" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Meus leads</Link>
@@ -441,7 +441,7 @@ export default function ModernNavbar() {
                 )}
                 {(role === 'REALTOR' || role === 'AGENCY') && (
                   <>
-                    <Link href="/realtor" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-blue-50 rounded-lg font-medium text-blue-700">{role === 'AGENCY' ? 'Painel da imobiliária' : 'Painel do corretor'}</Link>
+                    <Link href="/realtor" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-emerald-50 rounded-lg font-medium text-emerald-700">{role === 'AGENCY' ? 'Painel da imobiliária' : 'Painel do corretor'}</Link>
                     <Link href="/alerts" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Alertas</Link>
                     <Link href="/owner/new" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Anunciar imóvel</Link>
                     <Link href="/owner/properties" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">{role === 'AGENCY' ? 'Anúncios da imobiliária' : 'Meus anúncios'}</Link>
@@ -449,7 +449,7 @@ export default function ModernNavbar() {
                 )}
                 {role === 'USER' && (
                   <>
-                    <Link href="/owner/new" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-blue-50 rounded-lg font-medium text-blue-700">Anunciar imóvel</Link>
+                    <Link href="/owner/new" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-emerald-50 rounded-lg font-medium text-emerald-700">Anunciar imóvel</Link>
                   </>
                 )}
                 <Link href="/favorites" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Favoritos</Link>
@@ -496,7 +496,7 @@ function MegaMenuSection({ title, icon, items }: { title: string; icon: string; 
           <li key={index}>
             <Link
               href={item.href}
-              className="block px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all font-medium"
+              className="block px-4 py-2 text-gray-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all font-medium"
             >
               {item.label}
             </Link>

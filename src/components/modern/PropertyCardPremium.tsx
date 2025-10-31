@@ -226,7 +226,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               {property.conditionTags.slice(0, 1).map((tag, index) => (
                 <span
                   key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg backdrop-blur-sm"
+                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-600 text-white shadow-md"
                 >
                   {tag}
                 </span>
@@ -418,7 +418,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           {/* Tags row: Tipo + Finalidade (Venda/Aluguel) */}
           <div className="flex items-center gap-2 mb-2">
             {property.type && (
-              <Chip icon={<Home className="w-4 h-4 text-white" />}>{property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type === 'STUDIO' ? 'Studio' : property.type}</Chip>
+              <Chip icon={<Home className="w-4 h-4" />}>{property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type === 'STUDIO' ? 'Studio' : property.type}</Chip>
             )}
             {property.purpose && (
               <Chip>{property.purpose === 'RENT' ? 'Aluguel' : 'Venda'}</Chip>

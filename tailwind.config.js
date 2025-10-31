@@ -34,9 +34,9 @@ module.exports = {
           50:  '#FAFAFA',
         },
         accent: {
-          DEFAULT: '#2563EB',
-          600: '#1D4ED8',
-          700: '#1E40AF',
+          DEFAULT: '#059669', // Emerald 600
+          600: '#047857', // Emerald 700
+          700: '#065F46', // Emerald 800
         },
         success: '#16A34A',
         warning: '#D97706',
