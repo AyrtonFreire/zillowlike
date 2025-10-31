@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Share2, Heart, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Share2, Heart, MapPin, ChevronLeft, ChevronRight, Car, Home, Wind, Waves, Building2, Dumbbell, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Sun, Video, Zap, Eye, ArrowUp, ArrowDown, Accessibility, DoorOpen, Lightbulb, Droplets, Archive, Gem, Compass, Dog, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import Button from "./ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,6 +52,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [property, setProperty] = useState<PropertyDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -387,216 +388,67 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 )}
               </div>
 
-              {/* Features */}
+              {/* Features - Sober style with Lucide icons */}
               <div className="pt-4 border-t border-teal/10">
                 <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Características</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {property.furnished && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🛋️</span>
-                      <span className="text-gray-700">Mobiliado</span>
-                    </div>
-                  )}
-                  {property.petFriendly && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🐾</span>
-                      <span className="text-gray-700">Aceita Pets</span>
-                    </div>
-                  )}
-                  {property.parkingSpots != null && property.parkingSpots > 0 && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🚗</span>
-                      <span className="text-gray-700">Estacionamento</span>
-                    </div>
-                  )}
-                  {/* Adicionar mais features conforme disponíveis na API */}
-                  {(property as any).hasElevator && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🛗</span>
-                      <span className="text-gray-700">Elevador</span>
-                    </div>
-                  )}
-                  {(property as any).hasBalcony && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🏡</span>
-                      <span className="text-gray-700">Varanda</span>
-                    </div>
-                  )}
-                  {(property as any).hasPool && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🏊</span>
-                      <span className="text-gray-700">Piscina</span>
-                    </div>
-                  )}
-                  {(property as any).hasGym && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🏋️</span>
-                      <span className="text-gray-700">Academia</span>
-                    </div>
-                  )}
-                  {(property as any).hasGourmet && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">👨‍🍳</span>
-                      <span className="text-gray-700">Espaço Gourmet</span>
-                    </div>
-                  )}
-                  {(property as any).hasPlayground && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🎠</span>
-                      <span className="text-gray-700">Playground</span>
-                    </div>
-                  )}
-                  {(property as any).hasPartyRoom && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🎉</span>
-                      <span className="text-gray-700">Salão de Festas</span>
-                    </div>
-                  )}
-                  {(property as any).hasConcierge24h && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">👨‍💼</span>
-                      <span className="text-gray-700">Portaria 24h</span>
-                    </div>
-                  )}
-                  {(property as any).comfortAC && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">❄️</span>
-                      <span className="text-gray-700">Ar Condicionado</span>
-                    </div>
-                  )}
-                  {(property as any).comfortHeating && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🔥</span>
-                      <span className="text-gray-700">Aquecimento</span>
-                    </div>
-                  )}
-                  {(property as any).comfortSolar && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">☀️</span>
-                      <span className="text-gray-700">Energia Solar</span>
-                    </div>
-                  )}
-                  {(property as any).secCCTV && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">📹</span>
-                      <span className="text-gray-700">CFTV</span>
-                    </div>
-                  )}
-                  {(property as any).secElectricFence && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">⚡</span>
-                      <span className="text-gray-700">Cerca Elétrica</span>
-                    </div>
-                  )}
-                  {(property as any).viewSea && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🌊</span>
-                      <span className="text-gray-700">Vista para o Mar</span>
-                    </div>
-                  )}
-                  {(property as any).viewCity && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🌆</span>
-                      <span className="text-gray-700">Vista para Cidade</span>
-                    </div>
-                  )}
-                  {(property as any).positionFront && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">⬆️</span>
-                      <span className="text-gray-700">Frente</span>
-                    </div>
-                  )}
-                  {(property as any).positionBack && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">⬇️</span>
-                      <span className="text-gray-700">Fundos</span>
-                    </div>
-                  )}
-                  {(property as any).accRamps && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🛞</span>
-                      <span className="text-gray-700">Rampa de Acesso</span>
-                    </div>
-                  )}
-                  {(property as any).accWideDoors && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🚪</span>
-                      <span className="text-gray-700">Portas Largas</span>
-                    </div>
-                  )}
-                  {(property as any).accAccessibleElevator && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">♿</span>
-                      <span className="text-gray-700">Elevador Acessível</span>
-                    </div>
-                  )}
-                  {(property as any).accTactile && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🟨</span>
-                      <span className="text-gray-700">Piso Tátil</span>
-                    </div>
-                  )}
-                  {(property as any).comfortNoiseWindows && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🔇</span>
-                      <span className="text-gray-700">Janelas Antirruído</span>
-                    </div>
-                  )}
-                  {(property as any).comfortLED && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">💡</span>
-                      <span className="text-gray-700">Iluminação LED</span>
-                    </div>
-                  )}
-                  {(property as any).comfortWaterReuse && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🚿</span>
-                      <span className="text-gray-700">Reuso de Água</span>
-                    </div>
-                  )}
-                  {(property as any).finishCabinets && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🗄️</span>
-                      <span className="text-gray-700">Armários Planejados</span>
-                    </div>
-                  )}
-                  {(property as any).finishCounterGranite && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🪨</span>
-                      <span className="text-gray-700">Bancada em Granito</span>
-                    </div>
-                  )}
-                  {(property as any).finishCounterQuartz && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">💎</span>
-                      <span className="text-gray-700">Bancada em Quartzo</span>
-                    </div>
-                  )}
-                  {(property as any).finishFloor && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🏠</span>
-                      <span className="text-gray-700">Piso: {String((property as any).finishFloor).toLowerCase() === 'porcelanato' ? 'Porcelanato' : String((property as any).finishFloor).toLowerCase() === 'madeira' ? 'Madeira' : String((property as any).finishFloor).toLowerCase() === 'vinilico' ? 'Vinílico' : 'Outro'}</span>
-                    </div>
-                  )}
-                  {(property as any).sunOrientation && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🧭</span>
-                      <span className="text-gray-700">Sol: {String((property as any).sunOrientation).toLowerCase() === 'nascente' ? 'Nascente' : String((property as any).sunOrientation).toLowerCase() === 'poente' ? 'Poente' : 'Outro'}</span>
-                    </div>
-                  )}
-                  {(property as any).petsSmall && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🐶</span>
-                      <span className="text-gray-700">Aceita Pets Pequenos</span>
-                    </div>
-                  )}
-                  {(property as any).petsLarge && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">🐕</span>
-                      <span className="text-gray-700">Aceita Pets Grandes</span>
-                    </div>
-                  )}
-                </div>
+                {(() => {
+                  const allFeatures: { icon: React.ReactNode; label: string }[] = [];
+                  
+                  if (property.parkingSpots != null && property.parkingSpots > 0) allFeatures.push({ icon: <Car className="w-5 h-5 text-gray-600" />, label: "Estacionamento" });
+                  if ((property as any).hasElevator) allFeatures.push({ icon: <Building2 className="w-5 h-5 text-gray-600" />, label: "Elevador" });
+                  if ((property as any).hasBalcony) allFeatures.push({ icon: <Home className="w-5 h-5 text-gray-600" />, label: "Varanda" });
+                  if ((property as any).hasPool) allFeatures.push({ icon: <Waves className="w-5 h-5 text-gray-600" />, label: "Piscina" });
+                  if ((property as any).hasGym) allFeatures.push({ icon: <Dumbbell className="w-5 h-5 text-gray-600" />, label: "Academia" });
+                  if ((property as any).hasGourmet) allFeatures.push({ icon: <UtensilsCrossed className="w-5 h-5 text-gray-600" />, label: "Espaço Gourmet" });
+                  if ((property as any).hasPlayground) allFeatures.push({ icon: <Baby className="w-5 h-5 text-gray-600" />, label: "Playground" });
+                  if ((property as any).hasPartyRoom) allFeatures.push({ icon: <PartyPopper className="w-5 h-5 text-gray-600" />, label: "Salão de Festas" });
+                  if ((property as any).hasConcierge24h) allFeatures.push({ icon: <ShieldCheck className="w-5 h-5 text-gray-600" />, label: "Portaria 24h" });
+                  if ((property as any).comfortAC) allFeatures.push({ icon: <Snowflake className="w-5 h-5 text-gray-600" />, label: "Ar Condicionado" });
+                  if ((property as any).comfortHeating) allFeatures.push({ icon: <Flame className="w-5 h-5 text-gray-600" />, label: "Aquecimento" });
+                  if ((property as any).comfortSolar) allFeatures.push({ icon: <Sun className="w-5 h-5 text-gray-600" />, label: "Energia Solar" });
+                  if ((property as any).secCCTV) allFeatures.push({ icon: <Video className="w-5 h-5 text-gray-600" />, label: "CFTV" });
+                  if ((property as any).secElectricFence) allFeatures.push({ icon: <Zap className="w-5 h-5 text-gray-600" />, label: "Cerca Elétrica" });
+                  if ((property as any).viewSea) allFeatures.push({ icon: <Waves className="w-5 h-5 text-gray-600" />, label: "Vista para Mar" });
+                  if ((property as any).viewCity) allFeatures.push({ icon: <Building2 className="w-5 h-5 text-gray-600" />, label: "Vista para Cidade" });
+                  if ((property as any).positionFront) allFeatures.push({ icon: <ArrowUp className="w-5 h-5 text-gray-600" />, label: "Frente" });
+                  if ((property as any).positionBack) allFeatures.push({ icon: <ArrowDown className="w-5 h-5 text-gray-600" />, label: "Fundos" });
+                  if ((property as any).accRamps) allFeatures.push({ icon: <Accessibility className="w-5 h-5 text-gray-600" />, label: "Rampa de Acesso" });
+                  if ((property as any).accWideDoors) allFeatures.push({ icon: <DoorOpen className="w-5 h-5 text-gray-600" />, label: "Portas Largas" });
+                  if ((property as any).accAccessibleElevator) allFeatures.push({ icon: <Accessibility className="w-5 h-5 text-gray-600" />, label: "Elevador Acessível" });
+                  if ((property as any).comfortLED) allFeatures.push({ icon: <Lightbulb className="w-5 h-5 text-gray-600" />, label: "Iluminação LED" });
+                  if ((property as any).comfortWaterReuse) allFeatures.push({ icon: <Droplets className="w-5 h-5 text-gray-600" />, label: "Reuso de Água" });
+                  if ((property as any).finishCabinets) allFeatures.push({ icon: <Archive className="w-5 h-5 text-gray-600" />, label: "Armários Planejados" });
+                  if ((property as any).finishCounterGranite) allFeatures.push({ icon: <Gem className="w-5 h-5 text-gray-600" />, label: "Bancada em Granito" });
+                  if ((property as any).finishCounterQuartz) allFeatures.push({ icon: <Gem className="w-5 h-5 text-gray-600" />, label: "Bancada em Quartzo" });
+                  if ((property as any).sunOrientation) allFeatures.push({ icon: <Compass className="w-5 h-5 text-gray-600" />, label: `Sol: ${String((property as any).sunOrientation).toLowerCase() === 'nascente' ? 'Nascente' : 'Poente'}` });
+                  if (property.petFriendly || (property as any).petsSmall) allFeatures.push({ icon: <Dog className="w-5 h-5 text-gray-600" />, label: "Aceita Pets Pequenos" });
+                  if ((property as any).petsLarge) allFeatures.push({ icon: <Dog className="w-5 h-5 text-gray-600" />, label: "Aceita Pets Grandes" });
+                  if (property.furnished) allFeatures.push({ icon: <Home className="w-5 h-5 text-gray-600" />, label: "Mobiliado" });
+
+                  const visibleFeatures = showAllFeatures ? allFeatures : allFeatures.slice(0, 9);
+                  
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {visibleFeatures.map((feature, idx) => (
+                          <div key={idx} className="flex items-center gap-3">
+                            {feature.icon}
+                            <span className="text-gray-700">{feature.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {allFeatures.length > 9 && (
+                        <button
+                          onClick={() => setShowAllFeatures(!showAllFeatures)}
+                          className="mt-4 inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium"
+                        >
+                          {showAllFeatures ? 'Ver menos' : `Ver todas ${allFeatures.length} características`}
+                          <ChevronDown className={`w-4 h-4 transition-transform ${showAllFeatures ? 'rotate-180' : ''}`} />
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Explore the Area */}

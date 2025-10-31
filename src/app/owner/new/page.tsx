@@ -304,21 +304,32 @@ export default function NewPropertyPage() {
         return () => { window.removeEventListener('resize', onResize); };
       } catch {}
     }
-    // Ensure marker exists only when we have a house number
-    if (geo && addressNumber && !leafletMarker.current) {
-      leafletMarker.current = (window as any).L.marker([geo.lat, geo.lng], { draggable: true }).addTo(leafletMap.current);
-      leafletMarker.current.on('dragend', () => {
-        const p = leafletMarker.current.getLatLng();
-        setGeo({ lat: p.lat, lng: p.lng });
-      });
-    }
-    // Sync marker/center on geo change
-    if (geo) {
-      // Always center map
-      leafletMap.current.setView([geo.lat, geo.lng]);
-      // Update marker position only if it exists
-      if (leafletMarker.current) {
-        leafletMarker.current.setLatLng([geo.lat, geo.lng]);
+    // Create/update marker when geo exists
+    if (geo && leafletMap.current) {
+      if (!leafletMarker.current) {
+        // Create marker
+        try {
+          leafletMarker.current = L.marker([geo.lat, geo.lng], { draggable: true }).addTo(leafletMap.current);
+          leafletMarker.current.on('dragend', () => {
+            const p = leafletMarker.current.getLatLng();
+            setGeo({ lat: p.lat, lng: p.lng });
+          });
+        } catch (e) {
+          console.error('Error creating marker:', e);
+        }
+      } else {
+        // Update existing marker position
+        try {
+          leafletMarker.current.setLatLng([geo.lat, geo.lng]);
+        } catch (e) {
+          console.error('Error updating marker:', e);
+        }
+      }
+      // Center map
+      try {
+        leafletMap.current.setView([geo.lat, geo.lng]);
+      } catch (e) {
+        console.error('Error centering map:', e);
       }
     }
   }, [leafletLoaded, currentStep, geo]);
