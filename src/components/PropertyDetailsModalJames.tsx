@@ -72,26 +72,28 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       .then(data => {
         if (data.item) {
           setProperty(data.item);
-          // Buscar imóveis próximos e similares
-          if (data.item.latitude && data.item.longitude) {
-            console.log('[PropertyModal] Buscando nearby properties...', { lat: data.item.latitude, lng: data.item.longitude });
-            fetch(`/api/properties?lat=${data.item.latitude}&lng=${data.item.longitude}&radius=5&limit=8&exclude=${propertyId}`)
+          // Buscar imóveis próximos e similares usando endpoints dedicados
+          if (data.item.id) {
+            console.log('[PropertyModal] Buscando nearby properties (endpoint /api/properties/nearby)...', { id: data.item.id });
+            fetch(`/api/properties/nearby?id=${data.item.id}&radius=3&limit=8`)
               .then(r => r.json())
               .then(d => {
-                console.log('[PropertyModal] Nearby properties encontrados:', d.items?.length || 0);
-                setNearbyProperties(d.items || []);
+                const arr = d?.properties || d?.items || [];
+                console.log('[PropertyModal] Nearby properties encontrados:', Array.isArray(arr) ? arr.length : 0);
+                setNearbyProperties(arr);
               })
               .catch((err) => {
                 console.error('[PropertyModal] Erro ao buscar nearby properties:', err);
               });
           }
-          if (data.item.type) {
-            console.log('[PropertyModal] Buscando similar properties...', { type: data.item.type });
-            fetch(`/api/properties?type=${data.item.type}&limit=8&exclude=${propertyId}`)
+          if (data.item.id) {
+            console.log('[PropertyModal] Buscando similar properties (endpoint /api/properties/similar)...', { id: data.item.id });
+            fetch(`/api/properties/similar?id=${data.item.id}&limit=8`)
               .then(r => r.json())
               .then(d => {
-                console.log('[PropertyModal] Similar properties encontrados:', d.items?.length || 0);
-                setSimilarProperties(d.items || []);
+                const arr = d?.properties || d?.items || [];
+                console.log('[PropertyModal] Similar properties encontrados:', Array.isArray(arr) ? arr.length : 0);
+                setSimilarProperties(arr);
               })
               .catch((err) => {
                 console.error('[PropertyModal] Erro ao buscar similar properties:', err);
