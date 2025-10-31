@@ -443,7 +443,8 @@ export default function Home() {
 
                 {/* View Mode Toggle + Sort - Premium Style */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  <div className="inline-flex rounded-2xl border-2 border-gray-200 bg-white p-1.5 shadow-md" role="group" aria-label="Alternar visualização">
+                  {/* View mode toggle - Hidden on mobile (use floating button instead) */}
+                  <div className="hidden sm:inline-flex rounded-2xl border-2 border-gray-200 bg-white p-1.5 shadow-md" role="group" aria-label="Alternar visualização">
                     <button
                       type="button"
                       aria-pressed={viewMode === 'split'}
@@ -1079,17 +1080,17 @@ export default function Home() {
       {/* Mobile full-screen map overlay */}
       {mobileMapOpen && (
         <div className="lg:hidden fixed inset-0 z-50 bg-white">
-          <div className="h-14 px-3 flex items-center justify-between border-b bg-white/95 backdrop-blur">
+          <div className="h-14 px-3 flex items-center justify-center border-b bg-white/95 backdrop-blur relative">
+            <div className="text-sm text-gray-600 font-medium">{total} imóveis</div>
+            {/* Botão Lista na mesma posição do botão Mapa (bottom center) */}
             <button
               aria-label="Voltar para lista"
               onClick={() => setMobileMapOpen(false)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-white"
+              className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-full bg-white border shadow-sm flex items-center gap-2"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
-              <span>Lista</span>
+              <LayoutList className="w-5 h-5 text-blue-600" />
+              <span className="font-medium text-gray-800">Lista</span>
             </button>
-            <div className="text-sm text-gray-600">{total} imóveis</div>
-            <div className="w-[80px]" />
           </div>
           <div className="absolute inset-x-0 top-14 bottom-0">
             <MapWithPriceBubbles

@@ -263,25 +263,20 @@ function MapController({ items, onBoundsChange, autoFitOnItemsChange = false, on
     return initialClusters;
   }, [items, zoom]);
 
-  // Não mover automaticamente: só mover se explicitamente habilitado
+  // Auto-fit map to items when they change - SEMPRE ajustar quando items mudam
   const prevItemsCountRef = useRef(0);
+  const prevFirstItemRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!autoFitOnItemsChange) return;
-    if (items.length === 0) return;
-    const prevCount = prevItemsCountRef.current;
-    const shouldFit = prevCount === 0 || Math.abs(items.length - prevCount) > items.length * 0.3;
-    if (!shouldFit) return;
-    if (items.length === 1) {
-      const currentZoom = map.getZoom();
-      if (currentZoom < 13) {
-        map.setView([items[0].latitude, items[0].longitude], 13);
-      }
-    } else {
+    const currentFirstId = items[0]?.id;
+    const itemsChanged = items.length !== prevItemsCountRef.current || currentFirstId !== prevFirstItemRef.current;
+    
+    if (items.length > 0 && itemsChanged) {
       const bounds = L.latLngBounds(items.map(p => [p.latitude, p.longitude] as [number, number]));
-      map.fitBounds(bounds, { padding: [50, 50] });
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
     }
     prevItemsCountRef.current = items.length;
-  }, [items, map, autoFitOnItemsChange]);
+    prevFirstItemRef.current = currentFirstId;
+  }, [items, map]);
 
   // Listen for highlight events
   useEffect(() => {
@@ -411,13 +406,10 @@ function MapController({ items, onBoundsChange, autoFitOnItemsChange = false, on
 }
 
 export default function MapWithPriceBubbles({ items, isLoading, onBoundsChange, autoFitOnItemsChange = false, onHoverChange }: MapProps) {
-  // Centro inicial fixo: não recenter quando os itens mudarem
-  const initialCenterRef = useRef<[number, number]>(
-    items.length > 0
-      ? [items[0].latitude, items[0].longitude]
-      : ([-9.4048, -40.5058] as [number, number])
-  );
-  const center = initialCenterRef.current;
+  // Centro dinâmico: atualiza quando os itens mudarem
+  const center: [number, number] = items.length > 0
+    ? [items[0].latitude, items[0].longitude]
+    : [-9.4048, -40.5058];
 
   if (isLoading) {
     return (

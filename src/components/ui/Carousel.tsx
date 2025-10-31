@@ -3,16 +3,50 @@ import * as React from "react";
 
 export default function Carousel({ items, renderItem, className = "", auto = false, interval = 5000 }: { items: any[]; renderItem: (item: any, index: number) => React.ReactNode; className?: string; auto?: boolean; interval?: number; }) {
   const [index, setIndex] = React.useState(0);
+  const [touchStart, setTouchStart] = React.useState(0);
+  const [touchEnd, setTouchEnd] = React.useState(0);
   const len = items.length;
+  
   React.useEffect(() => {
     if (!auto || len <= 1) return;
     const id = setInterval(() => setIndex((i) => (i + 1) % len), interval);
     return () => clearInterval(id);
   }, [auto, interval, len]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    
+    if (isLeftSwipe) {
+      setIndex((i) => (i + 1) % len);
+    }
+    if (isRightSwipe) {
+      setIndex((i) => (i - 1 + len) % len);
+    }
+    
+    setTouchStart(0);
+    setTouchEnd(0);
+  };
+
   if (len === 0) return null;
   return (
     <div className={`relative ${className}`}>
-      <div className="overflow-hidden rounded-xl">
+      <div 
+        className="overflow-hidden rounded-xl"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="flex transition-transform duration-500" style={{ transform: `translateX(-${index * 100}%)` }}>
           {items.map((it, i) => (
             <div key={i} className="min-w-full">

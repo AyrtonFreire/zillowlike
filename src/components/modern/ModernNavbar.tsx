@@ -74,8 +74,19 @@ export default function ModernNavbar() {
     >
       <div className="mx-auto max-w-7xl px-4">
         <div className={`grid grid-cols-3 items-center ${isScrolled ? 'h-16' : 'h-20'} transition-[height]`}>
-          {/* Left: Primary tabs with mega dropdown triggers */}
-          <div className="hidden md:flex items-center justify-start gap-7 mega-menu-container">
+          {/* Left: Primary tabs with mega dropdown triggers (Desktop) / Mobile menu button */}
+          <div className="flex items-center justify-start gap-7">
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="md:hidden p-2 text-gray-900 hover:text-teal transition-colors"
+              aria-label="Menu"
+            >
+              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+            
+            {/* Desktop menu */}
+            <div className="hidden md:flex items-center gap-7 mega-menu-container">
             {menuItems.map((item) => (
               <button
                 key={item.label}
@@ -92,6 +103,7 @@ export default function ModernNavbar() {
                 }`} />
               </button>
             ))}
+            </div>
           </div>
 
           {/* Center: Logo */}
@@ -404,7 +416,7 @@ export default function ModernNavbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden bg-white border-t border-gray-200 fixed inset-x-0 top-16 sm:top-20 bottom-0 z-50 overflow-y-auto"
+            className="md:hidden bg-white border-t border-gray-200 fixed inset-x-0 top-16 bottom-0 z-[60] overflow-y-auto shadow-xl"
           >
         <div className="container mx-auto px-4 py-4 space-y-2">
           <button onClick={() => setIsOpen(false)} className="w-full text-right px-4 py-2 text-gray-600 hover:text-gray-900 font-medium">

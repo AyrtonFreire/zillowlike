@@ -159,7 +159,7 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="relative min-h-[55vh] sm:min-h-[60vh] md:min-h-[65vh] flex items-center justify-center overflow-hidden pt-28 md:pt-0 pb-8 md:pb-0">
+    <div className="relative min-h-[450px] sm:min-h-[60vh] md:min-h-[65vh] flex items-center justify-center overflow-hidden pt-20 md:pt-0 pb-6 md:pb-0">
       {/* Top Hero Nav removed to avoid conflict with ModernNavbar */}
       {/* Slideshow Background with Overlay */}
       <div className="absolute inset-0">
@@ -246,16 +246,16 @@ export default function HeroSection() {
             transition={{ delay: 0.6 }}
             className="w-full max-w-4xl mx-auto relative"
           >
-            <form onSubmit={handleSearch} className="bg-white/95 backdrop-blur rounded-3xl p-3 sm:p-2 shadow-2xl">
-              {/* Purpose Toggle - Comprar/Alugar */}
-              <div className="flex gap-4 mb-3 sm:mb-0 sm:absolute sm:top-2 sm:left-2 z-10">
+            <form onSubmit={handleSearch} className="bg-white/95 backdrop-blur rounded-3xl p-4 sm:p-5 shadow-2xl">
+              {/* Purpose Toggle - Comprar/Alugar - Centralizado e mais visível */}
+              <div className="flex gap-6 mb-4 justify-center border-b border-gray-200 pb-3">
                 <button
                   type="button"
                   onClick={() => setPurpose('SALE')}
-                  className={`px-1 pb-1 text-sm font-semibold transition-colors ${
+                  className={`px-4 pb-2 text-base font-bold transition-all ${
                     purpose === 'SALE'
-                      ? 'text-teal-700 border-b-2 border-teal-600'
-                      : 'text-gray-600 hover:text-gray-800'
+                      ? 'text-teal-700 border-b-3 border-teal-600 scale-105'
+                      : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   Comprar
@@ -263,17 +263,17 @@ export default function HeroSection() {
                 <button
                   type="button"
                   onClick={() => setPurpose('RENT')}
-                  className={`px-1 pb-1 text-sm font-semibold transition-colors ${
+                  className={`px-4 pb-2 text-base font-bold transition-all ${
                     purpose === 'RENT'
-                      ? 'text-teal-700 border-b-2 border-teal-600'
-                      : 'text-gray-600 hover:text-gray-800'
+                      ? 'text-teal-700 border-b-3 border-teal-600 scale-105'
+                      : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   Alugar
                 </button>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-1 sm:mt-12">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-1">
                 {/* Campo Localização */}
                 <div ref={searchRef} className="flex-1 flex items-center gap-3 px-4 sm:px-6 py-3 bg-transparent rounded-2xl sm:rounded-full w-full border border-gray-200 sm:border-0">
                   <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
@@ -447,7 +447,7 @@ export default function HeroSection() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 max-h-[280px]"
+                  className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-y-auto z-[100] max-h-[280px]"
                 >
                   {isFetchingSuggestions ? (
                     <div className="px-4 py-8 text-center text-gray-400">
@@ -458,46 +458,77 @@ export default function HeroSection() {
                       Nenhuma cidade encontrada
                     </div>
                   ) : (
-                    <div className="p-3">
+                    <div className="p-4">
                       {searchQuery.length === 0 && (
-                        <div className="px-2 pb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                        <div className="px-2 pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                           Buscas Populares
                         </div>
                       )}
                       
-                      {/* Grid horizontal de cidades */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {suggestions.map((suggestion, index) => (
-                          <motion.button
-                            key={index}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.03 }}
-                            onClick={() => handleSuggestionClick(suggestion)}
-                            className="group relative flex flex-col gap-1 px-3 py-3 hover:bg-gradient-to-br hover:from-teal-50 hover:to-blue-50 rounded-xl transition-all text-left border border-transparent hover:border-teal-100"
-                          >
-                            <div className="flex items-center gap-2">
-                              <MapPin className="w-3.5 h-3.5 text-gray-400 group-hover:text-teal-600 transition-colors flex-shrink-0" />
-                              <span className="text-sm font-semibold text-gray-800 group-hover:text-teal-700 transition-colors truncate">
-                                {suggestion.city}
+                      {/* Agrupar por cidade */}
+                      {(() => {
+                        const grouped = suggestions.reduce((acc, s) => {
+                          const key = `${s.city}, ${s.state}`;
+                          if (!acc[key]) {
+                            acc[key] = { city: s.city, state: s.state, neighborhoods: [], totalCount: 0 };
+                          }
+                          if (s.neighborhood) {
+                            acc[key].neighborhoods.push({ name: s.neighborhood, count: s.count });
+                          }
+                          acc[key].totalCount += s.count;
+                          return acc;
+                        }, {} as Record<string, { city: string; state: string; neighborhoods: { name: string; count: number }[]; totalCount: number }>);
+                        
+                        return Object.entries(grouped).map(([key, data], cityIndex) => (
+                          <div key={key} className="mb-4 last:mb-0">
+                            {/* Cidade */}
+                            <motion.button
+                              initial={{ opacity: 0, y: -5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: cityIndex * 0.05 }}
+                              onClick={() => handleSuggestionClick({ city: data.city, state: data.state, label: `${data.city}, ${data.state}`, count: data.totalCount, neighborhood: null })}
+                              className="w-full group flex items-center justify-between px-4 py-3 bg-gradient-to-r from-teal-50 to-blue-50 hover:from-teal-100 hover:to-blue-100 rounded-xl transition-all border border-teal-100"
+                            >
+                              <div className="flex items-center gap-3">
+                                <MapPin className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                                <div className="text-left">
+                                  <div className="font-bold text-gray-900 text-sm">{data.city}</div>
+                                  <div className="text-xs text-gray-600">{data.state}</div>
+                                </div>
+                              </div>
+                              <span className="text-xs font-semibold text-teal-700 bg-white px-3 py-1 rounded-full">
+                                {data.totalCount}
                               </span>
-                            </div>
-                            <div className="flex items-center justify-between gap-2 pl-5">
-                              <span className="text-xs text-gray-500 truncate">
-                                {suggestion.state}
-                              </span>
-                              <span className="text-[10px] font-medium text-gray-400 group-hover:text-teal-600 bg-gray-50 group-hover:bg-teal-50 px-2 py-0.5 rounded-full whitespace-nowrap">
-                                {suggestion.count}
-                              </span>
-                            </div>
-                            {suggestion.neighborhood && (
-                              <div className="text-[10px] text-gray-400 pl-5 truncate">
-                                {suggestion.neighborhood}
+                            </motion.button>
+                            
+                            {/* Bairros */}
+                            {data.neighborhoods.length > 0 && (
+                              <div className="mt-2 pl-4 space-y-1">
+                                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1">
+                                  Bairros
+                                </div>
+                                {data.neighborhoods.map((n, nIndex) => (
+                                  <motion.button
+                                    key={nIndex}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: (cityIndex * 0.05) + (nIndex * 0.02) }}
+                                    onClick={() => handleSuggestionClick({ city: data.city, state: data.state, label: `${n.name}, ${data.city}`, count: n.count, neighborhood: n.name })}
+                                    className="w-full group flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded-lg transition-all text-left"
+                                  >
+                                    <span className="text-sm text-gray-700 group-hover:text-teal-700 font-medium">
+                                      {n.name}
+                                    </span>
+                                    <span className="text-xs text-gray-400 group-hover:text-teal-600">
+                                      {n.count}
+                                    </span>
+                                  </motion.button>
+                                ))}
                               </div>
                             )}
-                          </motion.button>
-                        ))}
-                      </div>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   )}
                 </motion.div>
@@ -509,16 +540,7 @@ export default function HeroSection() {
         </motion.div>
       </div>
 
-      {/* Scroll Indicator */}
-      <motion.div
-        animate={{ y: [0, 10, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
-        className="hidden md:block absolute bottom-8 left-1/2 -translate-x-1/2 text-white/50"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-        </svg>
-      </motion.div>
+      
     </div>
   );
 }
