@@ -5,6 +5,10 @@ import { X, Share2, Heart, MapPin, ChevronLeft, ChevronRight } from "lucide-reac
 import Image from "next/image";
 import Button from "./ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
+
+const Map = dynamic(() => import("@/components/Map"), { ssr: false });
+const SimilarCarousel = dynamic(() => import("@/components/SimilarCarousel"), { ssr: false });
 
 type PropertyDetailsModalProps = {
   propertyId: string | null;
@@ -51,6 +55,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [isFavorite, setIsFavorite] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [nearbyProperties, setNearbyProperties] = useState<any[]>([]);
+  const [similarProperties, setSimilarProperties] = useState<any[]>([]);
 
   // Fetch property data
   useEffect(() => {
@@ -60,7 +66,22 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     fetch(`/api/properties?id=${propertyId}`)
       .then(res => res.json())
       .then(data => {
-        if (data.item) setProperty(data.item);
+        if (data.item) {
+          setProperty(data.item);
+          // Buscar imóveis próximos e similares
+          if (data.item.latitude && data.item.longitude) {
+            fetch(`/api/properties?lat=${data.item.latitude}&lng=${data.item.longitude}&radius=5&limit=8&exclude=${propertyId}`)
+              .then(r => r.json())
+              .then(d => setNearbyProperties(d.items || []))
+              .catch(() => {});
+          }
+          if (data.item.type) {
+            fetch(`/api/properties?type=${data.item.type}&limit=8&exclude=${propertyId}`)
+              .then(r => r.json())
+              .then(d => setSimilarProperties(d.items || []))
+              .catch(() => {});
+          }
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -135,7 +156,14 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+      {open && <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />}
+      <motion.div 
+        initial={{ x: "100%" }}
+        animate={{ x: open ? 0 : "100%" }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+        className="fixed right-0 top-0 bottom-0 w-full md:w-[85%] lg:w-[75%] xl:w-[70%] bg-white z-50 overflow-y-auto shadow-2xl"
+      >
         {/* Header */}
         <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -144,7 +172,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
             >
               <ChevronLeft className="w-5 h-5" />
-              <span className="hidden sm:inline">Back to search</span>
+              <span className="hidden sm:inline">Voltar à busca</span>
             </button>
             <div className="flex items-center gap-3">
               <button
@@ -152,14 +180,14 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
               >
                 <Share2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Share</span>
+                <span className="hidden sm:inline">Compartilhar</span>
               </button>
               <button
                 onClick={handleFavorite}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
               >
                 <Heart className={`w-4 h-4 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
-                <span className="hidden sm:inline">Save</span>
+                <span className="hidden sm:inline">Salvar</span>
               </button>
             </div>
           </div>
@@ -228,9 +256,9 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
               {/* Specs inline */}
               <div className="flex items-center gap-4 text-sm text-gray-600">
-                {property.bedrooms != null && <span>{property.bedrooms} Beds</span>}
-                {property.bathrooms != null && <span>· {property.bathrooms} Baths</span>}
-                {property.areaM2 != null && <span>· {property.areaM2} Sqm</span>}
+                {property.bedrooms != null && <span>{property.bedrooms} Quartos</span>}
+                {property.bathrooms != null && <span>· {property.bathrooms} Banheiros</span>}
+                {property.areaM2 != null && <span>· {property.areaM2} m²</span>}
               </div>
 
               {/* Location */}
@@ -245,7 +273,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               {/* About the Property */}
               <div className="pt-4 border-t border-gray-200">
                 <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">
-                  About the Property
+                  Sobre o Imóvel
                 </h3>
                 <div className="text-gray-700 leading-relaxed">
                   <p>{showMore ? property.description : truncatedDescription}</p>
@@ -254,7 +282,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                       onClick={() => setShowMore(!showMore)}
                       className="text-blue-600 hover:text-blue-800 font-medium mt-2 inline-flex items-center gap-1"
                     >
-                      {showMore ? "View less" : "View more"} →
+                      {showMore ? "Ver menos" : "Ver mais"} →
                     </button>
                   )}
                 </div>
@@ -264,50 +292,141 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
                 {property.type && (
                   <div>
-                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Property type</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Tipo</div>
                     <div className="font-medium text-gray-900">{property.type}</div>
                   </div>
                 )}
                 {property.yearBuilt && (
                   <div>
-                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Year built</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Ano de construção</div>
                     <div className="font-medium text-gray-900">{property.yearBuilt}</div>
                   </div>
                 )}
                 {property.parkingSpots != null && (
                   <div>
-                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Parking</div>
-                    <div className="font-medium text-gray-900">{property.parkingSpots} spots</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Vagas</div>
+                    <div className="font-medium text-gray-900">{property.parkingSpots} {property.parkingSpots === 1 ? 'vaga' : 'vagas'}</div>
                   </div>
                 )}
                 {property.furnished && (
                   <div>
-                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Furnishing</div>
-                    <div className="font-medium text-gray-900">Furnished</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Mobília</div>
+                    <div className="font-medium text-gray-900">Mobiliado</div>
                   </div>
                 )}
               </div>
 
               {/* Features */}
               <div className="pt-4 border-t border-gray-200">
-                <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Features</h3>
+                <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Características</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {property.furnished && (
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">🛋️</span>
-                      <span className="text-gray-700">Furnished</span>
+                      <span className="text-gray-700">Mobiliado</span>
                     </div>
                   )}
                   {property.petFriendly && (
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">🐾</span>
-                      <span className="text-gray-700">Pet Friendly</span>
+                      <span className="text-gray-700">Aceita Pets</span>
                     </div>
                   )}
                   {property.parkingSpots != null && property.parkingSpots > 0 && (
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">🚗</span>
-                      <span className="text-gray-700">Parking</span>
+                      <span className="text-gray-700">Estacionamento</span>
+                    </div>
+                  )}
+                  {/* Adicionar mais features conforme disponíveis na API */}
+                  {(property as any).hasElevator && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🛗</span>
+                      <span className="text-gray-700">Elevador</span>
+                    </div>
+                  )}
+                  {(property as any).hasBalcony && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🏡</span>
+                      <span className="text-gray-700">Varanda</span>
+                    </div>
+                  )}
+                  {(property as any).hasPool && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🏊</span>
+                      <span className="text-gray-700">Piscina</span>
+                    </div>
+                  )}
+                  {(property as any).hasGym && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🏋️</span>
+                      <span className="text-gray-700">Academia</span>
+                    </div>
+                  )}
+                  {(property as any).hasGourmet && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">👨‍🍳</span>
+                      <span className="text-gray-700">Espaço Gourmet</span>
+                    </div>
+                  )}
+                  {(property as any).hasPlayground && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🎠</span>
+                      <span className="text-gray-700">Playground</span>
+                    </div>
+                  )}
+                  {(property as any).hasPartyRoom && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🎉</span>
+                      <span className="text-gray-700">Salão de Festas</span>
+                    </div>
+                  )}
+                  {(property as any).hasConcierge24h && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">👨‍💼</span>
+                      <span className="text-gray-700">Portaria 24h</span>
+                    </div>
+                  )}
+                  {(property as any).comfortAC && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">❄️</span>
+                      <span className="text-gray-700">Ar Condicionado</span>
+                    </div>
+                  )}
+                  {(property as any).comfortHeating && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🔥</span>
+                      <span className="text-gray-700">Aquecimento</span>
+                    </div>
+                  )}
+                  {(property as any).comfortSolar && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">☀️</span>
+                      <span className="text-gray-700">Energia Solar</span>
+                    </div>
+                  )}
+                  {(property as any).secCCTV && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">📹</span>
+                      <span className="text-gray-700">CFTV</span>
+                    </div>
+                  )}
+                  {(property as any).secElectricFence && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">⚡</span>
+                      <span className="text-gray-700">Cerca Elétrica</span>
+                    </div>
+                  )}
+                  {(property as any).viewSea && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🌊</span>
+                      <span className="text-gray-700">Vista para o Mar</span>
+                    </div>
+                  )}
+                  {(property as any).viewCity && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🌆</span>
+                      <span className="text-gray-700">Vista para Cidade</span>
                     </div>
                   )}
                 </div>
@@ -315,17 +434,58 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
               {/* Explore the Area */}
               <div className="pt-4 border-t border-gray-200">
-                <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Explore the Area</h3>
+                <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Explore a Região</h3>
                 <div className="text-gray-700 mb-4">
                   {property.street}, {property.city}, {property.state}
                 </div>
+                
+                {/* Mapa com POIs */}
+                {(property as any).latitude && (property as any).longitude && (
+                  <div className="mb-4 h-[300px] rounded-lg overflow-hidden border border-gray-200">
+                    <Map
+                      items={[{
+                        id: property.id,
+                        price: property.price,
+                        latitude: (property as any).latitude,
+                        longitude: (property as any).longitude
+                      }]}
+                      pois={{
+                        mode: 'auto' as const,
+                        center: [(property as any).latitude, (property as any).longitude],
+                        radius: 1000
+                      }}
+                      hideRefitButton
+                    />
+                  </div>
+                )}
+                
+                {/* Locais próximos */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="text-lg">🏫</span>
+                    <span>Escolas próximas</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="text-lg">🛒</span>
+                    <span>Supermercados</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="text-lg">💊</span>
+                    <span>Farmácias</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="text-lg">🍽️</span>
+                    <span>Restaurantes</span>
+                  </div>
+                </div>
+                
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.street}, ${property.city}, ${property.state}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  View on Google Maps →
+                  Ver no Google Maps →
                 </a>
               </div>
             </div>
@@ -341,21 +501,21 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold text-gray-900">Zillowlike Imóveis</h4>
-                      <p className="text-sm text-gray-600">6 years with JamesEdition</p>
+                      <p className="text-sm text-gray-600">Parceiro verificado</p>
                     </div>
                   </div>
                   <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium mb-2">
-                    📞 Show phone number
+                    📞 Mostrar telefone
                   </button>
                   <div className="space-y-3 mt-4">
                     <input
                       type="text"
-                      placeholder="Name"
+                      placeholder="Nome"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <input
                       type="email"
-                      placeholder="Email"
+                      placeholder="E-mail"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
@@ -363,25 +523,25 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                     </select>
                     <input
                       type="tel"
-                      placeholder="Phone (optional)"
+                      placeholder="Telefone (opcional)"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <textarea
                       rows={4}
-                      placeholder={`Please contact me regarding\n${property.title}`}
+                      placeholder={`Tenho interesse em\n${property.title}`}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                     />
                     <Button className="w-full bg-teal-600 hover:bg-teal-700">
-                      Contact Agent
+                      Entrar em Contato
                     </Button>
                     <div className="space-y-2 text-xs text-gray-600">
                       <label className="flex items-start gap-2">
                         <input type="checkbox" className="mt-0.5" />
-                        <span>Notify me via email when similar listings appear</span>
+                        <span>Notificar-me por e-mail sobre imóveis similares</span>
                       </label>
                       <label className="flex items-start gap-2">
                         <input type="checkbox" className="mt-0.5" />
-                        <span>I agree to Terms of Use and Privacy Policy</span>
+                        <span>Concordo com os Termos de Uso e Política de Privacidade</span>
                       </label>
                     </div>
                   </div>
@@ -393,15 +553,31 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500" />
                     <div>
                       <h4 className="font-semibold text-gray-900 text-sm">Zillowlike Imóveis</h4>
-                      <p className="text-xs text-gray-600">300 listings for Sale</p>
+                      <p className="text-xs text-gray-600">300 imóveis à venda</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+          
+          {/* Imóveis Próximos */}
+          {nearbyProperties.length > 0 && (
+            <div className="border-t border-gray-200 pt-8">
+              <h3 className="text-2xl font-display font-normal text-gray-900 mb-6 px-4 sm:px-6 lg:px-8">Imóveis Próximos</h3>
+              <SimilarCarousel properties={nearbyProperties} />
+            </div>
+          )}
+          
+          {/* Imóveis Similares */}
+          {similarProperties.length > 0 && (
+            <div className="border-t border-gray-200 pt-8 pb-8">
+              <h3 className="text-2xl font-display font-normal text-gray-900 mb-6 px-4 sm:px-6 lg:px-8">Imóveis Similares</h3>
+              <SimilarCarousel properties={similarProperties} />
+            </div>
+          )}
         </div>
-      </div>
+      </motion.div>
     </AnimatePresence>
   );
 }

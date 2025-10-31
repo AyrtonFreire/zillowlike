@@ -418,7 +418,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           {/* Tags row: Tipo + Finalidade (Venda/Aluguel) */}
           <div className="flex items-center gap-2 mb-2">
             {property.type && (
-              <Chip icon={<Home className="w-3 h-3 text-gray-600" />}>{property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type === 'STUDIO' ? 'Studio' : property.type}</Chip>
+              <Chip icon={<Home className="w-4 h-4 text-white" />}>{property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type === 'STUDIO' ? 'Studio' : property.type}</Chip>
             )}
             {property.purpose && (
               <Chip>{property.purpose === 'RENT' ? 'Aluguel' : 'Venda'}</Chip>

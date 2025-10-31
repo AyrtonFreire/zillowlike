@@ -4,7 +4,7 @@ import { MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from "
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+ 
 
 type Item = {
   id: string;
@@ -305,7 +305,17 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
                 }}
               >
                 <Tooltip direction="top" offset={[0, -10]} opacity={1}>
-                  <Link href={`/property/${p.id}`}>R$ {(p.price / 100).toLocaleString('pt-BR')}</Link>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      try {
+                        window.dispatchEvent(new CustomEvent('open-overlay', { detail: { id: p.id } }));
+                      } catch {}
+                    }}
+                    className="underline decoration-dotted hover:decoration-solid text-white bg-transparent"
+                  >
+                    R$ {(p.price / 100).toLocaleString('pt-BR')}
+                  </button>
                 </Tooltip>
               </Marker>
             );

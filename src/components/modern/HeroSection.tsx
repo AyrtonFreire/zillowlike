@@ -119,17 +119,7 @@ export default function HeroSection() {
   const handleSuggestionClick = (suggestion: LocationSuggestion) => {
     setSearchQuery(suggestion.label);
     setShowSuggestions(false);
-    setIsLoading(true);
-    
-    // Construir URL com cidade e estado
-    const params = new URLSearchParams();
-    params.set('city', suggestion.city);
-    params.set('state', suggestion.state);
-    if (suggestion.neighborhood) {
-      params.set('q', suggestion.neighborhood);
-    }
-    
-    router.push(`/?${params.toString()}`);
+    // Apenas preenche o campo, não submete automaticamente
   };
 
   return (
@@ -155,8 +145,8 @@ export default function HeroSection() {
             />
           </motion.div>
         ))}
-        {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
+        {/* Dark overlay for better text readability - sempre visível */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
         {/* Optional city label */}
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-white/80 text-xs sm:text-sm px-3 py-1.5 rounded-full bg-black/30 backdrop-blur">
           {slides[slideIndex].city}
@@ -265,7 +255,7 @@ export default function HeroSection() {
                   ) : (
                     <>
                       <Search className="w-5 h-5" />
-                      <span className="hidden sm:inline">Search</span>
+                      <span className="hidden sm:inline">Buscar</span>
                     </>
                   )}
                 </motion.button>
