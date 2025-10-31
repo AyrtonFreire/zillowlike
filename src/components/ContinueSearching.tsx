@@ -70,9 +70,12 @@ export default function ContinueSearching() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <button
+              onClick={handleGoToSearch}
+              className="text-left text-2xl font-bold text-gray-900 hover:text-teal transition-colors"
+            >
               Continue buscando: {label}
-            </h2>
+            </button>
             <div className="text-sm text-gray-500 flex items-center gap-2">
               Resultados mais recentes
               {total > 0 && (
@@ -82,13 +85,7 @@ export default function ContinueSearching() {
               )}
             </div>
           </div>
-          <button
-            onClick={handleGoToSearch}
-            className="inline-flex items-center gap-2 px-4 py-2 glass-teal text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
-          >
-            <Search className="w-4 h-4" />
-            Ver todos
-          </button>
+          {/* Removido o botão 'Ver todos' para reduzir poluição visual */}
         </div>
         <div className="hidden md:flex items-center gap-2">
           <button

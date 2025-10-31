@@ -421,21 +421,19 @@ export default function HeroSection() {
                   </AnimatePresence>
                 </div>
                 
-                {/* Botão Search */}
+                {/* Botão Search (apenas ícone para reduzir poluição visual) */}
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
+                  aria-label="Buscar"
                   disabled={isLoading}
-                  className="glass-teal text-white px-6 sm:px-8 py-3 rounded-2xl sm:rounded-full font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 w-full sm:w-auto"
+                  className="glass-teal text-white w-12 h-12 rounded-full flex items-center justify-center disabled:opacity-50 shadow-lg"
                 >
                   {isLoading ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <>
-                      <Search className="w-5 h-5" />
-                      <span>Buscar</span>
-                    </>
+                    <Search className="w-5 h-5" />
                   )}
                 </motion.button>
               </div>
