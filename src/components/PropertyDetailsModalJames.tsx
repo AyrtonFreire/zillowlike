@@ -236,7 +236,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           className="pointer-events-auto w-full md:w-[92vw] lg:w-[85vw] xl:w-[75vw] max-w-[1400px] max-h-[95vh] bg-white rounded-none md:rounded-2xl shadow-2xl overflow-y-auto mx-auto"
         >
         {/* Header */}
-        <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
+        <div className="sticky top-0 z-20 bg-white border-b border-teal/10">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <button
               onClick={onClose}
@@ -257,7 +257,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 onClick={handleFavorite}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
               >
-                <Heart className={`w-4 h-4 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
+                <Heart className={`w-4 h-4 ${isFavorite ? "fill-teal-500 text-teal-500" : ""}`} />
                 <span className="hidden sm:inline">Salvar</span>
               </button>
             </div>
@@ -342,7 +342,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               </div>
 
               {/* About the Property */}
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-4 border-t border-teal/10">
                 <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">
                   Sobre o Imóvel
                 </h3>
@@ -351,7 +351,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   {property.description.length > 400 && (
                     <button
                       onClick={() => setShowMore(!showMore)}
-                      className="text-emerald-600 hover:text-emerald-700 font-medium mt-2 inline-flex items-center gap-1"
+                      className="text-teal hover:text-teal-dark font-medium mt-2 inline-flex items-center gap-1"
                     >
                       {showMore ? "Ver menos" : "Ver mais"} →
                     </button>
@@ -388,7 +388,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               </div>
 
               {/* Features */}
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-4 border-t border-teal/10">
                 <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Características</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {property.furnished && (
@@ -600,7 +600,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               </div>
 
               {/* Explore the Area */}
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-4 border-t border-teal/10">
                 <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Explore a Região</h3>
                 <div className="text-gray-700 mb-4">
                   {property.street}, {property.city}, {property.state}
@@ -608,7 +608,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 
                 {/* Mapa com POIs */}
                 {(property as any).latitude && (property as any).longitude && (
-                  <div className="mb-4 h-[300px] rounded-lg overflow-hidden border border-gray-200">
+                  <div className="mb-4 h-[300px] rounded-lg overflow-hidden border border-teal/10">
                     <Map
                       items={[{
                         id: property.id,
@@ -639,7 +639,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                         <ul className="text-sm text-gray-700 space-y-1.5">
                           {nearbyPlaces.schools.map((p,i)=>(
                             <li key={`s-${i}`} className="flex items-start gap-2">
-                              <span className="text-emerald-600 mt-0.5">•</span>
+                              <span className="text-teal mt-0.5">•</span>
                               <span className="flex-1">{p.name}</span>
                             </li>
                           ))}
@@ -655,7 +655,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                         <ul className="text-sm text-gray-700 space-y-1.5">
                           {nearbyPlaces.markets.map((p,i)=>(
                             <li key={`m-${i}`} className="flex items-start gap-2">
-                              <span className="text-emerald-600 mt-0.5">•</span>
+                              <span className="text-teal mt-0.5">•</span>
                               <span className="flex-1">{p.name}</span>
                             </li>
                           ))}
@@ -671,7 +671,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                         <ul className="text-sm text-gray-700 space-y-1.5">
                           {nearbyPlaces.pharmacies.map((p,i)=>(
                             <li key={`p-${i}`} className="flex items-start gap-2">
-                              <span className="text-emerald-600 mt-0.5">•</span>
+                              <span className="text-teal mt-0.5">•</span>
                               <span className="flex-1">{p.name}</span>
                             </li>
                           ))}
@@ -687,7 +687,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                         <ul className="text-sm text-gray-700 space-y-1.5">
                           {nearbyPlaces.restaurants.map((p,i)=>(
                             <li key={`r-${i}`} className="flex items-start gap-2">
-                              <span className="text-emerald-600 mt-0.5">•</span>
+                              <span className="text-teal mt-0.5">•</span>
                               <span className="flex-1">{p.name}</span>
                             </li>
                           ))}
@@ -706,7 +706,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.street}, ${property.city}, ${property.state}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 font-medium"
+                  className="inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium"
                 >
                   Ver no Google Maps →
                 </a>
@@ -717,9 +717,9 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             <div className="lg:col-span-1">
               <div className="sticky top-24 space-y-6">
                 {/* Agent Card */}
-                <div className="rounded-xl border border-gray-200 p-6 bg-white shadow-sm">
+                <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
                   <div className="flex items-start gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-bold">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-light to-teal flex items-center justify-center text-white font-bold">
                       Z
                     </div>
                     <div className="flex-1">
@@ -734,27 +734,27 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                     <input
                       type="text"
                       placeholder="Nome"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent"
                     />
                     <input
                       type="email"
                       placeholder="E-mail"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent"
                     />
-                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent">
                       <option>+55</option>
                     </select>
                     <input
                       type="tel"
                       placeholder="Telefone (opcional)"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent"
                     />
                     <textarea
                       rows={4}
                       placeholder={`Tenho interesse em\n${property.title}`}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent resize-none"
                     />
-                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 shadow-md hover:shadow-lg">
+                    <Button className="w-full bg-teal hover:bg-teal-dark shadow-md hover:shadow-lg">
                       Entrar em Contato
                     </Button>
                     <div className="space-y-2 text-xs text-gray-600">
@@ -771,9 +771,9 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 </div>
 
                 {/* Agent Listings */}
-                <div className="rounded-xl border border-gray-200 p-6 bg-white shadow-sm">
+                <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600" />
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-light to-teal" />
                     <div>
                       <h4 className="font-semibold text-gray-900 text-sm">Zillowlike Imóveis</h4>
                       <p className="text-xs text-gray-600">300 imóveis à venda</p>
@@ -786,7 +786,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           
           {/* Imóveis Próximos */}
           {nearbyProperties.length > 0 && (
-            <div className="border-t border-gray-200 pt-8">
+            <div className="border-t border-teal/10 pt-8">
               <h3 className="text-2xl font-display font-normal text-gray-900 mb-6 px-4 sm:px-6 lg:px-8">Imóveis Próximos</h3>
               <SimilarCarousel properties={nearbyProperties} />
             </div>
@@ -794,7 +794,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           
           {/* Imóveis Similares */}
           {similarProperties.length > 0 && (
-            <div className="border-t border-gray-200 pt-8 pb-8">
+            <div className="border-t border-teal/10 pt-8 pb-8">
               <h3 className="text-2xl font-display font-normal text-gray-900 mb-6 px-4 sm:px-6 lg:px-8">Imóveis Similares</h3>
               <SimilarCarousel properties={similarProperties} />
             </div>

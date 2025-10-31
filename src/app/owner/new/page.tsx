@@ -1150,7 +1150,7 @@ export default function NewPropertyPage() {
                   <button
                     type="button"
                     onClick={nextStep}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow"
+                    className="flex-1 px-4 py-3 glass-teal text-white rounded-lg shadow"
                   >
                     {isGeocoding && currentStep === 2 ? "Validando..." : "Próximo"}
                   </button>
@@ -1159,7 +1159,7 @@ export default function NewPropertyPage() {
                     type="submit"
                     onClick={() => setSubmitIntent(true)}
                     disabled={isSubmitting || images.some((i) => i.pending)}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg shadow disabled:opacity-70"
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-teal to-green-600 text-white rounded-lg shadow disabled:opacity-70"
                   >
                     {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando" : "Publicar"}
                   </button>
@@ -1169,8 +1169,8 @@ export default function NewPropertyPage() {
 
         
 
-        <div className="rounded-xl p-6 sm:p-8 bg-gradient-to-br from-blue-50 to-purple-50 ring-1 ring-black/5">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-purple-700 mb-2">Cadastrar Imóvel</h1>
+        <div className="rounded-xl p-6 sm:p-8 bg-gradient-to-br from-teal/5 to-teal/10 ring-1 ring-black/5">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal to-teal-dark mb-2">Cadastrar Imóvel</h1>
           <p className="text-gray-700/90 mb-8">Preencha as informações do seu imóvel para publicá-lo na plataforma.</p>
 
           <form onSubmit={handleSubmit} onKeyDown={(e) => { if ((e as any).key === 'Enter' && currentStep < 4) { e.preventDefault(); } }} className="space-y-8">
@@ -1220,7 +1220,7 @@ export default function NewPropertyPage() {
                         key={opt.id}
                         type="button"
                         onClick={() => setType(opt.id)}
-                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${type === opt.id ? 'border-transparent text-white bg-gradient-to-r from-blue-600 to-purple-600' : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'}`}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${type === opt.id ? 'border-transparent text-white glass-teal' : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'}`}
                         aria-pressed={type === opt.id}
                       >
                         <opt.Icon className="w-4 h-4" /> {opt.label}
@@ -1314,7 +1314,7 @@ export default function NewPropertyPage() {
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Revisão final</h2>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600" style={{ width: `${completionPercent()}%` }} />
+                  <div className="h-2 rounded-full glass-teal" style={{ width: `${completionPercent()}%` }} />
                 </div>
                 <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="rounded-xl p-4 ring-1 ring-black/5 bg-white/80 backdrop-blur-sm space-y-4 text-sm">
@@ -1476,7 +1476,7 @@ export default function NewPropertyPage() {
                     <div className="inline-flex items-center gap-2 text-sm text-gray-700"><MapPinIcon className="w-4 h-4" /> Posição aproximada</div>
                     <span className="text-xs text-gray-500">Ajuste disponível após geolocalizar</span>
                   </div>
-                  <div className="relative aspect-square md:aspect-square min-h-80 sm:min-h-96 rounded-lg overflow-hidden bg-gradient-to-tr from-blue-50 to-purple-50 flex items-center justify-center text-xs text-gray-600">
+                  <div className="relative aspect-square md:aspect-square min-h-80 sm:min-h-96 rounded-lg overflow-hidden bg-gradient-to-tr from-teal/5 to-teal/10 flex items-center justify-center text-xs text-gray-600">
                     {geo ? (
                       <div ref={mapContainerRef} className="w-full h-full" />
                     ) : (
@@ -1931,7 +1931,7 @@ export default function NewPropertyPage() {
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-colors duration-200 shadow"
+                  className="px-6 py-3 glass-teal text-white rounded-lg transition-colors duration-200 shadow"
                 >
                   {isGeocoding && currentStep === 2 ? "Validando endereço..." : "Próximo"}
                 </button>
@@ -1941,7 +1941,7 @@ export default function NewPropertyPage() {
                   onClick={() => setSubmitIntent(true)}
                   disabled={isSubmitting || images.some((i) => i.pending)}
                   title={images.some((i) => i.pending) ? "Aguarde terminar o envio das imagens" : undefined}
-                  className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 disabled:from-emerald-400 disabled:to-green-400 text-white rounded-lg font-medium transition-all duration-200 shadow"
+                  className="px-8 py-3 bg-gradient-to-r from-teal to-green-600 hover:from-teal-dark hover:to-green-700 disabled:from-teal-light disabled:to-green-400 text-white rounded-lg font-medium transition-all duration-200 shadow"
                 >
                   {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando imagens..." : "Publicar Imóvel"}
                 </button>

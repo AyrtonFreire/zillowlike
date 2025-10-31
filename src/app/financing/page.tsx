@@ -11,14 +11,14 @@ export default function FinancingPage() {
       <TopNavMega />
       
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white">
+      <div className="bg-gradient-to-br from-teal-600 to-teal-800 text-white">
         <div className="mx-auto max-w-7xl px-4 py-16 md:py-24">
           <div className="text-center">
             <Calculator className="w-16 h-16 mx-auto mb-6" />
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Financiamento Imobiliário
             </h1>
-            <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+            <p className="text-xl text-teal-100 max-w-2xl mx-auto">
               Realize o sonho da casa própria com as melhores condições do mercado
             </p>
           </div>
@@ -34,8 +34,8 @@ export default function FinancingPage() {
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-                <Home className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center mb-4">
+                <Home className="w-6 h-6 text-teal-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 1. Escolha o Imóvel
@@ -46,8 +46,8 @@ export default function FinancingPage() {
             </div>
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-                <Calculator className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center mb-4">
+                <Calculator className="w-6 h-6 text-teal-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 2. Simule o Financiamento
@@ -58,8 +58,8 @@ export default function FinancingPage() {
             </div>
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-                <CheckCircle className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center mb-4">
+                <CheckCircle className="w-6 h-6 text-teal-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 3. Aprove seu Crédito
@@ -130,11 +130,11 @@ export default function FinancingPage() {
         </div>
 
         {/* CTA */}
-        <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-8 md:p-12 text-center text-white">
+        <div className="bg-gradient-to-br from-teal-600 to-teal-800 rounded-2xl p-8 md:p-12 text-center text-white">
           <h2 className="text-3xl font-bold mb-4">
             Pronto para Começar?
           </h2>
-          <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
+          <p className="text-teal-100 mb-8 max-w-2xl mx-auto">
             Encontre o imóvel dos seus sonhos e simule o financiamento em poucos cliques
           </p>
           <Link

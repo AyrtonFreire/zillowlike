@@ -247,7 +247,7 @@ export default function BecomeRealtorPage() {
       
       <div className="mt-16 max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl shadow-lg p-8 mb-8 text-white">
+        <div className="bg-gradient-to-r glass-teal rounded-2xl shadow-lg p-8 mb-8 text-white">
           <h1 className="text-4xl font-bold mb-2">Seja um Corretor</h1>
           <p className="text-white/90">
             Junte-se à nossa plataforma e comece a receber leads qualificados
@@ -506,7 +506,7 @@ export default function BecomeRealtorPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r glass-teal text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

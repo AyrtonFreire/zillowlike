@@ -85,7 +85,7 @@ export default function MatchFlowSection() {
           <div className="mt-8 flex items-center justify-center">
             <a
               href="/owner/new"
-              className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow hover:shadow-md"
+              className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-gradient-to-r from-teal-light to-teal shadow hover:shadow-md"
             >
               <Megaphone className="w-5 h-5" />
               Anunciar agora

@@ -34,9 +34,14 @@ module.exports = {
           50:  '#FAFAFA',
         },
         accent: {
-          DEFAULT: '#059669', // Emerald 600
-          600: '#047857', // Emerald 700
-          700: '#065F46', // Emerald 800
+          DEFAULT: '#009B91', // Turquesa accent/borda
+          600: '#00736E', // Verde-petróleo
+          700: '#021616', // Preto esverdeado
+        },
+        teal: {
+          DEFAULT: '#00736E', // Verde-petróleo brilhante
+          light: '#009B91', // Turquesa
+          dark: '#021616', // Preto esverdeado
         },
         success: '#16A34A',
         warning: '#D97706',

@@ -164,7 +164,7 @@ export default function FinancingCalculator({ propertyPrice = 0 }: FinancingCalc
         {/* Results */}
         <div className="space-y-3">
           {/* Monthly Payment - Highlighted */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
+          <div className="bg-gradient-to-r from-teal-light to-teal rounded-xl p-6 text-white">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-5 h-5" />
               <span className="text-sm font-medium opacity-90">

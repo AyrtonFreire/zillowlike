@@ -19,8 +19,8 @@ export default function HowItWorksPostCard() {
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
       <div className="relative overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-gray-200">
         {/* Gradientes sutis (emerald/stone) */}
-        <div className="pointer-events-none absolute -top-32 -right-32 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-emerald-600/10 blur-3xl" />
+        <div className="pointer-events-none absolute -top-32 -right-32 h-64 w-64 rounded-full bg-teal-light/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-teal/10 blur-3xl" />
 
         {/* Compacto por padrão */}
         <AnimatePresence initial={false} mode="wait">
@@ -45,7 +45,7 @@ export default function HowItWorksPostCard() {
                     <button
                       type="button"
                       onClick={goOpen}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-teal hover:bg-teal-dark shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-teal-light"
                     >
                       <PlayCircle className="w-5 h-5" />
                       Veja como é fácil
@@ -117,10 +117,10 @@ export default function HowItWorksPostCard() {
                 <button onClick={prev} disabled={step === 0} className={`px-4 py-2 rounded-lg border text-sm ${step === 0 ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-50"}`}>Anterior</button>
                 <div className="flex items-center gap-2">
                   {[0,1,2,3].map((i) => (
-                    <span key={i} className={`h-2 w-2 rounded-full ${i === step ? "bg-emerald-600" : "bg-gray-300"}`} />
+                    <span key={i} className={`h-2 w-2 rounded-full ${i === step ? "bg-teal" : "bg-gray-300"}`} />
                   ))}
                 </div>
-                <button onClick={next} disabled={step === 3} className={`px-4 py-2 rounded-lg text-sm text-white ${step === 3 ? "opacity-40 cursor-not-allowed bg-emerald-600" : "bg-emerald-600 hover:bg-emerald-700"}`}>{step === 3 ? "Concluído" : "Próximo"}</button>
+                <button onClick={next} disabled={step === 3} className={`px-4 py-2 rounded-lg text-sm text-white ${step === 3 ? "opacity-40 cursor-not-allowed bg-teal" : "bg-teal hover:bg-teal-dark"}`}>{step === 3 ? "Concluído" : "Próximo"}</button>
               </div>
             </motion.div>
           )}
@@ -214,10 +214,10 @@ function SceneExposure() {
       <div className="rounded-xl border p-4">
         <div className="text-sm text-gray-600 mb-2">Mapa</div>
         <div className="aspect-[4/3] rounded-lg bg-emerald-50/40 flex items-center justify-center">
-          <MapPin className="w-6 h-6 text-emerald-600" />
+          <MapPin className="w-6 h-6 text-teal" />
         </div>
         <div className="mt-5">
-          <Link href="/owner/new" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow hover:shadow-md"><Rocket className="w-5 h-5" /> Começar anúncio agora</Link>
+          <Link href="/owner/new" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-teal hover:bg-teal-dark shadow hover:shadow-md"><Rocket className="w-5 h-5" /> Começar anúncio agora</Link>
         </div>
       </div>
     </div>
@@ -254,7 +254,7 @@ function Tips({ items }: { items: { icon: React.ReactNode; text: string }[] }) {
     <ul className="text-sm text-gray-700 grid grid-cols-1 sm:grid-cols-3 gap-3">
       {items.map((it, i) => (
         <li key={i} className="flex items-start gap-2">
-          <span className="text-emerald-600 mt-0.5">{it.icon}</span>
+          <span className="text-teal mt-0.5">{it.icon}</span>
           <span>{it.text}</span>
         </li>
       ))}

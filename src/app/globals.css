@@ -8,17 +8,19 @@
   --color-background: #ffffff;
   --color-foreground: #171717;
   
-  /* Paleta B - Charcoal + Emerald (JamesEdition-inspired) */
-  --brand-charcoal: #0B1220;
-  --brand-text: #0B0F19;
-  --brand-accent: #059669; /* Emerald 600 */
-  --brand-accent-hover: #047857; /* Emerald 700 */
-  --brand-accent-light: #10B981; /* Emerald 500 */
+  /* Paleta: Vidro Metálico Verde-Petróleo */
+  --brand-teal: #00736E; /* Verde-petróleo brilhante */
+  --brand-dark: #021616; /* Preto esverdeado */
+  --brand-accent: #009B91; /* Turquesa accent/borda */
+  --brand-accent-hover: #00736E; /* Hover estado */
+  --brand-glow: rgba(0, 255, 200, 0.15); /* Efeito halo */
+  --brand-glass: rgba(0, 100, 90, 0.9); /* Fundo vidro */
   --brand-neutral-50: #F5F5F4; /* Stone 100 */
   --brand-neutral-100: #E7E5E4; /* Stone 200 */
   --brand-neutral-400: #A8A29E; /* Stone 400 */
   --brand-neutral-600: #78716C; /* Stone 500 */
   --brand-neutral-900: #1C1917; /* Stone 900 */
+  --brand-gradient: linear-gradient(135deg, #00736E, #021616); /* Gradiente principal */
   
   /* Custom Animations */
   --animate-shimmer: shimmer 2s infinite;
@@ -94,13 +96,13 @@ summary,
   }
 }
 
-/* Glow effect - Emerald */
+/* Glow effect - Teal Glass */
 @keyframes glow {
   from {
-    box-shadow: 0 0 20px rgba(5, 150, 105, 0.3);
+    box-shadow: 0 0 20px rgba(0, 255, 200, 0.15);
   }
   to {
-    box-shadow: 0 0 30px rgba(5, 150, 105, 0.5);
+    box-shadow: 0 0 30px rgba(0, 255, 200, 0.25), 0 0 10px rgba(0, 115, 110, 0.4);
   }
 }
 
@@ -129,9 +131,9 @@ summary,
               0 10px 20px -2px rgba(0, 0, 0, 0.04);
 }
 
-/* Glow shadow - Emerald */
+/* Glow shadow - Teal Glass */
 .shadow-glow {
-  box-shadow: 0 0 20px rgba(5, 150, 105, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 200, 0.15);
 }
 
 /* Neumorphic shadow */
@@ -165,12 +167,24 @@ summary,
   height: 300px;
 }
 
-/* Gradient text - Subtle Emerald */
+/* Gradient text - Teal Metallic */
 .gradient-text {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  background: linear-gradient(135deg, #00736E 0%, #009B91 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Glass button effect */
+.glass-teal {
+  background: linear-gradient(135deg, #00736E, #021616);
+  border: 1px solid #009B91;
+  box-shadow: 0 0 20px rgba(0, 255, 200, 0.15);
+  backdrop-filter: blur(2px);
+}
+
+.glass-teal:hover {
+  box-shadow: 0 0 30px rgba(0, 255, 200, 0.25), 0 0 10px rgba(0, 115, 110, 0.4);
 }
 
 /* Smooth transitions */

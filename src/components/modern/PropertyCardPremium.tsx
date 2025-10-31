@@ -226,7 +226,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               {property.conditionTags.slice(0, 1).map((tag, index) => (
                 <span
                   key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-600 text-white shadow-md"
+                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-teal text-white shadow-md"
                 >
                   {tag}
                 </span>
@@ -239,7 +239,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={handleFavorite}
-          className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-emerald-50 transition-colors"
+          className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-teal/5 transition-colors"
           aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
         >
           <Heart
@@ -353,7 +353,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               className="p-1.5 rounded-md transition-colors hover:bg-gray-50"
               aria-label="Abrir opções de compartilhamento"
             >
-              <Share2 className="w-5 h-5 text-emerald-600 hover:text-emerald-700 transition-colors" />
+              <Share2 className="w-5 h-5 text-teal hover:text-teal-dark transition-colors" />
             </motion.button>
           </div>
 
@@ -385,9 +385,9 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                   {/* Copy Link */}
                   <button
                     onClick={handleCopyLink}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-emerald-50 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-teal/5 transition-colors text-left"
                   >
-                    <LinkIcon className="w-4 h-4 text-emerald-600" />
+                    <LinkIcon className="w-4 h-4 text-teal" />
                     <span className="text-sm font-medium text-gray-700">
                       {copySuccess ? "✓ Link copiado!" : "Copiar link"}
                     </span>
