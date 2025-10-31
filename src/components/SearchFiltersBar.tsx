@@ -103,7 +103,7 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
 
   // Painel avançado isolado (modo compacto)
   const renderAdvancedPanel = () => (
-    <div className={`${variant === 'modal' ? 'container mx-auto max-w-6xl px-4' : ''}`}>
+    <div className={`${variant === 'modal' ? 'container mx-auto max-w-6xl px-4' : ''} max-h-[85vh] overflow-y-auto`}>
       <div className={`${variant === 'modal' ? 'pb-6 pt-6 border border-gray-200 bg-white rounded-xl shadow-md' : 'p-4 bg-white rounded-xl shadow-xl border border-gray-200 w-[min(92vw,800px)]'}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm font-semibold text-gray-700">Filtros</div>

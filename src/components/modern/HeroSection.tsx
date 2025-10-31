@@ -248,14 +248,14 @@ export default function HeroSection() {
           >
             <form onSubmit={handleSearch} className="bg-white/95 backdrop-blur rounded-3xl p-3 sm:p-2 shadow-2xl">
               {/* Purpose Toggle - Comprar/Alugar */}
-              <div className="flex gap-2 mb-3 sm:mb-0 sm:absolute sm:top-2 sm:left-2 z-10">
+              <div className="flex gap-4 mb-3 sm:mb-0 sm:absolute sm:top-2 sm:left-2 z-10">
                 <button
                   type="button"
                   onClick={() => setPurpose('SALE')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  className={`px-1 pb-1 text-sm font-semibold transition-colors ${
                     purpose === 'SALE'
-                      ? 'glass-teal text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'text-teal-700 border-b-2 border-teal-600'
+                      : 'text-gray-600 hover:text-gray-800'
                   }`}
                 >
                   Comprar
@@ -263,10 +263,10 @@ export default function HeroSection() {
                 <button
                   type="button"
                   onClick={() => setPurpose('RENT')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  className={`px-1 pb-1 text-sm font-semibold transition-colors ${
                     purpose === 'RENT'
-                      ? 'glass-teal text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'text-teal-700 border-b-2 border-teal-600'
+                      : 'text-gray-600 hover:text-gray-800'
                   }`}
                 >
                   Alugar
@@ -439,7 +439,7 @@ export default function HeroSection() {
               </div>
             </form>
 
-            {/* Autocomplete Dropdown */}
+            {/* Autocomplete Dropdown - Layout horizontal compacto */}
             <AnimatePresence>
               {showSuggestions && suggestions.length > 0 && (
                 <motion.div
@@ -447,54 +447,59 @@ export default function HeroSection() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
+                  className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 max-h-[280px]"
                 >
-                  <div className="p-2">
-                    {searchQuery.length === 0 && (
-                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        Buscas Populares
-                      </div>
-                    )}
-                    {isFetchingSuggestions ? (
-                      <div className="px-4 py-8 text-center text-gray-400">
-                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                      </div>
-                    ) : suggestions.length === 0 && searchQuery.length > 0 ? (
-                      <div className="px-4 py-8 text-center text-gray-400">
-                        Nenhuma cidade encontrada
-                      </div>
-                    ) : (
-                      suggestions.map((suggestion, index) => (
-                        <div key={index}>
-                          {/* Cabeçalhos: primeira linha = Cidade; resto = Bairros */}
-                          {index === 0 && (
-                            <div className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Cidade</div>
-                          )}
-                          {index === 1 && suggestions[0] && suggestions[0].neighborhood === null && (
-                            <div className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Bairros</div>
-                          )}
-
+                  {isFetchingSuggestions ? (
+                    <div className="px-4 py-8 text-center text-gray-400">
+                      <div className="w-5 h-5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                    </div>
+                  ) : suggestions.length === 0 && searchQuery.length > 0 ? (
+                    <div className="px-4 py-8 text-center text-gray-400">
+                      Nenhuma cidade encontrada
+                    </div>
+                  ) : (
+                    <div className="p-3">
+                      {searchQuery.length === 0 && (
+                        <div className="px-2 pb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                          Buscas Populares
+                        </div>
+                      )}
+                      
+                      {/* Grid horizontal de cidades */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {suggestions.map((suggestion, index) => (
                           <motion.button
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.05 }}
+                            key={index}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.03 }}
                             onClick={() => handleSuggestionClick(suggestion)}
-                            className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-blue-50 rounded-xl transition-all text-left group"
+                            className="group relative flex flex-col gap-1 px-3 py-3 hover:bg-gradient-to-br hover:from-teal-50 hover:to-blue-50 rounded-xl transition-all text-left border border-transparent hover:border-teal-100"
                           >
-                            <div className="flex items-center gap-3">
-                              <MapPin className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors" />
-                              <span className="text-gray-700 group-hover:text-blue-600 font-medium">
-                                {suggestion.label}
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-3.5 h-3.5 text-gray-400 group-hover:text-teal-600 transition-colors flex-shrink-0" />
+                              <span className="text-sm font-semibold text-gray-800 group-hover:text-teal-700 transition-colors truncate">
+                                {suggestion.city}
                               </span>
                             </div>
-                            <span className="text-xs text-gray-400 group-hover:text-blue-600">
-                              {suggestion.count} {suggestion.count === 1 ? 'imóvel' : 'imóveis'}
-                            </span>
+                            <div className="flex items-center justify-between gap-2 pl-5">
+                              <span className="text-xs text-gray-500 truncate">
+                                {suggestion.state}
+                              </span>
+                              <span className="text-[10px] font-medium text-gray-400 group-hover:text-teal-600 bg-gray-50 group-hover:bg-teal-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                {suggestion.count}
+                              </span>
+                            </div>
+                            {suggestion.neighborhood && (
+                              <div className="text-[10px] text-gray-400 pl-5 truncate">
+                                {suggestion.neighborhood}
+                              </div>
+                            )}
                           </motion.button>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

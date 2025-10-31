@@ -17,7 +17,7 @@ import Guides from "@/components/Guides";
 import SiteFooter from "@/components/Footer";
 import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
-import { LayoutList, Map, Bookmark, ChevronDown } from "lucide-react";
+import { LayoutList, Map, ChevronDown } from "lucide-react";
  
 import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
 import SearchFiltersBar from "@/components/SearchFiltersBar";
@@ -437,26 +437,9 @@ export default function Home() {
                       </p>
                     )}
                   </div>
-                  
-                  {/* Salvar busca - Premium Style */}
-                  <button
-                    onClick={async () => {
-                      try {
-                        const label = prompt('Nome para salvar a busca (opcional):') || '';
-                        const body = {
-                          label,
-                          params: buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1, pageSize: 12 }).toString()
-                        };
-                        await fetch('/api/saved-searches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-                        alert('Busca salva! Você poderá acessá-la em Buscas salvas.');
-                      } catch {}
-                    }}
-                    className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-lg"
-                  >
-                    <Bookmark className="w-5 h-5" />
-                    <span className="hidden sm:inline">Salvar busca</span>
-                  </button>
                 </div>
+                  
+                {/* Botão "Salvar busca" removido para reduzir poluição visual */}
 
                 {/* View Mode Toggle + Sort - Premium Style */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -907,14 +890,42 @@ export default function Home() {
                 items={properties}
                 isLoading={isLoading}
                 onBoundsChange={async (bounds) => {
-                  // Fetch properties within the new map bounds
-                  const params = new URLSearchParams(searchParams.toString());
-                  params.set('minLat', bounds.minLat.toString());
-                  params.set('maxLat', bounds.maxLat.toString());
-                  params.set('minLng', bounds.minLng.toString());
-                  params.set('maxLng', bounds.maxLng.toString());
+                  // Fetch properties within the new map bounds MANTENDO os filtros ativos
+                  const params = buildSearchParams({
+                    q: search,
+                    city,
+                    state,
+                    type,
+                    minPrice,
+                    maxPrice,
+                    bedroomsMin,
+                    bathroomsMin,
+                    areaMin,
+                    parkingSpots,
+                    yearBuiltMin,
+                    yearBuiltMax,
+                    status,
+                    petFriendly: petFriendly ? "true" : "",
+                    furnished: furnished ? "true" : "",
+                    hasPool: hasPool ? "true" : "",
+                    hasGym: hasGym ? "true" : "",
+                    hasElevator: hasElevator ? "true" : "",
+                    hasBalcony: hasBalcony ? "true" : "",
+                    hasSeaView: hasSeaView ? "true" : "",
+                    condoFeeMin,
+                    condoFeeMax,
+                    iptuMin,
+                    iptuMax,
+                    keywords,
+                    sort,
+                    page: 1,
+                    minLat: bounds.minLat,
+                    maxLat: bounds.maxLat,
+                    minLng: bounds.minLng,
+                    maxLng: bounds.maxLng,
+                  });
                   try {
-                    const res = await fetch(`/api/properties?${params.toString()}`);
+                    const res = await fetch(`/api/properties?${params}`);
                     const data = await res.json();
                     if (data.success) {
                       setProperties(data.properties || []);
@@ -1085,13 +1096,42 @@ export default function Home() {
               items={properties}
               isLoading={isLoading}
               onBoundsChange={async (bounds) => {
-                const params = new URLSearchParams(searchParams.toString());
-                params.set('minLat', bounds.minLat.toString());
-                params.set('maxLat', bounds.maxLat.toString());
-                params.set('minLng', bounds.minLng.toString());
-                params.set('maxLng', bounds.maxLng.toString());
+                // Fetch properties within the new map bounds MANTENDO os filtros ativos (mobile)
+                const params = buildSearchParams({
+                  q: search,
+                  city,
+                  state,
+                  type,
+                  minPrice,
+                  maxPrice,
+                  bedroomsMin,
+                  bathroomsMin,
+                  areaMin,
+                  parkingSpots,
+                  yearBuiltMin,
+                  yearBuiltMax,
+                  status,
+                  petFriendly: petFriendly ? "true" : "",
+                  furnished: furnished ? "true" : "",
+                  hasPool: hasPool ? "true" : "",
+                  hasGym: hasGym ? "true" : "",
+                  hasElevator: hasElevator ? "true" : "",
+                  hasBalcony: hasBalcony ? "true" : "",
+                  hasSeaView: hasSeaView ? "true" : "",
+                  condoFeeMin,
+                  condoFeeMax,
+                  iptuMin,
+                  iptuMax,
+                  keywords,
+                  sort,
+                  page: 1,
+                  minLat: bounds.minLat,
+                  maxLat: bounds.maxLat,
+                  minLng: bounds.minLng,
+                  maxLng: bounds.maxLng,
+                });
                 try {
-                  const res = await fetch(`/api/properties?${params.toString()}`);
+                  const res = await fetch(`/api/properties?${params}`);
                   const data = await res.json();
                   if (data.success) {
                     setProperties(data.properties || []);
