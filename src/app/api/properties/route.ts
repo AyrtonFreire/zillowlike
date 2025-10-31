@@ -163,13 +163,51 @@ export async function GET(req: NextRequest) {
     if (bedroomsMin) where.bedrooms = { gte: bedroomsMin };
     if (bathroomsMin) where.bathrooms = { gte: bathroomsMin };
     if (areaMin) where.areaM2 = { gte: areaMin };
-    if (q) {
+    
+    // Advanced filters
+    const parkingSpots = searchParams.get("parkingSpots");
+    const yearBuiltMin = searchParams.get("yearBuiltMin");
+    const yearBuiltMax = searchParams.get("yearBuiltMax");
+    const propertyStatus = searchParams.get("propertyStatus"); // Renamed to avoid conflict with listing status
+    const petFriendly = searchParams.get("petFriendly");
+    const furnished = searchParams.get("furnished");
+    const hasPool = searchParams.get("hasPool");
+    const hasGym = searchParams.get("hasGym");
+    const hasElevator = searchParams.get("hasElevator");
+    const hasBalcony = searchParams.get("hasBalcony");
+    const hasSeaView = searchParams.get("hasSeaView");
+    const condoFeeMax = searchParams.get("condoFeeMax");
+    const iptuMax = searchParams.get("iptuMax");
+    const keywords = searchParams.get("keywords");
+    
+    if (parkingSpots) where.parkingSpots = { gte: Number(parkingSpots) };
+    if (yearBuiltMin || yearBuiltMax) {
+      where.yearBuilt = {};
+      if (yearBuiltMin) where.yearBuilt.gte = Number(yearBuiltMin);
+      if (yearBuiltMax) where.yearBuilt.lte = Number(yearBuiltMax);
+    }
+    if (propertyStatus) where.conditionTags = { has: propertyStatus };
+    if (petFriendly === "true") where.petFriendly = true;
+    if (furnished === "true") where.furnished = true;
+    if (hasPool === "true") where.hasPool = true;
+    if (hasGym === "true") where.hasGym = true;
+    if (hasElevator === "true") where.hasElevator = true;
+    if (hasBalcony === "true") where.hasBalcony = true;
+    if (hasSeaView === "true") where.viewSea = true;
+    if (condoFeeMax) where.condoFee = { lte: Number(condoFeeMax) };
+    if (iptuMax) {
+      // IPTU não existe no schema atual, mas preparado para quando adicionar
+      // where.iptu = { lte: Number(iptuMax) };
+    }
+    
+    if (q || keywords) {
+      const searchTerm = keywords || q;
       where.OR = [
-        { title: { contains: q, mode: 'insensitive' as Prisma.QueryMode } },
-        { description: { contains: q, mode: 'insensitive' as Prisma.QueryMode } },
-        { street: { contains: q, mode: 'insensitive' as Prisma.QueryMode } },
-        { neighborhood: { contains: q, mode: 'insensitive' as Prisma.QueryMode } },
-        { city: { contains: q, mode: 'insensitive' as Prisma.QueryMode } },
+        { title: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } },
+        { description: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } },
+        { street: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } },
+        { neighborhood: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } },
+        { city: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } },
       ];
     }
 

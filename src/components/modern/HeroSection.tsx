@@ -17,8 +17,10 @@ interface LocationSuggestion {
 export default function HeroSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [purpose, setPurpose] = useState<'SALE' | 'RENT'>('SALE');
+  const [propertyType, setPropertyType] = useState<string>('');
   const [priceRange, setPriceRange] = useState<string>('');
   const [bedrooms, setBedrooms] = useState<string>('');
+  const [showPropertyTypeDropdown, setShowPropertyTypeDropdown] = useState(false);
   const [showPriceDropdown, setShowPriceDropdown] = useState(false);
   const [showBedroomsDropdown, setShowBedroomsDropdown] = useState(false);
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
@@ -27,6 +29,7 @@ export default function HeroSection() {
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const router = useRouter();
   const searchRef = useRef<HTMLDivElement>(null);
+  const propertyTypeRef = useRef<HTMLDivElement>(null);
   const priceRef = useRef<HTMLDivElement>(null);
   const bedroomsRef = useRef<HTMLDivElement>(null);
 
@@ -90,6 +93,9 @@ export default function HeroSection() {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
       }
+      if (propertyTypeRef.current && !propertyTypeRef.current.contains(event.target as Node)) {
+        setShowPropertyTypeDropdown(false);
+      }
       if (priceRef.current && !priceRef.current.contains(event.target as Node)) {
         setShowPriceDropdown(false);
       }
@@ -125,6 +131,11 @@ export default function HeroSection() {
       } else {
         // Busca geral
         params.set('q', searchQuery);
+      }
+      
+      // Add property type if selected
+      if (propertyType) {
+        params.set('type', propertyType);
       }
       
       // Add price range if selected
@@ -236,7 +247,7 @@ export default function HeroSection() {
             className="w-full max-w-4xl mx-auto relative"
           >
             <form onSubmit={handleSearch} className="bg-white/95 backdrop-blur rounded-3xl p-3 sm:p-2 shadow-2xl">
-              {/* Purpose Toggle - Venda/Aluguel */}
+              {/* Purpose Toggle - Comprar/Alugar */}
               <div className="flex gap-2 mb-3 sm:mb-0 sm:absolute sm:top-2 sm:left-2 z-10">
                 <button
                   type="button"
@@ -247,7 +258,7 @@ export default function HeroSection() {
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  Venda
+                  Comprar
                 </button>
                 <button
                   type="button"
@@ -258,7 +269,7 @@ export default function HeroSection() {
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  Aluguel
+                  Alugar
                 </button>
               </div>
 
@@ -274,6 +285,51 @@ export default function HeroSection() {
                     onFocus={() => setShowSuggestions(true)}
                     className="flex-1 outline-none text-gray-800 placeholder:text-gray-500 text-sm bg-transparent"
                   />
+                </div>
+                
+                {/* Separador */}
+                <div className="hidden sm:block h-8 w-px bg-gray-300"></div>
+                
+                {/* Campo Tipo de Imóvel com Dropdown */}
+                <div ref={propertyTypeRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowPropertyTypeDropdown(!showPropertyTypeDropdown)}
+                    className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
+                  >
+                    <Home className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm text-gray-700">
+                      {propertyType ? propertyType : 'Tipo de imóvel'}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showPropertyTypeDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  <AnimatePresence>
+                    {showPropertyTypeDropdown && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-full mt-2 left-0 right-0 sm:left-auto sm:right-auto sm:w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
+                      >
+                        <div className="p-2">
+                          {['', 'Casa', 'Apartamento', 'Condomínio', 'Terreno', 'Comercial', 'Rural'].map((type) => (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => {
+                                setPropertyType(type);
+                                setShowPropertyTypeDropdown(false);
+                              }}
+                              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-sm text-gray-700"
+                            >
+                              {type || 'Todos os tipos'}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
                 
                 {/* Separador */}
@@ -329,13 +385,12 @@ export default function HeroSection() {
                   <button
                     type="button"
                     onClick={() => setShowBedroomsDropdown(!showBedroomsDropdown)}
-                    className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-2 px-4 sm:px-6 py-3 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
                   >
                     <Bed className="w-4 h-4 text-gray-400" />
                     <span className="text-sm text-gray-700">
                       {bedrooms ? `${bedrooms}+ quartos` : 'Qualquer quarto'}
                     </span>
-                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showBedroomsDropdown ? 'rotate-180' : ''}`} />
                   </button>
                   
                   <AnimatePresence>

@@ -17,6 +17,7 @@ import Guides from "@/components/Guides";
 import SiteFooter from "@/components/Footer";
 import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
+import { LayoutList, Map, Bookmark, ChevronDown } from "lucide-react";
  
 import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
 import SearchFiltersBar from "@/components/SearchFiltersBar";
@@ -94,6 +95,24 @@ export default function Home() {
   const [areaMin, setAreaMin] = useState("");
   const [sort, setSort] = useState("recent");
   const [page, setPage] = useState(1);
+  
+  // Novos filtros avançados
+  const [parkingSpots, setParkingSpots] = useState("");
+  const [yearBuiltMin, setYearBuiltMin] = useState("");
+  const [yearBuiltMax, setYearBuiltMax] = useState("");
+  const [status, setStatus] = useState("");
+  const [petFriendly, setPetFriendly] = useState(false);
+  const [furnished, setFurnished] = useState(false);
+  const [hasPool, setHasPool] = useState(false);
+  const [hasGym, setHasGym] = useState(false);
+  const [hasElevator, setHasElevator] = useState(false);
+  const [hasBalcony, setHasBalcony] = useState(false);
+  const [hasSeaView, setHasSeaView] = useState(false);
+  const [condoFeeMin, setCondoFeeMin] = useState("");
+  const [condoFeeMax, setCondoFeeMax] = useState("");
+  const [iptuMin, setIptuMin] = useState("");
+  const [iptuMax, setIptuMax] = useState("");
+  const [keywords, setKeywords] = useState("");
 
   // Parse dos parâmetros da URL
   useEffect(() => {
@@ -109,6 +128,24 @@ export default function Home() {
     setAreaMin(filters.areaMin || "");
     setSort(filters.sort || "recent");
     setPage(filters.page || 1);
+    
+    // Novos filtros avançados
+    setParkingSpots(filters.parkingSpots || "");
+    setYearBuiltMin(filters.yearBuiltMin || "");
+    setYearBuiltMax(filters.yearBuiltMax || "");
+    setStatus(filters.status || "");
+    setPetFriendly(filters.petFriendly === "true");
+    setFurnished(filters.furnished === "true");
+    setHasPool(filters.hasPool === "true");
+    setHasGym(filters.hasGym === "true");
+    setHasElevator(filters.hasElevator === "true");
+    setHasBalcony(filters.hasBalcony === "true");
+    setHasSeaView(filters.hasSeaView === "true");
+    setCondoFeeMin(filters.condoFeeMin || "");
+    setCondoFeeMax(filters.condoFeeMax || "");
+    setIptuMin(filters.iptuMin || "");
+    setIptuMax(filters.iptuMax || "");
+    setKeywords(filters.keywords || "");
   }, [searchParams]);
 
   // Verificar se há busca ativa
@@ -387,38 +424,21 @@ export default function Home() {
           {/* Left Side - Property List */}
           <div className={`w-full ${viewMode === 'split' ? 'lg:w-1/2' : 'lg:w-full'} overflow-y-auto`}> 
             <div className="pt-20 px-6 lg:px-8">
-              {/* Header + Controles */}
-              <div className="mb-6 flex items-start justify-between gap-4">
-                <div>
-                  <h1 className="font-display text-3xl font-bold text-gray-900 mb-2">
-                    {total > 0 ? `${total} imóveis encontrados` : 'Nenhum imóvel encontrado'}
-                  </h1>
-                  {city && (
-                    <p className="text-gray-600">
-                      em <span className="font-medium">{city}, {state}</span>
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="inline-flex rounded-full border border-neutral-200 bg-white p-1 shadow-sm" role="group" aria-label="Alternar visualização">
-                    <button
-                      type="button"
-                      aria-pressed={viewMode === 'split'}
-                      onClick={() => { setViewMode('split'); try { track({ name: 'filters_apply', payload: { action: 'view_split' } }); } catch {} }}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${viewMode === 'split' ? 'bg-neutral-900 text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}
-                    >
-                      Lista + Mapa
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={viewMode === 'list'}
-                      onClick={() => { setViewMode('list'); try { track({ name: 'filters_apply', payload: { action: 'view_list' } }); } catch {} }}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-neutral-900 text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}
-                    >
-                      Somente Lista
-                    </button>
+              {/* Header + Controles - Redesigned Premium */}
+              <div className="mb-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h1 className="font-display text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+                      {total > 0 ? `${total.toLocaleString('pt-BR')} ${total === 1 ? 'imóvel encontrado' : 'imóveis encontrados'}` : 'Nenhum imóvel encontrado'}
+                    </h1>
+                    {city && (
+                      <p className="text-gray-600 text-lg">
+                        em <span className="font-semibold text-gray-900">{city}, {state}</span>
+                      </p>
+                    )}
                   </div>
-                  {/* Salvar busca (rápido) */}
+                  
+                  {/* Salvar busca - Premium Style */}
                   <button
                     onClick={async () => {
                       try {
@@ -431,10 +451,35 @@ export default function Home() {
                         alert('Busca salva! Você poderá acessá-la em Buscas salvas.');
                       } catch {}
                     }}
-                    className="px-4 py-2 rounded-md text-sm font-semibold border border-neutral-300 bg-white hover:bg-neutral-50"
+                    className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-lg"
                   >
-                    Salvar busca
+                    <Bookmark className="w-5 h-5" />
+                    <span className="hidden sm:inline">Salvar busca</span>
                   </button>
+                </div>
+
+                {/* View Mode Toggle + Sort - Premium Style */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <div className="inline-flex rounded-2xl border-2 border-gray-200 bg-white p-1.5 shadow-md" role="group" aria-label="Alternar visualização">
+                    <button
+                      type="button"
+                      aria-pressed={viewMode === 'split'}
+                      onClick={() => { setViewMode('split'); try { track({ name: 'filters_apply', payload: { action: 'view_split' } }); } catch {} }}
+                      className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${viewMode === 'split' ? 'glass-teal text-white shadow-md' : 'text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      <Map className="w-4 h-4" />
+                      <span>Lista + Mapa</span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={viewMode === 'list'}
+                      onClick={() => { setViewMode('list'); try { track({ name: 'filters_apply', payload: { action: 'view_list' } }); } catch {} }}
+                      className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${viewMode === 'list' ? 'glass-teal text-white shadow-md' : 'text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      <LayoutList className="w-4 h-4" />
+                      <span>Somente Lista</span>
+                    </button>
+                  </div>
                   {/* Sort control */}
                   <div className="min-w-[180px]">
                     <Select
@@ -489,6 +534,22 @@ export default function Home() {
                             bathrooms: bathroomsMin,
                             type,
                             areaMin,
+                            parkingSpots,
+                            yearBuiltMin,
+                            yearBuiltMax,
+                            status,
+                            petFriendly,
+                            furnished,
+                            hasPool,
+                            hasGym,
+                            hasElevator,
+                            hasBalcony,
+                            hasSeaView,
+                            condoFeeMin,
+                            condoFeeMax,
+                            iptuMin,
+                            iptuMax,
+                            keywords,
                           }}
                           onFiltersChange={(newFilters) => {
                             setMinPrice(newFilters.minPrice);
@@ -497,6 +558,22 @@ export default function Home() {
                             setBathroomsMin(newFilters.bathrooms);
                             setType(newFilters.type);
                             setAreaMin(newFilters.areaMin);
+                            setParkingSpots(newFilters.parkingSpots);
+                            setYearBuiltMin(newFilters.yearBuiltMin);
+                            setYearBuiltMax(newFilters.yearBuiltMax);
+                            setStatus(newFilters.status);
+                            setPetFriendly(newFilters.petFriendly);
+                            setFurnished(newFilters.furnished);
+                            setHasPool(newFilters.hasPool);
+                            setHasGym(newFilters.hasGym);
+                            setHasElevator(newFilters.hasElevator);
+                            setHasBalcony(newFilters.hasBalcony);
+                            setHasSeaView(newFilters.hasSeaView);
+                            setCondoFeeMin(newFilters.condoFeeMin);
+                            setCondoFeeMax(newFilters.condoFeeMax);
+                            setIptuMin(newFilters.iptuMin);
+                            setIptuMax(newFilters.iptuMax);
+                            setKeywords(newFilters.keywords);
                             const params = buildSearchParams({
                               q: search,
                               city,
@@ -507,6 +584,22 @@ export default function Home() {
                               bedroomsMin: newFilters.bedrooms,
                               bathroomsMin: newFilters.bathrooms,
                               areaMin: newFilters.areaMin,
+                              parkingSpots: newFilters.parkingSpots,
+                              yearBuiltMin: newFilters.yearBuiltMin,
+                              yearBuiltMax: newFilters.yearBuiltMax,
+                              status: newFilters.status,
+                              petFriendly: newFilters.petFriendly ? "true" : "",
+                              furnished: newFilters.furnished ? "true" : "",
+                              hasPool: newFilters.hasPool ? "true" : "",
+                              hasGym: newFilters.hasGym ? "true" : "",
+                              hasElevator: newFilters.hasElevator ? "true" : "",
+                              hasBalcony: newFilters.hasBalcony ? "true" : "",
+                              hasSeaView: newFilters.hasSeaView ? "true" : "",
+                              condoFeeMin: newFilters.condoFeeMin,
+                              condoFeeMax: newFilters.condoFeeMax,
+                              iptuMin: newFilters.iptuMin,
+                              iptuMax: newFilters.iptuMax,
+                              keywords: newFilters.keywords,
                               sort,
                               page: 1,
                             });
@@ -520,6 +613,22 @@ export default function Home() {
                             setBathroomsMin("");
                             setType("");
                             setAreaMin("");
+                            setParkingSpots("");
+                            setYearBuiltMin("");
+                            setYearBuiltMax("");
+                            setStatus("");
+                            setPetFriendly(false);
+                            setFurnished(false);
+                            setHasPool(false);
+                            setHasGym(false);
+                            setHasElevator(false);
+                            setHasBalcony(false);
+                            setHasSeaView(false);
+                            setCondoFeeMin("");
+                            setCondoFeeMax("");
+                            setIptuMin("");
+                            setIptuMax("");
+                            setKeywords("");
                             setPage(1);
                             const params = buildSearchParams({
                               q: search,
@@ -564,6 +673,22 @@ export default function Home() {
                           bathrooms: bathroomsMin,
                           type,
                           areaMin,
+                          parkingSpots,
+                          yearBuiltMin,
+                          yearBuiltMax,
+                          status,
+                          petFriendly,
+                          furnished,
+                          hasPool,
+                          hasGym,
+                          hasElevator,
+                          hasBalcony,
+                          hasSeaView,
+                          condoFeeMin,
+                          condoFeeMax,
+                          iptuMin,
+                          iptuMax,
+                          keywords,
                         }}
                         onFiltersChange={(newFilters) => {
                           setMinPrice(newFilters.minPrice);
@@ -572,6 +697,22 @@ export default function Home() {
                           setBathroomsMin(newFilters.bathrooms);
                           setType(newFilters.type);
                           setAreaMin(newFilters.areaMin);
+                          setParkingSpots(newFilters.parkingSpots);
+                          setYearBuiltMin(newFilters.yearBuiltMin);
+                          setYearBuiltMax(newFilters.yearBuiltMax);
+                          setStatus(newFilters.status);
+                          setPetFriendly(newFilters.petFriendly);
+                          setFurnished(newFilters.furnished);
+                          setHasPool(newFilters.hasPool);
+                          setHasGym(newFilters.hasGym);
+                          setHasElevator(newFilters.hasElevator);
+                          setHasBalcony(newFilters.hasBalcony);
+                          setHasSeaView(newFilters.hasSeaView);
+                          setCondoFeeMin(newFilters.condoFeeMin);
+                          setCondoFeeMax(newFilters.condoFeeMax);
+                          setIptuMin(newFilters.iptuMin);
+                          setIptuMax(newFilters.iptuMax);
+                          setKeywords(newFilters.keywords);
                         }}
                         onClearFilters={() => {
                           setMinPrice("");
@@ -580,6 +721,22 @@ export default function Home() {
                           setBathroomsMin("");
                           setType("");
                           setAreaMin("");
+                          setParkingSpots("");
+                          setYearBuiltMin("");
+                          setYearBuiltMax("");
+                          setStatus("");
+                          setPetFriendly(false);
+                          setFurnished(false);
+                          setHasPool(false);
+                          setHasGym(false);
+                          setHasElevator(false);
+                          setHasBalcony(false);
+                          setHasSeaView(false);
+                          setCondoFeeMin("");
+                          setCondoFeeMax("");
+                          setIptuMin("");
+                          setIptuMax("");
+                          setKeywords("");
                           setPage(1);
                         }}
                       />

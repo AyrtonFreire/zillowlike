@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SlidersHorizontal, X, Home, DollarSign, Bed, Bath, Maximize2, ChevronDown } from "lucide-react";
+import { SlidersHorizontal, X, Home, DollarSign, Bed, Bath, Maximize2, ChevronDown, Car, Calendar, Tag, PawPrint, Sofa, Waves, Dumbbell, Building2, MapPin, Search } from "lucide-react";
 
 type FilterValues = {
   minPrice: string;
@@ -10,6 +10,22 @@ type FilterValues = {
   bathrooms: string;
   type: string;
   areaMin: string;
+  parkingSpots: string;
+  yearBuiltMin: string;
+  yearBuiltMax: string;
+  status: string;
+  petFriendly: boolean;
+  furnished: boolean;
+  hasPool: boolean;
+  hasGym: boolean;
+  hasElevator: boolean;
+  hasBalcony: boolean;
+  hasSeaView: boolean;
+  condoFeeMin: string;
+  condoFeeMax: string;
+  iptuMin: string;
+  iptuMax: string;
+  keywords: string;
 };
 
 type SearchFiltersBarProps = {
@@ -67,7 +83,23 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
     filters.bedrooms || 
     filters.bathrooms || 
     filters.type || 
-    filters.areaMin;
+    filters.areaMin ||
+    filters.parkingSpots ||
+    filters.yearBuiltMin ||
+    filters.yearBuiltMax ||
+    filters.status ||
+    filters.petFriendly ||
+    filters.furnished ||
+    filters.hasPool ||
+    filters.hasGym ||
+    filters.hasElevator ||
+    filters.hasBalcony ||
+    filters.hasSeaView ||
+    filters.condoFeeMin ||
+    filters.condoFeeMax ||
+    filters.iptuMin ||
+    filters.iptuMax ||
+    filters.keywords;
 
   // Painel avançado isolado (modo compacto)
   const renderAdvancedPanel = () => (
@@ -239,6 +271,241 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
               ))}
             </div>
           </div>
+
+          {/* NEW FILTERS START */}
+          {/* Parking Spots */}
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Car className="w-4 h-4 text-gray-700" />
+              Vagas de Garagem
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {['', '1', '2', '3', '4'].map(spots => (
+                <button
+                  key={spots}
+                  onClick={() => onFiltersChange({ ...filters, parkingSpots: spots })}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    filters.parkingSpots === spots
+                      ? 'glass-teal text-white shadow-md'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {spots ? `${spots}+` : 'Qualquer'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Year Built */}
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-700" />
+              Ano de Construção
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {['', '2020', '2015', '2010', '2000', '1990'].map(year => (
+                <button
+                  key={year}
+                  onClick={() => onFiltersChange({ ...filters, yearBuiltMin: year, yearBuiltMax: '' })}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    filters.yearBuiltMin === year
+                      ? 'glass-teal text-white shadow-md'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {year ? `${year}+` : 'Qualquer'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Status */}
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Tag className="w-4 h-4 text-gray-700" />
+              Status do Imóvel
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: '', label: 'Todos' },
+                { value: 'NEW', label: 'Novo' },
+                { value: 'USED', label: 'Usado' },
+                { value: 'UNDER_CONSTRUCTION', label: 'Em Construção' }
+              ].map(status => (
+                <button
+                  key={status.value}
+                  onClick={() => onFiltersChange({ ...filters, status: status.value })}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    filters.status === status.value
+                      ? 'glass-teal text-white shadow-md'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {status.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Keywords Search */}
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Search className="w-4 h-4 text-gray-700" />
+              Palavras-chave
+            </label>
+            <input
+              type="text"
+              value={filters.keywords}
+              onChange={(e) => onFiltersChange({ ...filters, keywords: e.target.value })}
+              placeholder="Ex: vista panorâmica, pé na areia..."
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent"
+            />
+          </div>
+
+          {/* Toggles Section */}
+          <div className="md:col-span-2 space-y-4">
+            <label className="text-sm font-bold text-gray-900">Características Especiais</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {/* Pet Friendly */}
+              <button
+                onClick={() => onFiltersChange({ ...filters, petFriendly: !filters.petFriendly })}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  filters.petFriendly
+                    ? 'glass-teal text-white shadow-md'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <PawPrint className="w-4 h-4" />
+                <span>Aceita Pets</span>
+              </button>
+
+              {/* Furnished */}
+              <button
+                onClick={() => onFiltersChange({ ...filters, furnished: !filters.furnished })}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  filters.furnished
+                    ? 'glass-teal text-white shadow-md'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Sofa className="w-4 h-4" />
+                <span>Mobiliado</span>
+              </button>
+
+              {/* Pool */}
+              <button
+                onClick={() => onFiltersChange({ ...filters, hasPool: !filters.hasPool })}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  filters.hasPool
+                    ? 'glass-teal text-white shadow-md'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Waves className="w-4 h-4" />
+                <span>Piscina</span>
+              </button>
+
+              {/* Gym */}
+              <button
+                onClick={() => onFiltersChange({ ...filters, hasGym: !filters.hasGym })}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  filters.hasGym
+                    ? 'glass-teal text-white shadow-md'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Dumbbell className="w-4 h-4" />
+                <span>Academia</span>
+              </button>
+
+              {/* Elevator */}
+              <button
+                onClick={() => onFiltersChange({ ...filters, hasElevator: !filters.hasElevator })}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  filters.hasElevator
+                    ? 'glass-teal text-white shadow-md'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+                <span>Elevador</span>
+              </button>
+
+              {/* Balcony */}
+              <button
+                onClick={() => onFiltersChange({ ...filters, hasBalcony: !filters.hasBalcony })}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  filters.hasBalcony
+                    ? 'glass-teal text-white shadow-md'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Home className="w-4 h-4" />
+                <span>Varanda</span>
+              </button>
+
+              {/* Sea View */}
+              <button
+                onClick={() => onFiltersChange({ ...filters, hasSeaView: !filters.hasSeaView })}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  filters.hasSeaView
+                    ? 'glass-teal text-white shadow-md'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <MapPin className="w-4 h-4" />
+                <span>Vista Mar</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Condo Fee Range */}
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-gray-700" />
+              Condomínio (máx)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {['', '200', '500', '1000', '2000'].map(fee => (
+                <button
+                  key={fee}
+                  onClick={() => onFiltersChange({ ...filters, condoFeeMin: '', condoFeeMax: fee })}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    filters.condoFeeMax === fee
+                      ? 'glass-teal text-white shadow-md'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {fee ? `até R$ ${fee}` : 'Qualquer'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* IPTU Range */}
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-gray-700" />
+              IPTU (máx/ano)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {['', '500', '1000', '2000', '5000'].map(iptu => (
+                <button
+                  key={iptu}
+                  onClick={() => onFiltersChange({ ...filters, iptuMin: '', iptuMax: iptu })}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    filters.iptuMax === iptu
+                      ? 'glass-teal text-white shadow-md'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {iptu ? `até R$ ${iptu}` : 'Qualquer'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* NEW FILTERS END */}
+
         </div>
         <div className="flex items-center justify-between mt-6">
           <button onClick={onClearFilters} className="text-sm text-red-600 hover:text-red-700">Limpar tudo</button>

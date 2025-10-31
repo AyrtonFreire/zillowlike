@@ -16,6 +16,23 @@ export type Filters = {
   maxLat?: number;
   minLng?: number;
   maxLng?: number;
+  // Advanced filters
+  parkingSpots?: string;
+  yearBuiltMin?: string;
+  yearBuiltMax?: string;
+  status?: string;
+  petFriendly?: string; // "true" | "false"
+  furnished?: string;
+  hasPool?: string;
+  hasGym?: string;
+  hasElevator?: string;
+  hasBalcony?: string;
+  hasSeaView?: string;
+  condoFeeMin?: string;
+  condoFeeMax?: string;
+  iptuMin?: string;
+  iptuMax?: string;
+  keywords?: string;
 };
 
 export function parseFiltersFromSearchParams(sp: URLSearchParams): Filters {
@@ -45,6 +62,23 @@ export function parseFiltersFromSearchParams(sp: URLSearchParams): Filters {
     f.minLng = Number(minLng);
     f.maxLng = Number(maxLng);
   }
+  // Advanced filters
+  f.parkingSpots = get("parkingSpots");
+  f.yearBuiltMin = get("yearBuiltMin");
+  f.yearBuiltMax = get("yearBuiltMax");
+  f.status = get("status");
+  f.petFriendly = get("petFriendly");
+  f.furnished = get("furnished");
+  f.hasPool = get("hasPool");
+  f.hasGym = get("hasGym");
+  f.hasElevator = get("hasElevator");
+  f.hasBalcony = get("hasBalcony");
+  f.hasSeaView = get("hasSeaView");
+  f.condoFeeMin = get("condoFeeMin");
+  f.condoFeeMax = get("condoFeeMax");
+  f.iptuMin = get("iptuMin");
+  f.iptuMax = get("iptuMax");
+  f.keywords = get("keywords");
   return f;
 }
 
@@ -71,5 +105,22 @@ export function buildSearchParams(filters: Filters): string {
     p.set("minLng", String(filters.minLng));
     p.set("maxLng", String(filters.maxLng));
   }
+  // Advanced filters
+  if (filters.parkingSpots) p.set("parkingSpots", filters.parkingSpots);
+  if (filters.yearBuiltMin) p.set("yearBuiltMin", filters.yearBuiltMin);
+  if (filters.yearBuiltMax) p.set("yearBuiltMax", filters.yearBuiltMax);
+  if (filters.status) p.set("status", filters.status);
+  if (filters.petFriendly) p.set("petFriendly", filters.petFriendly);
+  if (filters.furnished) p.set("furnished", filters.furnished);
+  if (filters.hasPool) p.set("hasPool", filters.hasPool);
+  if (filters.hasGym) p.set("hasGym", filters.hasGym);
+  if (filters.hasElevator) p.set("hasElevator", filters.hasElevator);
+  if (filters.hasBalcony) p.set("hasBalcony", filters.hasBalcony);
+  if (filters.hasSeaView) p.set("hasSeaView", filters.hasSeaView);
+  if (filters.condoFeeMin) p.set("condoFeeMin", filters.condoFeeMin);
+  if (filters.condoFeeMax) p.set("condoFeeMax", filters.condoFeeMax);
+  if (filters.iptuMin) p.set("iptuMin", filters.iptuMin);
+  if (filters.iptuMax) p.set("iptuMax", filters.iptuMax);
+  if (filters.keywords) p.set("keywords", filters.keywords);
   return p.toString();
 }
