@@ -672,15 +672,23 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.street}, ${property.city}, ${property.state}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium"
+                  className="inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium mb-8"
                 >
                   Ver no Google Maps →
                 </a>
 
-                {/* Nearby properties you may like - reintroduced under POIs */}
+                {/* Nearby homes - Imóveis Próximos */}
+                {nearbyProperties.length > 0 && (
+                  <div className="border-t border-teal/10 pt-8">
+                    <h3 className="text-2xl font-display font-normal text-gray-900 mb-6">Nearby homes</h3>
+                    <SimilarCarousel properties={nearbyProperties} />
+                  </div>
+                )}
+
+                {/* Similar homes - Imóveis Similares */}
                 {similarProperties.length > 0 && (
-                  <div className="mt-8 border-t border-teal/10 pt-6">
-                    <h4 className="text-xl font-display font-normal text-gray-900 mb-4">Imóveis próximos que podem te interessar</h4>
+                  <div className="mt-8 border-t border-teal/10 pt-8">
+                    <h3 className="text-2xl font-display font-normal text-gray-900 mb-6">Similar homes</h3>
                     <SimilarCarousel properties={similarProperties} />
                   </div>
                 )}
@@ -725,21 +733,29 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   </div>
                 )}
 
-                {/* Agent Card */}
+                {/* Contact Form */}
                 <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
-                  <div className="flex items-start gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-light to-teal flex items-center justify-center text-white font-bold">
-                      Z
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900">Zillowlike Imóveis</h4>
-                      <p className="text-sm text-gray-600">Parceiro verificado</p>
-                    </div>
-                  </div>
-                  <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium mb-2">
-                    📞 Mostrar telefone
-                  </button>
-                  <div className="space-y-3 mt-4">
+                  {/* Financing Card - Clickable - Only for SALE */}
+                  {property.purpose === 'SALE' && property.price && property.price > 0 && (
+                    <a
+                      href={`/financing/${property.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block mb-4 rounded-xl border-2 border-teal/20 p-4 bg-gradient-to-br from-teal/5 to-blue/5 hover:from-teal/10 hover:to-blue/10 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-gray-700">💰 Financiamento</span>
+                        <span className="text-teal group-hover:translate-x-1 transition-transform">→</span>
+                      </div>
+                      <div className="text-2xl font-bold text-teal mb-1">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(((property.price * 0.8) / 100) / 360)}
+                        <span className="text-sm text-gray-600 font-normal">/mês</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Parcelas em até 360x</p>
+                    </a>
+                  )}
+                  
+                  <div className="space-y-3">
                     <input
                       type="text"
                       placeholder="Nome"
@@ -793,21 +809,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             </div>
           </div>
           
-          {/* Imóveis Próximos */}
-          {nearbyProperties.length > 0 && (
-            <div className="border-t border-teal/10 pt-8">
-              <h3 className="text-2xl font-display font-normal text-gray-900 mb-6 px-4 sm:px-6 lg:px-8">Imóveis Próximos</h3>
-              <SimilarCarousel properties={nearbyProperties} />
-            </div>
-          )}
-          
-          {/* Imóveis Similares */}
-          {similarProperties.length > 0 && (
-            <div className="border-t border-teal/10 pt-8 pb-8">
-              <h3 className="text-2xl font-display font-normal text-gray-900 mb-6 px-4 sm:px-6 lg:px-8">Imóveis Similares</h3>
-              <SimilarCarousel properties={similarProperties} />
-            </div>
-          )}
+          {/* Seções Nearby/Similar já estão acima, após Google Maps */}
         </div>
         </motion.div>
       </div>
