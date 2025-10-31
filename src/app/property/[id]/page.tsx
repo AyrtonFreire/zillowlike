@@ -12,7 +12,10 @@ import StatCard from "@/components/StatCard";
 import StickyActions from "@/components/StickyActions";
 import PropertyStickyHeader from "@/components/PropertyStickyHeader";
 import FeatureChips from "@/components/FeatureChips";
+import { ptBR, amenitiesFromProperty } from "@/lib/i18n/property";
 import ReadMore from "@/components/ReadMore";
+import AgentModule from "@/components/AgentModule";
+import SimilarCarousel from "@/components/SimilarCarousel";
 
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -27,7 +30,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       city: true,
       state: true,
       price: true,
-      images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true } },
+      street: true,
+      postalCode: true,
+      latitude: true,
+      longitude: true,
+      images: { orderBy: { sortOrder: "asc" }, select: { url: true } },
     },
   });
 
@@ -38,7 +45,57 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
+  const firstImage = property.images[0]?.url || "";
   const title = `${property.title} | Zillowlike`;
+
+  // JSON-LD Structured Data
+  const jsonLdProduct = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": property.title,
+    "description": property.description,
+    "image": property.images.map(img => img.url),
+    "offers": {
+      "@type": "Offer",
+      "price": typeof property.price === 'number' && property.price > 0 ? (property.price / 100).toFixed(2) : undefined,
+      "priceCurrency": "BRL",
+      "availability": "https://schema.org/InStock",
+      "url": `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"}/property/${id}/${property.title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '')}`
+    },
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": property.street,
+      "addressLocality": property.city,
+      "addressRegion": property.state,
+      "postalCode": property.postalCode || undefined
+    },
+    "geo": property.latitude && property.longitude ? {
+      "@type": "GeoCoordinates",
+      "latitude": property.latitude,
+      "longitude": property.longitude
+    } : undefined
+  };
+
+  const jsonLdBreadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001" },
+      { "@type": "ListItem", "position": 2, "name": `${property.city}, ${property.state}`, "item": `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"}/?city=${encodeURIComponent(property.city)}&state=${encodeURIComponent(property.state)}` },
+      { "@type": "ListItem", "position": 3, "name": property.title, "item": `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"}/property/${id}/${property.title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '')}` }
+    ]
+  };
+
   const description = `${property.description.slice(0, 160)}${property.description.length > 160 ? "..." : ""}`;
   const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
   const slug = property.title
@@ -285,15 +342,17 @@ export default async function PropertyPage({ params }: PageProps) {
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 shadow-sm">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Destaques deste imóvel</h2>
                 <div className="flex flex-wrap gap-2">
-                  {Array.isArray(property.conditionTags) && property.conditionTags.length > 0 ? (
-                    property.conditionTags.map((tag, i) => (
+                  {(() => {
+                    const amen = amenitiesFromProperty(property as any);
+                    const tags = Array.isArray(property.conditionTags) ? property.conditionTags : [];
+                    const all = [...tags, ...amen];
+                    if (all.length === 0) return <span className="text-sm text-gray-600">Sem destaques informados.</span>;
+                    return all.map((label, i) => (
                       <span key={i} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-gray-200 shadow-sm text-sm text-gray-700">
-                        <span>🏷️</span>{tag}
+                        <span>🏷️</span>{label}
                       </span>
-                    ))
-                  ) : (
-                    <span className="text-sm text-gray-600">Sem destaques informados.</span>
-                  )}
+                    ));
+                  })()}
                 </div>
               </div>
               <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -308,8 +367,42 @@ export default async function PropertyPage({ params }: PageProps) {
                     ...(property.petFriendly ? [{ icon: '🐾', label: 'Aceita pets' }] : []),
                     ...(property.condoFee != null ? [{ icon: '🏢', label: `Condomínio R$ ${Number(property.condoFee).toLocaleString('pt-BR')}` }] : []),
                     ...(property.yearBuilt != null ? [{ icon: '📅', label: `Construído em ${property.yearBuilt}` }] : []),
+                    ...((property as any)?.yearRenovated != null ? [{ icon: '🛠️', label: `Reformado em ${(property as any).yearRenovated}` }] : []),
+                    ...((property as any)?.finishFloor ? [{ icon: '🧱', label: `Piso ${ptBR.finishFloor((property as any).finishFloor)}` }] : []),
+                    ...((property as any)?.sunOrientation ? [{ icon: '🌞', label: ptBR.sunOrientation((property as any).sunOrientation) }] : []),
+                    ...((property as any)?.totalFloors != null ? [{ icon: '🏢', label: `Total de andares ${(property as any).totalFloors}` }] : []),
+                    ...((property as any)?.floor != null ? [{ icon: '⬆️', label: `Andar ${(property as any).floor}` }] : []),
                   ]}
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Vista & Posição</h2>
+                <div className="flex flex-wrap gap-2">
+                  {((property as any)?.viewSea || (property as any)?.viewCity || (property as any)?.positionFront || (property as any)?.positionBack || (property as any)?.sunByRoomNote) ? (
+                    <>
+                      {(property as any)?.viewSea && <Chip icon="🌊" label="Vista para o mar" />}
+                      {(property as any)?.viewCity && <Chip icon="🏙️" label="Vista para a cidade" />}
+                      {(property as any)?.positionFront && <Chip icon="➡️" label="Frente" />}
+                      {(property as any)?.positionBack && <Chip icon="⬅️" label="Fundos" />}
+                      {(property as any)?.sunByRoomNote && <Chip icon="📝" label={(property as any).sunByRoomNote} />}
+                    </>
+                  ) : <span className="text-sm text-gray-600">Sem informações de vista/posição.</span>}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Políticas</h2>
+                <div className="flex flex-wrap gap-2">
+                  {((property as any)?.petsSmall || (property as any)?.petsLarge || (property as any)?.condoRules) ? (
+                    <>
+                      {(property as any)?.petsSmall && <Chip icon="🐾" label="Aceita pets pequenos" />}
+                      {(property as any)?.petsLarge && <Chip icon="🐾" label="Aceita pets grandes" />}
+                      {(property as any)?.condoRules && <Chip icon="📜" label={(property as any).condoRules} />}
+                    </>
+                  ) : <span className="text-sm text-gray-600">Sem políticas informadas.</span>}
+                </div>
               </div>
             </div>
 
@@ -349,6 +442,7 @@ export default async function PropertyPage({ params }: PageProps) {
               whatsapp={whatsapp || null}
               financingHint={{ perMonth: Math.max(1, Math.round((property.price/100) / 240)), lender: 'Caixa', rateLabel: '10.5% a.a.' }}
             />
+            <AgentModule agent={{ name: "Zillowlike Imóveis", email: "contato@zillowlike.com", phone: whatsapp, whatsapp, verified: true }} />
             <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
               <div className="p-4 border-b">
                 <h3 className="font-semibold text-gray-900">Localização</h3>
@@ -382,6 +476,23 @@ export default async function PropertyPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Similar Properties Carousel */}
+      {nearby.length > 0 && (
+        <SimilarCarousel
+          properties={nearby.map(n => ({
+            id: n.id,
+            title: n.title,
+            price: n.price,
+            city: n.city,
+            state: n.state,
+            images: n.image ? [{ url: n.image }] : [],
+            bedrooms: null,
+            bathrooms: null,
+            areaM2: null
+          }))}
+        />
+      )}
 
       {/* Sticky mobile CTA */}
       <div className="fixed inset-x-0 bottom-0 z-30 md:hidden bg-white/90 backdrop-blur border-t p-3 flex items-center justify-between pb-[max(env(safe-area-inset-bottom),12px)]">

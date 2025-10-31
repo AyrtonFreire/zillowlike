@@ -1,6 +1,8 @@
 "use client";
 
 import { ModernNavbar } from "@/components/modern";
+import SiteFooter from "@/components/Footer";
+import Input from "@/components/ui/Input";
 import { useState } from "react";
 import { Calculator, DollarSign, Percent, Calendar, TrendingUp, Info } from "lucide-react";
 
@@ -92,9 +94,11 @@ export default function CalculadoraPage() {
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={valor}
                   onChange={(e) => setValor(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                   placeholder="300000"
                 />
               </div>
@@ -112,9 +116,11 @@ export default function CalculadoraPage() {
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={entrada}
                   onChange={(e) => setEntrada(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                   placeholder="60000"
                 />
               </div>
@@ -140,9 +146,11 @@ export default function CalculadoraPage() {
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={prazo}
                   onChange={(e) => setPrazo(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                   placeholder="360"
                 />
               </div>
@@ -172,10 +180,11 @@ export default function CalculadoraPage() {
                 <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="number"
+                  inputMode="decimal"
                   step="0.1"
                   value={juros}
                   onChange={(e) => setJuros(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                   placeholder="9.5"
                 />
               </div>
@@ -309,6 +318,7 @@ export default function CalculadoraPage() {
           </div>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 }

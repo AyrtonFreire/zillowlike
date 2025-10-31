@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@/lib/analytics";
 
 export default function ContactForm({ propertyId }: { propertyId: string }) {
   const [name, setName] = useState("");
@@ -25,6 +26,7 @@ export default function ContactForm({ propertyId }: { propertyId: string }) {
       const data = await res.json().catch(()=>({}));
       if (!res.ok) throw new Error(data?.error || 'Falha ao enviar.');
       setOk('Mensagem enviada com sucesso! Entraremos em contato.');
+      try { track({ name: 'contact_submit', } as any); } catch {}
       setName(""); setEmail(""); setPhone(""); setMessage("");
     } catch (e: any) {
       setErr(e?.message || 'Não foi possível enviar agora.');
@@ -35,6 +37,7 @@ export default function ContactForm({ propertyId }: { propertyId: string }) {
 
   return (
     <form onSubmit={submit} className="space-y-3">
+      <div aria-live="polite" className="sr-only" />
       {ok && <div className="text-sm text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded">{ok}</div>}
       {err && <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded">{err}</div>}
       <input className="w-full border rounded px-3 py-2 text-sm" placeholder="Seu nome" value={name} onChange={(e)=>setName(e.target.value)} required />

@@ -71,13 +71,18 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
         </button>
       </div>
 
-      {/* Thumbnails */}
+      {/* Thumbnails - Horizontal scroll em mobile */}
       {images.length > 1 && (
-        <div className="absolute bottom-3 left-0 right-0 mx-3 hidden md:block">
-          <div className="flex gap-2 overflow-x-auto px-2 py-2 rounded-lg bg-black/20 backdrop-blur">
+        <div className="absolute bottom-3 left-0 right-0 mx-3">
+          <div className="flex gap-2 overflow-x-auto px-2 py-2 rounded-lg bg-black/20 backdrop-blur scrollbar-hide">
             {images.slice(0, 10).map((im, i) => (
-              <button aria-label={`Ir para imagem ${i+1}`} key={i} onClick={() => setIndex(i)} className={`relative h-16 w-28 rounded-md overflow-hidden ring-2 ${index===i? 'ring-white' : 'ring-white/50'}`}>
-                <Image src={im.url} alt={(im.alt || title)+" thumb"} width={160} height={90} className="h-full w-full object-cover" loading="lazy" placeholder="blur" blurDataURL={im.blurDataURL || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTYwJyBoZWlnaHQ9JzkwJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPScxNjAnIGhlaWdodD0nOTAnIGZpbGw9JyNlZWVmZmYnIC8+PC9zdmc+"} />
+              <button 
+                aria-label={`Ir para imagem ${i+1}`} 
+                key={i} 
+                onClick={() => setIndex(i)} 
+                className={`relative h-12 w-16 md:h-16 md:w-28 rounded-md overflow-hidden ring-2 flex-shrink-0 ${index===i? 'ring-white' : 'ring-white/50'}`}
+              >
+                <Image src={im.url} alt={(im.alt || title)+" thumb"} fill className="object-cover" loading="lazy" placeholder="blur" blurDataURL={im.blurDataURL || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTYwJyBoZWlnaHQ9JzkwJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPScxNjAnIGhlaWdodD0nOTAnIGZpbGw9JyNlZWVmZmYnIC8+PC9zdmc+"} />
               </button>
             ))}
           </div>

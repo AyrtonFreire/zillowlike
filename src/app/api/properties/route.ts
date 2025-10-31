@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
           createdAt: true,
           updatedAt: true,
           images: { select: { id: true, url: true, alt: true, sortOrder: true, blurDataURL: true }, orderBy: { sortOrder: 'asc' } },
-        } as any,
+        },
       });
       if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
       const res = NextResponse.json({ item });
@@ -289,7 +289,7 @@ export async function GET(req: NextRequest) {
           sunOrientation: true,
           yearRenovated: true,
           totalFloors: true,
-        } as any,
+        },
         orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,

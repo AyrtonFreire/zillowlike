@@ -12,6 +12,9 @@ import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
 import { geocodeAddressParts } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import Toast from "@/components/Toast";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
+import Checkbox from "@/components/ui/Checkbox";
 
 type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File };
 
@@ -1504,35 +1507,13 @@ export default function NewPropertyPage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Quartos</label>
-                    <input
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      type="number"
-                      placeholder="Ex: 3"
-                      value={bedrooms as any}
-                      onChange={(e) => setBedrooms(e.target.value)}
-                    />
+                    <Input label="Quartos" type="number" placeholder="Ex: 3" value={bedrooms as any} onChange={(e)=>setBedrooms(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Banheiros</label>
-                    <input
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      type="number"
-                      step="0.5"
-                      placeholder="Ex: 3"
-                      value={bathrooms as any}
-                      onChange={(e) => setBathrooms(e.target.value)}
-                    />
+                    <Input label="Banheiros" type="number" step="0.5" placeholder="Ex: 3" value={bathrooms as any} onChange={(e)=>setBathrooms(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Área (m²)</label>
-                    <input
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      type="number"
-                      placeholder="Ex: 330"
-                      value={areaM2 as any}
-                      onChange={(e) => setAreaM2(e.target.value)}
-                    />
+                    <Input label="Área (m²)" type="number" placeholder="Ex: 330" value={areaM2 as any} onChange={(e)=>setAreaM2(e.target.value)} />
                   </div>
                 </div>
 
@@ -1540,41 +1521,34 @@ export default function NewPropertyPage() {
                 {/* Campos principais (texto/números) */}
                 <div className="pt-2 grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Vagas</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 2" value={parkingSpots as any} onChange={(e)=>setParkingSpots(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <Input label="Vagas" type="number" placeholder="Ex: 2" value={parkingSpots as any} onChange={(e)=>setParkingSpots(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Suítes</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 1" value={suites as any} onChange={(e)=>setSuites(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <Input label="Suítes" type="number" placeholder="Ex: 1" value={suites as any} onChange={(e)=>setSuites(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Andar</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 5" value={floor as any} onChange={(e)=>setFloor(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <Input label="Andar" type="number" placeholder="Ex: 5" value={floor as any} onChange={(e)=>setFloor(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Total de andares</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 10" value={totalFloors as any} onChange={(e)=>setTotalFloors(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <Input label="Total de andares" type="number" placeholder="Ex: 10" value={totalFloors as any} onChange={(e)=>setTotalFloors(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Orientação solar (opcional)</label>
-                    <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" value={sunOrientation} onChange={(e)=>setSunOrientation(e.target.value)}>
+                    <Select label="Orientação solar (opcional)" value={sunOrientation} onChange={(e)=>setSunOrientation(e.target.value)}>
                       <option value="">Selecione</option>
                       <option value="Nascente">Nascente</option>
                       <option value="Poente">Poente</option>
-                    </select>
+                    </Select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ano de construção (opcional)</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 2015" value={yearBuilt as any} onChange={(e)=>setYearBuilt(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <Input label="Ano de construção (opcional)" type="number" placeholder="Ex: 2015" value={yearBuilt as any} onChange={(e)=>setYearBuilt(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ano de reforma (opcional)</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" type="number" placeholder="Ex: 2022" value={yearRenovated as any} onChange={(e)=>setYearRenovated(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <Input label="Ano de reforma (opcional)" type="number" placeholder="Ex: 2022" value={yearRenovated as any} onChange={(e)=>setYearRenovated(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                 </div>
 
@@ -1582,14 +1556,13 @@ export default function NewPropertyPage() {
                 <div className="pt-2">
                   <div className="text-sm font-medium text-gray-800 mb-2">Recursos e facilidades</div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasBalcony} onChange={(e)=>setHasBalcony(e.target.checked)} /> Varanda</label>
-                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasElevator} onChange={(e)=>setHasElevator(e.target.checked)} /> Elevador</label>
-                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasPool} onChange={(e)=>setHasPool(e.target.checked)} /> Piscina</label>
-                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasGym} onChange={(e)=>setHasGym(e.target.checked)} /> Academia</label>
-                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasPlayground} onChange={(e)=>setHasPlayground(e.target.checked)} /> Playground</label>
-                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasPartyRoom} onChange={(e)=>setHasPartyRoom(e.target.checked)} /> Salão de festas</label>
-                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasGourmet} onChange={(e)=>setHasGourmet(e.target.checked)} /> Espaço gourmet/Churrasqueira</label>
-                    <label className="inline-flex items-center gap-3"><input type="checkbox" className="rounded scale-110" checked={hasConcierge24h} onChange={(e)=>setHasConcierge24h(e.target.checked)} /> Portaria 24h</label>
+                    <Checkbox label="Varanda" checked={hasBalcony} onChange={(e)=>setHasBalcony(e.target.checked)} />
+                    <Checkbox label="Elevador" checked={hasElevator} onChange={(e)=>setHasElevator(e.target.checked)} />
+                    <Checkbox label="Piscina" checked={hasPool} onChange={(e)=>setHasPool(e.target.checked)} />
+                    <Checkbox label="Playground" checked={hasPlayground} onChange={(e)=>setHasPlayground(e.target.checked)} />
+                    <Checkbox label="Salão de festas" checked={hasPartyRoom} onChange={(e)=>setHasPartyRoom(e.target.checked)} />
+                    <Checkbox label="Espaço gourmet/Churrasqueira" checked={hasGourmet} onChange={(e)=>setHasGourmet(e.target.checked)} />
+                    <Checkbox label="Portaria 24h" checked={hasConcierge24h} onChange={(e)=>setHasConcierge24h(e.target.checked)} />
                   </div>
                 </div>
 
@@ -1599,59 +1572,76 @@ export default function NewPropertyPage() {
                 <div className="space-y-3">
                   {/* Acessibilidade */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_acc ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
-                      <span>Acessibilidade</span>
+                    <button
+                      type="button"
+                      aria-expanded={!!openAcc.acc_acc}
+                      aria-controls="acc-acc"
+                      onClick={()=>setOpenAcc(prev => prev.acc_acc ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false })}
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                    >
+                      <span id="acc-acc-title" className="font-display text-base">Acessibilidade</span>
                       <span>{openAcc.acc_acc ? '−' : '+'}</span>
                     </button>
                     {openAcc.acc_acc && (
-                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accRamps} onChange={(e)=>{setAccRamps(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Rampas</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accWideDoors} onChange={(e)=>{setAccWideDoors(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Portas largas</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accAccessibleElevator} onChange={(e)=>{setAccAccessibleElevator(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Elevador acessível</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={accTactile} onChange={(e)=>{setAccTactile(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Sinalização tátil</label>
+                      <div role="region" aria-labelledby="acc-acc-title" id="acc-acc" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <Checkbox label="Rampas" checked={accRamps} onChange={(e)=>{setAccRamps(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} />
+                        <Checkbox label="Portas largas" checked={accWideDoors} onChange={(e)=>{setAccWideDoors(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} />
+                        <Checkbox label="Elevador acessível" checked={accAccessibleElevator} onChange={(e)=>{setAccAccessibleElevator(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} />
+                        <Checkbox label="Sinalização tátil" checked={accTactile} onChange={(e)=>{setAccTactile(e.target.checked); setOpenAcc({acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} />
                       </div>
                     )}
                   </div>
 
                   {/* Conforto/Energia */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_ce ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
-                      <span>Conforto/Energia</span>
+                    <button
+                      type="button"
+                      aria-expanded={!!openAcc.acc_ce}
+                      aria-controls="acc-ce"
+                      onClick={()=>setOpenAcc(prev => prev.acc_ce ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false })}
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                    >
+                      <span id="acc-ce-title" className="font-display text-base">Conforto/Energia</span>
                       <span>{openAcc.acc_ce ? '−' : '+'}</span>
                     </button>
                     {openAcc.acc_ce && (
-                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortAC} onChange={(e)=>{setComfortAC(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Ar-condicionado</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortHeating} onChange={(e)=>{setComfortHeating(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Aquecimento</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortSolar} onChange={(e)=>{setComfortSolar(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Aquecimento solar</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortNoiseWindows} onChange={(e)=>{setComfortNoiseWindows(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Janelas antirruído</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortLED} onChange={(e)=>{setComfortLED(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Iluminação LED</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={comfortWaterReuse} onChange={(e)=>{setComfortWaterReuse(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} /> Reuso de água</label>
+                      <div role="region" aria-labelledby="acc-ce-title" id="acc-ce" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <Checkbox label="Ar-condicionado" checked={comfortAC} onChange={(e)=>{setComfortAC(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} />
+                        <Checkbox label="Aquecimento" checked={comfortHeating} onChange={(e)=>{setComfortHeating(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} />
+                        <Checkbox label="Aquecimento solar" checked={comfortSolar} onChange={(e)=>{setComfortSolar(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} />
+                        <Checkbox label="Janelas antirruído" checked={comfortNoiseWindows} onChange={(e)=>{setComfortNoiseWindows(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} />
+                        <Checkbox label="Iluminação LED" checked={comfortLED} onChange={(e)=>{setComfortLED(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} />
+                        <Checkbox label="Reuso de água" checked={comfortWaterReuse} onChange={(e)=>{setComfortWaterReuse(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false});}} />
                       </div>
                     )}
                   </div>
 
                   {/* Acabamentos */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_fin ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:true, acc_view:false, acc_pets:false, acc_sec:false })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
-                      <span>Acabamentos</span>
+                    <button
+                      type="button"
+                      aria-expanded={!!openAcc.acc_fin}
+                      aria-controls="acc-fin"
+                      onClick={()=>setOpenAcc(prev => prev.acc_fin ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:true, acc_view:false, acc_pets:false, acc_sec:false })}
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                    >
+                      <span id="acc-fin-title" className="font-display text-base">Acabamentos</span>
                       <span>{openAcc.acc_fin ? '−' : '+'}</span>
                     </button>
                     {openAcc.acc_fin && (
-                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                      <div role="region" aria-labelledby="acc-fin-title" id="acc-fin" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">Piso</label>
-                          <select className="w-full px-3 py-2 border rounded" value={finishFloor} onChange={(e)=>{setFinishFloor(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:true, acc_view:false, acc_pets:false, acc_sec:false});}}>
+                          <Select label="Piso" value={finishFloor} onChange={(e)=>{setFinishFloor(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:true, acc_view:false, acc_pets:false, acc_sec:false});}}>
                             <option value="">Selecione</option>
                             <option value="porcelanato">Porcelanato</option>
                             <option value="madeira">Madeira</option>
                             <option value="vinilico">Vinílico</option>
-                          </select>
+                          </Select>
                         </div>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={finishCabinets} onChange={(e)=>setFinishCabinets(e.target.checked)} /> Armários planejados</label>
+                        <Checkbox label="Armários planejados" checked={finishCabinets} onChange={(e)=>setFinishCabinets(e.target.checked)} />
                         <div className="flex flex-col gap-2">
-                          <label className="inline-flex items-center gap-2"><input type="checkbox" checked={finishCounterGranite} onChange={(e)=>setFinishCounterGranite(e.target.checked)} /> Bancadas em granito</label>
-                          <label className="inline-flex items-center gap-2"><input type="checkbox" checked={finishCounterQuartz} onChange={(e)=>setFinishCounterQuartz(e.target.checked)} /> Bancadas em quartzo</label>
+                          <Checkbox label="Bancadas em granito" checked={finishCounterGranite} onChange={(e)=>setFinishCounterGranite(e.target.checked)} />
+                          <Checkbox label="Bancadas em quartzo" checked={finishCounterQuartz} onChange={(e)=>setFinishCounterQuartz(e.target.checked)} />
                         </div>
                       </div>
                     )}
@@ -1659,48 +1649,68 @@ export default function NewPropertyPage() {
 
                   {/* Vista/Posição */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_view ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
-                      <span>Vista/Posição</span>
+                    <button
+                      type="button"
+                      aria-expanded={!!openAcc.acc_view}
+                      aria-controls="acc-view"
+                      onClick={()=>setOpenAcc(prev => prev.acc_view ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false })}
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                    >
+                      <span id="acc-view-title" className="font-display text-base">Vista/Posição</span>
                       <span>{openAcc.acc_view ? '−' : '+'}</span>
                     </button>
                     {openAcc.acc_view && (
-                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={viewSea} onChange={(e)=>{setViewSea(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} /> Vista mar</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={viewCity} onChange={(e)=>{setViewCity(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} /> Vista cidade</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={positionFront} onChange={(e)=>{setPositionFront(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} /> Frente</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={positionBack} onChange={(e)=>{setPositionBack(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} /> Fundos</label>
-                        <input className="px-3 py-2 border rounded" placeholder="Posição do sol por cômodo (opcional)" value={sunByRoomNote} onChange={(e)=>{setSunByRoomNote(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
+                      <div role="region" aria-labelledby="acc-view-title" id="acc-view" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <Checkbox label="Vista mar" checked={viewSea} onChange={(e)=>{setViewSea(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
+                        <Checkbox label="Vista cidade" checked={viewCity} onChange={(e)=>{setViewCity(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
+                        <Checkbox label="Frente" checked={positionFront} onChange={(e)=>{setPositionFront(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
+                        <Checkbox label="Fundos" checked={positionBack} onChange={(e)=>{setPositionBack(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
+                        <Input placeholder="Posição do sol por cômodo (opcional)" value={sunByRoomNote} onChange={(e)=>{setSunByRoomNote(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
                       </div>
                     )}
                   </div>
 
                   {/* Pets/Políticas */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_pets ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
-                      <span>Pets/Políticas</span>
+                    <button
+                      type="button"
+                      aria-expanded={!!openAcc.acc_pets}
+                      aria-controls="acc-pets"
+                      onClick={()=>setOpenAcc(prev => prev.acc_pets ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false })}
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                    >
+                      <span id="acc-pets-title" className="font-display text-base">Pets/Políticas</span>
                       <span>{openAcc.acc_pets ? '−' : '+'}</span>
                     </button>
                     {openAcc.acc_pets && (
-                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={petsSmall} onChange={(e)=>{setPetsSmall(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} /> Permite pets pequeno porte</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={petsLarge} onChange={(e)=>{setPetsLarge(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} /> Permite pets grande porte</label>
-                        <textarea className="sm:col-span-2 px-3 py-2 border rounded" rows={2} placeholder="Regras do condomínio (opcional)" value={condoRules} onChange={(e)=>{setCondoRules(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} />
+                      <div role="region" aria-labelledby="acc-pets-title" id="acc-pets" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <Checkbox label="Permite pets pequeno porte" checked={petsSmall} onChange={(e)=>{setPetsSmall(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} />
+                        <Checkbox label="Permite pets grande porte" checked={petsLarge} onChange={(e)=>{setPetsLarge(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} />
+                        <div className="sm:col-span-2">
+                          <Input placeholder="Regras do condomínio (opcional)" value={condoRules} onChange={(e)=>{setCondoRules(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} />
+                        </div>
                       </div>
                     )}
                   </div>
 
                   {/* Segurança */}
                   <div className="border rounded-lg overflow-hidden">
-                    <button type="button" onClick={()=>setOpenAcc(prev => prev.acc_sec ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true })} className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium">
-                      <span>Segurança</span>
+                    <button
+                      type="button"
+                      aria-expanded={!!openAcc.acc_sec}
+                      aria-controls="acc-sec"
+                      onClick={()=>setOpenAcc(prev => prev.acc_sec ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true })}
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                    >
+                      <span id="acc-sec-title" className="font-display text-base">Segurança</span>
                       <span>{openAcc.acc_sec ? '−' : '+'}</span>
                     </button>
                     {openAcc.acc_sec && (
-                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secCCTV} onChange={(e)=>{setSecCCTV(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} /> CFTV</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secSallyPort} onChange={(e)=>{setSecSallyPort(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} /> Clausura</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secNightGuard} onChange={(e)=>{setSecNightGuard(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} /> Vigia noturno</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={secElectricFence} onChange={(e)=>{setSecElectricFence(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} /> Cerca elétrica</label>
+                      <div role="region" aria-labelledby="acc-sec-title" id="acc-sec" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <Checkbox label="CFTV" checked={secCCTV} onChange={(e)=>{setSecCCTV(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} />
+                        <Checkbox label="Clausura" checked={secSallyPort} onChange={(e)=>{setSecSallyPort(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} />
+                        <Checkbox label="Vigia noturno" checked={secNightGuard} onChange={(e)=>{setSecNightGuard(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} />
+                        <Checkbox label="Cerca elétrica" checked={secElectricFence} onChange={(e)=>{setSecElectricFence(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true});}} />
                       </div>
                     )}
                   </div>

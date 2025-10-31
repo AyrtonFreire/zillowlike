@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Button from "@/components/ui/Button";
+import { track } from "@/lib/analytics";
 
 export default function StickyActions({
   priceCents,
@@ -27,30 +29,29 @@ export default function StickyActions({
           <div className="text-3xl font-extrabold tracking-tight text-gray-900">R$ {priceBRL}</div>
         </div>
         <motion.div whileTap={{ scale: 0.98 }}>
-          <Link
-            prefetch={false}
-            href={scheduleHref}
-            aria-label="Agendar visita"
-            className="block w-full text-center rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 shadow hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-300"
-          >
-            Agendar Visita
+          <Link prefetch={false} href={scheduleHref} aria-label="Agendar visita" onClick={() => { try { track({ name: 'filters_apply', payload: { action: 'schedule_visit' } }); } catch {} }}>
+            <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:bg-blue-700">
+              Agendar Visita
+            </Button>
           </Link>
         </motion.div>
         <div className="grid grid-cols-2 gap-2 mt-3">
           {phone && (
-            <a aria-label="Ligar agora" href={`tel:${phone}`} className="rounded-lg border px-3 py-2 text-center font-medium hover:bg-gray-50">
-              Ligar Agora
+            <a aria-label="Ligar agora" href={`tel:${phone}`} onClick={() => { try { track({ name: 'filters_apply', payload: { action: 'call_now' } }); } catch {} }}>
+              <Button variant="ghost" className="w-full border">
+                Ligar Agora
+              </Button>
             </a>
           )}
           {whatsapp && (
-            <a aria-label="WhatsApp" target="_blank" href={`https://wa.me/${whatsapp}`} className="rounded-lg border px-3 py-2 text-center font-medium hover:bg-gray-50">
-              WhatsApp
+            <a aria-label="WhatsApp" target="_blank" href={`https://wa.me/${whatsapp}`} onClick={() => { try { track({ name: 'filters_apply', payload: { action: 'whatsapp' } }); } catch {} }}>
+              <Button variant="ghost" className="w-full border">WhatsApp</Button>
             </a>
           )}
           {!whatsapp && !phone && (
-            <button aria-label="Enviar mensagem" onClick={onMessage} className="rounded-lg border px-3 py-2 text-center font-medium hover:bg-gray-50 col-span-2">
+            <Button aria-label="Enviar mensagem" onClick={() => { try { track({ name: 'filters_apply', payload: { action: 'send_message' } }); } catch {} onMessage?.(); }} variant="ghost" className="col-span-2 border">
               Enviar Mensagem
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -64,7 +65,7 @@ export default function StickyActions({
             <div className="text-xs text-blue-700/80">{financingHint.lender || "Banco"}{financingHint.rateLabel ? ` · ${financingHint.rateLabel}` : ""}</div>
           </div>
         ) : null}
-        <Link prefetch={false} href="#financing" className="text-sm font-semibold text-blue-700 hover:text-blue-900 inline-flex items-center gap-1">
+        <Link prefetch={false} href="#financing" onClick={() => { try { track({ name: 'filters_apply', payload: { action: 'simulate_financing' } }); } catch {} }} className="text-sm font-semibold text-blue-700 hover:text-blue-900 inline-flex items-center gap-1">
           Simular financiamento
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
         </Link>

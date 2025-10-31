@@ -3,13 +3,15 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, Car, Home, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X } from "lucide-react";
 import Image from "next/image";
+import Chip from "@/components/ui/Chip";
 import { useState, useEffect, useRef } from "react";
+import { track } from "@/lib/analytics";
 
 interface PropertyCardPremiumProps {
   property: {
     id: string;
     title: string;
-    price: number;
+    price?: number | null;
     images: { url: string }[];
     city: string;
     state: string;
@@ -23,6 +25,7 @@ interface PropertyCardPremiumProps {
     parkingSpots?: number | null;
     conditionTags?: string[];
     description?: string;
+    media?: { type: 'image' | 'video'; url: string }[];
   };
   onOpenOverlay?: (id: string) => void;
   watermark?: boolean;
@@ -56,16 +59,21 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     };
   }, [showShareModal]);
 
-  const handleFavorite = (e: React.MouseEvent) => {
+  const handleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsFavorite(!isFavorite);
+    try {
+      const method = isFavorite ? 'DELETE' : 'POST';
+      setIsFavorite(!isFavorite);
+      await fetch('/api/favorites', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ propertyId: property.id }) });
+    } catch {}
   };
 
   const handleShare = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setShowShareModal(!showShareModal);
+    try { track({ name: 'filters_open', source: 'mobile' } as any); } catch {}
   };
 
   const handleCopyLink = async (e: React.MouseEvent) => {
@@ -74,6 +82,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     const url = `${window.location.origin}/properties/${property.id}`;
     await navigator.clipboard.writeText(url);
     setCopySuccess(true);
+    try { track({ name: 'filters_apply', payload: { action: 'copy_link', id: property.id } }); } catch {}
     setTimeout(() => {
       setCopySuccess(false);
       setShowShareModal(false);
@@ -85,12 +94,12 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     e.stopPropagation();
     const url = `${window.location.origin}/properties/${property.id}`;
     const subject = encodeURIComponent(property.title);
-    const body = encodeURIComponent(`Confira este imóvel: ${property.title}\n\nPreço: ${new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      minimumFractionDigits: 0,
-    }).format(property.price / 100)}\n\nLocalização: ${property.city}/${property.state}\n\nVeja mais em: ${url}`);
+    const priceLabel = typeof property.price === 'number' && property.price > 0
+      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format((property.price as number) / 100)
+      : 'Price on Request';
+    const body = encodeURIComponent(`Confira este imóvel: ${property.title}\n\nPreço: ${priceLabel}\n\nLocalização: ${property.city}/${property.state}\n\nVeja mais em: ${url}`);
     window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
+    try { track({ name: 'filters_apply', payload: { action: 'share_gmail', id: property.id } }); } catch {}
   };
 
   const handleOutlookShare = (e: React.MouseEvent) => {
@@ -98,12 +107,12 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     e.stopPropagation();
     const url = `${window.location.origin}/properties/${property.id}`;
     const subject = encodeURIComponent(property.title);
-    const body = encodeURIComponent(`Confira este imóvel: ${property.title}\n\nPreço: ${new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      minimumFractionDigits: 0,
-    }).format(property.price / 100)}\n\nLocalização: ${property.city}/${property.state}\n\nVeja mais em: ${url}`);
+    const priceLabel = typeof property.price === 'number' && property.price > 0
+      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format((property.price as number) / 100)
+      : 'Price on Request';
+    const body = encodeURIComponent(`Confira este imóvel: ${property.title}\n\nPreço: ${priceLabel}\n\nLocalização: ${property.city}/${property.state}\n\nVeja mais em: ${url}`);
     window.open(`https://outlook.live.com/mail/0/deeplink/compose?subject=${subject}&body=${body}`, '_blank');
+    try { track({ name: 'filters_apply', payload: { action: 'share_outlook', id: property.id } }); } catch {}
   };
 
   const handleClick = () => {
@@ -145,10 +154,17 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    if (touchStartX.current == null) return;
-    const dx = e.touches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) > 10) touchMoved.current = true;
-    lastTouchX.current = e.touches[0].clientX;
+    if (!touchStartX.current) return;
+    const currentTouch = e.touches[0].clientX;
+    const diff = touchStartX.current - currentTouch;
+    // Threshold menor para melhor responsividade
+    if (Math.abs(diff) > 50) {
+      e.stopPropagation(); // Prevenir scroll vertical
+      didSwipe.current = true;
+      if (diff > 0) nextImage(e as any);
+      else prevImage(e as any);
+      touchStartX.current = null;
+    }
   };
 
   const onTouchEnd = () => {
@@ -185,7 +201,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         whileHover={{ y: -8 }}
-        className="group relative bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300 cursor-pointer h-full flex flex-col"
+        className="group relative bg-white rounded-2xl shadow-card hover:shadow-cardHover transition-shadow duration-300 cursor-pointer h-full flex flex-col"
         style={{ overflow: showShareModal ? 'visible' : 'hidden' }}
       >
         {/* Badges and Tags - Top Left */}
@@ -195,6 +211,12 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
             <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-lg">
               <TrendingUp className="w-3 h-3" />
               Destaque
+            </div>
+          )}
+          {/* Video Tag */}
+          {Array.isArray(property.media) && property.media.some(m=>m.type==='video') && (
+            <div className="bg-black/70 text-white px-2 py-0.5 rounded-full text-[10px] font-semibold shadow">
+              Video
             </div>
           )}
           
@@ -218,6 +240,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           whileTap={{ scale: 0.9 }}
           onClick={handleFavorite}
           className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-purple-100/50 transition-colors"
+          aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
         >
           <Heart
             className={`w-5 h-5 transition-colors ${
@@ -247,6 +270,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                       src={image.url}
                       alt={property.title}
                       fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                   </div>
@@ -265,18 +289,37 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                 <>
                   <button
                     onClick={prevImage}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all z-10"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-3 min-h-[44px] min-w-[44px] rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all z-10 flex items-center justify-center"
+                    aria-label="Imagem anterior"
                   >
                     <ChevronLeft className="w-5 h-5 text-gray-800" />
                   </button>
                   <button
                     onClick={nextImage}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all z-10"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-3 min-h-[44px] min-w-[44px] rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all z-10 flex items-center justify-center"
+                    aria-label="Próxima imagem"
                   >
                     <ChevronRight className="w-5 h-5 text-gray-800" />
                   </button>
                 </>
               )}
+
+              {/* Overlay: Price + Location */}
+              <div className="absolute inset-x-0 bottom-0 p-3">
+                <div className="flex items-end justify-between">
+                  <div className="backdrop-blur-sm bg-black/35 text-white rounded-lg px-2.5 py-1.5 shadow">
+                    <span className="text-lg font-semibold">
+                      {typeof property.price === 'number' && property.price > 0
+                        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(property.price / 100)
+                        : 'Price on Request'}
+                    </span>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-1 backdrop-blur-sm bg-black/25 text-white rounded-md px-2 py-1">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span className="text-xs">{property.city}/{property.state}</span>
+                  </div>
+                </div>
+              </div>
 
               {/* Image Dots */}
               {property.images.length > 1 && (
@@ -312,22 +355,13 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
         {/* Content */}
         <div className="p-3 flex flex-col flex-1 relative">
-          {/* Price and Share Button */}
-          <div className="mb-3 mt-0.5 flex items-center justify-between">
-            <span className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              {new Intl.NumberFormat("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-                minimumFractionDigits: 0,
-              }).format(property.price / 100)}
-            </span>
-
-            {/* Share Button */}
+          {/* Share Button */}
+          <div className="mb-2 mt-0.5 flex items-center justify-end">
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={handleShare}
               className="p-1.5 rounded-md transition-colors hover:bg-gray-50"
-              aria-label="Compartilhar"
+              aria-label="Abrir opções de compartilhamento"
             >
               <Share2 className="w-5 h-5 text-purple-600 hover:text-blue-600 transition-colors" />
             </motion.button>
@@ -394,24 +428,10 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           {/* Tags row: Tipo + Finalidade (Venda/Aluguel) */}
           <div className="flex items-center gap-2 mb-2">
             {property.type && (
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full border border-gray-300">
-                <Home className="w-3 h-3 text-gray-600" />
-                <span className="text-xs font-bold text-gray-700 uppercase">
-                  {property.type === 'HOUSE' ? 'Casa' : 
-                   property.type === 'APARTMENT' ? 'Apartamento' :
-                   property.type === 'CONDO' ? 'Condomínio' :
-                   property.type === 'LAND' ? 'Terreno' :
-                   property.type === 'COMMERCIAL' ? 'Comercial' :
-                   property.type === 'STUDIO' ? 'Studio' : property.type}
-                </span>
-              </div>
+              <Chip icon={<Home className="w-3 h-3 text-gray-600" />}>{property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type === 'STUDIO' ? 'Studio' : property.type}</Chip>
             )}
             {property.purpose && (
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full border border-gray-300">
-                <span className="text-xs font-bold text-gray-700 uppercase">
-                  {property.purpose === 'RENT' ? 'Aluguel' : 'Venda'}
-                </span>
-              </div>
+              <Chip>{property.purpose === 'RENT' ? 'Aluguel' : 'Venda'}</Chip>
             )}
           </div>
 

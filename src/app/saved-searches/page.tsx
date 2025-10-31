@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { ModernNavbar } from "@/components/modern";
+import SiteFooter from "@/components/Footer";
+import Button from "@/components/ui/Button";
+import { Bookmark, Trash2 } from "lucide-react";
 
 type Saved = { label: string; params: string; ts: number };
 
@@ -31,76 +34,47 @@ export default function SavedSearchesPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* Barra global (leve) */}
-      <div className="bg-white border-b border-gray-200/50">
-        <div className="mx-auto max-w-7xl px-4">
-          <div className="h-14 flex items-center justify-between text-[15px] md:text-base text-gray-700">
-            <nav className="hidden md:flex items-center gap-7 font-medium">
-              <Link href="/" className="hover:text-[#006AFF]">Comprar</Link>
-              <Link href="/" className="hover:text-[#006AFF]">Alugar</Link>
-              <Link href="/" className="hover:text-[#006AFF]">Vender</Link>
-              <Link href="/" className="hover:text-[#006AFF]">Financiar</Link>
-              <Link href="/" className="hover:text-[#006AFF]">Encontrar agente</Link>
-            </nav>
-            <Link href="/" className="inline-flex items-center justify-center">
-              <Image src="/logo.svg" alt="Zillowlike" width={40} height={40} />
-            </Link>
-            <div className="hidden md:flex items-center gap-7 font-medium">
-              <Link href="/" className="hover:text-[#006AFF]">Gerenciar</Link>
-              <Link href="/" className="hover:text-[#006AFF]">Anunciar</Link>
-              <Link href="/" className="hover:text-[#006AFF]">Ajuda</Link>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Abas */}
-      <div className="bg-white border-b border-gray-200/50">
-        <div className="mx-auto max-w-7xl px-4">
-          <div className="flex items-center justify-between h-11">
-            <nav className="flex items-stretch gap-6 text-[13px] md:text-sm">
-              <Link href="/favorites" className="group relative px-1 py-3 text-gray-600 hover:text-[#006AFF]">
-                Imóveis salvos
-                <span className="pointer-events-none absolute left-0 right-0 -bottom-[5px] h-[3px] bg-[#006AFF] scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
-              </Link>
-              <Link href="/saved-searches" className="group relative px-1 py-3 text-[#006AFF] font-medium">
-                Buscas salvas
-                <span className="pointer-events-none absolute left-0 right-0 -bottom-[5px] h-[3px] bg-[#006AFF] scale-x-100 origin-left transition-transform duration-300" />
-              </Link>
-              <span className="hidden md:inline group relative px-1 py-3 text-gray-400 hover:text-[#006AFF]">
-                Caixa de entrada
-                <span className="pointer-events-none absolute left-0 right-0 -bottom-[5px] h-[3px] bg-[#006AFF] scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
-              </span>
-              <span className="hidden md:inline group relative px-1 py-3 text-gray-400 hover:text-[#006AFF]">
-                Configurações da conta
-                <span className="pointer-events-none absolute left-0 right-0 -bottom-[5px] h-[3px] bg-[#006AFF] scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
-              </span>
-            </nav>
-          </div>
-        </div>
-      </div>
+      <ModernNavbar />
       <div className="mx-auto max-w-7xl px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Suas buscas salvas</h1>
+        <div className="flex items-center gap-3 mb-6">
+          <Bookmark className="w-8 h-8 text-blue-600" />
+          <h1 className="text-3xl font-bold text-gray-900 font-display">Buscas Salvas</h1>
+        </div>
         {loading ? (
-          <div className="text-gray-600">Carregando...</div>
+          <div className="flex items-center justify-center h-64">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
         ) : items.length === 0 ? (
-          <div className="text-gray-600">Você ainda não salvou nenhuma busca.</div>
+          <div className="bg-white rounded-2xl p-16 text-center shadow-sm">
+            <Bookmark className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Nenhuma busca salva</h2>
+            <p className="text-gray-600 mb-6">Salve suas buscas e receba notificações sobre novos imóveis.</p>
+            <Link href="/">
+              <Button>Explorar Imóveis</Button>
+            </Link>
+          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {items.map((s) => (
-              <div key={s.ts} className="bg-white rounded-lg border px-4 py-3 flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="font-medium text-gray-900">{s.label}</span>
-                  <span className="text-xs text-gray-500">{new Date(s.ts).toLocaleString('pt-BR')}</span>
+              <div key={s.ts} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 mb-1">{s.label || 'Busca sem título'}</h3>
+                    <p className="text-xs text-gray-500">{new Date(s.ts).toLocaleString('pt-BR')}</p>
+                  </div>
+                  <button onClick={()=>remove(s.ts)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Remover">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Link href={`/?${s.params}`} className="text-sm text-blue-600 hover:text-blue-800">Aplicar</Link>
-                  <button onClick={()=>remove(s.ts)} className="text-sm text-red-600 hover:text-red-700">Remover</button>
-                </div>
+                <Link href={`/?${s.params}`}>
+                  <Button variant="secondary" className="w-full">Aplicar Busca</Button>
+                </Link>
               </div>
             ))}
           </div>
         )}
       </div>
+      <SiteFooter />
     </main>
   );
 }

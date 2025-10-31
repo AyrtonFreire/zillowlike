@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import TopNavMega from "@/components/TopNavMega";
-import PropertyCard from "@/components/PropertyCard";
+import { ModernNavbar, PropertyCardPremium } from "@/components/modern";
+import SiteFooter from "@/components/Footer";
+import Select from "@/components/ui/Select";
 import { Heart, Filter, Grid3x3, List } from "lucide-react";
 
 import type { ApiProperty } from "@/types/api";
@@ -83,7 +84,7 @@ export default function FavoritesPage() {
   if (status === "loading") {
     return (
       <main className="min-h-screen bg-gray-50">
-        <TopNavMega />
+        <ModernNavbar />
         <div className="flex items-center justify-center h-[60vh]">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -94,7 +95,7 @@ export default function FavoritesPage() {
   if (!session) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <TopNavMega />
+        <ModernNavbar />
         <div className="mx-auto max-w-4xl px-4 py-16 text-center">
           <Heart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Faça login para ver seus favoritos</h1>
@@ -114,7 +115,7 @@ export default function FavoritesPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <TopNavMega />
+      <ModernNavbar />
       
       {/* Header da Página */}
       <div className="bg-white border-b border-gray-200">
@@ -133,36 +134,35 @@ export default function FavoritesPage() {
             {/* Controles */}
             <div className="flex items-center gap-3">
               {/* Ordenar */}
-              <select
+              <Select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-gray-400 transition-colors"
               >
                 <option value="recent">Mais recentes</option>
                 <option value="price_asc">Menor preço</option>
                 <option value="price_desc">Maior preço</option>
                 <option value="area_desc">Maior área</option>
-              </select>
+              </Select>
               
               {/* View Mode */}
-              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+              <div className="inline-flex rounded-full border border-neutral-200 bg-white p-1 shadow-sm" role="group" aria-label="Alternar visualização">
                 <button
+                  type="button"
+                  aria-pressed={viewMode === "grid"}
                   onClick={() => setViewMode("grid")}
-                  className={`p-2 rounded transition-colors ${
-                    viewMode === "grid" ? "bg-white shadow-sm" : "hover:bg-gray-200"
-                  }`}
-                  title="Visualização em grade"
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${viewMode === "grid" ? "bg-neutral-900 text-white" : "text-neutral-700 hover:bg-neutral-100"}`}
+                  title="Grade"
                 >
-                  <Grid3x3 className="w-5 h-5" />
+                  <Grid3x3 className="w-4 h-4" />
                 </button>
                 <button
+                  type="button"
+                  aria-pressed={viewMode === "list"}
                   onClick={() => setViewMode("list")}
-                  className={`p-2 rounded transition-colors ${
-                    viewMode === "list" ? "bg-white shadow-sm" : "hover:bg-gray-200"
-                  }`}
-                  title="Visualização em lista"
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${viewMode === "list" ? "bg-neutral-900 text-white" : "text-neutral-700 hover:bg-neutral-100"}`}
+                  title="Lista"
                 >
-                  <List className="w-5 h-5" />
+                  <List className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -208,16 +208,15 @@ export default function FavoritesPage() {
               : "grid-cols-1"
           }`}>
             {sorted.map((property) => (
-              <PropertyCard
+              <PropertyCardPremium
                 key={property.id}
                 property={property}
-                isFavorite={favorites.has(property.id)}
-                onFavoriteToggle={toggleFavorite}
               />
             ))}
           </div>
         )}
       </div>
+      <SiteFooter />
     </main>
   );
 }

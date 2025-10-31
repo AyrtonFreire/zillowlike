@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import "../styles/design-system.css";
 import { getServerSession } from "next-auth";
@@ -7,9 +7,14 @@ import { authOptions } from "@/lib/auth";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ClientProviders from "./ClientProviders";
 
-const inter = Inter({
+const fontSans = Inter({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-sans",
+  display: "swap",
+});
+const fontDisplay = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-display",
   display: "swap",
 });
 export const metadata: Metadata = {
@@ -46,15 +51,19 @@ export default async function RootLayout({
   const session = await getServerSession(authOptions);
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body
-        className={`${inter.variable} font-sans antialiased`}
-      >
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
+      <body className={`${fontSans.variable} ${fontDisplay.variable} font-sans antialiased`}>
         {/* Skip link for keyboard users */}
         <a href="#content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:bg-white focus:text-blue-700 focus:ring-2 focus:ring-blue-600 focus:px-3 focus:py-2 rounded">
           Pular para o conteúdo
         </a>
+        {/* Global live region for polite status/toast updates */}
+        <div aria-live="polite" className="sr-only" />
         <ClientProviders session={session}>
-          <main id="content">{children}</main>
+          <main id="content" role="main">{children}</main>
         </ClientProviders>
       </body>
     </html>

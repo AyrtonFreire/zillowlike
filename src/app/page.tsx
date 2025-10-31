@@ -6,15 +6,24 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ModernNavbar, HeroSection, ThemeToggle, PropertyCardPremium } from "@/components/modern";
+import HeroSearch from "@/components/modern/HeroSearch";
+import Select from "@/components/ui/Select";
+import Drawer from "@/components/ui/Drawer";
+import Pagination from "@/components/ui/Pagination";
 import QuickCategories from "@/components/QuickCategories";
 import NeighborhoodGrid from "@/components/NeighborhoodGrid";
 import ContinueSearching from "@/components/ContinueSearching";
 import Guides from "@/components/Guides";
 import SiteFooter from "@/components/Footer";
+import Carousel from "@/components/ui/Carousel";
+import Tabs from "@/components/ui/Tabs";
+import Trustbar from "@/components/landing/Trustbar";
+import EditorialHighlight from "@/components/landing/EditorialHighlight";
 import PropertyDetailsModal from "@/components/PropertyDetailsModal";
 import SearchFiltersBar from "@/components/SearchFiltersBar";
 import Image from "next/image";
 import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
+import { track } from "@/lib/analytics";
 import type { ApiProperty } from "@/types/api";
 
 type Property = ApiProperty;
@@ -32,12 +41,18 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [featured, setFeatured] = useState<Property[]>([]);
   const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [trending, setTrending] = useState<Property[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [newest, setNewest] = useState<Property[]>([]);
+  const [newestLoading, setNewestLoading] = useState(true);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'split' | 'list'>('split');
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement | null>(null);
+  const [nextPage, setNextPage] = useState(2);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Fecha dropdown ao clicar fora ou pressionar ESC
   useEffect(() => {
@@ -129,6 +144,22 @@ export default function Home() {
         })
         .catch(console.error)
         .finally(() => setFeaturedLoading(false));
+
+      // Trending (ex: maior preço)
+      setTrendingLoading(true);
+      fetch('/api/properties?pageSize=12&sort=price_desc')
+        .then(res => res.json())
+        .then((data: any) => { if (data.success) setTrending(data.properties || []); })
+        .catch(console.error)
+        .finally(() => setTrendingLoading(false));
+
+      // Newest (mais recentes)
+      setNewestLoading(true);
+      fetch('/api/properties?pageSize=12&sort=recent')
+        .then(res => res.json())
+        .then((data: any) => { if (data.success) setNewest(data.properties || []); })
+        .catch(console.error)
+        .finally(() => setNewestLoading(false));
     }
   }, [hasSearched]);
 
@@ -175,6 +206,7 @@ export default function Home() {
           if (data.success) {
             setProperties(data.properties || []);
             setTotal(data.total || 0);
+            setNextPage(2);
             try {
               const labelParts: string[] = [];
               if (city) labelParts.push(city);
@@ -197,6 +229,41 @@ export default function Home() {
         .finally(() => setIsLoading(false));
     }
   }, [hasSearched, search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page]);
+
+  const loadMore = async () => {
+    if (isLoadingMore) return;
+    if (properties.length >= total) return;
+    setIsLoadingMore(true);
+    try {
+      const params = buildSearchParams({
+        q: search,
+        city,
+        state,
+        type,
+        minPrice,
+        maxPrice,
+        bedroomsMin,
+        bathroomsMin,
+        areaMin,
+        sort,
+        page: nextPage,
+        pageSize: 12,
+      });
+      const res = await fetch(`/api/properties?${params}`);
+      const data = await res.json();
+      if (data?.success) {
+        setProperties((prev) => [...prev, ...(data.properties || [])]);
+        setNextPage((p) => p + 1);
+        if ((data.properties || []).length === 0) {
+          setTotal(prev => prev); // noop
+        }
+      }
+    } catch (e) {
+      console.error('Load more failed', e);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   // Ouvir eventos de destaque vindos do mapa
   useEffect(() => {
@@ -238,6 +305,7 @@ export default function Home() {
   }, [user, favorites, router]);
 
   const openOverlay = useCallback(async (propertyId: string) => {
+    try { track({ name: 'card_click', id: propertyId }); } catch {}
     setOverlayId(propertyId);
     setOverlayOpen(true);
     setOverlayLoading(true);
@@ -277,8 +345,15 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       <ModernNavbar />
       
-      {/* Hero Section */}
-      {!hasSearched && <HeroSection />}
+      {/* Hero Section + Premium Search Overlay */}
+      {!hasSearched && (
+        <div className="relative">
+          <HeroSection />
+          <div className="absolute inset-x-0 bottom-6 px-4">
+            <HeroSearch />
+          </div>
+        </div>
+      )}
 
       
 
@@ -297,7 +372,7 @@ export default function Home() {
               {/* Header + Controles */}
               <div className="mb-6 flex items-start justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h1 className="font-display text-3xl font-bold text-gray-900 mb-2">
                     {total > 0 ? `${total} imóveis encontrados` : 'Nenhum imóvel encontrado'}
                   </h1>
                   {city && (
@@ -307,25 +382,45 @@ export default function Home() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="inline-flex bg-gray-100 rounded-lg p-1">
+                  <div className="inline-flex rounded-full border border-neutral-200 bg-white p-1 shadow-sm" role="group" aria-label="Alternar visualização">
                     <button
-                      onClick={() => setViewMode('split')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${viewMode === 'split' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                      type="button"
+                      aria-pressed={viewMode === 'split'}
+                      onClick={() => { setViewMode('split'); try { track({ name: 'filters_apply', payload: { action: 'view_split' } }); } catch {} }}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${viewMode === 'split' ? 'bg-neutral-900 text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}
                     >
                       Lista + Mapa
                     </button>
                     <button
-                      onClick={() => setViewMode('list')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                      type="button"
+                      aria-pressed={viewMode === 'list'}
+                      onClick={() => { setViewMode('list'); try { track({ name: 'filters_apply', payload: { action: 'view_list' } }); } catch {} }}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-neutral-900 text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}
                     >
                       Somente Lista
                     </button>
                   </div>
+                  {/* Salvar busca (rápido) */}
+                  <button
+                    onClick={async () => {
+                      try {
+                        const label = prompt('Nome para salvar a busca (opcional):') || '';
+                        const body = {
+                          label,
+                          params: buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1, pageSize: 12 }).toString()
+                        };
+                        await fetch('/api/saved-searches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                        alert('Busca salva! Você poderá acessá-la em Buscas salvas.');
+                      } catch {}
+                    }}
+                    className="px-4 py-2 rounded-md text-sm font-semibold border border-neutral-300 bg-white hover:bg-neutral-50"
+                  >
+                    Salvar busca
+                  </button>
                   {/* Sort control */}
-                  <div>
-                    <select
+                  <div className="min-w-[180px]">
+                    <Select
                       aria-label="Ordenar resultados"
-                      className="px-3 py-2 rounded-md text-sm font-medium border border-gray-300 bg-white hover:bg-gray-50"
                       value={sort}
                       onChange={(e) => {
                         const newSort = e.target.value;
@@ -343,6 +438,7 @@ export default function Home() {
                           sort: newSort,
                           page: 1,
                         });
+                        try { track({ name: 'sort_change', value: newSort }); } catch {}
                         router.push(`/?${params}`, { scroll: false });
                       }}
                     >
@@ -350,10 +446,12 @@ export default function Home() {
                       <option value="price_asc">Menor preço</option>
                       <option value="price_desc">Maior preço</option>
                       <option value="area_desc">Maior área</option>
-                    </select>
+                    </Select>
                   </div>
-                  <div className="relative" ref={filtersRef}>
+                  <div className="relative hidden md:block" ref={filtersRef}>
                     <button
+                      aria-haspopup="dialog"
+                      aria-expanded={filtersOpen}
                       onClick={() => setFiltersOpen((v) => !v)}
                       className="px-4 py-2 rounded-md text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50"
                     >
@@ -394,6 +492,7 @@ export default function Home() {
                               sort,
                               page: 1,
                             });
+                            try { track({ name: 'filters_apply', payload: newFilters as any }); } catch {}
                             router.push(`/?${params}`, { scroll: false });
                           }}
                           onClearFilters={() => {
@@ -417,16 +516,140 @@ export default function Home() {
                               sort,
                               page: 1,
                             });
+                            try { track({ name: 'filters_clear' }); } catch {}
                             router.push(`/?${params}`, { scroll: false });
                           }}
                         />
                       </div>
                     )}
                   </div>
+                  {/* Mobile: open Drawer for filters */}
+                  <div className="md:hidden">
+                    <button
+                      aria-haspopup="dialog"
+                      aria-expanded={filtersOpen}
+                      onClick={() => { setFiltersOpen(true); try { track({ name: 'filters_open', source: 'mobile' }); } catch {} }}
+                      className="px-4 py-2 rounded-md text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50"
+                    >
+                      Filtros
+                    </button>
+                    <Drawer open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filtros" side="right">
+                      <SearchFiltersBar
+                        compact
+                        open
+                        variant="modal"
+                        onClose={() => setFiltersOpen(false)}
+                        filters={{
+                          minPrice,
+                          maxPrice,
+                          bedrooms: bedroomsMin,
+                          bathrooms: bathroomsMin,
+                          type,
+                          areaMin,
+                        }}
+                        onFiltersChange={(newFilters) => {
+                          setMinPrice(newFilters.minPrice);
+                          setMaxPrice(newFilters.maxPrice);
+                          setBedroomsMin(newFilters.bedrooms);
+                          setBathroomsMin(newFilters.bathrooms);
+                          setType(newFilters.type);
+                          setAreaMin(newFilters.areaMin);
+                        }}
+                        onClearFilters={() => {
+                          setMinPrice("");
+                          setMaxPrice("");
+                          setBedroomsMin("");
+                          setBathroomsMin("");
+                          setType("");
+                          setAreaMin("");
+                          setPage(1);
+                        }}
+                      />
+                      <div className="mt-4">
+                        <button
+                          onClick={() => {
+                            const params = buildSearchParams({
+                              q: search,
+                              city,
+                              state,
+                              type,
+                              minPrice,
+                              maxPrice,
+                              bedroomsMin,
+                              bathroomsMin,
+                              areaMin,
+                              sort,
+                              page: 1,
+                            });
+                            setFiltersOpen(false);
+                            try { track({ name: 'filters_apply', payload: { type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin } }); } catch {}
+                            router.push(`/?${params}`, { scroll: false });
+                          }}
+                          className="w-full px-4 py-2 rounded-lg bg-neutral-900 text-white font-semibold"
+                        >
+                          Aplicar
+                        </button>
+                      </div>
+                    </Drawer>
+                  </div>
                 </div>
               </div>
 
               {/* Property Cards Grid */}
+              {/* Active Filters Chips */}
+              {(minPrice || maxPrice || bedroomsMin || bathroomsMin || type || areaMin) && (
+                <div className="px-6 lg:px-8 -mt-3 mb-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {type && (
+                      <button onClick={() => { setType(""); setPage(1); const params = buildSearchParams({ q: search, city, state, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 }); router.push(`/?${params}`, { scroll: false }); }} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-neutral-200 text-sm text-neutral-800">
+                        <span>Tipo: {type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type === 'CONDO' ? 'Condomínio' : type === 'LAND' ? 'Terreno' : type}</span>
+                        <span className="text-neutral-500">×</span>
+                      </button>
+                    )}
+                    {minPrice && (
+                      <button onClick={() => { setMinPrice(""); setPage(1); const params = buildSearchParams({ q: search, city, state, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 }); router.push(`/?${params}`, { scroll: false }); }} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-neutral-200 text-sm text-neutral-800">
+                        <span>Min: {Number(minPrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })}</span>
+                        <span className="text-neutral-500">×</span>
+                      </button>
+                    )}
+                    {maxPrice && (
+                      <button onClick={() => { setMaxPrice(""); setPage(1); const params = buildSearchParams({ q: search, city, state, type, minPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 }); router.push(`/?${params}`, { scroll: false }); }} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-neutral-200 text-sm text-neutral-800">
+                        <span>Max: {Number(maxPrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })}</span>
+                        <span className="text-neutral-500">×</span>
+                      </button>
+                    )}
+                    {bedroomsMin && (
+                      <button onClick={() => { setBedroomsMin(""); setPage(1); const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bathroomsMin, areaMin, sort, page: 1 }); router.push(`/?${params}`, { scroll: false }); }} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-neutral-200 text-sm text-neutral-800">
+                        <span>Quartos: {bedroomsMin}+</span>
+                        <span className="text-neutral-500">×</span>
+                      </button>
+                    )}
+                    {bathroomsMin && (
+                      <button onClick={() => { setBathroomsMin(""); setPage(1); const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, areaMin, sort, page: 1 }); router.push(`/?${params}`, { scroll: false }); }} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-neutral-200 text-sm text-neutral-800">
+                        <span>Banheiros: {bathroomsMin}+</span>
+                        <span className="text-neutral-500">×</span>
+                      </button>
+                    )}
+                    {areaMin && (
+                      <button onClick={() => { setAreaMin(""); setPage(1); const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, sort, page: 1 }); router.push(`/?${params}`, { scroll: false }); }} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-neutral-200 text-sm text-neutral-800">
+                        <span>Área: {areaMin}m²+</span>
+                        <span className="text-neutral-500">×</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setMinPrice(""); setMaxPrice(""); setBedroomsMin(""); setBathroomsMin(""); setType(""); setAreaMin(""); setPage(1);
+                        const params = buildSearchParams({ q: search, city, state, sort, page: 1 });
+                        router.push(`/?${params}`, { scroll: false });
+                      }}
+                      className="ml-auto text-sm text-red-600 hover:text-red-700"
+                    >
+                      Limpar filtros
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className={`grid gap-6 ${viewMode === 'list' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
                 {isLoading ? (
                   [...Array(6)].map((_, i) => (
@@ -464,6 +687,41 @@ export default function Home() {
                   ))
                 )}
               </div>
+              {/* Load more for list view; keep Pagination for split mode */}
+              {viewMode === 'list' ? (
+                properties.length < total && (
+                  <div className="flex justify-center mt-6">
+                    <button onClick={loadMore} disabled={isLoadingMore} className="px-4 py-2 rounded-lg bg-neutral-900 text-white font-semibold disabled:opacity-60">
+                      {isLoadingMore ? 'Carregando…' : 'Carregar mais'}
+                    </button>
+                  </div>
+                )
+              ) : (
+                <Pagination
+                  total={total}
+                  page={page}
+                  pageSize={12}
+                  onChange={(newPage) => {
+                    setPage(newPage);
+                    const params = buildSearchParams({
+                      q: search,
+                      city,
+                      state,
+                      type,
+                      minPrice,
+                      maxPrice,
+                      bedroomsMin,
+                      bathroomsMin,
+                      areaMin,
+                      sort,
+                      page: newPage,
+                      pageSize: 12,
+                    });
+                    try { track({ name: 'pagination_change', page: newPage }); } catch {}
+                    router.push(`/?${params}`, { scroll: false });
+                  }}
+                />
+              )}
             </div>
           </div>
 
@@ -505,9 +763,9 @@ export default function Home() {
             <h2 className="text-2xl font-bold text-gray-900">Destaques</h2>
             <Link href="#" className="text-primary-600 hover:text-primary-800 text-sm font-medium">Ver mais</Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-            {featuredLoading ? (
-              [...Array(6)].map((_, i) => (
+          {featuredLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => (
                 <div key={i} className="card animate-pulse">
                   <div className="h-48 bg-gray-200 rounded-t-xl"></div>
                   <div className="p-5 space-y-3">
@@ -520,29 +778,95 @@ export default function Home() {
                     <div className="h-10 bg-gray-200 rounded-lg"></div>
                   </div>
                 </div>
-              ))
-            ) : featured.length === 0 ? (
-              <div className="col-span-full text-center text-gray-500 py-16">
-                <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <p className="text-lg font-medium">Sem destaques no momento</p>
-                <p className="text-sm mt-1">Novos imóveis serão exibidos aqui em breve</p>
-              </div>
-            ) : (
-              featured.map((property) => (
-                <PropertyCardPremium
-                  key={property.id}
-                  property={property}
-                  onOpenOverlay={openOverlay}
+              ))}
+            </div>
+          ) : featured.length === 0 ? (
+            <div className="text-center text-gray-500 py-16">
+              <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              <p className="text-lg font-medium">Sem destaques no momento</p>
+              <p className="text-sm mt-1">Novos imóveis serão exibidos aqui em breve</p>
+            </div>
+          ) : (
+            <>
+              {/* Mobile/Tablet: Carousel */}
+              <div className="md:hidden">
+                <Carousel
+                  items={featured}
+                  auto
+                  renderItem={(property) => (
+                    <div className="px-1">
+                      <PropertyCardPremium property={property} onOpenOverlay={openOverlay} />
+                    </div>
+                  )}
                 />
-              ))
-            )}
-          </div>
+              </div>
+              {/* Desktop: Grid */}
+              <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                {featured.map((property) => (
+                  <PropertyCardPremium
+                    key={property.id}
+                    property={property}
+                    onOpenOverlay={openOverlay}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
       {/* Guides */}
+      {!hasSearched && (
+        <div className="mx-auto max-w-7xl px-4 py-10">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 font-display">Explorar</h2>
+          </div>
+          <Tabs
+            items={[
+              { key: 'trending', label: 'Em alta', content: (
+                trendingLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <div className="md:hidden">
+                      <Carousel items={trending} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} />
+                    </div>
+                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                      {trending.map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
+                    </div>
+                  </>
+                )
+              )},
+              { key: 'new', label: 'Novidades', content: (
+                newestLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <div className="md:hidden">
+                      <Carousel items={newest} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} />
+                    </div>
+                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                      {newest.map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
+                    </div>
+                  </>
+                )
+              )},
+            ]}
+          />
+        </div>
+      )}
+      {!hasSearched && <Trustbar />}
+      {!hasSearched && <EditorialHighlight />}
       {!hasSearched && <Guides />}
 
       {/* Footer */}
