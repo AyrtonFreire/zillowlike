@@ -74,16 +74,28 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           setProperty(data.item);
           // Buscar imóveis próximos e similares
           if (data.item.latitude && data.item.longitude) {
+            console.log('[PropertyModal] Buscando nearby properties...', { lat: data.item.latitude, lng: data.item.longitude });
             fetch(`/api/properties?lat=${data.item.latitude}&lng=${data.item.longitude}&radius=5&limit=8&exclude=${propertyId}`)
               .then(r => r.json())
-              .then(d => setNearbyProperties(d.items || []))
-              .catch(() => {});
+              .then(d => {
+                console.log('[PropertyModal] Nearby properties encontrados:', d.items?.length || 0);
+                setNearbyProperties(d.items || []);
+              })
+              .catch((err) => {
+                console.error('[PropertyModal] Erro ao buscar nearby properties:', err);
+              });
           }
           if (data.item.type) {
+            console.log('[PropertyModal] Buscando similar properties...', { type: data.item.type });
             fetch(`/api/properties?type=${data.item.type}&limit=8&exclude=${propertyId}`)
               .then(r => r.json())
-              .then(d => setSimilarProperties(d.items || []))
-              .catch(() => {});
+              .then(d => {
+                console.log('[PropertyModal] Similar properties encontrados:', d.items?.length || 0);
+                setSimilarProperties(d.items || []);
+              })
+              .catch((err) => {
+                console.error('[PropertyModal] Erro ao buscar similar properties:', err);
+              });
           }
         }
       })
@@ -678,18 +690,26 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 </a>
 
                 {/* Nearby homes - Imóveis Próximos */}
-                {nearbyProperties.length > 0 && (
-                  <div className="border-t border-teal/10 pt-8">
+                {nearbyProperties.length > 0 ? (
+                  <div className="border-t border-teal/10 pt-8 mt-8">
                     <h3 className="text-2xl font-display font-normal text-gray-900 mb-6">Nearby homes</h3>
                     <SimilarCarousel properties={nearbyProperties} />
+                  </div>
+                ) : (
+                  <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
+                    <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
                   </div>
                 )}
 
                 {/* Similar homes - Imóveis Similares */}
-                {similarProperties.length > 0 && (
-                  <div className="mt-8 border-t border-teal/10 pt-8">
+                {similarProperties.length > 0 ? (
+                  <div className="border-t border-teal/10 pt-8 mt-8">
                     <h3 className="text-2xl font-display font-normal text-gray-900 mb-6">Similar homes</h3>
                     <SimilarCarousel properties={similarProperties} />
+                  </div>
+                ) : (
+                  <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
+                    <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
                   </div>
                 )}
               </div>
