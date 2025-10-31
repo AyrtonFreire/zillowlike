@@ -66,16 +66,18 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
 
   function FitBounds({ points }: { points: Item[] }) {
     const map = useMap();
+    const hasAppliedRef = useRef(false);
     useEffect(() => {
+      if (hasAppliedRef.current) return;
       if (!points || points.length === 0) return;
-      // if parent is controlling center/zoom, do not auto fit
-      // we detect it indirectly: if a "map-refit" event is triggered, we will re-fit anyway
+      // Apply only once on mount to avoid fighting with user interactions
       if (points.length === 1) {
-        map.setView([points[0].latitude, points[0].longitude], 13);
-        return;
+        map.setView([points[0].latitude, points[0].longitude], Math.max(map.getZoom(), 13));
+      } else {
+        const bounds = L.latLngBounds(points.map(p => [p.latitude, p.longitude] as [number, number]));
+        map.fitBounds(bounds, { padding: [40, 40] });
       }
-      const bounds = L.latLngBounds(points.map(p => [p.latitude, p.longitude] as [number, number]));
-      map.fitBounds(bounds, { padding: [40, 40] });
+      hasAppliedRef.current = true;
     }, [points, map]);
     return null;
   }

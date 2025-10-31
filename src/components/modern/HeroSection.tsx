@@ -159,7 +159,7 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="relative min-h-[450px] sm:min-h-[60vh] md:min-h-[65vh] flex items-center justify-center overflow-hidden pt-20 md:pt-0 pb-6 md:pb-0">
+    <div className="relative min-h-[450px] sm:min-h-[60vh] md:min-h-[65vh] flex items-center justify-center overflow-visible pt-20 md:pt-0 pb-6 md:pb-0">
       {/* Top Hero Nav removed to avoid conflict with ModernNavbar */}
       {/* Slideshow Background with Overlay */}
       <div className="absolute inset-0">
@@ -531,7 +531,7 @@ export default function HeroSection() {
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: (cityIndex * 0.05) + (nIndex * 0.02) }}
-                                    onClick={() => handleSuggestionClick({ city: data.city, state: data.state, label: `${n.name}, ${data.city}`, count: n.count, neighborhood: n.name })}
+                                    onClick={() => handleSuggestionClick({ city: data.city, state: data.state, label: `${n.name}, ${data.city}, ${data.state}`, count: n.count, neighborhood: n.name })}
                                     className="w-full group flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded-lg transition-all text-left"
                                   >
                                     <span className="text-sm text-gray-700 group-hover:text-teal-700 font-medium">
