@@ -76,9 +76,9 @@ export default function PropertyContactForm({ propertyId, propertyTitle }: Prope
   return (
     <div className="bg-white border border-gray-200 rounded-2xl shadow-lg">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl">
+      <div className="bg-emerald-600 text-white p-6 rounded-t-2xl">
         <h3 className="text-xl font-bold mb-1">Tenho Interesse!</h3>
-        <p className="text-blue-100 text-sm">
+        <p className="text-emerald-100 text-sm">
           Preencha o formulário e fale com o proprietário
         </p>
       </div>
@@ -167,7 +167,7 @@ export default function PropertyContactForm({ propertyId, propertyTitle }: Prope
         <button
           type="submit"
           disabled={sending}
-          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
+          className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white font-semibold py-4 rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
         >
           {sending ? (
             <>

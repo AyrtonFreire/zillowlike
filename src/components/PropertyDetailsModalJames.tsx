@@ -192,13 +192,13 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   return (
     <AnimatePresence>
       {open && <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />}
-      <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-0 md:p-6 pointer-events-none">
+      <div className="fixed inset-0 z-50 grid place-items-center p-4 md:p-6 pointer-events-none">
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          initial={{ opacity: 0, y: 16, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.98 }}
+          exit={{ opacity: 0, y: 12, scale: 0.98 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="pointer-events-auto w-full md:w-[92vw] lg:w-[85vw] xl:w-[75vw] max-w-[1400px] max-h-[95vh] bg-white rounded-none md:rounded-2xl shadow-2xl overflow-y-auto"
+          className="pointer-events-auto w-full md:w-[92vw] lg:w-[85vw] xl:w-[75vw] max-w-[1400px] max-h-[95vh] bg-white rounded-none md:rounded-2xl shadow-2xl overflow-y-auto mx-auto"
         >
         {/* Header */}
         <div className="sticky top-0 z-20 bg-white border-b border-gray-200">
@@ -653,7 +653,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 {/* Agent Card */}
                 <div className="rounded-xl border border-gray-200 p-6 bg-white shadow-sm">
                   <div className="flex items-start gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-bold">
                       Z
                     </div>
                     <div className="flex-1">
@@ -707,7 +707,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 {/* Agent Listings */}
                 <div className="rounded-xl border border-gray-200 p-6 bg-white shadow-sm">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500" />
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600" />
                     <div>
                       <h4 className="font-semibold text-gray-900 text-sm">Zillowlike Imóveis</h4>
                       <p className="text-xs text-gray-600">300 imóveis à venda</p>

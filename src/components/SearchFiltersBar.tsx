@@ -113,7 +113,7 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
                 <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-2 rounded-full bg-gray-200" />
                 {/* Faixa selecionada */}
                 <div
-                  className="absolute top-1/2 -translate-y-1/2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full shadow-sm"
+                  className="absolute top-1/2 -translate-y-1/2 h-2 bg-emerald-500 rounded-full shadow-sm"
                   style={{ left: `${pct(currentMin)}%`, right: `${100 - pct(currentMax)}%` }}
                 />
                 {/* Inputs range sobrepostos */}
@@ -281,7 +281,7 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
             onClick={() => setShowAdvanced(!showAdvanced)}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold transition-all ${
               showAdvanced || hasActiveFilters
-                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl'
+                ? 'bg-emerald-600 text-white shadow-lg hover:shadow-xl'
                 : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
             }`}
           >
@@ -352,7 +352,7 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
                     <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-2 rounded-full bg-gray-200" />
                     {/* Faixa selecionada */}
                     <div
-                      className="absolute top-1/2 -translate-y-1/2 h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full shadow-sm"
+                      className="absolute top-1/2 -translate-y-1/2 h-2 bg-emerald-500 rounded-full shadow-sm"
                       style={{ left: `${pct(currentMin)}%`, right: `${100 - pct(currentMax)}%` }}
                     />
                     {/* Inputs range sobrepostos */}

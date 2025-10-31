@@ -42,7 +42,7 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-8 right-8 z-40 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-2xl hover:shadow-glow transition-all flex items-center gap-2"
+        className="fixed bottom-8 right-8 z-40 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white p-4 rounded-full shadow-2xl hover:shadow-glow transition-all flex items-center gap-2"
       >
         <SlidersHorizontal className="w-6 h-6" />
         <span className="font-semibold hidden sm:inline">Filtros</span>
@@ -189,7 +189,7 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleApply}
-                  className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+                  className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
                 >
                   Aplicar
                 </motion.button>

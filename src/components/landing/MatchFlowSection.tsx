@@ -18,8 +18,8 @@ export default function MatchFlowSection() {
 
       <div className="relative overflow-hidden rounded-3xl bg-white ring-1 ring-gray-200 shadow-lg">
         <div className="absolute inset-0 pointer-events-none" aria-hidden>
-          <motion.div className="absolute -top-24 -left-24 h-60 w-60 rounded-full bg-blue-500/10 blur-3xl" animate={{ y: [0, 10, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} />
-          <motion.div className="absolute -bottom-24 -right-24 h-60 w-60 rounded-full bg-purple-500/10 blur-3xl" animate={{ y: [0, -10, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }} />
+          <motion.div className="absolute -top-24 -left-24 h-60 w-60 rounded-full bg-emerald-500/10 blur-3xl" animate={{ y: [0, 10, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} />
+          <motion.div className="absolute -bottom-24 -right-24 h-60 w-60 rounded-full bg-emerald-600/10 blur-3xl" animate={{ y: [0, -10, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }} />
         </div>
 
         <div className="relative z-10 p-6 sm:p-10">
@@ -85,7 +85,7 @@ export default function MatchFlowSection() {
           <div className="mt-8 flex items-center justify-center">
             <a
               href="/owner/new"
-              className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 shadow hover:shadow-md"
+              className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow hover:shadow-md"
             >
               <Megaphone className="w-5 h-5" />
               Anunciar agora
@@ -107,7 +107,7 @@ function Card({ active, onClick, icon, title, bullets, children }: { active: boo
       whileHover={{ y: -2 }}
       aria-pressed={active}
     >
-      <div className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 ${active ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white" : "bg-gray-100 text-gray-800"}`}>
+      <div className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 ${active ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-800"}`}>
         {icon}
         <span className="font-semibold">{title}</span>
       </div>
@@ -171,8 +171,8 @@ function MotionConnector({ tab }: { tab: Tab }) {
           <stop offset="100%" stopColor="#E5E7EB" />
         </linearGradient>
         <linearGradient id="gprog" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#2563EB" />
-          <stop offset="100%" stopColor="#7C3AED" />
+          <stop offset="0%" stopColor="#059669" />
+          <stop offset="100%" stopColor="#047857" />
         </linearGradient>
       </defs>
       {/* Base path */}
@@ -189,7 +189,7 @@ function MotionConnector({ tab }: { tab: Tab }) {
         transition={{ duration: 1.2 }}
       />
       {/* Marker moves to reflect current tab emphasis */}
-      <motion.circle r="10" fill="#7C3AED" initial={false} animate={{ cx: 80 + 840 * t, cy: 90 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} />
+      <motion.circle r="10" fill="#059669" initial={false} animate={{ cx: 80 + 840 * t, cy: 90 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} />
       {/* Stations */}
       {stations.map((s, i) => (
         <g key={i}>
@@ -238,7 +238,7 @@ function InteractivePanel({ tab }: { tab: Tab }) {
               <>
                 <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-green-600" /> Dicas contextuais para fotos e texto</li>
                 <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-green-600" /> Pré-visualização do anúncio em tempo real</li>
-                <li className="flex items-center gap-2"><Clock className="w-4 h-4 text-blue-600" /> Tempo médio de postagem: ~5 min</li>
+                <li className="flex items-center gap-2"><Clock className="w-4 h-4 text-emerald-600" /> Tempo médio de postagem: ~5 min</li>
               </>
             )}
             {tab === "corretor" && (

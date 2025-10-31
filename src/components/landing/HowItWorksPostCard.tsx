@@ -18,9 +18,9 @@ export default function HowItWorksPostCard() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
       <div className="relative overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-gray-200">
-        {/* Gradients sutis */}
-        <div className="pointer-events-none absolute -top-32 -right-32 h-64 w-64 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-gradient-to-tr from-purple-500/15 to-blue-500/15 blur-3xl" />
+        {/* Gradientes sutis (emerald/stone) */}
+        <div className="pointer-events-none absolute -top-32 -right-32 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-emerald-600/10 blur-3xl" />
 
         {/* Compacto por padrão */}
         <AnimatePresence initial={false} mode="wait">
@@ -45,7 +45,7 @@ export default function HowItWorksPostCard() {
                     <button
                       type="button"
                       onClick={goOpen}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
                       <PlayCircle className="w-5 h-5" />
                       Veja como é fácil
@@ -66,12 +66,12 @@ export default function HowItWorksPostCard() {
                   <motion.svg width="240" height="120" viewBox="0 0 360 220" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                     <defs>
                       <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#2563EB" />
-                        <stop offset="100%" stopColor="#7C3AED" />
+                        <stop offset="0%" stopColor="#059669" />
+                        <stop offset="100%" stopColor="#047857" />
                       </linearGradient>
                     </defs>
                     <motion.path d="M20 180 C 120 80, 240 280, 340 120" fill="none" stroke="url(#grad)" strokeWidth="6" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1 }} />
-                    <motion.circle r="6" fill="#7C3AED" initial={{ cx: 20, cy: 180 }} animate={{ cx: 300, cy: 120 }} transition={{ duration: 1.2, repeat: Infinity, repeatType: "reverse" }} />
+                    <motion.circle r="6" fill="#059669" initial={{ cx: 20, cy: 180 }} animate={{ cx: 300, cy: 120 }} transition={{ duration: 1.2, repeat: Infinity, repeatType: "reverse" }} />
                   </motion.svg>
                 </div>
               </div>
@@ -117,10 +117,10 @@ export default function HowItWorksPostCard() {
                 <button onClick={prev} disabled={step === 0} className={`px-4 py-2 rounded-lg border text-sm ${step === 0 ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-50"}`}>Anterior</button>
                 <div className="flex items-center gap-2">
                   {[0,1,2,3].map((i) => (
-                    <span key={i} className={`h-2 w-2 rounded-full ${i === step ? "bg-purple-600" : "bg-gray-300"}`} />
+                    <span key={i} className={`h-2 w-2 rounded-full ${i === step ? "bg-emerald-600" : "bg-gray-300"}`} />
                   ))}
                 </div>
-                <button onClick={next} disabled={step === 3} className={`px-4 py-2 rounded-lg text-sm text-white ${step === 3 ? "opacity-40 cursor-not-allowed bg-gradient-to-r from-blue-600 to-purple-600" : "bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-95"}`}>{step === 3 ? "Concluído" : "Próximo"}</button>
+                <button onClick={next} disabled={step === 3} className={`px-4 py-2 rounded-lg text-sm text-white ${step === 3 ? "opacity-40 cursor-not-allowed bg-emerald-600" : "bg-emerald-600 hover:bg-emerald-700"}`}>{step === 3 ? "Concluído" : "Próximo"}</button>
               </div>
             </motion.div>
           )}
@@ -139,7 +139,7 @@ function SceneUpload() {
         <p className="text-gray-600 mt-1 text-sm">Arraste suas fotos, ordene e melhore o anúncio com dicas rápidas.</p>
         <div className="mt-4 grid grid-cols-3 gap-3">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="aspect-[4/3] rounded-lg bg-gradient-to-tr from-blue-50 to-purple-50 border border-gray-100" />
+            <div key={i} className="aspect-[4/3] rounded-lg bg-emerald-50/40 border border-gray-100" />
           ))}
         </div>
         <div className="mt-3 inline-flex items-center gap-2 text-sm text-gray-600"><Upload className="w-4 h-4" /> Arraste e solte ou clique para enviar</div>
@@ -213,11 +213,11 @@ function SceneExposure() {
       </div>
       <div className="rounded-xl border p-4">
         <div className="text-sm text-gray-600 mb-2">Mapa</div>
-        <div className="aspect-[4/3] rounded-lg bg-gradient-to-tr from-blue-50 to-purple-50 flex items-center justify-center">
-          <MapPin className="w-6 h-6 text-purple-600" />
+        <div className="aspect-[4/3] rounded-lg bg-emerald-50/40 flex items-center justify-center">
+          <MapPin className="w-6 h-6 text-emerald-600" />
         </div>
         <div className="mt-5">
-          <Link href="/owner/new" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 shadow hover:shadow-md"><Rocket className="w-5 h-5" /> Começar anúncio agora</Link>
+          <Link href="/owner/new" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow hover:shadow-md"><Rocket className="w-5 h-5" /> Começar anúncio agora</Link>
         </div>
       </div>
     </div>
@@ -254,7 +254,7 @@ function Tips({ items }: { items: { icon: React.ReactNode; text: string }[] }) {
     <ul className="text-sm text-gray-700 grid grid-cols-1 sm:grid-cols-3 gap-3">
       {items.map((it, i) => (
         <li key={i} className="flex items-start gap-2">
-          <span className="text-purple-600 mt-0.5">{it.icon}</span>
+          <span className="text-emerald-600 mt-0.5">{it.icon}</span>
           <span>{it.text}</span>
         </li>
       ))}

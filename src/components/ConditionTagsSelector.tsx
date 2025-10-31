@@ -57,10 +57,10 @@ export default function ConditionTagsSelector({
                 px-4 py-2 rounded-full text-sm font-semibold transition-all
                 ${
                   isSelected
-                    ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
+                    ? "bg-emerald-600 text-white shadow-md"
                     : isDisabled
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white border-2 border-gray-300 text-gray-700 hover:border-purple-400 hover:bg-purple-50"
+                    : "bg-white border-2 border-gray-300 text-gray-700 hover:border-emerald-400 hover:bg-emerald-50"
                 }
               `}
             >
@@ -74,15 +74,15 @@ export default function ConditionTagsSelector({
       </div>
 
       {value.length > 0 && (
-        <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
-          <p className="text-sm font-medium text-purple-900 mb-2">
+        <div className="mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+          <p className="text-sm font-medium text-emerald-900 mb-2">
             Tags selecionadas ({value.length}/{maxTags}):
           </p>
           <div className="flex flex-wrap gap-2">
             {value.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full text-xs font-semibold"
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-600 text-white rounded-full text-xs font-semibold"
               >
                 {tag}
                 <button
