@@ -17,8 +17,7 @@ import Guides from "@/components/Guides";
 import SiteFooter from "@/components/Footer";
 import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
-import Trustbar from "@/components/landing/Trustbar";
-import EditorialHighlight from "@/components/landing/EditorialHighlight";
+ 
 import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
 import SearchFiltersBar from "@/components/SearchFiltersBar";
 import Image from "next/image";
@@ -339,6 +338,32 @@ export default function Home() {
     };
     window.addEventListener('open-overlay', handleOpenOverlay as EventListener);
     return () => window.removeEventListener('open-overlay', handleOpenOverlay as EventListener);
+  }, [openOverlay]);
+
+  // Intercept clicks on links to /property/:id to open overlay instead of navigating
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      // ignore if overlay is not available
+      if (!openOverlay) return;
+      // only left click without modifiers
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      let el = e.target as HTMLElement | null;
+      while (el && el.tagName !== 'A') el = el.parentElement;
+      if (!el || el.tagName !== 'A') return;
+      const a = el as HTMLAnchorElement;
+      try {
+        const url = new URL(a.href, window.location.origin);
+        if (url.origin !== window.location.origin) return; // external
+        const m = url.pathname.match(/^\/property\/(.+)$/);
+        if (!m) return;
+        const id = m[1];
+        if (!id) return;
+        e.preventDefault();
+        openOverlay(id);
+      } catch {}
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
   }, [openOverlay]);
 
   return (
@@ -858,8 +883,7 @@ export default function Home() {
           />
         </div>
       )}
-      {!hasSearched && <Trustbar />}
-      {!hasSearched && <EditorialHighlight />}
+      
       {!hasSearched && <Guides />}
 
       {/* Footer */}

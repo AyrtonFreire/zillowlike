@@ -304,22 +304,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                 </>
               )}
 
-              {/* Overlay: Price + Location */}
-              <div className="absolute inset-x-0 bottom-0 p-3">
-                <div className="flex items-end justify-between">
-                  <div className="backdrop-blur-sm bg-black/35 text-white rounded-lg px-2.5 py-1.5 shadow">
-                    <span className="text-lg font-semibold">
-                      {typeof property.price === 'number' && property.price > 0
-                        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(property.price / 100)
-                        : 'Price on Request'}
-                    </span>
-                  </div>
-                  <div className="hidden sm:flex items-center gap-1 backdrop-blur-sm bg-black/25 text-white rounded-md px-2 py-1">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span className="text-xs">{property.city}/{property.state}</span>
-                  </div>
-                </div>
-              </div>
+              {/* Overlay removed: price and location moved to content */}
 
               {/* Image Dots */}
               {property.images.length > 1 && (
@@ -355,8 +340,13 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
         {/* Content */}
         <div className="p-3 flex flex-col flex-1 relative">
-          {/* Share Button */}
-          <div className="mb-2 mt-0.5 flex items-center justify-end">
+          {/* Price + Share */}
+          <div className="mb-2 mt-0.5 flex items-center justify-between">
+            <div className="text-xl font-bold text-gray-900">
+              {typeof property.price === 'number' && property.price > 0
+                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(property.price / 100)
+                : 'Price on Request'}
+            </div>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={handleShare}

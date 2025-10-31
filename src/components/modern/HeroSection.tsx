@@ -24,6 +24,21 @@ export default function HeroSection() {
   const router = useRouter();
   const searchRef = useRef<HTMLDivElement>(null);
 
+  // Background slideshow (Petrolina & Juazeiro)
+  const slides = [
+    { city: "Petrolina, PE", url: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2000&auto=format&fit=crop" },
+    { city: "Petrolina, PE", url: "https://images.unsplash.com/photo-1523217582562-09d0def993a6?q=80&w=2000&auto=format&fit=crop" },
+    { city: "Juazeiro, BA", url: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=2000&auto=format&fit=crop" },
+    { city: "Juazeiro, BA", url: "https://images.unsplash.com/photo-1502003148287-a82ef80a6abc?q=80&w=2000&auto=format&fit=crop" },
+  ];
+  const [slideIndex, setSlideIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSlideIndex((i) => (i + 1) % slides.length);
+    }, 6000);
+    return () => clearInterval(id);
+  }, []);
+
   // Buscar sugestões da API quando o usuário digita
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -118,83 +133,34 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="relative min-h-[70vh] sm:min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden pt-28 md:pt-0 pb-8 md:pb-0">
-      {/* Top Hero Nav (Zillow-like) */}
-      <div className="absolute top-0 inset-x-0 z-20 hidden md:block">
-        <div className="mx-auto max-w-7xl px-4">
-          <div className="mt-4 mb-2 rounded-full bg-white/95 backdrop-blur border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between px-4 py-2 text-sm text-gray-800">
-              {/* Left: primary intents */}
-              <nav className="flex items-center gap-4">
-                {[
-                  { id: 'buy', label: 'Comprar' },
-                  { id: 'rent', label: 'Alugar' },
-                  { id: 'sell', label: 'Vender' },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setMode(t.id as any)}
-                    className={`px-3 py-1.5 rounded-full font-semibold transition-colors ${
-                      mode === t.id ? 'bg-gray-900 text-white' : 'hover:bg-gray-100'
-                    }`}
-                    aria-pressed={mode === t.id}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </nav>
-
-              {/* Center: brand/logo */}
-              <div className="flex items-center gap-2 select-none">
-                <div className="w-6 h-6 rounded-sm bg-gradient-to-br from-blue-600 to-purple-600" />
-                <span className="font-extrabold tracking-tight text-gray-900 text-base">Zillowlike</span>
-              </div>
-
-              {/* Right: context actions per mode */}
-              <div className="flex items-center gap-4">
-                {(
-                  mode === 'buy'
-                    ? [
-                        { label: 'Financiamento', href: '#financiamento' },
-                        { label: 'Encontrar corretor', href: '#corretores' },
-                        { label: 'Ajuda', href: '#ajuda' },
-                      ]
-                    : mode === 'rent'
-                    ? [
-                        { label: 'Gerenciar aluguel', href: '#aluguel' },
-                        { label: 'Anunciar aluguel', href: '/owner/new' },
-                        { label: 'Ajuda', href: '#ajuda' },
-                      ]
-                    : [
-                        { label: 'Anunciar imóvel', href: '/owner/new' },
-                        { label: 'Avaliar preço', href: '#avaliar-preco' },
-                        { label: 'Ajuda', href: '#ajuda' },
-                      ]
-                ).map((a) => (
-                  <a
-                    key={a.label}
-                    href={a.href}
-                    className="px-3 py-1.5 rounded-full font-semibold hover:bg-gray-100"
-                  >
-                    {a.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Background Image with Overlay */}
+    <div className="relative min-h-[55vh] sm:min-h-[60vh] md:min-h-[65vh] flex items-center justify-center overflow-hidden pt-28 md:pt-0 pb-8 md:pb-0">
+      {/* Top Hero Nav removed to avoid conflict with ModernNavbar */}
+      {/* Slideshow Background with Overlay */}
       <div className="absolute inset-0">
-        <Image
-          src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2000"
-          alt="Beautiful home"
-          fill
-          className="object-cover"
-          priority
-        />
+        {slides.map((s, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: slideIndex === i ? 1 : 0 }}
+            transition={{ duration: 1.2 }}
+            className="absolute inset-0"
+            aria-hidden={slideIndex !== i}
+          >
+            <Image
+              src={s.url}
+              alt={s.city}
+              fill
+              className="object-cover"
+              priority={i === 0}
+            />
+          </motion.div>
+        ))}
         {/* Dark overlay for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
+        {/* Optional city label */}
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-white/80 text-xs sm:text-sm px-3 py-1.5 rounded-full bg-black/30 backdrop-blur">
+          {slides[slideIndex].city}
+        </div>
       </div>
 
       {/* Subtle animated elements */}
