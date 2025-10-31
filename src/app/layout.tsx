@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ClientProviders from "./ClientProviders";
+import LinkToOverlayInterceptor from "@/components/LinkToOverlayInterceptor";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -63,6 +64,7 @@ export default async function RootLayout({
         {/* Global live region for polite status/toast updates */}
         <div aria-live="polite" className="sr-only" />
         <ClientProviders session={session}>
+          <LinkToOverlayInterceptor />
           <main id="content" role="main">{children}</main>
         </ClientProviders>
       </body>
