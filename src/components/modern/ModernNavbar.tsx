@@ -421,28 +421,24 @@ export default function ModernNavbar() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="md:hidden bg-white fixed inset-x-0 bottom-0 top-16 z-[60] overflow-y-auto"
+              className="md:hidden bg-white fixed inset-x-0 bottom-0 z-[60] overflow-y-auto"
+              style={{ top: isScrolled ? '64px' : '80px' }}
             >
               <div className="flex flex-col h-full">
                 {/* Header com User Info */}
-                <div className="p-6 bg-gradient-to-br from-teal-500 to-blue-600 text-white">
-                  {session ? (
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-2xl font-bold border-2 border-white/30">
+                {session && (
+                  <div className="p-4 bg-gray-50 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center text-white text-lg font-bold">
                         {(session as any)?.user?.name?.[0]?.toUpperCase?.() || 'U'}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-lg truncate">{(session as any)?.user?.name || 'Usuário'}</p>
-                        <p className="text-sm text-white/80 truncate">{(session as any)?.user?.email}</p>
+                        <p className="font-semibold text-gray-900 truncate text-sm">{(session as any)?.user?.name || 'Usuário'}</p>
+                        <p className="text-xs text-gray-500 truncate">{(session as any)?.user?.email}</p>
                       </div>
                     </div>
-                  ) : (
-                    <div>
-                      <h2 className="text-2xl font-bold mb-2">Bem-vindo!</h2>
-                      <p className="text-white/90 text-sm">Entre para acessar todos os recursos</p>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Menu Content - Simples e Direto */}
                 <div className="flex-1 overflow-y-auto">
@@ -585,9 +581,9 @@ export default function ModernNavbar() {
                         setIsOpen(false);
                         signIn();
                       }}
-                      className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-xl font-bold text-lg shadow-lg active:scale-95 transition-transform"
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-teal-600 text-white rounded-lg font-semibold active:bg-teal-700"
                     >
-                      <User className="w-6 h-6" />
+                      <User className="w-5 h-5" />
                       Entrar
                     </button>
                   )}

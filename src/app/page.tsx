@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { ModernNavbar, HeroSection, ThemeToggle, PropertyCardPremium } from "@/components/modern";
+import { ModernNavbar, HeroSection, PropertyCardPremium } from "@/components/modern";
 import Select from "@/components/ui/Select";
 import Drawer from "@/components/ui/Drawer";
 import Pagination from "@/components/ui/Pagination";
@@ -1147,10 +1147,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Theme Toggle - Fixed position */}
-      <div className="fixed bottom-8 left-8 z-40">
-        <ThemeToggle />
-      </div>
 
       {/* Dropdown já renderizado próximo ao botão */}
     </div>

@@ -460,37 +460,30 @@ export default function HeroSection() {
               </div>
               </div>
 
-              {/* Mobile: Elegant search bar with gradient border */}
-              <div className="sm:hidden p-4">
-                <div className="relative">
-                  {/* Gradient border effect */}
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
-                  
-                  <div ref={searchRef} className="relative flex items-center gap-3 px-5 py-4 bg-white rounded-2xl shadow-lg border border-gray-100">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-teal-50 to-blue-50">
-                      <Search className="text-teal-600 flex-shrink-0 w-5 h-5" />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Busque por cidade, bairro..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onFocus={() => setShowSuggestions(true)}
-                      className="flex-1 outline-none text-gray-900 placeholder:text-gray-400 text-base bg-transparent font-medium"
-                    />
-                    {searchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearchQuery('');
-                          setShowSuggestions(false);
-                        }}
-                        className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <X className="w-4 h-4 text-gray-400" />
-                      </button>
-                    )}
-                  </div>
+              {/* Mobile: Simple and clean search bar */}
+              <div className="sm:hidden px-4 py-3">
+                <div ref={searchRef} className="flex items-center gap-3 px-4 py-3 bg-white rounded-full shadow-sm border border-gray-200">
+                  <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="City, Region, Country"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setShowSuggestions(true)}
+                    className="flex-1 outline-none text-gray-700 placeholder:text-gray-400 text-sm bg-transparent"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setShowSuggestions(false);
+                      }}
+                      className="flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
+                    >
+                      <X className="w-4 h-4 text-gray-400" />
+                    </button>
+                  )}
                 </div>
               </div>
             </form>
