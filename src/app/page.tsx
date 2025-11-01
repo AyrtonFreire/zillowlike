@@ -507,12 +507,12 @@ export default function Home() {
                       <>
                         {/* Backdrop */}
                         <div
-                          className="fixed inset-0 z-[190] bg-black/70 backdrop-blur-md"
+                          className="fixed inset-0 z-[190] bg-black/60 backdrop-blur-sm"
                           onClick={() => setFiltersOpen(false)}
                           aria-hidden
                         />
                         {/* Panel */}
-                        <div className="fixed top-20 sm:top-24 md:top-28 lg:top-32 xl:top-36 2xl:top-40 left-1/2 -translate-x-1/2 z-[200] w-full max-w-5xl px-4">
+                        <div className="filters-panel fixed top-20 sm:top-24 md:top-28 lg:top-1/2 xl:top-1/2 2xl:top-1/2 left-1/2 -translate-x-1/2 lg:-translate-y-1/2 z-[200] w-full max-w-5xl px-4">
                           <SearchFiltersBar
                             compact
                             open
@@ -639,6 +639,12 @@ export default function Home() {
                           }}
                         />
                         </div>
+                        <style jsx>{`
+                          /* Centralizar verticalmente no md somente se a viewport for alta o suficiente */
+                          @media (min-width: 768px) and (min-height: 800px) {
+                            .filters-panel { top: 50% !important; transform: translate(-50%, -50%) !important; }
+                          }
+                        `}</style>
                       </>
                     )}
                   </div>

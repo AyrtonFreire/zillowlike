@@ -165,7 +165,9 @@ export default function HeroSection() {
   const handleSuggestionClick = (suggestion: LocationSuggestion) => {
     setSearchQuery(suggestion.label);
     setShowSuggestions(false);
-    // Iniciar busca imediatamente (especialmente no mobile)
+    // Mobile: iniciar busca imediatamente; Desktop: somente preencher
+    const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches;
+    if (!isMobile) return;
     const params = new URLSearchParams();
     if (suggestion.city && suggestion.state) {
       params.set('city', suggestion.city);
@@ -267,9 +269,9 @@ export default function HeroSection() {
           >
             <form onSubmit={handleSearch} className="bg-white/95 backdrop-blur rounded-3xl shadow-2xl">
               {/* Desktop: Full form */}
-              <div className="hidden sm:block p-5">
+              <div className="hidden sm:block p-4">
                 {/* Purpose Toggle - Comprar/Alugar - Centralizado e mais visível */}
-                <div className="flex gap-6 mb-4 justify-center border-b border-gray-200 pb-3">
+                <div className="flex gap-6 mb-2.5 justify-center border-b border-gray-200 pb-2">
                   <button
                     type="button"
                     onClick={() => setPurpose('SALE')}
@@ -296,7 +298,7 @@ export default function HeroSection() {
 
                 <div className="flex flex-row items-center gap-1">
                   {/* Campo Localização */}
-                  <div ref={searchRef} className="flex-1 flex items-center gap-3 px-6 py-3 bg-transparent rounded-full w-full">
+                  <div ref={searchRef} className="flex-1 flex items-center gap-3 px-6 py-2.5 bg-transparent rounded-full w-full">
                   <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
                   <input
                     type="text"
@@ -309,14 +311,14 @@ export default function HeroSection() {
                 </div>
                 
                 {/* Separador */}
-                <div className="hidden sm:block h-8 w-px bg-gray-300"></div>
+                <div className="hidden sm:block h-7 w-px bg-gray-300"></div>
                 
                 {/* Campo Tipo de Imóvel com Dropdown */}
                 <div ref={propertyTypeRef} className="relative">
                   <button
                     type="button"
                     onClick={() => setShowPropertyTypeDropdown(!showPropertyTypeDropdown)}
-                    className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between gap-2 px-4 sm:px-6 py-2.5 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
                   >
                     <Home className="w-4 h-4 text-gray-400" />
                     <span className="text-sm text-gray-700">
@@ -361,7 +363,7 @@ export default function HeroSection() {
                   <button
                     type="button"
                     onClick={() => setShowPriceDropdown(!showPriceDropdown)}
-                    className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between gap-2 px-4 sm:px-6 py-2.5 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
                   >
                     <DollarSign className="w-4 h-4 text-gray-400" />
                     <span className="text-sm text-gray-700">
@@ -406,7 +408,7 @@ export default function HeroSection() {
                   <button
                     type="button"
                     onClick={() => setShowBedroomsDropdown(!showBedroomsDropdown)}
-                    className="flex items-center gap-2 px-4 sm:px-6 py-3 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
                   >
                     <Bed className="w-4 h-4 text-gray-400" />
                     <span className="text-sm text-gray-700">
