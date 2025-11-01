@@ -417,12 +417,11 @@ export default function ModernNavbar() {
             
             {/* Menu Panel - Full Screen */}
             <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="md:hidden bg-white fixed inset-x-0 bottom-0 z-[60] overflow-y-auto"
-              style={{ top: isScrolled ? '64px' : '80px' }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden bg-white fixed inset-0 z-[60] overflow-y-auto"
             >
               <div className="flex flex-col h-full">
                 {/* Header com User Info */}
