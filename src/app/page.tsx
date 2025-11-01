@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ModernNavbar, HeroSection, ThemeToggle, PropertyCardPremium } from "@/components/modern";
-import HeroSearch from "@/components/modern/HeroSearch";
 import Select from "@/components/ui/Select";
 import Drawer from "@/components/ui/Drawer";
 import Pagination from "@/components/ui/Pagination";

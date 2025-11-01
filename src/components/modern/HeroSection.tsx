@@ -466,7 +466,7 @@ export default function HeroSection() {
                   <Search className="text-gray-400 flex-shrink-0 w-5 h-5" />
                   <input
                     type="text"
-                    placeholder="Enter an address, neighborhood, city, or ZIP code"
+                    placeholder="Busque por cidade, bairro ou endereço..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => setShowSuggestions(true)}
