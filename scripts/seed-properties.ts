@@ -13,14 +13,67 @@ const IMG_QUERY: Record<string, string> = {
   COMMERCIAL: 'office,building,interior,exterior',
   LAND: 'land,lot,field,real-estate'
 };
-let globalSig = 1;
-function uniqueImageUrlsFor(type: string, count: number): string[] {
-  const query = IMG_QUERY[type] || 'house,interior,architecture';
+// Use direct Unsplash image IDs to avoid redirect/optimizer issues on Vercel
+// Photo IDs are public Unsplash IDs by theme. Feel free to expand.
+const UNSPLASH_PHOTOS: Record<string, string[]> = {
+  HOUSE: [
+    '1500530855697-94f52f9b9b6b', // exterior house
+    '1560184897-a3ddc27b5857',
+    '1502673530728-f79b4cab31b1',
+    '1501045661006-fcebe0257c3f',
+    '1505691723518-36a5ac3b2d52',
+    '1501183007986-d0d080b147f9',
+  ],
+  APARTMENT: [
+    '1505693416388-ac5ce068fe85',
+    '1519710164239-da123dc03ef4',
+    '1505691938895-1758d7feb511',
+    '1505691723518-36a5ac3b2d52',
+    '1554995203-94b4c8eaf1f0',
+    '1521783988139-893ce4bfbfd5',
+  ],
+  CONDO: [
+    '1486308510493-aa64833637b8',
+    '1480074568708-e7b720bb3f09',
+    '1486325212027-8081e485255e',
+    '1501183007986-d0d080b147f9',
+    '1523217582562-09d0def993a6',
+    '1512918728675-ed5a9ecdebfd',
+  ],
+  STUDIO: [
+    '1493666438817-866a91353ca9',
+    '1524758631624-e2822e304c36',
+    '1520880867055-1e30d1cb001c',
+    '1501045661006-fcebe0257c3f',
+    '1519710164239-da123dc03ef4',
+    '1524758631624-e2822e304c36',
+  ],
+  LAND: [
+    '1501785888041-af3ef285b470',
+    '1469474968028-56623f02e42e',
+    '1441974231531-c6227db76b6e',
+    '1441974231531-c6227db76b6e',
+    '1500534314209-a25ddb2bd429',
+    '1496307042754-b4aa456c4a2d',
+  ],
+  COMMERCIAL: [
+    '1497366216548-37526070297c',
+    '1466354424719-343280fe118b',
+    '1500534314209-a25ddb2bd429',
+    '1483058712412-4245e9b90334',
+    '1497366216548-37526070297c',
+    '1460353581641-37baddab0fa2',
+  ],
+};
+
+function imagesFromIds(type: string, count: number): string[] {
+  const fallback = '1501183007986-d0d080b147f9';
+  const ids = UNSPLASH_PHOTOS[type] || UNSPLASH_PHOTOS['HOUSE'] || [fallback];
   const list: string[] = [];
   for (let i = 0; i < count; i++) {
-    const sig = globalSig++;
-    // 1600x1000 for good quality; random feed ensures unique photos
-    list.push(`https://source.unsplash.com/random/1600x1000/?${encodeURIComponent(query)}&sig=${sig}`);
+    const id = ids[i % ids.length] || fallback;
+    // Direct Unsplash CDN URL, no redirect
+    list.push(`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=1600&q=80`);
   }
   return list;
 }
@@ -110,7 +163,7 @@ function generatePrice(type: string, listingType: string): number {
 }
 
 function getPropertyImages(type: string): string[] {
-  return uniqueImageUrlsFor(type, getRandomInt(6, 8)); // sempre >5
+  return imagesFromIds(type, getRandomInt(6, 8)); // sempre >5
 }
 
 async function main() {

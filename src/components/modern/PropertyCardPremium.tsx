@@ -108,7 +108,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     const url = `${window.location.origin}/properties/${property.id}`;
     const subject = encodeURIComponent(property.title);
     const priceLabel = typeof property.price === 'number' && property.price > 0
-      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format((property.price as number) / 100)
+      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format((property.price as number) / 100)
       : 'Price on Request';
     const body = encodeURIComponent(`Confira este imóvel: ${property.title}\n\nPreço: ${priceLabel}\n\nLocalização: ${property.city}/${property.state}\n\nVeja mais em: ${url}`);
     window.open(`https://outlook.live.com/mail/0/deeplink/compose?subject=${subject}&body=${body}`, '_blank');
