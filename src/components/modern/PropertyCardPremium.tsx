@@ -95,7 +95,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     const url = `${window.location.origin}/properties/${property.id}`;
     const subject = encodeURIComponent(property.title);
     const priceLabel = typeof property.price === 'number' && property.price > 0
-      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format((property.price as number) / 100)
+      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format((property.price as number) / 100)
       : 'Price on Request';
     const body = encodeURIComponent(`Confira este imóvel: ${property.title}\n\nPreço: ${priceLabel}\n\nLocalização: ${property.city}/${property.state}\n\nVeja mais em: ${url}`);
     window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
@@ -344,7 +344,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           <div className="mb-2 mt-0.5 flex items-center justify-between">
             <div className="text-xl font-bold text-gray-900">
               {typeof property.price === 'number' && property.price > 0
-                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(property.price / 100)
+                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
                 : 'Price on Request'}
             </div>
             <motion.button

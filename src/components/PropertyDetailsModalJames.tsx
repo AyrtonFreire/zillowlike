@@ -6,6 +6,7 @@ import Image from "next/image";
 import Button from "./ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
+import { getLowestFinancing } from "@/lib/financing";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 const SimilarCarousel = dynamic(() => import("@/components/SimilarCarousel"), { ssr: false });
@@ -718,40 +719,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             {/* Sidebar */}
             <div className="lg:col-span-1">
               <div className="sticky top-24 space-y-6">
-                {/* Financing Calculator - Only for SALE properties */}
-                {property.purpose === 'SALE' && property.price && property.price > 0 && (
-                  <div className="rounded-xl border border-teal/10 p-6 bg-gradient-to-br from-teal/5 to-teal/10 shadow-sm">
-                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      💰 Financiamento
-                    </h4>
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">Entrada (20%)</p>
-                        <p className="text-lg font-bold text-gray-900">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format((property.price * 0.2) / 100)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">Parcela estimada (360x)</p>
-                        <p className="text-2xl font-bold text-teal">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(((property.price * 0.8) / 100) / 360)}
-                          <span className="text-sm text-gray-600 font-normal">/mês</span>
-                        </p>
-                      </div>
-                      <a
-                        href={`/financing/${property.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full text-center px-4 py-2 glass-teal text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
-                      >
-                        Ver opções de bancos →
-                      </a>
-                      <p className="text-xs text-gray-500 text-center">
-                        *Simulação aproximada. Consulte seu banco.
-                      </p>
-                    </div>
-                  </div>
-                )}
+                {/* Financing card will appear below the contact form */}
 
                 {/* Contact Form */}
                 <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
@@ -795,30 +763,29 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   </div>
                 </div>
 
-                {/* Financing Installment Card BELOW the contact form */}
-                {property.purpose === 'SALE' && property.price && property.price > 0 && (
-                  <a
-                    href={`/financing/${property.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block rounded-xl border-2 border-teal/20 p-5 bg-gradient-to-br from-teal/5 to-blue/5 hover:from-teal/10 hover:to-blue/10 transition-all cursor-pointer group"
-                    aria-label="Ver opções de financiamento"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-semibold text-gray-800">💰 Estimativa de parcela</div>
-                        <div className="text-xs text-gray-500">Clique para ver opções de bancos</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-teal">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(((property.price * 0.8) / 100) / 360)}
-                          <span className="text-sm text-gray-600 font-normal">/mês</span>
+                {/* Financing Calculator - Only for SALE properties (single card below contact form) */}
+                {property.purpose === 'SALE' && property.price && property.price > 0 && (() => {
+                  const priceBRL = property.price / 100;
+                  const { calculation } = getLowestFinancing(priceBRL);
+                  const fmt = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+                  return (
+                    <div className="rounded-xl border border-teal/10 p-6 bg-gradient-to-br from-teal/5 to-teal/10 shadow-sm">
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">💰 Financiamento</h4>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">Entrada (20%)</p>
+                          <p className="text-lg font-bold text-gray-900">{fmt(calculation.downPayment)}</p>
                         </div>
-                        <div className="text-xs text-gray-500">Entrada estimada: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format((property.price * 0.2) / 100)}</div>
+                        <div>
+                          <p className="text-sm text-gray-600 mb-1">Parcela estimada (360x)</p>
+                          <p className="text-2xl font-bold text-teal">{fmt(calculation.monthlyPayment)}<span className="text-sm text-gray-600 font-normal">/mês</span></p>
+                        </div>
+                        <a href={`/financing/${property.id}`} target="_blank" rel="noopener noreferrer" className="block w-full text-center px-4 py-2 glass-teal text-white rounded-lg font-medium hover:opacity-90 transition-opacity">Ver opções de bancos →</a>
+                        <p className="text-xs text-gray-500 text-center">*Simulação aproximada. Consulte seu banco.</p>
                       </div>
                     </div>
-                  </a>
-                )}
+                  );
+                })()}
               </div>
             </div>
           </div>

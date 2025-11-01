@@ -96,15 +96,16 @@ function getRandomInt(min: number, max: number): number {
 
 function generatePrice(type: string, listingType: string): number {
   if (listingType === 'Aluguel') {
-    if (type === 'HOUSE') return getRandomInt(150000, 400000); // R$ 1.500 - 4.000
-    if (type === 'APARTMENT' || type === 'CONDO' || type === 'STUDIO') return getRandomInt(100000, 300000); // R$ 1.000 - 3.000
-    if (type === 'COMMERCIAL') return getRandomInt(200000, 800000); // R$ 2.000 - 8.000
-    return getRandomInt(50000, 150000); // Terreno
+    // valores em centavos (inteiros), arredondados para múltiplos de 100 (sem centavos quebrados)
+    if (type === 'HOUSE') return Math.round(getRandomInt(150000, 400000) / 100) * 100; // R$ 1.500 - 4.000
+    if (type === 'APARTMENT' || type === 'CONDO' || type === 'STUDIO') return Math.round(getRandomInt(100000, 300000) / 100) * 100; // R$ 1.000 - 3.000
+    if (type === 'COMMERCIAL') return Math.round(getRandomInt(200000, 800000) / 100) * 100; // R$ 2.000 - 8.000
+    return Math.round(getRandomInt(50000, 150000) / 100) * 100; // Terreno
   } else {
-    if (type === 'HOUSE' || type === 'TOWNHOUSE') return getRandomInt(25000000, 80000000); // R$ 250k - 800k
-    if (type === 'APARTMENT' || type === 'CONDO' || type === 'STUDIO') return getRandomInt(15000000, 50000000); // R$ 150k - 500k
-    if (type === 'COMMERCIAL') return getRandomInt(30000000, 100000000); // R$ 300k - 1M
-    return getRandomInt(5000000, 20000000); // Terreno
+    if (type === 'HOUSE' || type === 'TOWNHOUSE') return Math.round(getRandomInt(25000000, 80000000) / 100) * 100; // R$ 250k - 800k
+    if (type === 'APARTMENT' || type === 'CONDO' || type === 'STUDIO') return Math.round(getRandomInt(15000000, 50000000) / 100) * 100; // R$ 150k - 500k
+    if (type === 'COMMERCIAL') return Math.round(getRandomInt(30000000, 100000000) / 100) * 100; // R$ 300k - 1M
+    return Math.round(getRandomInt(5000000, 20000000) / 100) * 100; // Terreno
   }
 }
 
