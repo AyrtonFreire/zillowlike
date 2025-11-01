@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
 import { PropertyCardPremium } from "@/components/modern";
+import Link from "next/link";
 
 type Props = {
   properties: any[];
@@ -40,7 +41,13 @@ export default function SimilarCarousel({ properties, onOpenOverlay, title, show
         <div ref={scrollerRef} className="flex gap-4 md:gap-5 overflow-x-auto no-scrollbar snap-x snap-mandatory">
           {properties.map((p) => (
             <div key={p.id} className="snap-start shrink-0 w-[85vw] sm:w-[300px] md:w-[320px] xl:w-[340px] 2xl:w-[360px]">
-              <PropertyCardPremium property={p} onOpenOverlay={onOpenOverlay} />
+              {onOpenOverlay ? (
+                <PropertyCardPremium property={p} onOpenOverlay={onOpenOverlay} />
+              ) : (
+                <Link href={`/property/${p.id}`} className="block">
+                  <PropertyCardPremium property={p} />
+                </Link>
+              )}
             </div>
           ))}
         </div>
