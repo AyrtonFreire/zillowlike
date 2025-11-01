@@ -6,12 +6,15 @@ import { useState, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import MobileHeaderZillow from "./MobileHeaderZillow";
 
 export default function ModernNavbar() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
+  const [isRightMenuOpen, setIsRightMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [megaMenu, setMegaMenu] = useState<"comprar" | "alugar" | "anunciar" | null>(null);
   const [primary, setPrimary] = useState<"comprar" | "alugar" | "anunciar">("comprar");
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
   const { scrollY } = useScroll();
@@ -69,21 +72,18 @@ export default function ModernNavbar() {
   ];
 
   return (
-    <motion.nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/90 shadow-lg backdrop-blur-lg`}
-    >
-      <div className="mx-auto max-w-7xl px-4">
-        <div className={`grid grid-cols-3 items-center ${isScrolled ? 'h-16' : 'h-20'} transition-[height]`}>
-          {/* Left: Primary tabs with mega dropdown triggers (Desktop) / Mobile menu button */}
-          <div className="flex items-center justify-start gap-7">
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden p-2 text-gray-900 hover:text-teal transition-colors"
-              aria-label="Menu"
-            >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+    <>
+      {/* Mobile Header - Zillow Style */}
+      <MobileHeaderZillow />
+
+      {/* Desktop Navigation */}
+      <motion.nav
+        className={`hidden md:block fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/90 shadow-lg backdrop-blur-lg`}
+      >
+        <div className="mx-auto max-w-7xl px-4">
+          <div className={`grid grid-cols-3 items-center ${isScrolled ? 'h-16' : 'h-20'} transition-[height]`}>
+            {/* Left: Primary tabs with mega dropdown triggers (Desktop) */}
+            <div className="flex items-center justify-start gap-7">
             
             {/* Desktop menu */}
             <div className="hidden md:flex items-center gap-7 mega-menu-container">
@@ -402,197 +402,8 @@ export default function ModernNavbar() {
         </motion.div>
       )}
 
-      {/* Mobile Menu - Completamente Novo e Simplificado */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="md:hidden fixed inset-0 bg-black/60 z-[55]"
-            />
-            
-            {/* Menu Panel - Full Screen */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.2 }}
-              className="md:hidden bg-white fixed inset-0 z-[60] overflow-y-auto"
-            >
-              <div className="flex flex-col h-full">
-                {/* Header com User Info */}
-                {session && (
-                  <div className="p-4 bg-gray-50 border-b border-gray-200">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center text-white text-lg font-bold">
-                        {(session as any)?.user?.name?.[0]?.toUpperCase?.() || 'U'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 truncate text-sm">{(session as any)?.user?.name || 'Usuário'}</p>
-                        <p className="text-xs text-gray-500 truncate">{(session as any)?.user?.email}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Menu Content - Simples e Direto */}
-                <div className="flex-1 overflow-y-auto">
-                  {/* Seção: Buscar Imóveis */}
-                  <div className="border-b border-gray-200">
-                    <div className="px-4 py-3 bg-gray-50">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Buscar Imóveis</h3>
-                    </div>
-                    <div className="py-2">
-                      <Link href="/?type=HOUSE" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                        <Home className="w-5 h-5 text-teal-600" />
-                        <span className="font-medium">Casas</span>
-                      </Link>
-                      <Link href="/?type=APARTMENT" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                        <Building2 className="w-5 h-5 text-teal-600" />
-                        <span className="font-medium">Apartamentos</span>
-                      </Link>
-                      <Link href="/?type=CONDO" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                        <Building2 className="w-5 h-5 text-teal-600" />
-                        <span className="font-medium">Condomínios</span>
-                      </Link>
-                      <Link href="/?type=LAND" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                        <Building2 className="w-5 h-5 text-teal-600" />
-                        <span className="font-medium">Terrenos</span>
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* Seção: Alugar */}
-                  <div className="border-b border-gray-200">
-                    <div className="px-4 py-3 bg-gray-50">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Alugar</h3>
-                    </div>
-                    <div className="py-2">
-                      <Link href="/?purpose=RENT&type=HOUSE" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                        <Home className="w-5 h-5 text-blue-600" />
-                        <span className="font-medium">Casas para Alugar</span>
-                      </Link>
-                      <Link href="/?purpose=RENT&type=APARTMENT" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                        <Building2 className="w-5 h-5 text-blue-600" />
-                        <span className="font-medium">Apartamentos</span>
-                      </Link>
-                      <Link href="/calculadora-aluguel" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                        <LineChart className="w-5 h-5 text-blue-600" />
-                        <span className="font-medium">Calculadora</span>
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* Seção: Ferramentas */}
-                  <div className="border-b border-gray-200">
-                    <div className="px-4 py-3 bg-gray-50">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Ferramentas</h3>
-                    </div>
-                    <div className="py-2">
-                      <Link href="/calculadora" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                        <LineChart className="w-5 h-5 text-purple-600" />
-                        <span className="font-medium">Calculadora de Financiamento</span>
-                      </Link>
-                      {session && (
-                        <>
-                          <Link href="/favorites" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                            <Heart className="w-5 h-5 text-red-500" />
-                            <span className="font-medium">Meus Favoritos</span>
-                          </Link>
-                          <Link href="/saved-searches" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                            <Bookmark className="w-5 h-5 text-orange-500" />
-                            <span className="font-medium">Buscas Salvas</span>
-                          </Link>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Seção: Anunciar (sempre visível) */}
-                  <div className="border-b border-gray-200">
-                    <div className="px-4 py-3 bg-gray-50">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Anunciar</h3>
-                    </div>
-                    <div className="py-2">
-                      <Link href="/owner/new" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                        <Megaphone className="w-5 h-5 text-green-600" />
-                        <span className="font-medium">Anunciar Imóvel</span>
-                      </Link>
-                      {session && role === 'OWNER' && (
-                        <>
-                          <Link href="/owner/properties" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                            <Building2 className="w-5 h-5 text-green-600" />
-                            <span className="font-medium">Meus Anúncios</span>
-                          </Link>
-                          <Link href="/owner/leads" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                            <ClipboardList className="w-5 h-5 text-green-600" />
-                            <span className="font-medium">Meus Leads</span>
-                          </Link>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Seção: Admin (se aplicável) */}
-                  {session && role === 'ADMIN' && (
-                    <div className="border-b border-gray-200">
-                      <div className="px-4 py-3 bg-gray-50">
-                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Administração</h3>
-                      </div>
-                      <div className="py-2">
-                        <Link href="/admin" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                          <LayoutDashboard className="w-5 h-5 text-red-600" />
-                          <span className="font-medium">Painel Admin</span>
-                        </Link>
-                        <Link href="/admin/properties" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                          <Building2 className="w-5 h-5 text-red-600" />
-                          <span className="font-medium">Gerenciar Imóveis</span>
-                        </Link>
-                        <Link href="/admin/users" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-6 py-3 text-gray-700 active:bg-gray-50">
-                          <Users className="w-5 h-5 text-red-600" />
-                          <span className="font-medium">Usuários</span>
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer - Botão de Ação */}
-                <div className="p-4 border-t border-gray-200 bg-white">
-                  {session ? (
-                    <button
-                      onClick={() => {
-                        setIsOpen(false);
-                        signOut({ callbackUrl: "/" });
-                      }}
-                      className="w-full flex items-center justify-center gap-2 py-4 bg-gray-100 text-gray-700 rounded-xl font-semibold active:bg-gray-200"
-                    >
-                      <LogOut className="w-5 h-5" />
-                      Sair
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setIsOpen(false);
-                        signIn();
-                      }}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-teal-600 text-white rounded-lg font-semibold active:bg-teal-700"
-                    >
-                      <User className="w-5 h-5" />
-                      Entrar
-                    </button>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </motion.nav>
+      </motion.nav>
+    </>
   );
 }
 
