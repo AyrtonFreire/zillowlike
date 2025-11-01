@@ -44,6 +44,17 @@ export default function Home() {
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [newest, setNewest] = useState<Property[]>([]);
   const [newestLoading, setNewestLoading] = useState(true);
+  // Explore new categories
+  const [furnishedList, setFurnishedList] = useState<Property[]>([]);
+  const [furnishedLoading, setFurnishedLoading] = useState(true);
+  const [luxuryList, setLuxuryList] = useState<Property[]>([]);
+  const [luxuryLoading, setLuxuryLoading] = useState(true);
+  const [condoList, setCondoList] = useState<Property[]>([]);
+  const [condoLoading, setCondoLoading] = useState(true);
+  const [studioList, setStudioList] = useState<Property[]>([]);
+  const [studioLoading, setStudioLoading] = useState(true);
+  const [landList, setLandList] = useState<Property[]>([]);
+  const [landLoading, setLandLoading] = useState(true);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'split' | 'list'>('split');
@@ -52,11 +63,14 @@ export default function Home() {
   const filtersRef = useRef<HTMLDivElement | null>(null);
   const [nextPage, setNextPage] = useState(2);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
 
   // Fecha dropdown ao clicar fora ou pressionar ESC
   useEffect(() => {
     if (!filtersOpen) return;
+    const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
     const handleClick = (e: Event) => {
+      if (!isDesktop) return; // mobile: não fechar ao clicar fora
       if (!filtersRef.current) return;
       const target = e.target as Node | null;
       if (target && !filtersRef.current.contains(target)) {
@@ -64,7 +78,7 @@ export default function Home() {
       }
     };
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setFiltersOpen(false);
+      if (e.key === 'Escape') setFiltersOpen(false); // ESC funciona em mobile e desktop
     };
     document.addEventListener('mousedown', handleClick as EventListener, true);
     document.addEventListener('touchstart', handleClick as EventListener, true);
@@ -151,6 +165,55 @@ export default function Home() {
   const hasSearched = useMemo(() => {
     return !!(search || city || type || minPrice || maxPrice || bedroomsMin || bathroomsMin || areaMin);
   }, [search, city, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin]);
+
+  // Helper para buscar categoria com fallback por localidade
+  const fetchCategory = useCallback(async (baseParams: Record<string, any>) => {
+    const p1 = buildSearchParams({
+      city,
+      state,
+      page: 1,
+      pageSize: 12,
+      sort: 'recent',
+      ...baseParams,
+    });
+    try {
+      const res = await fetch(`/api/properties?${p1}`);
+      const data = await res.json();
+      if (data?.properties?.length) return data.properties as Property[];
+    } catch {}
+    // Fallback sem cidade/estado ou sem resultados
+    const p2 = buildSearchParams({ page: 1, pageSize: 12, sort: 'recent', ...baseParams });
+    try {
+      const res2 = await fetch(`/api/properties?${p2}`);
+      const data2 = await res2.json();
+      return (data2?.properties || []) as Property[];
+    } catch {
+      return [] as Property[];
+    }
+  }, [city, state]);
+
+  // Carregar categorias da seção Explorar (homepage)
+  useEffect(() => {
+    if (hasSearched) return; // apenas quando não há busca ativa
+    let cancelled = false;
+    (async () => {
+      setFurnishedLoading(true); setLuxuryLoading(true); setCondoLoading(true); setStudioLoading(true); setLandLoading(true);
+      const [furnished, luxury, condos, studios, lands] = await Promise.all([
+        fetchCategory({ furnished: 'true' }),
+        fetchCategory({ minPrice: '1500000' }), // Luxo: R$1,5M+
+        fetchCategory({ type: 'CONDO' }),
+        fetchCategory({ type: 'STUDIO' }),
+        fetchCategory({ type: 'LAND' }),
+      ]);
+      if (cancelled) return;
+      setFurnishedList(furnished); setFurnishedLoading(false);
+      setLuxuryList(luxury); setLuxuryLoading(false);
+      setCondoList(condos); setCondoLoading(false);
+      setStudioList(studios); setStudioLoading(false);
+      setLandList(lands); setLandLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [fetchCategory, hasSearched]);
 
   // Carregar favoritos
   useEffect(() => {
@@ -654,16 +717,27 @@ export default function Home() {
                       aria-haspopup="dialog"
                       aria-expanded={filtersOpen}
                       onClick={() => { setFiltersOpen(true); try { track({ name: 'filters_open', source: 'mobile' }); } catch {} }}
-                      className="px-4 py-2 rounded-md text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50"
+                      className="px-4 py-2 rounded-md text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50 relative"
                     >
                       Filtros
+                      {(() => {
+                        const count = [minPrice, maxPrice, bedroomsMin, bathroomsMin, type, areaMin, parkingSpots, yearBuiltMin, yearBuiltMax, status, petFriendly ? '1' : '', furnished ? '1' : '', hasPool ? '1' : '', hasGym ? '1' : '', hasElevator ? '1' : '', hasBalcony ? '1' : '', hasSeaView ? '1' : '', condoFeeMin, condoFeeMax, iptuMin, iptuMax, keywords].filter(Boolean).length;
+                        return count > 0 ? <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">{count}</span> : null;
+                      })()}
                     </button>
                     <Drawer open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filtros" side="right">
                       <SearchFiltersBar
                         compact
                         open
                         variant="modal"
-                        onClose={() => setFiltersOpen(false)}
+                        isApplying={isApplyingFilters}
+                        onClose={() => {
+                          setIsApplyingFilters(true);
+                          setTimeout(() => {
+                            setFiltersOpen(false);
+                            setIsApplyingFilters(false);
+                          }, 300);
+                        }}
                         filters={{
                           minPrice,
                           maxPrice,
@@ -1004,8 +1078,8 @@ export default function Home() {
                 />
               </div>
               {/* Desktop: Grid */}
-              <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-                {featured.map((property) => (
+              <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
+                {featured.slice(0, 6).map((property) => (
                   <PropertyCardPremium
                     key={property.id}
                     property={property}
@@ -1023,6 +1097,27 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-4 py-10">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900 font-display">Explorar</h2>
+            <button
+              onClick={async () => {
+                try {
+                  if (!('geolocation' in navigator)) return;
+                  const pos = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 }));
+                  const { latitude, longitude } = pos.coords;
+                  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`;
+                  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                  const data = await res.json();
+                  const cityGuess = data?.address?.city || data?.address?.town || data?.address?.village || data?.address?.county || '';
+                  const stateGuess = data?.address?.state || data?.address?.region || '';
+                  if (cityGuess) setCity(cityGuess);
+                  if (stateGuess) setState(stateGuess);
+                } catch (e) {
+                  console.warn('geolocation failed', e);
+                }
+              }}
+              className="text-sm px-3 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700"
+            >
+              Usar minha localização
+            </button>
           </div>
           <Tabs
             items={[
@@ -1038,8 +1133,8 @@ export default function Home() {
                     <div className="md:hidden">
                       <Carousel items={trending} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} />
                     </div>
-                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-                      {trending.map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
+                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
+                      {trending.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
                   </>
                 )
@@ -1056,8 +1151,78 @@ export default function Home() {
                     <div className="md:hidden">
                       <Carousel items={newest} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} />
                     </div>
-                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-                      {newest.map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
+                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
+                      {newest.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
+                    </div>
+                  </>
+                )
+              )},
+              { key: 'furnished', label: 'Mobiliados', content: (
+                furnishedLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
+                  </div>
+                ) : (
+                  <>
+                    <div className="md:hidden"><Carousel items={furnishedList} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
+                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
+                      {furnishedList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
+                    </div>
+                  </>
+                )
+              )},
+              { key: 'luxury', label: 'Luxo', content: (
+                luxuryLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
+                  </div>
+                ) : (
+                  <>
+                    <div className="md:hidden"><Carousel items={luxuryList} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
+                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
+                      {luxuryList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
+                    </div>
+                  </>
+                )
+              )},
+              { key: 'condos', label: 'Condomínios', content: (
+                condoLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
+                  </div>
+                ) : (
+                  <>
+                    <div className="md:hidden"><Carousel items={condoList} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
+                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
+                      {condoList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
+                    </div>
+                  </>
+                )
+              )},
+              { key: 'studios', label: 'Studios', content: (
+                studioLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
+                  </div>
+                ) : (
+                  <>
+                    <div className="md:hidden"><Carousel items={studioList} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
+                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
+                      {studioList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
+                    </div>
+                  </>
+                )
+              )},
+              { key: 'lands', label: 'Terrenos', content: (
+                landLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
+                  </div>
+                ) : (
+                  <>
+                    <div className="md:hidden"><Carousel items={landList} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
+                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
+                      {landList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
                   </>
                 )

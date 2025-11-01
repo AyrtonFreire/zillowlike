@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SlidersHorizontal, X, Home, DollarSign, Bed, Bath, Maximize2, ChevronDown, Car, Calendar, Tag, PawPrint, Sofa, Waves, Dumbbell, Building2, MapPin, Search } from "lucide-react";
 
 type FilterValues = {
@@ -36,10 +36,39 @@ type SearchFiltersBarProps = {
   open?: boolean;    // usado no modo compacto
   onClose?: () => void; // usado no modo compacto
   variant?: 'modal' | 'dropdown'; // aparência do painel compacto
+  isApplying?: boolean; // loading state for apply button
 };
 
-export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilters, compact = false, open = false, onClose, variant = 'modal' }: SearchFiltersBarProps) {
+export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilters, compact = false, open = false, onClose, variant = 'modal', isApplying = false }: SearchFiltersBarProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  // Focus trap (modal variant only)
+  useEffect(() => {
+    if (variant !== 'modal') return;
+    const root = panelRef.current;
+    if (!root) return;
+    const focusables = () => Array.from(root.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+    )).filter(el => el.offsetParent !== null);
+
+    // focus first element
+    const els = focusables();
+    (els[0] || root).focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const list = focusables();
+      if (list.length === 0) return;
+      const active = document.activeElement as HTMLElement | null;
+      const idx = Math.max(0, list.indexOf(active || list[0]));
+      const next = e.shiftKey ? (idx - 1 + list.length) % list.length : (idx + 1) % list.length;
+      list[next].focus();
+      e.preventDefault();
+    };
+    root.addEventListener('keydown', onKey);
+    return () => root.removeEventListener('keydown', onKey);
+  }, [variant, open]);
   const PRICE_MIN = 0;
   const PRICE_MAX = 2000000; // 2M
   const PRICE_STEP = 10000;  // 10k
@@ -129,21 +158,47 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
   // Painel avançado isolado (modo compacto)
   const renderAdvancedPanel = () => (
     <div className={`${variant === 'modal' ? 'container mx-auto max-w-6xl px-4' : ''}`}>
-      <div className={`${variant === 'modal' ? 'border border-gray-200 bg-white rounded-xl shadow-md' : 'bg-white rounded-xl shadow-xl border border-gray-200 w-[min(92vw,800px)]'} max-h-[85vh] flex flex-col`}>        
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-3 border-b">
-          <div className="text-sm font-semibold text-gray-700">Filtros</div>
-          <button onClick={onClose} className="text-gray-600 hover:text-gray-900 text-sm">Fechar</button>
-        </div>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        ref={panelRef}
+        tabIndex={-1}
+        role={variant === 'modal' ? 'dialog' : undefined}
+        aria-modal={variant === 'modal' ? true : undefined}
+        className={`${variant === 'modal' ? 'border border-gray-200 bg-white rounded-xl shadow-md' : 'bg-white rounded-xl shadow-xl border border-gray-200 w-[min(92vw,800px)]'} max-h-[85vh] min-h-[60vh] md:min-h-[65vh] lg:min-h-[70vh] flex flex-col`}
+      >        
+        {/* Header (omit in modal to avoid duplicate title with Drawer) */}
+        {variant === 'dropdown' && (
+          <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-3 border-b">
+            <div className="text-sm font-semibold text-gray-700">Filtros</div>
+            <button onClick={onClose} className="text-gray-600 hover:text-gray-900 text-sm">Fechar</button>
+          </div>
+        )}
         {/* Content (scrollable) */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
+          {/* Quick chips (mobile only) */}
+          {variant === 'modal' && (
+            <div className="mb-4 pb-4 border-b space-y-3 animate-fade-in">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Acesso rápido</div>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => onFiltersChange({ ...filters, minPrice: '', maxPrice: '500000' })} className="px-3 py-1.5 text-xs rounded-full border border-gray-300 bg-white hover:bg-gray-50">Até R$ 500k</button>
+                <button onClick={() => onFiltersChange({ ...filters, bedrooms: '2' })} className="px-3 py-1.5 text-xs rounded-full border border-gray-300 bg-white hover:bg-gray-50">2+ quartos</button>
+                <button onClick={() => onFiltersChange({ ...filters, bathrooms: '2' })} className="px-3 py-1.5 text-xs rounded-full border border-gray-300 bg-white hover:bg-gray-50">2+ banheiros</button>
+                <button onClick={() => onFiltersChange({ ...filters, furnished: true })} className="px-3 py-1.5 text-xs rounded-full border border-gray-300 bg-white hover:bg-gray-50">Mobiliado</button>
+                <button onClick={() => onFiltersChange({ ...filters, petFriendly: true })} className="px-3 py-1.5 text-xs rounded-full border border-gray-300 bg-white hover:bg-gray-50">Pet-friendly</button>
+                <button onClick={() => onFiltersChange({ ...filters, condoFeeMax: '500' })} className="px-3 py-1.5 text-xs rounded-full border border-gray-300 bg-white hover:bg-gray-50">Cond. baixo</button>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Tipo de imóvel */}
           <div className="space-y-3">
-            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <Home className="w-4 h-4 text-gray-700" />
-              Tipo de imóvel
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <Home className="w-4 h-4 text-gray-700" />
+                Tipo de imóvel
+              </label>
+              {filters.type && <button onClick={() => onFiltersChange({ ...filters, type: '' })} className="text-xs text-red-600 hover:text-red-700">Limpar</button>}
+            </div>
             <div className="flex flex-wrap gap-2">
               {propertyTypes.slice(1).map((type) => (
                 <button
@@ -162,10 +217,13 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
           </div>
           {/* Price Range */}
           <div className="space-y-3">
-            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-gray-700" />
-              Faixa de Preço
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-gray-700" />
+                Faixa de Preço
+              </label>
+              {(filters.minPrice || filters.maxPrice) && <button onClick={() => onFiltersChange({ ...filters, minPrice: '', maxPrice: '' })} className="text-xs text-red-600 hover:text-red-700">Limpar</button>}
+            </div>
             {/* Slider dupla alça (refinado) */}
             <div className="px-1">
               <div className="relative h-14 select-none">
@@ -257,10 +315,13 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
           </div>
           {/* Bedrooms */}
           <div className="space-y-3">
-            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <Bed className="w-4 h-4 text-gray-700" />
-              Quartos
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <Bed className="w-4 h-4 text-gray-700" />
+                Quartos
+              </label>
+              {filters.bedrooms && <button onClick={() => onFiltersChange({ ...filters, bedrooms: '' })} className="text-xs text-red-600 hover:text-red-700">Limpar</button>}
+            </div>
             <div className="flex flex-wrap gap-2">
               {bedroomOptions.map(opt => (
                 <button
@@ -279,10 +340,13 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
           </div>
           {/* Bathrooms */}
           <div className="space-y-3">
-            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <Bath className="w-4 h-4 text-gray-700" />
-              Banheiros
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <Bath className="w-4 h-4 text-gray-700" />
+                Banheiros
+              </label>
+              {filters.bathrooms && <button onClick={() => onFiltersChange({ ...filters, bathrooms: '' })} className="text-xs text-red-600 hover:text-red-700">Limpar</button>}
+            </div>
             <div className="flex flex-wrap gap-2">
               {bathroomOptions.map(opt => (
                 <button
@@ -537,10 +601,11 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
           </div>
         </div>
         {/* Sticky Footer */}
-        <div className="sticky bottom-0 bg-white border-t px-4 sm:px-6 py-3">
+        <div className="mt-auto sticky bottom-0 bg-white border-t px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between">
             <button onClick={onClearFilters} className="text-sm text-red-600 hover:text-red-700">Limpar tudo</button>
-            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold">
+            <button onClick={onClose} disabled={isApplying} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold disabled:opacity-60 flex items-center gap-2">
+              {isApplying && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
               {`Aplicar filtros${activeCount ? ` (${activeCount})` : ''}`}
             </button>
           </div>
@@ -563,6 +628,8 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
         }
         .range-input::-webkit-slider-runnable-track { height: 2px; background: transparent; }
         .range-input::-moz-range-track { height: 2px; background: transparent; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn .25s ease-out both; }
       `}</style>
     </div>
   );
