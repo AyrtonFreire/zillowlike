@@ -2,30 +2,28 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// URLs de imagens do Unsplash (casas reais)
-const PROPERTY_IMAGES = {
-  casa: [
-    'https://images.unsplash.com/photo-1568605114967-8130f3a36994',
-    'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9',
-    'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c',
-    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c',
-    'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3',
-  ],
-  apartamento: [
-    'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267',
-    'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2',
-    'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688',
-    'https://images.unsplash.com/photo-1493809842364-78817add7ffb',
-    'https://images.unsplash.com/photo-1484154218962-a197022b5858',
-  ],
-  comercial: [
-    'https://images.unsplash.com/photo-1497366216548-37526070297c',
-    'https://images.unsplash.com/photo-1497366811353-6870744d04b2',
-    'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab',
-    'https://images.unsplash.com/photo-1497215728101-856f4ea42174',
-    'https://images.unsplash.com/photo-1524758631624-e2822e304c36',
-  ],
+// Gerador de imagens únicas por tipo usando Unsplash Source (random + sig)
+// Garante URLs distintas entre propriedades e >5 fotos por imóvel
+const IMG_QUERY: Record<string, string> = {
+  HOUSE: 'house,modern,exterior',
+  TOWNHOUSE: 'townhouse,modern,exterior',
+  APARTMENT: 'apartment,interior,living-room',
+  CONDO: 'condo,interior,architecture',
+  STUDIO: 'studio,apartment,interior',
+  COMMERCIAL: 'office,building,interior,exterior',
+  LAND: 'land,lot,field,real-estate'
 };
+let globalSig = 1;
+function uniqueImageUrlsFor(type: string, count: number): string[] {
+  const query = IMG_QUERY[type] || 'house,interior,architecture';
+  const list: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const sig = globalSig++;
+    // 1600x1000 for good quality; random feed ensures unique photos
+    list.push(`https://source.unsplash.com/random/1600x1000/?${encodeURIComponent(query)}&sig=${sig}`);
+  }
+  return list;
+}
 
 const CITIES = [
   {
@@ -54,8 +52,8 @@ const CITIES = [
   },
 ];
 
-const PROPERTY_TYPES = ['HOUSE', 'APARTMENT', 'COMMERCIAL', 'LAND', 'CONDO', 'TOWNHOUSE', 'STUDIO'];
-const LISTING_TYPES = ['Venda', 'Aluguel'];
+const PROPERTY_TYPES = ['HOUSE', 'APARTMENT', 'COMMERCIAL', 'LAND', 'CONDO', 'TOWNHOUSE', 'STUDIO'] as const;
+const LISTING_TYPES = ['Venda', 'Aluguel'] as const;
 const CONDITION_TAGS = [
   'Novo',
   'Mobiliado',
@@ -111,9 +109,7 @@ function generatePrice(type: string, listingType: string): number {
 }
 
 function getPropertyImages(type: string): string[] {
-  const imageType = type === 'COMMERCIAL' ? 'comercial' : type === 'APARTMENT' ? 'apartamento' : 'casa';
-  const baseImages = PROPERTY_IMAGES[imageType as keyof typeof PROPERTY_IMAGES];
-  return getRandomItems(baseImages, getRandomInt(3, 5));
+  return uniqueImageUrlsFor(type, getRandomInt(6, 8)); // sempre >5
 }
 
 async function main() {
@@ -129,13 +125,24 @@ async function main() {
 
   console.log(`✅ Usando usuário: ${user.email}\n`);
 
+  // Limpeza total de dados anteriores (imagens e imóveis)
+  console.log('🧹 Limpando imóveis e dependências (favorites, leads, views, images)...');
+  await prisma.$transaction([
+    prisma.favorite.deleteMany({}),
+    prisma.lead.deleteMany({}),
+    prisma.propertyView.deleteMany({}),
+    prisma.image.deleteMany({}),
+    prisma.property.deleteMany({}),
+  ]);
+  console.log('✅ Limpeza concluída.');
+
   let totalCreated = 0;
 
   for (const city of CITIES) {
     console.log(`📍 Criando imóveis em ${city.name}, ${city.state}...`);
 
     for (let i = 0; i < 10; i++) {
-      const type = PROPERTY_TYPES[getRandomInt(0, PROPERTY_TYPES.length - 1)] as any;
+      const type = PROPERTY_TYPES[getRandomInt(0, PROPERTY_TYPES.length - 1)] as typeof PROPERTY_TYPES[number];
       const listingType = LISTING_TYPES[getRandomInt(0, 1)];
       const neighborhood = city.neighborhoods[getRandomInt(0, city.neighborhoods.length - 1)];
       const price = generatePrice(type, listingType);
@@ -155,6 +162,55 @@ async function main() {
       // Cria tags de condição incluindo o tipo de listagem
       const tags = [listingType, ...getRandomItems(CONDITION_TAGS, getRandomInt(1, 3))];
 
+      const purpose = listingType === 'Aluguel' ? 'RENT' : 'SALE';
+      const bedrooms = type === 'LAND' || type === 'COMMERCIAL' ? null : (type === 'STUDIO' ? 0 : getRandomInt(1, 5));
+      const bathrooms = type === 'LAND' ? null : getRandomInt(1, 4);
+      const areaM2 = type === 'LAND' ? getRandomInt(200, 1000) : getRandomInt(30, 300);
+      const parkingSpots = type === 'LAND' ? null : getRandomInt(0, 4);
+      const suites = bedrooms && bedrooms > 2 ? getRandomInt(1, Math.min(2, bedrooms - 1)) : 0;
+      const floor = type === 'APARTMENT' || type === 'CONDO' ? getRandomInt(1, 20) : null;
+      const condoFee = (type === 'APARTMENT' || type === 'CONDO') ? getRandomInt(15000, 65000) : null; // em centavos
+
+      // Recursos adicionais alinhados ao schema
+      const extras = {
+        hasBalcony: Math.random() < 0.5,
+        hasElevator: (type === 'APARTMENT' || type === 'CONDO') ? Math.random() < 0.8 : Math.random() < 0.2,
+        hasPool: Math.random() < 0.35,
+        hasGym: Math.random() < 0.3,
+        hasPlayground: Math.random() < 0.25,
+        hasPartyRoom: Math.random() < 0.3,
+        hasGourmet: Math.random() < 0.35,
+        hasConcierge24h: Math.random() < 0.25,
+        accRamps: Math.random() < 0.3,
+        accWideDoors: Math.random() < 0.3,
+        accAccessibleElevator: Math.random() < 0.2,
+        accTactile: Math.random() < 0.15,
+        comfortAC: Math.random() < 0.5,
+        comfortHeating: Math.random() < 0.15,
+        comfortSolar: Math.random() < 0.1,
+        comfortNoiseWindows: Math.random() < 0.25,
+        comfortLED: Math.random() < 0.4,
+        comfortWaterReuse: Math.random() < 0.12,
+        finishFloor: ((): any => {
+          const options = [null, 'PORCELANATO', 'MADEIRA', 'VINILICO', 'OUTRO'];
+          // Tendência a ter algum acabamento (~60%)
+          return options[Math.floor(Math.random() * (Math.random() < 0.6 ? options.length - 1 : 1))] || null;
+        })(),
+        finishCabinets: Math.random() < 0.55,
+        finishCounterGranite: Math.random() < 0.35,
+        finishCounterQuartz: Math.random() < 0.25,
+        viewSea: city.name === 'Recife' ? Math.random() < 0.2 : false,
+        viewCity: Math.random() < 0.4,
+        positionFront: Math.random() < 0.5,
+        positionBack: Math.random() < 0.5,
+        petsSmall: Math.random() < 0.5,
+        petsLarge: Math.random() < 0.25,
+        sunOrientation: ((): any => {
+          const opts = [null, 'NASCENTE', 'POENTE', 'OUTRA'];
+          return opts[Math.floor(Math.random() * opts.length)] || null;
+        })(),
+      };
+
       const property = await prisma.property.create({
         data: {
           title: `${typeLabel} em ${neighborhood}`,
@@ -162,22 +218,29 @@ async function main() {
             type !== 'LAND' ? 'Imóvel com ótimo acabamento, ' : ''
           }em região privilegiada com fácil acesso a comércios e serviços.`,
           type,
+          purpose: purpose as any,
           status: 'ACTIVE',
           price,
-          bedrooms: type === 'LAND' || type === 'COMMERCIAL' ? null : type === 'STUDIO' ? 0 : getRandomInt(1, 5),
-          bathrooms: type === 'LAND' ? null : getRandomInt(1, 4),
-          areaM2: type === 'LAND' ? getRandomInt(200, 1000) : getRandomInt(30, 300),
-          parkingSpots: type === 'LAND' ? null : getRandomInt(0, 4),
+          bedrooms,
+          bathrooms,
+          areaM2,
+          suites,
+          parkingSpots,
+          floor,
+          furnished: Math.random() < 0.35,
+          petFriendly: Math.random() < 0.4,
+          condoFee,
           street: `Rua ${['das Flores', 'Principal', 'do Comércio', 'da Paz', 'Central'][getRandomInt(0, 4)]}, ${getRandomInt(100, 999)}`,
           neighborhood,
           city: city.name,
           state: city.state,
           postalCode: `${getRandomInt(10000, 99999)}-${getRandomInt(100, 999)}`,
-          latitude: city.coords.lat + (Math.random() - 0.5) * 0.1,
-          longitude: city.coords.lng + (Math.random() - 0.5) * 0.1,
+          latitude: city.coords.lat + (Math.random() - 0.5) * 0.03,
+          longitude: city.coords.lng + (Math.random() - 0.5) * 0.03,
           conditionTags: tags,
-          yearBuilt: type === 'LAND' ? null : getRandomInt(2000, 2024),
+          yearBuilt: type === 'LAND' ? null : getRandomInt(1995, 2024),
           ownerId: user.id,
+          ...extras,
           images: {
             create: imageUrls.map((url, index) => ({
               url,
