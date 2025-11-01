@@ -165,7 +165,16 @@ export default function HeroSection() {
   const handleSuggestionClick = (suggestion: LocationSuggestion) => {
     setSearchQuery(suggestion.label);
     setShowSuggestions(false);
-    // Apenas preenche o campo, não submete automaticamente
+    // Iniciar busca imediatamente (especialmente no mobile)
+    const params = new URLSearchParams();
+    if (suggestion.city && suggestion.state) {
+      params.set('city', suggestion.city);
+      params.set('state', suggestion.state);
+    } else {
+      params.set('q', suggestion.label);
+    }
+    params.set('purpose', purpose);
+    router.push(`/?${params.toString()}`);
   };
 
   return (

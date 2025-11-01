@@ -282,13 +282,7 @@ export default function ModernNavbar() {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            {isOpen ? <X className="w-6 h-6 text-gray-900" /> : <Menu className="w-6 h-6 text-gray-900" />}
-          </button>
+          {/* Mobile Menu Button (duplicated copy removed; controlled on the left) */}
         </div>
       </div>
 
