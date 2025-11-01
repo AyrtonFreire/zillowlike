@@ -31,6 +31,7 @@ const LeadSchema = z.object({
   message: z.string().min(5).max(2000).optional(),
   visitDate: z.string().optional(), // 🆕 Data da visita (ISO string)
   visitTime: z.string().optional(), // 🆕 Horário (ex: "14:00")
+  isDirect: z.boolean().optional(), // 🆕 Se true, contato direto (não vai ao mural)
   turnstileToken: z.string().optional(),
 });
 
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
   const ok = await verifyTurnstile(parsed.data.turnstileToken, ip);
   if (!ok) return NextResponse.json({ error: "Captcha failed" }, { status: 400 });
 
-  const { propertyId, name, email, phone, message, visitDate, visitTime } = parsed.data;
+  const { propertyId, name, email, phone, message, visitDate, visitTime, isDirect } = parsed.data;
   const prop = await prisma.property.findUnique({ where: { id: propertyId }, select: { id: true } });
   if (!prop) return NextResponse.json({ error: "Property not found" }, { status: 404 });
 
@@ -119,6 +120,7 @@ export async function POST(req: NextRequest) {
       propertyId,
       contactId: contact.id,
       message,
+      isDirect: isDirect ?? false,
     },
   });
 

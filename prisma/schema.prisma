@@ -191,6 +191,9 @@ model Property {
   yearRenovated   Int?
   totalFloors     Int?
 
+  // 🆕 Controle de leads
+  allowRealtorBoard Boolean? @default(false) // Se true, leads vão para o mural; se false, contato direto
+
   images      Image[]
   favorites   Favorite[]
   leads       Lead[]

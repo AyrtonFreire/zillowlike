@@ -10,6 +10,7 @@ import { getLowestFinancing } from "@/lib/financing";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 const SimilarCarousel = dynamic(() => import("@/components/SimilarCarousel"), { ssr: false });
+const PropertyContactCard = dynamic(() => import("@/components/PropertyContactCard"), { ssr: false });
 
 type PropertyDetailsModalProps = {
   propertyId: string | null;
@@ -36,6 +37,15 @@ type PropertyDetails = {
   furnished: boolean;
   petFriendly: boolean;
   images: { url: string }[];
+  allowRealtorBoard?: boolean;
+  owner?: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    image: string | null;
+    role: "USER" | "OWNER" | "REALTOR" | "AGENCY" | "ADMIN";
+    phone: string | null;
+  };
 };
 
 const FEATURES_ICONS = {
@@ -493,6 +503,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                       }}
                       hideRefitButton
                       simplePin
+                      limitInteraction={{ minZoom: 13, maxZoom: 16, radiusMeters: 2000 }}
                     />
                   </div>
                 )}
@@ -721,47 +732,17 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               <div className="sticky top-24 space-y-6">
                 {/* Financing card will appear below the contact form */}
 
-                {/* Contact Form */}
-                <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Nome"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent"
-                    />
-                    <input
-                      type="email"
-                      placeholder="E-mail"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent"
-                    />
-                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent">
-                      <option>+55</option>
-                    </select>
-                    <input
-                      type="tel"
-                      placeholder="Telefone (opcional)"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent"
-                    />
-                    <textarea
-                      rows={4}
-                      placeholder={`Tenho interesse em\n${property.title}`}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent resize-none"
-                    />
-                    <Button className="w-full glass-teal">
-                      Entrar em Contato
-                    </Button>
-                    <div className="space-y-2 text-xs text-gray-600">
-                      <label className="flex items-start gap-2">
-                        <input type="checkbox" className="mt-0.5" />
-                        <span>Notificar-me por e-mail sobre imóveis similares</span>
-                      </label>
-                      <label className="flex items-start gap-2">
-                        <input type="checkbox" className="mt-0.5" />
-                        <span>Concordo com os Termos de Uso e Política de Privacidade</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
+                {/* Contact Card - Dynamic based on owner type and lead board setting */}
+                <PropertyContactCard
+                  propertyId={property.id}
+                  propertyTitle={property.title}
+                  propertyPurpose={property.purpose}
+                  ownerRole={property.owner?.role || "USER"}
+                  ownerName={property.owner?.name || undefined}
+                  ownerImage={property.owner?.image || undefined}
+                  ownerPhone={property.owner?.phone || undefined}
+                  allowRealtorBoard={property.allowRealtorBoard || false}
+                />
 
                 {/* Financing Calculator - Only for SALE properties (single card below contact form) */}
                 {property.purpose === 'SALE' && property.price && property.price > 0 && (() => {

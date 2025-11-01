@@ -61,6 +61,7 @@ export async function GET(req: NextRequest) {
           petFriendly: true,
           condoFee: true,
           yearBuilt: true,
+          allowRealtorBoard: true,
           // extras
           hasBalcony: true,
           hasElevator: true,
@@ -99,6 +100,7 @@ export async function GET(req: NextRequest) {
           createdAt: true,
           updatedAt: true,
           images: { select: { id: true, url: true, alt: true, sortOrder: true, blurDataURL: true }, orderBy: { sortOrder: 'asc' } },
+          owner: { select: { id: true, name: true, email: true, image: true, role: true, phone: true } },
         },
       });
       if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });

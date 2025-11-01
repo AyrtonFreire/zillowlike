@@ -272,8 +272,8 @@ function MapController({ items, onBoundsChange, autoFitOnItemsChange = false, on
     const currentFirstId = items[0]?.id;
     const significantChange = currentFirstId !== prevFirstItemRef.current && currentFirstId !== undefined;
     
-    // Only auto-fit if: explicitly enabled OR first load OR city changed (first item ID changed)
-    if (items.length > 0 && (autoFitOnItemsChange || !hasAutoFittedRef.current || significantChange)) {
+    // Only auto-fit if EXPLICITLY enabled. Preserve user's map position always otherwise.
+    if (autoFitOnItemsChange && items.length > 0 && (!hasAutoFittedRef.current || significantChange)) {
       const bounds = L.latLngBounds(items.map(p => [p.latitude, p.longitude] as [number, number]));
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
       hasAutoFittedRef.current = true;

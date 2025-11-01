@@ -113,11 +113,11 @@ export class VisitSchedulingService {
    * Lista horários disponíveis de um imóvel em uma data
    */
   static async getAvailableSlots(propertyId: string, date: Date) {
-    // Horários padrão disponíveis (8h às 18h, intervalos de 1h)
-    const allSlots = [
-      "08:00", "09:00", "10:00", "11:00",
-      "14:00", "15:00", "16:00", "17:00", "18:00"
-    ];
+    // Horários padrão disponíveis (7h às 19h, intervalos de 1h)
+    const allSlots: string[] = [];
+    for (let h = 7; h <= 19; h++) {
+      allSlots.push(`${h.toString().padStart(2, '0')}:00`);
+    }
 
     // Buscar leads existentes para essa data
     const existingLeads = await prisma.lead.findMany({

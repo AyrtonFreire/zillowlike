@@ -53,12 +53,23 @@ type PoisProp =
   | { mode: 'list'; items: Poi[] }
   | { mode: 'auto'; center: [number, number]; radius?: number };
 
-export default function Map({ items, centerZoom, onViewChange, highlightId, onHoverChange, autoFit, hideRefitButton, isLoading, pois, simplePin }: { items: Item[]; centerZoom?: { center: [number, number]; zoom: number }; onViewChange?: (v: { center: [number, number]; zoom: number; bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number } }) => void; highlightId?: string; onHoverChange?: (id: string | null) => void; autoFit?: boolean; hideRefitButton?: boolean; isLoading?: boolean; pois?: PoisProp; simplePin?: boolean }) {
+export default function Map({ items, centerZoom, onViewChange, highlightId, onHoverChange, autoFit, hideRefitButton, isLoading, pois, simplePin, limitInteraction }: { items: Item[]; centerZoom?: { center: [number, number]; zoom: number }; onViewChange?: (v: { center: [number, number]; zoom: number; bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number } }) => void; highlightId?: string; onHoverChange?: (id: string | null) => void; autoFit?: boolean; hideRefitButton?: boolean; isLoading?: boolean; pois?: PoisProp; simplePin?: boolean; limitInteraction?: { minZoom: number; maxZoom: number; radiusMeters: number } }) {
   const center = useMemo(() => {
     if (items.length > 0) return [items[0].latitude, items[0].longitude] as [number, number];
     // Default to Petrolina/Juazeiro midpoint
     return [-9.4048, -40.5058] as [number, number];
   }, [items]);
+
+  // Compute max bounds if limiting interaction
+  const maxBounds = useMemo(() => {
+    if (!limitInteraction) return undefined as undefined | L.LatLngBoundsExpression;
+    const [lat, lng] = centerZoom?.center ?? center;
+    const dLat = limitInteraction.radiusMeters / 111111; // meters to degrees approx
+    const dLng = limitInteraction.radiusMeters / (111111 * Math.cos((lat * Math.PI) / 180));
+    const southWest: [number, number] = [lat - dLat, lng - dLng];
+    const northEast: [number, number] = [lat + dLat, lng + dLng];
+    return L.latLngBounds(southWest as any, northEast as any);
+  }, [limitInteraction, centerZoom, center]);
 
   // Remove previous pop animations to avoid flicker on rerenders
 
@@ -379,7 +390,18 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
 
   return (
     <div className={`h-full w-full overflow-hidden relative rounded-lg shadow-sm border border-gray-200`}>
-      <MapContainer className="absolute inset-0" center={centerZoom?.center ?? center} zoom={centerZoom?.zoom ?? 13} attributionControl={false}>
+      <MapContainer
+        className="absolute inset-0"
+        center={centerZoom?.center ?? center}
+        zoom={centerZoom?.zoom ?? 13}
+        attributionControl={false}
+        scrollWheelZoom={limitInteraction ? false : undefined}
+        doubleClickZoom={limitInteraction ? false : undefined}
+        minZoom={limitInteraction?.minZoom}
+        maxZoom={limitInteraction?.maxZoom}
+        maxBounds={maxBounds}
+        maxBoundsViscosity={limitInteraction ? 1.0 : undefined}
+      >
         {!centerZoom && <FitBounds points={items} />}
         <RefitOnEvent points={items} />
         <FitOnItems points={items} />
