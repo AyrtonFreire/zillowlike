@@ -504,12 +504,20 @@ export default function Home() {
                       Filtros
                     </button>
                     {filtersOpen && (
-                      <div className="absolute right-0 mt-2 z-50">
-                        <SearchFiltersBar
-                          compact
-                          open
-                          variant="dropdown"
-                          onClose={() => setFiltersOpen(false)}
+                      <>
+                        {/* Backdrop */}
+                        <div
+                          className="fixed inset-0 z-[190] bg-black/70 backdrop-blur-md"
+                          onClick={() => setFiltersOpen(false)}
+                          aria-hidden
+                        />
+                        {/* Panel */}
+                        <div className="fixed top-20 sm:top-24 md:top-28 lg:top-32 xl:top-36 2xl:top-40 left-1/2 -translate-x-1/2 z-[200] w-full max-w-5xl px-4">
+                          <SearchFiltersBar
+                            compact
+                            open
+                            variant="dropdown"
+                            onClose={() => setFiltersOpen(false)}
                           filters={{
                             minPrice,
                             maxPrice,
@@ -630,7 +638,8 @@ export default function Home() {
                             router.push(`/?${params}`, { scroll: false });
                           }}
                         />
-                      </div>
+                        </div>
+                      </>
                     )}
                   </div>
                   {/* Mobile: open Drawer for filters */}

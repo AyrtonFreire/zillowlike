@@ -101,15 +101,43 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
     filters.iptuMax ||
     filters.keywords;
 
+  const activeCount = [
+    filters.minPrice,
+    filters.maxPrice,
+    filters.bedrooms,
+    filters.bathrooms,
+    filters.type,
+    filters.areaMin,
+    filters.parkingSpots,
+    filters.yearBuiltMin,
+    filters.yearBuiltMax,
+    filters.status,
+    filters.petFriendly ? '1' : '',
+    filters.furnished ? '1' : '',
+    filters.hasPool ? '1' : '',
+    filters.hasGym ? '1' : '',
+    filters.hasElevator ? '1' : '',
+    filters.hasBalcony ? '1' : '',
+    filters.hasSeaView ? '1' : '',
+    filters.condoFeeMin,
+    filters.condoFeeMax,
+    filters.iptuMin,
+    filters.iptuMax,
+    filters.keywords,
+  ].filter(Boolean).length;
+
   // Painel avançado isolado (modo compacto)
   const renderAdvancedPanel = () => (
-    <div className={`${variant === 'modal' ? 'container mx-auto max-w-6xl px-4' : ''} max-h-[85vh] overflow-y-auto`}>
-      <div className={`${variant === 'modal' ? 'pb-6 pt-6 border border-gray-200 bg-white rounded-xl shadow-md' : 'p-4 bg-white rounded-xl shadow-xl border border-gray-200 w-[min(92vw,800px)]'}`}>
-        <div className="flex items-center justify-between mb-4">
+    <div className={`${variant === 'modal' ? 'container mx-auto max-w-6xl px-4' : ''}`}>
+      <div className={`${variant === 'modal' ? 'border border-gray-200 bg-white rounded-xl shadow-md' : 'bg-white rounded-xl shadow-xl border border-gray-200 w-[min(92vw,800px)]'} max-h-[85vh] flex flex-col`}>        
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-3 border-b">
           <div className="text-sm font-semibold text-gray-700">Filtros</div>
           <button onClick={onClose} className="text-gray-600 hover:text-gray-900 text-sm">Fechar</button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Content (scrollable) */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Tipo de imóvel */}
           <div className="space-y-3">
             <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
@@ -506,10 +534,16 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
           </div>
           {/* NEW FILTERS END */}
 
+          </div>
         </div>
-        <div className="flex items-center justify-between mt-6">
-          <button onClick={onClearFilters} className="text-sm text-red-600 hover:text-red-700">Limpar tudo</button>
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold">Aplicar</button>
+        {/* Sticky Footer */}
+        <div className="sticky bottom-0 bg-white border-t px-4 sm:px-6 py-3">
+          <div className="flex items-center justify-between">
+            <button onClick={onClearFilters} className="text-sm text-red-600 hover:text-red-700">Limpar tudo</button>
+            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold">
+              {`Aplicar filtros${activeCount ? ` (${activeCount})` : ''}`}
+            </button>
+          </div>
         </div>
       </div>
       <style jsx>{`
