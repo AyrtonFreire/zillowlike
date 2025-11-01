@@ -135,7 +135,17 @@ export default function HeroSection() {
       
       // Add property type if selected
       if (propertyType) {
-        params.set('type', propertyType);
+        const typeMap: Record<string, string> = {
+          'Casa': 'HOUSE',
+          'Apartamento': 'APARTMENT',
+          'Condomínio': 'CONDO',
+          'Terreno': 'LAND',
+          'Comercial': 'COMMERCIAL',
+          'Rural': 'LAND',
+          '': ''
+        };
+        const mapped = typeMap[propertyType] || '';
+        if (mapped) params.set('type', mapped);
       }
       
       // Add price range if selected
@@ -145,7 +155,7 @@ export default function HeroSection() {
       
       // Add bedrooms if selected
       if (bedrooms) {
-        params.set('bedrooms', bedrooms);
+        params.set('bedroomsMin', bedrooms);
       }
       
       router.push(`/?${params.toString()}`);
