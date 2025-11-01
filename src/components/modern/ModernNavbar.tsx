@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useScroll, AnimatePresence } from "framer-motion";
-import { Menu, X, User, Heart, Bell, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark } from "lucide-react";
+import { Menu, X, User, Heart, Bell, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark, Home } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -405,87 +405,196 @@ export default function ModernNavbar() {
       {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden bg-white border-t border-gray-200 fixed inset-x-0 top-16 bottom-0 z-[60] overflow-y-auto shadow-xl"
-          >
-        <div className="container mx-auto px-4 py-4 space-y-2">
-          <button onClick={() => setIsOpen(false)} className="w-full text-right px-4 py-2 text-gray-600 hover:text-gray-900 font-medium">
-            Fechar ×
-          </button>
-          {menuItems.map((item) => (
-            <Link
-              key={item.label}
-              href="/"
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="block w-full text-left px-4 py-3 text-gray-700 hover:text-teal hover:bg-teal/5 font-medium transition-colors rounded-lg"
+              className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[55]"
+            />
+            
+            {/* Menu Panel */}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="md:hidden bg-white fixed inset-y-0 left-0 w-[85%] max-w-sm z-[60] overflow-y-auto shadow-2xl"
             >
-              {item.label}
-            </Link>
-          ))}
-          {session ? (
-            <>
-              <div className="space-y-2">
-                {role === 'ADMIN' && (
-                  <>
-                    <Link href="/admin" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-teal/5 rounded-lg font-medium text-teal-dark">Painel Admin</Link>
-                    <Link href="/admin/properties" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Gerenciar imóveis</Link>
-                    <Link href="/admin/users" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Usuários</Link>
-                    <Link href="/admin/realtor-applications" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Aplicações de corretores</Link>
-                  </>
+              <div className="flex flex-col h-full">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-blue-50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-blue-500 rounded-xl flex items-center justify-center shadow-md">
+                      <span className="text-white font-bold text-lg">Z</span>
+                    </div>
+                    <span className="text-xl font-bold text-gray-900">ZillowLike</span>
+                  </div>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-2 hover:bg-white/50 rounded-lg transition-colors"
+                  >
+                    <X className="w-6 h-6 text-gray-600" />
+                  </button>
+                </div>
+
+                {/* User Info (if logged in) */}
+                {session && (
+                  <div className="p-4 bg-gray-50 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                        {(session as any)?.user?.name?.[0]?.toUpperCase?.() || 'U'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">{(session as any)?.user?.name || 'Usuário'}</p>
+                        <p className="text-xs text-gray-600 truncate">{(session as any)?.user?.email}</p>
+                        <span className="inline-block mt-1 px-2 py-0.5 bg-teal-100 text-teal-700 text-xs font-semibold rounded-full">
+                          {role === 'ADMIN' ? 'Administrador' : role === 'OWNER' ? 'Proprietário' : role === 'REALTOR' ? 'Corretor' : role === 'AGENCY' ? 'Imobiliária' : 'Usuário'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 )}
-                {role === 'OWNER' && (
-                  <>
-                    <Link href="/owner/dashboard" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-teal/5 rounded-lg font-medium text-teal-dark">Painel do proprietário</Link>
-                    <Link href="/owner/new" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Anunciar imóvel</Link>
-                    <Link href="/owner/properties" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Meus anúncios</Link>
-                    <Link href="/owner/leads" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Meus leads</Link>
-                    <Link href="/owner/analytics" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Analytics</Link>
-                  </>
-                )}
-                {(role === 'REALTOR' || role === 'AGENCY') && (
-                  <>
-                    <Link href="/realtor" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-teal/5 rounded-lg font-medium text-teal-dark">{role === 'AGENCY' ? 'Painel da imobiliária' : 'Painel do corretor'}</Link>
-                    <Link href="/alerts" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Alertas</Link>
-                    <Link href="/owner/new" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Anunciar imóvel</Link>
-                    <Link href="/owner/properties" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">{role === 'AGENCY' ? 'Anúncios da imobiliária' : 'Meus anúncios'}</Link>
-                  </>
-                )}
-                {role === 'USER' && (
-                  <>
-                    <Link href="/owner/new" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 bg-teal/5 rounded-lg font-medium text-teal-dark">Anunciar imóvel</Link>
-                  </>
-                )}
-                <Link href="/favorites" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Favoritos</Link>
-                <Link href="/saved-searches" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Buscas salvas</Link>
-                <Link href="/profile" onClick={() => setIsOpen(false)} className="block w-full px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-50">Perfil e conta</Link>
+
+                {/* Menu Content */}
+                <div className="flex-1 overflow-y-auto p-4">
+                  {/* Navegação Principal */}
+                  <div className="mb-6">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-2">Navegação</h3>
+                    <div className="space-y-1">
+                      <Link href="/?purpose=SALE" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-teal-50 hover:text-teal-700 rounded-xl transition-colors font-medium">
+                        <Home className="w-5 h-5" />
+                        Comprar Imóvel
+                      </Link>
+                      <Link href="/?purpose=RENT" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-teal-50 hover:text-teal-700 rounded-xl transition-colors font-medium">
+                        <Building2 className="w-5 h-5" />
+                        Alugar Imóvel
+                      </Link>
+                      <Link href="/owner/new" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-teal-50 hover:text-teal-700 rounded-xl transition-colors font-medium">
+                        <Megaphone className="w-5 h-5" />
+                        Anunciar Imóvel
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Links específicos por perfil */}
+                  {session && (
+                    <>
+                      <div className="mb-6">
+                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-2">
+                          {role === 'ADMIN' ? 'Administração' : role === 'OWNER' ? 'Minha Conta' : role === 'REALTOR' || role === 'AGENCY' ? 'Profissional' : 'Minha Conta'}
+                        </h3>
+                        <div className="space-y-1">
+                          {role === 'ADMIN' && (
+                            <>
+                              <Link href="/admin" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 bg-teal-50 text-teal-700 rounded-xl font-medium">
+                                <LayoutDashboard className="w-5 h-5" />
+                                Painel Admin
+                              </Link>
+                              <Link href="/admin/properties" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                                <Building2 className="w-5 h-5" />
+                                Gerenciar Imóveis
+                              </Link>
+                              <Link href="/admin/users" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                                <Users className="w-5 h-5" />
+                                Usuários
+                              </Link>
+                            </>
+                          )}
+                          {role === 'OWNER' && (
+                            <>
+                              <Link href="/owner/dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 bg-teal-50 text-teal-700 rounded-xl font-medium">
+                                <LayoutDashboard className="w-5 h-5" />
+                                Meu Painel
+                              </Link>
+                              <Link href="/owner/properties" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                                <Building2 className="w-5 h-5" />
+                                Meus Anúncios
+                              </Link>
+                              <Link href="/owner/leads" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                                <ClipboardList className="w-5 h-5" />
+                                Meus Leads
+                              </Link>
+                            </>
+                          )}
+                          {(role === 'REALTOR' || role === 'AGENCY') && (
+                            <>
+                              <Link href="/realtor" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 bg-teal-50 text-teal-700 rounded-xl font-medium">
+                                <LayoutDashboard className="w-5 h-5" />
+                                {role === 'AGENCY' ? 'Painel da Imobiliária' : 'Painel do Corretor'}
+                              </Link>
+                              <Link href="/broker/leads" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                                <ClipboardList className="w-5 h-5" />
+                                Leads
+                              </Link>
+                            </>
+                          )}
+                          <Link href="/favorites" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                            <Heart className="w-5 h-5" />
+                            Favoritos
+                          </Link>
+                          <Link href="/saved-searches" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                            <Bookmark className="w-5 h-5" />
+                            Buscas Salvas
+                          </Link>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Links comuns para não logados */}
+                  {!session && (
+                    <div className="mb-6">
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-2">Recursos</h3>
+                      <div className="space-y-1">
+                        <Link href="/calculadora" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                          <LineChart className="w-5 h-5" />
+                          Calculadora de Financiamento
+                        </Link>
+                        <Link href="/guia/compra" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                          <ClipboardList className="w-5 h-5" />
+                          Guia do Comprador
+                        </Link>
+                        <Link href="/become-realtor" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-3 py-3 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                          <Users className="w-5 h-5" />
+                          Seja um Corretor
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Actions */}
+                <div className="p-4 border-t border-gray-200 bg-gray-50">
+                  {session ? (
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        signOut({ callbackUrl: "/" });
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      Sair da Conta
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        signIn();
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+                    >
+                      <User className="w-5 h-5" />
+                      Entrar / Criar Conta
+                    </button>
+                  )}
+                </div>
               </div>
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  signOut({ callbackUrl: "/" });
-                }}
-                className="mt-3 block w-full py-3 border-2 border-red-600 text-red-600 rounded-xl font-semibold text-center hover:bg-red-50"
-              >
-                Sair
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                signIn();
-              }}
-              className="w-full py-3 bg-gradient-to-r glass-teal text-white rounded-xl font-semibold"
-            >
-              Entrar
-            </button>
-          )}
-        </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </motion.nav>

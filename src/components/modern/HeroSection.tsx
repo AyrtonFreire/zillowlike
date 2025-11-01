@@ -460,18 +460,37 @@ export default function HeroSection() {
               </div>
               </div>
 
-              {/* Mobile: Simple search bar only */}
-              <div className="sm:hidden p-3">
-                <div ref={searchRef} className="flex items-center gap-3 px-4 py-3.5 bg-white rounded-full border border-gray-200">
-                  <Search className="text-gray-400 flex-shrink-0 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Busque por cidade, bairro ou endereço..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => setShowSuggestions(true)}
-                    className="flex-1 outline-none text-gray-800 placeholder:text-gray-400 text-sm bg-transparent"
-                  />
+              {/* Mobile: Elegant search bar with gradient border */}
+              <div className="sm:hidden p-4">
+                <div className="relative">
+                  {/* Gradient border effect */}
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+                  
+                  <div ref={searchRef} className="relative flex items-center gap-3 px-5 py-4 bg-white rounded-2xl shadow-lg border border-gray-100">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-teal-50 to-blue-50">
+                      <Search className="text-teal-600 flex-shrink-0 w-5 h-5" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Busque por cidade, bairro..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setShowSuggestions(true)}
+                      className="flex-1 outline-none text-gray-900 placeholder:text-gray-400 text-base bg-transparent font-medium"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setShowSuggestions(false);
+                        }}
+                        className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <X className="w-4 h-4 text-gray-400" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </form>
@@ -484,7 +503,7 @@ export default function HeroSection() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-y-auto z-[100] max-h-[60vh] sm:max-h-[280px]"
+                  className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-y-auto z-[9999] max-h-[60vh] sm:max-h-[280px]"
                 >
                   {isFetchingSuggestions ? (
                     <div className="px-4 py-8 text-center text-gray-400">

@@ -1065,32 +1065,32 @@ export default function Home() {
       />
 
       {/* Floating mobile map button */}
-      {hasSearched && (
+      {hasSearched && !mobileMapOpen && (
         <button
           aria-label="Abrir mapa"
           onClick={() => setMobileMapOpen(true)}
-          className="lg:hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-full bg-white border shadow-sm flex items-center gap-2"
+          className="lg:hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-[9999] px-5 py-3 rounded-full bg-white border-2 border-gray-200 shadow-lg hover:shadow-xl flex items-center gap-2 transition-all hover:scale-105"
         >
-          <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A2 2 0 013 15.382V6.618a2 2 0 011.553-1.894L9 2m0 18l6-3m-6 3V2m6 15l5.447 2.724A2 2 0 0021 18.382V9.618a2 2 0 00-1.553-1.894L15 6m0 11V6M9 2l6 4"/></svg>
-          <span className="font-medium text-gray-800">Mapa</span>
+          <Map className="w-5 h-5 text-teal-600" />
+          <span className="font-semibold text-gray-800">Ver Mapa</span>
         </button>
       )}
 
       {/* Mobile full-screen map overlay */}
       {mobileMapOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-white">
+        <div className="lg:hidden fixed inset-0 z-[9998] bg-white">
           <div className="h-14 px-3 flex items-center justify-center border-b bg-white/95 backdrop-blur relative">
             <div className="text-sm text-gray-600 font-medium">{total} imóveis</div>
-            {/* Botão Lista na mesma posição do botão Mapa (bottom center) */}
-            <button
-              aria-label="Voltar para lista"
-              onClick={() => setMobileMapOpen(false)}
-              className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-full bg-white border shadow-sm flex items-center gap-2"
-            >
-              <LayoutList className="w-5 h-5 text-blue-600" />
-              <span className="font-medium text-gray-800">Lista</span>
-            </button>
           </div>
+          {/* Botão Lista na mesma posição do botão Mapa (bottom center) */}
+          <button
+            aria-label="Voltar para lista"
+            onClick={() => setMobileMapOpen(false)}
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[9999] px-5 py-3 rounded-full bg-white border-2 border-gray-200 shadow-lg hover:shadow-xl flex items-center gap-2 transition-all hover:scale-105"
+          >
+            <LayoutList className="w-5 h-5 text-teal-600" />
+            <span className="font-semibold text-gray-800">Ver Lista</span>
+          </button>
           <div className="absolute inset-x-0 top-14 bottom-0">
             <MapWithPriceBubbles
               items={properties}
