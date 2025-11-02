@@ -1244,8 +1244,8 @@ export default function Home() {
         onClose={closeOverlay}
       />
 
-      {/* Floating mobile map button */}
-      {hasSearched && !mobileMapOpen && (
+      {/* Floating mobile map button (hidden when filters are open) */}
+      {hasSearched && !mobileMapOpen && !filtersOpen && (
         <button
           aria-label="Abrir mapa"
           onClick={() => setMobileMapOpen(true)}

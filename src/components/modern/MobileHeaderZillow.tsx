@@ -75,14 +75,14 @@ export default function MobileHeaderZillow() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsLeftMenuOpen(false)}
-              className="md:hidden fixed inset-0 bg-black/50 z-[60]"
+              className="md:hidden fixed inset-0 bg-black/50 z-[9998]"
             />
             <motion.div
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'tween', duration: 0.3 }}
-              className="md:hidden fixed inset-y-0 left-0 w-[85%] max-w-sm bg-white z-[70] overflow-y-auto"
+              className="md:hidden fixed inset-y-0 left-0 w-[85%] max-w-sm bg-white z-[9999] overflow-y-auto"
             >
               <div className="p-4 border-b flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900">Menu</h2>
@@ -200,14 +200,14 @@ export default function MobileHeaderZillow() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsRightMenuOpen(false)}
-              className="md:hidden fixed inset-0 bg-black/50 z-[60]"
+              className="md:hidden fixed inset-0 bg-black/50 z-[9998]"
             />
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'tween', duration: 0.3 }}
-              className="md:hidden fixed inset-y-0 right-0 w-[85%] max-w-sm bg-white z-[70] overflow-y-auto"
+              className="md:hidden fixed inset-y-0 right-0 w-[85%] max-w-sm bg-white z-[9999] overflow-y-auto"
             >
               <div className="p-4 border-b flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900">Minha conta</h2>
