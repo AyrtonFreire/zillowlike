@@ -176,6 +176,20 @@ export default function HeroSection() {
       params.set('q', suggestion.label);
     }
     params.set('purpose', purpose);
+    // Persist last searched location from suggestion
+    if (typeof window !== 'undefined' && suggestion.city && suggestion.state) {
+      try {
+        localStorage.setItem('lastCity', suggestion.city);
+        localStorage.setItem('lastState', suggestion.state);
+      } catch {}
+    }
+    // Persist last searched location if present
+    if (typeof window !== 'undefined' && params.get('city') && params.get('state')) {
+      try {
+        localStorage.setItem('lastCity', params.get('city') as string);
+        localStorage.setItem('lastState', params.get('state') as string);
+      } catch {}
+    }
     router.push(`/?${params.toString()}`);
   };
 
@@ -462,9 +476,9 @@ export default function HeroSection() {
               </div>
               </div>
 
-              {/* Mobile: Simple and clean search bar */}
+              {/* Mobile: Minimal search bar (no outer pill) */}
               <div className="sm:hidden px-4 py-3">
-                <div ref={searchRef} className="flex items-center gap-3 px-4 py-3 bg-white rounded-full shadow-sm border border-gray-200">
+                <div ref={searchRef} className="flex items-center gap-2 border-b border-gray-300">
                   <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
                   <input
                     type="text"
@@ -472,7 +486,7 @@ export default function HeroSection() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => setShowSuggestions(true)}
-                    className="flex-1 outline-none text-gray-700 placeholder:text-gray-400 text-sm bg-transparent"
+                    className="flex-1 outline-none text-gray-700 placeholder:text-gray-400 text-sm bg-transparent py-2"
                   />
                   {searchQuery && (
                     <button
@@ -481,7 +495,7 @@ export default function HeroSection() {
                         setSearchQuery('');
                         setShowSuggestions(false);
                       }}
-                      className="flex items-center justify-center w-6 h-6 rounded-full hover:bg-gray-100 transition-colors"
+                      className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-gray-100 transition-colors"
                     >
                       <X className="w-4 h-4 text-gray-400" />
                     </button>

@@ -1,12 +1,13 @@
 "use client";
 
 import { motion, useScroll, AnimatePresence } from "framer-motion";
-import { Menu, X, User, Heart, Bell, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark, Home } from "lucide-react";
+import { Menu, X, User, Heart, Bell, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark, Home, HelpCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MobileHeaderZillow from "./MobileHeaderZillow";
+import HowItWorksModal from "./HowItWorksModal";
 
 export default function ModernNavbar() {
   const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
@@ -21,6 +22,7 @@ export default function ModernNavbar() {
   
   const role = (session as any)?.user?.role || "USER";
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   
   // Transparente na home/topo e sólido ao rolar
 
@@ -122,40 +124,55 @@ export default function ModernNavbar() {
           
           {/* Right: Context links (3) + account */}
           <div className="hidden md:flex items-center justify-end gap-3 pr-4">
-            {/* Context links vary by primary */}
-            {(() => {
-              const role = (session as any)?.user?.role || 'USER';
-              if (role === 'ADMIN') {
-                return [
-                  { label: 'Painel admin', href: '/admin' },
-                  { label: 'Propriedades', href: '/admin/properties' },
-                  { label: 'Usuários', href: '/admin/users' },
-                ];
-              }
-              if (primary === 'comprar') {
-                return [
-                  { label: 'Financiamento', href: '/calculadora' },
-                  { label: 'Encontrar corretor', href: '/realtor' },
-                  { label: 'Favoritos', href: '/favorites' },
-                ];
-              }
-              if (primary === 'alugar') {
-                return [
-                  { label: 'Alertas', href: '/alerts' },
-                  { label: 'Buscas salvas', href: '/saved-searches' },
-                  { label: 'Favoritos', href: '/favorites' },
-                ];
-              }
-              return [
-                { label: 'Anunciar', href: '/owner/new' },
-                { label: 'Meus anúncios', href: '/owner/properties' },
-                { label: 'Leads', href: '/owner/leads' },
-              ];
-            })().map((a) => (
-              <Link key={a.label} href={a.href} className="text-[15px] font-semibold text-gray-800 hover:text-teal">
-                {a.label}
-              </Link>
-            ))}
+            {session ? (
+              <>
+                {/* Context links vary by primary - LOGGED IN */}
+                {(() => {
+                  const role = (session as any)?.user?.role || 'USER';
+                  if (role === 'ADMIN') {
+                    return [
+                      { label: 'Painel admin', href: '/admin' },
+                      { label: 'Propriedades', href: '/admin/properties' },
+                      { label: 'Usuários', href: '/admin/users' },
+                    ];
+                  }
+                  if (primary === 'comprar') {
+                    return [
+                      { label: 'Financiamento', href: '/calculadora' },
+                      { label: 'Encontrar corretor', href: '/realtor' },
+                      { label: 'Favoritos', href: '/favorites' },
+                    ];
+                  }
+                  if (primary === 'alugar') {
+                    return [
+                      { label: 'Alertas', href: '/alerts' },
+                      { label: 'Buscas salvas', href: '/saved-searches' },
+                      { label: 'Favoritos', href: '/favorites' },
+                    ];
+                  }
+                  return [
+                    { label: 'Anunciar', href: '/owner/new' },
+                    { label: 'Meus anúncios', href: '/owner/properties' },
+                    { label: 'Leads', href: '/owner/leads' },
+                  ];
+                })().map((a) => (
+                  <Link key={a.label} href={a.href} className="text-[15px] font-semibold text-gray-800 hover:text-teal">
+                    {a.label}
+                  </Link>
+                ))}
+              </>
+            ) : (
+              <>
+                {/* LOGGED OUT: Only "Como funciona" link */}
+                <button
+                  onClick={() => setHowItWorksOpen(true)}
+                  className="flex items-center gap-2 text-[15px] font-semibold text-gray-800 hover:text-teal transition-colors"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  <span>Como funciona</span>
+                </button>
+              </>
+            )}
 
             {/* Account actions */}
             {session ? (
@@ -175,7 +192,7 @@ export default function ModernNavbar() {
                 {userMenuOpen && (
                   <div
                     id="user-menu-dropdown"
-                    className="absolute right-0 mt-2 w-80 rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-[0_20px_60px_-15px_rgba(0,0,0,0.35)] overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-80 rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-[0_20px_60px_-15px_rgba(0,0,0,0.35)] overflow-hidden z-[11000]"
                   >
                     {/* Header */}
                     <div className="px-4 py-4 bg-stone-50 border-b">
@@ -403,6 +420,9 @@ export default function ModernNavbar() {
       )}
 
       </motion.nav>
+
+      {/* How It Works Modal */}
+      <HowItWorksModal isOpen={howItWorksOpen} onClose={() => setHowItWorksOpen(false)} />
     </>
   );
 }

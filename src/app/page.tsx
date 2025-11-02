@@ -166,14 +166,14 @@ export default function Home() {
     return !!(search || city || type || minPrice || maxPrice || bedroomsMin || bathroomsMin || areaMin);
   }, [search, city, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin]);
 
-  // Helper para buscar categoria com fallback por localidade
-  const fetchCategory = useCallback(async (baseParams: Record<string, any>) => {
+  // Helper para buscar categoria com fallback por localidade (pode receber city/state overrides)
+  const fetchCategory = useCallback(async (baseParams: Record<string, any>, loc?: { city?: string; state?: string }) => {
     const p1 = buildSearchParams({
-      city,
-      state,
       page: 1,
       pageSize: 12,
       sort: 'recent',
+      city: loc?.city ?? city,
+      state: loc?.state ?? state,
       ...baseParams,
     });
     try {
@@ -197,13 +197,31 @@ export default function Home() {
     if (hasSearched) return; // apenas quando não há busca ativa
     let cancelled = false;
     (async () => {
+      // Derivar localidade preferida: 1) última da busca (localStorage); 2) cidade do primeiro imóvel numa busca geral; 3) sem localidade
+      let preferredCity: string | undefined;
+      let preferredState: string | undefined;
+      try {
+        if (typeof window !== 'undefined') {
+          preferredCity = localStorage.getItem('lastCity') || undefined;
+          preferredState = localStorage.getItem('lastState') || undefined;
+        }
+        if (!preferredCity || !preferredState) {
+          const res = await fetch('/api/properties?pageSize=1&sort=recent');
+          const data = await res.json();
+          const first = data?.properties?.[0];
+          if (first?.city && first?.state) {
+            preferredCity = preferredCity || first.city;
+            preferredState = preferredState || first.state;
+          }
+        }
+      } catch {}
       setFurnishedLoading(true); setLuxuryLoading(true); setCondoLoading(true); setStudioLoading(true); setLandLoading(true);
       const [furnished, luxury, condos, studios, lands] = await Promise.all([
-        fetchCategory({ furnished: 'true' }),
-        fetchCategory({ minPrice: '1500000' }), // Luxo: R$1,5M+
-        fetchCategory({ type: 'CONDO' }),
-        fetchCategory({ type: 'STUDIO' }),
-        fetchCategory({ type: 'LAND' }),
+        fetchCategory({ furnished: 'true' }, { city: preferredCity, state: preferredState }),
+        fetchCategory({ minPrice: '1500000' }, { city: preferredCity, state: preferredState }), // Luxo: R$1,5M+
+        fetchCategory({ type: 'CONDO' }, { city: preferredCity, state: preferredState }),
+        fetchCategory({ type: 'STUDIO' }, { city: preferredCity, state: preferredState }),
+        fetchCategory({ type: 'LAND' }, { city: preferredCity, state: preferredState }),
       ]);
       if (cancelled) return;
       setFurnishedList(furnished); setFurnishedLoading(false);
@@ -474,8 +492,7 @@ export default function Home() {
 
       
 
-      {/* Continue Searching (logo abaixo do hero) */}
-      {!hasSearched && <ContinueSearching />}
+      {/* Continue Searching removido */}
 
       {/* Quick Categories */}
       {!hasSearched && <QuickCategories />}
@@ -1097,27 +1114,6 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-4 py-10">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900 font-display">Explorar</h2>
-            <button
-              onClick={async () => {
-                try {
-                  if (!('geolocation' in navigator)) return;
-                  const pos = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 }));
-                  const { latitude, longitude } = pos.coords;
-                  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`;
-                  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-                  const data = await res.json();
-                  const cityGuess = data?.address?.city || data?.address?.town || data?.address?.village || data?.address?.county || '';
-                  const stateGuess = data?.address?.state || data?.address?.region || '';
-                  if (cityGuess) setCity(cityGuess);
-                  if (stateGuess) setState(stateGuess);
-                } catch (e) {
-                  console.warn('geolocation failed', e);
-                }
-              }}
-              className="text-sm px-3 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700"
-            >
-              Usar minha localização
-            </button>
           </div>
           <Tabs
             items={[
