@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { Upload, X, GripVertical, Image as ImageIcon, Loader2 } from "lucide-react";
-import Image from "next/image";
+import NextImage from "next/image";
 
 interface ImageFile {
   id: string;
@@ -20,7 +20,7 @@ interface ImageUploadDragDropProps {
 export default function ImageUploadDragDrop({ 
   images, 
   onChange, 
-  maxImages = 10 
+  maxImages = 20 
 }: ImageUploadDragDropProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -60,6 +60,41 @@ export default function ImageUploadDragDrop({
     }
   };
 
+  // Image processing: downscale to 2560px max side and convert to WebP ~0.82
+  const processImage = async (file: File): Promise<File> => {
+    const MAX_SIDE = 2560;
+    const MIN_WIDTH = 800;
+    // Create bitmap
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = document.createElement('img');
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+        el.src = url;
+      });
+      const { naturalWidth: w, naturalHeight: h } = img;
+      if (!w || !h) return file;
+      if (w < MIN_WIDTH) {
+        throw new Error(`A imagem é muito pequena (largura ${w}px). Mínimo: ${MIN_WIDTH}px.`);
+      }
+      const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+      if (scale === 1 && file.type === 'image/webp') return file;
+      const targetW = Math.round(w * scale);
+      const targetH = Math.round(h * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return file;
+      ctx.drawImage(img, 0, 0, targetW, targetH);
+      const blob: Blob = await new Promise((resolve) => canvas.toBlob(b => resolve(b as Blob), 'image/webp', 0.82));
+      return new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
+
   // Handle files
   const handleFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
@@ -71,10 +106,31 @@ export default function ImageUploadDragDrop({
       return;
     }
 
+    const MAX_MB = 6;
+
     setUploading(true);
 
     try {
-      const uploadPromises = imageFiles.map(file => uploadToCloudinary(file));
+      const uploadPromises = imageFiles.map(async (file) => {
+        // Reject extremely large files before processing for UX
+        const sizeMB = file.size / (1024 * 1024);
+        let candidate = file;
+        if (sizeMB > MAX_MB || true) {
+          try {
+            candidate = await processImage(file);
+          } catch (err: any) {
+            alert(err?.message || 'Imagem inválida');
+            throw err;
+          }
+        }
+        // After processing, enforce max size again
+        const finalSizeMB = candidate.size / (1024 * 1024);
+        if (finalSizeMB > MAX_MB) {
+          alert(`A imagem permanece acima de ${MAX_MB}MB após otimização. Tente uma imagem menor.`);
+          throw new Error('file-too-large');
+        }
+        return uploadToCloudinary(candidate);
+      });
       const urls = await Promise.all(uploadPromises);
 
       const newImages: ImageFile[] = urls.map((url, index) => ({
@@ -251,7 +307,7 @@ export default function ImageUploadDragDrop({
                 }`}
               >
                 {/* Image */}
-                <Image
+                <NextImage
                   src={image.url}
                   alt={image.alt || ""}
                   fill

@@ -20,6 +20,20 @@ export default function MobilePropertyCard({
 }: MobilePropertyCardProps) {
   const [imageError, setImageError] = useState(false);
 
+  const transformCloudinary = (url: string, transformation: string) => {
+    try {
+      const marker = "/image/upload/";
+      const idx = url.indexOf(marker);
+      if (idx === -1) return url;
+      const head = url.substring(0, idx + marker.length);
+      const tail = url.substring(idx + marker.length);
+      if (tail.startsWith("f_")) return url;
+      return `${head}${transformation}/${tail}`;
+    } catch {
+      return url;
+    }
+  };
+
   return (
     <Link
       href={`/property/${p.id}`}
@@ -29,7 +43,7 @@ export default function MobilePropertyCard({
       <div className="relative aspect-[4/3] overflow-hidden">
         {p.images?.[0]?.url && !imageError ? (
           <Image 
-            src={p.images[0].url} 
+            src={transformCloudinary(p.images[0].url, "f_auto,q_auto:good,dpr_auto,w_900,h_675,c_fill,g_auto")} 
             alt={p.title} 
             fill
             className="object-cover"

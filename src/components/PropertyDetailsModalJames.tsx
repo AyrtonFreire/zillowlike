@@ -73,6 +73,20 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [] });
   const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants'>('schools');
 
+  const transformCloudinary = (url: string, transformation: string) => {
+    try {
+      const marker = "/image/upload/";
+      const idx = url.indexOf(marker);
+      if (idx === -1) return url;
+      const head = url.substring(0, idx + marker.length);
+      const tail = url.substring(idx + marker.length);
+      if (tail.startsWith("f_")) return url;
+      return `${head}${transformation}/${tail}`;
+    } catch {
+      return url;
+    }
+  };
+
   // Fetch property data
   useEffect(() => {
     if (!open || !propertyId) return;
@@ -298,7 +312,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             {/* Main large image */}
             <div className="relative rounded-lg overflow-hidden col-span-1">
               <Image
-                src={displayImages[0]?.url || "/placeholder.jpg"}
+                src={displayImages[0]?.url ? transformCloudinary(displayImages[0].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto") : "/placeholder.jpg"}
                 alt={property.title}
                 fill
                 className="object-cover"
@@ -311,7 +325,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               {displayImages.slice(1, 5).map((img, i) => (
                 <div key={i} className="relative rounded-lg overflow-hidden">
                   <Image
-                    src={img.url}
+                    src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_800,h_600,c_fill,g_auto")}
                     alt={`${property.title} ${i + 2}`}
                     fill
                     className="object-cover"

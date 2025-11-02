@@ -24,6 +24,20 @@ export default function PropertyCarousel({
 }: PropertyCarouselProps) {
   const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({});
 
+  const transformCloudinary = (url: string, transformation: string) => {
+    try {
+      const marker = "/image/upload/";
+      const idx = url.indexOf(marker);
+      if (idx === -1) return url;
+      const head = url.substring(0, idx + marker.length);
+      const tail = url.substring(idx + marker.length);
+      if (tail.startsWith("f_")) return url;
+      return `${head}${transformation}/${tail}`;
+    } catch {
+      return url;
+    }
+  };
+
   const handlePrevImage = (e: React.MouseEvent, propertyId: string, totalImages: number) => {
     e.stopPropagation();
     setImageIndexes(prev => ({
@@ -58,8 +72,7 @@ export default function PropertyCarousel({
         {properties.map((property) => {
           const currentImageIndex = imageIndexes[property.id] || 0;
           const totalImages = property.images?.length || 0;
-          
-          return (
+                return (
             <div
               key={property.id}
               className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer overflow-hidden group/card"
@@ -69,11 +82,11 @@ export default function PropertyCarousel({
               <div className="relative h-[200px] bg-gray-100 group/image">
                   {property.images?.[0] && (
                     <Image
-                      src={property.images[0].url}
+                      src={transformCloudinary(property.images[0].url, "f_auto,q_auto:good,dpr_auto,w_1200,h_900,c_fill,g_auto")}
                       alt={property.title}
                       fill
                       className="object-cover group-hover/card:brightness-110 transition-all duration-300"
-                      sizes="300px"
+                      sizes="(max-width: 1024px) 50vw, 300px"
                       loading="lazy"
                     />
                   )}

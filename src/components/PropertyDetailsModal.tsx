@@ -49,6 +49,20 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
   const [similarProperties, setSimilarProperties] = useState<ApiProperty[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
 
+  const transformCloudinary = (url: string, transformation: string) => {
+    try {
+      const marker = "/image/upload/";
+      const idx = url.indexOf(marker);
+      if (idx === -1) return url;
+      const head = url.substring(0, idx + marker.length);
+      const tail = url.substring(idx + marker.length);
+      if (tail.startsWith("f_")) return url;
+      return `${head}${transformation}/${tail}`;
+    } catch {
+      return url;
+    }
+  };
+
   // Fetch com AbortController para cancelar requisições anteriores
   useEffect(() => {
     if (!open || !propertyId) {
@@ -317,7 +331,7 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                       >
                         {property.images[currentImageIndex] && (
                           <Image
-                            src={property.images[currentImageIndex].url}
+                            src={transformCloudinary(property.images[currentImageIndex].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto")}
                             alt={`${property.title} - ${currentImageIndex + 1}`}
                             fill
                             className="object-cover transition-opacity duration-300"
@@ -369,7 +383,7 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                       {property.images[1] && (
                         <div className="relative rounded-xl overflow-hidden group cursor-pointer bg-gray-100">
                           <Image
-                            src={property.images[1].url}
+                            src={transformCloudinary(property.images[1].url, "f_auto,q_auto:good,dpr_auto,w_800,h_600,c_fill,g_auto")}
                             alt={`${property.title} - 2`}
                             fill
                             className="object-cover group-hover:scale-105 group-hover:brightness-110 transition-all duration-500"
@@ -387,7 +401,7 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                           onClick={() => setCurrentImageIndex(3)}
                         >
                           <Image
-                            src={property.images[2].url}
+                            src={transformCloudinary(property.images[2].url, "f_auto,q_auto:good,dpr_auto,w_800,h_600,c_fill,g_auto")}
                             alt={`${property.title} - 3`}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -424,7 +438,7 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                           }`}
                         >
                           <Image
-                            src={img.url}
+                            src={transformCloudinary(img.url, "f_auto,q_auto:eco,dpr_auto,w_320,h_180,c_fill,g_auto")}
                             alt={`${property.title} - ${idx + 1}`}
                             fill
                             className="object-cover"
@@ -450,7 +464,7 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                       <div className="relative w-full h-full max-w-6xl max-h-[80vh] mx-auto">
                         {property.images[currentImageIndex] && (
                           <Image
-                            src={property.images[currentImageIndex].url}
+                            src={transformCloudinary(property.images[currentImageIndex].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fit,g_auto")}
                             alt={`${property.title} - ${currentImageIndex + 1}`}
                             fill
                             className="object-contain"

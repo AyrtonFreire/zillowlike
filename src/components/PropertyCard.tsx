@@ -25,6 +25,20 @@ export default function PropertyCard({
   isHovered = false,
   className = "",
 }: PropertyCardProps) {
+  const transformCloudinary = (url: string, transformation: string) => {
+    try {
+      const marker = "/image/upload/";
+      const idx = url.indexOf(marker);
+      if (idx === -1) return url; // not a cloudinary url
+      const head = url.substring(0, idx + marker.length);
+      const tail = url.substring(idx + marker.length);
+      // avoid double-applying if already has params
+      if (tail.startsWith("f_")) return url;
+      return `${head}${transformation}/${tail}`;
+    } catch {
+      return url;
+    }
+  };
   const [imageError, setImageError] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
@@ -91,7 +105,7 @@ export default function PropertyCard({
           {/* Imagem Principal com Transição */}
           {p.images?.[currentImageIndex]?.url && !imageError ? (
             <Image 
-              src={p.images[currentImageIndex].url} 
+              src={transformCloudinary(p.images[currentImageIndex].url, "f_auto,q_auto:good,dpr_auto,w_1200,h_900,c_fill,g_auto")} 
               alt={`${p.title} - ${currentImageIndex + 1}`} 
               fill
               className="object-cover group-hover:scale-105 transition-all duration-700"

@@ -9,6 +9,20 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
   const [index, setIndex] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
 
+  const transformCloudinary = (url: string, transformation: string) => {
+    try {
+      const marker = "/image/upload/";
+      const idx = url.indexOf(marker);
+      if (idx === -1) return url;
+      const head = url.substring(0, idx + marker.length);
+      const tail = url.substring(idx + marker.length);
+      if (tail.startsWith("f_")) return url;
+      return `${head}${transformation}/${tail}`;
+    } catch {
+      return url;
+    }
+  };
+
   const hasImages = images && images.length > 0;
   const current = images?.[index] || null;
 
@@ -43,7 +57,7 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
         {images.map((img, i) => (
           <div key={i} className="relative w-full h-full flex-shrink-0 snap-start">
             <Image
-              src={img.url}
+              src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_1600,h_1200,c_fit,g_auto")}
               alt={img.alt || title}
               fill
               sizes={sizes}
@@ -82,7 +96,7 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                 onClick={() => setIndex(i)} 
                 className={`relative h-12 w-16 md:h-16 md:w-28 rounded-md overflow-hidden ring-2 flex-shrink-0 ${index===i? 'ring-white' : 'ring-white/50'}`}
               >
-                <Image src={im.url} alt={(im.alt || title)+" thumb"} fill className="object-cover" loading="lazy" placeholder="blur" blurDataURL={im.blurDataURL || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTYwJyBoZWlnaHQ9JzkwJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPScxNjAnIGhlaWdodD0nOTAnIGZpbGw9JyNlZWVmZmYnIC8+PC9zdmc+"} />
+                <Image src={transformCloudinary(im.url, "f_auto,q_auto:eco,dpr_auto,w_320,h_180,c_fill,g_auto")} alt={(im.alt || title)+" thumb"} fill className="object-cover" loading="lazy" placeholder="blur" blurDataURL={im.blurDataURL || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTYwJyBoZWlnaHQ9JzkwJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPScxNjAnIGhlaWdodD0nOTAnIGZpbGw9JyNlZWVmZmYnIC8+PC9zdmc+"} />
               </button>
             ))}
           </div>
