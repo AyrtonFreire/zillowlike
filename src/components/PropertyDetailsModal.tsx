@@ -481,16 +481,17 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
 
                   {/* Modal de Carrossel Completo (fullscreen) */}
                   {showFullscreenGallery && (
-                    <div className="fixed inset-0 z-[13000] bg-black/95 flex items-center justify-center">
+                    <div className="fixed inset-0 z-[13000] bg-black/95 flex items-center justify-center" onClick={() => setShowFullscreenGallery(false)}>
                       <button
-                        onClick={() => setShowFullscreenGallery(false)}
+                        onClick={(e) => { e.stopPropagation(); setShowFullscreenGallery(false); }}
                         className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all"
+                        aria-label="Fechar"
                       >
                         <X className="w-6 h-6 text-white" />
                       </button>
 
                       {/* Imagem Grande */}
-                      <div className="relative w-full h-full max-w-6xl max-h-[80vh] mx-auto">
+                      <div className="relative w-full h-full max-w-6xl max-h-[80vh] mx-auto" onClick={(e) => e.stopPropagation()}>
                         {property.images[currentImageIndex] && (
                           <Image
                             src={transformCloudinary(property.images[currentImageIndex].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fit,g_auto")}
@@ -507,14 +508,16 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                       {property.images.length > 1 && (
                         <>
                           <button
-                            onClick={handlePrevImage}
+                            onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
                             className="absolute left-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all hover:scale-110"
+                            aria-label="Imagem anterior"
                           >
                             <ChevronLeft className="w-6 h-6 text-white" />
                           </button>
                           <button
-                            onClick={handleNextImage}
+                            onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
                             className="absolute right-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all hover:scale-110"
+                            aria-label="Próxima imagem"
                           >
                             <ChevronRight className="w-6 h-6 text-white" />
                           </button>

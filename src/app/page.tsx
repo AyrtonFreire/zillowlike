@@ -1083,7 +1083,6 @@ export default function Home() {
               <div className="md:hidden">
                 <Carousel
                   items={featured}
-                  auto
                   renderItem={(property) => (
                     <div className="px-1">
                       <PropertyCardPremium property={property} onOpenOverlay={openOverlay} />
@@ -1124,7 +1123,7 @@ export default function Home() {
                 ) : (
                   <>
                     <div className="md:hidden">
-                      <Carousel items={trending} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} />
+                      <Carousel items={trending} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} />
                     </div>
                     <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
                       {trending.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
@@ -1142,7 +1141,7 @@ export default function Home() {
                 ) : (
                   <>
                     <div className="md:hidden">
-                      <Carousel items={newest} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} />
+                      <Carousel items={newest} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} />
                     </div>
                     <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
                       {newest.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
@@ -1157,7 +1156,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    <div className="md:hidden"><Carousel items={furnishedList} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
+                    <div className="md:hidden"><Carousel items={furnishedList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
                     <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
                       {furnishedList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
@@ -1171,7 +1170,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    <div className="md:hidden"><Carousel items={luxuryList} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
+                    <div className="md:hidden"><Carousel items={luxuryList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
                     <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
                       {luxuryList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
@@ -1185,7 +1184,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    <div className="md:hidden"><Carousel items={condoList} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
+                    <div className="md:hidden"><Carousel items={condoList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
                     <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
                       {condoList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
@@ -1199,7 +1198,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    <div className="md:hidden"><Carousel items={studioList} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
+                    <div className="md:hidden"><Carousel items={studioList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
                     <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
                       {studioList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
@@ -1213,7 +1212,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    <div className="md:hidden"><Carousel items={landList} auto renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
+                    <div className="md:hidden"><Carousel items={landList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
                     <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
                       {landList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>

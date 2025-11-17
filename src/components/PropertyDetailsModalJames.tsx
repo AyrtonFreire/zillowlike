@@ -363,7 +363,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 h-[400px] md:h-[500px]">
             {/* Main large image */}
-            <div className="relative rounded-lg overflow-hidden col-span-1 cursor-zoom-in">
+            <div className="relative rounded-lg overflow-hidden col-span-1 cursor-pointer">
               <Image
                 src={displayImages[0]?.url ? transformCloudinary(displayImages[0].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto") : "/placeholder.jpg"}
                 alt={property.title}
@@ -377,7 +377,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             {/* 4 smaller images */}
             <div className="hidden md:grid grid-cols-2 gap-2">
               {displayImages.slice(1, 5).map((img, i) => (
-                <div key={i} className="relative rounded-lg overflow-hidden cursor-zoom-in" onClick={() => setShowAllPhotos(true)}>
+                <div key={i} className="relative rounded-lg overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
                   <Image
                     src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_800,h_600,c_fill,g_auto")}
                     alt={`${property.title} ${i + 2}`}
@@ -747,13 +747,13 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         </motion.div>
       {/* Lightbox de fotos */}
       {showAllPhotos && (
-        <div className="fixed inset-0 z-[13000] bg-black/90 flex items-center justify-center">
-          <button aria-label="Fechar" onClick={() => setShowAllPhotos(false)} className="absolute top-4 right-4 w-10 h-10 rounded-full border border-white/20 text-white/90 hover:text-white hover:bg-white/10 flex items-center justify-center">
+        <div className="fixed inset-0 z-[13000] bg-black/90 flex items-center justify-center" onClick={() => setShowAllPhotos(false)}>
+          <button aria-label="Fechar" onClick={(e) => { e.stopPropagation(); setShowAllPhotos(false); }} className="absolute top-4 right-4 w-10 h-10 rounded-full border border-white/20 text-white/90 hover:text-white hover:bg-white/10 flex items-center justify-center">
             <X className="w-5 h-5" />
           </button>
-          <button aria-label="Anterior" onClick={prevImage} className="absolute left-4 md:left-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center">‹</button>
-          <button aria-label="Próximo" onClick={nextImage} className="absolute right-4 md:right-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center">›</button>
-          <div className="relative w-[92vw] md:w-[80vw] lg:w-[70vw] aspect-[16/10]">
+          <button aria-label="Anterior" onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 md:left-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center">‹</button>
+          <button aria-label="Próximo" onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 md:right-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center">›</button>
+          <div className="relative w-[92vw] md:w-[80vw] lg:w-[70vw] aspect-[16/10]" onClick={(e) => e.stopPropagation()}>
             <Image
               src={transformCloudinary(property.images[currentImageIndex]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_center")}
               alt={`${property.title} ${currentImageIndex + 1}`}
