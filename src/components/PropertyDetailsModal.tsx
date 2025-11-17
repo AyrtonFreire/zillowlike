@@ -65,6 +65,18 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
     { key: 'clinics', label: 'Clínicas', Icon: Stethoscope, items: nearbyPlaces.clinics, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
   ]), [nearbyPlaces]);
 
+  // Distância aproximada
+  const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const toRad = (x: number) => (x * Math.PI) / 180;
+    const R = 6371000; // metros
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+  const formatDistance = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`);
+
 
   const transformCloudinary = (url: string, transformation: string) => {
     try {
@@ -660,6 +672,48 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                                 <div key={key as string} className="flex items-center gap-3">
                                   {(() => { const I = Icon as any; return <I className="w-5 h-5 text-gray-700" />; })()}
                                   <span className="hidden sm:inline text-gray-700 font-medium">{label as string}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Compact lists (always visible) */}
+                          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {poiCategories.map(({ key, label, items }) => {
+                              const lat = (property as any).latitude;
+                              const lng = (property as any).longitude;
+                              const hasCoords = typeof lat === 'number' && typeof lng === 'number';
+                              const base = ((items as any[]) || []).slice();
+                              base.sort((a: any, b: any) => {
+                                if (hasCoords) {
+                                  const d1 = (a.lat - lat) * (a.lat - lat) + (a.lng - lng) * (a.lng - lng);
+                                  const d2 = (b.lat - lat) * (b.lat - lat) + (b.lng - lng) * (b.lng - lng);
+                                  return d1 - d2;
+                                }
+                                return String(a.name).localeCompare(String(b.name));
+                              });
+                              const list = base.slice(0, 4);
+                              if (list.length === 0) return null;
+                              return (
+                                <div key={`list-${key}`} className="text-sm">
+                                  <div className="sm:hidden text-gray-900 font-medium mb-1">{label as string}</div>
+                                  <ul className="text-gray-600 space-y-1">
+                                    {list.map((p, i) => {
+                                      const lat = (property as any).latitude;
+                                      const lng = (property as any).longitude;
+                                      const hasCoords = typeof lat === 'number' && typeof lng === 'number' && typeof (p as any).lat === 'number' && typeof (p as any).lng === 'number';
+                                      const dist = hasCoords ? formatDistance(haversine(lat, lng, (p as any).lat, (p as any).lng)) : null;
+                                      return (
+                                        <li key={`${key}-${i}`} className="flex items-start gap-2">
+                                          <span className="text-teal/60 mt-0.5">•</span>
+                                          <span className="flex-1 leading-relaxed">
+                                            {(p as any).name}
+                                            {dist && <span className="text-gray-500 ml-1">• {dist}</span>}
+                                          </span>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
                                 </div>
                               );
                             })}
