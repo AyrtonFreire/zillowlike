@@ -170,22 +170,23 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         setPoiLoading(true);
         const radius = 2000; // 2km - mostrar os mais próximos
         const query = `
-          [out:json][timeout:5];
+          [out:json][timeout:7];
           (
-            node(around:${radius},${lat},${lng})[amenity=school];
-            node(around:${radius},${lat},${lng})[shop=supermarket];
-            node(around:${radius},${lat},${lng})[amenity=pharmacy];
-            node(around:${radius},${lat},${lng})[amenity=restaurant];
-            node(around:${radius},${lat},${lng})[amenity=hospital];
-            node(around:${radius},${lat},${lng})[amenity=clinic];
-            node(around:${radius},${lat},${lng})[leisure=park];
-            node(around:${radius},${lat},${lng})[leisure=fitness_centre];
-            node(around:${radius},${lat},${lng})[amenity=fitness_centre];
-            node(around:${radius},${lat},${lng})[amenity=fuel];
-            node(around:${radius},${lat},${lng})[shop=bakery];
-            node(around:${radius},${lat},${lng})[amenity=bank];
-            node(around:${radius},${lat},${lng})[shop=mall];
-            node(around:${radius},${lat},${lng})[amenity=atm];
+            nwr(around:${radius},${lat},${lng})[amenity=school];
+            nwr(around:${radius},${lat},${lng})[shop=supermarket];
+            nwr(around:${radius},${lat},${lng})[amenity=pharmacy];
+            nwr(around:${radius},${lat},${lng})[amenity=restaurant];
+            nwr(around:${radius},${lat},${lng})[amenity=hospital];
+            nwr(around:${radius},${lat},${lng})[amenity=clinic];
+            nwr(around:${radius},${lat},${lng})[leisure=park];
+            nwr(around:${radius},${lat},${lng})[leisure=fitness_centre];
+            nwr(around:${radius},${lat},${lng})[amenity=fitness_centre];
+            nwr(around:${radius},${lat},${lng})[amenity=fuel];
+            nwr(around:${radius},${lat},${lng})[shop=bakery];
+            nwr(around:${radius},${lat},${lng})[amenity=bank];
+            nwr(around:${radius},${lat},${lng})[shop=mall];
+            nwr(around:${radius},${lat},${lng})[amenity=marketplace];
+            nwr(around:${radius},${lat},${lng})[amenity=atm];
           );
           out center 20;
         `;
@@ -208,7 +209,9 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           const filtered = elements.filter(filter);
           const mapped = filtered.map(el => {
             const name = el.tags?.name || el.tags?.brand || '';
-            return { name, lat: el.lat, lng: el.lon };
+            const latC = typeof el.lat === 'number' ? el.lat : el.center?.lat;
+            const lonC = typeof el.lon === 'number' ? el.lon : el.center?.lon;
+            return { name, lat: latC, lng: lonC };
           });
           // Remover vazios e "Local"
           const cleaned = mapped.filter(p => p.name && p.name.toLowerCase() !== 'local');
@@ -237,7 +240,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         const fuel = pick(el => el.tags?.amenity === 'fuel');
         const bakeries = pick(el => el.tags?.shop === 'bakery');
         const banks = pick(el => el.tags?.amenity === 'bank' || el.tags?.amenity === 'atm');
-        const malls = pick(el => el.tags?.shop === 'mall');
+        const malls = pick(el => el.tags?.shop === 'mall' || el.tags?.amenity === 'marketplace');
         if (!ignore) setNearbyPlaces({ schools, markets, pharmacies, restaurants, hospitals, malls, parks, gyms, fuel, bakeries, banks });
       } catch (err) {
         console.warn('POIs load failed (silent):', err);
@@ -600,8 +603,15 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                           <div className="flex items-center justify-between mb-3">
                             <div className="text-sm text-gray-500">Categorias {page+1}/{total}</div>
                             <div className="flex items-center gap-2">
-                              <button onClick={()=>setPoiPage(Math.max(0, page-1))} className="px-2 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-50" aria-label="Anterior">‹</button>
-                              <button onClick={()=>setPoiPage(Math.min(total-1, page+1))} className="px-2 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-50" aria-label="Próximo">›</button>
+                              <button aria-label="Anterior" onClick={()=>setPoiPage(Math.max(0, page-1))} className="w-8 h-8 rounded-full border bg-white hover:bg-gray-50 shadow flex items-center justify-center">‹</button>
+                              <button aria-label="Próximo" onClick={()=>setPoiPage(Math.min(total-1, page+1))} className="w-8 h-8 rounded-full border bg-white hover:bg-gray-50 shadow flex items-center justify-center">›</button>
+                            </div>
+                          </div>
+                          {/* Mobile arrows - floating */}
+                          <div className="sm:hidden relative">
+                            <div className="absolute -top-12 inset-x-0 flex items-center justify-between px-1 pointer-events-none">
+                              <button aria-label="Anterior" onClick={()=>setPoiPage(Math.max(0, page-1))} className="pointer-events-auto w-9 h-9 rounded-full border bg-white/95 shadow flex items-center justify-center">‹</button>
+                              <button aria-label="Próximo" onClick={()=>setPoiPage(Math.min(total-1, page+1))} className="pointer-events-auto w-9 h-9 rounded-full border bg-white/95 shadow flex items-center justify-center">›</button>
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
