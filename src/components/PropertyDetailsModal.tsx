@@ -51,6 +51,25 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
   const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[]; hospitals: any[]; clinics: any[]; parks: any[]; gyms: any[]; fuel: any[]; bakeries: any[]; banks: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], clinics: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
   const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
   const [expandedPOI, setExpandedPOI] = useState<Record<string, boolean>>({});
+  const [poiLoading, setPoiLoading] = useState(false);
+
+  const poiCategories = useMemo(() => ([
+    { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools, color: 'from-blue-500 to-indigo-500', iconBg: 'bg-blue-50', iconColor: 'text-blue-600', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700' },
+    { key: 'pharmacies', label: 'Farmácias', Icon: Pill, items: nearbyPlaces.pharmacies, color: 'from-emerald-500 to-green-500', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700' },
+    { key: 'markets', label: 'Supermercados', Icon: ShoppingCart, items: nearbyPlaces.markets, color: 'from-orange-500 to-amber-500', iconBg: 'bg-orange-50', iconColor: 'text-orange-600', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700' },
+    { key: 'restaurants', label: 'Restaurantes', Icon: UtensilsCrossed, items: nearbyPlaces.restaurants, color: 'from-rose-500 to-pink-500', iconBg: 'bg-rose-50', iconColor: 'text-rose-600', badgeBg: 'bg-rose-100', badgeText: 'text-rose-700' },
+    { key: 'banks', label: 'Bancos', Icon: Landmark, items: nearbyPlaces.banks, color: 'from-purple-500 to-violet-500', iconBg: 'bg-purple-50', iconColor: 'text-purple-600', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700' },
+    { key: 'fuel', label: 'Postos', Icon: Fuel, items: nearbyPlaces.fuel, color: 'from-yellow-500 to-amber-500', iconBg: 'bg-yellow-50', iconColor: 'text-yellow-600', badgeBg: 'bg-yellow-100', badgeText: 'text-yellow-700' },
+    { key: 'gyms', label: 'Academias', Icon: Dumbbell, items: nearbyPlaces.gyms, color: 'from-teal-500 to-cyan-500', iconBg: 'bg-teal-50', iconColor: 'text-teal-600', badgeBg: 'bg-teal-100', badgeText: 'text-teal-700' },
+    { key: 'parks', label: 'Parques', Icon: Trees, items: nearbyPlaces.parks, color: 'from-lime-500 to-green-500', iconBg: 'bg-lime-50', iconColor: 'text-lime-600', badgeBg: 'bg-lime-100', badgeText: 'text-lime-700' },
+    { key: 'bakeries', label: 'Padarias', Icon: ShoppingCart, items: nearbyPlaces.bakeries, color: 'from-amber-500 to-orange-500', iconBg: 'bg-amber-50', iconColor: 'text-amber-600', badgeBg: 'bg-amber-100', badgeText: 'text-amber-700' },
+    { key: 'hospitals', label: 'Hospitais', Icon: Hospital, items: nearbyPlaces.hospitals, color: 'from-red-500 to-rose-500', iconBg: 'bg-red-50', iconColor: 'text-red-600', badgeBg: 'bg-red-100', badgeText: 'text-red-700' },
+    { key: 'clinics', label: 'Clínicas', Icon: Stethoscope, items: nearbyPlaces.clinics, color: 'from-sky-500 to-blue-500', iconBg: 'bg-sky-50', iconColor: 'text-sky-600', badgeBg: 'bg-sky-100', badgeText: 'text-sky-700' },
+  ]), [nearbyPlaces]);
+
+  const togglePOI = useCallback((key: string) => {
+    setExpandedPOI(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   const transformCloudinary = (url: string, transformation: string) => {
     try {
@@ -202,15 +221,15 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] overflow-hidden">
+    <div className="fixed inset-0 z-[12001] overflow-hidden">
       {/* Backdrop Escuro Sólido */}
       <div 
-        className="absolute inset-0 bg-black/80 transition-opacity duration-300"
+        className="absolute inset-0 bg-black/80 transition-opacity duration-300 z-[12000]"
         onClick={onClose}
       />
 
       {/* Modal Container - Mais Estreito */}
-      <div className="absolute inset-0 overflow-y-auto" onClick={onClose}>
+      <div className="absolute inset-0 overflow-y-auto z-[12001]" onClick={onClose}>
         <div className="min-h-full flex items-start justify-center p-0 md:p-8 md:py-12">
           <div 
             className="relative w-full max-w-6xl bg-white md:rounded-2xl shadow-2xl overflow-hidden animate-slide-up"
@@ -455,7 +474,7 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
 
                   {/* Modal de Carrossel Completo (fullscreen) */}
                   {showFullscreenGallery && (
-                    <div className="fixed inset-0 z-[10000] bg-black/95 flex items-center justify-center">
+                    <div className="fixed inset-0 z-[13000] bg-black/95 flex items-center justify-center">
                       <button
                         onClick={() => setShowFullscreenGallery(false)}
                         className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all"
@@ -620,45 +639,57 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                           src={`https://www.openstreetmap.org/export/embed.html?bbox=${property.longitude-0.01},${property.latitude-0.01},${property.longitude+0.01},${property.latitude+0.01}&layer=mapnik&marker=${property.latitude},${property.longitude}`}
                         />
                       </div>
+                      {/* Skeleton de POIs */}
+                      {poiLoading && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                          {Array.from({length: 6}).map((_,i)=> (
+                            <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 animate-pulse">
+                              <div className="h-4 w-32 bg-gray-200 rounded mb-3" />
+                              <div className="space-y-2">
+                                <div className="h-3 w-5/6 bg-gray-200 rounded" />
+                                <div className="h-3 w-2/3 bg-gray-200 rounded" />
+                                <div className="h-3 w-3/4 bg-gray-200 rounded" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       {(nearbyPlaces.schools.length>0||nearbyPlaces.markets.length>0||nearbyPlaces.pharmacies.length>0||nearbyPlaces.restaurants.length>0||nearbyPlaces.hospitals.length>0||nearbyPlaces.clinics.length>0||nearbyPlaces.parks.length>0||nearbyPlaces.gyms.length>0||nearbyPlaces.fuel.length>0||nearbyPlaces.bakeries.length>0||nearbyPlaces.banks.length>0) && (
                         <div className="mt-4">
                           {/* Mobile: list of cards with expand/collapse */}
-                          <div className="grid grid-cols-1 gap-3 sm:hidden">
-                            {[
-                              ['schools','Escolas', <School key="i" className="w-4 h-4 text-gray-600" />],
-                              ['pharmacies','Farmácias', <Pill key="i" className="w-4 h-4 text-gray-600" />],
-                              ['markets','Supermercados', <ShoppingCart key="i" className="w-4 h-4 text-gray-600" />],
-                              ['restaurants','Restaurantes', <UtensilsCrossed key="i" className="w-4 h-4 text-gray-600" />],
-                              ['banks','Bancos', <Landmark key="i" className="w-4 h-4 text-gray-600" />],
-                              ['fuel','Postos', <Fuel key="i" className="w-4 h-4 text-gray-600" />],
-                              ['gyms','Academias', <Dumbbell key="i" className="w-4 h-4 text-gray-600" />],
-                              ['parks','Parques', <Trees key="i" className="w-4 h-4 text-gray-600" />],
-                              ['bakeries','Padarias', <ShoppingCart key="i" className="w-4 h-4 text-gray-600" />],
-                              ['hospitals','Hospitais', <Hospital key="i" className="w-4 h-4 text-gray-600" />],
-                              ['clinics','Clínicas', <Stethoscope key="i" className="w-4 h-4 text-gray-600" />],
-                            ].map(([key,label,icon])=>{
-                              const k = key as keyof typeof nearbyPlaces;
-                              const items = nearbyPlaces[k] as any[];
+                          <div className="grid grid-cols-1 gap-4 sm:hidden">
+                            {poiCategories.map(({ key, label, Icon, items, color, iconBg, iconColor, badgeBg, badgeText }) => {
                               if (!items || items.length===0) return null;
                               const expanded = !!expandedPOI[key as string];
                               const visible = items.slice(0, expanded ? 6 : 3);
                               return (
-                                <div key={key as string} className="bg-white rounded-xl border border-gray-200 p-4">
-                                  <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2">
-                                    {icon as any}
-                                    <span className="text-sm">{label as string}</span>
+                                <div key={key as string} className="group relative bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
+                                  {/* Gradient accent bar */}
+                                  <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r ${color}`} />
+                                  
+                                  <div className="flex items-center gap-3 mb-3">
+                                    <div className={`flex items-center justify-center w-10 h-10 rounded-full ${iconBg} group-hover:scale-110 transition-transform duration-300`}>
+                                      <Icon className={`w-5 h-5 ${iconColor}`} />
+                                    </div>
+                                    <div className="flex-1">
+                                      <h4 className="font-bold text-gray-900 text-base">{label as string}</h4>
+                                    </div>
+                                    <span className={`text-xs font-bold ${badgeText} ${badgeBg} rounded-full px-2.5 py-1`}>{items.length}</span>
                                   </div>
-                                  <ul className="text-sm text-gray-700 space-y-1.5">
+                                  
+                                  <ul className="text-sm text-gray-700 space-y-2 ml-1">
                                     {visible.map((p,i)=>(
-                                      <li key={`${key}-${i}`} className="flex items-start gap-2">
-                                        <span className="text-teal mt-0.5">•</span>
-                                        <span className="flex-1">{p.name}</span>
+                                      <li key={`${key}-${i}`} className="flex items-start gap-2.5 group/item hover:translate-x-1 transition-transform">
+                                        <span className={`${iconColor} mt-0.5 font-bold text-base`}>•</span>
+                                        <span className="flex-1 leading-relaxed">{p.name}</span>
                                       </li>
                                     ))}
                                   </ul>
+                                  
                                   {items.length>3 && (
-                                    <button onClick={()=>setExpandedPOI(prev=>({ ...prev, [key as string]: !expanded }))} className="mt-2 text-teal hover:text-teal-dark text-sm font-medium">
-                                      {expanded ? 'Ver menos' : 'Ver mais'}
+                                    <button onClick={()=>togglePOI(key as string)} className={`mt-3 text-sm font-semibold ${iconColor} hover:underline flex items-center gap-1`}>
+                                      {expanded ? '← Ver menos' : 'Ver mais →'}
                                     </button>
                                   )}
                                 </div>
@@ -667,31 +698,28 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                           </div>
 
                           {/* Desktop: grid cards (all items) */}
-                          <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-4">
-                            {([
-                              ['schools','Escolas', School, nearbyPlaces.schools],
-                              ['pharmacies','Farmácias', Pill, nearbyPlaces.pharmacies],
-                              ['markets','Supermercados', ShoppingCart, nearbyPlaces.markets],
-                              ['restaurants','Restaurantes', UtensilsCrossed, nearbyPlaces.restaurants],
-                              ['banks','Bancos', Landmark, nearbyPlaces.banks],
-                              ['fuel','Postos', Fuel, nearbyPlaces.fuel],
-                              ['gyms','Academias', Dumbbell, nearbyPlaces.gyms],
-                              ['parks','Parques', Trees, nearbyPlaces.parks],
-                              ['bakeries','Padarias', ShoppingCart, nearbyPlaces.bakeries],
-                              ['hospitals','Hospitais', Hospital, nearbyPlaces.hospitals],
-                              ['clinics','Clínicas', Stethoscope, nearbyPlaces.clinics],
-                            ] as const).map(([key,label,Icon,items]) => (
+                          <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-5">
+                            {poiCategories.map(({ key, label, Icon, items, color, iconBg, iconColor, badgeBg, badgeText }) => (
                               (items as any[]) && (items as any[]).length>0 ? (
-                                <div key={key} className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-shadow">
-                                  <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2">
-                                    {(() => { const I = Icon as any; return <I className="w-4 h-4 text-gray-600" />; })()}
-                                    <span className="text-sm">{label}</span>
+                                <div key={key} className="group relative bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+                                  {/* Gradient accent bar */}
+                                  <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${color}`} />
+                                  
+                                  <div className="flex items-center gap-3 mb-4">
+                                    <div className={`flex items-center justify-center w-12 h-12 rounded-xl ${iconBg} group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
+                                      {(() => { const I = Icon as any; return <I className={`w-6 h-6 ${iconColor}`} />; })()}
+                                    </div>
+                                    <div className="flex-1">
+                                      <h4 className="font-bold text-gray-900 text-base leading-tight">{label}</h4>
+                                    </div>
+                                    <span className={`text-xs font-bold ${badgeText} ${badgeBg} rounded-full px-2.5 py-1 shadow-sm`}>{(items as any[]).length}</span>
                                   </div>
-                                  <ul className="text-sm text-gray-700 space-y-1.5">
-                                    {(items as any[]).map((p,i)=>(
-                                      <li key={`${key}-${i}`} className="flex items-start gap-2">
-                                        <span className="text-teal mt-0.5">•</span>
-                                        <span className="flex-1">{(p as any).name}</span>
+                                  
+                                  <ul className="text-sm text-gray-700 space-y-2.5 ml-1">
+                                    {(items as any[]).slice(0,6).map((p,i)=>(
+                                      <li key={`${key}-${i}`} className="flex items-start gap-2.5 group/item hover:translate-x-1 transition-transform">
+                                        <span className={`${iconColor} mt-0.5 font-bold`}>•</span>
+                                        <span className="flex-1 leading-relaxed">{(p as any).name}</span>
                                       </li>
                                     ))}
                                   </ul>
