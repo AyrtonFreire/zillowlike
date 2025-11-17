@@ -363,7 +363,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 h-[400px] md:h-[500px]">
             {/* Main large image */}
-            <div className="relative rounded-lg overflow-hidden col-span-1">
+            <div className="relative rounded-lg overflow-hidden col-span-1 cursor-zoom-in">
               <Image
                 src={displayImages[0]?.url ? transformCloudinary(displayImages[0].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto") : "/placeholder.jpg"}
                 alt={property.title}
@@ -371,12 +371,13 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, 50vw"
                 priority
+                onClick={() => setShowAllPhotos(true)}
               />
             </div>
             {/* 4 smaller images */}
             <div className="hidden md:grid grid-cols-2 gap-2">
               {displayImages.slice(1, 5).map((img, i) => (
-                <div key={i} className="relative rounded-lg overflow-hidden">
+                <div key={i} className="relative rounded-lg overflow-hidden cursor-zoom-in" onClick={() => setShowAllPhotos(true)}>
                   <Image
                     src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_800,h_600,c_fill,g_auto")}
                     alt={`${property.title} ${i + 2}`}
@@ -602,17 +603,15 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                         <>
                           <div className="flex items-center justify-between mb-3">
                             <div className="text-sm text-gray-500">Categorias {page+1}/{total}</div>
-                            <div className="flex items-center gap-2">
+                            <div className="hidden sm:flex items-center gap-2">
                               <button aria-label="Anterior" onClick={()=>setPoiPage(Math.max(0, page-1))} className="w-8 h-8 rounded-full border bg-white hover:bg-gray-50 shadow flex items-center justify-center">‹</button>
                               <button aria-label="Próximo" onClick={()=>setPoiPage(Math.min(total-1, page+1))} className="w-8 h-8 rounded-full border bg-white hover:bg-gray-50 shadow flex items-center justify-center">›</button>
                             </div>
                           </div>
-                          {/* Mobile arrows - floating */}
-                          <div className="sm:hidden relative">
-                            <div className="absolute -top-12 inset-x-0 flex items-center justify-between px-1 pointer-events-none">
-                              <button aria-label="Anterior" onClick={()=>setPoiPage(Math.max(0, page-1))} className="pointer-events-auto w-9 h-9 rounded-full border bg-white/95 shadow flex items-center justify-center">‹</button>
-                              <button aria-label="Próximo" onClick={()=>setPoiPage(Math.min(total-1, page+1))} className="pointer-events-auto w-9 h-9 rounded-full border bg-white/95 shadow flex items-center justify-center">›</button>
-                            </div>
+                          {/* Mobile arrows - below grid */}
+                          <div className="sm:hidden flex items-center justify-center gap-3 mb-2">
+                            <button aria-label="Anterior" onClick={()=>setPoiPage(Math.max(0, page-1))} className="w-9 h-9 rounded-full border bg-white/95 shadow flex items-center justify-center">‹</button>
+                            <button aria-label="Próximo" onClick={()=>setPoiPage(Math.min(total-1, page+1))} className="w-9 h-9 rounded-full border bg-white/95 shadow flex items-center justify-center">›</button>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {current.map(({ key, label, Icon, items }) => {
@@ -746,7 +745,26 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           {/* Seções Nearby/Similar já estão acima, após Google Maps */}
         </div>
         </motion.div>
+      {/* Lightbox de fotos */}
+      {showAllPhotos && (
+        <div className="fixed inset-0 z-[13000] bg-black/90 flex items-center justify-center">
+          <button aria-label="Fechar" onClick={() => setShowAllPhotos(false)} className="absolute top-4 right-4 w-10 h-10 rounded-full border border-white/20 text-white/90 hover:text-white hover:bg-white/10 flex items-center justify-center">
+            <X className="w-5 h-5" />
+          </button>
+          <button aria-label="Anterior" onClick={prevImage} className="absolute left-4 md:left-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center">‹</button>
+          <button aria-label="Próximo" onClick={nextImage} className="absolute right-4 md:right-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center">›</button>
+          <div className="relative w-[92vw] md:w-[80vw] lg:w-[70vw] aspect-[16/10]">
+            <Image
+              src={transformCloudinary(property.images[currentImageIndex]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_center")}
+              alt={`${property.title} ${currentImageIndex + 1}`}
+              fill
+              className="object-contain"
+              sizes="90vw"
+            />
+          </div>
+        </div>
+      )}
       </div>
-    </AnimatePresence>
+      </AnimatePresence>
   );
 }
