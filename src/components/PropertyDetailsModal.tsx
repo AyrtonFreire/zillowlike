@@ -49,8 +49,6 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
   const [similarProperties, setSimilarProperties] = useState<ApiProperty[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[]; hospitals: any[]; clinics: any[]; parks: any[]; gyms: any[]; fuel: any[]; bakeries: any[]; banks: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], clinics: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
-  const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
-  const [expandedPOI, setExpandedPOI] = useState<Record<string, boolean>>({});
   const [poiLoading, setPoiLoading] = useState(false);
 
   const poiCategories = useMemo(() => ([
@@ -67,9 +65,6 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
     { key: 'clinics', label: 'Clínicas', Icon: Stethoscope, items: nearbyPlaces.clinics, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
   ]), [nearbyPlaces]);
 
-  const togglePOI = useCallback((key: string) => {
-    setExpandedPOI(prev => ({ ...prev, [key]: !prev[key] }));
-  }, []);
 
   const transformCloudinary = (url: string, transformation: string) => {
     try {
@@ -656,76 +651,18 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                       )}
 
                       {(nearbyPlaces.schools.length>0||nearbyPlaces.markets.length>0||nearbyPlaces.pharmacies.length>0||nearbyPlaces.restaurants.length>0||nearbyPlaces.hospitals.length>0||nearbyPlaces.clinics.length>0||nearbyPlaces.parks.length>0||nearbyPlaces.gyms.length>0||nearbyPlaces.fuel.length>0||nearbyPlaces.bakeries.length>0||nearbyPlaces.banks.length>0) && (
-                        <div className="mt-4">
-                          {/* Mobile: list of cards with expand/collapse */}
-                          <div className="grid grid-cols-1 gap-4 sm:hidden">
-                            {poiCategories.map(({ key, label, Icon, items, color, iconBg, iconColor, badgeBg, badgeText }) => {
-                              if (!items || items.length===0) return null;
-                              const expanded = !!expandedPOI[key as string];
-                              const visible = items.slice(0, expanded ? 6 : 3);
+                        <div className="mt-6">
+                          <h2 className="text-2xl font-bold text-gray-900 mb-6">Explore a Região</h2>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {poiCategories.map(({ key, label, Icon, items }) => {
+                              if (!items || (items as any[]).length===0) return null;
                               return (
-                                <div key={key as string} className="group relative bg-white rounded-lg border border-gray-200 p-5 hover:border-teal/30 hover:shadow-md transition-all duration-300">
-                                  {/* Subtle accent bar */}
-                                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-teal/20 to-transparent" />
-                                  
-                                  <div className="flex items-center gap-3 mb-3">
-                                    <div className={`flex items-center justify-center w-10 h-10 rounded-lg ${iconBg} border border-gray-200 group-hover:border-teal/30 transition-all duration-300`}>
-                                      <Icon className={`w-5 h-5 ${iconColor}`} />
-                                    </div>
-                                    <div className="flex-1">
-                                      <h4 className="font-semibold text-gray-900 text-base">{label as string}</h4>
-                                    </div>
-                                    <span className={`text-xs font-medium ${badgeText} ${badgeBg} rounded-md px-2.5 py-1`}>{items.length}</span>
-                                  </div>
-                                  
-                                  <ul className="text-sm text-gray-600 space-y-2 ml-1">
-                                    {visible.map((p,i)=>(
-                                      <li key={`${key}-${i}`} className="flex items-start gap-2.5 group/item hover:text-gray-900 transition-colors">
-                                        <span className="text-teal/60 mt-0.5">•</span>
-                                        <span className="flex-1 leading-relaxed">{p.name}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                  
-                                  {items.length>3 && (
-                                    <button onClick={()=>togglePOI(key as string)} className="mt-3 text-sm font-medium text-teal hover:text-teal-dark transition-colors flex items-center gap-1">
-                                      {expanded ? '← Ver menos' : 'Ver mais →'}
-                                    </button>
-                                  )}
+                                <div key={key as string} className="flex items-center gap-3">
+                                  {(() => { const I = Icon as any; return <I className="w-5 h-5 text-gray-700" />; })()}
+                                  <span className="hidden sm:inline text-gray-700 font-medium">{label as string}</span>
                                 </div>
                               );
                             })}
-                          </div>
-
-                          {/* Desktop: grid cards (all items) */}
-                          <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-5">
-                            {poiCategories.map(({ key, label, Icon, items, color, iconBg, iconColor, badgeBg, badgeText }) => (
-                              (items as any[]) && (items as any[]).length>0 ? (
-                                <div key={key} className="group relative bg-white border border-gray-200 rounded-lg p-5 hover:border-teal/30 hover:shadow-lg transition-all duration-300">
-                                  {/* Subtle accent bar */}
-                                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-teal/20 to-transparent" />
-                                  
-                                  <div className="flex items-center gap-3 mb-4">
-                                    <div className={`flex items-center justify-center w-12 h-12 rounded-lg ${iconBg} border border-gray-200 group-hover:border-teal/30 transition-all duration-300`}>
-                                      {(() => { const I = Icon as any; return <I className={`w-6 h-6 ${iconColor}`} />; })()}
-                                    </div>
-                                    <div className="flex-1">
-                                      <h4 className="font-semibold text-gray-900 text-base leading-tight">{label}</h4>
-                                    </div>
-                                    <span className={`text-xs font-medium ${badgeText} ${badgeBg} rounded-md px-2.5 py-1`}>{(items as any[]).length}</span>
-                                  </div>
-                                  
-                                  <ul className="text-sm text-gray-600 space-y-2.5 ml-1">
-                                    {(items as any[]).slice(0,6).map((p,i)=>(
-                                      <li key={`${key}-${i}`} className="flex items-start gap-2.5 group/item hover:text-gray-900 transition-colors">
-                                        <span className="text-teal/60 mt-0.5">•</span>
-                                        <span className="flex-1 leading-relaxed">{(p as any).name}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              ) : null
-                            ))}
                           </div>
                         </div>
                       )}
