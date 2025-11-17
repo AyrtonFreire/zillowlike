@@ -478,7 +478,7 @@ export default function HeroSection() {
 
               {/* Mobile: Minimal search bar (no outer pill) */}
               <div className="sm:hidden px-4 py-3">
-                <div ref={searchRef} className="flex items-center gap-2 border-b border-gray-300">
+                <div ref={searchRef} className="flex items-center gap-2">
                   <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
                   <input
                     type="text"

@@ -48,6 +48,8 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
   const [nearbyProperties, setNearbyProperties] = useState<ApiProperty[]>([]);
   const [similarProperties, setSimilarProperties] = useState<ApiProperty[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[]; hospitals: any[]; clinics: any[]; parks: any[]; gyms: any[]; fuel: any[]; bakeries: any[]; banks: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], clinics: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+  const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
 
   const transformCloudinary = (url: string, transformation: string) => {
     try {
@@ -606,7 +608,6 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                       </div>
                     </div>
 
-                    {/* Map - Lazy Loading */}
                     <div className="p-6 bg-white rounded-2xl border border-gray-200 shadow-sm">
                       <h2 className="text-2xl font-bold text-gray-900 mb-4">Localização</h2>
                       <div className="aspect-video bg-gray-200 rounded-xl overflow-hidden">
@@ -618,6 +619,91 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                           src={`https://www.openstreetmap.org/export/embed.html?bbox=${property.longitude-0.01},${property.latitude-0.01},${property.longitude+0.01},${property.latitude+0.01}&layer=mapnik&marker=${property.latitude},${property.longitude}`}
                         />
                       </div>
+                      {(nearbyPlaces.schools.length>0||nearbyPlaces.markets.length>0||nearbyPlaces.pharmacies.length>0||nearbyPlaces.restaurants.length>0||nearbyPlaces.hospitals.length>0||nearbyPlaces.clinics.length>0||nearbyPlaces.parks.length>0||nearbyPlaces.gyms.length>0||nearbyPlaces.fuel.length>0||nearbyPlaces.bakeries.length>0||nearbyPlaces.banks.length>0) && (
+                        <div className="mt-4">
+                          <div className="flex sm:hidden gap-2 mb-4 overflow-x-auto pb-2">
+                            {nearbyPlaces.schools.length>0 && (<button onClick={() => setActivePOITab('schools')} className={`px-4 py-2 rounded-full text-sm font-medium ${activePOITab==='schools'?'glass-teal text-white':'bg-stone-100 text-gray-700'}`}>🏫 Escolas</button>)}
+                            {nearbyPlaces.hospitals.length>0 && (<button onClick={() => setActivePOITab('hospitals')} className={`px-4 py-2 rounded-full text-sm font-medium ${activePOITab==='hospitals'?'glass-teal text-white':'bg-stone-100 text-gray-700'}`}>🏥 Hospitais</button>)}
+                            {nearbyPlaces.clinics.length>0 && (<button onClick={() => setActivePOITab('clinics')} className={`px-4 py-2 rounded-full text-sm font-medium ${activePOITab==='clinics'?'glass-teal text-white':'bg-stone-100 text-gray-700'}`}>🩺 Clínicas</button>)}
+                            {nearbyPlaces.markets.length>0 && (<button onClick={() => setActivePOITab('markets')} className={`px-4 py-2 rounded-full text-sm font-medium ${activePOITab==='markets'?'glass-teal text-white':'bg-stone-100 text-gray-700'}`}>🛒 Supermercados</button>)}
+                            {nearbyPlaces.pharmacies.length>0 && (<button onClick={() => setActivePOITab('pharmacies')} className={`px-4 py-2 rounded-full text-sm font-medium ${activePOITab==='pharmacies'?'glass-teal text-white':'bg-stone-100 text-gray-700'}`}>💊 Farmácias</button>)}
+                            {nearbyPlaces.restaurants.length>0 && (<button onClick={() => setActivePOITab('restaurants')} className={`px-4 py-2 rounded-full text-sm font-medium ${activePOITab==='restaurants'?'glass-teal text-white':'bg-stone-100 text-gray-700'}`}>🍽️ Restaurantes</button>)}
+                            {nearbyPlaces.parks.length>0 && (<button onClick={() => setActivePOITab('parks')} className={`px-4 py-2 rounded-full text-sm font-medium ${activePOITab==='parks'?'glass-teal text-white':'bg-stone-100 text-gray-700'}`}>🌳 Parques</button>)}
+                            {nearbyPlaces.gyms.length>0 && (<button onClick={() => setActivePOITab('gyms')} className={`px-4 py-2 rounded-full text-sm font-medium ${activePOITab==='gyms'?'glass-teal text-white':'bg-stone-100 text-gray-700'}`}>💪 Academias</button>)}
+                            {nearbyPlaces.fuel.length>0 && (<button onClick={() => setActivePOITab('fuel')} className={`px-4 py-2 rounded-full text-sm font-medium ${activePOITab==='fuel'?'glass-teal text-white':'bg-stone-100 text-gray-700'}`}>⛽ Postos</button>)}
+                            {nearbyPlaces.bakeries.length>0 && (<button onClick={() => setActivePOITab('bakeries')} className={`px-4 py-2 rounded-full text-sm font-medium ${activePOITab==='bakeries'?'glass-teal text-white':'bg-stone-100 text-gray-700'}`}>🥐 Padarias</button>)}
+                            {nearbyPlaces.banks.length>0 && (<button onClick={() => setActivePOITab('banks')} className={`px-4 py-2 rounded-full text-sm font-medium ${activePOITab==='banks'?'glass-teal text-white':'bg-stone-100 text-gray-700'}`}>🏦 Bancos</button>)}
+                          </div>
+                          <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            {nearbyPlaces.schools.length>0 && (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2"><span className="text-xl">🏫</span><span className="text-sm">Escolas</span></div>
+                                <ul className="text-sm text-gray-700 space-y-1.5">{nearbyPlaces.schools.map((p,i)=>(<li key={`s-${i}`} className="flex items-start gap-2"><span className="text-teal mt-0.5">•</span><span className="flex-1">{p.name}</span></li>))}</ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.hospitals.length>0 && (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2"><span className="text-xl">🏥</span><span className="text-sm">Hospitais</span></div>
+                                <ul className="text-sm text-gray-700 space-y-1.5">{nearbyPlaces.hospitals.map((p,i)=>(<li key={`h-${i}`} className="flex items-start gap-2"><span className="text-teal mt-0.5">•</span><span className="flex-1">{p.name}</span></li>))}</ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.clinics.length>0 && (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2"><span className="text-xl">🩺</span><span className="text-sm">Clínicas</span></div>
+                                <ul className="text-sm text-gray-700 space-y-1.5">{nearbyPlaces.clinics.map((p,i)=>(<li key={`c-${i}`} className="flex items-start gap-2"><span className="text-teal mt-0.5">•</span><span className="flex-1">{p.name}</span></li>))}</ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.markets.length>0 && (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2"><span className="text-xl">🛒</span><span className="text-sm">Supermercados</span></div>
+                                <ul className="text-sm text-gray-700 space-y-1.5">{nearbyPlaces.markets.map((p,i)=>(<li key={`m-${i}`} className="flex items-start gap-2"><span className="text-teal mt-0.5">•</span><span className="flex-1">{p.name}</span></li>))}</ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.pharmacies.length>0 && (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2"><span className="text-xl">💊</span><span className="text-sm">Farmácias</span></div>
+                                <ul className="text-sm text-gray-700 space-y-1.5">{nearbyPlaces.pharmacies.map((p,i)=>(<li key={`p-${i}`} className="flex items-start gap-2"><span className="text-teal mt-0.5">•</span><span className="flex-1">{p.name}</span></li>))}</ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.restaurants.length>0 && (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2"><span className="text-xl">🍽️</span><span className="text-sm">Restaurantes</span></div>
+                                <ul className="text-sm text-gray-700 space-y-1.5">{nearbyPlaces.restaurants.map((p,i)=>(<li key={`r-${i}`} className="flex items-start gap-2"><span className="text-teal mt-0.5">•</span><span className="flex-1">{p.name}</span></li>))}</ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.parks.length>0 && (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2"><span className="text-xl">🌳</span><span className="text-sm">Parques</span></div>
+                                <ul className="text-sm text-gray-700 space-y-1.5">{nearbyPlaces.parks.map((p,i)=>(<li key={`pk-${i}`} className="flex items-start gap-2"><span className="text-teal mt-0.5">•</span><span className="flex-1">{p.name}</span></li>))}</ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.gyms.length>0 && (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2"><span className="text-xl">💪</span><span className="text-sm">Academias</span></div>
+                                <ul className="text-sm text-gray-700 space-y-1.5">{nearbyPlaces.gyms.map((p,i)=>(<li key={`g-${i}`} className="flex items-start gap-2"><span className="text-teal mt-0.5">•</span><span className="flex-1">{p.name}</span></li>))}</ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.fuel.length>0 && (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2"><span className="text-xl">⛽</span><span className="text-sm">Postos</span></div>
+                                <ul className="text-sm text-gray-700 space-y-1.5">{nearbyPlaces.fuel.map((p,i)=>(<li key={`f-${i}`} className="flex items-start gap-2"><span className="text-teal mt-0.5">•</span><span className="flex-1">{p.name}</span></li>))}</ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.bakeries.length>0 && (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2"><span className="text-xl">🥐</span><span className="text-sm">Padarias</span></div>
+                                <ul className="text-sm text-gray-700 space-y-1.5">{nearbyPlaces.bakeries.map((p,i)=>(<li key={`b-${i}`} className="flex items-start gap-2"><span className="text-teal mt-0.5">•</span><span className="flex-1">{p.name}</span></li>))}</ul>
+                              </div>
+                            )}
+                            {nearbyPlaces.banks.length>0 && (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2"><span className="text-xl">🏦</span><span className="text-sm">Bancos</span></div>
+                                <ul className="text-sm text-gray-700 space-y-1.5">{nearbyPlaces.banks.map((p,i)=>(<li key={`bk-${i}`} className="flex items-start gap-2"><span className="text-teal mt-0.5">•</span><span className="flex-1">{p.name}</span></li>))}</ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

@@ -9,7 +9,6 @@ import { ModernNavbar, HeroSection, PropertyCardPremium } from "@/components/mod
 import Select from "@/components/ui/Select";
 import Drawer from "@/components/ui/Drawer";
 import Pagination from "@/components/ui/Pagination";
-import QuickCategories from "@/components/QuickCategories";
 import NeighborhoodGrid from "@/components/NeighborhoodGrid";
 import ContinueSearching from "@/components/ContinueSearching";
 import Guides from "@/components/Guides";
@@ -494,8 +493,6 @@ export default function Home() {
 
       {/* Continue Searching removido */}
 
-      {/* Quick Categories */}
-      {!hasSearched && <QuickCategories />}
 
       {/* Search Results - Split Screen Layout */}
       {hasSearched && (
