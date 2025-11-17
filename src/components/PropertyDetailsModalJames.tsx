@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { X, Share2, Heart, MapPin, ChevronLeft, ChevronRight, Car, Home, Wind, Waves, Building2, Dumbbell, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Sun, Video, Zap, Eye, ArrowUp, ArrowDown, Accessibility, DoorOpen, Lightbulb, Droplets, Archive, Gem, Compass, Dog, ChevronDown, School, Pill, ShoppingCart, Landmark, Fuel, Trees, Hospital, Stethoscope } from "lucide-react";
+import { X, Share2, Heart, MapPin, ChevronLeft, ChevronRight, Car, Home, Wind, Waves, Building2, Dumbbell, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Sun, Video, Zap, Eye, ArrowUp, ArrowDown, Accessibility, DoorOpen, Lightbulb, Droplets, Archive, Gem, Compass, Dog, ChevronDown, School, Pill, ShoppingCart, Landmark, Fuel, Trees, Hospital, Stethoscope, Building } from "lucide-react";
 import Image from "next/image";
 import Button from "./ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -70,23 +70,23 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [showMore, setShowMore] = useState(false);
   const [nearbyProperties, setNearbyProperties] = useState<any[]>([]);
   const [similarProperties, setSimilarProperties] = useState<any[]>([]);
-  const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[]; hospitals: any[]; clinics: any[]; parks: any[]; gyms: any[]; fuel: any[]; bakeries: any[]; banks: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], clinics: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+  const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[]; hospitals: any[]; malls: any[]; parks: any[]; gyms: any[]; fuel: any[]; bakeries: any[]; banks: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
   const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
   const [poiLoading, setPoiLoading] = useState(false);
 
   const poiCategories = useMemo(() => ([
-    { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
-    { key: 'pharmacies', label: 'Farmácias', Icon: Pill, items: nearbyPlaces.pharmacies, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
-    { key: 'markets', label: 'Supermercados', Icon: ShoppingCart, items: nearbyPlaces.markets, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
-    { key: 'restaurants', label: 'Restaurantes', Icon: UtensilsCrossed, items: nearbyPlaces.restaurants, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
-    { key: 'banks', label: 'Bancos', Icon: Landmark, items: nearbyPlaces.banks, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
-    { key: 'fuel', label: 'Postos', Icon: Fuel, items: nearbyPlaces.fuel, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
-    { key: 'gyms', label: 'Academias', Icon: Dumbbell, items: nearbyPlaces.gyms, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
-    { key: 'parks', label: 'Parques', Icon: Trees, items: nearbyPlaces.parks, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
-    { key: 'bakeries', label: 'Padarias', Icon: ShoppingCart, items: nearbyPlaces.bakeries, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
-    { key: 'hospitals', label: 'Hospitais', Icon: Hospital, items: nearbyPlaces.hospitals, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
-    { key: 'clinics', label: 'Clínicas', Icon: Stethoscope, items: nearbyPlaces.clinics, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
+    { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools },
+    { key: 'pharmacies', label: 'Farmácias', Icon: Pill, items: nearbyPlaces.pharmacies },
+    { key: 'markets', label: 'Supermercados', Icon: ShoppingCart, items: nearbyPlaces.markets },
+    { key: 'restaurants', label: 'Restaurantes', Icon: UtensilsCrossed, items: nearbyPlaces.restaurants },
+    { key: 'banks', label: 'Bancos', Icon: Landmark, items: nearbyPlaces.banks },
+    { key: 'fuel', label: 'Postos', Icon: Fuel, items: nearbyPlaces.fuel },
+    { key: 'bakeries', label: 'Padarias', Icon: ShoppingCart, items: nearbyPlaces.bakeries },
+    { key: 'hospitals', label: 'Hospitais', Icon: Hospital, items: nearbyPlaces.hospitals },
+    { key: 'malls', label: 'Shopping Centers', Icon: Building, items: nearbyPlaces.malls },
   ]), [nearbyPlaces]);
+
+  const [poiPage, setPoiPage] = useState(0);
 
   // Distância aproximada
   const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -184,6 +184,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             node(around:${radius},${lat},${lng})[amenity=fuel];
             node(around:${radius},${lat},${lng})[shop=bakery];
             node(around:${radius},${lat},${lng})[amenity=bank];
+            node(around:${radius},${lat},${lng})[shop=mall];
             node(around:${radius},${lat},${lng})[amenity=atm];
           );
           out center 20;
@@ -196,7 +197,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         });
         if (!res.ok) { 
           console.warn('POIs unavailable'); 
-          if (!ignore) setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], clinics: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+          if (!ignore) setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
           return; 
         }
         const data = await res.json();
@@ -236,10 +237,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         const fuel = pick(el => el.tags?.amenity === 'fuel');
         const bakeries = pick(el => el.tags?.shop === 'bakery');
         const banks = pick(el => el.tags?.amenity === 'bank' || el.tags?.amenity === 'atm');
-        if (!ignore) setNearbyPlaces({ schools, markets, pharmacies, restaurants, hospitals, clinics, parks, gyms, fuel, bakeries, banks });
+        const malls = pick(el => el.tags?.shop === 'mall');
+        if (!ignore) setNearbyPlaces({ schools, markets, pharmacies, restaurants, hospitals, malls, parks, gyms, fuel, bakeries, banks });
       } catch (err) {
         console.warn('POIs load failed (silent):', err);
-        if (!ignore) setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], clinics: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+        if (!ignore) setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
       } finally {
         if (!ignore) setPoiLoading(false);
       }
@@ -584,49 +586,68 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 )}
 
                 {/* Locais próximos - Minimal items grid like 'Características' */}
-                {(nearbyPlaces.schools.length > 0 || nearbyPlaces.markets.length > 0 || nearbyPlaces.pharmacies.length > 0 || nearbyPlaces.restaurants.length > 0 || nearbyPlaces.hospitals.length > 0 || nearbyPlaces.clinics.length > 0 || nearbyPlaces.parks.length > 0 || nearbyPlaces.gyms.length > 0 || nearbyPlaces.fuel.length > 0 || nearbyPlaces.bakeries.length > 0 || nearbyPlaces.banks.length > 0) ? (
+                {(nearbyPlaces.schools.length > 0 || nearbyPlaces.markets.length > 0 || nearbyPlaces.pharmacies.length > 0 || nearbyPlaces.restaurants.length > 0 || nearbyPlaces.hospitals.length > 0 || nearbyPlaces.parks.length > 0 || nearbyPlaces.gyms.length > 0 || nearbyPlaces.fuel.length > 0 || nearbyPlaces.bakeries.length > 0 || nearbyPlaces.banks.length > 0 || nearbyPlaces.malls.length > 0) ? (
                   <div className="mb-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {poiCategories.map(({ key, label, Icon, items }) => {
-                        const lat = (property as any).latitude;
-                        const lng = (property as any).longitude;
-                        const hasCoords = typeof lat === 'number' && typeof lng === 'number';
-                        const base = ((items as any[]) || []).slice();
-                        base.sort((a: any, b: any) => {
-                          if (hasCoords) {
-                            const d1 = (a.lat - lat) * (a.lat - lat) + (a.lng - lng) * (a.lng - lng);
-                            const d2 = (b.lat - lat) * (b.lat - lat) + (b.lng - lng) * (b.lng - lng);
-                            return d1 - d2;
-                          }
-                          return String(a.name).localeCompare(String(b.name));
-                        });
-                        const list = base.slice(0, 4);
-                        if (list.length === 0) return null;
-                        return (
-                          <div key={`col-${key}`}>
-                            <div className="flex items-center gap-3 mb-2">
-                              {(() => { const I = Icon as any; return <I className="w-5 h-5 text-gray-700" />; })()}
-                              <span className="text-gray-900 font-medium">{label as string}</span>
+                    {(() => {
+                      const available = poiCategories.filter(c => (c.items as any[]) && (c.items as any[]).length>0);
+                      const chunks: typeof available[] = [] as any;
+                      for (let i=0; i<available.length; i+=3) chunks.push(available.slice(i, i+3));
+                      const total = chunks.length || 1;
+                      const page = Math.min(poiPage, total-1);
+                      const current = chunks[page] || [];
+                      return (
+                        <>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="text-sm text-gray-500">Categorias {page+1}/{total}</div>
+                            <div className="flex items-center gap-2">
+                              <button onClick={()=>setPoiPage(Math.max(0, page-1))} className="px-2 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-50" aria-label="Anterior">‹</button>
+                              <button onClick={()=>setPoiPage(Math.min(total-1, page+1))} className="px-2 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-50" aria-label="Próximo">›</button>
                             </div>
-                            <ul className="text-sm text-gray-600 space-y-1 ml-1">
-                              {list.map((p, i) => {
-                                const hasItemCoords = hasCoords && typeof (p as any).lat === 'number' && typeof (p as any).lng === 'number';
-                                const dist = hasItemCoords ? formatDistance(haversine(lat, lng, (p as any).lat, (p as any).lng)) : null;
-                                return (
-                                  <li key={`${key}-${i}`} className="flex items-start gap-2">
-                                    <span className="text-teal/60 mt-0.5">•</span>
-                                    <span className="flex-1 leading-relaxed">
-                                      {(p as any).name}
-                                      {dist && <span className="text-gray-500 ml-1">• {dist}</span>}
-                                    </span>
-                                  </li>
-                                );
-                              })}
-                            </ul>
                           </div>
-                        );
-                      })}
-                    </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {current.map(({ key, label, Icon, items }) => {
+                              const lat = (property as any).latitude;
+                              const lng = (property as any).longitude;
+                              const hasCoords = typeof lat === 'number' && typeof lng === 'number';
+                              const base = ((items as any[]) || []).slice();
+                              base.sort((a: any, b: any) => {
+                                if (hasCoords) {
+                                  const d1 = (a.lat - lat) * (a.lat - lat) + (a.lng - lng) * (a.lng - lng);
+                                  const d2 = (b.lat - lat) * (b.lat - lat) + (b.lng - lng) * (b.lng - lng);
+                                  return d1 - d2;
+                                }
+                                return String(a.name).localeCompare(String(b.name));
+                              });
+                              const list = base.slice(0, 4);
+                              if (list.length === 0) return null;
+                              return (
+                                <div key={`col-${key}`}>
+                                  <div className="flex items-center gap-3 mb-2">
+                                    {(() => { const I = Icon as any; return <I className="w-5 h-5 text-gray-700" />; })()}
+                                    <span className="text-gray-900 font-medium">{label as string}</span>
+                                  </div>
+                                  <ul className="text-sm text-gray-600 space-y-1 ml-1">
+                                    {list.map((p, i) => {
+                                      const hasItemCoords = hasCoords && typeof (p as any).lat === 'number' && typeof (p as any).lng === 'number';
+                                      const dist = hasItemCoords ? formatDistance(haversine(lat, lng, (p as any).lat, (p as any).lng)) : null;
+                                      return (
+                                        <li key={`${key}-${i}`} className="flex items-start gap-2">
+                                          <span className="text-teal/60 mt-0.5">•</span>
+                                          <span className="flex-1 leading-relaxed">
+                                            {(p as any).name}
+                                            {dist && <span className="text-gray-500 ml-1">• {dist}</span>}
+                                          </span>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
