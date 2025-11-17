@@ -54,17 +54,17 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
   const [poiLoading, setPoiLoading] = useState(false);
 
   const poiCategories = useMemo(() => ([
-    { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools, color: 'from-blue-500 to-indigo-500', iconBg: 'bg-blue-50', iconColor: 'text-blue-600', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700' },
-    { key: 'pharmacies', label: 'Farmácias', Icon: Pill, items: nearbyPlaces.pharmacies, color: 'from-emerald-500 to-green-500', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700' },
-    { key: 'markets', label: 'Supermercados', Icon: ShoppingCart, items: nearbyPlaces.markets, color: 'from-orange-500 to-amber-500', iconBg: 'bg-orange-50', iconColor: 'text-orange-600', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700' },
-    { key: 'restaurants', label: 'Restaurantes', Icon: UtensilsCrossed, items: nearbyPlaces.restaurants, color: 'from-rose-500 to-pink-500', iconBg: 'bg-rose-50', iconColor: 'text-rose-600', badgeBg: 'bg-rose-100', badgeText: 'text-rose-700' },
-    { key: 'banks', label: 'Bancos', Icon: Landmark, items: nearbyPlaces.banks, color: 'from-purple-500 to-violet-500', iconBg: 'bg-purple-50', iconColor: 'text-purple-600', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700' },
-    { key: 'fuel', label: 'Postos', Icon: Fuel, items: nearbyPlaces.fuel, color: 'from-yellow-500 to-amber-500', iconBg: 'bg-yellow-50', iconColor: 'text-yellow-600', badgeBg: 'bg-yellow-100', badgeText: 'text-yellow-700' },
-    { key: 'gyms', label: 'Academias', Icon: Dumbbell, items: nearbyPlaces.gyms, color: 'from-teal-500 to-cyan-500', iconBg: 'bg-teal-50', iconColor: 'text-teal-600', badgeBg: 'bg-teal-100', badgeText: 'text-teal-700' },
-    { key: 'parks', label: 'Parques', Icon: Trees, items: nearbyPlaces.parks, color: 'from-lime-500 to-green-500', iconBg: 'bg-lime-50', iconColor: 'text-lime-600', badgeBg: 'bg-lime-100', badgeText: 'text-lime-700' },
-    { key: 'bakeries', label: 'Padarias', Icon: ShoppingCart, items: nearbyPlaces.bakeries, color: 'from-amber-500 to-orange-500', iconBg: 'bg-amber-50', iconColor: 'text-amber-600', badgeBg: 'bg-amber-100', badgeText: 'text-amber-700' },
-    { key: 'hospitals', label: 'Hospitais', Icon: Hospital, items: nearbyPlaces.hospitals, color: 'from-red-500 to-rose-500', iconBg: 'bg-red-50', iconColor: 'text-red-600', badgeBg: 'bg-red-100', badgeText: 'text-red-700' },
-    { key: 'clinics', label: 'Clínicas', Icon: Stethoscope, items: nearbyPlaces.clinics, color: 'from-sky-500 to-blue-500', iconBg: 'bg-sky-50', iconColor: 'text-sky-600', badgeBg: 'bg-sky-100', badgeText: 'text-sky-700' },
+    { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
+    { key: 'pharmacies', label: 'Farmácias', Icon: Pill, items: nearbyPlaces.pharmacies, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
+    { key: 'markets', label: 'Supermercados', Icon: ShoppingCart, items: nearbyPlaces.markets, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
+    { key: 'restaurants', label: 'Restaurantes', Icon: UtensilsCrossed, items: nearbyPlaces.restaurants, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
+    { key: 'banks', label: 'Bancos', Icon: Landmark, items: nearbyPlaces.banks, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
+    { key: 'fuel', label: 'Postos', Icon: Fuel, items: nearbyPlaces.fuel, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
+    { key: 'gyms', label: 'Academias', Icon: Dumbbell, items: nearbyPlaces.gyms, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
+    { key: 'parks', label: 'Parques', Icon: Trees, items: nearbyPlaces.parks, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
+    { key: 'bakeries', label: 'Padarias', Icon: ShoppingCart, items: nearbyPlaces.bakeries, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
+    { key: 'hospitals', label: 'Hospitais', Icon: Hospital, items: nearbyPlaces.hospitals, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
+    { key: 'clinics', label: 'Clínicas', Icon: Stethoscope, items: nearbyPlaces.clinics, color: 'from-gray-200 to-gray-300', iconBg: 'bg-gray-50', iconColor: 'text-gray-700', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600' },
   ]), [nearbyPlaces]);
 
   const togglePOI = useCallback((key: string) => {
@@ -664,31 +664,31 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                               const expanded = !!expandedPOI[key as string];
                               const visible = items.slice(0, expanded ? 6 : 3);
                               return (
-                                <div key={key as string} className="group relative bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-                                  {/* Gradient accent bar */}
-                                  <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r ${color}`} />
+                                <div key={key as string} className="group relative bg-white rounded-lg border border-gray-200 p-5 hover:border-teal/30 hover:shadow-md transition-all duration-300">
+                                  {/* Subtle accent bar */}
+                                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-teal/20 to-transparent" />
                                   
                                   <div className="flex items-center gap-3 mb-3">
-                                    <div className={`flex items-center justify-center w-10 h-10 rounded-full ${iconBg} group-hover:scale-110 transition-transform duration-300`}>
+                                    <div className={`flex items-center justify-center w-10 h-10 rounded-lg ${iconBg} border border-gray-200 group-hover:border-teal/30 transition-all duration-300`}>
                                       <Icon className={`w-5 h-5 ${iconColor}`} />
                                     </div>
                                     <div className="flex-1">
-                                      <h4 className="font-bold text-gray-900 text-base">{label as string}</h4>
+                                      <h4 className="font-semibold text-gray-900 text-base">{label as string}</h4>
                                     </div>
-                                    <span className={`text-xs font-bold ${badgeText} ${badgeBg} rounded-full px-2.5 py-1`}>{items.length}</span>
+                                    <span className={`text-xs font-medium ${badgeText} ${badgeBg} rounded-md px-2.5 py-1`}>{items.length}</span>
                                   </div>
                                   
-                                  <ul className="text-sm text-gray-700 space-y-2 ml-1">
+                                  <ul className="text-sm text-gray-600 space-y-2 ml-1">
                                     {visible.map((p,i)=>(
-                                      <li key={`${key}-${i}`} className="flex items-start gap-2.5 group/item hover:translate-x-1 transition-transform">
-                                        <span className={`${iconColor} mt-0.5 font-bold text-base`}>•</span>
+                                      <li key={`${key}-${i}`} className="flex items-start gap-2.5 group/item hover:text-gray-900 transition-colors">
+                                        <span className="text-teal/60 mt-0.5">•</span>
                                         <span className="flex-1 leading-relaxed">{p.name}</span>
                                       </li>
                                     ))}
                                   </ul>
                                   
                                   {items.length>3 && (
-                                    <button onClick={()=>togglePOI(key as string)} className={`mt-3 text-sm font-semibold ${iconColor} hover:underline flex items-center gap-1`}>
+                                    <button onClick={()=>togglePOI(key as string)} className="mt-3 text-sm font-medium text-teal hover:text-teal-dark transition-colors flex items-center gap-1">
                                       {expanded ? '← Ver menos' : 'Ver mais →'}
                                     </button>
                                   )}
@@ -701,24 +701,24 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                           <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-5">
                             {poiCategories.map(({ key, label, Icon, items, color, iconBg, iconColor, badgeBg, badgeText }) => (
                               (items as any[]) && (items as any[]).length>0 ? (
-                                <div key={key} className="group relative bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-                                  {/* Gradient accent bar */}
-                                  <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${color}`} />
+                                <div key={key} className="group relative bg-white border border-gray-200 rounded-lg p-5 hover:border-teal/30 hover:shadow-lg transition-all duration-300">
+                                  {/* Subtle accent bar */}
+                                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-teal/20 to-transparent" />
                                   
                                   <div className="flex items-center gap-3 mb-4">
-                                    <div className={`flex items-center justify-center w-12 h-12 rounded-xl ${iconBg} group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
+                                    <div className={`flex items-center justify-center w-12 h-12 rounded-lg ${iconBg} border border-gray-200 group-hover:border-teal/30 transition-all duration-300`}>
                                       {(() => { const I = Icon as any; return <I className={`w-6 h-6 ${iconColor}`} />; })()}
                                     </div>
                                     <div className="flex-1">
-                                      <h4 className="font-bold text-gray-900 text-base leading-tight">{label}</h4>
+                                      <h4 className="font-semibold text-gray-900 text-base leading-tight">{label}</h4>
                                     </div>
-                                    <span className={`text-xs font-bold ${badgeText} ${badgeBg} rounded-full px-2.5 py-1 shadow-sm`}>{(items as any[]).length}</span>
+                                    <span className={`text-xs font-medium ${badgeText} ${badgeBg} rounded-md px-2.5 py-1`}>{(items as any[]).length}</span>
                                   </div>
                                   
-                                  <ul className="text-sm text-gray-700 space-y-2.5 ml-1">
+                                  <ul className="text-sm text-gray-600 space-y-2.5 ml-1">
                                     {(items as any[]).slice(0,6).map((p,i)=>(
-                                      <li key={`${key}-${i}`} className="flex items-start gap-2.5 group/item hover:translate-x-1 transition-transform">
-                                        <span className={`${iconColor} mt-0.5 font-bold`}>•</span>
+                                      <li key={`${key}-${i}`} className="flex items-start gap-2.5 group/item hover:text-gray-900 transition-colors">
+                                        <span className="text-teal/60 mt-0.5">•</span>
                                         <span className="flex-1 leading-relaxed">{(p as any).name}</span>
                                       </li>
                                     ))}
