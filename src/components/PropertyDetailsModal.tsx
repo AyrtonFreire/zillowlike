@@ -7,6 +7,7 @@ import Link from "next/link";
 import { getLowestFinancing } from "@/lib/financing";
 import PropertyGrid from "./PropertyGrid";
 import type { ApiProperty } from "@/types/api";
+import { normalizePOIs } from "@/lib/overpass";
 
 type PropertyDetailsModalProps = {
   propertyId: string | null;
@@ -192,6 +193,31 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
       abortController.abort();
     };
   }, [propertyId, open]);
+
+  // Carregar POIs próximos (Overpass com mirrors/retries/cache)
+  useEffect(() => {
+    if (!open || !property) return;
+    const lat = (property as any)?.latitude;
+    const lng = (property as any)?.longitude;
+    if (typeof lat !== 'number' || typeof lng !== 'number') return;
+    let ignore = false;
+    (async () => {
+      try {
+        setPoiLoading(true);
+        const res = await fetch(`/api/overpass?lat=${lat}&lng=${lng}&radius=2000`, { method: 'GET' });
+        if (!res.ok) throw new Error(`overpass proxy ${res.status}`);
+        const { elements } = await res.json();
+        const data = normalizePOIs(elements || []);
+        if (!ignore) setNearbyPlaces(data as any);
+      } catch (err) {
+        console.warn('POIs load failed (silent):', err);
+        // Mantém estado atual; evita mostrar vazio prematuramente
+      } finally {
+        if (!ignore) setPoiLoading(false);
+      }
+    })();
+    return () => { ignore = true; };
+  }, [open, property]);
 
   // Reset ao fechar
   useEffect(() => {

@@ -7,6 +7,7 @@ import Button from "./ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import { getLowestFinancing } from "@/lib/financing";
+import { normalizePOIs } from "@/lib/overpass";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 const SimilarCarousel = dynamic(() => import("@/components/SimilarCarousel"), { ssr: false });
@@ -164,7 +165,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       .finally(() => setLoading(false));
   }, [propertyId, open]);
 
-  // Load nearby places (free Overpass API) - otimizado
+  // Load nearby places (Overpass API) com mirrors/retries/cache
   useEffect(() => {
     const lat = (property as any)?.latitude;
     const lng = (property as any)?.longitude;
@@ -173,80 +174,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     (async () => {
       try {
         setPoiLoading(true);
-        const radius = 2000; // 2km - mostrar os mais próximos
-        const query = `
-          [out:json][timeout:7];
-          (
-            nwr(around:${radius},${lat},${lng})[amenity=school];
-            nwr(around:${radius},${lat},${lng})[shop=supermarket];
-            nwr(around:${radius},${lat},${lng})[amenity=pharmacy];
-            nwr(around:${radius},${lat},${lng})[amenity=restaurant];
-            nwr(around:${radius},${lat},${lng})[amenity=hospital];
-            nwr(around:${radius},${lat},${lng})[amenity=clinic];
-            nwr(around:${radius},${lat},${lng})[leisure=park];
-            nwr(around:${radius},${lat},${lng})[leisure=fitness_centre];
-            nwr(around:${radius},${lat},${lng})[amenity=fitness_centre];
-            nwr(around:${radius},${lat},${lng})[amenity=fuel];
-            nwr(around:${radius},${lat},${lng})[shop=bakery];
-            nwr(around:${radius},${lat},${lng})[amenity=bank];
-            nwr(around:${radius},${lat},${lng})[shop=mall];
-            nwr(around:${radius},${lat},${lng})[amenity=marketplace];
-            nwr(around:${radius},${lat},${lng})[amenity=atm];
-          );
-          out center 20;
-        `;
-        const res = await fetch('https://overpass-api.de/api/interpreter', { 
-          method: 'POST', 
-          body: query, 
-          headers: { 'Content-Type': 'text/plain' },
-          signal: AbortSignal.timeout(8000) // timeout 8s
-        });
-        if (!res.ok) { 
-          console.warn('POIs unavailable'); 
-          if (!ignore) setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
-          return; 
-        }
-        const data = await res.json();
-        const elements: any[] = data.elements || [];
-        
-        // Filtrar e normalizar: remover "Local" e vazios; limitar a 10 itens para performance
-        const pick = (filter: (el: any)=>boolean) => {
-          const filtered = elements.filter(filter);
-          const mapped = filtered.map(el => {
-            const name = el.tags?.name || el.tags?.brand || '';
-            const latC = typeof el.lat === 'number' ? el.lat : el.center?.lat;
-            const lonC = typeof el.lon === 'number' ? el.lon : el.center?.lon;
-            return { name, lat: latC, lng: lonC };
-          });
-          // Remover vazios e "Local"
-          const cleaned = mapped.filter(p => p.name && p.name.toLowerCase() !== 'local');
-          // Dedupe por nome
-          const seen = new Set<string>();
-          const unique = cleaned.filter(p => {
-            if (seen.has(p.name)) return false;
-            seen.add(p.name);
-            return true;
-          });
-          // Truncar nomes longos
-          return unique.slice(0, 10).map(p => ({
-            ...p,
-            name: p.name.length > 35 ? p.name.slice(0, 32) + '...' : p.name
-          }));
-        };
-        
-        const schools = pick(el => el.tags?.amenity === 'school');
-        const markets = pick(el => el.tags?.shop === 'supermarket');
-        const pharmacies = pick(el => el.tags?.amenity === 'pharmacy');
-        const restaurants = pick(el => el.tags?.amenity === 'restaurant');
-        const hospitals = pick(el => el.tags?.amenity === 'hospital');
-        const clinics = pick(el => el.tags?.amenity === 'clinic');
-        const parks = pick(el => el.tags?.leisure === 'park');
-        const gyms = pick(el => el.tags?.leisure === 'fitness_centre' || el.tags?.amenity === 'fitness_centre');
-        const fuel = pick(el => el.tags?.amenity === 'fuel');
-        const bakeries = pick(el => el.tags?.shop === 'bakery');
-        const banks = pick(el => el.tags?.amenity === 'bank' || el.tags?.amenity === 'atm');
-        const malls = pick(el => el.tags?.shop === 'mall' || el.tags?.amenity === 'marketplace');
-        if (!ignore) setNearbyPlaces({ schools, markets, pharmacies, restaurants, hospitals, malls, parks, gyms, fuel, bakeries, banks });
+        const res = await fetch(`/api/overpass?lat=${lat}&lng=${lng}&radius=2000`, { method: 'GET' });
+        if (!res.ok) throw new Error(`overpass proxy ${res.status}`);
+        const { elements } = await res.json();
+        const data = normalizePOIs(elements || []);
+        if (!ignore) setNearbyPlaces(data as any);
       } catch (err) {
         console.warn('POIs load failed (silent):', err);
         if (!ignore) setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
