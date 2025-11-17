@@ -665,21 +665,8 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                       {(nearbyPlaces.schools.length>0||nearbyPlaces.markets.length>0||nearbyPlaces.pharmacies.length>0||nearbyPlaces.restaurants.length>0||nearbyPlaces.hospitals.length>0||nearbyPlaces.clinics.length>0||nearbyPlaces.parks.length>0||nearbyPlaces.gyms.length>0||nearbyPlaces.fuel.length>0||nearbyPlaces.bakeries.length>0||nearbyPlaces.banks.length>0) && (
                         <div className="mt-6">
                           <h2 className="text-2xl font-bold text-gray-900 mb-6">Explore a Região</h2>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {poiCategories.map(({ key, label, Icon, items }) => {
-                              if (!items || (items as any[]).length===0) return null;
-                              return (
-                                <div key={key as string} className="flex items-center gap-3">
-                                  {(() => { const I = Icon as any; return <I className="w-5 h-5 text-gray-700" />; })()}
-                                  <span className="hidden sm:inline text-gray-700 font-medium">{label as string}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          {/* Compact lists (always visible) */}
-                          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {poiCategories.map(({ key, label, items }) => {
                               const lat = (property as any).latitude;
                               const lng = (property as any).longitude;
                               const hasCoords = typeof lat === 'number' && typeof lng === 'number';
@@ -695,14 +682,15 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                               const list = base.slice(0, 4);
                               if (list.length === 0) return null;
                               return (
-                                <div key={`list-${key}`} className="text-sm">
-                                  <div className="sm:hidden text-gray-900 font-medium mb-1">{label as string}</div>
-                                  <ul className="text-gray-600 space-y-1">
+                                <div key={`col-${key}`}>
+                                  <div className="flex items-center gap-3 mb-2">
+                                    {(() => { const I = Icon as any; return <I className="w-5 h-5 text-gray-700" />; })()}
+                                    <span className="text-gray-900 font-medium">{label as string}</span>
+                                  </div>
+                                  <ul className="text-sm text-gray-600 space-y-1 ml-1">
                                     {list.map((p, i) => {
-                                      const lat = (property as any).latitude;
-                                      const lng = (property as any).longitude;
-                                      const hasCoords = typeof lat === 'number' && typeof lng === 'number' && typeof (p as any).lat === 'number' && typeof (p as any).lng === 'number';
-                                      const dist = hasCoords ? formatDistance(haversine(lat, lng, (p as any).lat, (p as any).lng)) : null;
+                                      const hasItemCoords = hasCoords && typeof (p as any).lat === 'number' && typeof (p as any).lng === 'number';
+                                      const dist = hasItemCoords ? formatDistance(haversine(lat, lng, (p as any).lat, (p as any).lng)) : null;
                                       return (
                                         <li key={`${key}-${i}`} className="flex items-start gap-2">
                                           <span className="text-teal/60 mt-0.5">•</span>
