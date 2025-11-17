@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { X, Share2, Heart, MapPin, ChevronLeft, ChevronRight, Car, Home, Wind, Waves, Building2, Dumbbell, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Sun, Video, Zap, Eye, ArrowUp, ArrowDown, Accessibility, DoorOpen, Lightbulb, Droplets, Archive, Gem, Compass, Dog, ChevronDown, School, Pill, ShoppingCart, Landmark, Fuel, Trees, Hospital, Stethoscope, Building } from "lucide-react";
 import Image from "next/image";
 import Button from "./ui/Button";
@@ -73,6 +73,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[]; hospitals: any[]; malls: any[]; parks: any[]; gyms: any[]; fuel: any[]; bakeries: any[]; banks: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
   const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
   const [poiLoading, setPoiLoading] = useState(false);
+  // Lightbox touch resistance state
+  const lbStartX = useRef<number | null>(null);
+  const lbLastX = useRef<number | null>(null);
+  const lbMoved = useRef(false);
+  const [lbDragOffset, setLbDragOffset] = useState(0);
 
   const poiCategories = useMemo(() => ([
     { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools },
@@ -753,7 +758,44 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           </button>
           <button aria-label="Anterior" onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 md:left-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center">‹</button>
           <button aria-label="Próximo" onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 md:right-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center">›</button>
-          <div className="relative w-[92vw] md:w-[80vw] lg:w-[70vw] aspect-[16/10]" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative w-[92vw] md:w-[80vw] lg:w-[70vw] aspect-[16/10]"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              lbStartX.current = e.touches[0].clientX;
+              lbLastX.current = e.touches[0].clientX;
+              lbMoved.current = false;
+            }}
+            onTouchMove={(e) => {
+              if (lbStartX.current == null) return;
+              const x = e.touches[0].clientX;
+              lbLastX.current = x;
+              lbMoved.current = true;
+              const diff = x - lbStartX.current;
+              if (!property?.images || property.images.length <= 1) {
+                const elastic = Math.max(-28, Math.min(28, diff * 0.25));
+                setLbDragOffset(elastic);
+                e.stopPropagation();
+                e.preventDefault();
+              }
+            }}
+            onTouchEnd={(e) => {
+              const count = property?.images?.length || 0;
+              if (count <= 1) {
+                setLbDragOffset(0);
+              } else if (lbStartX.current != null && lbLastX.current != null && lbMoved.current) {
+                const dx = lbLastX.current - lbStartX.current;
+                const threshold = 60;
+                if (dx <= -threshold) { e.stopPropagation(); nextImage(); }
+                else if (dx >= threshold) { e.stopPropagation(); prevImage(); }
+              }
+              lbStartX.current = null;
+              lbLastX.current = null;
+              lbMoved.current = false;
+            }}
+          >
+            <div className="absolute inset-0" style={{ transform: `translateX(${lbDragOffset}px)` }}>
             <Image
               src={transformCloudinary(property.images[currentImageIndex]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_center")}
               alt={`${property.title} ${currentImageIndex + 1}`}
@@ -761,6 +803,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               className="object-contain"
               sizes="90vw"
             />
+            </div>
           </div>
         </div>
       )}

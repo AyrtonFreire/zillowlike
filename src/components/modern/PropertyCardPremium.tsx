@@ -37,6 +37,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   const [showShareModal, setShowShareModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const shareModalRef = useRef<HTMLDivElement>(null);
+  const [dragOffset, setDragOffset] = useState(0); // resistência para 1 imagem
   const touchStartX = useRef<number | null>(null);
   const touchMoved = useRef(false);
   const didSwipe = useRef(false);
@@ -147,6 +148,8 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
   // Touch swipe handlers
   const onTouchStart = (e: React.TouchEvent) => {
+    // Bloqueia o carrossel externo ao iniciar gesto na imagem
+    e.stopPropagation();
     touchStartX.current = e.touches[0].clientX;
     touchMoved.current = false;
     didSwipe.current = false;
@@ -154,12 +157,25 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartX.current) return;
+    if (touchStartX.current == null) return;
     const currentTouch = e.touches[0].clientX;
-    const diff = touchStartX.current - currentTouch;
-    // Threshold menor para melhor responsividade
+    lastTouchX.current = currentTouch;
+    touchMoved.current = true;
+
+    const diff = touchStartX.current - currentTouch; // >0: arrastando para esquerda
+
+    // Quando só há 1 imagem: aplicar "resistência" e impedir avanço do card externo
+    if (!property.images || property.images.length <= 1) {
+      const elastic = Math.max(-24, Math.min(24, -diff * 0.2));
+      setDragOffset(elastic);
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+
+    // Para múltiplas imagens, ao superar limiar, trocar imagem e bloquear propagação
     if (Math.abs(diff) > 50) {
-      e.stopPropagation(); // Prevenir scroll vertical
+      e.stopPropagation();
       didSwipe.current = true;
       if (diff > 0) nextImage(e as any);
       else prevImage(e as any);
@@ -168,16 +184,21 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   };
 
   const onTouchEnd = () => {
-    if (touchStartX.current == null || lastTouchX.current == null) return;
-    const dx = lastTouchX.current - touchStartX.current;
-    const threshold = 40;
-    if (touchMoved.current) {
-      if (dx <= -threshold) {
-        goNext();
-        didSwipe.current = true;
-      } else if (dx >= threshold) {
-        goPrev();
-        didSwipe.current = true;
+    // Reset da resistência quando só há 1 imagem
+    if (!property.images || property.images.length <= 1) {
+      setDragOffset(0);
+    } else if (touchStartX.current != null && lastTouchX.current != null) {
+      // Segurança extra caso o limiar não tenha sido atingido durante o move
+      const dx = lastTouchX.current - touchStartX.current;
+      const threshold = 50;
+      if (touchMoved.current) {
+        if (dx <= -threshold) {
+          goNext();
+          didSwipe.current = true;
+        } else if (dx >= threshold) {
+          goPrev();
+          didSwipe.current = true;
+        }
       }
     }
     touchStartX.current = null;
@@ -260,7 +281,10 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           {property.images && property.images.length > 0 ? (
             <>
               <motion.div
-                animate={{ x: -currentImage * 100 + "%" }}
+                animate={(!property.images || property.images.length <= 1)
+                  ? { x: dragOffset }
+                  : { x: `-${currentImage * 100}%` }
+                }
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className="flex h-full"
               >

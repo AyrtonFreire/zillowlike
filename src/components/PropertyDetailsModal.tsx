@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { X, Heart, Share2, MapPin, Bed, Bath, Maximize2, Car, Calendar, Phone, MessageCircle, ChevronLeft, ChevronRight, Home, Sparkles, Check, School, Pill, ShoppingCart, UtensilsCrossed, Landmark, Fuel, Dumbbell, Trees, Hospital, Stethoscope } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -36,6 +36,75 @@ type PropertyDetails = {
   condoFee?: number;
   yearBuilt?: number;
   images: { url: string }[];
+};
+
+type LightboxImageContainerProps = {
+  count: number;
+  onNext: () => void;
+  onPrev: () => void;
+  children: React.ReactNode;
+};
+
+const LightboxImageContainer = ({ count, onNext, onPrev, children }: LightboxImageContainerProps) => {
+  const startX = useRef<number | null>(null);
+  const lastX = useRef<number | null>(null);
+  const moved = useRef(false);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    startX.current = e.touches[0].clientX;
+    lastX.current = e.touches[0].clientX;
+    moved.current = false;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (startX.current == null) return;
+    const x = e.touches[0].clientX;
+    lastX.current = x;
+    moved.current = true;
+    const diff = x - startX.current; // >0: arrasta para direita
+    if (count <= 1) {
+      // resistência elástica quando há 1 imagem
+      const elastic = Math.max(-28, Math.min(28, diff * 0.25));
+      setDragOffset(elastic);
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (count <= 1) {
+      setDragOffset(0);
+    } else if (startX.current != null && lastX.current != null && moved.current) {
+      const dx = lastX.current - startX.current;
+      const threshold = 60;
+      if (dx <= -threshold) {
+        e.stopPropagation();
+        onNext();
+      } else if (dx >= threshold) {
+        e.stopPropagation();
+        onPrev();
+      }
+    }
+    startX.current = null;
+    lastX.current = null;
+    moved.current = false;
+  };
+
+  return (
+    <div
+      className="relative w-full h-full max-w-6xl max-h-[80vh] mx-auto"
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      <div className="absolute inset-0" style={{ transform: `translateX(${dragOffset}px)` }}>
+        {children}
+      </div>
+    </div>
+  );
 };
 
 export default function PropertyDetailsModal({ propertyId, open, onClose }: PropertyDetailsModalProps) {
@@ -480,6 +549,11 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                   </div>
 
                   {/* Modal de Carrossel Completo (fullscreen) */}
+                  {(() => {
+                    // Handlers para swipe no lightbox com resistência em 1 imagem
+                    // Mantidos fora do JSX condicional para garantir ordem de hooks
+                    return null;
+                  })()}
                   {showFullscreenGallery && (
                     <div className="fixed inset-0 z-[13000] bg-black/95 flex items-center justify-center" onClick={() => setShowFullscreenGallery(false)}>
                       <button
@@ -490,8 +564,25 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                         <X className="w-6 h-6 text-white" />
                       </button>
 
+                      {/* Touch state/handlers */}
+                      {/* Hooks */}
+                      {/* eslint-disable react-hooks/rules-of-hooks */}
+                      {(() => {
+                        // simple inline state for touch handling
+                        // These refs/states are recreated each render, sufficient for gesture handling
+                        // If needed later, promote to top-level hooks
+                        return null;
+                      })()}
+
+                      {/* Handlers */}
+                      {/* We'll attach handlers directly below via inline functions and state held with useRef/useState at top of file */}
+
                       {/* Imagem Grande */}
-                      <div className="relative w-full h-full max-w-6xl max-h-[80vh] mx-auto" onClick={(e) => e.stopPropagation()}>
+                      <LightboxImageContainer
+                        count={property.images.length}
+                        onPrev={handlePrevImage}
+                        onNext={handleNextImage}
+                      >
                         {property.images[currentImageIndex] && (
                           <Image
                             src={transformCloudinary(property.images[currentImageIndex].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fit,g_auto")}
@@ -502,7 +593,7 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                             sizes="100vw"
                           />
                         )}
-                      </div>
+                      </LightboxImageContainer>
 
                       {/* Setas de Navegação */}
                       {property.images.length > 1 && (
