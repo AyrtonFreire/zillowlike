@@ -24,6 +24,8 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [megaMenu, setMegaMenu] = useState<"comprar" | "alugar" | "anunciar" | null>(null);
+  const [primary, setPrimary] = useState<"comprar" | "alugar" | "anunciar">("comprar");
   const wrapRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -69,7 +71,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
 
   return (
     <header className="relative z-[20000] bg-white/95 backdrop-blur border-b border-gray-200">
-      <div className="mx-auto max-w-7xl px-4 h-16 grid grid-cols-3 items-center">
+      <div className="mx-auto max-w-[1400px] px-6 h-16 grid grid-cols-3 items-center">
         {/* Left: contextual links on desktop, hamburger on mobile */}
         <div className="flex items-center gap-5">
           <button
@@ -81,36 +83,24 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
             <Menu className="w-5 h-5 text-gray-700" />
           </button>
           
-          {/* Desktop: 3 contextual links based on role */}
-          <nav className="hidden md:flex items-center gap-6">
-            {session && role === 'OWNER' && (
-              <>
-                <Link href="/owner/properties" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Meus anúncios</Link>
-                <Link href="/owner/leads" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Meus leads</Link>
-                <Link href="/owner/dashboard" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Dashboard</Link>
-              </>
-            )}
-            {session && (role === 'REALTOR' || role === 'AGENCY') && (
-              <>
-                <Link href="/broker/leads" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Leads</Link>
-                <Link href="/broker/properties" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Imóveis</Link>
-                <Link href="/broker/dashboard" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Painel</Link>
-              </>
-            )}
-            {session && role === 'ADMIN' && (
-              <>
-                <Link href="/admin" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Painel Admin</Link>
-                <Link href="/admin/properties" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Gerenciar imóveis</Link>
-                <Link href="/admin/users" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Usuários</Link>
-              </>
-            )}
-            {(!session || role === 'USER') && (
-              <>
-                <Link href="/?sort=recent" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Comprar</Link>
-                <Link href="/?status=RENT" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Alugar</Link>
-                <Link href="/owner/new" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Anunciar imóvel</Link>
-              </>
-            )}
+          {/* Desktop: primary menu with mega dropdowns */}
+          <nav className="hidden md:flex items-center gap-7" onMouseLeave={() => setMegaMenu(null)}>
+            {([
+              { label: 'Comprar', key: 'comprar' },
+              { label: 'Alugar', key: 'alugar' },
+              { label: 'Anunciar imóvel', key: 'anunciar' },
+            ] as const).map(item => (
+              <button
+                key={item.key}
+                type="button"
+                onMouseEnter={() => { setMegaMenu(item.key); setPrimary(item.key); }}
+                onClick={() => { setMegaMenu(megaMenu === item.key ? null : item.key); setPrimary(item.key); }}
+                className={`font-semibold text-[15px] transition-colors relative group text-gray-900 hover:text-teal`}
+              >
+                {item.label}
+                <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 bg-teal ${primary === item.key ? 'w-full' : 'w-0 group-hover:w-full'}`} />
+              </button>
+            ))}
           </nav>
         </div>
         
@@ -199,7 +189,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
       </div>
       
       {/* Search bar - full width below header */}
-      <div className="mx-auto max-w-7xl px-4 pb-3">
+      <div className="mx-auto max-w-[1400px] px-6 pb-3">
         <div className="relative max-w-2xl mx-auto" ref={wrapRef}>
           <form
             onSubmit={(e) => { e.preventDefault(); setOpen(false); onSubmit(); }}
