@@ -86,6 +86,9 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const lbLastX = useRef<number | null>(null);
   const lbMoved = useRef(false);
   const [lbDragOffset, setLbDragOffset] = useState(0);
+  // Mobile inline gallery swipe state (outside lightbox)
+  const mobSwipeStartX = useRef<number | null>(null);
+  const mobSwipeDeltaX = useRef(0);
 
   const poiCategories = useMemo(() => ([
     { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools },
@@ -352,23 +355,77 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           </div>
         </div>
 
-        {/* Gallery Mosaic */}
+        {/* Gallery */}
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 h-[400px] md:h-[500px]">
-            {/* Main large image */}
-            <div className="relative rounded-lg overflow-hidden col-span-1 cursor-pointer">
+          {/* Mobile: single large image with indicators and swipe */}
+          <div className="md:hidden relative rounded-xl overflow-hidden h-[380px]">
+            <div
+              className="absolute inset-0"
+              onClick={() => setShowAllPhotos(true)}
+              onTouchStart={(e) => { mobSwipeStartX.current = e.touches[0].clientX; mobSwipeDeltaX.current = 0; }}
+              onTouchMove={(e) => { if (mobSwipeStartX.current == null) return; const dx = e.touches[0].clientX - mobSwipeStartX.current; mobSwipeDeltaX.current = dx; }}
+              onTouchEnd={() => {
+                const threshold = 40;
+                const total = property.images.length;
+                const dx = mobSwipeDeltaX.current || 0;
+                mobSwipeStartX.current = null; mobSwipeDeltaX.current = 0;
+                if (Math.abs(dx) > threshold) {
+                  if (dx < 0) {
+                    setCurrentImageIndex((prev) => (prev === total - 1 ? 0 : prev + 1));
+                  } else {
+                    setCurrentImageIndex((prev) => (prev === 0 ? total - 1 : prev - 1));
+                  }
+                }
+              }}
+            >
+              <Image
+                src={transformCloudinary(property.images[currentImageIndex]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto")}
+                alt={`${property.title} ${currentImageIndex + 1}`}
+                fill
+                className="object-cover"
+                sizes="100vw"
+                priority
+              />
+            </div>
+            {/* Hints: open all, count, arrows, dots */}
+            <button
+              onClick={() => setShowAllPhotos(true)}
+              className="absolute top-3 right-3 z-10 px-3 py-1.5 text-xs font-medium rounded-full bg-white/90 text-gray-900 shadow"
+            >
+              Ver todas as fotos ({property.images.length})
+            </button>
+            <div className="absolute bottom-3 inset-x-3 flex flex-col items-center gap-2">
+              <div className="px-3 py-1.5 text-[11px] font-medium rounded-full bg-black/55 text-white">
+                Foto {currentImageIndex + 1} de {property.images.length} — deslize
+              </div>
+              <div className="flex items-center gap-1.5">
+                {property.images.slice(0, 8).map((_, i) => (
+                  <span key={i} className={`h-1.5 rounded-full transition-all ${i === currentImageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/60'}`} />
+                ))}
+              </div>
+            </div>
+            {/* Subtle chevrons as hints (tap advances) */}
+            <button aria-label="Anterior" onClick={() => setCurrentImageIndex((prev) => (prev === 0 ? property.images.length - 1 : prev - 1))} className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/30 text-white flex items-center justify-center">
+              ‹
+            </button>
+            <button aria-label="Próximo" onClick={() => setCurrentImageIndex((prev) => (prev === property.images.length - 1 ? 0 : prev + 1))} className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/30 text-white flex items-center justify-center">
+              ›
+            </button>
+          </div>
+
+          {/* Desktop: mosaic */}
+          <div className="hidden md:grid grid-cols-2 gap-2 h-[500px]">
+            <div className="relative rounded-lg overflow-hidden col-span-1 cursor-pointer" onClick={() => setShowAllPhotos(true)}>
               <Image
                 src={displayImages[0]?.url ? transformCloudinary(displayImages[0].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto") : "/placeholder.jpg"}
                 alt={property.title}
                 fill
                 className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
+                sizes="50vw"
                 priority
-                onClick={() => setShowAllPhotos(true)}
               />
             </div>
-            {/* 4 smaller images */}
-            <div className="hidden md:grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {displayImages.slice(1, 5).map((img, i) => (
                 <div key={i} className="relative rounded-lg overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
                   <Image
@@ -385,7 +442,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                     >
                       <span className="flex items-center gap-2">
                         <span className="text-lg">📷</span>
-                        Show all photos
+                        Ver todas as fotos
                       </span>
                     </button>
                   )}
