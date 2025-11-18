@@ -65,9 +65,16 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [property, setProperty] = useState<PropertyDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [thumbsPerPage, setThumbsPerPage] = useState(9);
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [showThumbGrid, setShowThumbGrid] = useState(false);
+  // Zoom/Pan state for lightbox
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const panRef = useRef<{ down: boolean; x: number; y: number }>({ down: false, x: 0, y: 0 });
+  const pinchRef = useRef<{ active: boolean; startDist: number; startZoom: number; cx: number; cy: number }>({ active: false, startDist: 0, startZoom: 1, cx: 0, cy: 0 });
   const [showMore, setShowMore] = useState(false);
   const [nearbyProperties, setNearbyProperties] = useState<any[]>([]);
   const [similarProperties, setSimilarProperties] = useState<any[]>([]);
@@ -240,6 +247,31 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setIsFavorite(!isFavorite);
     } catch {}
   };
+
+  // Keyboard navigation only when full-screen gallery is open
+  useEffect(() => {
+    if (!showAllPhotos) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') prevImage();
+      if (e.key === 'ArrowRight') nextImage();
+      if (e.key === 'Escape') setShowAllPhotos(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showAllPhotos]);
+
+  // Prefetch próximas imagens (usa window.Image para não conflitar com Next/Image)
+  useEffect(() => {
+    if (!showAllPhotos || !property) return;
+    const total = property.images.length;
+    const urls = [1, 2, 3]
+      .map((d) => property.images[(currentImageIndex + d) % total]?.url)
+      .filter(Boolean) as string[];
+    urls.forEach((src) => { try { const img = new (window as any).Image(); img.src = src; } catch {} });
+  }, [showAllPhotos, property, currentImageIndex]);
+
+  // Reset zoom/pan whenever foto muda ou lightbox fecha
+  useEffect(() => { setZoom(1); setOffset({ x: 0, y: 0 }); }, [currentImageIndex, showAllPhotos]);
 
   if (loading) {
     return (
@@ -785,15 +817,84 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             </button>
 
             {/* Main image */}
-            <div className="relative w-[92vw] max-w-6xl aspect-[16/9] bg-black/40 rounded-lg overflow-hidden">
-              <Image
-                src={property!.images[currentImageIndex]?.url || "/placeholder.jpg"}
-                alt={`${property!.title} - foto ${currentImageIndex + 1}`}
-                fill
-                className="object-contain"
-                sizes="(max-width: 1536px) 92vw, 1200px"
-                priority
-              />
+            <div
+              className="relative w-[92vw] max-w-6xl aspect-[16/9] bg-black/40 rounded-lg overflow-hidden touch-pan-y"
+              onWheel={(e) => {
+                // Desktop zoom com scroll
+                e.preventDefault();
+                const delta = -e.deltaY;
+                const factor = delta > 0 ? 1.08 : 0.92;
+                setZoom((z) => Math.max(1, Math.min(4, z * factor)));
+              }}
+              onMouseDown={(e) => {
+                if (zoom <= 1) return;
+                panRef.current = { down: true, x: e.clientX, y: e.clientY };
+              }}
+              onMouseMove={(e) => {
+                if (!panRef.current.down || zoom <= 1) return;
+                const dx = e.clientX - panRef.current.x;
+                const dy = e.clientY - panRef.current.y;
+                panRef.current.x = e.clientX; panRef.current.y = e.clientY;
+                setOffset((o) => ({ x: o.x + dx, y: o.y + dy }));
+              }}
+              onMouseUp={() => { panRef.current.down = false; }}
+              onMouseLeave={() => { panRef.current.down = false; }}
+              onTouchStart={(e) => {
+                if (e.touches.length === 2) {
+                  const [t1, t2] = [e.touches[0], e.touches[1]];
+                  const dx = t1.clientX - t2.clientX; const dy = t1.clientY - t2.clientY;
+                  const dist = Math.hypot(dx, dy);
+                  pinchRef.current = { active: true, startDist: dist, startZoom: zoom, cx: (t1.clientX + t2.clientX) / 2, cy: (t1.clientY + t2.clientY) / 2 };
+                } else if (e.touches.length === 1 && zoom > 1) {
+                  panRef.current = { down: true, x: e.touches[0].clientX, y: e.touches[0].clientY };
+                } else if (e.touches.length === 1 && zoom === 1) {
+                  // iniciar swipe para trocar foto
+                  lbStartX.current = e.touches[0].clientX;
+                  lbLastX.current = e.touches[0].clientX;
+                  lbMoved.current = false;
+                }
+              }}
+              onTouchMove={(e) => {
+                if (pinchRef.current.active && e.touches.length === 2) {
+                  const [t1, t2] = [e.touches[0], e.touches[1]];
+                  const dx = t1.clientX - t2.clientX; const dy = t1.clientY - t2.clientY;
+                  const dist = Math.hypot(dx, dy);
+                  const ratio = dist / Math.max(1, pinchRef.current.startDist);
+                  setZoom(() => Math.max(1, Math.min(4, pinchRef.current.startZoom * ratio)));
+                  e.preventDefault();
+                } else if (panRef.current.down && e.touches.length === 1 && zoom > 1) {
+                  const t = e.touches[0];
+                  const dx = t.clientX - panRef.current.x; const dy = t.clientY - panRef.current.y;
+                  panRef.current.x = t.clientX; panRef.current.y = t.clientY;
+                  setOffset((o) => ({ x: o.x + dx, y: o.y + dy }));
+                  e.preventDefault();
+                } else if (e.touches.length === 1 && zoom === 1 && lbStartX.current != null) {
+                  const x = e.touches[0].clientX;
+                  lbLastX.current = x;
+                  lbMoved.current = true;
+                }
+              }}
+              onTouchEnd={() => {
+                if (zoom === 1 && lbStartX.current != null && lbLastX.current != null && lbMoved.current) {
+                  const dx = lbLastX.current - lbStartX.current;
+                  const threshold = 60;
+                  if (dx <= -threshold) nextImage();
+                  else if (dx >= threshold) prevImage();
+                }
+                lbStartX.current = null; lbLastX.current = null; lbMoved.current = false;
+                pinchRef.current.active = false; panRef.current.down = false;
+              }}
+            >
+              <div className="absolute inset-0" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, transformOrigin: 'center center' }}>
+                <Image
+                  src={property!.images[currentImageIndex]?.url || "/placeholder.jpg"}
+                  alt={`${property!.title} - foto ${currentImageIndex + 1}`}
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 1536px) 92vw, 1200px"
+                  priority
+                />
+              </div>
               {/* Prev/Next */}
               <button
                 aria-label="Anterior"
@@ -809,24 +910,94 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
+              {/* Indicators and grid trigger */}
+              <div className="absolute top-3 left-3 text-white/90 text-sm bg-black/40 rounded-md px-2 py-1">
+                {currentImageIndex + 1} / {property!.images.length}
+              </div>
+              <button
+                aria-label="Abrir grade de miniaturas"
+                onClick={(e) => { e.stopPropagation(); setShowThumbGrid(true); }}
+                className="absolute top-3 right-3 w-9 h-9 rounded-md bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
+              >
+                …
+              </button>
             </div>
 
-            {/* Thumbnails strip */}
-            <div className="mt-4 w-[92vw] max-w-6xl overflow-x-auto no-scrollbar">
-              <div className="flex items-center gap-2 pb-1">
-                {property!.images.map((img, i) => (
+            {/* Thumbnails carousel (previews of upcoming photos) */}
+            <div className="mt-4 w-[92vw] max-w-6xl">
+              {(() => {
+                const total = property!.images.length;
+                // Responsive thumbnails per page
+                // update on mount and resize
+                // note: hook-safe inline effect below
+                return (
+                  <>
+                    <ThumbsResponsiveSetter setThumbsPerPage={setThumbsPerPage} />
+                    <div className="flex items-center gap-2">
+                      <button
+                        aria-label="Anterior"
+                        onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((currentImageIndex - 1 + total) % total); }}
+                        className="hidden sm:flex w-9 h-9 rounded-full border border-white/20 text-white/90 hover:bg-white/10 items-center justify-center"
+                      >
+                        ‹
+                      </button>
+                      <div className="flex items-center gap-2 mx-auto">
+                        {Array.from({ length: Math.min(thumbsPerPage, total) }).map((_, idx) => {
+                          const i = (currentImageIndex + idx) % total; // upcoming sequence
+                          const img = property!.images[i];
+                          const isActive = i === currentImageIndex;
+                          return (
+                            <button
+                              key={`thumb-${i}`}
+                              onClick={() => setCurrentImageIndex(i)}
+                              className={`relative w-24 h-16 rounded-md overflow-hidden ring-2 transition-all ${isActive ? 'ring-white' : 'ring-transparent hover:ring-white/60'}`}
+                            >
+                              <Image
+                                src={img.url}
+                                alt={`thumb ${i + 1}`}
+                                fill
+                                className="object-cover"
+                                sizes="96px"
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <button
+                        aria-label="Próximo"
+                        onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((currentImageIndex + 1) % total); }}
+                        className="hidden sm:flex w-9 h-9 rounded-full border border-white/20 text-white/90 hover:bg-white/10 items-center justify-center"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </>
+      )}
+      {/* Grid de miniaturas em overlay */}
+      {showAllPhotos && showThumbGrid && property && (
+        <>
+          <div className="fixed inset-0 bg-black/80 z-[30010]" onClick={() => setShowThumbGrid(false)} />
+          <div className="fixed inset-0 z-[30011] flex items-center justify-center p-4">
+            <div className="bg-white/95 rounded-xl max-w-6xl w-full max-h-[80vh] overflow-auto p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-gray-800 font-medium">Escolha uma foto</div>
+                <button onClick={() => setShowThumbGrid(false)} className="w-9 h-9 rounded-md border border-gray-200 hover:bg-gray-50 flex items-center justify-center">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                {property.images.map((img, i) => (
                   <button
-                    key={`thumb-${i}`}
-                    onClick={() => setCurrentImageIndex(i)}
-                    className={`relative shrink-0 w-24 h-16 rounded-md overflow-hidden ring-2 transition-all ${i === currentImageIndex ? 'ring-white' : 'ring-transparent hover:ring-white/60'}`}
+                    key={`grid-${i}`}
+                    onClick={() => { setCurrentImageIndex(i); setShowThumbGrid(false); }}
+                    className={`relative w-full pt-[66%] rounded-md overflow-hidden ring-2 ${i === currentImageIndex ? 'ring-teal-500' : 'ring-transparent hover:ring-teal-300'}`}
                   >
-                    <Image
-                      src={img.url}
-                      alt={`thumb ${i + 1}`}
-                      fill
-                      className="object-cover"
-                      sizes="96px"
-                    />
+                    <Image src={img.url} alt={`grid ${i + 1}`} fill className="object-cover" />
                   </button>
                 ))}
               </div>
@@ -836,4 +1007,19 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       )}
     </AnimatePresence>
   );
+}
+
+// Helper: sets thumbnail count per page responsively
+function ThumbsResponsiveSetter({ setThumbsPerPage }: { setThumbsPerPage: (n: number) => void }) {
+  useEffect(() => {
+    const calc = () => {
+      const w = window.innerWidth;
+      const n = w < 480 ? 5 : w < 768 ? 7 : w < 1280 ? 9 : 11;
+      setThumbsPerPage(n);
+    };
+    calc();
+    window.addEventListener('resize', calc);
+    return () => window.removeEventListener('resize', calc);
+  }, [setThumbsPerPage]);
+  return null;
 }
