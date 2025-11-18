@@ -588,7 +588,7 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                         onMouseDown={(e) => e.stopPropagation()}
                         onPointerDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
-                        className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all"
+                        className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all z-[13010] pointer-events-auto"
                         aria-label="Fechar"
                       >
                         <X className="w-6 h-6 text-white" />
@@ -634,7 +634,7 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                             onMouseDown={(e) => e.stopPropagation()}
                             onPointerDown={(e) => e.stopPropagation()}
                             onTouchStart={(e) => e.stopPropagation()}
-                            className="absolute left-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all hover:scale-110"
+                            className="absolute left-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all hover:scale-110 z-[13010] pointer-events-auto"
                             aria-label="Imagem anterior"
                           >
                             <ChevronLeft className="w-6 h-6 text-white" />
@@ -645,7 +645,7 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                             onMouseDown={(e) => e.stopPropagation()}
                             onPointerDown={(e) => e.stopPropagation()}
                             onTouchStart={(e) => e.stopPropagation()}
-                            className="absolute right-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all hover:scale-110"
+                            className="absolute right-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all hover:scale-110 z-[13010] pointer-events-auto"
                             aria-label="Próxima imagem"
                           >
                             <ChevronRight className="w-6 h-6 text-white" />

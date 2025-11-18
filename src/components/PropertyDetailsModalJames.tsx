@@ -692,7 +692,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full border border-white/20 text-white/90 hover:text-white hover:bg-white/10 flex items-center justify-center"
+            className="absolute top-4 right-4 w-10 h-10 rounded-full border border-white/20 text-white/90 hover:text-white hover:bg-white/10 flex items-center justify-center z-[13010] pointer-events-auto"
           >
             <X className="w-5 h-5" />
           </button>
@@ -703,7 +703,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="absolute left-4 md:left-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center"
+            className="absolute left-4 md:left-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center z-[13010] pointer-events-auto"
           >
             ‹
           </button>
@@ -714,7 +714,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="absolute right-4 md:right-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center"
+            className="absolute right-4 md:right-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center z-[13010] pointer-events-auto"
           >
             ›
           </button>
