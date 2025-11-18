@@ -146,17 +146,38 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
                 </div>
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-gray-200 shadow-xl z-[12020]">
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-xl z-[12020]">
                   <ul className="py-1 text-sm text-gray-800">
-                    <li>
-                      <Link href="/account" className="block px-4 py-2 hover:bg-gray-50">Minha conta</Link>
-                    </li>
-                    <li>
-                      <Link href="/favorites" className="block px-4 py-2 hover:bg-gray-50">Favoritos</Link>
-                    </li>
-                    <li>
-                      <Link href="/saved-searches" className="block px-4 py-2 hover:bg-gray-50">Buscas salvas</Link>
-                    </li>
+                    {/* Role-specific shortcuts */}
+                    {session && role === 'OWNER' && (
+                      <>
+                        <li><Link href="/owner/dashboard" className="block px-4 py-2 hover:bg-gray-50">Dashboard</Link></li>
+                        <li><Link href="/owner/properties" className="block px-4 py-2 hover:bg-gray-50">Meus anúncios</Link></li>
+                        <li><Link href="/owner/leads" className="block px-4 py-2 hover:bg-gray-50">Meus leads</Link></li>
+                        <li><hr className="my-1" /></li>
+                      </>
+                    )}
+                    {session && (role === 'REALTOR' || role === 'AGENCY') && (
+                      <>
+                        <li><Link href="/broker/dashboard" className="block px-4 py-2 hover:bg-gray-50">Painel</Link></li>
+                        <li><Link href="/broker/leads" className="block px-4 py-2 hover:bg-gray-50">Leads</Link></li>
+                        <li><Link href="/broker/properties" className="block px-4 py-2 hover:bg-gray-50">Imóveis</Link></li>
+                        <li><hr className="my-1" /></li>
+                      </>
+                    )}
+                    {session && role === 'ADMIN' && (
+                      <>
+                        <li><Link href="/admin" className="block px-4 py-2 hover:bg-gray-50">Painel Admin</Link></li>
+                        <li><Link href="/admin/properties" className="block px-4 py-2 hover:bg-gray-50">Gerenciar imóveis</Link></li>
+                        <li><Link href="/admin/users" className="block px-4 py-2 hover:bg-gray-50">Usuários</Link></li>
+                        <li><hr className="my-1" /></li>
+                      </>
+                    )}
+
+                    {/* Common items */}
+                    <li><Link href="/account" className="block px-4 py-2 hover:bg-gray-50">Minha conta</Link></li>
+                    <li><Link href="/favorites" className="block px-4 py-2 hover:bg-gray-50">Favoritos</Link></li>
+                    <li><Link href="/saved-searches" className="block px-4 py-2 hover:bg-gray-50">Buscas salvas</Link></li>
                     <li><hr className="my-1" /></li>
                     <li>
                       <button onClick={() => signOut()} className="w-full text-left px-4 py-2 hover:bg-gray-50">Sair</button>
