@@ -64,7 +64,8 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
   return (
     <header className="bg-white/95 backdrop-blur border-b border-gray-200">
       <div className="mx-auto max-w-7xl px-4 h-16 grid grid-cols-3 items-center">
-        <div className="flex items-center gap-3">
+        {/* Left: contextual links on desktop, hamburger on mobile */}
+        <div className="flex items-center gap-5">
           <button
             type="button"
             aria-label="Menu"
@@ -73,85 +74,50 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
           >
             <Menu className="w-5 h-5 text-gray-700" />
           </button>
+          
+          {/* Desktop: 3 contextual links based on role */}
+          <nav className="hidden md:flex items-center gap-6">
+            {session && role === 'OWNER' && (
+              <>
+                <Link href="/owner/properties" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Meus anúncios</Link>
+                <Link href="/owner/leads" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Meus leads</Link>
+                <Link href="/owner/dashboard" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Dashboard</Link>
+              </>
+            )}
+            {session && (role === 'REALTOR' || role === 'AGENCY') && (
+              <>
+                <Link href="/broker/leads" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Leads</Link>
+                <Link href="/broker/properties" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Imóveis</Link>
+                <Link href="/broker/dashboard" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Painel</Link>
+              </>
+            )}
+            {session && role === 'ADMIN' && (
+              <>
+                <Link href="/admin" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Painel Admin</Link>
+                <Link href="/admin/properties" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Gerenciar imóveis</Link>
+                <Link href="/admin/users" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Usuários</Link>
+              </>
+            )}
+            {(!session || role === 'USER') && (
+              <>
+                <Link href="/?sort=recent" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Comprar</Link>
+                <Link href="/?status=RENT" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Alugar</Link>
+                <Link href="/owner/new" className="text-[15px] font-semibold text-gray-800 hover:text-teal whitespace-nowrap">Anunciar imóvel</Link>
+              </>
+            )}
+          </nav>
+        </div>
+        
+        {/* Center: Logo */}
+        <div className="flex items-center justify-center">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg glass-teal text-white flex items-center justify-center font-bold">Z</div>
             <span className="hidden lg:block text-xl font-bold text-gray-900">ZillowLike</span>
           </Link>
         </div>
-        <div className="relative" ref={wrapRef}>
-          <form
-            onSubmit={(e) => { e.preventDefault(); setOpen(false); onSubmit(); }}
-            className={`mx-auto max-w-xl flex items-center gap-2 rounded-full border ${focus ? 'border-gray-400' : 'border-gray-300'} bg-white px-4 py-2.5 shadow-sm`}
-          >
-            <Search className="w-4 h-4 text-gray-500" />
-            <input
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              onFocus={() => { setFocus(true); setOpen(true); }}
-              onBlur={() => setFocus(false)}
-              placeholder="Cidade, região, bairro..."
-              className="w-full bg-transparent outline-none text-sm text-gray-900 placeholder:text-gray-400"
-            />
-            {loading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
-            {value && !loading && (
-              <button type="button" onClick={() => onChange("")} className="text-gray-500 text-sm hover:text-gray-700">X</button>
-            )}
-          </form>
-          {open && (suggestions.length > 0 || loading) && (
-            <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-[min(640px,90vw)] rounded-xl border border-gray-200 bg-white shadow-xl z-[12010]">
-              <ul className="max-h-80 overflow-auto py-2">
-                {suggestions.map((s, i) => (
-                  <li key={i}>
-                    <button
-                      type="button"
-                      onClick={() => { onChange(s.label); setOpen(false); onSubmit(); }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-800"
-                    >
-                      {s.label}
-                      {typeof s.count === 'number' ? <span className="ml-2 text-gray-500">· {s.count}</span> : null}
-                    </button>
-                  </li>
-                ))}
-                {!loading && suggestions.length === 0 && (
-                  <li className="px-4 py-3 text-sm text-gray-500">Sem sugestões</li>
-                )}
-              </ul>
-            </div>
-          )}
-        </div>
+        
+        {/* Right: utility buttons + auth */}
         <div className="flex items-center justify-end gap-2">
-          {true && (
-            <nav className="hidden md:flex items-center gap-4 mr-3 text-[15px] font-semibold text-gray-800">
-              {session && role === 'OWNER' && (
-                <>
-                  <Link href="/owner/properties" className="hover:text-teal">Meus anúncios</Link>
-                  <Link href="/owner/leads" className="hover:text-teal">Meus leads</Link>
-                  <Link href="/owner/dashboard" className="hover:text-teal">Dashboard</Link>
-                </>
-              )}
-              {session && (role === 'REALTOR' || role === 'AGENCY') ? (
-                <>
-                  <Link href="/broker/leads" className="hover:text-teal">Leads</Link>
-                  <Link href="/broker/properties" className="hover:text-teal">Imóveis</Link>
-                  <Link href="/broker/dashboard" className="hover:text-teal">Painel</Link>
-                </>
-              ) : null}
-              {session && role === 'ADMIN' && (
-                <>
-                  <Link href="/admin" className="hover:text-teal">Painel Admin</Link>
-                  <Link href="/admin/properties" className="hover:text-teal">Gerenciar imóveis</Link>
-                  <Link href="/admin/users" className="hover:text-teal">Usuários</Link>
-                </>
-              )}
-              {(!session || role === 'USER') && (
-                <>
-                  <Link href="/?sort=recent" className="hover:text-teal">Comprar</Link>
-                  <Link href="/?status=RENT" className="hover:text-teal">Alugar</Link>
-                  <Link href="/owner/new" className="hover:text-teal">Anunciar imóvel</Link>
-                </>
-              )}
-            </nav>
-          )}
           <button type="button" className="hidden md:flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">
             <HelpCircle className="w-4 h-4" />
             <span>Como funciona</span>
@@ -204,6 +170,52 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
           )}
         </div>
       </div>
+      
+      {/* Search bar - full width below header */}
+      <div className="mx-auto max-w-7xl px-4 pb-3">
+        <div className="relative max-w-2xl mx-auto" ref={wrapRef}>
+          <form
+            onSubmit={(e) => { e.preventDefault(); setOpen(false); onSubmit(); }}
+            className={`flex items-center gap-2 rounded-full border ${ focus ? 'border-gray-400' : 'border-gray-300' } bg-white px-4 py-2.5 shadow-sm`}
+          >
+            <Search className="w-4 h-4 text-gray-500" />
+            <input
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onFocus={() => { setFocus(true); setOpen(true); }}
+              onBlur={() => setFocus(false)}
+              placeholder="Cidade, região, bairro..."
+              className="w-full bg-transparent outline-none text-sm text-gray-900 placeholder:text-gray-400"
+            />
+            {loading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+            {value && !loading && (
+              <button type="button" onClick={() => onChange("")} className="text-gray-500 text-sm hover:text-gray-700">X</button>
+            )}
+          </form>
+          {open && (suggestions.length > 0 || loading) && (
+            <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-[min(640px,90vw)] rounded-xl border border-gray-200 bg-white shadow-xl z-[12010]">
+              <ul className="max-h-80 overflow-auto py-2">
+                {suggestions.map((s, i) => (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      onClick={() => { onChange(s.label); setOpen(false); onSubmit(); }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-800"
+                    >
+                      {s.label}
+                      {typeof s.count === 'number' ? <span className="ml-2 text-gray-500">· {s.count}</span> : null}
+                    </button>
+                  </li>
+                ))}
+                {!loading && suggestions.length === 0 && (
+                  <li className="px-4 py-3 text-sm text-gray-500">Sem sugestões</li>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+      
       {/* Mobile Sheets */}
       <AnimatePresence>
         {leftOpen && (
