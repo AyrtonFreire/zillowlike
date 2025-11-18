@@ -38,10 +38,18 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   const [copySuccess, setCopySuccess] = useState(false);
   const shareModalRef = useRef<HTMLDivElement>(null);
   const [dragOffset, setDragOffset] = useState(0); // resistência para 1 imagem
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragX, setDragX] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerW, setContainerW] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchStartTime = useRef<number | null>(null);
   const touchMoved = useRef(false);
   const didSwipe = useRef(false);
   const lastTouchX = useRef<number | null>(null);
+  const lastTouchTime = useRef<number | null>(null);
+  const gestureLocked = useRef<null | 'horizontal' | 'vertical'>(null);
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -59,6 +67,15 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showShareModal]);
+
+  useEffect(() => {
+    const updateW = () => {
+      setContainerW(containerRef.current ? containerRef.current.clientWidth : 0);
+    };
+    updateW();
+    window.addEventListener('resize', updateW);
+    return () => window.removeEventListener('resize', updateW);
+  }, []);
 
   const handleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -148,18 +165,26 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
   // Touch swipe handlers
   const onTouchStart = (e: React.TouchEvent) => {
-    // Bloqueia o carrossel externo ao iniciar gesto na imagem
-    e.stopPropagation();
+    // Não bloquear imediatamente: esperar decidir direção do gesto
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    touchStartTime.current = performance.now();
     touchMoved.current = false;
     didSwipe.current = false;
     lastTouchX.current = e.touches[0].clientX;
+    lastTouchTime.current = touchStartTime.current;
+    gestureLocked.current = null;
+    setIsDragging(true);
+    setDragX(0);
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
     if (touchStartX.current == null) return;
     const currentTouch = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const now = performance.now();
     lastTouchX.current = currentTouch;
+    lastTouchTime.current = now;
     touchMoved.current = true;
 
     const diff = touchStartX.current - currentTouch; // >0: arrastando para esquerda
@@ -168,19 +193,40 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     if (!property.images || property.images.length <= 1) {
       const elastic = Math.max(-24, Math.min(24, -diff * 0.2));
       setDragOffset(elastic);
-      e.stopPropagation();
-      e.preventDefault();
+      if (gestureLocked.current !== 'vertical') {
+        e.stopPropagation();
+        e.preventDefault();
+      }
       return;
     }
 
-    // Para múltiplas imagens, ao superar limiar, trocar imagem e bloquear propagação
-    if (Math.abs(diff) > 50) {
-      e.stopPropagation();
-      didSwipe.current = true;
-      if (diff > 0) nextImage(e as any);
-      else prevImage(e as any);
-      touchStartX.current = null;
+    // Tolerância a scroll vertical: decidir bloqueio somente após pequena movimentação
+    if (!gestureLocked.current) {
+      const dx0 = Math.abs(currentTouch - (touchStartX.current as number));
+      const dy0 = Math.abs(currentY - (touchStartY.current as number));
+      const intentionThreshold = 8; // px
+      if (dx0 < intentionThreshold && dy0 < intentionThreshold) {
+        return; // ainda não decidiu
+      }
+      gestureLocked.current = dx0 > dy0 ? 'horizontal' : 'vertical';
     }
+
+    if (gestureLocked.current === 'vertical') {
+      // deixar rolar a página
+      return;
+    }
+
+    // Para múltiplas imagens: seguir o dedo, com rubber-band nas bordas
+    let dx = currentTouch - (touchStartX.current as number);
+    const atFirst = currentImage === 0;
+    const atLast = currentImage === property.images.length - 1;
+    if ((atFirst && dx > 0) || (atLast && dx < 0)) {
+      const resistance = 0.35; // rubber-band
+      dx = dx * resistance;
+    }
+    setDragX(dx);
+    e.stopPropagation();
+    e.preventDefault();
   };
 
   const onTouchEnd = () => {
@@ -188,22 +234,41 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     if (!property.images || property.images.length <= 1) {
       setDragOffset(0);
     } else if (touchStartX.current != null && lastTouchX.current != null) {
-      // Segurança extra caso o limiar não tenha sido atingido durante o move
       const dx = lastTouchX.current - touchStartX.current;
-      const threshold = 50;
-      if (touchMoved.current) {
-        if (dx <= -threshold) {
+      const dt = Math.max(1, (lastTouchTime.current ?? performance.now()) - (touchStartTime.current ?? performance.now()));
+      const velocity = dx / dt; // px/ms
+      const vThreshold = 0.5; // ~500px/s
+      const distanceThreshold = Math.max(50, containerW * 0.15);
+
+      if (touchMoved.current && gestureLocked.current !== 'vertical') {
+        // Prioriza velocidade
+        if (velocity <= -vThreshold) {
           goNext();
           didSwipe.current = true;
-        } else if (dx >= threshold) {
+        } else if (velocity >= vThreshold) {
           goPrev();
           didSwipe.current = true;
+        } else {
+          // fallback para distância
+          if (dx <= -distanceThreshold) {
+            goNext();
+            didSwipe.current = true;
+          } else if (dx >= distanceThreshold) {
+            goPrev();
+            didSwipe.current = true;
+          }
         }
       }
     }
     touchStartX.current = null;
+    touchStartY.current = null;
+    touchStartTime.current = null;
     lastTouchX.current = null;
+    lastTouchTime.current = null;
     touchMoved.current = false;
+    gestureLocked.current = null;
+    setIsDragging(false);
+    setDragX(0);
   };
 
   return (
@@ -273,6 +338,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
         {/* Image Carousel */}
         <div
           className="relative h-48 overflow-hidden rounded-t-2xl"
+          ref={containerRef}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
@@ -283,9 +349,9 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               <motion.div
                 animate={(!property.images || property.images.length <= 1)
                   ? { x: dragOffset }
-                  : { x: `-${currentImage * 100}%` }
+                  : { x: isDragging ? -currentImage * containerW + dragX : -currentImage * containerW }
                 }
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                transition={isDragging ? { type: 'tween', duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
                 className="flex h-full"
               >
                 {property.images.map((image, i) => (

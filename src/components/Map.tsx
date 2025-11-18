@@ -140,6 +140,7 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
               iconSize: [24, 24], 
               iconAnchor: [12, 12]
             })}
+            zIndexOffset={400}
           >
             <Tooltip direction="top" offset={[0, -12]} opacity={0.95}>
               <span className="text-xs font-medium">{p.label}</span>
@@ -331,6 +332,7 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
                   key={p.id}
                   position={[p.latitude, p.longitude]}
                   icon={pin}
+                  zIndexOffset={1200}
                   eventHandlers={{
                     mouseover: () => onHoverChange?.(p.id),
                     mouseout: () => onHoverChange?.(null),
@@ -343,6 +345,7 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
                 key={p.id}
                 position={[p.latitude, p.longitude]}
                 icon={getPriceIcon(p.id, `R$ ${(p.price / 100).toLocaleString('pt-BR')}`, p.id === highlightId)}
+                zIndexOffset={1400}
                 eventHandlers={{
                   mouseover: () => onHoverChange?.(p.id),
                   mouseout: () => onHoverChange?.(null),
@@ -372,6 +375,7 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
               key={`c-${idx}`}
               position={[lat, lng]}
               icon={getClusterIcon(arr.length)}
+              zIndexOffset={1300}
               eventHandlers={{
                 click: () => {
                   map.setView([lat, lng], Math.min(20, map.getZoom() + 1));
