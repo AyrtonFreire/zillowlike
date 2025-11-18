@@ -82,9 +82,9 @@ export default function ModernNavbar() {
       {/* Mobile Header - Zillow Style */}
       <MobileHeaderZillow />
 
-      {/* Desktop Navigation - JamesEdition style (transparent, static) */}
+      {/* Desktop Navigation - JamesEdition style (transparent, static, above hero) */}
       <motion.nav
-        className={`hidden md:block w-full relative z-50 transition-all duration-300 bg-transparent`}
+        className={`hidden md:block w-full relative z-[200] transition-all duration-300 bg-transparent`}
       >
         <div className="mx-auto max-w-7xl px-4">
           <div className="grid grid-cols-3 items-center h-16">
