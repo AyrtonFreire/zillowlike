@@ -90,15 +90,13 @@ export default function ModernNavbar() {
       {/* Mobile Header - Zillow Style */}
       <MobileHeaderZillow />
 
-      {/* Desktop Navigation - Transparent overlay style */}
+      {/* Desktop Navigation - Non-sticky */}
       <motion.nav
-        className={`hidden md:block fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`hidden md:block w-full relative z-50 transition-all duration-300 ${
           isScrolled 
             ? 'bg-white/95 shadow-lg backdrop-blur-lg' 
             : 'bg-transparent'
         }`}
-        onMouseLeave={() => scheduleClose(160)}
-        onMouseEnter={() => cancelClose()}
       >
         <div className="mx-auto max-w-7xl px-4">
           <div className="grid grid-cols-3 items-center h-16">
@@ -231,6 +229,11 @@ export default function ModernNavbar() {
         </div>
       </div>
 
+      {/* Small hover buffer to avoid gap between triggers and dropdown */}
+      {megaMenu && (
+        <div className="absolute top-full left-0 right-0 h-3 z-[9999] mega-menu-container" onMouseEnter={() => cancelClose()} />
+      )}
+
       {/* Mega Menu Dropdown */}
       {megaMenu && (
         <motion.div
@@ -239,7 +242,7 @@ export default function ModernNavbar() {
           exit={{ opacity: 0, y: -10 }}
           className="absolute top-full left-0 right-0 bg-white border-t border-gray-200 shadow-2xl mega-menu-container z-[10000]"
           onMouseEnter={() => cancelClose()}
-          onMouseLeave={() => scheduleClose(160)}
+          onMouseLeave={() => scheduleClose(260)}
         >
           <div className="container mx-auto px-4 py-10">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
