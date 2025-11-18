@@ -768,6 +768,72 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         </div>
       )}
       </div>
-      </AnimatePresence>
+
+      {/* Full-screen Lightbox (no header, thumbnails below) */}
+      {showAllPhotos && property && (
+        <>
+          {/* Backdrop above any header */}
+          <div className="fixed inset-0 bg-black/95 z-[30000]" onClick={() => setShowAllPhotos(false)} />
+          <div className="fixed inset-0 z-[30001] flex flex-col items-center justify-center select-none">
+            {/* Close button */}
+            <button
+              aria-label="Fechar galeria"
+              onClick={() => setShowAllPhotos(false)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Main image */}
+            <div className="relative w-[92vw] max-w-6xl aspect-[16/9] bg-black/40 rounded-lg overflow-hidden">
+              <Image
+                src={property!.images[currentImageIndex]?.url || "/placeholder.jpg"}
+                alt={`${property!.title} - foto ${currentImageIndex + 1}`}
+                fill
+                className="object-contain"
+                sizes="(max-width: 1536px) 92vw, 1200px"
+                priority
+              />
+              {/* Prev/Next */}
+              <button
+                aria-label="Anterior"
+                onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                aria-label="Próxima"
+                onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Thumbnails strip */}
+            <div className="mt-4 w-[92vw] max-w-6xl overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 pb-1">
+                {property!.images.map((img, i) => (
+                  <button
+                    key={`thumb-${i}`}
+                    onClick={() => setCurrentImageIndex(i)}
+                    className={`relative shrink-0 w-24 h-16 rounded-md overflow-hidden ring-2 transition-all ${i === currentImageIndex ? 'ring-white' : 'ring-transparent hover:ring-white/60'}`}
+                  >
+                    <Image
+                      src={img.url}
+                      alt={`thumb ${i + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="96px"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
