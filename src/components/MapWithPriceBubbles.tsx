@@ -164,12 +164,12 @@ function MapController({ items, onBoundsChange, autoFitOnItemsChange = false, on
     // Determine grid size and clustering behavior based on zoom
     let gridSize: number;
     let forceCluster: boolean;
-    let mergeDistance: number; // Distance in pixels to merge clusters
+    let mergeDistance: number; // Distance in pixels to merge clusters (absorbs singles near clusters)
     
     if (zoom >= 15) {
       gridSize = 0.0001;
       forceCluster = false;
-      mergeDistance = 0; // No merging at high zoom
+      mergeDistance = 36; // Still merge to avoid cluster overlapping price bubble
     } else if (zoom >= 13) {
       gridSize = 0.002;
       forceCluster = false;
@@ -210,7 +210,8 @@ function MapController({ items, onBoundsChange, autoFitOnItemsChange = false, on
         items: group,
         lat: avgLat,
         lng: avgLng,
-        isCluster: forceCluster || group.length >= 3,
+        // Consider cluster for pairs too to avoid overlapping markers pinned under cluster
+        isCluster: forceCluster || group.length >= 2,
       };
     });
     
@@ -246,7 +247,8 @@ function MapController({ items, onBoundsChange, autoFitOnItemsChange = false, on
                 items: allItems,
                 lat: newLat,
                 lng: newLng,
-                isCluster: forceCluster || allItems.length >= 3,
+                // After merging, if there's more than one item, render as cluster
+                isCluster: forceCluster || allItems.length >= 2,
               };
               
               // Remove c2

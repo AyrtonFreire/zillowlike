@@ -42,22 +42,28 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
   }, []);
 
   useEffect(() => {
+    // Só buscar/abrir quando o campo estiver focado e houver texto
+    if (!focus) { setOpen(false); return; }
+    const q = value.trim();
+    if (!q) { setSuggestions([]); setOpen(false); return; }
+
     const id = setTimeout(async () => {
       setLoading(true);
       try {
-        const url = value ? `/api/locations?q=${encodeURIComponent(value)}` : '/api/locations';
+        const url = `/api/locations?q=${encodeURIComponent(q)}`;
         const res = await fetch(url);
         const data = await res.json();
         if (data?.success) setSuggestions((data.suggestions || []).slice(0, 8));
         setOpen(true);
       } catch {
         setSuggestions([]);
+        setOpen(false);
       } finally {
         setLoading(false);
       }
     }, 250);
     return () => clearTimeout(id);
-  }, [value]);
+  }, [value, focus]);
 
   const role = (session as any)?.user?.role || "USER";
 
@@ -146,7 +152,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
                 </div>
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-xl z-[20010]">
+                <div className="absolute left-0 mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-xl z-[20010]">
                   <ul className="py-1 text-sm text-gray-800">
                     {/* Role-specific shortcuts */}
                     {session && role === 'OWNER' && (

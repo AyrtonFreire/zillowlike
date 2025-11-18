@@ -600,8 +600,8 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
 
           </div>
         </div>
-        {/* Sticky Footer */}
-        <div className="mt-auto sticky bottom-0 bg-white border-t px-4 sm:px-6 py-3">
+        {/* Footer (fixed at end of panel) */}
+        <div className="mt-auto bg-white border-t px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between">
             <button onClick={onClearFilters} className="text-sm text-red-600 hover:text-red-700">Limpar tudo</button>
             <button onClick={onClose} disabled={isApplying} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold disabled:opacity-60 flex items-center gap-2">
