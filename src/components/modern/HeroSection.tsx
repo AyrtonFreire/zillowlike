@@ -218,10 +218,6 @@ export default function HeroSection() {
         ))}
         {/* Dark overlay for better text readability - sempre visível */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
-        {/* Optional city label */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-white/80 text-xs sm:text-sm px-3 py-1.5 rounded-full bg-black/30 backdrop-blur">
-          {slides[slideIndex].city}
-        </div>
       </div>
 
       {/* Subtle animated elements */}

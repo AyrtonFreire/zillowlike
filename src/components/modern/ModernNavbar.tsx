@@ -36,15 +36,7 @@ export default function ModernNavbar() {
     closeTimer.current = window.setTimeout(() => setMegaMenu(null), delay);
   };
   
-  // Transparente na home/topo e sólido ao rolar
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  // Mantém sempre estilo JamesEdition (sem transformação ao rolar)
 
   useEffect(() => {
     const onDoc = (e: Event) => {
@@ -90,13 +82,9 @@ export default function ModernNavbar() {
       {/* Mobile Header - Zillow Style */}
       <MobileHeaderZillow />
 
-      {/* Desktop Navigation - Non-sticky */}
+      {/* Desktop Navigation - JamesEdition style (transparent, static) */}
       <motion.nav
-        className={`hidden md:block w-full relative z-50 transition-all duration-300 ${
-          isScrolled 
-            ? 'bg-white/95 shadow-lg backdrop-blur-lg' 
-            : 'bg-transparent'
-        }`}
+        className={`hidden md:block w-full relative z-50 transition-all duration-300 bg-transparent`}
       >
         <div className="mx-auto max-w-7xl px-4">
           <div className="grid grid-cols-3 items-center h-16">
@@ -112,14 +100,12 @@ export default function ModernNavbar() {
                 onMouseEnter={() => { cancelClose(); setMegaMenu(item.key); setPrimary(item.key); }}
                 onClick={() => { setMegaMenu(megaMenu === item.key ? null : item.key); setPrimary(item.key); }}
                 className={`font-semibold text-[15px] transition-colors relative group ${
-                  isScrolled 
-                    ? (primary === item.key ? 'text-teal' : 'text-gray-900 hover:text-teal')
-                    : (primary === item.key ? 'text-white' : 'text-white/90 hover:text-white')
+                  (primary === item.key ? 'text-white' : 'text-white/90 hover:text-white')
                 }`}
               >
                 {item.label}
                 <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 ${
-                  isScrolled ? 'bg-teal' : 'bg-white'
+                  'bg-white'
                 } ${
                   primary === item.key ? 'w-full' : 'w-0 group-hover:w-full'
                 }`} />
@@ -131,14 +117,10 @@ export default function ModernNavbar() {
           {/* Center: Logo */}
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xl transition-colors ${
-                isScrolled ? 'glass-teal text-white' : 'bg-white/20 backdrop-blur text-white'
-              }`}>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xl transition-colors bg-white/20 backdrop-blur text-white`}>
                 Z
               </div>
-              <span className={`hidden lg:block text-xl font-bold transition-colors ${
-                isScrolled ? 'text-gray-900' : 'text-white'
-              }`}>ZillowLike</span>
+              <span className={`hidden lg:block text-xl font-bold transition-colors text-white`}>ZillowLike</span>
             </Link>
           </div>
           
@@ -146,18 +128,14 @@ export default function ModernNavbar() {
           <div className="flex items-center justify-end gap-2">
             <button 
               onClick={() => setHowItWorksOpen(true)} 
-              className={`hidden lg:flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
-                isScrolled ? 'text-gray-700 hover:bg-gray-50' : 'text-white/90 hover:bg-white/10'
-              }`}
+              className={`hidden lg:flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors text-white/90 hover:bg-white/10`}
             >
               <HelpCircle className="w-4 h-4" />
               <span>Como funciona</span>
             </button>
             <Link 
               href="/favorites" 
-              className={`p-2 rounded-lg transition-colors ${
-                isScrolled ? 'text-gray-700 hover:bg-gray-50' : 'text-white hover:bg-white/10'
-              }`}
+              className={`p-2 rounded-lg transition-colors text-white hover:bg-white/10`}
             >
               <Heart className="w-5 h-5" />
             </Link>
@@ -165,9 +143,7 @@ export default function ModernNavbar() {
               <div className="relative" id="user-menu-trigger">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                    isScrolled ? 'hover:bg-gray-50' : 'hover:bg-white/10'
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors hover:bg-white/10`}
                   aria-haspopup="menu"
                   aria-expanded={userMenuOpen}
                 >
@@ -214,11 +190,7 @@ export default function ModernNavbar() {
             ) : (
               <button
                 onClick={() => signIn()}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
-                  isScrolled 
-                    ? 'glass-teal text-white hover:bg-blue-700' 
-                  : 'bg-white/20 backdrop-blur text-white hover:bg-white/30'
-                }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm bg-white/20 backdrop-blur text-white hover:bg-white/30`}
               >
                 Entrar
               </button>
