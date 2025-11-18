@@ -170,11 +170,48 @@ export default function ModernNavbar() {
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                     isScrolled ? 'hover:bg-gray-50' : 'hover:bg-white/10'
                   }`}
+                  aria-haspopup="menu"
+                  aria-expanded={userMenuOpen}
                 >
                   <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white font-medium text-sm">
                     {session.user?.name?.charAt(0).toUpperCase() || "U"}
                   </div>
                 </button>
+                {userMenuOpen && (
+                  <div id="user-menu-dropdown" className="absolute right-0 mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-xl z-[20000]">
+                    <ul className="py-1 text-sm text-gray-800">
+                      {role === 'OWNER' && (
+                        <>
+                          <li><Link href="/owner/dashboard" className="block px-4 py-2 hover:bg-gray-50">Dashboard</Link></li>
+                          <li><Link href="/owner/properties" className="block px-4 py-2 hover:bg-gray-50">Meus anúncios</Link></li>
+                          <li><Link href="/owner/leads" className="block px-4 py-2 hover:bg-gray-50">Meus leads</Link></li>
+                          <li><hr className="my-1" /></li>
+                        </>
+                      )}
+                      {(role === 'REALTOR' || role === 'AGENCY') && (
+                        <>
+                          <li><Link href="/broker/dashboard" className="block px-4 py-2 hover:bg-gray-50">Painel</Link></li>
+                          <li><Link href="/broker/leads" className="block px-4 py-2 hover:bg-gray-50">Leads</Link></li>
+                          <li><Link href="/broker/properties" className="block px-4 py-2 hover:bg-gray-50">Imóveis</Link></li>
+                          <li><hr className="my-1" /></li>
+                        </>
+                      )}
+                      {role === 'ADMIN' && (
+                        <>
+                          <li><Link href="/admin" className="block px-4 py-2 hover:bg-gray-50">Painel Admin</Link></li>
+                          <li><Link href="/admin/properties" className="block px-4 py-2 hover:bg-gray-50">Gerenciar imóveis</Link></li>
+                          <li><Link href="/admin/users" className="block px-4 py-2 hover:bg-gray-50">Usuários</Link></li>
+                          <li><hr className="my-1" /></li>
+                        </>
+                      )}
+                      <li><Link href="/account" className="block px-4 py-2 hover:bg-gray-50">Minha conta</Link></li>
+                      <li><Link href="/favorites" className="block px-4 py-2 hover:bg-gray-50">Favoritos</Link></li>
+                      <li><Link href="/saved-searches" className="block px-4 py-2 hover:bg-gray-50">Buscas salvas</Link></li>
+                      <li><hr className="my-1" /></li>
+                      <li><button onClick={() => signOut()} className="w-full text-left px-4 py-2 hover:bg-gray-50">Sair</button></li>
+                    </ul>
+                  </div>
+                )}
               </div>
             ) : (
               <button
@@ -182,7 +219,7 @@ export default function ModernNavbar() {
                 className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
                   isScrolled 
                     ? 'glass-teal text-white hover:bg-blue-700' 
-                    : 'bg-white/20 backdrop-blur text-white hover:bg-white/30'
+                  : 'bg-white/20 backdrop-blur text-white hover:bg-white/30'
                 }`}
               >
                 Entrar

@@ -62,7 +62,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
   const role = (session as any)?.user?.role || "USER";
 
   return (
-    <header className="bg-white/95 backdrop-blur border-b border-gray-200">
+    <header className="relative z-[20000] bg-white/95 backdrop-blur border-b border-gray-200">
       <div className="mx-auto max-w-7xl px-4 h-16 grid grid-cols-3 items-center">
         {/* Left: contextual links on desktop, hamburger on mobile */}
         <div className="flex items-center gap-5">
@@ -146,7 +146,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
                 </div>
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-xl z-[12020]">
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-xl z-[20010]">
                   <ul className="py-1 text-sm text-gray-800">
                     {/* Role-specific shortcuts */}
                     {session && role === 'OWNER' && (
@@ -214,7 +214,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
             )}
           </form>
           {open && (suggestions.length > 0 || loading) && (
-            <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-[min(640px,90vw)] rounded-xl border border-gray-200 bg-white shadow-xl z-[12010]">
+            <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-[min(640px,90vw)] rounded-xl border border-gray-200 bg-white shadow-xl z-[20005]">
               <ul className="max-h-80 overflow-auto py-2">
                 {suggestions.map((s, i) => (
                   <li key={i}>
