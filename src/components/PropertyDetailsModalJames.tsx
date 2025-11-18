@@ -215,8 +215,55 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     return () => window.removeEventListener("keydown", handleEsc);
   }, [open, onClose]);
 
-  if (!open) return null;
+  // Keyboard navigation only when full-screen gallery is open
+  useEffect(() => {
+    if (!showAllPhotos || !open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        if (!property) return;
+        setCurrentImageIndex((prev) => (prev === 0 ? property.images.length - 1 : prev - 1));
+      }
+      if (e.key === 'ArrowRight') {
+        if (!property) return;
+        setCurrentImageIndex((prev) => (prev === property.images.length - 1 ? 0 : prev + 1));
+      }
+      if (e.key === 'Escape') setShowAllPhotos(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showAllPhotos, open, property]);
 
+  // Prefetch próximas imagens (usa window.Image para não conflitar com Next/Image)
+  useEffect(() => {
+    if (!showAllPhotos || !property || !open) return;
+    const total = property.images.length;
+    const urls = [1, 2, 3]
+      .map((d) => property.images[(currentImageIndex + d) % total]?.url)
+      .filter(Boolean) as string[];
+    urls.forEach((src) => { try { const img = new (window as any).Image(); img.src = src; } catch {} });
+  }, [showAllPhotos, property, currentImageIndex, open]);
+
+  // Reset zoom/pan whenever foto muda ou lightbox fecha
+  useEffect(() => { 
+    if (!open) return;
+    setZoom(1); 
+    setOffset({ x: 0, y: 0 }); 
+  }, [currentImageIndex, showAllPhotos, open]);
+
+  // Definir quantidade de miniaturas por página (responsivo)
+  useEffect(() => {
+    if (!open) return;
+    const calc = () => {
+      const w = window.innerWidth;
+      const n = w < 480 ? 5 : w < 768 ? 7 : w < 1280 ? 9 : 11;
+      setThumbsPerPage(n);
+    };
+    calc();
+    window.addEventListener('resize', calc);
+    return () => window.removeEventListener('resize', calc);
+  }, [open]);
+
+  // Helper functions
   const prevImage = () => {
     if (!property) return;
     setCurrentImageIndex((prev) => (prev === 0 ? property.images.length - 1 : prev - 1));
@@ -248,42 +295,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     } catch {}
   };
 
-  // Keyboard navigation only when full-screen gallery is open
-  useEffect(() => {
-    if (!showAllPhotos) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') prevImage();
-      if (e.key === 'ArrowRight') nextImage();
-      if (e.key === 'Escape') setShowAllPhotos(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showAllPhotos]);
-
-  // Prefetch próximas imagens (usa window.Image para não conflitar com Next/Image)
-  useEffect(() => {
-    if (!showAllPhotos || !property) return;
-    const total = property.images.length;
-    const urls = [1, 2, 3]
-      .map((d) => property.images[(currentImageIndex + d) % total]?.url)
-      .filter(Boolean) as string[];
-    urls.forEach((src) => { try { const img = new (window as any).Image(); img.src = src; } catch {} });
-  }, [showAllPhotos, property, currentImageIndex]);
-
-  // Reset zoom/pan whenever foto muda ou lightbox fecha
-  useEffect(() => { setZoom(1); setOffset({ x: 0, y: 0 }); }, [currentImageIndex, showAllPhotos]);
-
-  // Definir quantidade de miniaturas por página (responsivo)
-  useEffect(() => {
-    const calc = () => {
-      const w = window.innerWidth;
-      const n = w < 480 ? 5 : w < 768 ? 7 : w < 1280 ? 9 : 11;
-      setThumbsPerPage(n);
-    };
-    calc();
-    window.addEventListener('resize', calc);
-    return () => window.removeEventListener('resize', calc);
-  }, []);
+  if (!open) return null;
 
   if (loading) {
     return (
