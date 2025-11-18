@@ -273,6 +273,18 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   // Reset zoom/pan whenever foto muda ou lightbox fecha
   useEffect(() => { setZoom(1); setOffset({ x: 0, y: 0 }); }, [currentImageIndex, showAllPhotos]);
 
+  // Definir quantidade de miniaturas por página (responsivo)
+  useEffect(() => {
+    const calc = () => {
+      const w = window.innerWidth;
+      const n = w < 480 ? 5 : w < 768 ? 7 : w < 1280 ? 9 : 11;
+      setThumbsPerPage(n);
+    };
+    calc();
+    window.addEventListener('resize', calc);
+    return () => window.removeEventListener('resize', calc);
+  }, []);
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black/50 z-[12000] flex items-center justify-center">
@@ -932,7 +944,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 // note: hook-safe inline effect below
                 return (
                   <>
-                    <ThumbsResponsiveSetter setThumbsPerPage={setThumbsPerPage} />
                     <div className="flex items-center gap-2">
                       <button
                         aria-label="Anterior"
@@ -1007,19 +1018,4 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       )}
     </AnimatePresence>
   );
-}
-
-// Helper: sets thumbnail count per page responsively
-function ThumbsResponsiveSetter({ setThumbsPerPage }: { setThumbsPerPage: (n: number) => void }) {
-  useEffect(() => {
-    const calc = () => {
-      const w = window.innerWidth;
-      const n = w < 480 ? 5 : w < 768 ? 7 : w < 1280 ? 9 : 11;
-      setThumbsPerPage(n);
-    };
-    calc();
-    window.addEventListener('resize', calc);
-    return () => window.removeEventListener('resize', calc);
-  }, [setThumbsPerPage]);
-  return null;
 }
