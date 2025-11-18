@@ -101,7 +101,7 @@ export default function ModernNavbar() {
         onMouseEnter={() => cancelClose()}
       >
         <div className="mx-auto max-w-7xl px-4">
-          <div className={`grid grid-cols-3 items-center ${isScrolled ? 'h-16' : 'h-20'} transition-[height]`}>
+          <div className="grid grid-cols-3 items-center h-16">
             {/* Left: Primary tabs with mega dropdown triggers (Desktop) */}
             <div className="flex items-center justify-start gap-7">
             
