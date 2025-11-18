@@ -53,8 +53,10 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
     return () => clearTimeout(id);
   }, [value]);
 
+  const role = (session as any)?.user?.role || "USER";
+
   return (
-    <header className="fixed top-0 inset-x-0 z-[12000] bg-white/95 backdrop-blur border-b border-gray-200">
+    <header className="bg-white/95 backdrop-blur border-b border-gray-200">
       <div className="mx-auto max-w-7xl px-4 h-16 grid grid-cols-3 items-center">
         <div className="flex items-center gap-3">
           <button type="button" aria-label="Menu" className="p-2 rounded-lg hover:bg-gray-100">
@@ -107,6 +109,38 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
           )}
         </div>
         <div className="flex items-center justify-end gap-2">
+          {(session ? true : true) && (
+            <nav className="hidden md:flex items-center gap-4 mr-3 text-[15px] font-semibold text-gray-800">
+              {role === 'OWNER' && (
+                <>
+                  <Link href="/owner/properties" className="hover:text-teal">Meus anúncios</Link>
+                  <Link href="/owner/leads" className="hover:text-teal">Meus leads</Link>
+                  <Link href="/owner/dashboard" className="hover:text-teal">Dashboard</Link>
+                </>
+              )}
+              {role === 'REALTOR' || role === 'AGENCY' ? (
+                <>
+                  <Link href="/broker/leads" className="hover:text-teal">Leads</Link>
+                  <Link href="/broker/properties" className="hover:text-teal">Imóveis</Link>
+                  <Link href="/broker/dashboard" className="hover:text-teal">Painel</Link>
+                </>
+              ) : null}
+              {role === 'ADMIN' && (
+                <>
+                  <Link href="/admin" className="hover:text-teal">Painel Admin</Link>
+                  <Link href="/admin/properties" className="hover:text-teal">Gerenciar imóveis</Link>
+                  <Link href="/admin/users" className="hover:text-teal">Usuários</Link>
+                </>
+              )}
+              {!session && (
+                <>
+                  <Link href="/?sort=recent" className="hover:text-teal">Comprar</Link>
+                  <Link href="/?status=RENT" className="hover:text-teal">Alugar</Link>
+                  <Link href="/owner/new" className="hover:text-teal">Anunciar imóvel</Link>
+                </>
+              )}
+            </nav>
+          )}
           <button type="button" className="hidden md:flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">
             <HelpCircle className="w-4 h-4" />
             <span>Como funciona</span>

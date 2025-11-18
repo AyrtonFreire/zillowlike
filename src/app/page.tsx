@@ -519,10 +519,10 @@ export default function Home() {
 
       {/* Search Results - Split Screen Layout */}
       {hasSearched && (
-        <div className={`${viewMode === 'split' ? 'flex' : ''} h-[calc(100vh-64px)]`}>
+        <div className={`${viewMode === 'split' ? 'flex' : ''} h-[100vh]`}>
           {/* Left Side - Property List */}
           <div className={`w-full ${viewMode === 'split' ? 'lg:w-1/2' : 'lg:w-full'} overflow-y-auto`}> 
-            <div className="pt-16 px-6 lg:px-8">
+            <div className="pt-6 px-6 lg:px-8">
               {/* Header + Controles - Redesigned Premium */}
               <div className="mb-8">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
