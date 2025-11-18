@@ -2,7 +2,7 @@
 
 import { motion, useScroll, AnimatePresence } from "framer-motion";
 import { Menu, X, User, Heart, Bell, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark, Home, HelpCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,6 +23,18 @@ export default function ModernNavbar() {
   const role = (session as any)?.user?.role || "USER";
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const closeTimer = useRef<number | null>(null as any);
+
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const scheduleClose = (delay = 150) => {
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => setMegaMenu(null), delay);
+  };
   
   // Transparente na home/topo e sólido ao rolar
 
@@ -81,6 +93,8 @@ export default function ModernNavbar() {
       {/* Desktop Navigation */}
       <motion.nav
         className={`hidden md:block fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/90 shadow-lg backdrop-blur-lg`}
+        onMouseLeave={() => scheduleClose(160)}
+        onMouseEnter={() => cancelClose()}
       >
         <div className="mx-auto max-w-7xl px-4">
           <div className={`grid grid-cols-3 items-center ${isScrolled ? 'h-16' : 'h-20'} transition-[height]`}>
@@ -93,7 +107,7 @@ export default function ModernNavbar() {
               <button
                 key={item.label}
                 type="button"
-                onMouseEnter={() => { setMegaMenu(item.key); setPrimary(item.key); }}
+                onMouseEnter={() => { cancelClose(); setMegaMenu(item.key); setPrimary(item.key); }}
                 onClick={() => { setMegaMenu(megaMenu === item.key ? null : item.key); setPrimary(item.key); }}
                 className={`text-gray-900 hover:text-teal font-semibold text-[15px] transition-colors relative group ${
                   primary === item.key ? 'text-teal' : ''
@@ -309,8 +323,9 @@ export default function ModernNavbar() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="absolute top-full left-0 right-0 bg-white border-t border-gray-200 shadow-2xl mega-menu-container"
-          onMouseLeave={() => setMegaMenu(null)}
+          className="absolute top-full left-0 right-0 bg-white border-t border-gray-200 shadow-2xl mega-menu-container z-[10000]"
+          onMouseEnter={() => cancelClose()}
+          onMouseLeave={() => scheduleClose(160)}
         >
           <div className="container mx-auto px-4 py-10">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">

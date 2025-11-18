@@ -583,7 +583,11 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                   {showFullscreenGallery && (
                     <div className="fixed inset-0 z-[13000] bg-black/95 flex items-center justify-center" onClick={() => setShowFullscreenGallery(false)}>
                       <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); setShowFullscreenGallery(false); }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
                         className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all"
                         aria-label="Fechar"
                       >
@@ -625,14 +629,22 @@ export default function PropertyDetailsModal({ propertyId, open, onClose }: Prop
                       {property.images.length > 1 && (
                         <>
                           <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
                             className="absolute left-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all hover:scale-110"
                             aria-label="Imagem anterior"
                           >
                             <ChevronLeft className="w-6 h-6 text-white" />
                           </button>
                           <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
                             className="absolute right-6 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all hover:scale-110"
                             aria-label="Próxima imagem"
                           >

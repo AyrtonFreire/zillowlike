@@ -685,11 +685,39 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       {/* Lightbox de fotos */}
       {showAllPhotos && (
         <div className="fixed inset-0 z-[13000] bg-black/90 flex items-center justify-center" onClick={() => setShowAllPhotos(false)}>
-          <button aria-label="Fechar" onClick={(e) => { e.stopPropagation(); setShowAllPhotos(false); }} className="absolute top-4 right-4 w-10 h-10 rounded-full border border-white/20 text-white/90 hover:text-white hover:bg-white/10 flex items-center justify-center">
+          <button
+            type="button"
+            aria-label="Fechar"
+            onClick={(e) => { e.stopPropagation(); setShowAllPhotos(false); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full border border-white/20 text-white/90 hover:text-white hover:bg-white/10 flex items-center justify-center"
+          >
             <X className="w-5 h-5" />
           </button>
-          <button aria-label="Anterior" onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 md:left-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center">‹</button>
-          <button aria-label="Próximo" onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 md:right-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center">›</button>
+          <button
+            type="button"
+            aria-label="Anterior"
+            onClick={(e) => { e.stopPropagation(); prevImage(); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="absolute left-4 md:left-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            aria-label="Próximo"
+            onClick={(e) => { e.stopPropagation(); nextImage(); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="absolute right-4 md:right-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center"
+          >
+            ›
+          </button>
           <div
             className="relative w-[92vw] md:w-[80vw] lg:w-[70vw] aspect-[16/10]"
             onClick={(e) => e.stopPropagation()}
