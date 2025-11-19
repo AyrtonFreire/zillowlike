@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Building2, Home, Briefcase } from "lucide-react";
@@ -11,7 +11,18 @@ export default function OnboardingPage() {
   const [selectedRole, setSelectedRole] = useState<"REALTOR" | "OWNER" | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const isAdmin =
+    (session as any)?.role === "ADMIN" ||
+    ((session?.user as any)?.role ?? "") === "ADMIN";
+
+  useEffect(() => {
+    if (isAdmin) {
+      router.replace("/admin");
+    }
+  }, [isAdmin, router]);
+
   const handleSubmit = async () => {
+    if (isAdmin) return;
     if (!selectedRole) return;
 
     setLoading(true);
