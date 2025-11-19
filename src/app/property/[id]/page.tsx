@@ -495,14 +495,28 @@ export default async function PropertyPage({ params }: PageProps) {
       )}
 
       {/* Sticky mobile CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-30 md:hidden bg-white/90 backdrop-blur border-t p-3 flex items-center justify-between pb-[max(env(safe-area-inset-bottom),12px)]">
+      <div className="fixed inset-x-0 bottom-0 z-30 md:hidden bg-white/95 backdrop-blur-sm border-t border-neutral-200 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] px-4 py-3 flex items-center justify-between gap-3 pb-[max(env(safe-area-inset-bottom),12px)]">
         <div>
-          <div className="text-sm text-gray-600">A partir de</div>
-          <div className="text-xl font-bold text-blue-700">R$ {(property.price/100).toLocaleString('pt-BR')}</div>
+          <div className="text-xs text-gray-500">Valor do imóvel</div>
+          <div className="text-xl font-semibold text-blue-700">R$ {(property.price/100).toLocaleString('pt-BR')}</div>
         </div>
         <div className="flex gap-2">
-          <Link prefetch={false} href={`/property/${property.id}/schedule-visit?pref=${encodeURIComponent(nextDay1530())}`} className="px-4 py-2 rounded-lg glass-teal text-white font-medium shadow">Agendar visita</Link>
-          {whatsapp && <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Tenho interesse no imóvel: ${property.title} - ${pageUrl}`)}`} target="_blank" className="px-4 py-2 rounded-lg bg-green-600 text-white font-medium shadow">WhatsApp</a>}
+          <Link
+            prefetch={false}
+            href={`/property/${property.id}/schedule-visit?pref=${encodeURIComponent(nextDay1530())}`}
+            className="px-4 py-2 rounded-lg glass-teal text-white text-sm font-semibold shadow"
+          >
+            Agendar visita
+          </Link>
+          {whatsapp && (
+            <a
+              href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Tenho interesse no imóvel: ${property.title} - ${pageUrl}`)}`}
+              target="_blank"
+              className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold shadow"
+            >
+              WhatsApp
+            </a>
+          )}
         </div>
       </div>
     </div>

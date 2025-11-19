@@ -5,7 +5,7 @@ import { Menu, X, User, Heart, Bell, LogOut, ChevronDown, LayoutDashboard, Build
 import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import MobileHeaderZillow from "./MobileHeaderZillow";
 import HowItWorksModal from "./HowItWorksModal";
 
@@ -19,6 +19,7 @@ export default function ModernNavbar() {
   const { data: session } = useSession();
   const router = useRouter();
   const { scrollY } = useScroll();
+  const pathname = usePathname();
   
   const role = (session as any)?.user?.role || "USER";
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -77,14 +78,20 @@ export default function ModernNavbar() {
     { label: "Anunciar imóvel", key: "anunciar" as const },
   ];
 
+  const isDashboardContext = pathname?.startsWith("/admin") || pathname?.startsWith("/owner") || pathname?.startsWith("/broker");
+
   return (
     <>
       {/* Mobile Header - Zillow Style */}
       <MobileHeaderZillow />
 
-      {/* Desktop Navigation - JamesEdition style (transparent, static, above hero) */}
+      {/* Desktop Navigation - JamesEdition style on home, solid on dashboards */}
       <motion.nav
-        className={`hidden md:block w-full relative z-[200] transition-all duration-300 bg-transparent`}
+        className={`hidden md:block w-full relative z-[200] transition-all duration-300 ${
+          isDashboardContext
+            ? "bg-gradient-to-r from-teal-light to-teal shadow-md"
+            : "bg-transparent"
+        }`}
       >
         <div className="mx-auto max-w-7xl px-4">
           <div className="grid grid-cols-3 items-center h-16">

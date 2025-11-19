@@ -98,6 +98,7 @@ export default function ScheduleVisitForm({
               weekday: "short",
             });
             const dayNum = date.getDate();
+            const isToday = date.toDateString() === new Date().toDateString();
 
             return (
               <button
@@ -111,17 +112,22 @@ export default function ScheduleVisitForm({
                   px-3 py-3 rounded-lg border-2 transition-all
                   ${
                     isSelected
-                      ? "border-blue-600 bg-blue-50 text-blue-700"
+                      ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
                       : "border-gray-200 hover:border-blue-300 text-gray-700"
                   }
                 `}
               >
-                <div className="text-xs font-medium capitalize">{dayName}</div>
+                <div className="text-xs font-medium capitalize">
+                  {isToday ? "Hoje" : dayName}
+                </div>
                 <div className="text-lg font-bold">{dayNum}</div>
               </button>
             );
           })}
         </div>
+        <p className="mt-2 text-xs text-gray-500">
+          Se precisar, você pode combinar outro dia ou horário depois diretamente com o corretor.
+        </p>
       </div>
 
       {/* Seletor de Horário */}
@@ -216,7 +222,7 @@ export default function ScheduleVisitForm({
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800 text-sm">
           {error}
         </div>
       )}
