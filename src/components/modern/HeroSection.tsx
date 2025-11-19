@@ -275,38 +275,11 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="w-full max-w-4xl mx-auto relative"
+            className="w-full max-w-5xl mx-auto relative"
           >
             <form onSubmit={handleSearch} className="bg-transparent">
-              {/* Desktop: barra completa */}
-              <div className="hidden sm:block space-y-3">
-                {/* Purpose toggle acima da barra */}
-                <div className="flex gap-6 justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setPurpose('SALE')}
-                    className={`pb-1 text-sm font-semibold tracking-wide uppercase border-b-2 transition-all ${
-                      purpose === 'SALE'
-                        ? 'text-teal-100 border-teal-100'
-                        : 'text-white/70 border-transparent hover:text-white'
-                    }`}
-                  >
-                    Comprar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPurpose('RENT')}
-                    className={`pb-1 text-sm font-semibold tracking-wide uppercase border-b-2 transition-all ${
-                      purpose === 'RENT'
-                        ? 'text-teal-100 border-teal-100'
-                        : 'text-white/70 border-transparent hover:text-white'
-                    }`}
-                  >
-                    Alugar
-                  </button>
-                </div>
-
-                {/* Barra principal */}
+              {/* Desktop: apenas barra de localização + Buscar */}
+              <div className="hidden sm:block">
                 <div className="flex flex-row items-stretch gap-0 rounded-full bg-white/95 backdrop-blur shadow-2xl border border-white/30 overflow-hidden">
                   {/* Campo Localização */}
                   <div ref={searchRef} className="flex-1 flex items-center gap-3 px-6 py-3 bg-transparent">
@@ -319,96 +292,6 @@ export default function HeroSection() {
                       onFocus={() => setShowSuggestions(true)}
                       className="flex-1 outline-none text-gray-800 placeholder:text-gray-500 text-sm bg-transparent"
                     />
-                  </div>
-
-                  {/* Separador */}
-                  <div className="hidden sm:block h-8 w-px bg-gray-200 self-center" />
-
-                  {/* Campo Preço com Dropdown */}
-                  <div ref={priceRef} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowPriceDropdown(!showPriceDropdown)}
-                      className="flex h-full items-center justify-between gap-2 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <span className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-gray-400" />
-                        <span>
-                          {priceRange ? `R$ ${parseInt(priceRange).toLocaleString('pt-BR')}+` : 'Qualquer preço'}
-                        </span>
-                      </span>
-                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showPriceDropdown ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    <AnimatePresence>
-                      {showPriceDropdown && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="absolute top-full mt-2 right-0 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
-                        >
-                          <div className="p-2">
-                            {['', '100000', '300000', '500000', '1000000', '2000000', '5000000'].map((price) => (
-                              <button
-                                key={price}
-                                type="button"
-                                onClick={() => {
-                                  setPriceRange(price);
-                                  setShowPriceDropdown(false);
-                                }}
-                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-sm text-gray-700"
-                              >
-                                {price ? `R$ ${parseInt(price).toLocaleString('pt-BR')}+` : 'Qualquer preço'}
-                              </button>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* Separador */}
-                  <div className="hidden sm:block h-8 w-px bg-gray-200 self-center" />
-
-                  {/* Campo Quartos com Dropdown */}
-                  <div ref={bedroomsRef} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowBedroomsDropdown(!showBedroomsDropdown)}
-                      className="flex h-full items-center gap-2 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <Bed className="w-4 h-4 text-gray-400" />
-                      <span>{bedrooms ? `${bedrooms}+ quartos` : 'Qualquer quarto'}</span>
-                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showBedroomsDropdown ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    <AnimatePresence>
-                      {showBedroomsDropdown && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="absolute top-full mt-2 right-0 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
-                        >
-                          <div className="p-2">
-                            {['', '1', '2', '3', '4', '5'].map((bed) => (
-                              <button
-                                key={bed}
-                                type="button"
-                                onClick={() => {
-                                  setBedrooms(bed);
-                                  setShowBedroomsDropdown(false);
-                                }}
-                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-sm text-gray-700"
-                              >
-                                {bed ? `${bed}+ quartos` : 'Qualquer quarto'}
-                              </button>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
 
                   {/* Botão Buscar */}
