@@ -250,7 +250,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="text-center text-white max-w-5xl mx-auto"
+          className="text-center text-white max-w-3xl mx-auto"
         >
           <motion.h1
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-normal mb-4 px-2 leading-tight"
@@ -275,7 +275,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="w-full max-w-5xl mx-auto relative"
+            className="w-full max-w-3xl mx-auto relative"
           >
             <form onSubmit={handleSearch} className="bg-transparent">
               {/* Desktop: apenas barra de localização + Buscar */}
