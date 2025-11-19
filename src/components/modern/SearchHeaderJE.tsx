@@ -258,7 +258,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="md:hidden fixed inset-0 bg-black/50 z-[11990]"
+              className="md:hidden fixed inset-0 bg-black/50 z-[21990]"
               onClick={() => setLeftOpen(false)}
             />
             <motion.aside
@@ -267,7 +267,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'tween', duration: 0.25 }}
-              className="md:hidden fixed inset-y-0 left-0 w-[85%] max-w-sm bg-white z-[12000] shadow-xl overflow-y-auto"
+              className="md:hidden fixed inset-y-0 left-0 w-[85%] max-w-sm bg-white z-[22000] shadow-xl overflow-y-auto"
             >
               <div className="p-4 border-b flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900">Explorar</h2>
@@ -334,7 +334,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="md:hidden fixed inset-0 bg-black/50 z-[11990]"
+              className="md:hidden fixed inset-0 bg-black/50 z-[21990]"
               onClick={() => setRightOpen(false)}
             />
             <motion.aside
@@ -343,7 +343,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'tween', duration: 0.25 }}
-              className="md:hidden fixed inset-y-0 right-0 w-[85%] max-w-sm bg-white z-[12000] shadow-xl overflow-y-auto"
+              className="md:hidden fixed inset-y-0 right-0 w-[85%] max-w-sm bg-white z-[22000] shadow-xl overflow-y-auto"
             >
               <div className="p-4 border-b flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900">Minha conta</h2>

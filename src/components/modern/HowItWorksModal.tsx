@@ -70,40 +70,40 @@ export default function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProp
   ];
 
   const premiumFeatures = [
-    { icon: Camera, text: "Tours virtuais 360°" },
-    { icon: Eye, text: "Destaque na home" },
-    { icon: MessageSquare, text: "Suporte prioritário" },
-    { icon: Shield, text: "Selo de verificação" }
+    { icon: Camera, text: "Mídias avançadas como vídeo e tour 360° (em estudo)" },
+    { icon: Eye, text: "Destaque em áreas estratégicas da plataforma (em breve)" },
+    { icon: MessageSquare, text: "Ferramentas melhores de contato e acompanhamento" },
+    { icon: Shield, text: "Selo visível para corretores verificados" }
   ];
 
   const ownerPage = {
     heroTitle: 'Para Proprietários',
-    heroDesc: 'Anuncie seu imóvel gratuitamente e negocie com segurança pela plataforma',
+    heroDesc: 'Anuncie seu imóvel gratuitamente, receba contatos e organize visitas em um só lugar',
     blocks: [
       {
-        title: 'Como postar seu imóvel',
+        title: 'Como funciona na prática',
         bullets: [
-          'Crie sua conta gratuitamente e complete seu perfil',
-          'Preencha endereço, características e preço sugerido',
-          'Adicione fotos em alta e, se quiser, vídeo ou tour 360°',
-          'Revise e publique: nosso time faz verificação básica',
+          'Crie sua conta gratuitamente e complete seu perfil básico',
+          'Cadastre o endereço aproximado, características e valor do imóvel',
+          'Adicione fotos do imóvel direto do celular, sem burocracia',
+          'Publique e acompanhe tudo pelo painel do proprietário',
         ],
       },
       {
-        title: 'Leads e conversas',
+        title: 'Leads e visitas',
         bullets: [
-          'Receba contatos no painel em tempo real',
-          'Responda pelo chat seguro da plataforma',
-          'Marque visitas com confirmação automática',
-          'Histórico completo por imóvel e por interessado',
+          'Receba pedidos de contato e de visita no painel',
+          'Combine detalhes por WhatsApp, telefone ou como preferir',
+          'Confirme ou recuse visitas de forma simples, sem pressão',
+          'Veja o histórico de leads por imóvel em um só lugar',
         ],
       },
       {
-        title: 'Venda direta ou com corretor',
+        title: 'O que estamos evoluindo para proprietários',
         bullets: [
-          'Opção de venda direta sem comissão',
-          'Convidar seu corretor para gerenciar o anúncio',
-          'Upgrade para destaque premium quando precisar',
+          'Mais indicadores sobre quais anúncios estão chamando mais atenção',
+          'Formas mais claras de destacar seu imóvel dentro da plataforma',
+          'Ferramentas extras para acompanhar conversas e retornos dos interessados',
         ],
       },
     ],
@@ -111,29 +111,29 @@ export default function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProp
 
   const realtorPage = {
     heroTitle: 'Para Corretores',
-    heroDesc: 'Ferramentas profissionais para captar, nutrir e fechar negócios',
+    heroDesc: 'Ferramentas simples para organizar leads e visitas com transparência',
     blocks: [
       {
-        title: 'Verificação profissional',
+        title: 'Cadastro e verificação',
         bullets: [
-          'Envie CRECI e dados básicos para verificação',
-          'Receba o Selo Pro e libere o painel completo',
+          'Crie sua conta e envie seus dados de corretor para análise',
+          'Nosso time valida o cadastro e libera o painel de corretor quando estiver tudo certo',
         ],
       },
       {
-        title: 'Mural de leads e captação',
+        title: 'Mural de leads',
         bullets: [
-          'Acesse o mural com leads intencionados por região',
-          'Filtros por tipo, ticket e urgência',
-          'Reivindique, responda e acompanhe o funil',
+          'Acesse o mural com oportunidades organizadas por região e perfil',
+          'Use filtros por tipo de imóvel, cidade e faixa de valor',
+          'Candidate-se aos leads, acompanhe status e organize seu dia',
         ],
       },
       {
-        title: 'Gestão e analytics',
+        title: 'Painel e organização',
         bullets: [
-          'Dashboard com métricas por anúncio e por campanha',
-          'Exportação de contatos e integrações (CSV/CRM)',
-          'Equipe/Imobiliária: permissões e distribuição',
+          'Veja rapidamente quantos leads você tem reservados e confirmados',
+          'Enxergue quais imóveis estão gerando mais interesse',
+          'No nosso roadmap: exportar leads e integrar com outras ferramentas de CRM',
         ],
       },
     ],
@@ -273,7 +273,7 @@ export default function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProp
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
                         <Sparkles className="w-5 h-5 text-white" />
                       </div>
-                      <h3 className="text-2xl font-bold text-gray-900">Recursos Premium</h3>
+                      <h3 className="text-2xl font-bold text-gray-900">O que estamos construindo a seguir</h3>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {premiumFeatures.map((feature, i) => (
@@ -298,12 +298,12 @@ export default function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProp
                         <Shield className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">100% Seguro e Confiável</h3>
-                        <p className="text-gray-700 mb-4">Todos os anúncios são verificados pela nossa equipe. Seus dados estão protegidos e você tem total controle sobre suas informações.</p>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Segurança e cuidado com seus dados</h3>
+                        <p className="text-gray-700 mb-4">Estamos construindo a plataforma com foco em transparência. Usamos conexões seguras (HTTPS) e fazemos moderação manual sempre que necessário, e vamos evoluir continuamente os processos de verificação.</p>
                         <div className="flex flex-wrap gap-3">
-                          <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">🔒 Dados criptografados</span>
-                          <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">✓ Anúncios verificados</span>
-                          <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">🛡️ Anti-fraude</span>
+                          <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">🔒 Conexão segura (HTTPS)</span>
+                          <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">✓ Equipe de suporte humana</span>
+                          <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">🛡️ Processos de verificação em evolução</span>
                         </div>
                       </div>
                     </div>
