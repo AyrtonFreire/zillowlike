@@ -270,25 +270,25 @@ export default function HeroSection() {
             Explore milhares de casas, mansões e imóveis de luxo em todo o Brasil em uma simples busca
           </motion.p>
 
-          {/* Search Bar - Melhorado para mobile com dropdowns funcionais */}
+          {/* Search Bar - estilo mais simples/high-end tipo JamesEdition */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
             className="w-full max-w-4xl mx-auto relative"
           >
-            <form onSubmit={handleSearch} className="bg-white/95 backdrop-blur rounded-3xl shadow-2xl">
-              {/* Desktop: Full form */}
-              <div className="hidden sm:block p-4">
-                {/* Purpose Toggle - Comprar/Alugar - Centralizado e mais visível */}
-                <div className="flex gap-6 mb-2.5 justify-center border-b border-gray-200 pb-2">
+            <form onSubmit={handleSearch} className="bg-transparent">
+              {/* Desktop: barra completa */}
+              <div className="hidden sm:block space-y-3">
+                {/* Purpose toggle acima da barra */}
+                <div className="flex gap-6 justify-center">
                   <button
                     type="button"
                     onClick={() => setPurpose('SALE')}
-                    className={`px-4 pb-2 text-base font-bold transition-all ${
+                    className={`pb-1 text-sm font-semibold tracking-wide uppercase border-b-2 transition-all ${
                       purpose === 'SALE'
-                        ? 'text-teal-700 border-b-3 border-teal-600 scale-105'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'text-teal-100 border-teal-100'
+                        : 'text-white/70 border-transparent hover:text-white'
                     }`}
                   >
                     Comprar
@@ -296,189 +296,148 @@ export default function HeroSection() {
                   <button
                     type="button"
                     onClick={() => setPurpose('RENT')}
-                    className={`px-4 pb-2 text-base font-bold transition-all ${
+                    className={`pb-1 text-sm font-semibold tracking-wide uppercase border-b-2 transition-all ${
                       purpose === 'RENT'
-                        ? 'text-teal-700 border-b-3 border-teal-600 scale-105'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'text-teal-100 border-teal-100'
+                        : 'text-white/70 border-transparent hover:text-white'
                     }`}
                   >
                     Alugar
                   </button>
                 </div>
 
-                <div className="flex flex-row items-center gap-1">
+                {/* Barra principal */}
+                <div className="flex flex-row items-stretch gap-0 rounded-full bg-white/95 backdrop-blur shadow-2xl border border-white/30 overflow-hidden">
                   {/* Campo Localização */}
-                  <div ref={searchRef} className="flex-1 flex items-center gap-3 px-6 py-2.5 bg-transparent rounded-full w-full">
-                  <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Cidade, Região ou País"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => setShowSuggestions(true)}
-                    className="flex-1 outline-none text-gray-800 placeholder:text-gray-500 text-sm bg-transparent"
-                  />
-                </div>
-                
-                {/* Separador */}
-                <div className="hidden sm:block h-7 w-px bg-gray-300"></div>
-                
-                {/* Campo Tipo de Imóvel com Dropdown */}
-                <div ref={propertyTypeRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowPropertyTypeDropdown(!showPropertyTypeDropdown)}
-                    className="flex items-center justify-between gap-2 px-4 sm:px-6 py-2.5 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
+                  <div ref={searchRef} className="flex-1 flex items-center gap-3 px-6 py-3 bg-transparent">
+                    <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="Cidade, região, bairro"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setShowSuggestions(true)}
+                      className="flex-1 outline-none text-gray-800 placeholder:text-gray-500 text-sm bg-transparent"
+                    />
+                  </div>
+
+                  {/* Separador */}
+                  <div className="hidden sm:block h-8 w-px bg-gray-200 self-center" />
+
+                  {/* Campo Preço com Dropdown */}
+                  <div ref={priceRef} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowPriceDropdown(!showPriceDropdown)}
+                      className="flex h-full items-center justify-between gap-2 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-gray-400" />
+                        <span>
+                          {priceRange ? `R$ ${parseInt(priceRange).toLocaleString('pt-BR')}+` : 'Qualquer preço'}
+                        </span>
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showPriceDropdown ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                      {showPriceDropdown && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute top-full mt-2 right-0 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
+                        >
+                          <div className="p-2">
+                            {['', '100000', '300000', '500000', '1000000', '2000000', '5000000'].map((price) => (
+                              <button
+                                key={price}
+                                type="button"
+                                onClick={() => {
+                                  setPriceRange(price);
+                                  setShowPriceDropdown(false);
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-sm text-gray-700"
+                              >
+                                {price ? `R$ ${parseInt(price).toLocaleString('pt-BR')}+` : 'Qualquer preço'}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Separador */}
+                  <div className="hidden sm:block h-8 w-px bg-gray-200 self-center" />
+
+                  {/* Campo Quartos com Dropdown */}
+                  <div ref={bedroomsRef} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowBedroomsDropdown(!showBedroomsDropdown)}
+                      className="flex h-full items-center gap-2 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <Bed className="w-4 h-4 text-gray-400" />
+                      <span>{bedrooms ? `${bedrooms}+ quartos` : 'Qualquer quarto'}</span>
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showBedroomsDropdown ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                      {showBedroomsDropdown && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute top-full mt-2 right-0 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
+                        >
+                          <div className="p-2">
+                            {['', '1', '2', '3', '4', '5'].map((bed) => (
+                              <button
+                                key={bed}
+                                type="button"
+                                onClick={() => {
+                                  setBedrooms(bed);
+                                  setShowBedroomsDropdown(false);
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-sm text-gray-700"
+                              >
+                                {bed ? `${bed}+ quartos` : 'Qualquer quarto'}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Botão Buscar */}
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="submit"
+                    disabled={isLoading}
+                    className="bg-teal-700 hover:bg-teal-800 text-white px-6 sm:px-8 text-sm font-semibold flex items-center justify-center whitespace-nowrap disabled:opacity-60"
                   >
-                    <Home className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm text-gray-700">
-                      {propertyType ? propertyType : 'Tipo de imóvel'}
-                    </span>
-                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showPropertyTypeDropdown ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  <AnimatePresence>
-                    {showPropertyTypeDropdown && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full mt-2 left-0 right-0 sm:left-auto sm:right-auto sm:w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
-                      >
-                        <div className="p-2">
-                          {['', 'Casa', 'Apartamento', 'Condomínio', 'Terreno', 'Comercial', 'Rural'].map((type) => (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() => {
-                                setPropertyType(type);
-                                setShowPropertyTypeDropdown(false);
-                              }}
-                              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-sm text-gray-700"
-                            >
-                              {type || 'Todos os tipos'}
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
+                    {isLoading ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Search className="w-4 h-4" />
+                        <span>Buscar</span>
+                      </span>
                     )}
-                  </AnimatePresence>
+                  </motion.button>
                 </div>
-                
-                {/* Separador */}
-                <div className="hidden sm:block h-8 w-px bg-gray-300"></div>
-                
-                {/* Campo Preço com Dropdown */}
-                <div ref={priceRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowPriceDropdown(!showPriceDropdown)}
-                    className="flex items-center justify-between gap-2 px-4 sm:px-6 py-2.5 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
-                  >
-                    <DollarSign className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm text-gray-700">
-                      {priceRange ? `R$ ${parseInt(priceRange).toLocaleString('pt-BR')}+` : 'Qualquer preço'}
-                    </span>
-                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showPriceDropdown ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  <AnimatePresence>
-                    {showPriceDropdown && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full mt-2 left-0 right-0 sm:left-auto sm:right-auto sm:w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
-                      >
-                        <div className="p-2">
-                          {['', '100000', '300000', '500000', '1000000', '2000000', '5000000'].map((price) => (
-                            <button
-                              key={price}
-                              type="button"
-                              onClick={() => {
-                                setPriceRange(price);
-                                setShowPriceDropdown(false);
-                              }}
-                              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-sm text-gray-700"
-                            >
-                              {price ? `R$ ${parseInt(price).toLocaleString('pt-BR')}+` : 'Qualquer preço'}
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-                
-                {/* Separador */}
-                <div className="hidden sm:block h-8 w-px bg-gray-300"></div>
-                
-                {/* Campo Quartos com Dropdown */}
-                <div ref={bedroomsRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowBedroomsDropdown(!showBedroomsDropdown)}
-                    className="flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl sm:rounded-full w-full sm:w-auto border border-gray-200 sm:border-0 hover:bg-gray-50 transition-colors"
-                  >
-                    <Bed className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm text-gray-700">
-                      {bedrooms ? `${bedrooms}+ quartos` : 'Qualquer quarto'}
-                    </span>
-                  </button>
-                  
-                  <AnimatePresence>
-                    {showBedroomsDropdown && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full mt-2 left-0 right-0 sm:left-auto sm:right-auto sm:w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
-                      >
-                        <div className="p-2">
-                          {['', '1', '2', '3', '4', '5'].map((bed) => (
-                            <button
-                              key={bed}
-                              type="button"
-                              onClick={() => {
-                                setBedrooms(bed);
-                                setShowBedroomsDropdown(false);
-                              }}
-                              className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-sm text-gray-700"
-                            >
-                              {bed ? `${bed}+ quartos` : 'Qualquer quarto'}
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-                
-                {/* Botão Search (apenas ícone para reduzir poluição visual) */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  aria-label="Buscar"
-                  disabled={isLoading}
-                  className="glass-teal text-white w-12 h-12 rounded-full flex items-center justify-center disabled:opacity-50 shadow-lg"
-                >
-                  {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Search className="w-5 h-5" />
-                  )}
-                </motion.button>
-              </div>
               </div>
 
-              {/* Mobile: Minimal search bar (no outer pill) */}
+              {/* Mobile: barra simples */}
               <div className="sm:hidden px-4 py-3">
                 <div ref={searchRef} className="flex items-center gap-2">
                   <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
                   <input
                     type="text"
-                    placeholder="City, Region, Country"
+                    placeholder="Cidade, região, bairro"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => setShowSuggestions(true)}
