@@ -507,40 +507,41 @@ export default function Home() {
 
       {/* Perfis principais: comprador, proprietário, corretor */}
       {!hasSearched && (
-        <div className="bg-gray-50">
-          <div className="mx-auto max-w-7xl px-4 py-10 sm:py-12">
-            <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
-              <p className="text-xs sm:text-sm font-semibold tracking-[0.18em] text-teal-600 uppercase">
+        <div className="bg-gradient-to-b from-gray-100 via-gray-100 to-gray-200">
+          <div className="mx-auto max-w-7xl px-4 py-12 sm:py-16">
+            <div className="max-w-4xl mx-auto mb-10 sm:mb-12 px-1 sm:px-0">
+              <p className="text-xs sm:text-sm font-semibold tracking-[0.18em] text-teal-600 uppercase text-left">
                 Para quem é o Zillowlike
               </p>
-              <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-display text-gray-900">
+              <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-display text-gray-900 text-left">
                 Três jeitos de usar a plataforma
               </h2>
-              <p className="mt-3 text-sm sm:text-base text-gray-600">
+              <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-xl text-left">
                 Um lugar único para quem busca um lar, para quem quer anunciar com calma
                 e para corretores que valorizam um atendimento humano e sem leilão de preço.
               </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 md:gap-8 md:grid-cols-3 items-stretch">
               {/* Comprador / locatário */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="rounded-full bg-teal-50 text-teal-700 p-3">
-                    <KeyRound className="w-6 h-6" />
-                  </span>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Quero encontrar um imóvel
-                  </h3>
+              <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_30px_60px_rgba(15,23,42,0.25)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_40px_80px_rgba(15,23,42,0.35)]">
+                <div className="mb-5 sm:mb-6 flex justify-center">
+                  <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-teal-500">
+                    <Image
+                      src="https://images.unsplash.com/photo-1600585154340-0ef3c08c0632?auto=format&fit=crop&w=800&q=80"
+                      alt="Casal feliz comemorando novo imóvel"
+                      fill
+                      sizes="160px"
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">
-                  Explore casas e apartamentos com informações claras, fotos boas e
-                  agenda de visitas simples.
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                  Quero encontrar um imóvel
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
+                  Explore casas e apartamentos com informações claras, fotos boas e agenda de visitas simples, sem pressão para fechar negócio nem disputas de lance.
                 </p>
-                <ul className="text-sm text-gray-600 space-y-1.5 mb-6">
-                  <li>• Busca por cidade, região ou bairro em poucos cliques.</li>
-                  <li>• Sem pressão para fechar negócio ou disputas de lance.</li>
-                </ul>
                 <button
                   type="button"
                   onClick={() => {
@@ -549,59 +550,61 @@ export default function Home() {
                       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                     }
                   }}
-                  className="mt-auto inline-flex items-center justify-center rounded-full border border-teal-600/70 px-4 py-2.5 text-sm font-semibold text-teal-700 hover:bg-teal-50 transition-colors"
+                  className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 shadow-md hover:shadow-lg transition-all"
                 >
                   Explorar imóveis
                 </button>
               </div>
 
               {/* Proprietário */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="rounded-full bg-amber-50 text-amber-600 p-3">
-                    <Building2 className="w-6 h-6" />
-                  </span>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Quero vender ou alugar meu imóvel
-                  </h3>
+              <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_30px_60px_rgba(15,23,42,0.25)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_40px_80px_rgba(15,23,42,0.35)]">
+                <div className="mb-5 sm:mb-6 flex justify-center">
+                  <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-amber-500">
+                    <Image
+                      src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80"
+                      alt="Fachada de uma casa moderna e bem iluminada"
+                      fill
+                      sizes="160px"
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">
-                  Anuncie seu imóvel para um público qualificado, com visibilidade
-                  e acompanhamento em um painel simples.
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                  Quero vender ou alugar meu imóvel
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
+                  Anuncie seu imóvel para um público qualificado, com visibilidade e acompanhamento em um painel simples, no seu ritmo.
                 </p>
-                <ul className="text-sm text-gray-600 space-y-1.5 mb-6">
-                  <li>• Controle do que está sendo anunciado e do ritmo das respostas.</li>
-                  <li>• Apoio de corretores parceiros quando fizer sentido para você.</li>
-                </ul>
                 <Link
                   href="/owner"
-                  className="mt-auto inline-flex items-center justify-center rounded-full border border-amber-500/70 px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
+                  className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 shadow-md hover:shadow-lg transition-all"
                 >
                   Acessar área do proprietário
                 </Link>
               </div>
 
               {/* Corretor */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="rounded-full bg-indigo-50 text-indigo-600 p-3">
-                    <Briefcase className="w-6 h-6" />
-                  </span>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Sou corretor(a)
-                  </h3>
+              <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_30px_60px_rgba(15,23,42,0.25)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_40px_80px_rgba(15,23,42,0.35)]">
+                <div className="mb-5 sm:mb-6 flex justify-center">
+                  <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-indigo-600">
+                    <Image
+                      src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=800&q=80"
+                      alt="Corretor de imóveis sorrindo em frente a um fundo roxo"
+                      fill
+                      sizes="160px"
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">
-                  Organize leads e visitas em um dashboard pensado para qualidade
-                  de atendimento, não para competição entre corretores.
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                  Sou corretor(a)
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
+                  Organize imóveis, leads e visitas em um dashboard pensado para qualidade de atendimento, sem ranking punitivo ou metas agressivas.
                 </p>
-                <ul className="text-sm text-gray-600 space-y-1.5 mb-6">
-                  <li>• Painel com imóveis, leads e visitas em um só lugar.</li>
-                  <li>• Fluxo sem ranking punitivo ou metas agressivas.</li>
-                </ul>
                 <Link
                   href="/onboarding"
-                  className="mt-auto inline-flex items-center justify-center rounded-full border border-indigo-500/70 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
+                  className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all"
                 >
                   Começar como corretor parceiro
                 </Link>
