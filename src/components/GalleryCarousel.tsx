@@ -46,6 +46,16 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
     return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen, images.length]);
 
+  const handleScroll = () => {
+    const node = viewportRef.current;
+    if (!node) return;
+    const width = node.clientWidth || 1;
+    const rawIndex = Math.round(node.scrollLeft / width);
+    const maxIndex = Math.max(0, images.length - 1);
+    const nextIndex = Math.min(maxIndex, Math.max(0, rawIndex));
+    setIndex((prev) => (prev === nextIndex ? prev : nextIndex));
+  };
+
   const sizes = useMemo(() => "(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1200px", []);
 
   if (!hasImages) return null;
@@ -53,7 +63,7 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
   return (
     <div className="relative">
       {/* Viewport */}
-      <div ref={viewportRef} className="relative w-full h-[320px] md:h-[440px] overflow-hidden flex snap-x snap-mandatory scroll-pl-0 gap-0">
+      <div ref={viewportRef} onScroll={handleScroll} className="relative w-full h-[320px] md:h-[440px] overflow-hidden flex snap-x snap-mandatory scroll-pl-0 gap-0">
         {images.map((img, i) => (
           <div key={i} className="relative w-full h-full flex-shrink-0 snap-start">
             <Image
@@ -69,6 +79,12 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
           </div>
         ))}
       </div>
+
+      {images.length > 1 && (
+        <div className="absolute left-3 top-3 px-2 py-1 rounded-full bg-black/60 text-xs text-white font-medium">
+          {index + 1} / {images.length}
+        </div>
+      )}
 
       {/* Controls */}
       <button aria-label="Imagem anterior" className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white shadow" onClick={() => setIndex((i) => Math.max(0, i - 1))}>
@@ -107,6 +123,15 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
       {fullscreen && (
         <div className="fixed inset-0 z-50">
           <button aria-label="Fechar" className="absolute inset-0 bg-black/80" onClick={() => setFullscreen(false)} />
+          <button
+            aria-label="Fechar"
+            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/70 text-white hover:bg-black/80"
+            onClick={() => setFullscreen(false)}
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative w-[92vw] h-[82vh]">
               {current && (
@@ -118,6 +143,11 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
               <button aria-label="Próxima" className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/90 hover:bg-white shadow" onClick={(e)=>{e.stopPropagation(); setIndex((i) => Math.min(images.length - 1, i + 1));}}>
                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
               </button>
+              <div className="absolute bottom-4 inset-x-0 flex justify-center">
+                <span className="px-3 py-1 rounded-full bg-black/60 text-xs text-white font-medium">
+                  {index + 1} / {images.length}
+                </span>
+              </div>
             </div>
           </div>
         </div>

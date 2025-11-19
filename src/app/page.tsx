@@ -18,8 +18,8 @@ import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
 import { LayoutList, Map, ChevronDown } from "lucide-react";
- 
-import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
+
+const PropertyDetailsModalJames = dynamic(() => import("@/components/PropertyDetailsModalJames"), { ssr: false });
 import SearchFiltersBar from "@/components/SearchFiltersBar";
 import Image from "next/image";
 import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
@@ -39,6 +39,7 @@ export default function Home() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [featured, setFeatured] = useState<Property[]>([]);
   const [featuredLoading, setFeaturedLoading] = useState(true);
   const [trending, setTrending] = useState<Property[]>([]);
@@ -282,68 +283,77 @@ export default function Home() {
 
   // Carregar propriedades baseado na busca
   useEffect(() => {
-    if (hasSearched) {
-      setIsLoading(true);
-      const params = buildSearchParams({
-        q: search,
-        city,
-        state,
-        type,
-        minPrice,
-        maxPrice,
-        bedroomsMin,
-        bathroomsMin,
-        areaMin,
-        sort,
-        page,
-        pageSize: 12
-      });
+    if (!hasSearched) {
+      setSearchError(null);
+      return;
+    }
 
-      fetch(`/api/properties?${params}`)
-        .then(async res => {
-          if (!res.ok) {
-            const text = await res.text();
-            console.error('Search failed (HTTP error):', { status: res.status, statusText: res.statusText, body: text });
-            return null;
-          }
-          try {
-            return await res.json();
-          } catch (err) {
-            console.error('Search failed (JSON parse error):', err);
-            return null;
-          }
-        })
-        .then((data: any) => {
-          if (!data) {
-            setProperties([]);
-            setTotal(0);
-            return;
-          }
-          if (data.success) {
-            setProperties(data.properties || []);
-            setTotal(data.total || 0);
-            setNextPage(2);
-            try {
-              const labelParts: string[] = [];
-              if (city) labelParts.push(city);
-              if (state) labelParts.push(state);
-              if (type) labelParts.push(type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type);
-              const label = labelParts.length ? labelParts.join(', ') : 'Sua última busca';
-              localStorage.setItem('lastSearch', JSON.stringify({ label, params: params.toString() }));
-            } catch {}
-          } else {
-            console.error('Search failed (no success flag):', data);
-            setProperties([]);
-            setTotal(0);
-          }
-        })
-        .catch(err => {
-          console.error('Search failed (network error):', err);
+    setIsLoading(true);
+    setSearchError(null);
+    const params = buildSearchParams({
+      q: search,
+      city,
+      state,
+      type,
+      minPrice,
+      maxPrice,
+      bedroomsMin,
+      bathroomsMin,
+      areaMin,
+      sort,
+      page,
+      pageSize: 12
+    });
+
+    fetch(`/api/properties?${params}`)
+      .then(async res => {
+        if (!res.ok) {
+          const text = await res.text();
+          console.error('Search failed (HTTP error):', { status: res.status, statusText: res.statusText, body: text });
+          setSearchError('Não conseguimos carregar os imóveis agora. Se quiser, tente novamente em alguns instantes.');
+          return null;
+        }
+        try {
+          return await res.json();
+        } catch (err) {
+          console.error('Search failed (JSON parse error):', err);
+          setSearchError('Não conseguimos carregar os imóveis agora. Se quiser, tente novamente em alguns instantes.');
+          return null;
+        }
+      })
+      .then((data: any) => {
+        if (!data) {
           setProperties([]);
           setTotal(0);
-        })
-        .finally(() => setIsLoading(false));
-    }
+          return;
+        }
+        if (data.success) {
+          setProperties(data.properties || []);
+          setTotal(data.total || 0);
+          setNextPage(2);
+          setSearchError(null);
+          try {
+            const labelParts: string[] = [];
+            if (city) labelParts.push(city);
+            if (state) labelParts.push(state);
+            if (type) labelParts.push(type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type);
+            const label = labelParts.length ? labelParts.join(', ') : 'Sua última busca';
+            localStorage.setItem('lastSearch', JSON.stringify({ label, params: params.toString() }));
+          } catch {}
+        } else {
+          console.error('Search failed (no success flag):', data);
+          setProperties([]);
+          setTotal(0);
+          setSearchError('Não conseguimos carregar os imóveis agora. Se quiser, tente novamente em alguns instantes.');
+        }
+      })
+      .catch(err => {
+        console.error('Search failed (network error):', err);
+        setProperties([]);
+        setTotal(0);
+        setSearchError('Não conseguimos carregar os imóveis agora. Se quiser, tente novamente em alguns instantes.');
+      })
+      .finally(() => setIsLoading(false));
   }, [hasSearched, search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page]);
 
   const loadMore = async () => {
@@ -525,19 +535,19 @@ export default function Home() {
 
       {/* Search Results - Split Screen Layout */}
       {hasSearched && (
-        <div className={`${viewMode === 'split' ? 'flex' : ''} h-[100vh]`}>
+        <div className={`${viewMode === 'split' ? 'lg:flex' : ''} lg:h-[100vh]`}>
           {/* Left Side - Property List */}
-          <div className={`w-full ${viewMode === 'split' ? 'lg:w-1/2' : 'lg:w-full'} overflow-y-auto`}> 
-            <div className="pt-6 pb-24 px-6 lg:px-8">
+          <div className={`w-full ${viewMode === 'split' ? 'lg:w-1/2' : 'lg:w-full'} lg:overflow-y-auto`}> 
+            <div className="pt-4 pb-20 px-4 sm:pt-6 sm:pb-24 sm:px-6 lg:px-8">
               {/* Header + Controles - Redesigned Premium */}
               <div className="mb-8">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
                   <div>
-                    <h1 className="font-display text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+                    <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-1.5 sm:mb-2">
                       {total > 0 ? `${total.toLocaleString('pt-BR')} ${total === 1 ? 'imóvel encontrado' : 'imóveis encontrados'}` : 'Nenhum imóvel encontrado'}
                     </h1>
                     {city && (
-                      <p className="text-gray-600 text-lg">
+                      <p className="text-gray-600 text-base sm:text-lg">
                         em <span className="font-semibold text-gray-900">{city}, {state}</span>
                       </p>
                     )}
@@ -940,10 +950,10 @@ export default function Home() {
                 </div>
               )}
 
-              <div className={`grid gap-6 ${viewMode === 'list' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
+              <div className={`grid gap-4 sm:gap-5 lg:gap-6 ${viewMode === 'list' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
                 {isLoading ? (
                   [...Array(6)].map((_, i) => (
-                    <div key={i} className="card animate-pulse p-4">
+                    <div key={i} className="card animate-pulse p-3 sm:p-4">
                       <div className="h-40 bg-gray-200 rounded-xl mb-3"></div>
                       <div className="space-y-2">
                         <div className="h-5 bg-gray-200 rounded w-3/4"></div>
@@ -955,6 +965,39 @@ export default function Home() {
                       </div>
                     </div>
                   ))
+                ) : searchError ? (
+                  <div className="col-span-full py-16">
+                    <EmptyState
+                      icon={
+                        <svg
+                          className="w-16 h-16 text-gray-300 mx-auto mb-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1}
+                            d="M12 9v4m0 4h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"
+                          />
+                        </svg>
+                      }
+                      title="Não foi possível carregar os imóveis"
+                      description={searchError}
+                      action={
+                        <button
+                          onClick={() => {
+                            setSearchError(null);
+                            router.refresh();
+                          }}
+                          className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
+                        >
+                          Tentar novamente
+                        </button>
+                      }
+                    />
+                  </div>
                 ) : properties.length === 0 ? (
                   <div className="col-span-full py-16">
                     <EmptyState
@@ -976,8 +1019,29 @@ export default function Home() {
                       title="Nenhum imóvel encontrado"
                       description={
                         minPrice || maxPrice || bedroomsMin || bathroomsMin || type || areaMin || search
-                          ? "Tente ajustar os filtros ou limpar a busca para ver outras opções."
-                          : "Assim que surgirem imóveis compatíveis com o que você busca, eles aparecem aqui."
+                          ? "Não encontramos nada com esse recorte. Se quiser, você pode aliviar os filtros ou limpar a busca para ver mais opções com calma."
+                          : "Ainda não temos imóveis nesse perfil aqui. Assim que surgirem opções parecidas com o que você busca, elas aparecem aqui sem você precisar fazer nada."
+                      }
+                      action={
+                        (minPrice || maxPrice || bedroomsMin || bathroomsMin || type || areaMin || search) ? (
+                          <button
+                            onClick={() => {
+                              setMinPrice("");
+                              setMaxPrice("");
+                              setBedroomsMin("");
+                              setBathroomsMin("");
+                              setType("");
+                              setAreaMin("");
+                              setSearch("");
+                              setPage(1);
+                              const params = buildSearchParams({ city, state, sort, page: 1 });
+                              router.push(`/?${params}`, { scroll: false });
+                            }}
+                            className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
+                          >
+                            Limpar filtros e ver mais imóveis
+                          </button>
+                        ) : null
                       }
                     />
                   </div>

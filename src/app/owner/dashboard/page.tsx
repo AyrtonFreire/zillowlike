@@ -92,10 +92,13 @@ export default function OwnerDashboard() {
   const [viewsByProperty, setViewsByProperty] = useState<ViewData[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [upcomingVisits, setUpcomingVisits] = useState<UpcomingVisit[]>([]);
   const [visitsLoading, setVisitsLoading] = useState(true);
+  const [visitsError, setVisitsError] = useState<string | null>(null);
   const [pendingLeads, setPendingLeads] = useState<any[]>([]);
   const [pendingLoading, setPendingLoading] = useState(true);
+  const [pendingError, setPendingError] = useState<string | null>(null);
 
   const { data: session, status } = useSession();
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -123,6 +126,8 @@ export default function OwnerDashboard() {
 
   const fetchDashboardData = async () => {
     try {
+      setDashboardError(null);
+      setLoading(true);
       const params = previewUserId ? `?userId=${previewUserId}` : "";
       const response = await fetch(`/api/owner/properties${params}`);
       
@@ -135,10 +140,17 @@ export default function OwnerDashboard() {
       if (data.success) {
         setMetrics(data.metrics);
         setProperties(data.properties);
+      } else {
+        console.error("Error fetching dashboard data (no success flag):", data);
+        setMetrics(null);
+        setProperties([]);
+        setDashboardError("Não conseguimos carregar os dados do seu painel agora. Se quiser, atualize a página em alguns instantes.");
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
+      setMetrics(null);
       setProperties([]);
+      setDashboardError("Não conseguimos carregar os dados do seu painel agora. Se quiser, atualize a página em alguns instantes.");
     } finally {
       setLoading(false);
     }
@@ -146,6 +158,7 @@ export default function OwnerDashboard() {
 
   const fetchUpcomingVisits = async () => {
     try {
+      setVisitsError(null);
       setVisitsLoading(true);
       const params = previewUserId ? `?userId=${previewUserId}` : "";
       const response = await fetch(`/api/owner/leads/confirmed${params}`);
@@ -160,6 +173,7 @@ export default function OwnerDashboard() {
     } catch (error) {
       console.error("Error fetching confirmed visits:", error);
       setUpcomingVisits([]);
+      setVisitsError("Não conseguimos carregar sua agenda de visitas agora. Se quiser, tente novamente em alguns instantes.");
     } finally {
       setVisitsLoading(false);
     }
@@ -167,6 +181,7 @@ export default function OwnerDashboard() {
 
   const fetchPendingLeads = async () => {
     try {
+      setPendingError(null);
       setPendingLoading(true);
       const params = previewUserId ? `?userId=${previewUserId}` : "";
       const response = await fetch(`/api/owner/leads/pending${params}`);
@@ -180,6 +195,7 @@ export default function OwnerDashboard() {
     } catch (error) {
       console.error("Error fetching pending leads:", error);
       setPendingLeads([]);
+      setPendingError("Não conseguimos carregar os horários pendentes agora. Se quiser, tente novamente em alguns instantes.");
     } finally {
       setPendingLoading(false);
     }
@@ -290,6 +306,11 @@ export default function OwnerDashboard() {
       }
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {dashboardError && (
+          <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            {dashboardError}
+          </div>
+        )}
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
@@ -329,7 +350,11 @@ export default function OwnerDashboard() {
         {/* Agenda de visitas & Aprovações pendentes */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <StatCard title="Agenda de visitas">
-            {visitsLoading ? (
+            {visitsError ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="text-sm text-gray-500">{visitsError}</div>
+              </div>
+            ) : visitsLoading ? (
               <div className="flex items-center justify-center py-6">
                 <div className="text-sm text-gray-500">Carregando sua agenda...</div>
               </div>
@@ -382,7 +407,11 @@ export default function OwnerDashboard() {
           </StatCard>
 
           <StatCard title="Aprovações pendentes">
-            {pendingLoading ? (
+            {pendingError ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="text-sm text-gray-500">{pendingError}</div>
+              </div>
+            ) : pendingLoading ? (
               <div className="flex items-center justify-center py-6">
                 <div className="text-sm text-gray-500">Carregando solicitações...</div>
               </div>

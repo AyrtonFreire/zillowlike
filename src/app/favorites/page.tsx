@@ -192,7 +192,7 @@ export default function FavoritesPage() {
               Nenhum favorito ainda
             </h2>
             <p className="text-gray-600 mb-8 max-w-md mx-auto">
-              Explore nossos imóveis e clique no coração para salvar seus favoritos.
+              Explore nossos imóveis com calma e, se quiser, clique no coração para salvar seus favoritos e voltar a eles quando for conveniente.
             </p>
             <Link
               href="/"

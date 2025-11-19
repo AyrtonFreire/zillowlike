@@ -48,7 +48,7 @@ export default function SavedSearchesPage() {
           <div className="bg-white rounded-2xl p-16 text-center shadow-sm">
             <Bookmark className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Nenhuma busca salva</h2>
-            <p className="text-gray-600 mb-6">Salve suas buscas e receba notificações sobre novos imóveis.</p>
+            <p className="text-gray-600 mb-6">Se quiser, salve suas buscas para acompanhar com calma quando surgirem novos imóveis parecidos com o que você procura.</p>
             <Link href="/">
               <Button>Explorar Imóveis</Button>
             </Link>

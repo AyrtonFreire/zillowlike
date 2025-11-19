@@ -41,6 +41,7 @@ export default function MuralLeadsPage() {
   const { data: session } = useSession();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     city: "",
     state: "",
@@ -64,6 +65,8 @@ export default function MuralLeadsPage() {
 
   const fetchLeads = async () => {
     try {
+      setError(null);
+      setLoading(true);
       const params = new URLSearchParams();
       if (filters.city) params.append("city", filters.city);
       if (filters.state) params.append("state", filters.state);
@@ -76,6 +79,7 @@ export default function MuralLeadsPage() {
       setLeads(data);
     } catch (error) {
       console.error("Error fetching leads:", error);
+      setError('Não conseguimos carregar os leads do mural agora. Se quiser, tente novamente em alguns instantes.');
     } finally {
       setLoading(false);
     }
@@ -125,10 +129,10 @@ export default function MuralLeadsPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert(`Candidatura enviada. Agora são ${data.totalCandidates} corretores interessados neste lead.`);
+        alert(`Candidatura enviada. Agora são ${data.totalCandidates} corretores interessados neste lead, sem nenhuma penalidade para você.`);
         fetchLeads();
       } else {
-        alert("Não conseguimos registrar sua candidatura agora. Tente novamente mais tarde.");
+        alert("Não conseguimos registrar sua candidatura agora. Se quiser, tente de novo em alguns instantes.");
       }
     } catch (error) {
       console.error("Error candidating:", error);
@@ -137,7 +141,7 @@ export default function MuralLeadsPage() {
   };
 
   const handleAccept = async (leadId: string) => {
-    if (!confirm("Você gostaria de assumir este lead agora?")) return;
+    if (!confirm("Você gostaria de assumir este lead agora? Se ainda estiver em dúvida, pode decidir mais tarde.")) return;
 
     try {
       const response = await fetch(`/api/leads/${leadId}/accept`, {
@@ -149,10 +153,10 @@ export default function MuralLeadsPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("Lead assumido com sucesso! Fique à vontade para fazer o primeiro contato do seu jeito.");
+        alert("Lead assumido. Fique à vontade para fazer o primeiro contato do seu jeito, sem pressa.");
         fetchLeads();
       } else {
-        alert("Não conseguimos assumir este lead agora. Tente novamente mais tarde.");
+        alert("Não conseguimos assumir este lead agora. Se quiser, tente de novo em alguns instantes.");
       }
     } catch (error) {
       console.error("Error accepting lead:", error);
@@ -161,7 +165,7 @@ export default function MuralLeadsPage() {
   };
 
   const handleReject = async (leadId: string) => {
-    if (!confirm("Você gostaria de recusar este lead agora?")) return;
+    if (!confirm("Tem certeza de que prefere recusar este lead agora? Tudo bem se sim.")) return;
 
     try {
       const response = await fetch(`/api/leads/${leadId}/reject`, {
@@ -173,14 +177,14 @@ export default function MuralLeadsPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("Lead recusado com sucesso! Obrigado por considerar.");
+        alert("Lead recusado. Você continua disponível para outras oportunidades.");
         fetchLeads();
       } else {
-        alert("Não conseguimos recusar este lead agora. Tente novamente mais tarde.");
+        alert("Não conseguimos recusar este lead agora. Se quiser, tente de novo em alguns instantes.");
       }
     } catch (error) {
       console.error("Error rejecting lead:", error);
-      alert("Não conseguimos recusar este lead agora. Tente novamente mais tarde.");
+      alert("Não conseguimos recusar este lead agora. Se quiser, tente de novo em alguns instantes.");
     }
   };
 
@@ -339,7 +343,20 @@ export default function MuralLeadsPage() {
 
       {/* Leads List */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {filteredLeads.length === 0 ? (
+        {error ? (
+          <EmptyState
+            title="Não foi possível carregar os leads do mural"
+            description={error}
+            action={
+              <button
+                onClick={fetchLeads}
+                className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
+              >
+                Tentar novamente
+              </button>
+            }
+          />
+        ) : filteredLeads.length === 0 ? (
           <EmptyState
             title="Nenhum lead disponível no momento"
             description="Assim que surgirem novas oportunidades alinhadas com o seu perfil, elas aparecem aqui automaticamente."

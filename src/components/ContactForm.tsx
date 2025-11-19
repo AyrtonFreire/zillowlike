@@ -25,11 +25,11 @@ export default function ContactForm({ propertyId }: { propertyId: string }) {
       });
       const data = await res.json().catch(()=>({}));
       if (!res.ok) throw new Error(data?.error || 'Falha ao enviar.');
-      setOk('Mensagem enviada com sucesso! Entraremos em contato.');
+      setOk('Mensagem enviada com sucesso. Em breve alguém entra em contato com você, sem pressa.');
       try { track({ name: 'contact_submit', } as any); } catch {}
       setName(""); setEmail(""); setPhone(""); setMessage("");
     } catch (e: any) {
-      setErr(e?.message || 'Não foi possível enviar agora.');
+      setErr(e?.message || 'Não conseguimos enviar agora. Se quiser, tente de novo em alguns instantes.');
     } finally {
       setLoading(false);
     }

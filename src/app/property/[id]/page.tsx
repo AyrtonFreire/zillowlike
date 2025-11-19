@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import MapClient from "@/components/MapClient";
 import Link from "next/link";
 import type { Metadata } from "next";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import GalleryCarousel from "@/components/GalleryCarousel";
 import ContactForm from "@/components/ContactForm";
 import FavoriteButton from "../../../components/FavoriteButton";
@@ -15,7 +15,9 @@ import FeatureChips from "@/components/FeatureChips";
 import { ptBR, amenitiesFromProperty } from "@/lib/i18n/property";
 import ReadMore from "@/components/ReadMore";
 import AgentModule from "@/components/AgentModule";
-import SimilarCarousel from "@/components/SimilarCarousel";
+
+const MapClient = dynamic(() => import("@/components/MapClient"), { ssr: false });
+const SimilarCarousel = dynamic(() => import("@/components/SimilarCarousel"), { ssr: false });
 
 
 type PageProps = { params: Promise<{ id: string }> };

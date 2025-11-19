@@ -28,7 +28,7 @@ export default function ScheduleVisitForm({
     e.preventDefault();
     
     if (!selectedTime) {
-      setError("Por favor, selecione um horário");
+      setError("Antes de continuar, selecione um horário que funcione para você.");
       return;
     }
 
@@ -53,7 +53,7 @@ export default function ScheduleVisitForm({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Erro ao agendar visita");
+        throw new Error(data.error || "Não conseguimos agendar a visita agora.");
       }
 
       // Sucesso!
@@ -64,7 +64,7 @@ export default function ScheduleVisitForm({
         window.location.reload();
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err?.message || "Não conseguimos agendar agora. Se quiser, tente de novo em alguns instantes.");
     } finally {
       setLoading(false);
     }

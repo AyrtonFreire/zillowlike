@@ -44,6 +44,7 @@ export default function OwnerLeadsPage() {
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
 
@@ -57,6 +58,7 @@ export default function OwnerLeadsPage() {
 
   const fetchLeads = async () => {
     try {
+      setError(null);
       const response = await fetch("/api/leads/my-leads");
       if (!response.ok) throw new Error("Failed to fetch");
       
@@ -66,6 +68,7 @@ export default function OwnerLeadsPage() {
       }
     } catch (error) {
       console.error("Error:", error);
+      setError('Não conseguimos carregar seus leads agora. Se quiser, tente novamente em alguns instantes.');
     } finally {
       setLoading(false);
     }
@@ -232,7 +235,23 @@ export default function OwnerLeadsPage() {
         </div>
 
         {/* Leads List */}
-        {filteredLeads.length === 0 ? (
+        {error ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+            <EmptyState
+              icon={<MessageSquare className="w-16 h-16 text-gray-300" />} 
+              title="Não foi possível carregar seus leads"
+              description={error}
+              action={
+                <button
+                  onClick={fetchLeads}
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
+                >
+                  Tentar novamente
+                </button>
+              }
+            />
+          </div>
+        ) : filteredLeads.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
             <EmptyState
               icon={<MessageSquare className="w-16 h-16 text-gray-300" />}

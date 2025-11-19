@@ -17,6 +17,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface Lead {
   id: string;
@@ -75,6 +76,7 @@ export default function AdminLeadsPage() {
   const [queues, setQueues] = useState<RealtorQueue[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
@@ -93,23 +95,51 @@ export default function AdminLeadsPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       // Fetch leads
       const leadsRes = await fetch("/api/admin/leads");
+      if (!leadsRes.ok) {
+        const text = await leadsRes.text().catch(() => "");
+        console.error("Error fetching admin leads (HTTP):", { status: leadsRes.status, statusText: leadsRes.statusText, body: text });
+        throw new Error("leads-error");
+      }
       const leadsData = await leadsRes.json();
       if (leadsData.success) {
         setLeads(leadsData.leads);
         setStats(leadsData.stats);
+      } else {
+        console.error("Error fetching admin leads (no success flag):", leadsData);
+        setLeads([]);
+        setStats(null);
+        throw new Error("leads-error");
       }
 
       // Fetch realtor queues
       const queuesRes = await fetch("/api/admin/realtor-queues");
+      if (!queuesRes.ok) {
+        const text = await queuesRes.text().catch(() => "");
+        console.error("Error fetching admin realtor queues (HTTP):", { status: queuesRes.status, statusText: queuesRes.statusText, body: text });
+        throw new Error("queues-error");
+      }
       const queuesData = await queuesRes.json();
       if (queuesData.success) {
         setQueues(queuesData.queues);
+      } else {
+        console.error("Error fetching admin realtor queues (no success flag):", queuesData);
+        setQueues([]);
+        throw new Error("queues-error");
       }
     } catch (error) {
       console.error("Error fetching data:", error);
+      setError("Não conseguimos carregar os dados de leads agora. Se quiser, tente novamente em alguns instantes.");
+      if (!leads.length) {
+        setLeads([]);
+        setStats(null);
+      }
+      if (!queues.length) {
+        setQueues([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -205,6 +235,11 @@ export default function AdminLeadsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            {error}
+          </div>
+        )}
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -353,71 +388,87 @@ export default function AdminLeadsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium text-gray-900">{lead.property.title}</p>
-                        <p className="text-sm text-gray-500">{lead.property.city}, {lead.property.state}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium text-gray-900">{lead.user.name}</p>
-                        <p className="text-sm text-gray-500">{lead.user.email}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {lead.realtor ? (
-                        <div>
-                          <p className="font-medium text-gray-900">{lead.realtor.name}</p>
-                          <p className="text-sm text-gray-500">{lead.realtor.email}</p>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 italic">Sem corretor</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
-                        {getStatusLabel(lead.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {new Date(lead.createdAt).toLocaleString('pt-BR')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                          href={`/admin/leads/${lead.id}`}
-                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                        >
-                          <Eye className="w-4 h-4" />
-                          Ver lead
-                        </Link>
-                        {lead.realtorId && (
-                          <Link
-                            href={`/broker/dashboard?previewUserId=${lead.realtorId}`}
-                            className="text-gray-600 hover:text-gray-900 flex items-center gap-1 text-sm"
-                            title="Ver como corretor"
-                          >
-                            <Eye className="w-4 h-4" />
-                            Corretor
-                          </Link>
-                        )}
-                        {lead.property.ownerId && (
-                          <Link
-                            href={`/owner/dashboard?previewUserId=${lead.property.ownerId}`}
-                            className="text-gray-600 hover:text-gray-900 flex items-center gap-1 text-sm"
-                            title="Ver como proprietário"
-                          >
-                            <Eye className="w-4 h-4" />
-                            Proprietário
-                          </Link>
-                        )}
-                      </div>
+                {filteredLeads.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10">
+                      <EmptyState
+                        icon={<AlertCircle className="w-12 h-12 text-gray-300" />}
+                        title="Nenhum lead encontrado para este filtro"
+                        description={
+                          search || filter !== "all"
+                            ? "Tente ajustar os filtros ou limpar a busca para enxergar o quadro completo, sem pressa."
+                            : "Assim que novos leads entrarem no sistema, eles aparecem aqui automaticamente."
+                        }
+                      />
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredLeads.map((lead) => (
+                    <tr key={lead.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-medium text-gray-900">{lead.property.title}</p>
+                          <p className="text-sm text-gray-500">{lead.property.city}, {lead.property.state}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-medium text-gray-900">{lead.user.name}</p>
+                          <p className="text-sm text-gray-500">{lead.user.email}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {lead.realtor ? (
+                          <div>
+                            <p className="font-medium text-gray-900">{lead.realtor.name}</p>
+                            <p className="text-sm text-gray-500">{lead.realtor.email}</p>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 italic">Sem corretor</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
+                          {getStatusLabel(lead.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {new Date(lead.createdAt).toLocaleString('pt-BR')}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            href={`/admin/leads/${lead.id}`}
+                            className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Ver lead
+                          </Link>
+                          {lead.realtorId && (
+                            <Link
+                              href={`/broker/dashboard?previewUserId=${lead.realtorId}`}
+                              className="text-gray-600 hover:text-gray-900 flex items-center gap-1 text-sm"
+                              title="Ver como corretor"
+                            >
+                              <Eye className="w-4 h-4" />
+                              Corretor
+                            </Link>
+                          )}
+                          {lead.property.ownerId && (
+                            <Link
+                              href={`/owner/dashboard?previewUserId=${lead.property.ownerId}`}
+                              className="text-gray-600 hover:text-gray-900 flex items-center gap-1 text-sm"
+                              title="Ver como proprietário"
+                            >
+                              <Eye className="w-4 h-4" />
+                              Proprietário
+                            </Link>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

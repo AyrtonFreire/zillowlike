@@ -600,16 +600,19 @@ export default function SearchFiltersBar({ filters, onFiltersChange, onClearFilt
 
           </div>
         </div>
-        {/* Footer (fixed at end of panel) */}
-        <div className="mt-auto bg-white border-t px-4 sm:px-6 py-3">
-          <div className="flex items-center justify-between">
-            <button onClick={onClearFilters} className="text-sm text-red-600 hover:text-red-700">Limpar tudo</button>
-            <button onClick={onClose} disabled={isApplying} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold disabled:opacity-60 flex items-center gap-2">
-              {isApplying && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-              {`Aplicar filtros${activeCount ? ` (${activeCount})` : ''}`}
-            </button>
+        {/* Footer (fixed at end of panel). For desktop dropdowns we show the built-in footer; 
+           for mobile modal (Drawer) the parent renders its own Apply button to avoid duplicação. */}
+        {variant === 'dropdown' && (
+          <div className="mt-auto bg-white border-t px-4 sm:px-6 py-3">
+            <div className="flex items-center justify-between">
+              <button onClick={onClearFilters} className="text-sm text-red-600 hover:text-red-700">Limpar tudo</button>
+              <button onClick={onClose} disabled={isApplying} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold disabled:opacity-60 flex items-center gap-2">
+                {isApplying && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                {`Aplicar filtros${activeCount ? ` (${activeCount})` : ''}`}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <style jsx>{`
         .range-input { height: 28px; pointer-events: auto; }

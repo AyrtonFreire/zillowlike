@@ -64,6 +64,7 @@ const FEATURES_ICONS = {
 export default function PropertyDetailsModalJames({ propertyId, open, onClose }: PropertyDetailsModalProps) {
   const [property, setProperty] = useState<PropertyDetails | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [thumbsPerPage, setThumbsPerPage] = useState(9);
   const [showAllFeatures, setShowAllFeatures] = useState(false);
@@ -137,8 +138,16 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     if (!open || !propertyId) return;
 
     setLoading(true);
+    setError(null);
     fetch(`/api/properties?id=${propertyId}`)
-      .then(res => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          console.error("Property modal load failed (HTTP)", { status: res.status, statusText: res.statusText, body: text });
+          throw new Error("http-error");
+        }
+        return res.json();
+      })
       .then(data => {
         if (data.item) {
           setProperty(data.item);
@@ -169,9 +178,17 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 console.error('[PropertyModal] Erro ao buscar similar properties:', err);
               });
           }
+        } else {
+          console.error('[PropertyModal] Nenhum item retornado pela API de propriedades.', data);
+          setProperty(null);
+          setError('Não encontramos os detalhes deste imóvel agora. Se quiser, volte à lista e tente abrir novamente em instantes.');
         }
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error('[PropertyModal] Erro ao carregar detalhes do imóvel:', err);
+        setProperty(null);
+        setError('Não conseguimos carregar os detalhes deste imóvel agora. Se quiser, volte à lista e tente novamente em instantes.');
+      })
       .finally(() => setLoading(false));
   }, [propertyId, open]);
 
@@ -206,6 +223,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setCurrentImageIndex(0);
       setShowAllPhotos(false);
       setShowMore(false);
+      setError(null);
+      setLoading(false);
     }
   }, [open]);
 
@@ -304,6 +323,25 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     return (
       <div className="fixed inset-0 bg-black/50 z-[12000] flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error && !property) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-[12000] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Não foi possível abrir este imóvel</h2>
+          <p className="text-sm text-gray-600 mb-4">{error}</p>
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

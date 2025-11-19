@@ -73,14 +73,14 @@ export default function OwnerApprovalCard({
       });
 
       if (!response.ok) {
-        throw new Error("Não foi possível confirmar a visita agora");
+        throw new Error("Não conseguimos confirmar essa visita agora.");
       }
 
-      alert("Visita confirmada. Tudo certo para esse horário.");
+      alert("Visita confirmada com sucesso. Se precisar ajustar depois, você combina direto com o corretor.");
       if (onApprove) onApprove();
     } catch (error) {
       console.error("Error approving:", error);
-      alert("Não conseguimos confirmar a visita agora. Tente novamente em instantes e, se persistir, fale com o suporte.");
+      alert("Não conseguimos confirmar essa visita agora. Se quiser, tente de novo em alguns instantes.");
     } finally {
       setLoading(false);
     }
@@ -96,15 +96,15 @@ export default function OwnerApprovalCard({
       });
 
       if (!response.ok) {
-        throw new Error("Não foi possível recusar a visita agora");
+        throw new Error("Não conseguimos recusar essa visita agora.");
       }
 
-      alert("Horário recusado com sucesso. Vamos tentar outro encaixe para esse pedido.");
+      alert("Horário recusado. Vamos buscar outro encaixe que funcione melhor pra todo mundo.");
       setShowRejectModal(false);
       if (onReject) onReject();
     } catch (error) {
       console.error("Error rejecting:", error);
-      alert("Não conseguimos registrar a recusa agora. Tente novamente e, se continuar, fale com o suporte.");
+      alert("Não conseguimos registrar essa recusa agora. Se quiser, tente de novo em alguns instantes.");
     } finally {
       setLoading(false);
     }

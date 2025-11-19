@@ -71,7 +71,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
 
   return (
     <header className="relative z-[20000] bg-white/95 backdrop-blur border-b border-gray-200">
-      <div className="mx-auto max-w-[1400px] px-6 h-16 grid grid-cols-3 items-center">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 h-14 sm:h-16 grid grid-cols-3 items-center">
         {/* Left: contextual links on desktop, hamburger on mobile */}
         <div className="flex items-center gap-5">
           <button
@@ -195,11 +195,11 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
       </div>
       
       {/* Search bar - full width below header */}
-      <div className="mx-auto max-w-[1400px] px-6 pb-3">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-2 sm:pb-3">
         <div className="relative max-w-2xl mx-auto" ref={wrapRef}>
           <form
             onSubmit={(e) => { e.preventDefault(); setOpen(false); onSubmit(); }}
-            className={`flex items-center gap-2 rounded-full border ${ focus ? 'border-gray-400' : 'border-gray-300' } bg-white px-4 py-2.5 shadow-sm`}
+            className={`flex items-center gap-2 rounded-full border ${ focus ? 'border-gray-400' : 'border-gray-300' } bg-white px-3 py-2 sm:px-4 sm:py-2.5 shadow-sm`}
           >
             <Search className="w-4 h-4 text-gray-500" />
             <input

@@ -61,8 +61,10 @@ export default function BrokerDashboard() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [myLeads, setMyLeads] = useState<MyLead[]>([]);
   const [myLeadsLoading, setMyLeadsLoading] = useState(true);
+  const [myLeadsError, setMyLeadsError] = useState<string | null>(null);
   const [leadFilter, setLeadFilter] = useState<"ALL" | "NEW" | "IN_SERVICE">("ALL");
 
   const searchParams = useSearchParams();
@@ -81,6 +83,8 @@ export default function BrokerDashboard() {
       // TODO: Get real userId from auth session
       const userId = previewUserId || "demo-realtor-id";
       
+      setDashboardError(null);
+      setLoading(true);
       const response = await fetch(`/api/metrics/realtor?userId=${userId}`);
       
       if (!response.ok) {
@@ -92,11 +96,14 @@ export default function BrokerDashboard() {
       setMetrics(data.metrics || null);
       setProperties(data.recentProperties || []);
       setLeads(data.recentLeads || []);
+      setDashboardError(null);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       // Set empty arrays to prevent undefined errors
+      setMetrics(null);
       setProperties([]);
       setLeads([]);
+      setDashboardError("Não conseguimos carregar os dados do seu painel agora. Se quiser, atualize a página em alguns instantes.");
     } finally {
       setLoading(false);
     }
@@ -104,6 +111,7 @@ export default function BrokerDashboard() {
 
   const fetchMyLeads = async () => {
     try {
+      setMyLeadsError(null);
       setMyLeadsLoading(true);
       const realtorId = previewUserId || "demo-realtor-id"; // TODO: pegar do session
       const response = await fetch(`/api/leads/my-leads?realtorId=${realtorId}`);
@@ -117,6 +125,7 @@ export default function BrokerDashboard() {
     } catch (error) {
       console.error("Error fetching my leads:", error);
       setMyLeads([]);
+      setMyLeadsError("Não conseguimos carregar seus leads ativos agora. Se quiser, tente novamente em alguns instantes.");
     } finally {
       setMyLeadsLoading(false);
     }
@@ -195,6 +204,11 @@ export default function BrokerDashboard() {
       }
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {dashboardError && (
+          <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            {dashboardError}
+          </div>
+        )}
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
@@ -235,7 +249,11 @@ export default function BrokerDashboard() {
         {/* Meu dia hoje */}
         <div className="mb-8">
           <StatCard title="Meu dia hoje">
-            {myLeadsLoading ? (
+            {myLeadsError ? (
+              <div className="flex items-center justify-center py-4 text-sm text-gray-500">
+                {myLeadsError}
+              </div>
+            ) : myLeadsLoading ? (
               <div className="flex items-center justify-center py-4 text-sm text-gray-500">
                 Carregando seus leads ativos...
               </div>
