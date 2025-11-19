@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     "@type": "Product",
     "name": property.title,
     "description": property.description,
-    "image": property.images.map(img => img.url),
+    "image": property.images.map((img: { url: string }) => img.url),
     "offers": {
       "@type": "Offer",
       "price": typeof property.price === 'number' && property.price > 0 ? (property.price / 100).toFixed(2) : undefined,
@@ -142,8 +142,8 @@ export default async function PropertyPage({ params }: PageProps) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Imóvel não encontrado</h1>
-          <p className="text-gray-600 mb-6">O imóvel que você está procurando não existe ou foi removido.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Imóvel não está mais disponível</h1>
+          <p className="text-gray-600 mb-6">O imóvel que você procura não existe mais, foi removido ou já foi negociado. Você pode voltar para ver outras opções com calma.</p>
           <Link href="/" className="inline-flex items-center px-6 py-3 glass-teal text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
             ← Voltar à busca
           </Link>
@@ -190,11 +190,11 @@ export default async function PropertyPage({ params }: PageProps) {
       take: 24,
     });
     nearby = candidates
-      .map((p) => {
+      .map((p: any) => {
         const d = distanceKm(lat, lng, p.latitude ?? 0, p.longitude ?? 0);
         return { id: p.id, title: p.title, price: p.price, city: p.city, state: p.state, latitude: p.latitude, longitude: p.longitude, image: p.images[0]?.url, distanceKm: d };
       })
-      .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0))
+      .sort((a: any, b: any) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0))
       .slice(0, 6);
   } else {
     const candidates = await prisma.property.findMany({
@@ -202,7 +202,7 @@ export default async function PropertyPage({ params }: PageProps) {
       select: { id: true, title: true, price: true, city: true, state: true, latitude: true, longitude: true, images: { take: 1, orderBy: { sortOrder: "asc" }, select: { url: true } } },
       take: 6,
     });
-    nearby = candidates.map((p) => ({ id: p.id, title: p.title, price: p.price, city: p.city, state: p.state, latitude: p.latitude, longitude: p.longitude, image: p.images[0]?.url }));
+    nearby = candidates.map((p: any) => ({ id: p.id, title: p.title, price: p.price, city: p.city, state: p.state, latitude: p.latitude, longitude: p.longitude, image: p.images[0]?.url }));
   }
 
   const jsonLd = {
@@ -268,7 +268,7 @@ export default async function PropertyPage({ params }: PageProps) {
               {/* Gallery */}
               {property.images.length > 0 && (
                 <div className="relative">
-                  <GalleryCarousel images={property.images.map(i=>({ url: i.url, alt: i.alt || property.title, blurDataURL: (i as any).blurDataURL }))} title={property.title} />
+                  <GalleryCarousel images={property.images.map((i: any) => ({ url: i.url, alt: i.alt || property.title, blurDataURL: (i as any).blurDataURL }))} title={property.title} />
                   <div className="absolute top-3 right-3 flex gap-2">
                     <FavoriteButton propertyId={property.id} />
                     <button aria-label="Compartilhar este imóvel" title="Compartilhar" onClick={async()=>{ try { if (navigator.share) await navigator.share({ title: property.title, url: pageUrl }); else await navigator.clipboard.writeText(pageUrl); } catch{} }} className="p-2 rounded-full bg-white/90 hover:bg-white shadow">
@@ -453,7 +453,7 @@ export default async function PropertyPage({ params }: PageProps) {
             </div>
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Interessado?</h3>
-              <p className="text-gray-600 mb-4">Envie uma mensagem e retornaremos rapidamente.</p>
+              <p className="text-gray-600 mb-4">Se quiser, envie uma mensagem contando um pouco do que você procura. A gente retorna assim que possível, sem pressa.</p>
               <div className="flex flex-col gap-3">
                 <ContactForm propertyId={property.id} />
                 {whatsapp && (

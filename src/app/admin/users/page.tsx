@@ -10,6 +10,7 @@ import {
   Ban,
   CheckCircle,
   XCircle,
+  Eye,
 } from "lucide-react";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -231,15 +232,36 @@ export default function AdminUsersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setShowRoleModal(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        <Shield className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {user.role === "OWNER" && (
+                          <Link
+                            href={`/owner/dashboard?previewUserId=${user.id}`}
+                            className="text-gray-500 hover:text-gray-800"
+                            title="Ver como proprietário"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </Link>
+                        )}
+                        {user.role === "REALTOR" && (
+                          <Link
+                            href={`/broker/dashboard?previewUserId=${user.id}`}
+                            className="text-gray-500 hover:text-gray-800"
+                            title="Ver como corretor"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </Link>
+                        )}
+                        <button
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setShowRoleModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Alterar role"
+                        >
+                          <Shield className="w-5 h-5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

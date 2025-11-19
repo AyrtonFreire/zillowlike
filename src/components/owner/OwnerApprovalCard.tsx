@@ -73,14 +73,14 @@ export default function OwnerApprovalCard({
       });
 
       if (!response.ok) {
-        throw new Error("Erro ao aprovar visita");
+        throw new Error("Não foi possível confirmar a visita agora");
       }
 
-      alert("Visita confirmada com sucesso!");
+      alert("Visita confirmada. Tudo certo para esse horário.");
       if (onApprove) onApprove();
     } catch (error) {
       console.error("Error approving:", error);
-      alert("Erro ao aprovar visita");
+      alert("Não conseguimos confirmar a visita agora. Tente novamente em instantes e, se persistir, fale com o suporte.");
     } finally {
       setLoading(false);
     }
@@ -96,15 +96,15 @@ export default function OwnerApprovalCard({
       });
 
       if (!response.ok) {
-        throw new Error("Erro ao recusar visita");
+        throw new Error("Não foi possível recusar a visita agora");
       }
 
-      alert("Horário recusado. Lead voltou ao mural.");
+      alert("Horário recusado com sucesso. Vamos tentar outro encaixe para esse pedido.");
       setShowRejectModal(false);
       if (onReject) onReject();
     } catch (error) {
       console.error("Error rejecting:", error);
-      alert("Erro ao recusar visita");
+      alert("Não conseguimos registrar a recusa agora. Tente novamente e, se continuar, fale com o suporte.");
     } finally {
       setLoading(false);
     }
@@ -232,10 +232,10 @@ export default function OwnerApprovalCard({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
-              Recusar Horário
+              Não posso nesse horário
             </h3>
             <p className="text-gray-600 mb-4">
-              Por que você não pode aceitar este horário? (opcional)
+              Se quiser, você pode explicar rapidamente o motivo. Isso nos ajuda a sugerir outros horários melhores para todo mundo. (opcional)
             </p>
             <textarea
               value={rejectReason}

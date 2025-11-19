@@ -6,6 +6,8 @@ import Image from "next/image";
 import Link from "next/link";
 import CountdownTimer from "@/components/queue/CountdownTimer";
 import StatusIndicator from "@/components/queue/StatusIndicator";
+import CenteredSpinner from "@/components/ui/CenteredSpinner";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface Lead {
   id: string;
@@ -38,6 +40,9 @@ export default function MyLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "reserved" | "accepted">("all");
+  const [cityFilter, setCityFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "last7">("all");
 
   // TODO: Get from auth session
   const realtorId = "demo-realtor-id";
@@ -62,7 +67,7 @@ export default function MyLeadsPage() {
   };
 
   const handleAccept = async (leadId: string) => {
-    if (!confirm("Deseja aceitar este lead?")) return;
+    if (!confirm("Você quer assumir este lead agora?")) return;
 
     try {
       const response = await fetch(`/api/leads/${leadId}/accept`, {
@@ -74,19 +79,19 @@ export default function MyLeadsPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("Lead aceito com sucesso!");
+        alert("Lead assumido. Fique à vontade para fazer o primeiro contato do seu jeito.");
         fetchLeads();
       } else {
-        alert(data.error || "Erro ao aceitar lead");
+        alert(data.error || "Não foi possível assumir este lead agora. Tente novamente mais tarde.");
       }
     } catch (error) {
       console.error("Error accepting lead:", error);
-      alert("Erro ao aceitar lead");
+      alert("Não foi possível assumir este lead agora. Tente novamente mais tarde.");
     }
   };
 
   const handleReject = async (leadId: string) => {
-    if (!confirm("Deseja recusar este lead?")) return;
+    if (!confirm("Você tem certeza de que não vai assumir este lead agora?")) return;
 
     try {
       const response = await fetch(`/api/leads/${leadId}/reject`, {
@@ -98,14 +103,14 @@ export default function MyLeadsPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("Lead recusado");
+        alert("Lead liberado com sucesso! Você pode continuar com seus outros leads.");
         fetchLeads();
       } else {
-        alert(data.error || "Erro ao recusar lead");
+        alert(data.error || "Não foi possível liberar este lead agora. Tente novamente mais tarde.");
       }
     } catch (error) {
       console.error("Error rejecting lead:", error);
-      alert("Erro ao recusar lead");
+      alert("Não foi possível liberar este lead agora. Tente novamente mais tarde.");
     }
   };
 
@@ -129,22 +134,49 @@ export default function MyLeadsPage() {
     return `${diffDays}d atrás`;
   };
 
+  const isSameDay = (a: Date, b: Date) => {
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
+  };
+
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
   const filteredLeads = leads.filter((lead) => {
-    if (filter === "all") return true;
-    if (filter === "reserved") return lead.status === "RESERVED";
-    if (filter === "accepted") return lead.status === "ACCEPTED";
+    // Status filter
+    if (filter === "reserved" && lead.status !== "RESERVED") return false;
+    if (filter === "accepted" && lead.status !== "ACCEPTED") return false;
+
+    // City filter
+    if (
+      cityFilter &&
+      !lead.property.city.toLowerCase().includes(cityFilter.toLowerCase())
+    ) {
+      return false;
+    }
+
+    // Type filter
+    if (typeFilter && lead.property.type !== typeFilter) {
+      return false;
+    }
+
+    // Date filter (createdAt)
+    const created = new Date(lead.createdAt);
+    if (dateFilter === "today" && !isSameDay(created, now)) {
+      return false;
+    }
+    if (dateFilter === "last7" && created < sevenDaysAgo) {
+      return false;
+    }
+
     return true;
   });
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Carregando leads...</p>
-        </div>
-      </div>
-    );
+    return <CenteredSpinner message="Carregando seus leads..." />;
   }
 
   return (
@@ -177,37 +209,81 @@ export default function MyLeadsPage() {
           </div>
 
           {/* Filters */}
-          <div className="mt-6 flex gap-2">
-            <button
-              onClick={() => setFilter("all")}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                filter === "all"
-                  ? "glass-teal text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              Todos ({leads.length})
-            </button>
-            <button
-              onClick={() => setFilter("reserved")}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                filter === "reserved"
-                  ? "bg-orange-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              Reservados ({leads.filter((l) => l.status === "RESERVED").length})
-            </button>
-            <button
-              onClick={() => setFilter("accepted")}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                filter === "accepted"
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              Em Atendimento ({leads.filter((l) => l.status === "ACCEPTED").length})
-            </button>
+          <div className="mt-6 space-y-3">
+            {/* Status filter */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setFilter("all")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  filter === "all"
+                    ? "glass-teal text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Todos ({leads.length})
+              </button>
+              <button
+                onClick={() => setFilter("reserved")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  filter === "reserved"
+                    ? "bg-orange-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Reservados ({leads.filter((l) => l.status === "RESERVED").length})
+              </button>
+              <button
+                onClick={() => setFilter("accepted")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  filter === "accepted"
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Em Atendimento ({leads.filter((l) => l.status === "ACCEPTED").length})
+              </button>
+            </div>
+
+            {/* Extra filters: cidade, tipo, data */}
+            <div className="flex flex-wrap gap-2">
+              <input
+                type="text"
+                placeholder="Filtrar por cidade"
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Todos os tipos</option>
+                <option value="HOUSE">Casa</option>
+                <option value="APARTMENT">Apartamento</option>
+                <option value="CONDO">Condomínio</option>
+                <option value="STUDIO">Studio</option>
+              </select>
+              <div className="flex gap-2">
+                {[ 
+                  { value: "all" as const, label: "Todas as datas" },
+                  { value: "today" as const, label: "Hoje" },
+                  { value: "last7" as const, label: "Últimos 7 dias" },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    onClick={() => setDateFilter(item.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      dateFilter === item.value
+                        ? "glass-teal text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -215,15 +291,18 @@ export default function MyLeadsPage() {
       {/* Leads List */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {filteredLeads.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">Nenhum lead ativo no momento</p>
-            <Link
-              href="/broker/leads/mural"
-              className="inline-block mt-4 px-6 py-3 glass-teal text-white font-medium rounded-lg transition-colors"
-            >
-              Ver Mural de Leads
-            </Link>
-          </div>
+          <EmptyState
+            title="Nenhum lead ativo no momento"
+            description="Quando você assumir ou receber novos leads, eles aparecem aqui para você acompanhar com calma."
+            action={
+              <Link
+                href="/broker/leads/mural"
+                className="inline-block mt-4 px-6 py-3 glass-teal text-white font-medium rounded-lg transition-colors"
+              >
+                Ver Mural de Leads
+              </Link>
+            }
+          />
         ) : (
           <div className="space-y-6">
             {filteredLeads.map((lead) => (

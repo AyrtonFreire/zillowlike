@@ -16,6 +16,7 @@ import Guides from "@/components/Guides";
 import SiteFooter from "@/components/Footer";
 import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
+import EmptyState from "@/components/ui/EmptyState";
 import { LayoutList, Map, ChevronDown } from "lucide-react";
  
 import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
@@ -318,7 +319,6 @@ export default function Home() {
             setTotal(0);
             return;
           }
-          console.log('Search response:', data);
           if (data.success) {
             setProperties(data.properties || []);
             setTotal(data.total || 0);
@@ -950,12 +950,30 @@ export default function Home() {
                     </div>
                   ))
                 ) : properties.length === 0 ? (
-                  <div className="col-span-full text-center py-16">
-                    <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    <p className="text-lg font-medium text-gray-600">Nenhum imóvel encontrado</p>
-                    <p className="text-sm text-gray-500 mt-1">Tente ajustar os filtros de busca</p>
+                  <div className="col-span-full py-16">
+                    <EmptyState
+                      icon={
+                        <svg
+                          className="w-16 h-16 text-gray-300 mx-auto mb-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1}
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                          />
+                        </svg>
+                      }
+                      title="Nenhum imóvel encontrado"
+                      description={
+                        minPrice || maxPrice || bedroomsMin || bathroomsMin || type || areaMin || search
+                          ? "Tente ajustar os filtros ou limpar a busca para ver outras opções."
+                          : "Assim que surgirem imóveis compatíveis com o que você busca, eles aparecem aqui."
+                      }
+                    />
                   </div>
                 ) : (
                   properties.map((property) => (

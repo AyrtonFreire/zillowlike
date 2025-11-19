@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Home,
@@ -49,20 +50,36 @@ interface Lead {
   createdAt: string;
 }
 
+interface MyLead {
+  id: string;
+  status: "RESERVED" | "ACCEPTED";
+  createdAt: string;
+}
+
 export default function BrokerDashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [myLeads, setMyLeads] = useState<MyLead[]>([]);
+  const [myLeadsLoading, setMyLeadsLoading] = useState(true);
+  const [leadFilter, setLeadFilter] = useState<"ALL" | "NEW" | "IN_SERVICE">("ALL");
+
+  const searchParams = useSearchParams();
+  const previewUserId = searchParams.get("previewUserId");
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
+  useEffect(() => {
+    fetchMyLeads();
+  }, []);
+
   const fetchDashboardData = async () => {
     try {
       // TODO: Get real userId from auth session
-      const userId = "demo-realtor-id";
+      const userId = previewUserId || "demo-realtor-id";
       
       const response = await fetch(`/api/metrics/realtor?userId=${userId}`);
       
@@ -85,12 +102,57 @@ export default function BrokerDashboard() {
     }
   };
 
+  const fetchMyLeads = async () => {
+    try {
+      setMyLeadsLoading(true);
+      const realtorId = previewUserId || "demo-realtor-id"; // TODO: pegar do session
+      const response = await fetch(`/api/leads/my-leads?realtorId=${realtorId}`);
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setMyLeads(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching my leads:", error);
+      setMyLeads([]);
+    } finally {
+      setMyLeadsLoading(false);
+    }
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Bom dia";
     if (hour < 18) return "Boa tarde";
     return "Boa noite";
   };
+
+  const isSameDay = (a: Date, b: Date) => {
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
+  };
+
+  const today = new Date();
+  const newLeads = myLeads.filter((lead) => lead.status === "RESERVED");
+  const inServiceLeads = myLeads.filter((lead) => lead.status === "ACCEPTED");
+  const leadsToday = myLeads.filter((lead) =>
+    isSameDay(new Date(lead.createdAt), today)
+  );
+
+  const filteredLeads = leads.filter((lead) => {
+    if (leadFilter === "NEW") {
+      return lead.status === "PENDING";
+    }
+    if (leadFilter === "IN_SERVICE") {
+      return lead.status === "ACCEPTED";
+    }
+    return true;
+  });
 
   if (loading) {
     return (
@@ -170,6 +232,45 @@ export default function BrokerDashboard() {
           />
         </div>
 
+        {/* Meu dia hoje */}
+        <div className="mb-8">
+          <StatCard title="Meu dia hoje">
+            {myLeadsLoading ? (
+              <div className="flex items-center justify-center py-4 text-sm text-gray-500">
+                Carregando seus leads ativos...
+              </div>
+            ) : myLeads.length === 0 ? (
+              <div className="text-sm text-gray-600">
+                Nenhum lead ativo no momento. Quando novos leads chegarem ou forem aceitos, um resumo rápido do seu dia aparece aqui.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-700">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Novos</p>
+                  <p className="text-2xl font-semibold text-gray-900">{newLeads.length}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leads reservados esperando sua decisão.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Em atendimento</p>
+                  <p className="text-2xl font-semibold text-gray-900">{inServiceLeads.length}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leads que você já aceitou e está conduzindo.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Leads de hoje</p>
+                  <p className="text-2xl font-semibold text-gray-900">{leadsToday.length}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Novas oportunidades que chegaram nas últimas horas.
+                  </p>
+                </div>
+              </div>
+            )}
+          </StatCard>
+        </div>
+
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Recent Properties */}
@@ -222,9 +323,29 @@ export default function BrokerDashboard() {
               </Link>
             }
           >
+            <div className="mb-4 flex gap-2">
+              {[ 
+                { value: "ALL" as const, label: "Todos" },
+                { value: "NEW" as const, label: "Novos" },
+                { value: "IN_SERVICE" as const, label: "Em atendimento" },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  onClick={() => setLeadFilter(item.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    leadFilter === item.value
+                      ? "glass-teal text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
             <div className="space-y-3">
-              {leads.length > 0 ? (
-                leads.map((lead) => (
+              {filteredLeads.length > 0 ? (
+                filteredLeads.map((lead) => (
                   <LeadListItem
                     key={lead.id}
                     {...lead}
@@ -236,7 +357,7 @@ export default function BrokerDashboard() {
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>Nenhum lead recebido ainda</p>
+                  <p>Nenhum lead encontrado para esse filtro</p>
                 </div>
               )}
             </div>

@@ -107,15 +107,19 @@ const CITIES = [
 
 const PROPERTY_TYPES = ['HOUSE', 'APARTMENT', 'COMMERCIAL', 'LAND', 'CONDO', 'TOWNHOUSE', 'STUDIO'] as const;
 const LISTING_TYPES = ['Venda', 'Aluguel'] as const;
+// Tags de condição alinhadas ao formulário de cadastro (uma por imóvel)
 const CONDITION_TAGS = [
   'Novo',
+  'Condomínio',
+  'Aceita pets',
+  'Aceita permuta',
   'Mobiliado',
   'Semi-mobiliado',
+  'Em obras',
   'Em construção',
+  'Na planta',
   'Reformado',
   'Pronto para morar',
-  'Aceita permuta',
-  'Aceita financiamento',
 ];
 const FEATURES = [
   'Piscina',
@@ -213,8 +217,8 @@ async function main() {
       };
       const typeLabel = typeLabelMap[type] || type;
 
-      // Cria tags de condição incluindo o tipo de listagem
-      const tags = [listingType, ...getRandomItems(CONDITION_TAGS, getRandomInt(1, 3))];
+      // Cria UMA tag de condição (Novo, Reformado, etc.) sem incluir Venda/Aluguel
+      const tags = getRandomItems(CONDITION_TAGS, 1);
 
       const purpose = listingType === 'Aluguel' ? 'RENT' : 'SALE';
       const bedrooms = type === 'LAND' || type === 'COMMERCIAL' ? null : (type === 'STUDIO' ? 0 : getRandomInt(1, 5));

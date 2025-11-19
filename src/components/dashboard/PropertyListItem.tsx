@@ -13,6 +13,9 @@ interface PropertyListItemProps {
   status: "ACTIVE" | "PAUSED" | "DRAFT";
   views?: number;
   leads?: number;
+  scheduledVisits?: number;
+  completedVisits?: number;
+  pendingApprovals?: number;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
   onToggleStatus?: (id: string) => void;
@@ -26,6 +29,9 @@ export default function PropertyListItem({
   status,
   views = 0,
   leads = 0,
+  scheduledVisits = 0,
+  completedVisits = 0,
+  pendingApprovals = 0,
   onEdit,
   onDelete,
   onToggleStatus,
@@ -57,19 +63,40 @@ export default function PropertyListItem({
         <p className="text-lg font-bold text-blue-600 mb-2">
           R$ {(price / 100).toLocaleString("pt-BR")}
         </p>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
-          <span className="flex items-center gap-1">
-            <Eye className="w-3 h-3" />
-            {views} views
-          </span>
-          <span className="flex items-center gap-1">
-            📧 {leads} leads
-          </span>
-          <span
-            className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig[status].color}`}
-          >
-            {statusConfig[status].label}
-          </span>
+        <div className="flex flex-col gap-1 text-xs text-gray-500">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <Eye className="w-3 h-3" />
+              {views} views
+            </span>
+            <span className="flex items-center gap-1">
+              📧 {leads} leads
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig[status].color}`}
+            >
+              {statusConfig[status].label}
+            </span>
+          </div>
+          {(scheduledVisits > 0 || completedVisits > 0 || pendingApprovals > 0) && (
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+              {scheduledVisits > 0 && (
+                <span>
+                  {scheduledVisits} visita{scheduledVisits > 1 ? "s" : ""} agendada{scheduledVisits > 1 ? "s" : ""}
+                </span>
+              )}
+              {completedVisits > 0 && (
+                <span>
+                  {completedVisits} concluída{completedVisits > 1 ? "s" : ""}
+                </span>
+              )}
+              {pendingApprovals > 0 && (
+                <span>
+                  {pendingApprovals} esperando sua aprovação
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Toast from "@/components/Toast";
+import EmptyState from "@/components/ui/EmptyState";
 import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
 import type { GetFavoritesResponse, GetPropertiesResponse, ApiProperty } from "@/types/api";
 
@@ -405,9 +406,15 @@ export default function HomeClient() {
                 </div>
               ))
             ) : items.length === 0 ? (
-              <div className="col-span-full text-center py-12">
-                <div className="text-gray-400 text-lg">Nenhum imóvel encontrado</div>
-                <p className="text-gray-500 mt-2">Tente ajustar os filtros de busca</p>
+              <div className="col-span-full py-12">
+                <EmptyState
+                  title="Nenhum imóvel encontrado"
+                  description={
+                    q || city || state || type || minPrice || maxPrice || bedroomsMin || bathroomsMin || areaMin
+                      ? "Tente ajustar os filtros ou limpar a busca para ver outras opções."
+                      : "Assim que surgirem imóveis compatíveis com o que você procura, eles aparecem aqui."
+                  }
+                />
               </div>
             ) : (
               items.map((p) => (

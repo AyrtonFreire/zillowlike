@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
+import Link from "next/link";
 import { 
   CheckCircle, 
   XCircle, 
@@ -22,6 +23,7 @@ import {
 interface Application {
   id: string;
   user: {
+    id: string;
     name: string;
     email: string;
   };
@@ -282,6 +284,17 @@ export default function RealtorApplicationsPage() {
                   <Eye className="w-4 h-4" />
                   Ver Detalhes
                 </button>
+
+                {app.status === "APPROVED" && (
+                  <Link
+                    href={`/broker/dashboard?previewUserId=${app.user.id}`}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                    title="Ver como corretor"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Ver como corretor
+                  </Link>
+                )}
 
                 {app.status === "PENDING" && (
                   <>

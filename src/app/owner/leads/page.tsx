@@ -18,6 +18,8 @@ import {
   XCircle,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import CenteredSpinner from "@/components/ui/CenteredSpinner";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface Lead {
   id: string;
@@ -133,9 +135,7 @@ export default function OwnerLeadsPage() {
           { label: "Leads" },
         ]}
       >
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full" />
-        </div>
+        <CenteredSpinner message="Carregando seus leads..." />
       </DashboardLayout>
     );
   }
@@ -233,16 +233,16 @@ export default function OwnerLeadsPage() {
 
         {/* Leads List */}
         {filteredLeads.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-            <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Nenhum lead encontrado
-            </h3>
-            <p className="text-gray-600">
-              {search || filter !== "ALL"
-                ? "Tente ajustar os filtros"
-                : "Os interessados nos seus imóveis aparecerão aqui"}
-            </p>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+            <EmptyState
+              icon={<MessageSquare className="w-16 h-16 text-gray-300" />}
+              title="Nenhum lead encontrado"
+              description={
+                search || filter !== "ALL"
+                  ? "Tente ajustar os filtros ou limpar a busca para ver outros interessados."
+                  : "Assim que alguém demonstrar interesse nos seus imóveis, ele aparece aqui para você acompanhar com calma."
+              }
+            />
           </div>
         ) : (
           <div className="space-y-4">

@@ -27,6 +27,7 @@ interface Property {
   bathrooms: number;
   areaM2: number | null;
   createdAt: string;
+  ownerId: string | null;
   images: { url: string }[];
   owner: {
     name: string | null;
@@ -262,6 +263,16 @@ export default function AdminPropertiesPage() {
                     <Eye className="w-4 h-4 inline mr-1" />
                     Ver
                   </Link>
+                  {property.ownerId && (
+                    <Link
+                      href={`/owner/dashboard?previewUserId=${property.ownerId}`}
+                      className="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
+                      title="Ver como proprietário"
+                    >
+                      <Eye className="w-4 h-4 inline mr-1" />
+                      Ver como proprietário
+                    </Link>
+                  )}
                   {property.status === "DRAFT" && (
                     <button
                       onClick={() =>

@@ -30,6 +30,7 @@ interface Lead {
     title: string;
     city: string;
     state: string;
+    ownerId: string | null;
   };
   user: {
     name: string;
@@ -385,13 +386,35 @@ export default function AdminLeadsPage() {
                       {new Date(lead.createdAt).toLocaleString('pt-BR')}
                     </td>
                     <td className="px-6 py-4">
-                      <Link
-                        href={`/admin/leads/${lead.id}`}
-                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Ver
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          href={`/admin/leads/${lead.id}`}
+                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Ver lead
+                        </Link>
+                        {lead.realtorId && (
+                          <Link
+                            href={`/broker/dashboard?previewUserId=${lead.realtorId}`}
+                            className="text-gray-600 hover:text-gray-900 flex items-center gap-1 text-sm"
+                            title="Ver como corretor"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Corretor
+                          </Link>
+                        )}
+                        {lead.property.ownerId && (
+                          <Link
+                            href={`/owner/dashboard?previewUserId=${lead.property.ownerId}`}
+                            className="text-gray-600 hover:text-gray-900 flex items-center gap-1 text-sm"
+                            title="Ver como proprietário"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Proprietário
+                          </Link>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -11,7 +11,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = (session.user as any).id;
+    const impersonateId = req.nextUrl.searchParams.get("userId");
+    const sessionUser = session.user as any;
+    const sessionRole = sessionUser?.role;
+
+    let userId = sessionUser.id as string;
+
+    if (impersonateId) {
+      if (sessionRole !== "ADMIN") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      userId = impersonateId;
+    }
 
     const pendingLeads = await OwnerApprovalService.getPendingApprovals(userId);
 

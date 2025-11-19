@@ -183,7 +183,13 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
               )}
             </div>
           ) : (
-            <button type="button" onClick={() => signIn()} className="px-4 py-2 rounded-full border border-gray-300 text-sm text-gray-800 hover:bg-gray-50">Log in</button>
+            <button
+              type="button"
+              onClick={() => signIn()}
+              className="px-4 py-2 rounded-full border border-gray-300 text-sm text-gray-800 hover:bg-gray-50"
+            >
+              Entrar / Criar conta
+            </button>
           )}
         </div>
       </div>
@@ -209,10 +215,23 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
               <button type="button" onClick={() => onChange("")} className="text-gray-500 text-sm hover:text-gray-700">X</button>
             )}
           </form>
-          {open && (suggestions.length > 0 || loading) && (
+          {open && value.trim() && (
             <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-[min(640px,90vw)] rounded-xl border border-gray-200 bg-white shadow-xl z-[20005]">
               <ul className="max-h-80 overflow-auto py-2">
-                {suggestions.map((s, i) => (
+                {loading && (
+                  <li className="px-4 py-3 text-sm text-gray-500 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    <span>Buscando regiões e bairros parecidos...</span>
+                  </li>
+                )}
+
+                {!loading && suggestions.length === 0 && (
+                  <li className="px-4 py-3 text-sm text-gray-500">
+                    Não encontramos sugestões exatas para "{value}". Você pode tentar outro bairro, cidade ou seguir com a busca assim mesmo.
+                  </li>
+                )}
+
+                {!loading && suggestions.map((s, i) => (
                   <li key={i}>
                     <button
                       type="button"
@@ -224,9 +243,6 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
                     </button>
                   </li>
                 ))}
-                {!loading && suggestions.length === 0 && (
-                  <li className="px-4 py-3 text-sm text-gray-500">Sem sugestões</li>
-                )}
               </ul>
             </div>
           )}

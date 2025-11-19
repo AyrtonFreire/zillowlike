@@ -13,7 +13,8 @@ import {
   RefreshCw,
   TrendingUp,
   Award,
-  Clock
+  Clock,
+  Eye,
 } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 
@@ -281,6 +282,13 @@ export default function AdminQueuePage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
+                        <Link
+                          href={`/broker/dashboard?previewUserId=${queue.realtorId}`}
+                          className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+                          title="Ver como corretor"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Link>
                         <button
                           onClick={() => handleMoveUp(queue.id)}
                           disabled={index === 0}

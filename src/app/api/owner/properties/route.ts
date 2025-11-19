@@ -15,8 +15,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = (session as any)?.userId || (session as any)?.user?.id;
-    
+    const impersonateId = req.nextUrl.searchParams.get("userId");
+    const sessionUser = (session as any)?.user as any;
+    const sessionRole = sessionUser?.role;
+
+    let userId = (session as any)?.userId || sessionUser?.id;
+
+    if (impersonateId) {
+      if (sessionRole !== "ADMIN") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      userId = impersonateId;
+    }
+
     if (!userId) {
       return NextResponse.json({ error: "User ID not found" }, { status: 400 });
     }
@@ -40,19 +51,81 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
+    // Aggregate visit stats per property
+    const now = new Date();
+
+    const [scheduledVisits, completedVisits, pendingApprovals] = await Promise.all([
+      prisma.lead.groupBy({
+        by: ["propertyId"],
+        where: {
+          property: { ownerId: userId },
+          status: "CONFIRMED",
+          visitDate: {
+            gte: now,
+          },
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+      prisma.lead.groupBy({
+        by: ["propertyId"],
+        where: {
+          property: { ownerId: userId },
+          status: "COMPLETED",
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+      prisma.lead.groupBy({
+        by: ["propertyId"],
+        where: {
+          property: { ownerId: userId },
+          status: "WAITING_OWNER_APPROVAL",
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+    ]);
+
+    const scheduledByProperty: Record<string, number> = {};
+    const completedByProperty: Record<string, number> = {};
+    const pendingByProperty: Record<string, number> = {};
+
+    let totalScheduledVisits = 0;
+    let totalCompletedVisits = 0;
+
+    for (const item of scheduledVisits) {
+      scheduledByProperty[item.propertyId] = item._count._all;
+      totalScheduledVisits += item._count._all;
+    }
+
+    for (const item of completedVisits) {
+      completedByProperty[item.propertyId] = item._count._all;
+      totalCompletedVisits += item._count._all;
+    }
+
+    for (const item of pendingApprovals) {
+      pendingByProperty[item.propertyId] = item._count._all;
+    }
+
     // Calculate metrics
     const metrics = {
       totalProperties: properties.length,
-      activeProperties: properties.filter(p => p.status === "ACTIVE").length,
-      pausedProperties: properties.filter(p => p.status === "PAUSED").length,
-      draftProperties: properties.filter(p => p.status === "DRAFT").length,
-      totalViews: properties.reduce((sum, p) => sum + p._count.views, 0),
-      totalLeads: properties.reduce((sum, p) => sum + p._count.leads, 0),
-      totalFavorites: properties.reduce((sum, p) => sum + p._count.favorites, 0),
+      activeProperties: properties.filter((p: any) => p.status === "ACTIVE").length,
+      pausedProperties: properties.filter((p: any) => p.status === "PAUSED").length,
+      draftProperties: properties.filter((p: any) => p.status === "DRAFT").length,
+      totalViews: properties.reduce((sum: number, p: any) => sum + p._count.views, 0),
+      totalLeads: properties.reduce((sum: number, p: any) => sum + p._count.leads, 0),
+      totalFavorites: properties.reduce((sum: number, p: any) => sum + p._count.favorites, 0),
+      scheduledVisits: totalScheduledVisits,
+      completedVisits: totalCompletedVisits,
     };
 
     // Format properties for frontend
-    const formattedProperties = properties.map(p => ({
+    const formattedProperties = properties.map((p: any) => ({
       id: p.id,
       title: p.title,
       price: p.price,
@@ -71,6 +144,13 @@ export async function GET(req: NextRequest) {
         leads: p._count.leads,
         favorites: p._count.favorites,
       },
+      // Flatten commonly used counters for dashboards
+      views: p._count.views,
+      leads: p._count.leads,
+      favorites: p._count.favorites,
+      scheduledVisits: scheduledByProperty[p.id] || 0,
+      completedVisits: completedByProperty[p.id] || 0,
+      pendingApprovals: pendingByProperty[p.id] || 0,
     }));
 
     return NextResponse.json({

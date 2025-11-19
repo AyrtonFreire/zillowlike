@@ -30,6 +30,7 @@ export async function GET() {
             title: true,
             city: true,
             state: true,
+            ownerId: true,
           },
         },
         user: {

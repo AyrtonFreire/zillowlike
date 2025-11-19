@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Home,
@@ -17,23 +18,29 @@ import {
   Users,
   Crown,
   BarChart3,
+  Calendar,
+  MapPin,
+  Clock,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
 import PropertyListItem from "@/components/dashboard/PropertyListItem";
+import OwnerApprovalCard from "@/components/owner/OwnerApprovalCard";
 import Image from "next/image";
+import CenteredSpinner from "@/components/ui/CenteredSpinner";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface Metrics {
+  totalProperties: number;
   activeProperties: number;
+  pausedProperties: number;
+  draftProperties: number;
   totalViews: number;
-  viewsLast7Days: number;
-  viewTrend: {
-    value: number;
-    isPositive: boolean;
-  };
-  contactsGenerated: number;
-  contactsLast7Days: number;
+  totalLeads: number;
+  totalFavorites: number;
+  scheduledVisits: number;
+  completedVisits: number;
 }
 
 interface Property {
@@ -44,6 +51,9 @@ interface Property {
   image: string;
   views: number;
   leads: number;
+   scheduledVisits: number;
+   completedVisits: number;
+   pendingApprovals: number;
 }
 
 interface ViewData {
@@ -59,15 +69,39 @@ interface Contact {
   createdAt: string;
 }
 
+interface UpcomingVisit {
+  id: string;
+  visitDate: string;
+  visitTime: string;
+  property: {
+    id: string;
+    title: string;
+    street: string;
+    city: string;
+    state: string;
+  };
+  contact: {
+    name: string;
+    phone: string | null;
+  } | null;
+}
+
 export default function OwnerDashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [viewsByProperty, setViewsByProperty] = useState<ViewData[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [upcomingVisits, setUpcomingVisits] = useState<UpcomingVisit[]>([]);
+  const [visitsLoading, setVisitsLoading] = useState(true);
+  const [pendingLeads, setPendingLeads] = useState<any[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(true);
 
   const { data: session, status } = useSession();
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+  const previewUserId = searchParams.get("previewUserId");
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -75,9 +109,22 @@ export default function OwnerDashboard() {
     }
   }, [status]);
 
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchUpcomingVisits();
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchPendingLeads();
+    }
+  }, [status]);
+
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch(`/api/owner/properties`);
+      const params = previewUserId ? `?userId=${previewUserId}` : "";
+      const response = await fetch(`/api/owner/properties${params}`);
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
@@ -94,6 +141,47 @@ export default function OwnerDashboard() {
       setProperties([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUpcomingVisits = async () => {
+    try {
+      setVisitsLoading(true);
+      const params = previewUserId ? `?userId=${previewUserId}` : "";
+      const response = await fetch(`/api/owner/leads/confirmed${params}`);
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const visits = Array.isArray(data) ? (data as UpcomingVisit[]) : [];
+      setUpcomingVisits(visits.slice(0, 5));
+    } catch (error) {
+      console.error("Error fetching confirmed visits:", error);
+      setUpcomingVisits([]);
+    } finally {
+      setVisitsLoading(false);
+    }
+  };
+
+  const fetchPendingLeads = async () => {
+    try {
+      setPendingLoading(true);
+      const params = previewUserId ? `?userId=${previewUserId}` : "";
+      const response = await fetch(`/api/owner/leads/pending${params}`);
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setPendingLeads(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching pending leads:", error);
+      setPendingLeads([]);
+    } finally {
+      setPendingLoading(false);
     }
   };
 
@@ -150,6 +238,22 @@ export default function OwnerDashboard() {
     return "Boa noite";
   };
 
+  const refreshAfterDecision = () => {
+    // Mantém dashboard em sincronia após aprovar/recusar um horário
+    fetchPendingLeads();
+    fetchDashboardData();
+    fetchUpcomingVisits();
+  };
+
+  const formatVisitDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("pt-BR", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+    });
+  };
+
   if (loading) {
     return (
       <DashboardLayout
@@ -161,12 +265,7 @@ export default function OwnerDashboard() {
           { label: "Dashboard" },
         ]}
       >
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Carregando dashboard...</p>
-          </div>
-        </div>
+        <CenteredSpinner message="Carregando seu painel..." />
       </DashboardLayout>
     );
   }
@@ -195,41 +294,139 @@ export default function OwnerDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
             title="Imóveis Ativos"
-            value={metrics?.activeProperties || 0}
+            value={metrics?.activeProperties ?? 0}
             icon={Home}
-            subtitle="Publicados"
+            subtitle={`${metrics?.totalProperties ?? 0} no total`}
             iconColor="text-blue-600"
             iconBgColor="bg-blue-50"
           />
           <MetricCard
-            title="Visualizações"
-            value={metrics?.totalViews || 0}
-            icon={Eye}
-            trend={metrics?.viewTrend}
-            subtitle="Total de acessos"
+            title="Leads Recebidos"
+            value={metrics?.totalLeads ?? 0}
+            icon={Users}
+            subtitle="Em todos os imóveis"
             iconColor="text-green-600"
             iconBgColor="bg-green-50"
           />
           <MetricCard
-            title="Contatos Gerados"
-            value={metrics?.contactsGenerated || 0}
-            icon={Users}
-            subtitle={`${metrics?.contactsLast7Days || 0} nos últimos 7 dias`}
-            iconColor="text-purple-600"
-            iconBgColor="bg-purple-50"
+            title="Visitas agendadas"
+            value={metrics?.scheduledVisits ?? 0}
+            icon={Eye}
+            subtitle="Próximos dias"
+            iconColor="text-teal-600"
+            iconBgColor="bg-teal-50"
           />
           <MetricCard
-            title="Taxa de Conversão"
-            value={
-              metrics?.totalViews && metrics?.contactsGenerated
-                ? `${Math.round((metrics.contactsGenerated / metrics.totalViews) * 100)}%`
-                : "0%"
-            }
+            title="Visitas concluídas"
+            value={metrics?.completedVisits ?? 0}
             icon={TrendingUp}
-            subtitle="Views → Contatos"
+            subtitle="Histórico de visitas"
             iconColor="text-orange-600"
             iconBgColor="bg-orange-50"
           />
+        </div>
+
+        {/* Agenda de visitas & Aprovações pendentes */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <StatCard title="Agenda de visitas">
+            {visitsLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="text-sm text-gray-500">Carregando sua agenda...</div>
+              </div>
+            ) : upcomingVisits.length === 0 ? (
+              <EmptyState
+                icon={<Calendar className="w-10 h-10 text-gray-300" />}
+                title="Nenhuma visita confirmada ainda"
+                description="Quando você aprovar horários, suas próximas visitas aparecem aqui, sem pressa."
+              />
+            ) : (
+              <div className="space-y-3">
+                {upcomingVisits.map((visit) => (
+                  <div
+                    key={visit.id}
+                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                        <Calendar className="w-4 h-4 text-blue-600" />
+                        <span>
+                          {formatVisitDate(visit.visitDate)} • {visit.visitTime}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-gray-700">
+                        {visit.property.title}
+                      </p>
+                      <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                        <MapPin className="w-3 h-3" />
+                        <span>
+                          {visit.property.city} - {visit.property.state}
+                        </span>
+                      </div>
+                    </div>
+                    {visit.contact && (
+                      <div className="ml-4 text-right text-xs text-gray-600">
+                        <div className="font-medium">
+                          {visit.contact.name}
+                        </div>
+                        {visit.contact.phone && (
+                          <div className="mt-1">
+                            {visit.contact.phone}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </StatCard>
+
+          <StatCard title="Aprovações pendentes">
+            {pendingLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="text-sm text-gray-500">Carregando solicitações...</div>
+              </div>
+            ) : pendingLeads.length === 0 ? (
+              <EmptyState
+                icon={<AlertCircle className="w-10 h-10 text-gray-300" />}
+                title="Nenhum horário aguardando sua decisão"
+                description="Quando surgir uma nova solicitação de visita, ela aparece aqui para você revisar com calma."
+              />
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-xs text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-orange-500" />
+                    <span>
+                      {pendingLeads.length} horário
+                      {pendingLeads.length > 1 ? "s" : ""} aguardando sua aprovação
+                    </span>
+                  </div>
+                  <Link
+                    href="/owner/leads/pending"
+                    className="text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Ver todos
+                  </Link>
+                </div>
+
+                {/* Mostra o próximo para decisão direta */}
+                <OwnerApprovalCard
+                  key={pendingLeads[0].id}
+                  lead={pendingLeads[0]}
+                  onApprove={refreshAfterDecision}
+                  onReject={refreshAfterDecision}
+                />
+
+                {pendingLeads.length > 1 && (
+                  <div className="text-xs text-gray-500 text-right">
+                    + {pendingLeads.length - 1} solicitação
+                    {pendingLeads.length - 1 > 1 ? "s" : ""} em espera na página de solicitações.
+                  </div>
+                )}
+              </div>
+            )}
+          </StatCard>
         </div>
 
         {/* Premium CTA */}
@@ -296,28 +493,37 @@ export default function OwnerDashboard() {
                   properties.map((property) => (
                     <PropertyListItem
                       key={property.id}
-                      {...property}
+                      id={property.id}
+                      title={property.title}
+                      price={property.price}
+                      image={property.image}
+                      status={property.status}
+                      views={property.views}
+                      leads={property.leads}
+                      scheduledVisits={property.scheduledVisits}
+                      completedVisits={property.completedVisits}
+                      pendingApprovals={property.pendingApprovals}
                       onEdit={(id: string) => console.log("Edit", id)}
                       onDelete={(id: string) => console.log("Delete", id)}
                       onToggleStatus={(id: string) => console.log("Toggle", id)}
                     />
                   ))
                 ) : (
-                  <div className="col-span-2 text-center py-12 text-gray-500">
-                    <Home className="w-16 h-16 mx-auto mb-3 text-gray-300" />
-                    <p className="text-lg font-medium mb-2">
-                      Nenhum imóvel cadastrado
-                    </p>
-                    <p className="text-sm mb-4">
-                      Comece criando seu primeiro anúncio
-                    </p>
-                    <Link
-                      href="/owner/new"
-                      className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
-                    >
-                      <Plus className="w-5 h-5" />
-                      Criar Anúncio
-                    </Link>
+                  <div className="col-span-2 py-12">
+                    <EmptyState
+                      icon={<Home className="w-16 h-16 mx-auto mb-3 text-gray-300" />}
+                      title="Nenhum imóvel cadastrado"
+                      description="Comece criando seu primeiro anúncio para receber visitas e interessados."
+                      action={
+                        <Link
+                          href="/owner/new"
+                          className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
+                        >
+                          <Plus className="w-5 h-5" />
+                          Criar Anúncio
+                        </Link>
+                      }
+                    />
                   </div>
                 )}
               </div>
@@ -350,10 +556,11 @@ export default function OwnerDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <BarChart3 className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">Sem dados ainda</p>
-              </div>
+              <EmptyState
+                icon={<BarChart3 className="w-12 h-12 text-gray-300" />}
+                title="Sem dados ainda"
+                description="Assim que seus anúncios começarem a receber visitas, você acompanha aqui o desempenho de cada imóvel."
+              />
             )}
           </StatCard>
         </div>
@@ -393,10 +600,11 @@ export default function OwnerDashboard() {
                 </div>
               ))
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>Nenhum contato recebido ainda</p>
-              </div>
+              <EmptyState
+                icon={<Users className="w-12 h-12 text-gray-300" />}
+                title="Nenhum contato recebido ainda"
+                description="Quando corretores começarem a atender interessados nos seus imóveis, os últimos contatos aparecem aqui."
+              />
             )}
           </div>
         </StatCard>
