@@ -1157,64 +1157,7 @@ export default function Home() {
       )}
 
       {/* Featured Listings (Homepage) */}
-      {!hasSearched && (
-        <div className="mx-auto max-w-7xl px-4 py-10">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Destaques</h2>
-            <Link href="#" className="text-primary-600 hover:text-primary-800 text-sm font-medium">Ver mais</Link>
-          </div>
-          {featuredLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="card animate-pulse">
-                  <div className="h-48 bg-gray-200 rounded-t-xl"></div>
-                  <div className="p-5 space-y-3">
-                    <div className="h-5 bg-gray-200 rounded w-3/4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                    <div className="flex gap-4">
-                      <div className="h-4 bg-gray-200 rounded w-16"></div>
-                      <div className="h-4 bg-gray-200 rounded w-20"></div>
-                    </div>
-                    <div className="h-10 bg-gray-200 rounded-lg"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : featured.length === 0 ? (
-            <div className="text-center text-gray-500 py-16">
-              <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              <p className="text-lg font-medium">Sem destaques no momento</p>
-              <p className="text-sm mt-1">Novos imóveis serão exibidos aqui em breve</p>
-            </div>
-          ) : (
-            <>
-              {/* Mobile/Tablet: Carousel */}
-              <div className="md:hidden">
-                <Carousel
-                  items={featured}
-                  renderItem={(property) => (
-                    <div className="px-1">
-                      <PropertyCardPremium property={property} onOpenOverlay={openOverlay} />
-                    </div>
-                  )}
-                />
-              </div>
-              {/* Desktop: Grid */}
-              <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
-                {featured.slice(0, 6).map((property) => (
-                  <PropertyCardPremium
-                    key={property.id}
-                    property={property}
-                    onOpenOverlay={openOverlay}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      {!hasSearched && null}
 
       {/* Guides */}
       {!hasSearched && (
@@ -1224,6 +1167,56 @@ export default function Home() {
           </div>
           <Tabs
             items={[
+              { key: 'featured', label: 'Destaques', content: (
+                featuredLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="card animate-pulse">
+                        <div className="h-48 bg-gray-200 rounded-t-xl"></div>
+                        <div className="p-5 space-y-3">
+                          <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                          <div className="flex gap-4">
+                            <div className="h-4 bg-gray-200 rounded w-16"></div>
+                            <div className="h-4 bg-gray-200 rounded w-20"></div>
+                          </div>
+                          <div className="h-10 bg-gray-200 rounded-lg"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : featured.length === 0 ? (
+                  <div className="text-center text-gray-500 py-16">
+                    <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <p className="text-lg font-medium">Sem destaques no momento</p>
+                    <p className="text-sm mt-1">Novos imóveis serão exibidos aqui em breve</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="md:hidden">
+                      <Carousel
+                        items={featured}
+                        renderItem={(property) => (
+                          <div className="px-1">
+                            <PropertyCardPremium property={property} onOpenOverlay={openOverlay} />
+                          </div>
+                        )}
+                      />
+                    </div>
+                    <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
+                      {featured.slice(0, 6).map((property) => (
+                        <PropertyCardPremium
+                          key={property.id}
+                          property={property}
+                          onOpenOverlay={openOverlay}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )
+              )},
               { key: 'trending', label: 'Em alta', content: (
                 trendingLoading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
