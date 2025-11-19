@@ -524,90 +524,99 @@ export default function Home() {
 
             <div className="grid gap-6 md:gap-8 md:grid-cols-3 items-stretch">
               {/* Comprador / locatário */}
-              <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_30px_60px_rgba(15,23,42,0.25)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_40px_80px_rgba(15,23,42,0.35)]">
-                <div className="mb-5 sm:mb-6 flex justify-center">
-                  <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-teal-500">
-                    <Image
-                      src="https://images.unsplash.com/photo-1600585154340-0ef3c08c0632?auto=format&fit=crop&w=800&q=80"
-                      alt="Casal feliz comemorando novo imóvel"
-                      fill
-                      sizes="160px"
-                      className="object-cover"
-                    />
+              <div className="relative group flex flex-col items-center text-center">
+                <div className="pointer-events-none absolute -bottom-4 left-1/2 h-7 sm:h-8 w-28 sm:w-40 -translate-x-1/2 rounded-full bg-black/35 blur-xl opacity-80 transition-all duration-500 ease-out group-hover:opacity-40 group-hover:translate-y-1" />
+                <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_40px_90px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transform translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_22px_45px_rgba(15,23,42,0.28)]">
+                  <div className="mb-5 sm:mb-6 flex justify-center">
+                    <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-teal-500">
+                      <Image
+                        src="https://images.unsplash.com/photo-1600585154340-0ef3c08c0632?auto=format&fit=crop&w=800&q=80"
+                        alt="Casal feliz comemorando novo imóvel"
+                        fill
+                        sizes="160px"
+                        className="object-cover"
+                      />
+                    </div>
                   </div>
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                    Quero encontrar um imóvel
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
+                    Explore casas e apartamentos com informações claras, fotos boas e agenda de visitas simples, sem pressão para fechar negócio nem disputas de lance.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        const el = document.getElementById("explorar");
+                        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }
+                    }}
+                    className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 shadow-md hover:shadow-lg transition-all"
+                  >
+                    Explorar imóveis
+                  </button>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                  Quero encontrar um imóvel
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
-                  Explore casas e apartamentos com informações claras, fotos boas e agenda de visitas simples, sem pressão para fechar negócio nem disputas de lance.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== "undefined") {
-                      const el = document.getElementById("explorar");
-                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }
-                  }}
-                  className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 shadow-md hover:shadow-lg transition-all"
-                >
-                  Explorar imóveis
-                </button>
               </div>
 
               {/* Proprietário */}
-              <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_30px_60px_rgba(15,23,42,0.25)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_40px_80px_rgba(15,23,42,0.35)]">
-                <div className="mb-5 sm:mb-6 flex justify-center">
-                  <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-amber-500">
-                    <Image
-                      src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80"
-                      alt="Fachada de uma casa moderna e bem iluminada"
-                      fill
-                      sizes="160px"
-                      className="object-cover"
-                    />
+              <div className="relative group flex flex-col items-center text-center">
+                <div className="pointer-events-none absolute -bottom-4 left-1/2 h-7 sm:h-8 w-28 sm:w-40 -translate-x-1/2 rounded-full bg-black/35 blur-xl opacity-80 transition-all duration-500 ease-out group-hover:opacity-40 group-hover:translate-y-1" />
+                <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_40px_90px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transform translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_22px_45px_rgba(15,23,42,0.28)]">
+                  <div className="mb-5 sm:mb-6 flex justify-center">
+                    <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-amber-500">
+                      <Image
+                        src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80"
+                        alt="Fachada de uma casa moderna e bem iluminada"
+                        fill
+                        sizes="160px"
+                        className="object-cover"
+                      />
+                    </div>
                   </div>
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                    Quero vender ou alugar meu imóvel
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
+                    Anuncie seu imóvel para um público qualificado, com visibilidade e acompanhamento em um painel simples, no seu ritmo.
+                  </p>
+                  <Link
+                    href="/owner"
+                    className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 shadow-md hover:shadow-lg transition-all"
+                  >
+                    Acessar área do proprietário
+                  </Link>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                  Quero vender ou alugar meu imóvel
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
-                  Anuncie seu imóvel para um público qualificado, com visibilidade e acompanhamento em um painel simples, no seu ritmo.
-                </p>
-                <Link
-                  href="/owner"
-                  className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 shadow-md hover:shadow-lg transition-all"
-                >
-                  Acessar área do proprietário
-                </Link>
               </div>
 
               {/* Corretor */}
-              <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_30px_60px_rgba(15,23,42,0.25)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_40px_80px_rgba(15,23,42,0.35)]">
-                <div className="mb-5 sm:mb-6 flex justify-center">
-                  <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-indigo-600">
-                    <Image
-                      src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=800&q=80"
-                      alt="Corretor de imóveis sorrindo em frente a um fundo roxo"
-                      fill
-                      sizes="160px"
-                      className="object-cover"
-                    />
+              <div className="relative group flex flex-col items-center text-center">
+                <div className="pointer-events-none absolute -bottom-4 left-1/2 h-7 sm:h-8 w-28 sm:w-40 -translate-x-1/2 rounded-full bg-black/35 blur-xl opacity-80 transition-all duration-500 ease-out group-hover:opacity-40 group-hover:translate-y-1" />
+                <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_40px_90px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transform translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_22px_45px_rgba(15,23,42,0.28)]">
+                  <div className="mb-5 sm:mb-6 flex justify-center">
+                    <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-indigo-600">
+                      <Image
+                        src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=800&q=80"
+                        alt="Corretor de imóveis sorrindo em frente a um fundo roxo"
+                        fill
+                        sizes="160px"
+                        className="object-cover"
+                      />
+                    </div>
                   </div>
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                    Sou corretor(a)
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
+                    Organize imóveis, leads e visitas em um dashboard pensado para qualidade de atendimento, sem ranking punitivo ou metas agressivas.
+                  </p>
+                  <Link
+                    href="/onboarding"
+                    className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all"
+                  >
+                    Começar como corretor parceiro
+                  </Link>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                  Sou corretor(a)
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
-                  Organize imóveis, leads e visitas em um dashboard pensado para qualidade de atendimento, sem ranking punitivo ou metas agressivas.
-                </p>
-                <Link
-                  href="/onboarding"
-                  className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all"
-                >
-                  Começar como corretor parceiro
-                </Link>
               </div>
             </div>
           </div>
