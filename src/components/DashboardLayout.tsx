@@ -26,7 +26,7 @@ export default function DashboardLayout({
       <ModernNavbar />
 
       {/* Modern Context Bar with Gradient */}
-      <div className="bg-gradient-to-r from-teal-light to-teal shadow-lg mt-16">
+      <div className="bg-gradient-to-r from-teal-light to-teal shadow-lg mt-16 md:mt-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
