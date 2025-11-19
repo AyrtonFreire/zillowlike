@@ -485,7 +485,16 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {!hasSearched && <ModernNavbar />}
+      {/* Hero Section */}
+      {!hasSearched && (
+        <div className="relative">
+          <HeroSection />
+          <div className="absolute inset-x-0 top-0 z-[250]">
+            <ModernNavbar />
+          </div>
+        </div>
+      )}
+
       {hasSearched && (
         <SearchHeaderJE
           value={search}
@@ -508,9 +517,6 @@ export default function Home() {
           }}
         />
       )}
-      
-      {/* Hero Section */}
-      {!hasSearched && <HeroSection />}
 
       
 
