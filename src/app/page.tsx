@@ -525,6 +525,9 @@ export default function Home() {
             <div className="grid gap-6 md:gap-8 md:grid-cols-3 items-stretch">
               {/* Comprador / locatário */}
               <div className="relative group flex flex-col items-center text-center">
+                {/* Sombra de contato na parede (topo) */}
+                <div className="pointer-events-none absolute -top-2 left-6 right-6 h-4 rounded-full bg-black/15 blur-lg opacity-60 transition-all duration-500 ease-out group-hover:opacity-35" />
+                {/* Sombra no "chão" */}
                 <div className="pointer-events-none absolute -bottom-4 left-1/2 h-7 sm:h-8 w-28 sm:w-40 -translate-x-1/2 rounded-full bg-black/35 blur-xl opacity-80 transition-all duration-500 ease-out group-hover:opacity-40 group-hover:translate-y-1" />
                 <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_40px_90px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transform translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_22px_45px_rgba(15,23,42,0.28)]">
                   <div className="mb-5 sm:mb-6 flex justify-center">
@@ -561,6 +564,9 @@ export default function Home() {
 
               {/* Proprietário */}
               <div className="relative group flex flex-col items-center text-center">
+                {/* Sombra de contato na parede (topo) */}
+                <div className="pointer-events-none absolute -top-2 left-6 right-6 h-4 rounded-full bg-black/15 blur-lg opacity-60 transition-all duration-500 ease-out group-hover:opacity-35" />
+                {/* Sombra no "chão" */}
                 <div className="pointer-events-none absolute -bottom-4 left-1/2 h-7 sm:h-8 w-28 sm:w-40 -translate-x-1/2 rounded-full bg-black/35 blur-xl opacity-80 transition-all duration-500 ease-out group-hover:opacity-40 group-hover:translate-y-1" />
                 <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_40px_90px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transform translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_22px_45px_rgba(15,23,42,0.28)]">
                   <div className="mb-5 sm:mb-6 flex justify-center">
@@ -591,6 +597,9 @@ export default function Home() {
 
               {/* Corretor */}
               <div className="relative group flex flex-col items-center text-center">
+                {/* Sombra de contato na parede (topo) */}
+                <div className="pointer-events-none absolute -top-2 left-6 right-6 h-4 rounded-full bg-black/15 blur-lg opacity-60 transition-all duration-500 ease-out group-hover:opacity-35" />
+                {/* Sombra no "chão" */}
                 <div className="pointer-events-none absolute -bottom-4 left-1/2 h-7 sm:h-8 w-28 sm:w-40 -translate-x-1/2 rounded-full bg-black/35 blur-xl opacity-80 transition-all duration-500 ease-out group-hover:opacity-40 group-hover:translate-y-1" />
                 <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_40px_90px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transform translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_22px_45px_rgba(15,23,42,0.28)]">
                   <div className="mb-5 sm:mb-6 flex justify-center">
