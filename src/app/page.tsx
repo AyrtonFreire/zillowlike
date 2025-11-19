@@ -17,7 +17,7 @@ import SiteFooter from "@/components/Footer";
 import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
-import { LayoutList, Map, ChevronDown } from "lucide-react";
+import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase } from "lucide-react";
 
 const PropertyDetailsModalJames = dynamic(() => import("@/components/PropertyDetailsModalJames"), { ssr: false });
 import SearchFiltersBar from "@/components/SearchFiltersBar";
@@ -501,6 +501,112 @@ export default function Home() {
           <HeroSection />
           <div className="absolute inset-x-0 top-0 z-[250]">
             <ModernNavbar />
+          </div>
+        </div>
+      )}
+
+      {/* Perfis principais: comprador, proprietário, corretor */}
+      {!hasSearched && (
+        <div className="bg-gray-50">
+          <div className="mx-auto max-w-7xl px-4 py-10 sm:py-12">
+            <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
+              <p className="text-xs sm:text-sm font-semibold tracking-[0.18em] text-teal-600 uppercase">
+                Para quem é o Zillowlike
+              </p>
+              <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-display text-gray-900">
+                Três jeitos de usar a plataforma
+              </h2>
+              <p className="mt-3 text-sm sm:text-base text-gray-600">
+                Um lugar único para quem busca um lar, para quem quer anunciar com calma
+                e para corretores que valorizam um atendimento humano e sem leilão de preço.
+              </p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-3">
+              {/* Comprador / locatário */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="rounded-full bg-teal-50 text-teal-700 p-3">
+                    <KeyRound className="w-6 h-6" />
+                  </span>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Quero encontrar um imóvel
+                  </h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Explore casas e apartamentos com informações claras, fotos boas e
+                  agenda de visitas simples.
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1.5 mb-6">
+                  <li>• Busca por cidade, região ou bairro em poucos cliques.</li>
+                  <li>• Sem pressão para fechar negócio ou disputas de lance.</li>
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      const el = document.getElementById("explorar");
+                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                  }}
+                  className="mt-auto inline-flex items-center justify-center rounded-full border border-teal-600/70 px-4 py-2.5 text-sm font-semibold text-teal-700 hover:bg-teal-50 transition-colors"
+                >
+                  Explorar imóveis
+                </button>
+              </div>
+
+              {/* Proprietário */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="rounded-full bg-amber-50 text-amber-600 p-3">
+                    <Building2 className="w-6 h-6" />
+                  </span>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Quero vender ou alugar meu imóvel
+                  </h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Anuncie seu imóvel para um público qualificado, com visibilidade
+                  e acompanhamento em um painel simples.
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1.5 mb-6">
+                  <li>• Controle do que está sendo anunciado e do ritmo das respostas.</li>
+                  <li>• Apoio de corretores parceiros quando fizer sentido para você.</li>
+                </ul>
+                <Link
+                  href="/owner"
+                  className="mt-auto inline-flex items-center justify-center rounded-full border border-amber-500/70 px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
+                >
+                  Acessar área do proprietário
+                </Link>
+              </div>
+
+              {/* Corretor */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="rounded-full bg-indigo-50 text-indigo-600 p-3">
+                    <Briefcase className="w-6 h-6" />
+                  </span>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Sou corretor(a)
+                  </h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Organize leads e visitas em um dashboard pensado para qualidade
+                  de atendimento, não para competição entre corretores.
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1.5 mb-6">
+                  <li>• Painel com imóveis, leads e visitas em um só lugar.</li>
+                  <li>• Fluxo sem ranking punitivo ou metas agressivas.</li>
+                </ul>
+                <Link
+                  href="/onboarding"
+                  className="mt-auto inline-flex items-center justify-center rounded-full border border-indigo-500/70 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
+                >
+                  Começar como corretor parceiro
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1161,7 +1267,7 @@ export default function Home() {
 
       {/* Guides */}
       {!hasSearched && (
-        <div className="mx-auto max-w-7xl px-4 py-10">
+        <div id="explorar" className="mx-auto max-w-7xl px-4 py-10">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900 font-display">Explorar</h2>
           </div>
