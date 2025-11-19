@@ -525,6 +525,8 @@ export default function Home() {
             <div className="grid gap-6 md:gap-8 md:grid-cols-3 items-stretch">
               {/* Comprador / locatário */}
               <div className="relative group flex flex-col items-center text-center">
+                {/* Reflexo suave no piso */}
+                <div className="pointer-events-none absolute -bottom-10 left-1/2 h-10 w-32 sm:w-44 -translate-x-1/2 bg-gradient-to-b from-white/55 via-white/15 to-transparent blur-lg opacity-70 transition-all duration-500 ease-out group-hover:opacity-50 group-hover:translate-y-1" />
                 {/* Sombra de contato na parede (topo) */}
                 <div className="pointer-events-none absolute -top-2 left-6 right-6 h-4 rounded-full bg-black/15 blur-lg opacity-60 transition-all duration-500 ease-out group-hover:opacity-35" />
                 {/* Sombra no "chão" */}
