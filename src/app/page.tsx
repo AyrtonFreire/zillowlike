@@ -1212,8 +1212,8 @@ export default function Home() {
 
           {/* Right Side - Interactive Map (Desktop Only, oculto se 'Somente Lista') */}
           {viewMode === 'split' && (
-            <div className="hidden lg:block lg:w-1/2 pt-10">
-              <div className="sticky top-28 h-[500px] rounded-[32px] overflow-hidden shadow-[0_24px_70px_rgba(15,23,42,0.25)]">
+            <div className="hidden lg:block lg:w-1/2">
+              <div className="sticky top-[180px] h-[500px] rounded-[32px] overflow-hidden shadow-[0_24px_70px_rgba(15,23,42,0.25)]">
                 <MapWithPriceBubbles
                   items={properties}
                   isLoading={isLoading}
