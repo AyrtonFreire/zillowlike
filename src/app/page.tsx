@@ -495,13 +495,18 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
+      {/* Navbar sempre visível */}
       {!hasSearched && (
         <div className="relative">
           <HeroSection />
           <div className="absolute inset-x-0 top-0 z-[250]">
             <ModernNavbar />
           </div>
+        </div>
+      )}
+      {hasSearched && (
+        <div className="sticky top-0 z-50">
+          <ModernNavbar />
         </div>
       )}
 
@@ -643,10 +648,10 @@ export default function Home() {
       {hasSearched && (
         <>
           {/* Zillow-style Search Bar - Full Width Above Everything */}
-          <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+          <div className="bg-white border-b border-gray-200 sticky top-16 z-40">
               <div className="px-4 py-3 bg-white">
-                {/* Zillow-style: Search bar + Inline Filters in one row */}
-                <div className="flex items-center gap-3">
+                {/* Desktop: Search bar + Inline Filters in one row */}
+                <div className="hidden md:flex items-center gap-3">
                   {/* Compact Search Bar - Left Side */}
                   <div className="w-80 flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:border-gray-400 transition-colors">
                     <Search className="w-5 h-5 text-gray-400" />
@@ -675,7 +680,7 @@ export default function Home() {
                     </button>
                   </div>
 
-                  {/* Filter Buttons - Right Side */}
+                  {/* Filter Buttons - Right Side (Desktop) */}
                   <div className="flex-1 flex items-center gap-2 flex-wrap">
                   {/* For Sale / Aluguel */}
                   <select
