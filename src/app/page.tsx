@@ -128,6 +128,13 @@ export default function Home() {
   const [iptuMin, setIptuMin] = useState("");
   const [iptuMax, setIptuMax] = useState("");
   const [keywords, setKeywords] = useState("");
+  const [parkingSpotsMin, setParkingSpotsMin] = useState("");
+  
+  // Autocomplete para barra de busca
+  const [searchSuggestions, setSearchSuggestions] = useState<Array<{label: string; city: string; state: string; neighborhood: string | null; count: number}>>([]);
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
+  const searchInputRef = useRef<HTMLDivElement>(null);
 
   // Parse dos parâmetros da URL
   useEffect(() => {
@@ -167,6 +174,70 @@ export default function Home() {
   const hasSearched = useMemo(() => {
     return !!(search || city || type || minPrice || maxPrice || bedroomsMin || bathroomsMin || areaMin);
   }, [search, city, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin]);
+
+  // Buscar sugestões da API quando o usuário digita na barra de resultados
+  useEffect(() => {
+    if (!hasSearched) return; // Só quando está na página de resultados
+    
+    const fetchSuggestions = async () => {
+      if (search.length > 0) {
+        setIsFetchingSuggestions(true);
+        try {
+          const response = await fetch(`/api/locations?q=${encodeURIComponent(search)}`);
+          const data = await response.json();
+          if (data.success) {
+            setSearchSuggestions(data.suggestions || []);
+          }
+        } catch (error) {
+          console.error('Error fetching suggestions:', error);
+          setSearchSuggestions([]);
+        } finally {
+          setIsFetchingSuggestions(false);
+        }
+      } else {
+        setSearchSuggestions([]);
+      }
+    };
+
+    const debounce = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(debounce);
+  }, [search, hasSearched]);
+
+  // Fechar autocomplete ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(event.target as Node)) {
+        setShowSearchSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Função para selecionar uma sugestão
+  const handleSelectSuggestion = useCallback((suggestion: {label: string; city: string; state: string; neighborhood: string | null}) => {
+    setCity(suggestion.city);
+    setState(suggestion.state);
+    setSearch(suggestion.neighborhood || '');
+    setShowSearchSuggestions(false);
+    
+    // Fazer a busca imediatamente
+    const params = buildSearchParams({ 
+      q: suggestion.neighborhood || '', 
+      city: suggestion.city, 
+      state: suggestion.state, 
+      type, 
+      minPrice, 
+      maxPrice, 
+      bedroomsMin, 
+      bathroomsMin, 
+      areaMin, 
+      status,
+      sort, 
+      page: 1 
+    });
+    router.push(`/?${params}`);
+  }, [type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, router]);
 
   // Helper para buscar categoria com fallback por localidade (pode receber city/state overrides)
   const fetchCategory = useCallback(async (baseParams: Record<string, any>, loc?: { city?: string; state?: string }) => {
@@ -653,31 +724,64 @@ export default function Home() {
                 {/* Desktop: Search bar + Inline Filters in one row */}
                 <div className="hidden md:flex items-center gap-3">
                   {/* Compact Search Bar - Left Side */}
-                  <div className="w-80 flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:border-gray-400 transition-colors">
-                    <Search className="w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                  <div ref={searchInputRef} className="w-80 relative">
+                    <div className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:border-gray-400 transition-colors">
+                      <Search className="w-5 h-5 text-gray-400" />
+                      <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => {
+                          setSearch(e.target.value);
+                          setShowSearchSuggestions(true);
+                        }}
+                        onFocus={() => setShowSearchSuggestions(true)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            setShowSearchSuggestions(false);
+                            const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                            router.push(`/?${params}`);
+                          }
+                        }}
+                        placeholder="Endereço, cidade..."
+                        className="flex-1 outline-none text-sm"
+                      />
+                      <button
+                        onClick={() => {
+                          setShowSearchSuggestions(false);
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
                           router.push(`/?${params}`);
-                        }
-                      }}
-                      placeholder="Endereço, cidade..."
-                      className="flex-1 outline-none text-sm"
-                    />
-                    <button
-                      onClick={() => {
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
-                        router.push(`/?${params}`);
-                      }}
-                      className="p-1 hover:bg-gray-100 rounded transition-colors"
-                      aria-label="Buscar"
-                    >
-                      <Search className="w-4 h-4 text-gray-600" />
-                    </button>
+                        }}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        aria-label="Buscar"
+                      >
+                        <Search className="w-4 h-4 text-gray-600" />
+                      </button>
+                    </div>
+                    
+                    {/* Autocomplete Dropdown */}
+                    {showSearchSuggestions && searchSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-80 overflow-y-auto">
+                        {searchSuggestions.map((suggestion, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSelectSuggestion(suggestion)}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900">{suggestion.label}</div>
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  {suggestion.city}, {suggestion.state}
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-400 ml-2">
+                                {suggestion.count} {suggestion.count === 1 ? 'imóvel' : 'imóveis'}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Filter Buttons - Right Side (Desktop) */}
@@ -1173,33 +1277,66 @@ export default function Home() {
                 </div>
 
                 {/* Mobile: Search bar + More button only */}
-                <div className="md:hidden flex items-center gap-2">
-                  {/* Search Bar */}
-                  <div className="flex-1 flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg bg-white">
-                    <Search className="w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                <div className="md:hidden flex items-center gap-2 relative">
+                  {/* Search Bar com Autocomplete */}
+                  <div className="flex-1 relative">
+                    <div className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg bg-white">
+                      <Search className="w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => {
+                          setSearch(e.target.value);
+                          setShowSearchSuggestions(true);
+                        }}
+                        onFocus={() => setShowSearchSuggestions(true)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            setShowSearchSuggestions(false);
+                            const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                            router.push(`/?${params}`);
+                          }
+                        }}
+                        placeholder="Cidade, bairro..."
+                        className="flex-1 outline-none text-sm"
+                      />
+                      <button
+                        onClick={() => {
+                          setShowSearchSuggestions(false);
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
                           router.push(`/?${params}`);
-                        }
-                      }}
-                      placeholder="Cidade, bairro..."
-                      className="flex-1 outline-none text-sm"
-                    />
-                    <button
-                      onClick={() => {
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
-                        router.push(`/?${params}`);
-                      }}
-                      className="p-1 hover:bg-gray-100 rounded transition-colors"
-                      aria-label="Buscar"
-                    >
-                      <Search className="w-4 h-4 text-gray-600" />
-                    </button>
+                        }}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        aria-label="Buscar"
+                      >
+                        <Search className="w-4 h-4 text-gray-600" />
+                      </button>
+                    </div>
+                    
+                    {/* Autocomplete Dropdown Mobile */}
+                    {showSearchSuggestions && searchSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-80 overflow-y-auto">
+                        {searchSuggestions.map((suggestion, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSelectSuggestion(suggestion)}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900">{suggestion.label}</div>
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  {suggestion.city}, {suggestion.state}
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-400 ml-2">
+                                {suggestion.count} {suggestion.count === 1 ? 'imóvel' : 'imóveis'}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* More Button (abre drawer com todos os filtros) */}
@@ -1625,6 +1762,129 @@ export default function Home() {
         open={overlayOpen}
         onClose={closeOverlay}
       />
+
+      {/* Filters Drawer Mobile */}
+      <Drawer
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="Filtros"
+      >
+        <SearchFiltersBar
+          compact={true}
+          open={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+          filters={{
+            minPrice,
+            maxPrice,
+            bedrooms: bedroomsMin,
+            bathrooms: bathroomsMin,
+            type,
+            areaMin,
+            parkingSpots,
+            yearBuiltMin,
+            yearBuiltMax,
+            status,
+            petFriendly,
+            furnished,
+            hasPool,
+            hasGym,
+            hasElevator,
+            hasBalcony,
+            hasSeaView: viewSea,
+            condoFeeMin,
+            condoFeeMax,
+            iptuMin,
+            iptuMax,
+            keywords
+          }}
+          onFiltersChange={(newFilters) => {
+            setMinPrice(newFilters.minPrice);
+            setMaxPrice(newFilters.maxPrice);
+            setBedroomsMin(newFilters.bedrooms);
+            setBathroomsMin(newFilters.bathrooms);
+            setType(newFilters.type);
+            setAreaMin(newFilters.areaMin);
+            setParkingSpots(newFilters.parkingSpots);
+            setYearBuiltMin(newFilters.yearBuiltMin);
+            setYearBuiltMax(newFilters.yearBuiltMax);
+            setStatus(newFilters.status);
+            setPetFriendly(newFilters.petFriendly);
+            setFurnished(newFilters.furnished);
+            setHasPool(newFilters.hasPool);
+            setHasGym(newFilters.hasGym);
+            setHasElevator(newFilters.hasElevator);
+            setHasBalcony(newFilters.hasBalcony);
+            setViewSea(newFilters.hasSeaView);
+            setCondoFeeMin(newFilters.condoFeeMin);
+            setCondoFeeMax(newFilters.condoFeeMax);
+            setIptuMin(newFilters.iptuMin);
+            setIptuMax(newFilters.iptuMax);
+            setKeywords(newFilters.keywords);
+            
+            // Aplicar filtros
+            const params = buildSearchParams({
+              q: search,
+              city,
+              state,
+              type: newFilters.type,
+              minPrice: newFilters.minPrice,
+              maxPrice: newFilters.maxPrice,
+              bedroomsMin: newFilters.bedrooms,
+              bathroomsMin: newFilters.bathrooms,
+              areaMin: newFilters.areaMin,
+              parkingSpots: newFilters.parkingSpots,
+              yearBuiltMin: newFilters.yearBuiltMin,
+              yearBuiltMax: newFilters.yearBuiltMax,
+              status: newFilters.status,
+              petFriendly: newFilters.petFriendly ? 'true' : '',
+              furnished: newFilters.furnished ? 'true' : '',
+              hasPool: newFilters.hasPool ? 'true' : '',
+              hasGym: newFilters.hasGym ? 'true' : '',
+              hasElevator: newFilters.hasElevator ? 'true' : '',
+              hasBalcony: newFilters.hasBalcony ? 'true' : '',
+              viewSea: newFilters.hasSeaView ? 'true' : '',
+              condoFeeMin: newFilters.condoFeeMin,
+              condoFeeMax: newFilters.condoFeeMax,
+              iptuMin: newFilters.iptuMin,
+              iptuMax: newFilters.iptuMax,
+              keywords: newFilters.keywords,
+              sort,
+              page: 1
+            });
+            router.push(`/?${params}`);
+            setFiltersOpen(false);
+          }}
+          onClearFilters={() => {
+            setSearch('');
+            setCity('');
+            setState('');
+            setType('');
+            setMinPrice('');
+            setMaxPrice('');
+            setBedroomsMin('');
+            setBathroomsMin('');
+            setAreaMin('');
+            setParkingSpots('');
+            setYearBuiltMin('');
+            setYearBuiltMax('');
+            setStatus('');
+            setPetFriendly(false);
+            setFurnished(false);
+            setHasPool(false);
+            setHasGym(false);
+            setHasElevator(false);
+            setHasBalcony(false);
+            setViewSea(false);
+            setCondoFeeMin('');
+            setCondoFeeMax('');
+            setIptuMin('');
+            setIptuMax('');
+            setKeywords('');
+            router.push('/');
+            setFiltersOpen(false);
+          }}
+        />
+      </Drawer>
 
       {/* Floating mobile map button (hidden when filters are open) */}
       {hasSearched && !mobileMapOpen && !filtersOpen && (
