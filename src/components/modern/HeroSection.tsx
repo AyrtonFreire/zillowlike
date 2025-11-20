@@ -315,29 +315,31 @@ export default function HeroSection() {
               </div>
 
               {/* Mobile: barra simples */}
-              <div className="sm:hidden px-4 py-3">
-                <div ref={searchRef} className="flex items-center gap-2">
-                  <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Cidade, região, bairro"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => setShowSuggestions(true)}
-                    className="flex-1 outline-none text-gray-700 placeholder:text-gray-400 text-sm bg-transparent py-2"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery('');
-                        setShowSuggestions(false);
-                      }}
-                      className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-gray-100 transition-colors"
-                    >
-                      <X className="w-4 h-4 text-gray-400" />
-                    </button>
-                  )}
+              <div className="sm:hidden">
+                <div className="bg-white/95 backdrop-blur rounded-full shadow-2xl border border-white/30 overflow-hidden px-4 py-3">
+                  <div ref={searchRef} className="flex items-center gap-2">
+                    <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="Cidade, região, bairro"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setShowSuggestions(true)}
+                      className="flex-1 outline-none text-gray-800 placeholder:text-gray-500 text-sm bg-transparent"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setShowSuggestions(false);
+                        }}
+                        className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-gray-100 transition-colors"
+                      >
+                        <X className="w-4 h-4 text-gray-400" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </form>

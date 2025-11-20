@@ -506,7 +506,7 @@ export default function Home() {
       )}
       {hasSearched && (
         <div className="sticky top-0 z-50">
-          <ModernNavbar />
+          <ModernNavbar forceLight={true} />
         </div>
       )}
 
@@ -1170,6 +1170,45 @@ export default function Home() {
                     Salvar Busca
                   </button>
                   </div>
+                </div>
+
+                {/* Mobile: Search bar + More button only */}
+                <div className="md:hidden flex items-center gap-2">
+                  {/* Search Bar */}
+                  <div className="flex-1 flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg bg-white">
+                    <Search className="w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                          router.push(`/?${params}`);
+                        }
+                      }}
+                      placeholder="Cidade, bairro..."
+                      className="flex-1 outline-none text-sm"
+                    />
+                    <button
+                      onClick={() => {
+                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                        router.push(`/?${params}`);
+                      }}
+                      className="p-1 hover:bg-gray-100 rounded transition-colors"
+                      aria-label="Buscar"
+                    >
+                      <Search className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+
+                  {/* More Button (abre drawer com todos os filtros) */}
+                  <button
+                    onClick={() => setFiltersOpen(true)}
+                    className="px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-medium hover:border-gray-400 transition-colors whitespace-nowrap"
+                  >
+                    Mais
+                  </button>
                 </div>
               </div>
             </div>

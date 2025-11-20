@@ -9,7 +9,11 @@ import { useRouter, usePathname } from "next/navigation";
 import MobileHeaderZillow from "./MobileHeaderZillow";
 import HowItWorksModal from "./HowItWorksModal";
 
-export default function ModernNavbar() {
+interface ModernNavbarProps {
+  forceLight?: boolean;
+}
+
+export default function ModernNavbar({ forceLight = false }: ModernNavbarProps = {}) {
   const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
   const [isRightMenuOpen, setIsRightMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -90,6 +94,8 @@ export default function ModernNavbar() {
         className={`hidden md:block w-full relative z-[200] transition-all duration-300 ${
           isDashboardContext
             ? "bg-gradient-to-r from-teal-light to-teal shadow-md"
+            : forceLight
+            ? "bg-white shadow-md"
             : "bg-transparent"
         }`}
       >
@@ -107,12 +113,14 @@ export default function ModernNavbar() {
                 onMouseEnter={() => { cancelClose(); setMegaMenu(item.key); setPrimary(item.key); }}
                 onClick={() => { setMegaMenu(megaMenu === item.key ? null : item.key); setPrimary(item.key); }}
                 className={`font-semibold text-[15px] transition-colors relative group ${
-                  (primary === item.key ? 'text-white' : 'text-white/90 hover:text-white')
+                  forceLight
+                    ? (primary === item.key ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
+                    : (primary === item.key ? 'text-white' : 'text-white/90 hover:text-white')
                 }`}
               >
                 {item.label}
                 <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 ${
-                  'bg-white'
+                  forceLight ? 'bg-teal-600' : 'bg-white'
                 } ${
                   primary === item.key ? 'w-full' : 'w-0 group-hover:w-full'
                 }`} />
@@ -124,10 +132,14 @@ export default function ModernNavbar() {
           {/* Center: Logo */}
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xl transition-colors bg-white/20 backdrop-blur text-white`}>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xl transition-colors ${
+                forceLight ? 'bg-teal-600 text-white' : 'bg-white/20 backdrop-blur text-white'
+              }`}>
                 Z
               </div>
-              <span className={`hidden lg:block text-xl font-bold transition-colors text-white`}>ZillowLike</span>
+              <span className={`hidden lg:block text-xl font-bold transition-colors ${
+                forceLight ? 'text-gray-900' : 'text-white'
+              }`}>ZillowLike</span>
             </Link>
           </div>
           
@@ -135,14 +147,18 @@ export default function ModernNavbar() {
           <div className="flex items-center justify-end gap-2">
             <button 
               onClick={() => setHowItWorksOpen(true)} 
-              className={`hidden lg:flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors text-white/90 hover:bg-white/10`}
+              className={`hidden lg:flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
+                forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white/90 hover:bg-white/10'
+              }`}
             >
               <HelpCircle className="w-4 h-4" />
               <span>Como funciona</span>
             </button>
             <Link 
               href="/favorites" 
-              className={`p-2 rounded-lg transition-colors text-white hover:bg-white/10`}
+              className={`p-2 rounded-lg transition-colors ${
+                forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'
+              }`}
             >
               <Heart className="w-5 h-5" />
             </Link>
