@@ -835,6 +835,10 @@ export default function NewPropertyPage() {
       ].filter(Boolean) as string[];
       const mergedTags = Array.from(new Set([...(conditionTags || []), ...amenityTags]));
 
+      // Deriva flags usadas nos filtros de busca
+      const isFurnished = mergedTags.includes('Mobiliado');
+      const isPetFriendly = mergedTags.includes('Aceita pets') || petsSmall || petsLarge;
+
       const payload = {
         title: autoTitle,
         description,
@@ -843,6 +847,8 @@ export default function NewPropertyPage() {
         purpose,
         address: { street, neighborhood, city, state, postalCode, number: addressNumber || undefined },
         geo: { lat: geo.lat, lng: geo.lng },
+        furnished: isFurnished,
+        petFriendly: isPetFriendly,
         details: {
           bedrooms: bedrooms === "" ? null : Number(bedrooms),
           bathrooms: bathrooms === "" ? null : Number(bathrooms),

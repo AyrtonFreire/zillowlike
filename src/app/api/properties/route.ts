@@ -177,7 +177,7 @@ export async function GET(req: NextRequest) {
     const hasGym = searchParams.get("hasGym");
     const hasElevator = searchParams.get("hasElevator");
     const hasBalcony = searchParams.get("hasBalcony");
-    const hasSeaView = searchParams.get("hasSeaView");
+    const viewSea = searchParams.get("viewSea");
     const condoFeeMax = searchParams.get("condoFeeMax");
     const iptuMax = searchParams.get("iptuMax");
     const keywords = searchParams.get("keywords");
@@ -195,7 +195,7 @@ export async function GET(req: NextRequest) {
     if (hasGym === "true") where.hasGym = true;
     if (hasElevator === "true") where.hasElevator = true;
     if (hasBalcony === "true") where.hasBalcony = true;
-    if (hasSeaView === "true") where.viewSea = true;
+    if (viewSea === "true") where.viewSea = true;
     if (condoFeeMax) where.condoFee = { lte: Number(condoFeeMax) };
     if (iptuMax) {
       // IPTU não existe no schema atual, mas preparado para quando adicionar
@@ -397,7 +397,7 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    const { title, description, priceBRL, type, purpose, address, geo, details, images, conditionTags } = parsed.data;
+    const { title, description, priceBRL, type, purpose, address, geo, details, images, conditionTags, furnished, petFriendly } = parsed.data;
 
     const price = Math.round(Number(priceBRL) * 100);
     const userId = (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub;
@@ -447,6 +447,8 @@ export async function POST(req: NextRequest) {
       postalCode: address.postalCode ?? null,
       latitude: geo.lat,
       longitude: geo.lng,
+      furnished: typeof furnished === 'boolean' ? furnished : null,
+      petFriendly: typeof petFriendly === 'boolean' ? petFriendly : null,
       bedrooms: details?.bedrooms ?? null,
       bathrooms: details?.bathrooms ?? null,
       areaM2: details?.areaM2 ?? null,

@@ -27,6 +27,9 @@ export const PropertyCreateSchema = z.object({
     .max(1_000_000_000), // até R$ 1 bi (inteiro em reais)
   type: PropertyTypeEnum,
   purpose: PurposeEnum.optional(),
+  // Flags usadas nos filtros de busca
+  furnished: z.boolean().optional(),
+  petFriendly: z.boolean().optional(),
   address: z.object({
     street: z.string().min(1).max(200),
     neighborhood: z.string().max(120).optional().nullable(),

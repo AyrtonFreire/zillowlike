@@ -27,7 +27,7 @@ export type Filters = {
   hasGym?: string;
   hasElevator?: string;
   hasBalcony?: string;
-  hasSeaView?: string;
+  viewSea?: string;
   condoFeeMin?: string;
   condoFeeMax?: string;
   iptuMin?: string;
@@ -73,7 +73,7 @@ export function parseFiltersFromSearchParams(sp: URLSearchParams): Filters {
   f.hasGym = get("hasGym");
   f.hasElevator = get("hasElevator");
   f.hasBalcony = get("hasBalcony");
-  f.hasSeaView = get("hasSeaView");
+  f.viewSea = get("viewSea");
   f.condoFeeMin = get("condoFeeMin");
   f.condoFeeMax = get("condoFeeMax");
   f.iptuMin = get("iptuMin");
@@ -116,7 +116,7 @@ export function buildSearchParams(filters: Filters): string {
   if (filters.hasGym) p.set("hasGym", filters.hasGym);
   if (filters.hasElevator) p.set("hasElevator", filters.hasElevator);
   if (filters.hasBalcony) p.set("hasBalcony", filters.hasBalcony);
-  if (filters.hasSeaView) p.set("hasSeaView", filters.hasSeaView);
+  if (filters.viewSea) p.set("viewSea", filters.viewSea);
   if (filters.condoFeeMin) p.set("condoFeeMin", filters.condoFeeMin);
   if (filters.condoFeeMax) p.set("condoFeeMax", filters.condoFeeMax);
   if (filters.iptuMin) p.set("iptuMin", filters.iptuMin);

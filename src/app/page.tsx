@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ModernNavbar, HeroSection, PropertyCardPremium } from "@/components/modern";
-import SearchHeaderJE from "@/components/modern/SearchHeaderJE";
 import Select from "@/components/ui/Select";
 import Drawer from "@/components/ui/Drawer";
 import Pagination from "@/components/ui/Pagination";
@@ -123,7 +122,7 @@ export default function Home() {
   const [hasGym, setHasGym] = useState(false);
   const [hasElevator, setHasElevator] = useState(false);
   const [hasBalcony, setHasBalcony] = useState(false);
-  const [hasSeaView, setHasSeaView] = useState(false);
+  const [viewSea, setViewSea] = useState(false);
   const [condoFeeMin, setCondoFeeMin] = useState("");
   const [condoFeeMax, setCondoFeeMax] = useState("");
   const [iptuMin, setIptuMin] = useState("");
@@ -156,7 +155,7 @@ export default function Home() {
     setHasGym(filters.hasGym === "true");
     setHasElevator(filters.hasElevator === "true");
     setHasBalcony(filters.hasBalcony === "true");
-    setHasSeaView(filters.hasSeaView === "true");
+    setViewSea(filters.viewSea === "true");
     setCondoFeeMin(filters.condoFeeMin || "");
     setCondoFeeMax(filters.condoFeeMax || "");
     setIptuMin(filters.iptuMin || "");
@@ -633,28 +632,7 @@ export default function Home() {
         </div>
       )}
 
-      {hasSearched && (
-        <SearchHeaderJE
-          value={search}
-          onChange={(v) => setSearch(v)}
-          onSubmit={() => {
-            const params = buildSearchParams({
-              q: search,
-              city,
-              state,
-              type,
-              minPrice,
-              maxPrice,
-              bedroomsMin,
-              bathroomsMin,
-              areaMin,
-              sort,
-              page: 1,
-            });
-            router.push(`/?${params}`, { scroll: false });
-          }}
-        />
-      )}
+      {/* SearchHeaderJE removido - usando apenas barra Zillow abaixo */}
 
       
 
@@ -685,6 +663,16 @@ export default function Home() {
                       placeholder="Endereço, cidade..."
                       className="flex-1 outline-none text-sm"
                     />
+                    <button
+                      onClick={() => {
+                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                        router.push(`/?${params}`);
+                      }}
+                      className="p-1 hover:bg-gray-100 rounded transition-colors"
+                      aria-label="Buscar"
+                    >
+                      <Search className="w-4 h-4 text-gray-600" />
+                    </button>
                   </div>
 
                   {/* Filter Buttons - Right Side */}
@@ -1043,8 +1031,8 @@ export default function Home() {
                               <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
                                 <input
                                   type="checkbox"
-                                  checked={hasSeaView}
-                                  onChange={(e) => setHasSeaView(e.target.checked)}
+                                  checked={viewSea}
+                                  onChange={(e) => setViewSea(e.target.checked)}
                                   className="w-4 h-4 text-blue-600 rounded"
                                 />
                                 <span className="text-sm text-gray-700">Vista para o Mar</span>
@@ -1120,7 +1108,7 @@ export default function Home() {
                                 setHasGym(false);
                                 setHasElevator(false);
                                 setHasBalcony(false);
-                                setHasSeaView(false);
+                                setViewSea(false);
                                 setFurnished(false);
                                 setPetFriendly(false);
                                 setYearBuiltMin('');
@@ -1154,7 +1142,7 @@ export default function Home() {
                                   hasGym: hasGym ? 'true' : '',
                                   hasElevator: hasElevator ? 'true' : '',
                                   hasBalcony: hasBalcony ? 'true' : '',
-                                  hasSeaView: hasSeaView ? 'true' : '',
+                                  viewSea: viewSea ? 'true' : '',
                                   keywords,
                                   sort,
                                   page: 1
@@ -1377,7 +1365,7 @@ export default function Home() {
                     hasGym: hasGym ? "true" : "",
                     hasElevator: hasElevator ? "true" : "",
                     hasBalcony: hasBalcony ? "true" : "",
-                    hasSeaView: hasSeaView ? "true" : "",
+                    viewSea: viewSea ? "true" : "",
                     condoFeeMin,
                     condoFeeMax,
                     iptuMin,
@@ -1647,7 +1635,7 @@ export default function Home() {
                   hasGym: hasGym ? "true" : "",
                   hasElevator: hasElevator ? "true" : "",
                   hasBalcony: hasBalcony ? "true" : "",
-                  hasSeaView: hasSeaView ? "true" : "",
+                  viewSea: viewSea ? "true" : "",
                   condoFeeMin,
                   condoFeeMax,
                   iptuMin,
