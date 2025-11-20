@@ -19,7 +19,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search } from "lucide-react";
 
 const PropertyDetailsModalJames = dynamic(() => import("@/components/PropertyDetailsModalJames"), { ssr: false });
-import SearchFiltersBar from "@/components/SearchFiltersBar";
+import SearchFiltersBarZillow from "@/components/SearchFiltersBarZillow";
 import Image from "next/image";
 import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
 import { track } from "@/lib/analytics";
@@ -1763,16 +1763,13 @@ export default function Home() {
         onClose={closeOverlay}
       />
 
-      {/* Filters Drawer Mobile */}
+      {/* Filters Drawer Mobile - Estilo Zillow */}
       <Drawer
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         title="Filtros"
       >
-        <SearchFiltersBar
-          compact={true}
-          open={filtersOpen}
-          onClose={() => setFiltersOpen(false)}
+        <SearchFiltersBarZillow
           filters={{
             minPrice,
             maxPrice,
@@ -1820,39 +1817,6 @@ export default function Home() {
             setIptuMin(newFilters.iptuMin);
             setIptuMax(newFilters.iptuMax);
             setKeywords(newFilters.keywords);
-            
-            // Aplicar filtros
-            const params = buildSearchParams({
-              q: search,
-              city,
-              state,
-              type: newFilters.type,
-              minPrice: newFilters.minPrice,
-              maxPrice: newFilters.maxPrice,
-              bedroomsMin: newFilters.bedrooms,
-              bathroomsMin: newFilters.bathrooms,
-              areaMin: newFilters.areaMin,
-              parkingSpots: newFilters.parkingSpots,
-              yearBuiltMin: newFilters.yearBuiltMin,
-              yearBuiltMax: newFilters.yearBuiltMax,
-              status: newFilters.status,
-              petFriendly: newFilters.petFriendly ? 'true' : '',
-              furnished: newFilters.furnished ? 'true' : '',
-              hasPool: newFilters.hasPool ? 'true' : '',
-              hasGym: newFilters.hasGym ? 'true' : '',
-              hasElevator: newFilters.hasElevator ? 'true' : '',
-              hasBalcony: newFilters.hasBalcony ? 'true' : '',
-              viewSea: newFilters.hasSeaView ? 'true' : '',
-              condoFeeMin: newFilters.condoFeeMin,
-              condoFeeMax: newFilters.condoFeeMax,
-              iptuMin: newFilters.iptuMin,
-              iptuMax: newFilters.iptuMax,
-              keywords: newFilters.keywords,
-              sort,
-              page: 1
-            });
-            router.push(`/?${params}`);
-            setFiltersOpen(false);
           }}
           onClearFilters={() => {
             setSearch('');
@@ -1880,7 +1844,38 @@ export default function Home() {
             setIptuMin('');
             setIptuMax('');
             setKeywords('');
-            router.push('/');
+          }}
+          onApply={() => {
+            const params = buildSearchParams({
+              q: search,
+              city,
+              state,
+              type,
+              minPrice,
+              maxPrice,
+              bedroomsMin,
+              bathroomsMin,
+              areaMin,
+              parkingSpots,
+              yearBuiltMin,
+              yearBuiltMax,
+              status,
+              petFriendly: petFriendly ? 'true' : '',
+              furnished: furnished ? 'true' : '',
+              hasPool: hasPool ? 'true' : '',
+              hasGym: hasGym ? 'true' : '',
+              hasElevator: hasElevator ? 'true' : '',
+              hasBalcony: hasBalcony ? 'true' : '',
+              viewSea: viewSea ? 'true' : '',
+              condoFeeMin,
+              condoFeeMax,
+              iptuMin,
+              iptuMax,
+              keywords,
+              sort,
+              page: 1
+            });
+            router.push(`/?${params}`);
             setFiltersOpen(false);
           }}
         />
