@@ -522,16 +522,16 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="grid gap-6 md:gap-8 md:grid-cols-3 items-stretch">
+            <div className="grid gap-6 md:gap-8 md:grid-cols-3 items-stretch" style={{ perspective: '1400px' }}>
               {/* Comprador / locatário */}
-              <div className="relative group flex flex-col items-center text-center">
+              <div className="relative group flex flex-col items-center text-center" style={{ transformStyle: 'preserve-3d' }}>
                 {/* Reflexo suave no piso */}
-                <div className="pointer-events-none absolute -bottom-10 left-1/2 h-10 w-32 sm:w-44 -translate-x-1/2 bg-gradient-to-b from-white/55 via-white/15 to-transparent blur-lg opacity-70 transition-all duration-500 ease-out group-hover:opacity-50 group-hover:translate-y-1" />
+                <div className="pointer-events-none absolute -bottom-16 left-1/2 h-16 w-40 sm:w-56 -translate-x-1/2 bg-gradient-to-b from-white/70 via-white/25 to-transparent blur-2xl opacity-85 transition-all duration-500 ease-out group-hover:opacity-60 group-hover:translate-y-2" />
                 {/* Sombra de contato na parede (topo) */}
-                <div className="pointer-events-none absolute -top-2 left-6 right-6 h-4 rounded-full bg-black/15 blur-lg opacity-60 transition-all duration-500 ease-out group-hover:opacity-35" />
-                {/* Sombra no "chão" */}
-                <div className="pointer-events-none absolute -bottom-4 left-1/2 h-7 sm:h-8 w-28 sm:w-40 -translate-x-1/2 rounded-full bg-black/35 blur-xl opacity-80 transition-all duration-500 ease-out group-hover:opacity-40 group-hover:translate-y-1" />
-                <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_40px_90px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transform translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_22px_45px_rgba(15,23,42,0.28)]">
+                <div className="pointer-events-none absolute -top-3 left-8 right-8 h-5 rounded-full bg-black/20 blur-xl opacity-70 transition-all duration-500 ease-out group-hover:opacity-40" />
+                {/* Sombra longa no "chão" */}
+                <div className="pointer-events-none absolute -bottom-8 left-1/2 h-12 sm:h-16 w-40 sm:w-56 -translate-x-1/2 rounded-[50%] bg-gradient-to-b from-black/50 via-black/25 to-transparent blur-3xl opacity-90 transition-all duration-500 ease-out group-hover:opacity-55 group-hover:translate-y-2" />
+                <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_50px_120px_rgba(15,23,42,0.5)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transition-all duration-500 ease-out" style={{ transform: 'rotateX(8deg) translateY(12px)', transformOrigin: 'center top' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'rotateX(3deg) translateY(0px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'rotateX(8deg) translateY(12px)'; }}>
                   <div className="mb-5 sm:mb-6 flex justify-center">
                     <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-teal-500">
                       <Image
@@ -565,12 +565,14 @@ export default function Home() {
               </div>
 
               {/* Proprietário */}
-              <div className="relative group flex flex-col items-center text-center">
+              <div className="relative group flex flex-col items-center text-center" style={{ transformStyle: 'preserve-3d' }}>
+                {/* Reflexo suave no piso */}
+                <div className="pointer-events-none absolute -bottom-16 left-1/2 h-16 w-40 sm:w-56 -translate-x-1/2 bg-gradient-to-b from-white/70 via-white/25 to-transparent blur-2xl opacity-85 transition-all duration-500 ease-out group-hover:opacity-60 group-hover:translate-y-2" />
                 {/* Sombra de contato na parede (topo) */}
-                <div className="pointer-events-none absolute -top-2 left-6 right-6 h-4 rounded-full bg-black/15 blur-lg opacity-60 transition-all duration-500 ease-out group-hover:opacity-35" />
-                {/* Sombra no "chão" */}
-                <div className="pointer-events-none absolute -bottom-4 left-1/2 h-7 sm:h-8 w-28 sm:w-40 -translate-x-1/2 rounded-full bg-black/35 blur-xl opacity-80 transition-all duration-500 ease-out group-hover:opacity-40 group-hover:translate-y-1" />
-                <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_40px_90px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transform translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_22px_45px_rgba(15,23,42,0.28)]">
+                <div className="pointer-events-none absolute -top-3 left-8 right-8 h-5 rounded-full bg-black/20 blur-xl opacity-70 transition-all duration-500 ease-out group-hover:opacity-40" />
+                {/* Sombra longa no "chão" */}
+                <div className="pointer-events-none absolute -bottom-8 left-1/2 h-12 sm:h-16 w-40 sm:w-56 -translate-x-1/2 rounded-[50%] bg-gradient-to-b from-black/50 via-black/25 to-transparent blur-3xl opacity-90 transition-all duration-500 ease-out group-hover:opacity-55 group-hover:translate-y-2" />
+                <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_50px_120px_rgba(15,23,42,0.5)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transition-all duration-500 ease-out" style={{ transform: 'rotateX(8deg) translateY(12px)', transformOrigin: 'center top' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'rotateX(3deg) translateY(0px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'rotateX(8deg) translateY(12px)'; }}>
                   <div className="mb-5 sm:mb-6 flex justify-center">
                     <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-amber-500">
                       <Image
@@ -598,12 +600,14 @@ export default function Home() {
               </div>
 
               {/* Corretor */}
-              <div className="relative group flex flex-col items-center text-center">
+              <div className="relative group flex flex-col items-center text-center" style={{ transformStyle: 'preserve-3d' }}>
+                {/* Reflexo suave no piso */}
+                <div className="pointer-events-none absolute -bottom-16 left-1/2 h-16 w-40 sm:w-56 -translate-x-1/2 bg-gradient-to-b from-white/70 via-white/25 to-transparent blur-2xl opacity-85 transition-all duration-500 ease-out group-hover:opacity-60 group-hover:translate-y-2" />
                 {/* Sombra de contato na parede (topo) */}
-                <div className="pointer-events-none absolute -top-2 left-6 right-6 h-4 rounded-full bg-black/15 blur-lg opacity-60 transition-all duration-500 ease-out group-hover:opacity-35" />
-                {/* Sombra no "chão" */}
-                <div className="pointer-events-none absolute -bottom-4 left-1/2 h-7 sm:h-8 w-28 sm:w-40 -translate-x-1/2 rounded-full bg-black/35 blur-xl opacity-80 transition-all duration-500 ease-out group-hover:opacity-40 group-hover:translate-y-1" />
-                <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_40px_90px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transform translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_22px_45px_rgba(15,23,42,0.28)]">
+                <div className="pointer-events-none absolute -top-3 left-8 right-8 h-5 rounded-full bg-black/20 blur-xl opacity-70 transition-all duration-500 ease-out group-hover:opacity-40" />
+                {/* Sombra longa no "chão" */}
+                <div className="pointer-events-none absolute -bottom-8 left-1/2 h-12 sm:h-16 w-40 sm:w-56 -translate-x-1/2 rounded-[50%] bg-gradient-to-b from-black/50 via-black/25 to-transparent blur-3xl opacity-90 transition-all duration-500 ease-out group-hover:opacity-55 group-hover:translate-y-2" />
+                <div className="relative bg-white rounded-[28px] sm:rounded-[32px] shadow-[0_50px_120px_rgba(15,23,42,0.5)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[420px] sm:min-h-[460px] lg:min-h-[500px] transition-all duration-500 ease-out" style={{ transform: 'rotateX(8deg) translateY(12px)', transformOrigin: 'center top' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'rotateX(3deg) translateY(0px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'rotateX(8deg) translateY(12px)'; }}>
                   <div className="mb-5 sm:mb-6 flex justify-center">
                     <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-indigo-600">
                       <Image
