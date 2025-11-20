@@ -662,9 +662,9 @@ export default function Home() {
 
       {/* Search Results - Split Screen Layout */}
       {hasSearched && (
-        <div className={`${viewMode === 'split' ? 'lg:flex' : ''} lg:h-[100vh]`}>
+        <div className={viewMode === 'split' ? 'lg:flex lg:h-[100vh]' : 'lg:h-[100vh]'}>
           {/* Left Side - Property List */}
-          <div className={`w-full ${viewMode === 'split' ? 'lg:w-1/2' : 'lg:w-full'} lg:overflow-y-auto`}> 
+          <div className={viewMode === 'split' ? 'w-full lg:w-1/2 lg:overflow-y-auto' : 'w-full lg:w-full lg:overflow-y-auto'}> 
             <div className="pt-4 pb-20 px-4 sm:pt-6 sm:pb-24 sm:px-6 lg:px-8">
               {/* Header + Controles - Redesigned Premium */}
               <div className="mb-8">
@@ -680,219 +680,74 @@ export default function Home() {
                     )}
                   </div>
                 </div>
-                  
-                {/* Botão "Salvar busca" removido para reduzir poluição visual */}
 
-                {/* View Mode Toggle + Sort - Premium Style */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  {/* View mode toggle - Hidden on mobile (use floating button instead) */}
-                  <div className="hidden sm:inline-flex rounded-2xl border-2 border-gray-200 bg-white p-1.5 shadow-md" role="group" aria-label="Alternar visualização">
-                    <button
-                      type="button"
-                      aria-pressed={viewMode === 'split'}
-                      onClick={() => { setViewMode('split'); try { track({ name: 'filters_apply', payload: { action: 'view_split' } }); } catch {} }}
-                      className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${viewMode === 'split' ? 'glass-teal text-white shadow-md' : 'text-gray-700 hover:bg-gray-50'}`}
-                    >
-                      <Map className="w-4 h-4" />
-                      <span>Lista + Mapa</span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={viewMode === 'list'}
-                      onClick={() => { setViewMode('list'); try { track({ name: 'filters_apply', payload: { action: 'view_list' } }); } catch {} }}
-                      className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${viewMode === 'list' ? 'glass-teal text-white shadow-md' : 'text-gray-700 hover:bg-gray-50'}`}
-                    >
-                      <LayoutList className="w-4 h-4" />
-                      <span>Somente Lista</span>
-                    </button>
-                  </div>
-                  {/* Sort control */}
-                  <div className="min-w-[180px]">
-                    <Select
-                      aria-label="Ordenar resultados"
-                      value={sort}
-                      onChange={(e) => {
-                        const newSort = e.target.value;
-                        setSort(newSort);
-                        const params = buildSearchParams({
-                          q: search,
-                          city,
-                          state,
-                          type,
-                          minPrice,
-                          maxPrice,
-                          bedroomsMin,
-                          bathroomsMin,
-                          areaMin,
-                          sort: newSort,
-                          page: 1,
-                        });
-                        try { track({ name: 'sort_change', value: newSort }); } catch {}
-                        router.push(`/?${params}`, { scroll: false });
-                      }}
-                    >
-                      <option value="recent">Mais recentes</option>
-                      <option value="price_asc">Menor preço</option>
-                      <option value="price_desc">Maior preço</option>
-                      <option value="area_desc">Maior área</option>
-                    </Select>
-                  </div>
-                  <div className="relative hidden md:block" ref={filtersRef}>
-                    <button
-                      aria-haspopup="dialog"
-                      aria-expanded={filtersOpen}
-                      onClick={() => setFiltersOpen((v) => !v)}
-                      className="px-4 py-2 rounded-md text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50"
-                    >
-                      Filtros
-                    </button>
-                    {filtersOpen && (
-                      <>
-                        {/* Backdrop */}
-                        <div
-                          className="fixed inset-0 z-[190] bg-black/60 backdrop-blur-sm"
-                          onClick={() => setFiltersOpen(false)}
-                          aria-hidden
-                        />
-                        {/* Panel */}
-                        <div className="filters-panel fixed top-20 sm:top-24 md:top-28 lg:top-1/2 xl:top-1/2 2xl:top-1/2 left-1/2 -translate-x-1/2 lg:-translate-y-1/2 z-[200] w-full max-w-5xl px-4">
-                          <SearchFiltersBar
-                            compact
-                            open
-                            variant="dropdown"
-                            onClose={() => setFiltersOpen(false)}
-                          filters={{
+                <div ref={filtersRef}>
+                  {/* View Mode Toggle + Sort - Premium Style */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    {/* View mode toggle - Hidden on mobile (use floating button instead) */}
+                    <div className="hidden sm:inline-flex rounded-2xl border-2 border-gray-200 bg-white p-1.5 shadow-md" role="group" aria-label="Alternar visualização">
+                      <button
+                        type="button"
+                        aria-pressed={viewMode === 'split'}
+                        onClick={() => { setViewMode('split'); try { track({ name: 'filters_apply', payload: { action: 'view_split' } }); } catch {} }}
+                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${viewMode === 'split' ? 'glass-teal text-white shadow-md' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        <Map className="w-4 h-4" />
+                        <span>Lista + Mapa</span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={viewMode === 'list'}
+                        onClick={() => { setViewMode('list'); try { track({ name: 'filters_apply', payload: { action: 'view_list' } }); } catch {} }}
+                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${viewMode === 'list' ? 'glass-teal text-white shadow-md' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        <LayoutList className="w-4 h-4" />
+                        <span>Somente Lista</span>
+                      </button>
+                    </div>
+                    {/* Sort control */}
+                    <div className="min-w-[180px]">
+                      <Select
+                        aria-label="Ordenar resultados"
+                        value={sort}
+                        onChange={(e) => {
+                          const newSort = e.target.value;
+                          setSort(newSort);
+                          const params = buildSearchParams({
+                            q: search,
+                            city,
+                            state,
+                            type,
                             minPrice,
                             maxPrice,
-                            bedrooms: bedroomsMin,
-                            bathrooms: bathroomsMin,
-                            type,
+                            bedroomsMin,
+                            bathroomsMin,
                             areaMin,
-                            parkingSpots,
-                            yearBuiltMin,
-                            yearBuiltMax,
-                            status,
-                            petFriendly,
-                            furnished,
-                            hasPool,
-                            hasGym,
-                            hasElevator,
-                            hasBalcony,
-                            hasSeaView,
-                            condoFeeMin,
-                            condoFeeMax,
-                            iptuMin,
-                            iptuMax,
-                            keywords,
-                          }}
-                          onFiltersChange={(newFilters) => {
-                            setMinPrice(newFilters.minPrice);
-                            setMaxPrice(newFilters.maxPrice);
-                            setBedroomsMin(newFilters.bedrooms);
-                            setBathroomsMin(newFilters.bathrooms);
-                            setType(newFilters.type);
-                            setAreaMin(newFilters.areaMin);
-                            setParkingSpots(newFilters.parkingSpots);
-                            setYearBuiltMin(newFilters.yearBuiltMin);
-                            setYearBuiltMax(newFilters.yearBuiltMax);
-                            setStatus(newFilters.status);
-                            setPetFriendly(newFilters.petFriendly);
-                            setFurnished(newFilters.furnished);
-                            setHasPool(newFilters.hasPool);
-                            setHasGym(newFilters.hasGym);
-                            setHasElevator(newFilters.hasElevator);
-                            setHasBalcony(newFilters.hasBalcony);
-                            setHasSeaView(newFilters.hasSeaView);
-                            setCondoFeeMin(newFilters.condoFeeMin);
-                            setCondoFeeMax(newFilters.condoFeeMax);
-                            setIptuMin(newFilters.iptuMin);
-                            setIptuMax(newFilters.iptuMax);
-                            setKeywords(newFilters.keywords);
-                            const params = buildSearchParams({
-                              q: search,
-                              city,
-                              state,
-                              type: newFilters.type,
-                              minPrice: newFilters.minPrice,
-                              maxPrice: newFilters.maxPrice,
-                              bedroomsMin: newFilters.bedrooms,
-                              bathroomsMin: newFilters.bathrooms,
-                              areaMin: newFilters.areaMin,
-                              parkingSpots: newFilters.parkingSpots,
-                              yearBuiltMin: newFilters.yearBuiltMin,
-                              yearBuiltMax: newFilters.yearBuiltMax,
-                              status: newFilters.status,
-                              petFriendly: newFilters.petFriendly ? "true" : "",
-                              furnished: newFilters.furnished ? "true" : "",
-                              hasPool: newFilters.hasPool ? "true" : "",
-                              hasGym: newFilters.hasGym ? "true" : "",
-                              hasElevator: newFilters.hasElevator ? "true" : "",
-                              hasBalcony: newFilters.hasBalcony ? "true" : "",
-                              hasSeaView: newFilters.hasSeaView ? "true" : "",
-                              condoFeeMin: newFilters.condoFeeMin,
-                              condoFeeMax: newFilters.condoFeeMax,
-                              iptuMin: newFilters.iptuMin,
-                              iptuMax: newFilters.iptuMax,
-                              keywords: newFilters.keywords,
-                              sort,
-                              page: 1,
-                            });
-                            try { track({ name: 'filters_apply', payload: newFilters as any }); } catch {}
-                            router.push(`/?${params}`, { scroll: false });
-                          }}
-                          onClearFilters={() => {
-                            setMinPrice("");
-                            setMaxPrice("");
-                            setBedroomsMin("");
-                            setBathroomsMin("");
-                            setType("");
-                            setAreaMin("");
-                            setParkingSpots("");
-                            setYearBuiltMin("");
-                            setYearBuiltMax("");
-                            setStatus("");
-                            setPetFriendly(false);
-                            setFurnished(false);
-                            setHasPool(false);
-                            setHasGym(false);
-                            setHasElevator(false);
-                            setHasBalcony(false);
-                            setHasSeaView(false);
-                            setCondoFeeMin("");
-                            setCondoFeeMax("");
-                            setIptuMin("");
-                            setIptuMax("");
-                            setKeywords("");
-                            setPage(1);
-                            const params = buildSearchParams({
-                              q: search,
-                              city,
-                              state,
-                              type: "",
-                              minPrice: "",
-                              maxPrice: "",
-                              bedroomsMin: "",
-                              bathroomsMin: "",
-                              areaMin: "",
-                              sort,
-                              page: 1,
-                            });
-                            try { track({ name: 'filters_clear' }); } catch {}
-                            router.push(`/?${params}`, { scroll: false });
-                          }}
-                        />
-                        </div>
-                        <style jsx>{`
-                          /* Centralizar verticalmente no md somente se a viewport for alta o suficiente */
-                          @media (min-width: 768px) and (min-height: 800px) {
-                            .filters-panel { top: 50% !important; transform: translate(-50%, -50%) !important; }
-                          }
-                        `}</style>
-                      </>
-                    )}
-                  </div>
-                  {/* Mobile: open Drawer for filters */}
-                  <div className="md:hidden">
+                            sort: newSort,
+                            page: 1,
+                          });
+                          try { track({ name: 'sort_change', value: newSort }); } catch {}
+                          router.push(`/?${params}`, { scroll: false });
+                        }}
+                      >
+                        <option value="recent">Mais recentes</option>
+                        <option value="price_asc">Menor preço</option>
+                        <option value="price_desc">Maior preço</option>
+                        <option value="area_desc">Maior área</option>
+                      </Select>
+                    </div>
+                    <div className="hidden md:block">
+                      <button
+                        aria-haspopup="dialog"
+                        aria-expanded={filtersOpen}
+                        onClick={() => setFiltersOpen((v) => !v)}
+                        className="px-4 py-2 rounded-md text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50"
+                      >
+                        Filtros
+                      </button>
+                    </div>
+                    {/* Mobile: open Drawer for filters */}
+                    <div className="md:hidden">
                     <button
                       aria-haspopup="dialog"
                       aria-expanded={filtersOpen}
@@ -1019,6 +874,137 @@ export default function Home() {
                       </div>
                     </Drawer>
                   </div>
+                </div>
+
+                {filtersOpen && (
+                    <div className="hidden md:block mt-4">
+                      <SearchFiltersBar
+                        compact
+                        open
+                        variant="dropdown"
+                        onClose={() => setFiltersOpen(false)}
+                        filters={{
+                          minPrice,
+                          maxPrice,
+                          bedrooms: bedroomsMin,
+                          bathrooms: bathroomsMin,
+                          type,
+                          areaMin,
+                          parkingSpots,
+                          yearBuiltMin,
+                          yearBuiltMax,
+                          status,
+                          petFriendly,
+                          furnished,
+                          hasPool,
+                          hasGym,
+                          hasElevator,
+                          hasBalcony,
+                          hasSeaView,
+                          condoFeeMin,
+                          condoFeeMax,
+                          iptuMin,
+                          iptuMax,
+                          keywords,
+                        }}
+                        onFiltersChange={(newFilters) => {
+                          setMinPrice(newFilters.minPrice);
+                          setMaxPrice(newFilters.maxPrice);
+                          setBedroomsMin(newFilters.bedrooms);
+                          setBathroomsMin(newFilters.bathrooms);
+                          setType(newFilters.type);
+                          setAreaMin(newFilters.areaMin);
+                          setParkingSpots(newFilters.parkingSpots);
+                          setYearBuiltMin(newFilters.yearBuiltMin);
+                          setYearBuiltMax(newFilters.yearBuiltMax);
+                          setStatus(newFilters.status);
+                          setPetFriendly(newFilters.petFriendly);
+                          setFurnished(newFilters.furnished);
+                          setHasPool(newFilters.hasPool);
+                          setHasGym(newFilters.hasGym);
+                          setHasElevator(newFilters.hasElevator);
+                          setHasBalcony(newFilters.hasBalcony);
+                          setHasSeaView(newFilters.hasSeaView);
+                          setCondoFeeMin(newFilters.condoFeeMin);
+                          setCondoFeeMax(newFilters.condoFeeMax);
+                          setIptuMin(newFilters.iptuMin);
+                          setIptuMax(newFilters.iptuMax);
+                          setKeywords(newFilters.keywords);
+                          const params = buildSearchParams({
+                            q: search,
+                            city,
+                            state,
+                            type: newFilters.type,
+                            minPrice: newFilters.minPrice,
+                            maxPrice: newFilters.maxPrice,
+                            bedroomsMin: newFilters.bedrooms,
+                            bathroomsMin: newFilters.bathrooms,
+                            areaMin: newFilters.areaMin,
+                            parkingSpots: newFilters.parkingSpots,
+                            yearBuiltMin: newFilters.yearBuiltMin,
+                            yearBuiltMax: newFilters.yearBuiltMax,
+                            status: newFilters.status,
+                            petFriendly: newFilters.petFriendly ? "true" : "",
+                            furnished: newFilters.furnished ? "true" : "",
+                            hasPool: newFilters.hasPool ? "true" : "",
+                            hasGym: newFilters.hasGym ? "true" : "",
+                            hasElevator: newFilters.hasElevator ? "true" : "",
+                            hasBalcony: newFilters.hasBalcony ? "true" : "",
+                            hasSeaView: newFilters.hasSeaView ? "true" : "",
+                            condoFeeMin: newFilters.condoFeeMin,
+                            condoFeeMax: newFilters.condoFeeMax,
+                            iptuMin: newFilters.iptuMin,
+                            iptuMax: newFilters.iptuMax,
+                            keywords: newFilters.keywords,
+                            sort,
+                            page: 1,
+                          });
+                          try { track({ name: 'filters_apply', payload: newFilters as any }); } catch {}
+                          router.push(`/?${params}`, { scroll: false });
+                        }}
+                        onClearFilters={() => {
+                          setMinPrice("");
+                          setMaxPrice("");
+                          setBedroomsMin("");
+                          setBathroomsMin("");
+                          setType("");
+                          setAreaMin("");
+                          setParkingSpots("");
+                          setYearBuiltMin("");
+                          setYearBuiltMax("");
+                          setStatus("");
+                          setPetFriendly(false);
+                          setFurnished(false);
+                          setHasPool(false);
+                          setHasGym(false);
+                          setHasElevator(false);
+                          setHasBalcony(false);
+                          setHasSeaView(false);
+                          setCondoFeeMin("");
+                          setCondoFeeMax("");
+                          setIptuMin("");
+                          setIptuMax("");
+                          setKeywords("");
+                          setPage(1);
+                          const params = buildSearchParams({
+                            q: search,
+                            city,
+                            state,
+                            type: "",
+                            minPrice: "",
+                            maxPrice: "",
+                            bedroomsMin: "",
+                            bathroomsMin: "",
+                            areaMin: "",
+                            sort,
+                            page: 1,
+                          });
+                          try { track({ name: 'filters_clear' }); } catch {}
+                          router.push(`/?${params}`, { scroll: false });
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1226,11 +1212,12 @@ export default function Home() {
 
           {/* Right Side - Interactive Map (Desktop Only, oculto se 'Somente Lista') */}
           {viewMode === 'split' && (
-            <div className="hidden lg:block lg:w-1/2 sticky top-24 h-[calc(100vh-96px)]">
-              <MapWithPriceBubbles
-                items={properties}
-                isLoading={isLoading}
-                onBoundsChange={async (bounds) => {
+            <div className="hidden lg:block lg:w-1/2 pt-10">
+              <div className="sticky top-28 h-[calc(100vh-180px)] rounded-[32px] overflow-hidden shadow-[0_24px_70px_rgba(15,23,42,0.25)]">
+                <MapWithPriceBubbles
+                  items={properties}
+                  isLoading={isLoading}
+                  onBoundsChange={async (bounds) => {
                   // Fetch properties within the new map bounds MANTENDO os filtros ativos
                   const params = buildSearchParams({
                     q: search,
@@ -1278,6 +1265,7 @@ export default function Home() {
                 }}
                 onHoverChange={(id) => setHoverId(id)}
               />
+              </div>
             </div>
           )}
         </div>
