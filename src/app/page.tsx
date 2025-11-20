@@ -62,7 +62,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'split' | 'list'>('split');
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [activeFilterDropdown, setActiveFilterDropdown] = useState<'price' | 'beds' | 'type' | 'more' | null>(null);
+  const [activeFilterDropdown, setActiveFilterDropdown] = useState<'price' | 'beds' | 'type' | 'area' | 'parking' | 'more' | null>(null);
   const filtersRef = useRef<HTMLDivElement | null>(null);
   const [nextPage, setNextPage] = useState(2);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -893,16 +893,284 @@ export default function Home() {
                     )}
                   </div>
 
+                  {/* Area Filter */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'area' ? null : 'area')}
+                      className={`px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 ${
+                        activeFilterDropdown === 'area' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <span>Área</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+
+                    {/* Area Dropdown */}
+                    {activeFilterDropdown === 'area' && (
+                      <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Área Mínima (m²)</label>
+                            <input
+                              type="number"
+                              placeholder="Ex: 50"
+                              value={areaMin}
+                              onChange={(e) => setAreaMin(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            />
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <button
+                              onClick={() => {
+                                setAreaMin('');
+                                setActiveFilterDropdown(null);
+                              }}
+                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50"
+                            >
+                              Limpar
+                            </button>
+                            <button
+                              onClick={() => {
+                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                                router.push(`/?${params}`);
+                                setActiveFilterDropdown(null);
+                              }}
+                              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                            >
+                              Aplicar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Parking Spots Filter */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'parking' ? null : 'parking')}
+                      className={`px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 ${
+                        activeFilterDropdown === 'parking' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <span>Vagas</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+
+                    {/* Parking Dropdown */}
+                    {activeFilterDropdown === 'parking' && (
+                      <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
+                        <div className="space-y-2">
+                          {['1+', '2+', '3+', '4+'].map((spots) => (
+                            <button
+                              key={spots}
+                              onClick={() => {
+                                setParkingSpots(spots);
+                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, parkingSpots: spots, status, sort, page: 1 });
+                                router.push(`/?${params}`);
+                                setActiveFilterDropdown(null);
+                              }}
+                              className={`w-full px-4 py-2 rounded-lg text-left text-sm font-medium ${
+                                parkingSpots === spots
+                                  ? 'bg-blue-600 text-white'
+                                  : 'hover:bg-gray-100'
+                              }`}
+                            >
+                              {spots} vagas
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* More Filters */}
-                  <button
-                    onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'more' ? null : 'more')}
-                    className={`px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 ${
-                      activeFilterDropdown === 'more' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                  >
-                    <span>Mais</span>
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'more' ? null : 'more')}
+                      className={`px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 ${
+                        activeFilterDropdown === 'more' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <span>Mais</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+
+                    {/* More Filters Dropdown - Zillow Style */}
+                    {activeFilterDropdown === 'more' && (
+                      <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
+                        <div className="space-y-4">
+                          {/* Amenities Section */}
+                          <div>
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3">Comodidades</h3>
+                            <div className="space-y-2">
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={hasPool}
+                                  onChange={(e) => setHasPool(e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 rounded"
+                                />
+                                <span className="text-sm text-gray-700">Piscina</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={hasGym}
+                                  onChange={(e) => setHasGym(e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 rounded"
+                                />
+                                <span className="text-sm text-gray-700">Academia</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={hasElevator}
+                                  onChange={(e) => setHasElevator(e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 rounded"
+                                />
+                                <span className="text-sm text-gray-700">Elevador</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={hasBalcony}
+                                  onChange={(e) => setHasBalcony(e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 rounded"
+                                />
+                                <span className="text-sm text-gray-700">Varanda</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={hasSeaView}
+                                  onChange={(e) => setHasSeaView(e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 rounded"
+                                />
+                                <span className="text-sm text-gray-700">Vista para o Mar</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="border-t border-gray-200 pt-3">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3">Condições</h3>
+                            <div className="space-y-2">
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={furnished}
+                                  onChange={(e) => setFurnished(e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 rounded"
+                                />
+                                <span className="text-sm text-gray-700">Mobiliado</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={petFriendly}
+                                  onChange={(e) => setPetFriendly(e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 rounded"
+                                />
+                                <span className="text-sm text-gray-700">Aceita Pets</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Year Built */}
+                          <div className="border-t border-gray-200 pt-3">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3">Ano de Construção</h3>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <input
+                                  type="number"
+                                  placeholder="Mín"
+                                  value={yearBuiltMin}
+                                  onChange={(e) => setYearBuiltMin(e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                />
+                              </div>
+                              <div>
+                                <input
+                                  type="number"
+                                  placeholder="Máx"
+                                  value={yearBuiltMax}
+                                  onChange={(e) => setYearBuiltMax(e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Keywords */}
+                          <div className="border-t border-gray-200 pt-3">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-2">Palavras-chave</h3>
+                            <input
+                              type="text"
+                              placeholder="Ex: churrasqueira, lareira, vista..."
+                              value={keywords}
+                              onChange={(e) => setKeywords(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            />
+                          </div>
+
+                          <div className="flex gap-2 pt-2">
+                            <button
+                              onClick={() => {
+                                setHasPool(false);
+                                setHasGym(false);
+                                setHasElevator(false);
+                                setHasBalcony(false);
+                                setHasSeaView(false);
+                                setFurnished(false);
+                                setPetFriendly(false);
+                                setYearBuiltMin('');
+                                setYearBuiltMax('');
+                                setKeywords('');
+                                setActiveFilterDropdown(null);
+                              }}
+                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50"
+                            >
+                              Limpar
+                            </button>
+                            <button
+                              onClick={() => {
+                                const params = buildSearchParams({
+                                  q: search,
+                                  city,
+                                  state,
+                                  type,
+                                  minPrice,
+                                  maxPrice,
+                                  bedroomsMin,
+                                  bathroomsMin,
+                                  areaMin,
+                                  parkingSpots,
+                                  yearBuiltMin,
+                                  yearBuiltMax,
+                                  status,
+                                  petFriendly: petFriendly ? 'true' : '',
+                                  furnished: furnished ? 'true' : '',
+                                  hasPool: hasPool ? 'true' : '',
+                                  hasGym: hasGym ? 'true' : '',
+                                  hasElevator: hasElevator ? 'true' : '',
+                                  hasBalcony: hasBalcony ? 'true' : '',
+                                  hasSeaView: hasSeaView ? 'true' : '',
+                                  keywords,
+                                  sort,
+                                  page: 1
+                                });
+                                router.push(`/?${params}`);
+                                setActiveFilterDropdown(null);
+                              }}
+                              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                            >
+                              Aplicar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Save Search Button */}
                   <button className="ml-auto px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium transition-colors">
