@@ -666,9 +666,11 @@ export default function Home() {
         <>
           {/* Zillow-style Search Bar - Full Width Above Everything */}
           <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
-              <div className="px-4 py-3">
+              <div className="px-4 py-3 bg-white">
+                {/* Zillow-style: Search bar + Inline Filters in one row */}
                 <div className="flex items-center gap-3">
-                  <div className="flex-1 flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:border-gray-400 transition-colors">
+                  {/* Compact Search Bar - Left Side */}
+                  <div className="w-80 flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:border-gray-400 transition-colors">
                     <Search className="w-5 h-5 text-gray-400" />
                     <input
                       type="text"
@@ -680,25 +682,13 @@ export default function Home() {
                           router.push(`/?${params}`);
                         }
                       }}
-                      placeholder="Endereço, bairro, cidade ou CEP"
+                      placeholder="Endereço, cidade..."
                       className="flex-1 outline-none text-sm"
                     />
                   </div>
-                  <button
-                    onClick={() => {
-                      const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
-                      router.push(`/?${params}`);
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                  >
-                    Buscar
-                  </button>
-                </div>
-              </div>
 
-              {/* Zillow-style Inline Filters */}
-              <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 relative">
-                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Filter Buttons - Right Side */}
+                  <div className="flex-1 flex items-center gap-2 flex-wrap">
                   {/* For Sale / Aluguel */}
                   <select
                     value={status}
@@ -918,6 +908,7 @@ export default function Home() {
                   <button className="ml-auto px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium transition-colors">
                     Salvar Busca
                   </button>
+                  </div>
                 </div>
               </div>
             </div>
