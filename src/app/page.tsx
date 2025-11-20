@@ -663,11 +663,9 @@ export default function Home() {
 
       {/* Search Results - Split Screen Layout */}
       {hasSearched && (
-        <div className={viewMode === 'split' ? 'lg:flex lg:h-[100vh]' : 'lg:h-[100vh]'}>
-          {/* Left Side - Property List */}
-          <div className={viewMode === 'split' ? 'w-full lg:w-1/2 lg:overflow-y-auto' : 'w-full lg:w-full lg:overflow-y-auto'}> 
-            {/* Zillow-style Search Bar */}
-            <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <>
+          {/* Zillow-style Search Bar - Full Width Above Everything */}
+          <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
               <div className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className="flex-1 flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:border-gray-400 transition-colors">
@@ -924,7 +922,11 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="pt-4 pb-20 px-4 sm:pt-6 sm:pb-24 sm:px-6 lg:px-8">
+          {/* Split Screen Container */}
+          <div className={viewMode === 'split' ? 'lg:flex lg:h-[calc(100vh-140px)]' : 'lg:h-[calc(100vh-140px)]'}>
+            {/* Left Side - Property List */}
+            <div className={viewMode === 'split' ? 'w-full lg:w-1/2 lg:overflow-y-auto' : 'w-full lg:w-full lg:overflow-y-auto'}>
+              <div className="pt-4 pb-20 px-4 sm:pt-6 sm:pb-24 sm:px-6 lg:px-8">
               {/* Results Counter */}
               <div className="mb-6">
                 <div className="flex items-center justify-between">
@@ -1090,7 +1092,7 @@ export default function Home() {
           {/* Right Side - Interactive Map (Desktop Only, oculto se 'Somente Lista') */}
           {viewMode === 'split' && (
             <div className="hidden lg:block lg:w-1/2">
-              <div className="sticky top-28 mt-[200px] h-[calc(100vh-200px)] overflow-hidden shadow-[0_24px_70px_rgba(15,23,42,0.25)]">
+              <div className="sticky top-0 h-[calc(100vh-140px)] overflow-hidden">
                 <MapWithPriceBubbles
                   items={properties}
                   isLoading={isLoading}
@@ -1145,7 +1147,8 @@ export default function Home() {
               </div>
             </div>
           )}
-        </div>
+          </div>
+        </>
       )}
 
       {/* Featured Listings (Homepage) */}
