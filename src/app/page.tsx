@@ -19,7 +19,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search } from "lucide-react";
 
 const PropertyDetailsModalJames = dynamic(() => import("@/components/PropertyDetailsModalJames"), { ssr: false });
-import SearchFiltersBarPremium from "@/components/SearchFiltersBarPremium";
+import SearchFiltersBarZillow from "@/components/SearchFiltersBarZillow";
 import Image from "next/image";
 import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
 import { track } from "@/lib/analytics";
@@ -129,6 +129,30 @@ export default function Home() {
   const [iptuMax, setIptuMax] = useState("");
   const [keywords, setKeywords] = useState("");
   const [parkingSpotsMin, setParkingSpotsMin] = useState("");
+  
+  // Novos filtros de amenidades completos
+  const [hasPlayground, setHasPlayground] = useState(false);
+  const [hasPartyRoom, setHasPartyRoom] = useState(false);
+  const [hasGourmet, setHasGourmet] = useState(false);
+  const [hasConcierge24h, setHasConcierge24h] = useState(false);
+  const [comfortAC, setComfortAC] = useState(false);
+  const [comfortHeating, setComfortHeating] = useState(false);
+  const [comfortSolar, setComfortSolar] = useState(false);
+  const [comfortNoiseWindows, setComfortNoiseWindows] = useState(false);
+  const [comfortLED, setComfortLED] = useState(false);
+  const [comfortWaterReuse, setComfortWaterReuse] = useState(false);
+  const [accRamps, setAccRamps] = useState(false);
+  const [accWideDoors, setAccWideDoors] = useState(false);
+  const [accAccessibleElevator, setAccAccessibleElevator] = useState(false);
+  const [accTactile, setAccTactile] = useState(false);
+  const [finishCabinets, setFinishCabinets] = useState(false);
+  const [finishCounterGranite, setFinishCounterGranite] = useState(false);
+  const [finishCounterQuartz, setFinishCounterQuartz] = useState(false);
+  const [viewCity, setViewCity] = useState(false);
+  const [positionFront, setPositionFront] = useState(false);
+  const [positionBack, setPositionBack] = useState(false);
+  const [petsSmall, setPetsSmall] = useState(false);
+  const [petsLarge, setPetsLarge] = useState(false);
   
   // Autocomplete para barra de busca
   const [searchSuggestions, setSearchSuggestions] = useState<Array<{label: string; city: string; state: string; neighborhood: string | null; count: number}>>([]);
@@ -1763,13 +1787,13 @@ export default function Home() {
         onClose={closeOverlay}
       />
 
-      {/* Filters Drawer Mobile - Premium James Edition Style */}
+      {/* Filters Drawer Mobile - Estilo Zillow */}
       <Drawer
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
-        title="Filtros Premium"
+        title="Filtros"
       >
-        <SearchFiltersBarPremium
+        <SearchFiltersBarZillow
           filters={{
             minPrice,
             maxPrice,
@@ -1787,7 +1811,29 @@ export default function Home() {
             hasGym,
             hasElevator,
             hasBalcony,
-            hasSeaView: viewSea,
+            hasPlayground,
+            hasPartyRoom,
+            hasGourmet,
+            hasConcierge24h,
+            comfortAC,
+            comfortHeating,
+            comfortSolar,
+            comfortNoiseWindows,
+            comfortLED,
+            comfortWaterReuse,
+            accRamps,
+            accWideDoors,
+            accAccessibleElevator,
+            accTactile,
+            finishCabinets,
+            finishCounterGranite,
+            finishCounterQuartz,
+            viewSea,
+            viewCity,
+            positionFront,
+            positionBack,
+            petsSmall,
+            petsLarge,
             condoFeeMin,
             condoFeeMax,
             iptuMin,
@@ -1811,7 +1857,29 @@ export default function Home() {
             setHasGym(newFilters.hasGym);
             setHasElevator(newFilters.hasElevator);
             setHasBalcony(newFilters.hasBalcony);
-            setViewSea(newFilters.hasSeaView);
+            setHasPlayground(newFilters.hasPlayground);
+            setHasPartyRoom(newFilters.hasPartyRoom);
+            setHasGourmet(newFilters.hasGourmet);
+            setHasConcierge24h(newFilters.hasConcierge24h);
+            setComfortAC(newFilters.comfortAC);
+            setComfortHeating(newFilters.comfortHeating);
+            setComfortSolar(newFilters.comfortSolar);
+            setComfortNoiseWindows(newFilters.comfortNoiseWindows);
+            setComfortLED(newFilters.comfortLED);
+            setComfortWaterReuse(newFilters.comfortWaterReuse);
+            setAccRamps(newFilters.accRamps);
+            setAccWideDoors(newFilters.accWideDoors);
+            setAccAccessibleElevator(newFilters.accAccessibleElevator);
+            setAccTactile(newFilters.accTactile);
+            setFinishCabinets(newFilters.finishCabinets);
+            setFinishCounterGranite(newFilters.finishCounterGranite);
+            setFinishCounterQuartz(newFilters.finishCounterQuartz);
+            setViewSea(newFilters.viewSea);
+            setViewCity(newFilters.viewCity);
+            setPositionFront(newFilters.positionFront);
+            setPositionBack(newFilters.positionBack);
+            setPetsSmall(newFilters.petsSmall);
+            setPetsLarge(newFilters.petsLarge);
             setCondoFeeMin(newFilters.condoFeeMin);
             setCondoFeeMax(newFilters.condoFeeMax);
             setIptuMin(newFilters.iptuMin);
@@ -1838,7 +1906,29 @@ export default function Home() {
             setHasGym(false);
             setHasElevator(false);
             setHasBalcony(false);
+            setHasPlayground(false);
+            setHasPartyRoom(false);
+            setHasGourmet(false);
+            setHasConcierge24h(false);
+            setComfortAC(false);
+            setComfortHeating(false);
+            setComfortSolar(false);
+            setComfortNoiseWindows(false);
+            setComfortLED(false);
+            setComfortWaterReuse(false);
+            setAccRamps(false);
+            setAccWideDoors(false);
+            setAccAccessibleElevator(false);
+            setAccTactile(false);
+            setFinishCabinets(false);
+            setFinishCounterGranite(false);
+            setFinishCounterQuartz(false);
             setViewSea(false);
+            setViewCity(false);
+            setPositionFront(false);
+            setPositionBack(false);
+            setPetsSmall(false);
+            setPetsLarge(false);
             setCondoFeeMin('');
             setCondoFeeMax('');
             setIptuMin('');
@@ -1866,7 +1956,29 @@ export default function Home() {
               hasGym: hasGym ? 'true' : '',
               hasElevator: hasElevator ? 'true' : '',
               hasBalcony: hasBalcony ? 'true' : '',
+              hasPlayground: hasPlayground ? 'true' : '',
+              hasPartyRoom: hasPartyRoom ? 'true' : '',
+              hasGourmet: hasGourmet ? 'true' : '',
+              hasConcierge24h: hasConcierge24h ? 'true' : '',
+              comfortAC: comfortAC ? 'true' : '',
+              comfortHeating: comfortHeating ? 'true' : '',
+              comfortSolar: comfortSolar ? 'true' : '',
+              comfortNoiseWindows: comfortNoiseWindows ? 'true' : '',
+              comfortLED: comfortLED ? 'true' : '',
+              comfortWaterReuse: comfortWaterReuse ? 'true' : '',
+              accRamps: accRamps ? 'true' : '',
+              accWideDoors: accWideDoors ? 'true' : '',
+              accAccessibleElevator: accAccessibleElevator ? 'true' : '',
+              accTactile: accTactile ? 'true' : '',
+              finishCabinets: finishCabinets ? 'true' : '',
+              finishCounterGranite: finishCounterGranite ? 'true' : '',
+              finishCounterQuartz: finishCounterQuartz ? 'true' : '',
               viewSea: viewSea ? 'true' : '',
+              viewCity: viewCity ? 'true' : '',
+              positionFront: positionFront ? 'true' : '',
+              positionBack: positionBack ? 'true' : '',
+              petsSmall: petsSmall ? 'true' : '',
+              petsLarge: petsLarge ? 'true' : '',
               condoFeeMin,
               condoFeeMax,
               iptuMin,
