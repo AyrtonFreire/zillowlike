@@ -19,7 +19,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search } from "lucide-react";
 
 const PropertyDetailsModalJames = dynamic(() => import("@/components/PropertyDetailsModalJames"), { ssr: false });
-import SearchFiltersBarZillow from "@/components/SearchFiltersBarZillow";
+import SearchFiltersBarPremium from "@/components/SearchFiltersBarPremium";
 import Image from "next/image";
 import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
 import { track } from "@/lib/analytics";
@@ -1763,13 +1763,13 @@ export default function Home() {
         onClose={closeOverlay}
       />
 
-      {/* Filters Drawer Mobile - Estilo Zillow */}
+      {/* Filters Drawer Mobile - Premium James Edition Style */}
       <Drawer
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
-        title="Filtros"
+        title="Filtros Premium"
       >
-        <SearchFiltersBarZillow
+        <SearchFiltersBarPremium
           filters={{
             minPrice,
             maxPrice,
