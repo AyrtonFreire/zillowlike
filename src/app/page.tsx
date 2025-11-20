@@ -524,16 +524,11 @@ export default function Home() {
 
             <div className="grid gap-6 md:gap-8 md:grid-cols-3 items-stretch">
               {/* Comprador / locatário */}
-              <div className="relative group flex flex-col items-center text-center">
-                {/* Reflexo suave no piso */}
-                <div className="pointer-events-none absolute -bottom-16 left-1/2 h-16 w-40 sm:w-56 -translate-x-1/2 bg-gradient-to-b from-white/70 via-white/25 to-transparent blur-2xl opacity-85 transition-all duration-500 ease-out group-hover:opacity-60 group-hover:translate-y-2" />
-                {/* Sombra de contato na parede (topo) */}
-                <div className="pointer-events-none absolute -top-3 left-8 right-8 h-5 rounded-full bg-black/20 blur-xl opacity-70 transition-all duration-500 ease-out group-hover:opacity-40" />
-                {/* Sombra longa no "chão" */}
-                <div className="pointer-events-none absolute -bottom-8 left-1/2 h-10 sm:h-12 w-40 sm:w-56 -translate-x-1/2 rounded-[50%] bg-gradient-to-b from-black/45 via-black/25 to-transparent blur-3xl opacity-85 transition-all duration-500 ease-out group-hover:opacity-55 group-hover:translate-y-1" />
-                <div className="relative bg-white rounded-[26px] sm:rounded-[30px] shadow-[0_45px_95px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[380px] sm:min-h-[420px] lg:min-h-[450px] transform translate-y-2 sm:translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_26px_60px_rgba(15,23,42,0.3)]">
-                  <div className="mb-5 sm:mb-6 flex justify-center">
-                    <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-teal-500">
+              <div className="relative flex">
+                <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
+                  {/* Faixa colorida + foto circular recortada */}
+                  <div className="relative h-40 bg-teal-700">
+                    <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-teal-500">
                       <Image
                         src="https://images.unsplash.com/photo-1600585154340-0ef3c08c0632?auto=format&fit=crop&w=800&q=80"
                         alt="Casal feliz comemorando novo imóvel"
@@ -543,38 +538,36 @@ export default function Home() {
                       />
                     </div>
                   </div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                    Quero encontrar um imóvel
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
-                    Explore casas e apartamentos com informações claras, fotos boas e agenda de visitas simples, sem pressão para fechar negócio nem disputas de lance.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof window !== "undefined") {
-                        const el = document.getElementById("explorar");
-                        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }
-                    }}
-                    className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 shadow-md hover:shadow-lg transition-all"
-                  >
-                    Explorar imóveis
-                  </button>
+                  {/* Conteúdo */}
+                  <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
+                      Quero encontrar um imóvel
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
+                      Explore casas e apartamentos com informações claras, fotos boas e agenda de visitas simples, sem pressão para fechar negócio nem disputas de lance.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                          const el = document.getElementById("explorar");
+                          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }
+                      }}
+                      className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-teal-600 text-teal-700 hover:bg-teal-50 transition-all"
+                    >
+                      Explorar imóveis
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Proprietário */}
-              <div className="relative group flex flex-col items-center text-center">
-                {/* Reflexo suave no piso */}
-                <div className="pointer-events-none absolute -bottom-16 left-1/2 h-16 w-40 sm:w-56 -translate-x-1/2 bg-gradient-to-b from-white/70 via-white/25 to-transparent blur-2xl opacity-85 transition-all duration-500 ease-out group-hover:opacity-60 group-hover:translate-y-2" />
-                {/* Sombra de contato na parede (topo) */}
-                <div className="pointer-events-none absolute -top-3 left-8 right-8 h-5 rounded-full bg-black/20 blur-xl opacity-70 transition-all duration-500 ease-out group-hover:opacity-40" />
-                {/* Sombra longa no "chão" */}
-                <div className="pointer-events-none absolute -bottom-8 left-1/2 h-10 sm:h-12 w-40 sm:w-56 -translate-x-1/2 rounded-[50%] bg-gradient-to-b from-black/45 via-black/25 to-transparent blur-3xl opacity-85 transition-all duration-500 ease-out group-hover:opacity-55 group-hover:translate-y-1" />
-                <div className="relative bg-white rounded-[26px] sm:rounded-[30px] shadow-[0_45px_95px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[380px] sm:min-h-[420px] lg:min-h-[450px] transform translate-y-2 sm:translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_26px_60px_rgba(15,23,42,0.3)]">
-                  <div className="mb-5 sm:mb-6 flex justify-center">
-                    <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-amber-500">
+              <div className="relative flex">
+                <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
+                  {/* Faixa colorida + foto circular recortada */}
+                  <div className="relative h-40 bg-amber-700">
+                    <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-amber-500">
                       <Image
                         src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80"
                         alt="Fachada de uma casa moderna e bem iluminada"
@@ -584,32 +577,30 @@ export default function Home() {
                       />
                     </div>
                   </div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                    Quero vender ou alugar meu imóvel
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
-                    Anuncie seu imóvel para um público qualificado, com visibilidade e acompanhamento em um painel simples, no seu ritmo.
-                  </p>
-                  <Link
-                    href="/owner"
-                    className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 shadow-md hover:shadow-lg transition-all"
-                  >
-                    Acessar área do proprietário
-                  </Link>
+                  {/* Conteúdo */}
+                  <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
+                      Quero vender ou alugar meu imóvel
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
+                      Anuncie seu imóvel para um público qualificado, com visibilidade e acompanhamento em um painel simples, no seu ritmo.
+                    </p>
+                    <Link
+                      href="/owner"
+                      className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-amber-600 text-amber-700 hover:bg-amber-50 transition-all"
+                    >
+                      Acessar área do proprietário
+                    </Link>
+                  </div>
                 </div>
               </div>
 
               {/* Corretor */}
-              <div className="relative group flex flex-col items-center text-center">
-                {/* Reflexo suave no piso */}
-                <div className="pointer-events-none absolute -bottom-16 left-1/2 h-16 w-40 sm:w-56 -translate-x-1/2 bg-gradient-to-b from-white/70 via-white/25 to-transparent blur-2xl opacity-85 transition-all duration-500 ease-out group-hover:opacity-60 group-hover:translate-y-2" />
-                {/* Sombra de contato na parede (topo) */}
-                <div className="pointer-events-none absolute -top-3 left-8 right-8 h-5 rounded-full bg-black/20 blur-xl opacity-70 transition-all duration-500 ease-out group-hover:opacity-40" />
-                {/* Sombra longa no "chão" */}
-                <div className="pointer-events-none absolute -bottom-8 left-1/2 h-10 sm:h-12 w-40 sm:w-56 -translate-x-1/2 rounded-[50%] bg-gradient-to-b from-black/45 via-black/25 to-transparent blur-3xl opacity-85 transition-all duration-500 ease-out group-hover:opacity-55 group-hover:translate-y-1" />
-                <div className="relative bg-white rounded-[26px] sm:rounded-[30px] shadow-[0_45px_95px_rgba(15,23,42,0.45)] border border-white/70 px-6 sm:px-8 pt-8 pb-7 sm:pt-10 sm:pb-8 flex flex-col items-center text-center min-h-[380px] sm:min-h-[420px] lg:min-h-[450px] transform translate-y-2 sm:translate-y-3 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:shadow-[0_26px_60px_rgba(15,23,42,0.3)]">
-                  <div className="mb-5 sm:mb-6 flex justify-center">
-                    <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden shadow-xl bg-indigo-600">
+              <div className="relative flex">
+                <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
+                  {/* Faixa colorida + foto circular recortada */}
+                  <div className="relative h-40 bg-indigo-900">
+                    <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-indigo-600">
                       <Image
                         src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=800&q=80"
                         alt="Corretor de imóveis sorrindo em frente a um fundo roxo"
@@ -619,18 +610,21 @@ export default function Home() {
                       />
                     </div>
                   </div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                    Sou corretor(a)
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
-                    Organize imóveis, leads e visitas em um dashboard pensado para qualidade de atendimento, sem ranking punitivo ou metas agressivas.
-                  </p>
-                  <Link
-                    href="/onboarding"
-                    className="mt-auto inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all"
-                  >
-                    Começar como corretor parceiro
-                  </Link>
+                  {/* Conteúdo */}
+                  <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
+                      Sou corretor(a)
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
+                      Organize imóveis, leads e visitas em um dashboard pensado para qualidade de atendimento, sem ranking punitivo ou metas agressivas.
+                    </p>
+                    <Link
+                      href="/onboarding"
+                      className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-indigo-600 text-indigo-700 hover:bg-indigo-50 transition-all"
+                    >
+                      Começar como corretor parceiro
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
