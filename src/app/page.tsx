@@ -750,7 +750,7 @@ export default function Home() {
                       href="/onboarding"
                       className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-indigo-600 text-indigo-700 hover:bg-indigo-50 transition-all"
                     >
-                      Começar como corretor parceiro
+                      Cadastre-se como corretor(a) no site
                     </Link>
                   </div>
                 </div>

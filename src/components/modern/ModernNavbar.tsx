@@ -136,17 +136,17 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         { label: "Guia do comprador", href: "/guia/compra", icon: Home },
         { label: "Guia do inquilino", href: "/guia/locacao", icon: Home },
         { label: "Guia do vendedor", href: "/guia/venda", icon: Megaphone },
-        { label: "Dicas de venda rápida", href: "/dicas/venda", icon: Star },
-        { label: "Como anunciar", href: "/como-anunciar", icon: HelpCircle },
+        { label: "Em construção · Dicas de venda rápida", href: "/dicas/venda", icon: Star },
+        { label: "Em construção · Como anunciar", href: "/como-anunciar", icon: HelpCircle },
       ],
     },
     {
       title: "Ferramentas",
       items: [
         { label: "Calculadora de financiamento", href: "/calculadora", icon: LineChart },
-        { label: "Calculadora de aluguel", href: "/calculadora-aluguel", icon: LineChart },
-        { label: "Estimador de valor", href: "/estimador", icon: LineChart },
-        { label: "Comparador de preços", href: "/comparador", icon: LineChart },
+        { label: "Em construção · Calculadora de aluguel", href: "/calculadora-aluguel", icon: LineChart },
+        { label: "Em construção · Estimador de valor", href: "/estimador", icon: LineChart },
+        { label: "Em construção · Comparador de preços", href: "/comparador", icon: LineChart },
       ],
     },
     {
@@ -154,7 +154,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       items: [
         { label: "Financiamento imobiliário", href: "/financing", icon: Building2 },
         { label: "Análise de mercado", href: "/owner/analytics", icon: LineChart },
-        { label: "Contratar fotógrafo", href: "/fotografo", icon: Settings },
+        { label: "Em construção · Contratar fotógrafo", href: "/fotografo", icon: Settings },
       ],
     },
     {
@@ -222,12 +222,8 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                     onMouseLeave={() => setOpenMenu(null)}
                   >
                     <div className="mx-auto max-w-7xl px-8 py-6">
-                      <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 flex items-center justify-between">
-                        <span>Explorar para comprar</span>
-                        <span className="hidden sm:inline-flex items-center gap-2 text-teal-600">
-                          <span className="h-1 w-8 rounded-full bg-teal-500/80" />
-                          <span className="text-[11px] font-medium">Use filtros avançados na página de busca</span>
-                        </span>
+                      <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                        Explorar para comprar
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
                         {buyMenuSections.map((section) => (
@@ -290,12 +286,8 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                     onMouseLeave={() => setOpenMenu(null)}
                   >
                     <div className="mx-auto max-w-7xl px-8 py-6">
-                      <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 flex items-center justify-between">
-                        <span>Explorar para alugar</span>
-                        <span className="hidden sm:inline-flex items-center gap-2 text-teal-600">
-                          <span className="h-1 w-8 rounded-full bg-teal-500/80" />
-                          <span className="text-[11px] font-medium">Veja opções flexíveis para locação</span>
-                        </span>
+                      <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                        Explorar para alugar
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
                         {rentMenuSections.map((section) => (
@@ -387,12 +379,8 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   onMouseLeave={() => setOpenMenu(null)}
                 >
                   <div className="mx-auto max-w-7xl px-8 py-6">
-                    <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 flex items-center justify-between">
-                      <span>Central de recursos</span>
-                      <span className="hidden sm:inline-flex items-center gap-2 text-teal-600">
-                        <span className="h-1 w-8 rounded-full bg-teal-500/80" />
-                        <span className="text-[11px] font-medium">Guias, ferramentas e serviços em um só lugar</span>
-                      </span>
+                    <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                      Central de recursos
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                       {resourceSections.map((section) => (
