@@ -614,11 +614,11 @@ export default function Home() {
                 Para quem é o Zillowlike
               </p>
               <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-display text-gray-900 text-left">
-                Três jeitos de usar a plataforma
+                Três formas de usar a plataforma
               </h2>
               <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-xl text-left">
-                Um lugar único para quem busca um lar, para quem quer anunciar com calma
-                e para corretores que valorizam um atendimento humano e sem leilão de preço.
+                Um lugar único para quem busca um lar, para quem quer anunciar com agilidade
+                e para corretores que desejem um hub para seus negócios
               </p>
             </div>
 
@@ -644,7 +644,7 @@ export default function Home() {
                       Quero encontrar um imóvel
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Explore casas e apartamentos com informações claras, fotos boas e agenda de visitas simples, sem pressão para fechar negócio nem disputas de lance.
+                      Explore casas e apartamentos com informações claras, facilidade de busca e agenda de visitas simples.
                     </p>
                     <button
                       type="button"
@@ -683,7 +683,7 @@ export default function Home() {
                       Quero vender ou alugar meu imóvel
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Anuncie seu imóvel para um público qualificado, com visibilidade e acompanhamento em um painel simples, no seu ritmo.
+                      Anuncie seu imóvel com enorme visibilidade para toda região, caso queira praticidade, unimos o interessado no seu imóvel a um corretor responsável pela intermediação da venda.
                     </p>
                     <Link
                       href="/owner"
@@ -716,7 +716,7 @@ export default function Home() {
                       Sou corretor(a)
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Organize imóveis, leads e visitas em um dashboard pensado para qualidade de atendimento, sem ranking punitivo ou metas agressivas.
+                      Organize imóveis, leads e visitas em um dashboard pensado para qualidade de atendimento e,caso seja do seu interesse, indicaremos você para um possível comprador de imóveis postados por pessoa física
                     </p>
                     <Link
                       href="/onboarding"
