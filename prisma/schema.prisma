@@ -501,6 +501,12 @@ enum ApplicationStatus {
   REJECTED
 }
 
+// Tipo de corretor
+enum RealtorType {
+  AUTONOMO
+  IMOBILIARIA
+}
+
 // Aplicações para se tornar corretor
 model RealtorApplication {
   id                  String            @id @default(cuid())
@@ -513,6 +519,7 @@ model RealtorApplication {
   creciState          String            // UF do CRECI (PE, BA, etc)
   creciExpiry         DateTime
   phone               String
+  realtorType         RealtorType
   
   // Documentos (URLs no storage)
   creciDocumentUrl    String?
