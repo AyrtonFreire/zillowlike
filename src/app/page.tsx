@@ -1139,11 +1139,6 @@ export default function Home() {
                       <ChevronDown className="w-4 h-4" />
                     </button>
                   </div>
-
-                  {/* Save Search Button */}
-                  <button className="ml-auto px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium transition-colors">
-                    Salvar Busca
-                  </button>
                   </div>
                 </div>
 
@@ -1404,12 +1399,82 @@ export default function Home() {
           <div className={viewMode === 'split' ? 'lg:flex lg:h-[calc(100vh-140px)]' : 'lg:h-[calc(100vh-140px)]'}>
             {/* Left Side - Property List */}
             <div className={viewMode === 'split' ? 'w-full lg:w-1/2 lg:overflow-y-auto' : 'w-full lg:w-full lg:overflow-y-auto'}>
-              <div className="pt-4 pb-20 px-4 sm:pt-6 sm:pb-24 sm:px-6 lg:px-8">
-              {/* Results Counter */}
-              <div className="mb-2">
+              <div className="pt-8 pb-20 px-4 sm:pt-8 sm:pb-24 sm:px-6 lg:px-8">
+              {/* Results Counter + Sort */}
+              <div className="mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <h2 className="text-xl font-bold text-gray-900">
                   {total > 0 ? `${properties.length} de ${total.toLocaleString('pt-BR')} imóveis` : 'Nenhum imóvel encontrado'}
                 </h2>
+                {total > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Ordenar por</span>
+                    <select
+                      value={sort}
+                      onChange={(e) => {
+                        const newSort = e.target.value;
+                        setSort(newSort);
+                        const params = buildSearchParams({
+                          q: search,
+                          city,
+                          state,
+                          type,
+                          minPrice,
+                          maxPrice,
+                          bedroomsMin,
+                          bathroomsMin,
+                          areaMin,
+                          parkingSpots,
+                          yearBuiltMin,
+                          yearBuiltMax,
+                          status,
+                          petFriendly: petFriendly ? 'true' : '',
+                          furnished: furnished ? 'true' : '',
+                          hasPool: hasPool ? 'true' : '',
+                          hasGym: hasGym ? 'true' : '',
+                          hasElevator: hasElevator ? 'true' : '',
+                          hasBalcony: hasBalcony ? 'true' : '',
+                          hasPlayground: hasPlayground ? 'true' : '',
+                          hasPartyRoom: hasPartyRoom ? 'true' : '',
+                          hasGourmet: hasGourmet ? 'true' : '',
+                          hasConcierge24h: hasConcierge24h ? 'true' : '',
+                          comfortAC: comfortAC ? 'true' : '',
+                          comfortHeating: comfortHeating ? 'true' : '',
+                          comfortSolar: comfortSolar ? 'true' : '',
+                          comfortNoiseWindows: comfortNoiseWindows ? 'true' : '',
+                          comfortLED: comfortLED ? 'true' : '',
+                          comfortWaterReuse: comfortWaterReuse ? 'true' : '',
+                          accRamps: accRamps ? 'true' : '',
+                          accWideDoors: accWideDoors ? 'true' : '',
+                          accAccessibleElevator: accAccessibleElevator ? 'true' : '',
+                          accTactile: accTactile ? 'true' : '',
+                          finishCabinets: finishCabinets ? 'true' : '',
+                          finishCounterGranite: finishCounterGranite ? 'true' : '',
+                          finishCounterQuartz: finishCounterQuartz ? 'true' : '',
+                          viewSea: viewSea ? 'true' : '',
+                          viewCity: viewCity ? 'true' : '',
+                          positionFront: positionFront ? 'true' : '',
+                          positionBack: positionBack ? 'true' : '',
+                          petsSmall: petsSmall ? 'true' : '',
+                          petsLarge: petsLarge ? 'true' : '',
+                          condoFeeMin,
+                          condoFeeMax,
+                          iptuMin,
+                          iptuMax,
+                          keywords,
+                          sort: newSort,
+                          page: 1,
+                        });
+                        router.push(`/?${params}`);
+                      }}
+                      className="px-2 py-1.5 border border-gray-300 rounded-lg bg-white text-xs sm:text-sm font-medium hover:border-gray-400 transition-colors cursor-pointer"
+                    >
+                      <option value="recent">Mais recentes</option>
+                      <option value="price_asc">Menor preço</option>
+                      <option value="price_desc">Maior preço</option>
+                      <option value="area_desc">Maior área</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Active Filters Chips - agora abaixo do contador de resultados (desktop e mobile) */}
