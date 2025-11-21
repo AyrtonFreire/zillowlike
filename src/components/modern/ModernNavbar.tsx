@@ -17,9 +17,9 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
   const [isRightMenuOpen, setIsRightMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [megaMenu, setMegaMenu] = useState<"comprar" | "alugar" | "anunciar" | null>(null);
   const [primary, setPrimary] = useState<"comprar" | "alugar" | "anunciar">("comprar");
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const navRef = useRef<HTMLDivElement | null>(null);
+  const [openMenu, setOpenMenu] = useState<"comprar" | "alugar" | "recursos" | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
   const { scrollY } = useScroll();
@@ -28,18 +28,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const role = (session as any)?.user?.role || "USER";
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
-  const closeTimer = useRef<number | null>(null as any);
-
-  const cancelClose = () => {
-    if (closeTimer.current) {
-      window.clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-  };
-  const scheduleClose = (delay = 150) => {
-    cancelClose();
-    closeTimer.current = window.setTimeout(() => setMegaMenu(null), delay);
-  };
   
   // Mantém sempre estilo JamesEdition (sem transformação ao rolar)
 
@@ -65,21 +53,70 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   // Close mega menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.mega-menu-container')) {
-        setMegaMenu(null);
+      const target = e.target as Node;
+      if (navRef.current && !navRef.current.contains(target)) {
+        setOpenMenu(null);
       }
     };
-    if (megaMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [megaMenu]);
+  }, []);
 
-  const menuItems = [
-    { label: "Comprar", key: "comprar" as const },
-    { label: "Alugar", key: "alugar" as const },
-    { label: "Anunciar imóvel", key: "anunciar" as const },
+  const buyMenuItems = [
+    { label: "Casas à venda", href: "/?type=HOUSE" },
+    { label: "Apartamentos à venda", href: "/?type=APARTMENT" },
+    { label: "Condomínios", href: "/?type=CONDO" },
+    { label: "Terrenos", href: "/?type=LAND" },
+    { label: "Comercial", href: "/?type=COMMERCIAL" },
+    { label: "Todos os imóveis", href: "/" },
+  ];
+
+  const rentMenuItems = [
+    { label: "Casas para alugar", href: "/?status=RENT&type=HOUSE" },
+    { label: "Apartamentos para alugar", href: "/?status=RENT&type=APARTMENT" },
+    { label: "Condomínios", href: "/?status=RENT&type=CONDO" },
+    { label: "Studios", href: "/?status=RENT&type=STUDIO" },
+    { label: "Todos para alugar", href: "/?status=RENT" },
+  ];
+
+  const resourceSections = [
+    {
+      title: "Comprar",
+      items: [
+        { label: "Guia do comprador", href: "/guia/compra" },
+        { label: "Financiamento", href: "/financing" },
+        { label: "Novos imóveis", href: "/?sort=recent" },
+        { label: "Menor preço", href: "/?sort=price_asc" },
+        { label: "Calculadora de financiamento", href: "/calculadora" },
+      ],
+    },
+    {
+      title: "Alugar",
+      items: [
+        { label: "Guia do inquilino", href: "/guia/locacao" },
+        { label: "Novos anúncios", href: "/?status=RENT&sort=recent" },
+        { label: "Menor aluguel", href: "/?status=RENT&sort=price_asc" },
+        { label: "Calculadora de aluguel", href: "/calculadora-aluguel" },
+      ],
+    },
+    {
+      title: "Vender",
+      items: [
+        { label: "Guia do vendedor", href: "/guia/venda" },
+        { label: "Análise de mercado", href: "/owner/analytics" },
+        { label: "Dicas para vender", href: "/dicas/venda" },
+        { label: "Estimar valor do imóvel", href: "/estimador" },
+        { label: "Comparar preços", href: "/comparador" },
+        { label: "Contratar fotógrafo", href: "/fotografo" },
+      ],
+    },
+    {
+      title: "Ferramentas gerais",
+      items: [
+        { label: "Buscas salvas", href: "/saved-searches" },
+        { label: "Meus favoritos", href: "/favorites" },
+      ],
+    },
   ];
 
   const isDashboardContext = pathname?.startsWith("/admin") || pathname?.startsWith("/owner") || pathname?.startsWith("/broker");
@@ -91,6 +128,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
       {/* Desktop Navigation - JamesEdition style on home, solid on dashboards */}
       <motion.nav
+        ref={navRef}
         className={`hidden md:block w-full relative z-[200] transition-all duration-300 ${
           isDashboardContext
             ? "bg-gradient-to-r from-teal-light to-teal shadow-md"
@@ -101,31 +139,98 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       >
         <div className="mx-auto max-w-7xl px-4">
           <div className="grid grid-cols-3 items-center h-16">
-            {/* Left: Primary tabs with mega dropdown triggers (Desktop) */}
+            {/* Left: Primary tabs with dropdowns (Desktop) */}
             <div className="flex items-center justify-start gap-7">
             
             {/* Desktop menu */}
-            <div className="hidden md:flex items-center gap-7 mega-menu-container">
-            {menuItems.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                onMouseEnter={() => { cancelClose(); setMegaMenu(item.key); setPrimary(item.key); }}
-                onClick={() => { setMegaMenu(megaMenu === item.key ? null : item.key); setPrimary(item.key); }}
+            <div className="hidden md:flex items-center gap-7">
+              {/* Comprar */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenMenu(openMenu === "comprar" ? null : "comprar")}
+                  className={`flex items-center gap-1 font-semibold text-[15px] transition-colors relative group ${
+                    forceLight
+                      ? (primary === 'comprar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
+                      : (primary === 'comprar' ? 'text-white' : 'text-white/90 hover:text-white')
+                  }`}
+                >
+                  <span>Comprar</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'comprar' ? 'rotate-180' : ''}`} />
+                  <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 ${
+                    forceLight ? 'bg-teal-600' : 'bg-white'
+                  } ${
+                    primary === 'comprar' ? 'w-full' : 'w-0 group-hover:w-full'
+                  }`} />
+                </button>
+                {openMenu === "comprar" && (
+                  <div className="absolute left-0 mt-2 w-64 rounded-xl bg-white shadow-xl border border-gray-200 py-2 z-[300]">
+                    {buyMenuItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-teal-700"
+                        onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Alugar */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenMenu(openMenu === "alugar" ? null : "alugar")}
+                  className={`flex items-center gap-1 font-semibold text-[15px] transition-colors relative group ${
+                    forceLight
+                      ? (primary === 'alugar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
+                      : (primary === 'alugar' ? 'text-white' : 'text-white/90 hover:text-white')
+                  }`}
+                >
+                  <span>Alugar</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'alugar' ? 'rotate-180' : ''}`} />
+                  <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 ${
+                    forceLight ? 'bg-teal-600' : 'bg-white'
+                  } ${
+                    primary === 'alugar' ? 'w-full' : 'w-0 group-hover:w-full'
+                  }`} />
+                </button>
+                {openMenu === "alugar" && (
+                  <div className="absolute left-0 mt-2 w-64 rounded-xl bg-white shadow-xl border border-gray-200 py-2 z-[300]">
+                    {rentMenuItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-teal-700"
+                        onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Anunciar imóvel - link direto */}
+              <Link
+                href="/owner/new"
                 className={`font-semibold text-[15px] transition-colors relative group ${
                   forceLight
-                    ? (primary === item.key ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
-                    : (primary === item.key ? 'text-white' : 'text-white/90 hover:text-white')
+                    ? (primary === 'anunciar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
+                    : (primary === 'anunciar' ? 'text-white' : 'text-white/90 hover:text-white')
                 }`}
+                onClick={() => setPrimary('anunciar')}
               >
-                {item.label}
+                Anunciar imóvel
                 <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 ${
                   forceLight ? 'bg-teal-600' : 'bg-white'
                 } ${
-                  primary === item.key ? 'w-full' : 'w-0 group-hover:w-full'
+                  primary === 'anunciar' ? 'w-full' : 'w-0 group-hover:w-full'
                 }`} />
-              </button>
-            ))}
+              </Link>
             </div>
           </div>
 
@@ -145,15 +250,43 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
           
           {/* Right: Context links (3) + account */}
           <div className="flex items-center justify-end gap-2">
-            <button 
-              onClick={() => setHowItWorksOpen(true)} 
-              className={`hidden lg:flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
-                forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <HelpCircle className="w-4 h-4" />
-              <span>Como funciona</span>
-            </button>
+            <div className="relative hidden lg:block">
+              <button 
+                type="button"
+                onClick={() => setOpenMenu(openMenu === "recursos" ? null : "recursos")} 
+                className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
+                  forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white/90 hover:bg-white/10'
+                }`}
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span>Recursos</span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'recursos' ? 'rotate-180' : ''}`} />
+              </button>
+              {openMenu === "recursos" && (
+                <div className="absolute right-0 mt-2 w-80 rounded-xl bg-white shadow-xl border border-gray-200 py-3 z-[300]">
+                  {resourceSections.map((section) => (
+                    <div key={section.title} className="px-3 pb-2 mb-2 last:mb-0 last:border-b-0 border-b border-gray-100">
+                      <div className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                        {section.title}
+                      </div>
+                      <ul className="space-y-0.5">
+                        {section.items.map((item) => (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              className="block px-2 py-1.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-teal-700"
+                              onClick={() => setOpenMenu(null)}
+                            >
+                              {item.label}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <Link 
               href="/favorites" 
               className={`p-2 rounded-lg transition-colors ${
@@ -221,159 +354,13 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
           </div>
 
           {/* Mobile Menu Button (duplicated copy removed; controlled on the left) */}
-        </div>
-      </div>
-
-      {/* Small hover buffer to avoid gap between triggers and dropdown */}
-      {megaMenu && (
-        <div className="absolute top-full left-0 right-0 h-3 z-[9999] mega-menu-container" onMouseEnter={() => cancelClose()} />
-      )}
-
-      {/* Mega Menu Dropdown */}
-      {megaMenu && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="absolute top-full left-0 right-0 bg-white border-t border-gray-200 shadow-2xl mega-menu-container z-[10000]"
-          onMouseEnter={() => cancelClose()}
-          onMouseLeave={() => scheduleClose(260)}
-        >
-          <div className="container mx-auto px-4 py-10">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-              {megaMenu === "comprar" && (
-                <>
-                  <MegaMenuSection
-                    title="Imóveis à venda"
-                    icon="🏠"
-                    items={[
-                      { label: "Casas à venda", href: "/?type=HOUSE" },
-                      { label: "Apartamentos à venda", href: "/?type=APARTMENT" },
-                      { label: "Condomínios", href: "/?type=CONDO" },
-                      { label: "Terrenos", href: "/?type=LAND" },
-                      { label: "Comercial", href: "/?type=COMMERCIAL" },
-                      { label: "Todos os imóveis", href: "/" },
-                    ]}
-                  />
-                  <MegaMenuSection
-                    title="Recursos"
-                    icon="⚡"
-                    items={[
-                      { label: "Novos imóveis", href: "/?sort=recent" },
-                      { label: "Menor preço", href: "/?sort=price_asc" },
-                      { label: "Financiamento", href: "/financing" },
-                      { label: "Guia do comprador", href: "/guia/compra" },
-                    ]}
-                  />
-                  <MegaMenuSection
-                    title="Ferramentas"
-                    icon="🔧"
-                    items={[
-                      { label: "Calculadora de financiamento", href: "/calculadora" },
-                      { label: "Buscas salvas", href: "/saved-searches" },
-                      { label: "Meus favoritos", href: "/favorites" },
-                    ]}
-                  />
-                </>
-              )}
-              {megaMenu === "alugar" && (
-                <>
-                  <MegaMenuSection
-                    title="Imóveis para alugar"
-                    icon="🔑"
-                    items={[
-                      { label: "Casas para alugar", href: "/?status=RENT&type=HOUSE" },
-                      { label: "Apartamentos para alugar", href: "/?status=RENT&type=APARTMENT" },
-                      { label: "Condomínios", href: "/?status=RENT&type=CONDO" },
-                      { label: "Studios", href: "/?status=RENT&type=STUDIO" },
-                      { label: "Todos para alugar", href: "/?status=RENT" },
-                    ]}
-                  />
-                  <MegaMenuSection
-                    title="Recursos"
-                    icon="📋"
-                    items={[
-                      { label: "Novos anúncios", href: "/?status=RENT&sort=recent" },
-                      { label: "Menor aluguel", href: "/?status=RENT&sort=price_asc" },
-                      { label: "Guia do inquilino", href: "/guia/locacao" },
-                    ]}
-                  />
-                  <MegaMenuSection
-                    title="Ferramentas"
-                    icon="💰"
-                    items={[
-                      { label: "Calculadora de aluguel", href: "/calculadora-aluguel" },
-                      { label: "Buscas salvas", href: "/saved-searches" },
-                      { label: "Meus favoritos", href: "/favorites" },
-                    ]}
-                  />
-                </>
-              )}
-              {megaMenu === "anunciar" && (
-                <>
-                  <MegaMenuSection
-                    title="Anunciar seu imóvel"
-                    icon="🏡"
-                    items={[
-                      { label: "Anunciar imóvel grátis", href: "/owner/new" },
-                      { label: "Meus anúncios", href: "/owner/properties" },
-                      { label: "Painel do proprietário", href: "/owner/dashboard" },
-                      { label: "Meus leads", href: "/owner/leads" },
-                    ]}
-                  />
-                  <MegaMenuSection
-                    title="Recursos"
-                    icon="📊"
-                    items={[
-                      { label: "Guia do vendedor", href: "/guia/venda" },
-                      { label: "Análise de mercado", href: "/owner/analytics" },
-                      { label: "Dicas para vender", href: "/dicas/venda" },
-                    ]}
-                  />
-                  <MegaMenuSection
-                    title="Ferramentas"
-                    icon="🛠️"
-                    items={[
-                      { label: "Estimar valor do imóvel", href: "/estimador" },
-                      { label: "Comparar preços", href: "/comparador" },
-                      { label: "Contratar fotógrafo", href: "/fotografo" },
-                    ]}
-                  />
-                </>
-              )}
-            </div>
           </div>
-        </motion.div>
-      )}
+        </div>
 
       </motion.nav>
 
       {/* How It Works Modal */}
       <HowItWorksModal isOpen={howItWorksOpen} onClose={() => setHowItWorksOpen(false)} />
     </>
-  );
-}
-
-// Mega Menu Section Component
-function MegaMenuSection({ title, icon, items }: { title: string; icon: string; items: { label: string; href: string }[] }) {
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-2xl">{icon}</span>
-        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-      </div>
-      <ul className="space-y-2">
-        {items.map((item, index) => (
-          <li key={index}>
-            <Link
-              href={item.href}
-              className="block px-4 py-2 text-gray-700 hover:text-teal hover:bg-teal/5 rounded-lg transition-all font-medium"
-            >
-              {item.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
