@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Home, DollarSign, Bed, Bath, Maximize2, Car, PawPrint, Sofa, Waves, Dumbbell, Building2, MapPin, Sun, Leaf, Accessibility, Sparkles, Mountain, ArrowUpCircle, Wind } from "lucide-react";
+import { buildSearchParams } from "@/lib/url";
 
 type FilterValues = {
   minPrice: string;
@@ -72,6 +73,8 @@ export default function SearchFiltersBarZillow({
   totalResults
 }: SearchFiltersBarZillowProps) {
   const [localFilters, setLocalFilters] = useState(filters);
+  const [previewTotal, setPreviewTotal] = useState<number | undefined>(totalResults);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const updateFilter = (key: keyof FilterValues, value: any) => {
     setLocalFilters(prev => ({ ...prev, [key]: value }));
@@ -101,14 +104,84 @@ export default function SearchFiltersBarZillow({
     onClearFilters();
   };
 
-  const formatResultsLabel = (count?: number) => {
+  // Buscar preview do total conforme usuário altera filtros localmente
+  useEffect(() => {
+    const fetchPreviewTotal = async () => {
+      setIsLoadingPreview(true);
+      try {
+        const params = buildSearchParams({
+          minPrice: localFilters.minPrice,
+          maxPrice: localFilters.maxPrice,
+          bedroomsMin: localFilters.bedrooms,
+          bathroomsMin: localFilters.bathrooms,
+          type: localFilters.type,
+          areaMin: localFilters.areaMin,
+          parkingSpots: localFilters.parkingSpots,
+          yearBuiltMin: localFilters.yearBuiltMin,
+          yearBuiltMax: localFilters.yearBuiltMax,
+          status: localFilters.status,
+          petFriendly: localFilters.petFriendly ? 'true' : '',
+          furnished: localFilters.furnished ? 'true' : '',
+          hasPool: localFilters.hasPool ? 'true' : '',
+          hasGym: localFilters.hasGym ? 'true' : '',
+          hasElevator: localFilters.hasElevator ? 'true' : '',
+          hasBalcony: localFilters.hasBalcony ? 'true' : '',
+          hasPlayground: localFilters.hasPlayground ? 'true' : '',
+          hasPartyRoom: localFilters.hasPartyRoom ? 'true' : '',
+          hasGourmet: localFilters.hasGourmet ? 'true' : '',
+          hasConcierge24h: localFilters.hasConcierge24h ? 'true' : '',
+          comfortAC: localFilters.comfortAC ? 'true' : '',
+          comfortHeating: localFilters.comfortHeating ? 'true' : '',
+          comfortSolar: localFilters.comfortSolar ? 'true' : '',
+          comfortNoiseWindows: localFilters.comfortNoiseWindows ? 'true' : '',
+          comfortLED: localFilters.comfortLED ? 'true' : '',
+          comfortWaterReuse: localFilters.comfortWaterReuse ? 'true' : '',
+          accRamps: localFilters.accRamps ? 'true' : '',
+          accWideDoors: localFilters.accWideDoors ? 'true' : '',
+          accAccessibleElevator: localFilters.accAccessibleElevator ? 'true' : '',
+          accTactile: localFilters.accTactile ? 'true' : '',
+          finishCabinets: localFilters.finishCabinets ? 'true' : '',
+          finishCounterGranite: localFilters.finishCounterGranite ? 'true' : '',
+          finishCounterQuartz: localFilters.finishCounterQuartz ? 'true' : '',
+          viewSea: localFilters.viewSea ? 'true' : '',
+          viewCity: localFilters.viewCity ? 'true' : '',
+          positionFront: localFilters.positionFront ? 'true' : '',
+          positionBack: localFilters.positionBack ? 'true' : '',
+          petsSmall: localFilters.petsSmall ? 'true' : '',
+          petsLarge: localFilters.petsLarge ? 'true' : '',
+          condoFeeMin: localFilters.condoFeeMin,
+          condoFeeMax: localFilters.condoFeeMax,
+          iptuMin: localFilters.iptuMin,
+          iptuMax: localFilters.iptuMax,
+          keywords: localFilters.keywords,
+          page: 1,
+          pageSize: 1 // Apenas para pegar o total
+        });
+        const res = await fetch(`/api/properties?${params}`);
+        const data = await res.json();
+        if (data?.success) {
+          setPreviewTotal(data.total || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching preview total:', error);
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    };
+
+    const debounce = setTimeout(fetchPreviewTotal, 500);
+    return () => clearTimeout(debounce);
+  }, [localFilters]);
+
+  const formatResultsLabel = (count?: number, loading?: boolean) => {
+    if (loading) return 'Buscando...';
     if (typeof count !== 'number') return '';
     if (count === 0) return 'Nenhum imóvel encontrado';
     if (count === 1) return '1 imóvel encontrado';
     return `${count} imóveis encontrados`;
   };
 
-  const resultsLabel = formatResultsLabel(totalResults);
+  const resultsLabel = formatResultsLabel(previewTotal, isLoadingPreview);
 
   const propertyTypes = [
     { value: "HOUSE", label: "Casa", icon: "🏠" },
@@ -448,7 +521,20 @@ export default function SearchFiltersBarZillow({
       </div>
 
       {/* Fixed Footer - Estilo Zillow */}
-      <div className="border-t border-gray-200 bg-white px-4 py-3 shadow-lg">
+      <div className="border-t border-gray-200 bg-white px-4 py-4 shadow-lg">
+        {/* Result count - Destacado */}
+        {resultsLabel && (
+          <div className="mb-3 flex items-center justify-center gap-2 py-2 px-4 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg border border-teal-100">
+            <Home className="w-4 h-4 text-teal-600" />
+            <span className="text-sm font-semibold text-gray-800">
+              {resultsLabel}
+            </span>
+            {isLoadingPreview && (
+              <span className="inline-block w-3 h-3 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+            )}
+          </div>
+        )}
+        
         <div className="flex items-center justify-between gap-3">
           {/* Clear button */}
           <button
@@ -458,20 +544,13 @@ export default function SearchFiltersBarZillow({
             Limpar tudo
           </button>
 
-          {/* Result count + Apply button */}
-          <div className="flex flex-col items-end gap-1 flex-1 max-w-[220px]">
-            {resultsLabel && (
-              <span className="text-[11px] text-gray-500 leading-none">
-                {resultsLabel}
-              </span>
-            )}
-            <button
-              onClick={handleApply}
-              className="w-full py-3 px-6 glass-teal text-white font-semibold rounded-lg shadow-md transition-all"
-            >
-              Aplicar
-            </button>
-          </div>
+          {/* Apply button */}
+          <button
+            onClick={handleApply}
+            className="flex-1 max-w-[200px] py-3 px-6 glass-teal text-white font-semibold rounded-lg shadow-md transition-all hover:scale-105"
+          >
+            Aplicar
+          </button>
         </div>
       </div>
     </div>

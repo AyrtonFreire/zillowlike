@@ -1888,53 +1888,16 @@ export default function Home() {
             setKeywords(newFilters.keywords);
           }}
           onClearFilters={() => {
-            setSearch('');
-            setCity('');
-            setState('');
-            setType('');
-            setMinPrice('');
-            setMaxPrice('');
-            setBedroomsMin('');
-            setBathroomsMin('');
-            setAreaMin('');
-            setParkingSpots('');
-            setYearBuiltMin('');
-            setYearBuiltMax('');
-            setStatus('');
-            setPetFriendly(false);
-            setFurnished(false);
-            setHasPool(false);
-            setHasGym(false);
-            setHasElevator(false);
-            setHasBalcony(false);
-            setHasPlayground(false);
-            setHasPartyRoom(false);
-            setHasGourmet(false);
-            setHasConcierge24h(false);
-            setComfortAC(false);
-            setComfortHeating(false);
-            setComfortSolar(false);
-            setComfortNoiseWindows(false);
-            setComfortLED(false);
-            setComfortWaterReuse(false);
-            setAccRamps(false);
-            setAccWideDoors(false);
-            setAccAccessibleElevator(false);
-            setAccTactile(false);
-            setFinishCabinets(false);
-            setFinishCounterGranite(false);
-            setFinishCounterQuartz(false);
-            setViewSea(false);
-            setViewCity(false);
-            setPositionFront(false);
-            setPositionBack(false);
-            setPetsSmall(false);
-            setPetsLarge(false);
-            setCondoFeeMin('');
-            setCondoFeeMax('');
-            setIptuMin('');
-            setIptuMax('');
-            setKeywords('');
+            // Limpar todos os filtros e aplicar a busca limpa
+            const params = buildSearchParams({
+              q: search, // Manter a busca de texto se houver
+              city,
+              state,
+              sort,
+              page: 1
+            });
+            router.push(`/?${params}`);
+            setFiltersOpen(false);
           }}
           onApply={() => {
             const params = buildSearchParams({
