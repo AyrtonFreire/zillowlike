@@ -62,59 +62,106 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const buyMenuItems = [
-    { label: "Casas à venda", href: "/?type=HOUSE" },
-    { label: "Apartamentos à venda", href: "/?type=APARTMENT" },
-    { label: "Condomínios", href: "/?type=CONDO" },
-    { label: "Terrenos", href: "/?type=LAND" },
-    { label: "Comercial", href: "/?type=COMMERCIAL" },
-    { label: "Todos os imóveis", href: "/" },
-  ];
-
-  const rentMenuItems = [
-    { label: "Casas para alugar", href: "/?status=RENT&type=HOUSE" },
-    { label: "Apartamentos para alugar", href: "/?status=RENT&type=APARTMENT" },
-    { label: "Condomínios", href: "/?status=RENT&type=CONDO" },
-    { label: "Studios", href: "/?status=RENT&type=STUDIO" },
-    { label: "Todos para alugar", href: "/?status=RENT" },
-  ];
-
-  const resourceSections = [
+  // Mega menu Comprar - inspirado em Zillow/Daft/James Edition
+  const buyMenuSections = [
     {
-      title: "Comprar",
+      title: "Por tipo de imóvel",
       items: [
-        { label: "Guia do comprador", href: "/guia/compra" },
-        { label: "Financiamento", href: "/financing" },
-        { label: "Novos imóveis", href: "/?sort=recent" },
-        { label: "Menor preço", href: "/?sort=price_asc" },
-        { label: "Calculadora de financiamento", href: "/calculadora" },
+        { label: "Casas", href: "/?type=HOUSE", description: "Casas unifamiliares" },
+        { label: "Apartamentos", href: "/?type=APARTMENT", description: "Apartamentos e flats" },
+        { label: "Condomínios", href: "/?type=CONDO", description: "Condomínios fechados" },
+        { label: "Terrenos", href: "/?type=LAND", description: "Lotes e terrenos" },
+        { label: "Comercial", href: "/?type=COMMERCIAL", description: "Imóveis comerciais" },
       ],
     },
     {
-      title: "Alugar",
+      title: "Por faixa de preço",
       items: [
-        { label: "Guia do inquilino", href: "/guia/locacao" },
+        { label: "Até R$ 300 mil", href: "/?maxPrice=300000" },
+        { label: "R$ 300k - R$ 500k", href: "/?minPrice=300000&maxPrice=500000" },
+        { label: "R$ 500k - R$ 1M", href: "/?minPrice=500000&maxPrice=1000000" },
+        { label: "Acima de R$ 1M", href: "/?minPrice=1000000" },
+        { label: "Imóveis de luxo", href: "/?minPrice=1500000&sort=price_desc" },
+      ],
+    },
+    {
+      title: "Buscar por",
+      items: [
+        { label: "Novos no mercado", href: "/?sort=recent" },
+        { label: "Menor preço", href: "/?sort=price_asc" },
+        { label: "Maior área", href: "/?sort=area_desc" },
+        { label: "Imóveis mobiliados", href: "/?furnished=true" },
+        { label: "Aceita pets", href: "/?petFriendly=true" },
+      ],
+    },
+  ];
+
+  // Mega menu Alugar - inspirado em Zillow/Daft/James Edition
+  const rentMenuSections = [
+    {
+      title: "Por tipo de imóvel",
+      items: [
+        { label: "Casas", href: "/?status=RENT&type=HOUSE", description: "Casas para locação" },
+        { label: "Apartamentos", href: "/?status=RENT&type=APARTMENT", description: "Apartamentos para alugar" },
+        { label: "Studios", href: "/?status=RENT&type=STUDIO", description: "Studios e quitinetes" },
+        { label: "Condomínios", href: "/?status=RENT&type=CONDO", description: "Condomínios fechados" },
+      ],
+    },
+    {
+      title: "Por valor mensal",
+      items: [
+        { label: "Até R$ 1.500", href: "/?status=RENT&maxPrice=1500" },
+        { label: "R$ 1.500 - R$ 3.000", href: "/?status=RENT&minPrice=1500&maxPrice=3000" },
+        { label: "R$ 3.000 - R$ 5.000", href: "/?status=RENT&minPrice=3000&maxPrice=5000" },
+        { label: "Acima de R$ 5.000", href: "/?status=RENT&minPrice=5000" },
+      ],
+    },
+    {
+      title: "Buscar por",
+      items: [
         { label: "Novos anúncios", href: "/?status=RENT&sort=recent" },
         { label: "Menor aluguel", href: "/?status=RENT&sort=price_asc" },
-        { label: "Calculadora de aluguel", href: "/calculadora-aluguel" },
+        { label: "Mobiliados", href: "/?status=RENT&furnished=true" },
+        { label: "Aceita pets", href: "/?status=RENT&petFriendly=true" },
+        { label: "Com academia", href: "/?status=RENT&hasGym=true" },
+      ],
+    },
+  ];
+
+  // Recursos consolidados - substitui "Como funciona"
+  const resourceSections = [
+    {
+      title: "Guias e Dicas",
+      items: [
+        { label: "Guia do comprador", href: "/guia/compra", icon: Home },
+        { label: "Guia do inquilino", href: "/guia/locacao", icon: Home },
+        { label: "Guia do vendedor", href: "/guia/venda", icon: Megaphone },
+        { label: "Dicas de venda rápida", href: "/dicas/venda", icon: Star },
+        { label: "Como anunciar", href: "/como-anunciar", icon: HelpCircle },
       ],
     },
     {
-      title: "Vender",
+      title: "Ferramentas",
       items: [
-        { label: "Guia do vendedor", href: "/guia/venda" },
-        { label: "Análise de mercado", href: "/owner/analytics" },
-        { label: "Dicas para vender", href: "/dicas/venda" },
-        { label: "Estimar valor do imóvel", href: "/estimador" },
-        { label: "Comparar preços", href: "/comparador" },
-        { label: "Contratar fotógrafo", href: "/fotografo" },
+        { label: "Calculadora de financiamento", href: "/calculadora", icon: LineChart },
+        { label: "Calculadora de aluguel", href: "/calculadora-aluguel", icon: LineChart },
+        { label: "Estimador de valor", href: "/estimador", icon: LineChart },
+        { label: "Comparador de preços", href: "/comparador", icon: LineChart },
       ],
     },
     {
-      title: "Ferramentas gerais",
+      title: "Serviços",
       items: [
-        { label: "Buscas salvas", href: "/saved-searches" },
-        { label: "Meus favoritos", href: "/favorites" },
+        { label: "Financiamento imobiliário", href: "/financing", icon: Building2 },
+        { label: "Análise de mercado", href: "/owner/analytics", icon: LineChart },
+        { label: "Contratar fotógrafo", href: "/fotografo", icon: Settings },
+      ],
+    },
+    {
+      title: "Minha conta",
+      items: [
+        { label: "Buscas salvas", href: "/saved-searches", icon: Bookmark },
+        { label: "Meus favoritos", href: "/favorites", icon: Heart },
       ],
     },
   ];
@@ -164,17 +211,32 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   }`} />
                 </button>
                 {openMenu === "comprar" && (
-                  <div className="absolute left-0 mt-2 w-64 rounded-xl bg-white shadow-xl border border-gray-200 py-2 z-[300]">
-                    {buyMenuItems.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-teal-700"
-                        onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
+                  <div className="absolute left-0 mt-2 w-[720px] rounded-xl bg-white shadow-xl border border-gray-200 py-4 z-[300]">
+                    <div className="grid grid-cols-3 gap-6 px-4">
+                      {buyMenuSections.map((section) => (
+                        <div key={section.title}>
+                          <div className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            {section.title}
+                          </div>
+                          <ul className="space-y-1">
+                            {section.items.map((item) => (
+                              <li key={item.href}>
+                                <Link
+                                  href={item.href}
+                                  className="block px-2 py-2 rounded-lg text-sm hover:bg-gray-50 group"
+                                  onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
+                                >
+                                  <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
+                                  {'description' in item && (
+                                    <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
+                                  )}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -199,17 +261,32 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   }`} />
                 </button>
                 {openMenu === "alugar" && (
-                  <div className="absolute left-0 mt-2 w-64 rounded-xl bg-white shadow-xl border border-gray-200 py-2 z-[300]">
-                    {rentMenuItems.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-teal-700"
-                        onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
+                  <div className="absolute left-0 mt-2 w-[720px] rounded-xl bg-white shadow-xl border border-gray-200 py-4 z-[300]">
+                    <div className="grid grid-cols-3 gap-6 px-4">
+                      {rentMenuSections.map((section) => (
+                        <div key={section.title}>
+                          <div className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            {section.title}
+                          </div>
+                          <ul className="space-y-1">
+                            {section.items.map((item) => (
+                              <li key={item.href}>
+                                <Link
+                                  href={item.href}
+                                  className="block px-2 py-2 rounded-lg text-sm hover:bg-gray-50 group"
+                                  onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
+                                >
+                                  <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
+                                  {'description' in item && (
+                                    <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
+                                  )}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -263,27 +340,30 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'recursos' ? 'rotate-180' : ''}`} />
               </button>
               {openMenu === "recursos" && (
-                <div className="absolute right-0 mt-2 w-80 rounded-xl bg-white shadow-xl border border-gray-200 py-3 z-[300]">
-                  {resourceSections.map((section) => (
-                    <div key={section.title} className="px-3 pb-2 mb-2 last:mb-0 last:border-b-0 border-b border-gray-100">
-                      <div className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                        {section.title}
+                <div className="absolute right-0 mt-2 w-[560px] rounded-xl bg-white shadow-xl border border-gray-200 py-4 z-[300]">
+                  <div className="grid grid-cols-2 gap-6 px-4">
+                    {resourceSections.map((section) => (
+                      <div key={section.title}>
+                        <div className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {section.title}
+                        </div>
+                        <ul className="space-y-1">
+                          {section.items.map((item) => (
+                            <li key={item.href}>
+                              <Link
+                                href={item.href}
+                                className="flex items-center gap-2 px-2 py-2 rounded-lg text-sm hover:bg-gray-50 group"
+                                onClick={() => setOpenMenu(null)}
+                              >
+                                {item.icon && <item.icon className="w-4 h-4 text-gray-400 group-hover:text-teal-600" />}
+                                <span className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <ul className="space-y-0.5">
-                        {section.items.map((item) => (
-                          <li key={item.href}>
-                            <Link
-                              href={item.href}
-                              className="block px-2 py-1.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-teal-700"
-                              onClick={() => setOpenMenu(null)}
-                            >
-                              {item.label}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
