@@ -7,7 +7,7 @@ import { TrendingUp, ArrowLeft, Camera, DollarSign, Users, CheckCircle } from "l
 export default function GuiaVendaPage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <ModernNavbar />
+      <ModernNavbar forceLight />
       
       <div className="mt-16 max-w-4xl mx-auto px-4 py-8">
         <div className="mb-8">

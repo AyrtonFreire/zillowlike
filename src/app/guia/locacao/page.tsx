@@ -7,7 +7,7 @@ import { Key, ArrowLeft, CheckCircle, AlertCircle, FileText, Shield } from "luci
 export default function GuiaLocacaoPage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <ModernNavbar />
+      <ModernNavbar forceLight />
       
       <div className="mt-16 max-w-4xl mx-auto px-4 py-8">
         <div className="mb-8">

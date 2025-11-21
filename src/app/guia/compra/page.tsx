@@ -7,7 +7,7 @@ import { Home, ArrowLeft, CheckCircle, AlertCircle, DollarSign, FileText, Key } 
 export default function GuiaCompraPage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <ModernNavbar />
+      <ModernNavbar forceLight />
       
       <div className="mt-16 max-w-4xl mx-auto px-4 py-8">
         {/* Header */}

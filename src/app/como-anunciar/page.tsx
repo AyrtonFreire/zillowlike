@@ -7,10 +7,10 @@ import { Home, Briefcase, ArrowRightCircle, Sparkles, CheckCircle2, Users, Shiel
 export default function ComoAnunciarPage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <ModernNavbar />
+      <ModernNavbar forceLight />
 
       {/* Hero */}
-      <div className="mt-16 bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-500 text-white">
+      <div className="mt-16 bg-gradient-to-br from-teal-dark via-teal to-accent text-white">
         <div className="max-w-6xl mx-auto px-4 py-14 lg:py-20 grid lg:grid-cols-2 gap-10 items-center">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-semibold uppercase tracking-[0.16em] mb-4">
@@ -48,21 +48,21 @@ export default function ComoAnunciarPage() {
               </p>
               <div className="space-y-4 text-sm">
                 <div className="flex items-start gap-3">
-                  <span className="mt-1 h-6 w-0.5 rounded-full bg-emerald-300" />
+                  <span className="mt-1 h-6 w-0.5 rounded-full bg-accent/70" />
                   <div>
                     <p className="font-semibold">1. Cadastro rápido do perfil</p>
                     <p className="text-teal-50/90">Defina se é proprietário(a) ou corretor(a) para que o site personalize a experiência.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="mt-1 h-6 w-0.5 rounded-full bg-emerald-300" />
+                  <span className="mt-1 h-6 w-0.5 rounded-full bg-accent/70" />
                   <div>
                     <p className="font-semibold">2. Criação guiada do anúncio</p>
                     <p className="text-teal-50/90">Formulários passo a passo ajudam você a preencher todos os dados importantes do imóvel.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="mt-1 h-6 w-0.5 rounded-full bg-emerald-300" />
+                  <span className="mt-1 h-6 w-0.5 rounded-full bg-accent/70" />
                   <div>
                     <p className="font-semibold">3. Distribuição inteligente dos leads</p>
                     <p className="text-teal-50/90">Compradores interessados são organizados em filas e funis, facilitando o acompanhamento.</p>
@@ -80,8 +80,8 @@ export default function ComoAnunciarPage() {
         <section className="grid md:grid-cols-2 gap-8">
           <div className="bg-white rounded-2xl shadow-lg p-7 border border-gray-100">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                <Home className="w-5 h-5 text-emerald-600" />
+              <div className="w-10 h-10 rounded-xl bg-teal/5 flex items-center justify-center">
+                <Home className="w-5 h-5 text-teal" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Sou pessoa física (proprietário)</h2>
@@ -90,15 +90,15 @@ export default function ComoAnunciarPage() {
             </div>
             <ul className="space-y-3 text-sm text-gray-700">
               <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-teal mt-0.5" />
                 <span>Crie anúncios completos com fotos, planta, comodidades e detalhes que valorizam o seu imóvel.</span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-teal mt-0.5" />
                 <span>Receba contatos de interessados diretamente pelo site, com histórico organizado por imóvel.</span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-teal mt-0.5" />
                 <span>Tenha visibilidade em uma vitrine moderna, com filtros avançados que conectam o seu anúncio ao público certo.</span>
               </li>
             </ul>
@@ -106,7 +106,7 @@ export default function ComoAnunciarPage() {
               <p className="text-gray-500">Você controla o anúncio: pode pausar, editar ou remover quando quiser.</p>
               <Link
                 href="/owner/new"
-                className="inline-flex items-center text-emerald-700 font-semibold hover:text-emerald-800"
+                className="inline-flex items-center text-teal font-semibold hover:text-teal-dark"
               >
                 Começar agora
                 <ArrowRightCircle className="w-4 h-4 ml-1" />
@@ -169,7 +169,7 @@ export default function ComoAnunciarPage() {
                 Conexão PF + Corretor
               </h3>
               <p>
-                Proprietários podem anunciar direto no site, e corretores entram no fluxo para ajudar a conduzir visitas, propostas e fechamento de forma profissional.
+                Proprietários podem anunciar direto no site, e caso opte, corretores entram no fluxo para ajudar a conduzir visitas, propostas e fechamento de forma profissional.
               </p>
             </div>
             <div className="space-y-2">
@@ -187,7 +187,7 @@ export default function ComoAnunciarPage() {
                 Experiência inspirada em grandes portais
               </h3>
               <p>
-                Interface pensada para quem navega em Zillow, Daft e JamesEdition, mas adaptada à realidade do mercado local e às necessidades de PFs e corretores.
+                Interface moderna, ituitiva e adaptada à realidade do mercado local e às necessidades de Pessoas Físicas e Corretores.
               </p>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function ComoAnunciarPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-600 mb-2">Passo 1</p>
             <h3 className="text-lg font-bold text-gray-900 mb-2">Crie sua conta e defina o perfil</h3>
             <p className="text-sm text-gray-700 mb-4 flex-1">
-              Acesse o site, crie seu login e informe se é proprietário(a) ou corretor(a). Isso desbloqueia os fluxos corretos para cada tipo de usuário.
+              Acesse o site, crie seu login e informe se é corretor(a) ou anuncie um imóvel grátis como pessoa física para ter o perfil atualizado para Proprietário(a). Isso desbloqueia os fluxos corretos para cada tipo de usuário.
             </p>
             <Link href="/onboarding" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
               Ir para onboarding

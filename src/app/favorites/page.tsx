@@ -84,7 +84,7 @@ export default function FavoritesPage() {
   if (status === "loading") {
     return (
       <main className="min-h-screen bg-gray-50">
-        <ModernNavbar />
+        <ModernNavbar forceLight />
         <div className="flex items-center justify-center h-[60vh]">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -95,7 +95,7 @@ export default function FavoritesPage() {
   if (!session) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <ModernNavbar />
+        <ModernNavbar forceLight />
         <div className="mx-auto max-w-4xl px-4 py-16 text-center">
           <Heart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Faça login para ver seus favoritos</h1>
@@ -115,7 +115,7 @@ export default function FavoritesPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <ModernNavbar />
+      <ModernNavbar forceLight />
       
       {/* Header da Página */}
       <div className="bg-white border-b border-gray-200">

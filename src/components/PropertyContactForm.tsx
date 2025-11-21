@@ -59,9 +59,9 @@ export default function PropertyContactForm({ propertyId, propertyTitle }: Prope
 
   if (submitted) {
     return (
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-8 text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle className="w-8 h-8 text-green-600" />
+      <div className="bg-gradient-to-br from-teal/5 via-accent/5 to-teal/10 border border-accent/40 rounded-2xl p-8 text-center">
+        <div className="w-16 h-16 bg-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="w-8 h-8 text-teal" />
         </div>
         <h3 className="text-xl font-bold text-gray-900 mb-2">
           Mensagem Enviada!

@@ -34,7 +34,7 @@ export default function SavedSearchesPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <ModernNavbar />
+      <ModernNavbar forceLight />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="flex items-center gap-3 mb-6">
           <Bookmark className="w-8 h-8 text-blue-600" />

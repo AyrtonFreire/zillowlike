@@ -64,7 +64,7 @@ export default function ShowcasePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
-      <ModernNavbar />
+      <ModernNavbar forceLight />
 
       {/* Hero Section */}
       <HeroSection />
