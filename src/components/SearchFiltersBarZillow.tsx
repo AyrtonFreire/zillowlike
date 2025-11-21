@@ -123,7 +123,9 @@ export default function SearchFiltersBarZillow({
     <button
       onClick={onClick}
       className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-lg text-xs font-medium transition-all ${
-        active ? 'bg-blue-600 text-white shadow-md' : 'bg-white border border-gray-200 text-gray-700 hover:border-blue-300'
+        active
+          ? 'bg-teal text-white shadow-md'
+          : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
       }`}
     >
       <span className="text-sm">{icon}</span>
@@ -141,13 +143,13 @@ export default function SearchFiltersBarZillow({
           <div className="space-y-3">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Filtros Rápidos</h3>
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => { updateFilter('minPrice', ''); updateFilter('maxPrice', '500000'); }} className="px-3 py-2 text-sm font-medium bg-white border border-gray-200 rounded-full hover:border-blue-500 hover:text-blue-600 transition-colors">
+              <button onClick={() => { updateFilter('minPrice', ''); updateFilter('maxPrice', '500000'); }} className="px-3 py-2 text-sm font-medium bg-white border border-gray-200 rounded-full hover:border-teal-dark hover:text-teal-dark transition-colors">
                 Até R$ 500k
               </button>
-              <button onClick={() => updateFilter('bedrooms', '2')} className="px-3 py-2 text-sm font-medium bg-white border border-gray-200 rounded-full hover:border-blue-500 hover:text-blue-600 transition-colors">
+              <button onClick={() => updateFilter('bedrooms', '2')} className="px-3 py-2 text-sm font-medium bg-white border border-gray-200 rounded-full hover:border-teal-dark hover:text-teal-dark transition-colors">
                 2+ quartos
               </button>
-              <button onClick={() => updateFilter('furnished', true)} className="px-3 py-2 text-sm font-medium bg-white border border-gray-200 rounded-full hover:border-blue-500 hover:text-blue-600 transition-colors">
+              <button onClick={() => updateFilter('furnished', true)} className="px-3 py-2 text-sm font-medium bg-white border border-gray-200 rounded-full hover:border-teal-dark hover:text-teal-dark transition-colors">
                 Mobiliado
               </button>
             </div>
@@ -159,7 +161,7 @@ export default function SearchFiltersBarZillow({
           {/* Price Range - Customizável */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-blue-600" />
+              <DollarSign className="w-5 h-5 text-teal-600" />
               <h3 className="text-sm font-bold text-gray-900">Faixa de Preço</h3>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -172,7 +174,7 @@ export default function SearchFiltersBarZillow({
                     placeholder="0"
                     value={formatCurrency(localFilters.minPrice)}
                     onChange={(e) => updateFilter('minPrice', parseCurrency(e.target.value))}
-                    className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                    className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg text-sm focus:border-teal-600 focus:ring-2 focus:ring-teal-100 outline-none"
                   />
                 </div>
               </div>
@@ -185,7 +187,7 @@ export default function SearchFiltersBarZillow({
                     placeholder="Sem limite"
                     value={formatCurrency(localFilters.maxPrice)}
                     onChange={(e) => updateFilter('maxPrice', parseCurrency(e.target.value))}
-                    className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                    className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg text-sm focus:border-teal-600 focus:ring-2 focus:ring-teal-100 outline-none"
                   />
                 </div>
               </div>
@@ -205,7 +207,7 @@ export default function SearchFiltersBarZillow({
           {/* Property Type */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Home className="w-5 h-5 text-blue-600" />
+              <Home className="w-5 h-5 text-teal-600" />
               <h3 className="text-sm font-bold text-gray-900">Tipo de Imóvel</h3>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -215,8 +217,8 @@ export default function SearchFiltersBarZillow({
                   onClick={() => updateFilter('type', localFilters.type === type.value ? '' : type.value)}
                   className={`px-4 py-3 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2 ${
                     localFilters.type === type.value
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-white border border-gray-200 text-gray-700 hover:border-blue-300'
+                      ? 'bg-teal text-white shadow-md'
+                      : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                   }`}
                 >
                   <span className="text-lg">{type.icon}</span>
@@ -234,7 +236,7 @@ export default function SearchFiltersBarZillow({
             {/* Bedrooms */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Bed className="w-5 h-5 text-blue-600" />
+                <Bed className="w-5 h-5 text-teal-600" />
                 <h3 className="text-sm font-bold text-gray-900">Quartos</h3>
               </div>
               <div className="grid grid-cols-6 gap-2">
@@ -244,8 +246,8 @@ export default function SearchFiltersBarZillow({
                     onClick={() => updateFilter('bedrooms', num === '5+' ? '5' : num)}
                     className={`py-3 text-sm font-semibold rounded-lg transition-all ${
                       localFilters.bedrooms === (num === '5+' ? '5' : num)
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-white border border-gray-200 text-gray-700 hover:border-blue-300'
+                        ? 'bg-teal text-white shadow-md'
+                        : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                     }`}
                   >
                     {num || 'Todos'}
@@ -257,7 +259,7 @@ export default function SearchFiltersBarZillow({
             {/* Bathrooms */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Bath className="w-5 h-5 text-blue-600" />
+                <Bath className="w-5 h-5 text-teal-600" />
                 <h3 className="text-sm font-bold text-gray-900">Banheiros</h3>
               </div>
               <div className="grid grid-cols-5 gap-2">
@@ -267,8 +269,8 @@ export default function SearchFiltersBarZillow({
                     onClick={() => updateFilter('bathrooms', num === '4+' ? '4' : num)}
                     className={`py-3 text-sm font-semibold rounded-lg transition-all ${
                       localFilters.bathrooms === (num === '4+' ? '4' : num)
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-white border border-gray-200 text-gray-700 hover:border-blue-300'
+                        ? 'bg-teal text-white shadow-md'
+                        : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                     }`}
                   >
                     {num || 'Todos'}
@@ -298,8 +300,8 @@ export default function SearchFiltersBarZillow({
                     onClick={() => updateFilter('areaMin', area)}
                     className={`py-2 text-xs font-semibold rounded-lg transition-all ${
                       localFilters.areaMin === area
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border border-gray-200 text-gray-700 hover:border-blue-300'
+                        ? 'bg-teal text-white'
+                        : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                     }`}
                   >
                     {area}m²
@@ -321,8 +323,8 @@ export default function SearchFiltersBarZillow({
                     onClick={() => updateFilter('parkingSpots', spots === '4+' ? '4' : spots)}
                     className={`py-2 text-xs font-semibold rounded-lg transition-all ${
                       localFilters.parkingSpots === (spots === '4+' ? '4' : spots)
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border border-gray-200 text-gray-700 hover:border-blue-300'
+                        ? 'bg-teal text-white'
+                        : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                     }`}
                   >
                     {spots || 'Todos'}
@@ -347,7 +349,7 @@ export default function SearchFiltersBarZillow({
           {/* Lazer e Condomínio */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <Waves className="w-4 h-4 text-blue-600" />
+              <Waves className="w-4 h-4 text-teal-600" />
               Lazer e Condomínio
             </h3>
             <div className="grid grid-cols-2 gap-2">
@@ -365,7 +367,7 @@ export default function SearchFiltersBarZillow({
           {/* Conforto e Energia */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <Sun className="w-4 h-4 text-blue-600" />
+              <Sun className="w-4 h-4 text-teal-600" />
               Conforto e Energia
             </h3>
             <div className="grid grid-cols-2 gap-2">
@@ -381,7 +383,7 @@ export default function SearchFiltersBarZillow({
           {/* Acessibilidade */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <Accessibility className="w-4 h-4 text-blue-600" />
+              <Accessibility className="w-4 h-4 text-teal-600" />
               Acessibilidade
             </h3>
             <div className="grid grid-cols-2 gap-2">
@@ -395,7 +397,7 @@ export default function SearchFiltersBarZillow({
           {/* Acabamentos */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-600" />
+              <Sparkles className="w-4 h-4 text-teal-600" />
               Acabamentos
             </h3>
             <div className="grid grid-cols-2 gap-2">
@@ -408,7 +410,7 @@ export default function SearchFiltersBarZillow({
           {/* Vista e Posição */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <Mountain className="w-4 h-4 text-blue-600" />
+              <Mountain className="w-4 h-4 text-teal-600" />
               Vista e Posição
             </h3>
             <div className="grid grid-cols-2 gap-2">
@@ -422,7 +424,7 @@ export default function SearchFiltersBarZillow({
           {/* Pets Específicos */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <PawPrint className="w-4 h-4 text-blue-600" />
+              <PawPrint className="w-4 h-4 text-teal-600" />
               Política de Pets
             </h3>
             <div className="grid grid-cols-2 gap-2">
@@ -450,7 +452,7 @@ export default function SearchFiltersBarZillow({
           {/* Apply button */}
           <button
             onClick={handleApply}
-            className="flex-1 max-w-[200px] py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-all"
+            className="flex-1 max-w-[200px] py-3 px-6 bg-teal-700 hover:bg-teal-800 text-white font-semibold rounded-lg shadow-md transition-all"
           >
             {activeCount > 0 ? `Ver resultados (${activeCount})` : 'Ver resultados'}
           </button>
