@@ -406,26 +406,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Require phone before allowing property creation
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, phone: true },
+    });
+
+    if (!user) {
+      console.error("api/properties POST: user not found", userId);
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!user.phone || !user.phone.trim()) {
+      const res = NextResponse.json(
+        { error: "Para publicar um imóvel, informe seu telefone em Meu Perfil." },
+        { status: 400 }
+      );
+      res.headers.set("x-request-id", requestId);
+      return res;
+    }
+
     // AUTO-PROMOTION: Check if user is USER and has no properties yet
-    if (userId) {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { role: true },
+    if (user.role === "USER") {
+      const propertyCount = await prisma.property.count({
+        where: { ownerId: userId },
       });
 
-      // If user is USER, check if this is their first property → promote to OWNER
-      if (user && user.role === "USER") {
-        const propertyCount = await prisma.property.count({
-          where: { ownerId: userId },
+      if (propertyCount === 0) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { role: "OWNER" },
         });
-
-        if (propertyCount === 0) {
-          await prisma.user.update({
-            where: { id: userId },
-            data: { role: "OWNER" },
-          });
-          console.log("✨ Auto-promoted USER → OWNER:", userId);
-        }
+        console.log("✨ Auto-promoted USER → OWNER:", userId);
       }
     }
 

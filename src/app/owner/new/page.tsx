@@ -1122,6 +1122,14 @@ export default function NewPropertyPage() {
       )}
 
       <div className="mx-auto max-w-6xl px-4 py-8">
+        <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
+          <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
+          <p>
+            Certifique-se de que seu telefone esteja preenchido em <Link href="/profile" className="font-semibold text-teal hover:text-teal-dark underline-offset-2 hover:underline">Meu Perfil</Link>.
+            {' '}Usamos esse número para contatos sobre seus anúncios. Ao publicar seu primeiro imóvel, seu perfil é atualizado automaticamente para Proprietário(a).
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40 px-2 py-3 rounded-xl ring-1 ring-black/5 overflow-x-auto">

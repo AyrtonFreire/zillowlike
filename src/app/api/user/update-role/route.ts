@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const updateRoleSchema = z.object({
-  role: z.enum(["REALTOR", "OWNER"]),
+  role: z.enum(["OWNER"]),
 });
 
 export async function POST(request: NextRequest) {

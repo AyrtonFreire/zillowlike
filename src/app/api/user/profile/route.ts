@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
         image: true,
         role: true,
         emailVerified: true,
+        phone: true,
         _count: {
           select: {
             leads: true,
@@ -92,6 +93,7 @@ export async function PATCH(req: NextRequest) {
     const updateData: any = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.image !== undefined) updateData.image = body.image;
+    if (body.phone !== undefined) updateData.phone = body.phone;
 
     const updated = await prisma.user.update({
       where: { id: userId },
@@ -102,6 +104,7 @@ export async function PATCH(req: NextRequest) {
         email: true,
         image: true,
         role: true,
+        phone: true,
       },
     });
 

@@ -16,6 +16,7 @@ import {
   Shield,
   Calendar,
   Check,
+  Phone,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 
@@ -26,6 +27,7 @@ interface UserProfile {
   image: string | null;
   role: string;
   emailVerified: Date | null;
+   phone?: string | null;
   stats: {
     properties: number;
     favorites: number;
@@ -42,6 +44,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [phone, setPhone] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -60,6 +63,7 @@ export default function ProfilePage() {
       if (data.success) {
         setProfile(data.user);
         setName(data.user.name || "");
+        setPhone(data.user.phone || "");
       }
     } catch (error) {
       console.error("Error:", error);
@@ -74,7 +78,7 @@ export default function ProfilePage() {
       const response = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, phone }),
       });
 
       if (response.ok) {
@@ -323,6 +327,26 @@ export default function ProfilePage() {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     Email não pode ser alterado
+                  </p>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Telefone
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="(DDD) 9 9999-9999"
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Este telefone pode ser usado para contatos sobre seus imóveis.
                   </p>
                 </div>
 

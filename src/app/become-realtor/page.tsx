@@ -51,6 +51,7 @@ export default function BecomeRealtorPage() {
     creciState: "",
     creciExpiry: "",
     phone: "",
+    realtorType: "",
     experience: "",
     specialties: [] as string[],
     bio: "",
@@ -155,6 +156,10 @@ export default function BecomeRealtorPage() {
 
       if (parseInt(formData.experience) < 0) {
         throw new Error("Anos de experiência deve ser um número positivo");
+      }
+
+      if (!formData.realtorType) {
+        throw new Error("Selecione o tipo de corretor (Autônomo ou Imobiliária)");
       }
 
       if (formData.specialties.length === 0) {
@@ -370,6 +375,27 @@ export default function BecomeRealtorPage() {
                   required
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+              </div>
+
+              {/* Tipo de Corretor */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo de corretor(a) *
+                </label>
+                <select
+                  name="realtorType"
+                  value={formData.realtorType}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Selecione...</option>
+                  <option value="AUTONOMO">Autônomo</option>
+                  <option value="IMOBILIARIA">Imobiliária</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Isso nos ajuda a ajustar seu painel e o tipo de leads que você recebe.
+                </p>
               </div>
 
               {/* Anos de Experiência */}

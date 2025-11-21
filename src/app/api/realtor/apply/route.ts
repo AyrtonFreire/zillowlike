@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
         creciState: data.creciState,
         creciExpiry: new Date(data.creciExpiry),
         phone: data.phone,
+        realtorType: data.realtorType,
         experience: data.experience,
         specialties: data.specialties,
         bio: data.bio || null,

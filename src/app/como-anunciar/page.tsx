@@ -199,7 +199,7 @@ export default function ComoAnunciarPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-600 mb-2">Passo 1</p>
             <h3 className="text-lg font-bold text-gray-900 mb-2">Crie sua conta e defina o perfil</h3>
             <p className="text-sm text-gray-700 mb-4 flex-1">
-              Acesse o site, crie seu login e informe se é corretor(a) ou anuncie um imóvel grátis como pessoa física para ter o perfil atualizado para Proprietário(a). Isso desbloqueia os fluxos corretos para cada tipo de usuário.
+              Acesse o site, crie seu login, cadastre um telefone para contato e informe se é corretor(a) ou anuncie um imóvel grátis como pessoa física para ter o perfil atualizado para Proprietário(a). Isso desbloqueia os fluxos corretos para cada tipo de usuário.
             </p>
             <Link href="/onboarding" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
               Ir para onboarding

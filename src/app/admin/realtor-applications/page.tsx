@@ -32,6 +32,7 @@ interface Application {
   creciState: string;
   creciExpiry: string;
   phone: string;
+  realtorType: string;
   experience: number;
   specialties: string[];
   bio: string | null;
@@ -42,6 +43,12 @@ interface Application {
   reviewedAt: string | null;
   rejectionReason: string | null;
 }
+
+const getRealtorTypeLabel = (type: string) => {
+  if (type === "IMOBILIARIA") return "Imobiliária";
+  if (type === "AUTONOMO") return "Autônomo";
+  return type || "-";
+};
 
 export default function RealtorApplicationsPage() {
   const { data: session, status } = useSession();
@@ -249,6 +256,10 @@ export default function RealtorApplicationsPage() {
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="w-4 h-4 text-gray-400" />
                   <span>Válido até: {new Date(app.creciExpiry).toLocaleDateString("pt-BR")}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Briefcase className="w-4 h-4 text-gray-400" />
+                  <span>Tipo: {getRealtorTypeLabel(app.realtorType)}</span>
                 </div>
               </div>
 
