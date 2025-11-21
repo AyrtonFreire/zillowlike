@@ -286,6 +286,7 @@ model User {
   stats               RealtorStats?
   ratings             RealtorRating[]
   phone               String?
+  phoneVerifiedAt     DateTime?
   realtorApplication  RealtorApplication?
   reviewedApplications RealtorApplication[] @relation("ReviewedApplications")
 }

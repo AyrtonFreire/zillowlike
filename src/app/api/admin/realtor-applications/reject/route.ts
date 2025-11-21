@@ -54,8 +54,25 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // TODO: Send rejection email
-    console.log(`❌ Aplicação rejeitada: ${application.user.email}`);
+    // Send rejection email (fire-and-forget)
+    if (application.user.email) {
+      (async () => {
+        try {
+          const { sendEmail, getRealtorApplicationRejectedEmail } = await import("@/lib/email");
+          const emailData = getRealtorApplicationRejectedEmail({
+            name: application.user.name || "",
+            reason,
+          });
+          await sendEmail({
+            to: application.user.email!,
+            ...emailData,
+          });
+          console.log("✅ Realtor rejection email sent to:", application.user.email);
+        } catch (error) {
+          console.error("❌ Error sending realtor rejection email:", error);
+        }
+      })();
+    }
 
     return NextResponse.json({
       success: true,

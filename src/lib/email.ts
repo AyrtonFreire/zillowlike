@@ -10,35 +10,42 @@ interface EmailOptions {
 }
 
 export async function sendEmail({ to, subject, html }: EmailOptions) {
-  // TODO: Configure with actual email service
-  // For now, just log
-  console.log("📧 Email sent:", { to, subject });
-  
-  // Example with fetch (configure endpoint)
-  if (process.env.EMAIL_API_KEY) {
-    try {
-      // Replace with your email service API
-      // const response = await fetch("https://api.resend.com/emails", {
-      //   method: "POST",
-      //   headers: {
-      //     "Authorization": `Bearer ${process.env.EMAIL_API_KEY}`,
-      //     "Content-Type": "application/json",
-      //   },
-      //   body: JSON.stringify({
-      //     from: "noreply@zillowlike.com",
-      //     to,
-      //     subject,
-      //     html,
-      //   }),
-      // });
-      // return response.ok;
-    } catch (error) {
-      console.error("Email error:", error);
+  const apiKey = process.env.RESEND_API_KEY;
+
+  // Se não houver API key configurada, apenas loga (modo desenvolvimento)
+  if (!apiKey) {
+    console.log("📧 [DEV MOCK] Email:", { to, subject });
+    return true;
+  }
+
+  const from = process.env.EMAIL_FROM || "ZillowLike <onboarding@resend.dev>";
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to,
+        subject,
+        html,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      console.error("Email error (Resend):", response.status, text);
       return false;
     }
+
+    return true;
+  } catch (error) {
+    console.error("Email error (Resend):", error);
+    return false;
   }
-  
-  return true;
 }
 
 export function getLeadNotificationEmail(data: {
@@ -109,6 +116,150 @@ export function getLeadNotificationEmail(data: {
             <div class="footer">
               <p>© 2025 Zillow. Todos os direitos reservados.</p>
               <p>Você está recebendo este email porque um usuário demonstrou interesse em seu imóvel.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+}
+
+export function getNewRealtorApplicationAdminEmail(data: {
+  applicantName?: string | null;
+  applicantEmail?: string | null;
+  adminUrl: string;
+}) {
+  return {
+    subject: "Nova aplicação de corretor aguardando revisão",
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #111827; }
+            .container { max-width: 640px; margin: 0 auto; padding: 24px; background: #f9fafb; }
+            .card { background: white; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 10px 30px rgba(15,23,42,0.08); }
+            .header { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 20px 24px; }
+            .header h1 { margin: 0; font-size: 18px; }
+            .content { padding: 20px 24px; }
+            .btn { display: inline-block; margin-top: 12px; background: #0f172a; color: white; padding: 8px 16px; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 13px; }
+            .small { font-size: 12px; color: #6b7280; margin-top: 16px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="card">
+              <div class="header">
+                <h1>Nova aplicação de corretor</h1>
+              </div>
+              <div class="content">
+                <p>Você recebeu uma nova solicitação para se tornar corretor(a) na plataforma.</p>
+                <p>
+                  <strong>Nome:</strong> ${data.applicantName || "(sem nome)"}<br/>
+                  <strong>Email:</strong> ${data.applicantEmail || "(sem email)"}
+                </p>
+                <p>
+                  <a href="${data.adminUrl}" class="btn">Abrir painel de aplicações</a>
+                </p>
+                <p class="small">
+                  Este é um aviso automático sempre que uma nova aplicação é criada.
+                </p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+}
+
+export function getRealtorApplicationApprovedEmail(data: {
+  name: string;
+  dashboardUrl: string;
+}) {
+  return {
+    subject: "Sua aplicação como corretor foi aprovada!",
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #111827; }
+            .container { max-width: 640px; margin: 0 auto; padding: 24px; background: #f9fafb; }
+            .card { background: white; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 10px 30px rgba(15,23,42,0.08); }
+            .header { background: linear-gradient(135deg, #00736E 0%, #021616 100%); color: white; padding: 28px 32px; }
+            .header h1 { margin: 0; font-size: 22px; }
+            .content { padding: 24px 32px; }
+            .btn { display: inline-block; margin-top: 16px; background: #00736E; color: white; padding: 10px 20px; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 14px; }
+            .small { font-size: 12px; color: #6b7280; margin-top: 24px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="card">
+              <div class="header">
+                <h1>Parabéns, ${data.name}!</h1>
+                <p style="margin-top:8px; opacity:0.9;">Sua aplicação para atuar como corretor(a) no ZillowLike foi aprovada.</p>
+              </div>
+              <div class="content">
+                <p>Seu perfil agora está habilitado como <strong>Corretor(a)</strong> na plataforma.</p>
+                <p>Você já pode acessar seu painel, organizar leads e começar a receber oportunidades de clientes interessados.</p>
+                <p>
+                  <a href="${data.dashboardUrl}" class="btn">Ir para meu painel de corretor</a>
+                </p>
+                <p class="small">
+                  Se você não esperava este email, desconsidere esta mensagem. Em caso de dúvidas, entre em contato com o suporte.
+                </p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+}
+
+export function getRealtorApplicationRejectedEmail(data: {
+  name: string;
+  reason?: string;
+}) {
+  return {
+    subject: "Atualização sobre sua aplicação como corretor",
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #111827; }
+            .container { max-width: 640px; margin: 0 auto; padding: 24px; background: #f9fafb; }
+            .card { background: white; border-radius: 16px; border: 1px solid #fee2e2; overflow: hidden; box-shadow: 0 10px 30px rgba(220,38,38,0.06); }
+            .header { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color: white; padding: 28px 32px; }
+            .header h1 { margin: 0; font-size: 20px; }
+            .content { padding: 24px 32px; }
+            .small { font-size: 12px; color: #6b7280; margin-top: 16px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="card">
+              <div class="header">
+                <h1>Oi, ${data.name}</h1>
+              </div>
+              <div class="content">
+                <p>
+                  Analisamos sua aplicação para atuar como corretor(a) no ZillowLike, mas no momento ela não pôde ser aprovada.
+                </p>
+                ${data.reason ? `
+                  <p><strong>Motivo informado:</strong></p>
+                  <p>${data.reason}</p>
+                ` : ``}
+                <p class="small">
+                  Você pode revisar seus dados e, se achar necessário, entrar em contato com o suporte para mais detalhes.
+                </p>
+              </div>
             </div>
           </div>
         </body>

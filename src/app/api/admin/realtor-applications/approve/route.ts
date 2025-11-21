@@ -95,8 +95,26 @@ export async function POST(req: NextRequest) {
       });
     });
 
-    // TODO: Send approval email
-    console.log(`✅ Corretor aprovado: ${application.user.email}`);
+    // Send approval email (fire-and-forget)
+    if (application.user.email) {
+      (async () => {
+        try {
+          const { sendEmail, getRealtorApplicationApprovedEmail } = await import("@/lib/email");
+          const dashboardUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://zillowlike.vercel.app"}/broker/dashboard`;
+          const emailData = getRealtorApplicationApprovedEmail({
+            name: application.user.name || "",
+            dashboardUrl,
+          });
+          await sendEmail({
+            to: application.user.email,
+            ...emailData,
+          });
+          console.log("✅ Realtor approval email sent to:", application.user.email);
+        } catch (error) {
+          console.error("❌ Error sending realtor approval email:", error);
+        }
+      })();
+    }
 
     return NextResponse.json({
       success: true,

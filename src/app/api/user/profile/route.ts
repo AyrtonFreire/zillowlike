@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
         role: true,
         emailVerified: true,
         phone: true,
+        phoneVerifiedAt: true,
         _count: {
           select: {
             leads: true,
@@ -89,11 +90,21 @@ export async function PATCH(req: NextRequest) {
     const userId = (session as any)?.userId || (session as any)?.user?.id;
     const body = await req.json();
 
+    const existing = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
+    });
+
     // Only allow updating certain fields
     const updateData: any = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.image !== undefined) updateData.image = body.image;
-    if (body.phone !== undefined) updateData.phone = body.phone;
+    if (body.phone !== undefined) {
+      updateData.phone = body.phone;
+      if (existing && existing.phone !== body.phone) {
+        updateData.phoneVerifiedAt = null;
+      }
+    }
 
     const updated = await prisma.user.update({
       where: { id: userId },
@@ -105,6 +116,7 @@ export async function PATCH(req: NextRequest) {
         image: true,
         role: true,
         phone: true,
+        phoneVerifiedAt: true,
       },
     });
 

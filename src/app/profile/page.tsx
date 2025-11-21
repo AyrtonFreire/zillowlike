@@ -27,7 +27,8 @@ interface UserProfile {
   image: string | null;
   role: string;
   emailVerified: Date | null;
-   phone?: string | null;
+  phone?: string | null;
+  phoneVerifiedAt: Date | null;
   stats: {
     properties: number;
     favorites: number;
@@ -45,6 +46,9 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [phone, setPhone] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -93,6 +97,73 @@ export default function ProfilePage() {
       alert("Erro ao salvar perfil");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendVerificationCode = async () => {
+    if (!profile?.phone) {
+      alert("Preencha e salve seu telefone antes de solicitar o código por SMS.");
+      return;
+    }
+
+    setSendingCode(true);
+    try {
+      const res = await fetch("/api/phone/send-code", {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        let msg = "Erro ao enviar código por SMS.";
+        try {
+          const data = await res.json();
+          if (data?.error) msg = data.error;
+        } catch {}
+        alert(msg);
+        return;
+      }
+
+      alert("Enviamos um SMS com o código de verificação para o seu telefone.");
+    } catch (error) {
+      console.error("Error sending SMS code:", error);
+      alert("Erro ao enviar código por SMS.");
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    const code = verificationCode.trim();
+    if (!code) {
+      alert("Digite o código que você recebeu por SMS.");
+      return;
+    }
+
+    setVerifyingCode(true);
+    try {
+      const res = await fetch("/api/phone/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+
+      if (!res.ok) {
+        let msg = "Código inválido ou expirado.";
+        try {
+          const data = await res.json();
+          if (data?.error) msg = data.error;
+        } catch {}
+        alert(msg);
+        return;
+      }
+
+      setVerificationCode("");
+      await fetchProfile();
+      alert("Telefone verificado com sucesso!");
+    } catch (error) {
+      console.error("Error verifying SMS code:", error);
+      alert("Erro ao verificar código. Tente novamente.");
+    } finally {
+      setVerifyingCode(false);
     }
   };
 
@@ -245,6 +316,14 @@ export default function ProfilePage() {
                     Email verificado
                   </div>
                 )}
+                
+                {/* Phone Verified */}
+                {profile.phoneVerifiedAt && (
+                  <div className="flex items-center justify-center gap-1 mt-3 text-sm text-green-600">
+                    <Check className="w-4 h-4" />
+                    Telefone verificado
+                  </div>
+                )}
               </div>
 
               {/* Stats Grid */}
@@ -350,6 +429,37 @@ export default function ProfilePage() {
                   </p>
                 </div>
 
+                {/* Phone Verification */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Verificar Telefone
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      placeholder="Código de verificação"
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <button
+                    onClick={handleSendVerificationCode}
+                    disabled={sendingCode}
+                    className="mt-2 glass-teal text-white font-medium rounded-lg transition-colors"
+                  >
+                    {sendingCode ? "Enviando..." : "Enviar Código"}
+                  </button>
+                  <button
+                    onClick={handleVerifyCode}
+                    disabled={verifyingCode}
+                    className="mt-2 glass-teal text-white font-medium rounded-lg transition-colors"
+                  >
+                    {verifyingCode ? "Verificando..." : "Verificar Código"}
+                  </button>
+                </div>
+
                 {/* Role (Read-only) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -370,7 +480,10 @@ export default function ProfilePage() {
                 <div className="flex justify-end pt-4 border-t">
                   <button
                     onClick={handleSave}
-                    disabled={saving || name === profile.name}
+                    disabled={
+                      saving ||
+                      (name === (profile.name || "") && phone === (profile.phone || ""))
+                    }
                     className="flex items-center gap-2 px-6 py-2.5 glass-teal disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors"
                   >
                     <Save className="w-5 h-5" />

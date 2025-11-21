@@ -409,7 +409,7 @@ export async function POST(req: NextRequest) {
     // Require phone before allowing property creation
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true, phone: true },
+      select: { role: true, phone: true, phoneVerifiedAt: true },
     });
 
     if (!user) {
@@ -417,9 +417,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!user.phone || !user.phone.trim()) {
+    if (!user.phone || !user.phone.trim() || !user.phoneVerifiedAt) {
       const res = NextResponse.json(
-        { error: "Para publicar um imóvel, informe seu telefone em Meu Perfil." },
+        { error: "Para publicar um imóvel, verifique seu telefone via SMS em Meu Perfil." },
         { status: 400 }
       );
       res.headers.set("x-request-id", requestId);

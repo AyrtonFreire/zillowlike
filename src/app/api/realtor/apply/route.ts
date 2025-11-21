@@ -49,6 +49,29 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Notify admin about new application (fire-and-forget)
+    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+    if (adminEmail) {
+      (async () => {
+        try {
+          const { sendEmail, getNewRealtorApplicationAdminEmail } = await import("@/lib/email");
+          const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://zillowlike.vercel.app"}/admin/realtor-applications`;
+          const emailData = getNewRealtorApplicationAdminEmail({
+            applicantName: (session.user as any).name,
+            applicantEmail: (session.user as any).email,
+            adminUrl,
+          });
+          await sendEmail({
+            to: adminEmail,
+            ...emailData,
+          });
+          console.log("✅ Admin notified about new realtor application:", adminEmail);
+        } catch (err) {
+          console.error("❌ Error sending admin realtor application email:", err);
+        }
+      })();
+    }
+
     return NextResponse.json({
       success: true,
       application,
