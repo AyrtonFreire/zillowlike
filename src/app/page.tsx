@@ -99,7 +99,8 @@ export default function Home() {
   const [overlayLoading, setOverlayLoading] = useState(false);
 
   // Estados de busca e filtros
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(""); // termo aplicado na busca (URL / resultados)
+  const [searchInput, setSearchInput] = useState(""); // texto digitado na barra de busca
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [type, setType] = useState("");
@@ -164,6 +165,7 @@ export default function Home() {
   useEffect(() => {
     const filters = parseFiltersFromSearchParams(searchParams);
     setSearch(filters.q || "");
+    setSearchInput(filters.q || "");
     setCity(filters.city || "");
     setState(filters.state || "");
     setType(filters.type || "");
@@ -204,10 +206,10 @@ export default function Home() {
     if (!hasSearched) return; // Só quando está na página de resultados
     
     const fetchSuggestions = async () => {
-      if (search.length > 0) {
+      if (searchInput.length > 0) {
         setIsFetchingSuggestions(true);
         try {
-          const response = await fetch(`/api/locations?q=${encodeURIComponent(search)}`);
+          const response = await fetch(`/api/locations?q=${encodeURIComponent(searchInput)}`);
           const data = await response.json();
           if (data.success) {
             setSearchSuggestions(data.suggestions || []);
@@ -225,7 +227,7 @@ export default function Home() {
 
     const debounce = setTimeout(fetchSuggestions, 300);
     return () => clearTimeout(debounce);
-  }, [search, hasSearched]);
+  }, [searchInput, hasSearched]);
 
   // Fechar autocomplete ao clicar fora
   useEffect(() => {
@@ -243,6 +245,7 @@ export default function Home() {
     setCity(suggestion.city);
     setState(suggestion.state);
     setSearch(suggestion.neighborhood || '');
+    setSearchInput(suggestion.neighborhood || '');
     setShowSearchSuggestions(false);
     
     // Fazer a busca imediatamente
@@ -262,6 +265,31 @@ export default function Home() {
     });
     router.push(`/?${params}`);
   }, [type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, router]);
+
+  // Aplicar busca quando usuário aperta Enter ou clica na lupa
+  const applySearch = useCallback(() => {
+    const query = searchInput.trim();
+    // Atualiza o termo aplicado para acionar a busca de imóveis
+    setSearch(query);
+
+    const params = buildSearchParams({
+      q: query,
+      city,
+      state,
+      type,
+      minPrice,
+      maxPrice,
+      bedroomsMin,
+      bathroomsMin,
+      areaMin,
+      status,
+      sort,
+      page: 1
+    });
+
+    setShowSearchSuggestions(false);
+    router.push(`/?${params}`);
+  }, [searchInput, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, router]);
 
   // Helper para buscar categoria com fallback por localidade (pode receber city/state overrides)
   const fetchCategory = useCallback(async (baseParams: Record<string, any>, loc?: { city?: string; state?: string }) => {
@@ -753,17 +781,15 @@ export default function Home() {
                       <Search className="w-5 h-5 text-gray-400" />
                       <input
                         type="text"
-                        value={search}
+                        value={searchInput}
                         onChange={(e) => {
-                          setSearch(e.target.value);
+                          setSearchInput(e.target.value);
                           setShowSearchSuggestions(true);
                         }}
                         onFocus={() => setShowSearchSuggestions(true)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            setShowSearchSuggestions(false);
-                            const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
-                            router.push(`/?${params}`);
+                            applySearch();
                           }
                         }}
                         placeholder="Endereço, cidade..."
@@ -771,9 +797,7 @@ export default function Home() {
                       />
                       <button
                         onClick={() => {
-                          setShowSearchSuggestions(false);
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
-                          router.push(`/?${params}`);
+                          applySearch();
                         }}
                         className="p-1 hover:bg-gray-100 rounded transition-colors"
                         aria-label="Buscar"
@@ -1105,192 +1129,15 @@ export default function Home() {
                     )}
                   </div>
 
-                  {/* More Filters */}
+                  {/* More Filters - abre o mesmo drawer avançado usado no mobile */}
                   <div className="relative">
                     <button
-                      onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'more' ? null : 'more')}
-                      className={`px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 ${
-                        activeFilterDropdown === 'more' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-                      }`}
+                      onClick={() => setFiltersOpen(true)}
+                      className="px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 border-gray-300 hover:border-gray-400"
                     >
-                      <span>Filtros</span>
+                      <span>Mais</span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
-
-                    {/* More Filters Dropdown - Zillow Style */}
-                    {activeFilterDropdown === 'more' && (
-                      <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
-                        <div className="space-y-4">
-                          {/* Amenities Section */}
-                          <div>
-                            <h3 className="text-sm font-semibold text-gray-900 mb-3">Comodidades</h3>
-                            <div className="space-y-2">
-                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                <input
-                                  type="checkbox"
-                                  checked={hasPool}
-                                  onChange={(e) => setHasPool(e.target.checked)}
-                                  className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <span className="text-sm text-gray-700">Piscina</span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                <input
-                                  type="checkbox"
-                                  checked={hasGym}
-                                  onChange={(e) => setHasGym(e.target.checked)}
-                                  className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <span className="text-sm text-gray-700">Academia</span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                <input
-                                  type="checkbox"
-                                  checked={hasElevator}
-                                  onChange={(e) => setHasElevator(e.target.checked)}
-                                  className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <span className="text-sm text-gray-700">Elevador</span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                <input
-                                  type="checkbox"
-                                  checked={hasBalcony}
-                                  onChange={(e) => setHasBalcony(e.target.checked)}
-                                  className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <span className="text-sm text-gray-700">Varanda</span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                <input
-                                  type="checkbox"
-                                  checked={viewSea}
-                                  onChange={(e) => setViewSea(e.target.checked)}
-                                  className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <span className="text-sm text-gray-700">Vista para o Mar</span>
-                              </label>
-                            </div>
-                          </div>
-
-                          <div className="border-t border-gray-200 pt-3">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-3">Condições</h3>
-                            <div className="space-y-2">
-                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                <input
-                                  type="checkbox"
-                                  checked={furnished}
-                                  onChange={(e) => setFurnished(e.target.checked)}
-                                  className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <span className="text-sm text-gray-700">Mobiliado</span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                <input
-                                  type="checkbox"
-                                  checked={petFriendly}
-                                  onChange={(e) => setPetFriendly(e.target.checked)}
-                                  className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <span className="text-sm text-gray-700">Aceita Pets</span>
-                              </label>
-                            </div>
-                          </div>
-
-                          {/* Year Built */}
-                          <div className="border-t border-gray-200 pt-3">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-3">Ano de Construção</h3>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <input
-                                  type="number"
-                                  placeholder="Mín"
-                                  value={yearBuiltMin}
-                                  onChange={(e) => setYearBuiltMin(e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                />
-                              </div>
-                              <div>
-                                <input
-                                  type="number"
-                                  placeholder="Máx"
-                                  value={yearBuiltMax}
-                                  onChange={(e) => setYearBuiltMax(e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Keywords */}
-                          <div className="border-t border-gray-200 pt-3">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-2">Palavras-chave</h3>
-                            <input
-                              type="text"
-                              placeholder="Ex: churrasqueira, lareira, vista..."
-                              value={keywords}
-                              onChange={(e) => setKeywords(e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                            />
-                          </div>
-
-                          <div className="flex gap-2 pt-2">
-                            <button
-                              onClick={() => {
-                                setHasPool(false);
-                                setHasGym(false);
-                                setHasElevator(false);
-                                setHasBalcony(false);
-                                setViewSea(false);
-                                setFurnished(false);
-                                setPetFriendly(false);
-                                setYearBuiltMin('');
-                                setYearBuiltMax('');
-                                setKeywords('');
-                                setActiveFilterDropdown(null);
-                              }}
-                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50"
-                            >
-                              Limpar
-                            </button>
-                            <button
-                              onClick={() => {
-                                const params = buildSearchParams({
-                                  q: search,
-                                  city,
-                                  state,
-                                  type,
-                                  minPrice,
-                                  maxPrice,
-                                  bedroomsMin,
-                                  bathroomsMin,
-                                  areaMin,
-                                  parkingSpots,
-                                  yearBuiltMin,
-                                  yearBuiltMax,
-                                  status,
-                                  petFriendly: petFriendly ? 'true' : '',
-                                  furnished: furnished ? 'true' : '',
-                                  hasPool: hasPool ? 'true' : '',
-                                  hasGym: hasGym ? 'true' : '',
-                                  hasElevator: hasElevator ? 'true' : '',
-                                  hasBalcony: hasBalcony ? 'true' : '',
-                                  viewSea: viewSea ? 'true' : '',
-                                  keywords,
-                                  sort,
-                                  page: 1
-                                });
-                                router.push(`/?${params}`);
-                                setActiveFilterDropdown(null);
-                              }}
-                              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-                            >
-                              Aplicar
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   {/* Save Search Button */}
@@ -1308,17 +1155,15 @@ export default function Home() {
                       <Search className="w-4 h-4 text-gray-400" />
                       <input
                         type="text"
-                        value={search}
+                        value={searchInput}
                         onChange={(e) => {
-                          setSearch(e.target.value);
+                          setSearchInput(e.target.value);
                           setShowSearchSuggestions(true);
                         }}
                         onFocus={() => setShowSearchSuggestions(true)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            setShowSearchSuggestions(false);
-                            const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
-                            router.push(`/?${params}`);
+                            applySearch();
                           }
                         }}
                         placeholder="Cidade, bairro..."
@@ -1326,9 +1171,7 @@ export default function Home() {
                       />
                       <button
                         onClick={() => {
-                          setShowSearchSuggestions(false);
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
-                          router.push(`/?${params}`);
+                          applySearch();
                         }}
                         className="p-1 hover:bg-gray-100 rounded transition-colors"
                         aria-label="Buscar"
@@ -2259,55 +2102,55 @@ export default function Home() {
             router.push(`/?${params}`);
             setFiltersOpen(false);
           }}
-          onApply={() => {
+          onApply={(appliedFilters) => {
             const params = buildSearchParams({
               q: search,
               city,
               state,
-              type,
-              minPrice,
-              maxPrice,
-              bedroomsMin,
-              bathroomsMin,
-              areaMin,
-              parkingSpots,
-              yearBuiltMin,
-              yearBuiltMax,
-              status,
-              petFriendly: petFriendly ? 'true' : '',
-              furnished: furnished ? 'true' : '',
-              hasPool: hasPool ? 'true' : '',
-              hasGym: hasGym ? 'true' : '',
-              hasElevator: hasElevator ? 'true' : '',
-              hasBalcony: hasBalcony ? 'true' : '',
-              hasPlayground: hasPlayground ? 'true' : '',
-              hasPartyRoom: hasPartyRoom ? 'true' : '',
-              hasGourmet: hasGourmet ? 'true' : '',
-              hasConcierge24h: hasConcierge24h ? 'true' : '',
-              comfortAC: comfortAC ? 'true' : '',
-              comfortHeating: comfortHeating ? 'true' : '',
-              comfortSolar: comfortSolar ? 'true' : '',
-              comfortNoiseWindows: comfortNoiseWindows ? 'true' : '',
-              comfortLED: comfortLED ? 'true' : '',
-              comfortWaterReuse: comfortWaterReuse ? 'true' : '',
-              accRamps: accRamps ? 'true' : '',
-              accWideDoors: accWideDoors ? 'true' : '',
-              accAccessibleElevator: accAccessibleElevator ? 'true' : '',
-              accTactile: accTactile ? 'true' : '',
-              finishCabinets: finishCabinets ? 'true' : '',
-              finishCounterGranite: finishCounterGranite ? 'true' : '',
-              finishCounterQuartz: finishCounterQuartz ? 'true' : '',
-              viewSea: viewSea ? 'true' : '',
-              viewCity: viewCity ? 'true' : '',
-              positionFront: positionFront ? 'true' : '',
-              positionBack: positionBack ? 'true' : '',
-              petsSmall: petsSmall ? 'true' : '',
-              petsLarge: petsLarge ? 'true' : '',
-              condoFeeMin,
-              condoFeeMax,
-              iptuMin,
-              iptuMax,
-              keywords,
+              type: appliedFilters.type,
+              minPrice: appliedFilters.minPrice,
+              maxPrice: appliedFilters.maxPrice,
+              bedroomsMin: appliedFilters.bedrooms,
+              bathroomsMin: appliedFilters.bathrooms,
+              areaMin: appliedFilters.areaMin,
+              parkingSpots: appliedFilters.parkingSpots,
+              yearBuiltMin: appliedFilters.yearBuiltMin,
+              yearBuiltMax: appliedFilters.yearBuiltMax,
+              status: appliedFilters.status,
+              petFriendly: appliedFilters.petFriendly ? 'true' : '',
+              furnished: appliedFilters.furnished ? 'true' : '',
+              hasPool: appliedFilters.hasPool ? 'true' : '',
+              hasGym: appliedFilters.hasGym ? 'true' : '',
+              hasElevator: appliedFilters.hasElevator ? 'true' : '',
+              hasBalcony: appliedFilters.hasBalcony ? 'true' : '',
+              hasPlayground: appliedFilters.hasPlayground ? 'true' : '',
+              hasPartyRoom: appliedFilters.hasPartyRoom ? 'true' : '',
+              hasGourmet: appliedFilters.hasGourmet ? 'true' : '',
+              hasConcierge24h: appliedFilters.hasConcierge24h ? 'true' : '',
+              comfortAC: appliedFilters.comfortAC ? 'true' : '',
+              comfortHeating: appliedFilters.comfortHeating ? 'true' : '',
+              comfortSolar: appliedFilters.comfortSolar ? 'true' : '',
+              comfortNoiseWindows: appliedFilters.comfortNoiseWindows ? 'true' : '',
+              comfortLED: appliedFilters.comfortLED ? 'true' : '',
+              comfortWaterReuse: appliedFilters.comfortWaterReuse ? 'true' : '',
+              accRamps: appliedFilters.accRamps ? 'true' : '',
+              accWideDoors: appliedFilters.accWideDoors ? 'true' : '',
+              accAccessibleElevator: appliedFilters.accAccessibleElevator ? 'true' : '',
+              accTactile: appliedFilters.accTactile ? 'true' : '',
+              finishCabinets: appliedFilters.finishCabinets ? 'true' : '',
+              finishCounterGranite: appliedFilters.finishCounterGranite ? 'true' : '',
+              finishCounterQuartz: appliedFilters.finishCounterQuartz ? 'true' : '',
+              viewSea: appliedFilters.viewSea ? 'true' : '',
+              viewCity: appliedFilters.viewCity ? 'true' : '',
+              positionFront: appliedFilters.positionFront ? 'true' : '',
+              positionBack: appliedFilters.positionBack ? 'true' : '',
+              petsSmall: appliedFilters.petsSmall ? 'true' : '',
+              petsLarge: appliedFilters.petsLarge ? 'true' : '',
+              condoFeeMin: appliedFilters.condoFeeMin,
+              condoFeeMax: appliedFilters.condoFeeMax,
+              iptuMin: appliedFilters.iptuMin,
+              iptuMax: appliedFilters.iptuMax,
+              keywords: appliedFilters.keywords,
               sort,
               page: 1
             });

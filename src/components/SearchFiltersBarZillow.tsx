@@ -61,7 +61,7 @@ type SearchFiltersBarZillowProps = {
   filters: FilterValues;
   onFiltersChange: (filters: FilterValues) => void;
   onClearFilters: () => void;
-  onApply: () => void;
+  onApply: (filters: FilterValues) => void;
   totalResults?: number;
   // Parâmetros de localização para incluir no preview
   city?: string;
@@ -89,7 +89,7 @@ export default function SearchFiltersBarZillow({
 
   const handleApply = () => {
     onFiltersChange(localFilters);
-    onApply();
+    onApply(localFilters);
   };
 
   const handleClear = () => {
@@ -256,11 +256,11 @@ export default function SearchFiltersBarZillow({
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-gray-200" />
+          {/* Divider (apenas mobile) */}
+          <div className="border-t border-gray-200 md:hidden" />
 
-          {/* Price Range - Customizável */}
-          <div className="space-y-3">
+          {/* Price Range - Customizável (mobile) */}
+          <div className="space-y-3 md:hidden">
             <div className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-teal-600" />
               <h3 className="text-sm font-bold text-gray-900">Faixa de Preço</h3>
@@ -302,11 +302,11 @@ export default function SearchFiltersBarZillow({
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-gray-200" />
+          {/* Divider (apenas mobile) */}
+          <div className="border-t border-gray-200 md:hidden" />
 
-          {/* Property Type */}
-          <div className="space-y-3">
+          {/* Property Type (mobile) */}
+          <div className="space-y-3 md:hidden">
             <div className="flex items-center gap-2">
               <Home className="w-5 h-5 text-teal-600" />
               <h3 className="text-sm font-bold text-gray-900">Tipo de Imóvel</h3>
@@ -329,11 +329,11 @@ export default function SearchFiltersBarZillow({
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-gray-200" />
+          {/* Divider (apenas mobile) */}
+          <div className="border-t border-gray-200 md:hidden" />
 
-          {/* Rooms */}
-          <div className="space-y-4">
+          {/* Rooms (mobile) */}
+          <div className="space-y-4 md:hidden">
             {/* Bedrooms */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -381,11 +381,11 @@ export default function SearchFiltersBarZillow({
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-gray-200" />
+          {/* Divider (apenas mobile) */}
+          <div className="border-t border-gray-200 md:hidden" />
 
-          {/* More Filters */}
-          <div className="space-y-3">
+          {/* More Filters (Área e Vagas - mobile) */}
+          <div className="space-y-3 md:hidden">
             <h3 className="text-sm font-bold text-gray-900">Mais Filtros</h3>
             
             {/* Area */}
