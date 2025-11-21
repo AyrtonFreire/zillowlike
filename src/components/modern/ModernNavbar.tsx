@@ -17,7 +17,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
   const [isRightMenuOpen, setIsRightMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [primary, setPrimary] = useState<"comprar" | "alugar" | "anunciar">("comprar");
+  const [primary, setPrimary] = useState<"comprar" | "alugar" | "anunciar" | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const [openMenu, setOpenMenu] = useState<"comprar" | "alugar" | "recursos" | null>(null);
   const { data: session } = useSession();
@@ -166,6 +166,9 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     },
   ];
 
+  const megaMenuBaseClass =
+    "absolute inset-x-0 top-full z-[300] mt-3 bg-white/95 backdrop-blur-xl border-t border-gray-100/80 shadow-[0_18px_45px_rgba(15,23,42,0.45)]";
+
   const isDashboardContext = pathname?.startsWith("/admin") || pathname?.startsWith("/owner") || pathname?.startsWith("/broker");
 
   return (
@@ -192,10 +195,13 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             {/* Desktop menu */}
             <div className="hidden md:flex items-center gap-7">
               {/* Comprar */}
-              <div className="relative">
+              <div
+                className=""
+                onMouseEnter={() => setOpenMenu("comprar")}
+              >
                 <button
                   type="button"
-                  onClick={() => setOpenMenu(openMenu === "comprar" ? null : "comprar")}
+                  onClick={() => setOpenMenu("comprar")}
                   className={`flex items-center gap-1 font-semibold text-[15px] transition-colors relative group ${
                     forceLight
                       ? (primary === 'comprar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
@@ -211,41 +217,59 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   }`} />
                 </button>
                 {openMenu === "comprar" && (
-                  <div className="absolute left-0 mt-2 w-[720px] rounded-xl bg-white shadow-xl border border-gray-200 py-4 z-[300]">
-                    <div className="grid grid-cols-3 gap-6 px-4">
-                      {buyMenuSections.map((section) => (
-                        <div key={section.title}>
-                          <div className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            {section.title}
+                  <div
+                    className={megaMenuBaseClass}
+                    onMouseLeave={() => setOpenMenu(null)}
+                  >
+                    <div className="mx-auto max-w-7xl px-8 py-6">
+                      <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 flex items-center justify-between">
+                        <span>Explorar para comprar</span>
+                        <span className="hidden sm:inline-flex items-center gap-2 text-teal-600">
+                          <span className="h-1 w-8 rounded-full bg-teal-500/80" />
+                          <span className="text-[11px] font-medium">Use filtros avançados na página de busca</span>
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                        {buyMenuSections.map((section) => (
+                          <div key={section.title}>
+                            <div className="flex items-center gap-2 px-1 pb-2">
+                              <span className="h-5 w-1 rounded-full bg-teal-500/80" />
+                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                {section.title}
+                              </div>
+                            </div>
+                            <ul className="space-y-1.5">
+                              {section.items.map((item) => (
+                                <li key={item.href}>
+                                  <Link
+                                    href={item.href}
+                                    className="block px-2 py-2 rounded-lg text-sm text-gray-800 hover:bg-teal-50 group"
+                                    onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
+                                  >
+                                    <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
+                                    {'description' in item && (
+                                      <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
+                                    )}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
-                          <ul className="space-y-1">
-                            {section.items.map((item) => (
-                              <li key={item.href}>
-                                <Link
-                                  href={item.href}
-                                  className="block px-2 py-2 rounded-lg text-sm hover:bg-gray-50 group"
-                                  onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
-                                >
-                                  <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
-                                  {'description' in item && (
-                                    <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
-                                  )}
-                                </Link>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Alugar */}
-              <div className="relative">
+              <div
+                className=""
+                onMouseEnter={() => setOpenMenu("alugar")}
+              >
                 <button
                   type="button"
-                  onClick={() => setOpenMenu(openMenu === "alugar" ? null : "alugar")}
+                  onClick={() => setOpenMenu("alugar")}
                   className={`flex items-center gap-1 font-semibold text-[15px] transition-colors relative group ${
                     forceLight
                       ? (primary === 'alugar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
@@ -261,31 +285,46 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   }`} />
                 </button>
                 {openMenu === "alugar" && (
-                  <div className="absolute left-0 mt-2 w-[720px] rounded-xl bg-white shadow-xl border border-gray-200 py-4 z-[300]">
-                    <div className="grid grid-cols-3 gap-6 px-4">
-                      {rentMenuSections.map((section) => (
-                        <div key={section.title}>
-                          <div className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            {section.title}
+                  <div
+                    className={megaMenuBaseClass}
+                    onMouseLeave={() => setOpenMenu(null)}
+                  >
+                    <div className="mx-auto max-w-7xl px-8 py-6">
+                      <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 flex items-center justify-between">
+                        <span>Explorar para alugar</span>
+                        <span className="hidden sm:inline-flex items-center gap-2 text-teal-600">
+                          <span className="h-1 w-8 rounded-full bg-teal-500/80" />
+                          <span className="text-[11px] font-medium">Veja opções flexíveis para locação</span>
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                        {rentMenuSections.map((section) => (
+                          <div key={section.title}>
+                            <div className="flex items-center gap-2 px-1 pb-2">
+                              <span className="h-5 w-1 rounded-full bg-teal-500/80" />
+                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                {section.title}
+                              </div>
+                            </div>
+                            <ul className="space-y-1.5">
+                              {section.items.map((item) => (
+                                <li key={item.href}>
+                                  <Link
+                                    href={item.href}
+                                    className="block px-2 py-2 rounded-lg text-sm text-gray-800 hover:bg-teal-50 group"
+                                    onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
+                                  >
+                                    <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
+                                    {'description' in item && (
+                                      <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
+                                    )}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
-                          <ul className="space-y-1">
-                            {section.items.map((item) => (
-                              <li key={item.href}>
-                                <Link
-                                  href={item.href}
-                                  className="block px-2 py-2 rounded-lg text-sm hover:bg-gray-50 group"
-                                  onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
-                                >
-                                  <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
-                                  {'description' in item && (
-                                    <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
-                                  )}
-                                </Link>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -327,10 +366,13 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
           
           {/* Right: Context links (3) + account */}
           <div className="flex items-center justify-end gap-2">
-            <div className="relative hidden lg:block">
+            <div
+              className="hidden lg:block"
+              onMouseEnter={() => setOpenMenu("recursos")}
+            >
               <button 
                 type="button"
-                onClick={() => setOpenMenu(openMenu === "recursos" ? null : "recursos")} 
+                onClick={() => setOpenMenu("recursos")} 
                 className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
                   forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white/90 hover:bg-white/10'
                 }`}
@@ -340,29 +382,44 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'recursos' ? 'rotate-180' : ''}`} />
               </button>
               {openMenu === "recursos" && (
-                <div className="absolute right-0 mt-2 w-[560px] rounded-xl bg-white shadow-xl border border-gray-200 py-4 z-[300]">
-                  <div className="grid grid-cols-2 gap-6 px-4">
-                    {resourceSections.map((section) => (
-                      <div key={section.title}>
-                        <div className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          {section.title}
+                <div
+                  className={megaMenuBaseClass}
+                  onMouseLeave={() => setOpenMenu(null)}
+                >
+                  <div className="mx-auto max-w-7xl px-8 py-6">
+                    <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 flex items-center justify-between">
+                      <span>Central de recursos</span>
+                      <span className="hidden sm:inline-flex items-center gap-2 text-teal-600">
+                        <span className="h-1 w-8 rounded-full bg-teal-500/80" />
+                        <span className="text-[11px] font-medium">Guias, ferramentas e serviços em um só lugar</span>
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                      {resourceSections.map((section) => (
+                        <div key={section.title}>
+                          <div className="flex items-center gap-2 px-1 pb-2">
+                            <span className="h-5 w-1 rounded-full bg-teal-500/80" />
+                            <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                              {section.title}
+                            </div>
+                          </div>
+                          <ul className="space-y-1.5">
+                            {section.items.map((item) => (
+                              <li key={item.href}>
+                                <Link
+                                  href={item.href}
+                                  className="flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-gray-800 hover:bg-teal-50 group"
+                                  onClick={() => setOpenMenu(null)}
+                                >
+                                  {item.icon && <item.icon className="w-4 h-4 text-gray-400 group-hover:text-teal-600" />}
+                                  <span className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</span>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
-                        <ul className="space-y-1">
-                          {section.items.map((item) => (
-                            <li key={item.href}>
-                              <Link
-                                href={item.href}
-                                className="flex items-center gap-2 px-2 py-2 rounded-lg text-sm hover:bg-gray-50 group"
-                                onClick={() => setOpenMenu(null)}
-                              >
-                                {item.icon && <item.icon className="w-4 h-4 text-gray-400 group-hover:text-teal-600" />}
-                                <span className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</span>
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
