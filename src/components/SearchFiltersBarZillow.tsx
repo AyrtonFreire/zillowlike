@@ -61,13 +61,15 @@ type SearchFiltersBarZillowProps = {
   onFiltersChange: (filters: FilterValues) => void;
   onClearFilters: () => void;
   onApply: () => void;
+  totalResults?: number;
 };
 
 export default function SearchFiltersBarZillow({ 
   filters, 
   onFiltersChange, 
   onClearFilters,
-  onApply 
+  onApply,
+  totalResults
 }: SearchFiltersBarZillowProps) {
   const [localFilters, setLocalFilters] = useState(filters);
 
@@ -99,7 +101,14 @@ export default function SearchFiltersBarZillow({
     onClearFilters();
   };
 
-  const activeCount = Object.entries(localFilters).filter(([_, v]) => v && v !== '').length;
+  const formatResultsLabel = (count?: number) => {
+    if (typeof count !== 'number') return '';
+    if (count === 0) return 'Nenhum imóvel encontrado';
+    if (count === 1) return '1 imóvel encontrado';
+    return `${count} imóveis encontrados`;
+  };
+
+  const resultsLabel = formatResultsLabel(totalResults);
 
   const propertyTypes = [
     { value: "HOUSE", label: "Casa", icon: "🏠" },
@@ -449,13 +458,20 @@ export default function SearchFiltersBarZillow({
             Limpar tudo
           </button>
 
-          {/* Apply button */}
-          <button
-            onClick={handleApply}
-            className="flex-1 max-w-[200px] py-3 px-6 glass-teal text-white font-semibold rounded-lg shadow-md transition-all"
-          >
-            {activeCount > 0 ? `Ver resultados (${activeCount})` : 'Ver resultados'}
-          </button>
+          {/* Result count + Apply button */}
+          <div className="flex flex-col items-end gap-1 flex-1 max-w-[220px]">
+            {resultsLabel && (
+              <span className="text-[11px] text-gray-500 leading-none">
+                {resultsLabel}
+              </span>
+            )}
+            <button
+              onClick={handleApply}
+              className="w-full py-3 px-6 glass-teal text-white font-semibold rounded-lg shadow-md transition-all"
+            >
+              Aplicar
+            </button>
+          </div>
         </div>
       </div>
     </div>

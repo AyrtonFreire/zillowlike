@@ -1840,6 +1840,7 @@ export default function Home() {
             iptuMax,
             keywords
           }}
+          totalResults={total}
           onFiltersChange={(newFilters) => {
             setMinPrice(newFilters.minPrice);
             setMaxPrice(newFilters.maxPrice);
