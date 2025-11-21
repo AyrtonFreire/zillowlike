@@ -137,7 +137,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         { label: "Guia do inquilino", href: "/guia/locacao", icon: Home },
         { label: "Guia do vendedor", href: "/guia/venda", icon: Megaphone },
         { label: "Em construção · Dicas de venda rápida", href: "/dicas/venda", icon: Star },
-        { label: "Em construção · Como anunciar", href: "/como-anunciar", icon: HelpCircle },
+        { label: "Como anunciar", href: "/como-anunciar", icon: HelpCircle },
       ],
     },
     {
