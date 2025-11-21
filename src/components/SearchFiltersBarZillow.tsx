@@ -63,6 +63,10 @@ type SearchFiltersBarZillowProps = {
   onClearFilters: () => void;
   onApply: () => void;
   totalResults?: number;
+  // Parâmetros de localização para incluir no preview
+  city?: string;
+  state?: string;
+  search?: string;
 };
 
 export default function SearchFiltersBarZillow({ 
@@ -70,7 +74,10 @@ export default function SearchFiltersBarZillow({
   onFiltersChange, 
   onClearFilters,
   onApply,
-  totalResults
+  totalResults,
+  city,
+  state,
+  search
 }: SearchFiltersBarZillowProps) {
   const [localFilters, setLocalFilters] = useState(filters);
   const [previewTotal, setPreviewTotal] = useState<number | undefined>(totalResults);
@@ -110,6 +117,11 @@ export default function SearchFiltersBarZillow({
       setIsLoadingPreview(true);
       try {
         const params = buildSearchParams({
+          // Incluir parâmetros de localização
+          q: search,
+          city,
+          state,
+          // Filtros locais
           minPrice: localFilters.minPrice,
           maxPrice: localFilters.maxPrice,
           bedroomsMin: localFilters.bedrooms,

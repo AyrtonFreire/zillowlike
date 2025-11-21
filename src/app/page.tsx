@@ -16,7 +16,7 @@ import SiteFooter from "@/components/Footer";
 import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
-import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search } from "lucide-react";
+import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search, X } from "lucide-react";
 
 const PropertyDetailsModalJames = dynamic(() => import("@/components/PropertyDetailsModalJames"), { ssr: false });
 import SearchFiltersBarZillow from "@/components/SearchFiltersBarZillow";
@@ -1113,7 +1113,7 @@ export default function Home() {
                         activeFilterDropdown === 'more' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
                       }`}
                     >
-                      <span>Mais</span>
+                      <span>Filtros</span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
 
@@ -1368,11 +1368,173 @@ export default function Home() {
                     onClick={() => setFiltersOpen(true)}
                     className="px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-medium hover:border-gray-400 transition-colors whitespace-nowrap"
                   >
-                    Mais
+                    Filtros
                   </button>
                 </div>
               </div>
             </div>
+
+            {/* Active Filters Chips - Logo abaixo da barra de busca */}
+            {hasSearched && (
+              <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold text-gray-600 mr-1">Filtros ativos:</span>
+                  
+                  {/* Tipo de imóvel */}
+                  {type && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                      <span>{type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type === 'CONDO' ? 'Condomínio' : 'Terreno'}</span>
+                      <button
+                        onClick={() => {
+                          setType('');
+                          const params = buildSearchParams({ q: search, city, state, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          router.push(`/?${params}`);
+                        }}
+                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Preço mínimo */}
+                  {minPrice && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                      <span>Min: R$ {parseInt(minPrice).toLocaleString('pt-BR')}</span>
+                      <button
+                        onClick={() => {
+                          setMinPrice('');
+                          const params = buildSearchParams({ q: search, city, state, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          router.push(`/?${params}`);
+                        }}
+                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Preço máximo */}
+                  {maxPrice && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                      <span>Max: R$ {parseInt(maxPrice).toLocaleString('pt-BR')}</span>
+                      <button
+                        onClick={() => {
+                          setMaxPrice('');
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          router.push(`/?${params}`);
+                        }}
+                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Quartos */}
+                  {bedroomsMin && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                      <span>{bedroomsMin}+ quartos</span>
+                      <button
+                        onClick={() => {
+                          setBedroomsMin('');
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bathroomsMin, areaMin, status, sort, page: 1 });
+                          router.push(`/?${params}`);
+                        }}
+                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Banheiros */}
+                  {bathroomsMin && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                      <span>{bathroomsMin}+ banheiros</span>
+                      <button
+                        onClick={() => {
+                          setBathroomsMin('');
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, areaMin, status, sort, page: 1 });
+                          router.push(`/?${params}`);
+                        }}
+                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Pet Friendly */}
+                  {petFriendly && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                      <span>Aceita Pets</span>
+                      <button
+                        onClick={() => {
+                          setPetFriendly(false);
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          router.push(`/?${params}`);
+                        }}
+                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Mobiliado */}
+                  {furnished && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                      <span>Mobiliado</span>
+                      <button
+                        onClick={() => {
+                          setFurnished(false);
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          router.push(`/?${params}`);
+                        }}
+                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Piscina */}
+                  {hasPool && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                      <span>Piscina</span>
+                      <button
+                        onClick={() => {
+                          setHasPool(false);
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          router.push(`/?${params}`);
+                        }}
+                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Academia */}
+                  {hasGym && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                      <span>Academia</span>
+                      <button
+                        onClick={() => {
+                          setHasGym(false);
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          router.push(`/?${params}`);
+                        }}
+                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
           {/* Split Screen Container */}
           <div className={viewMode === 'split' ? 'lg:flex lg:h-[calc(100vh-140px)]' : 'lg:h-[calc(100vh-140px)]'}>
@@ -1841,6 +2003,9 @@ export default function Home() {
             keywords
           }}
           totalResults={total}
+          city={city}
+          state={state}
+          search={search}
           onFiltersChange={(newFilters) => {
             setMinPrice(newFilters.minPrice);
             setMaxPrice(newFilters.maxPrice);
