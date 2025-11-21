@@ -111,6 +111,13 @@ export default function SearchFiltersBarZillow({
     onClearFilters();
   };
 
+  // Sempre que o total oficial da página mudar, sincroniza o preview
+  useEffect(() => {
+    if (typeof totalResults === 'number') {
+      setPreviewTotal(totalResults);
+    }
+  }, [totalResults]);
+
   // Buscar preview do total conforme usuário altera filtros localmente
   useEffect(() => {
     const fetchPreviewTotal = async () => {
@@ -183,7 +190,7 @@ export default function SearchFiltersBarZillow({
 
     const debounce = setTimeout(fetchPreviewTotal, 500);
     return () => clearTimeout(debounce);
-  }, [localFilters]);
+  }, [localFilters, city, state, search]);
 
   const formatResultsLabel = (count?: number, loading?: boolean) => {
     if (loading) return 'Buscando...';

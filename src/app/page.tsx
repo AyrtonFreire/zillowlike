@@ -1380,6 +1380,29 @@ export default function Home() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-semibold text-gray-600 mr-1">Filtros ativos:</span>
                   
+                  {/* Localização (cidade / busca) */}
+                  {(city || search) && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                      <span>
+                        {search
+                          ? search
+                          : `${city}${state ? `, ${state}` : ''}`}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setSearch('');
+                          setCity('');
+                          setState('');
+                          const params = buildSearchParams({ type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          router.push(`/?${params}`);
+                        }}
+                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
                   {/* Tipo de imóvel */}
                   {type && (
                     <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
