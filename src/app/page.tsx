@@ -194,43 +194,10 @@ export default function Home() {
     setKeywords(filters.keywords || "");
   }, [searchParams]);
 
-  // Verificar se há busca ativa (para lógica de carregamento de resultados)
+  // Verificar se há busca ativa
   const hasSearched = useMemo(() => {
     return !!(search || city || type || minPrice || maxPrice || bedroomsMin || bathroomsMin || areaMin);
   }, [search, city, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin]);
-
-  // Verificar se devemos exibir os chips de filtros ativos
-  const showActiveFilterChips = useMemo(() => {
-    const anyFilter = !!(
-      city ||
-      search ||
-      type ||
-      minPrice ||
-      maxPrice ||
-      bedroomsMin ||
-      bathroomsMin ||
-      petFriendly ||
-      furnished ||
-      hasPool ||
-      hasGym
-    );
-    const hasResultsContext = properties.length > 0 || total > 0;
-    return anyFilter && hasResultsContext;
-  }, [
-    city,
-    search,
-    type,
-    minPrice,
-    maxPrice,
-    bedroomsMin,
-    bathroomsMin,
-    petFriendly,
-    furnished,
-    hasPool,
-    hasGym,
-    properties,
-    total,
-  ]);
 
   // Buscar sugestões da API quando o usuário digita na barra de resultados
   useEffect(() => {
@@ -1405,11 +1372,9 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-            </div>
 
-            {/* Active Filters Chips - Logo abaixo da barra de busca */}
-            {showActiveFilterChips && (
-              <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200">
+              {/* Active Filters Chips - Logo abaixo da barra de busca (desktop e mobile) */}
+              <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-t border-gray-100">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-semibold text-gray-600 mr-1">Filtros ativos:</span>
                   
@@ -1590,7 +1555,7 @@ export default function Home() {
                   )}
                 </div>
               </div>
-            )}
+          </div>
 
           {/* Split Screen Container */}
           <div className={viewMode === 'split' ? 'lg:flex lg:h-[calc(100vh-140px)]' : 'lg:h-[calc(100vh-140px)]'}>
