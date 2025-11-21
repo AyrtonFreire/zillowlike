@@ -124,7 +124,7 @@ export default function SearchFiltersBarZillow({
       onClick={onClick}
       className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-lg text-xs font-medium transition-all ${
         active
-          ? 'bg-teal text-white shadow-md'
+          ? 'glass-teal text-white shadow-md'
           : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
       }`}
     >
@@ -217,7 +217,7 @@ export default function SearchFiltersBarZillow({
                   onClick={() => updateFilter('type', localFilters.type === type.value ? '' : type.value)}
                   className={`px-4 py-3 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2 ${
                     localFilters.type === type.value
-                      ? 'bg-teal text-white shadow-md'
+                      ? 'glass-teal text-white shadow-md'
                       : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                   }`}
                 >
@@ -246,7 +246,7 @@ export default function SearchFiltersBarZillow({
                     onClick={() => updateFilter('bedrooms', num === '5+' ? '5' : num)}
                     className={`py-3 text-sm font-semibold rounded-lg transition-all ${
                       localFilters.bedrooms === (num === '5+' ? '5' : num)
-                        ? 'bg-teal text-white shadow-md'
+                        ? 'glass-teal text-white shadow-md'
                         : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                     }`}
                   >
@@ -269,7 +269,7 @@ export default function SearchFiltersBarZillow({
                     onClick={() => updateFilter('bathrooms', num === '4+' ? '4' : num)}
                     className={`py-3 text-sm font-semibold rounded-lg transition-all ${
                       localFilters.bathrooms === (num === '4+' ? '4' : num)
-                        ? 'bg-teal text-white shadow-md'
+                        ? 'glass-teal text-white shadow-md'
                         : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                     }`}
                   >
@@ -300,7 +300,7 @@ export default function SearchFiltersBarZillow({
                     onClick={() => updateFilter('areaMin', area)}
                     className={`py-2 text-xs font-semibold rounded-lg transition-all ${
                       localFilters.areaMin === area
-                        ? 'bg-teal text-white'
+                        ? 'glass-teal text-white'
                         : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                     }`}
                   >
@@ -323,7 +323,7 @@ export default function SearchFiltersBarZillow({
                     onClick={() => updateFilter('parkingSpots', spots === '4+' ? '4' : spots)}
                     className={`py-2 text-xs font-semibold rounded-lg transition-all ${
                       localFilters.parkingSpots === (spots === '4+' ? '4' : spots)
-                        ? 'bg-teal text-white'
+                        ? 'glass-teal text-white'
                         : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                     }`}
                   >
@@ -452,7 +452,7 @@ export default function SearchFiltersBarZillow({
           {/* Apply button */}
           <button
             onClick={handleApply}
-            className="flex-1 max-w-[200px] py-3 px-6 bg-teal-700 hover:bg-teal-800 text-white font-semibold rounded-lg shadow-md transition-all"
+            className="flex-1 max-w-[200px] py-3 px-6 glass-teal text-white font-semibold rounded-lg shadow-md transition-all"
           >
             {activeCount > 0 ? `Ver resultados (${activeCount})` : 'Ver resultados'}
           </button>
