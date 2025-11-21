@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Home, DollarSign, Bed, Bath, Maximize2, Car, PawPrint, Sofa, Waves, Dumbbell, Building2, MapPin, Sun, Leaf, Accessibility, Sparkles, Mountain, ArrowUpCircle, Wind } from "lucide-react";
+import { X, Home, DollarSign, Bed, Bath, Maximize2, Car, PawPrint, Sofa, Waves, Dumbbell, Building2, MapPin, Sun, Leaf, Accessibility, Sparkles, Mountain, ArrowUpCircle, Wind, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Lightbulb, Droplets, Archive, Gem, Dog, ArrowUp, ArrowDown, DoorOpen } from "lucide-react";
 import { buildSearchParams } from "@/lib/url";
 
 type FilterValues = {
@@ -454,14 +454,14 @@ export default function SearchFiltersBarZillow({
               Lazer e Condomínio
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              <AmenityButton active={localFilters.hasPool} onClick={() => updateFilter('hasPool', !localFilters.hasPool)} icon="🏊" label="Piscina" />
-              <AmenityButton active={localFilters.hasGym} onClick={() => updateFilter('hasGym', !localFilters.hasGym)} icon="🏋️" label="Academia" />
+              <AmenityButton active={localFilters.hasPool} onClick={() => updateFilter('hasPool', !localFilters.hasPool)} icon={<Waves className="w-4 h-4" />} label="Piscina" />
+              <AmenityButton active={localFilters.hasGym} onClick={() => updateFilter('hasGym', !localFilters.hasGym)} icon={<Dumbbell className="w-4 h-4" />} label="Academia" />
               <AmenityButton active={localFilters.hasElevator} onClick={() => updateFilter('hasElevator', !localFilters.hasElevator)} icon={<Building2 className="w-4 h-4" />} label="Elevador" />
               <AmenityButton active={localFilters.hasBalcony} onClick={() => updateFilter('hasBalcony', !localFilters.hasBalcony)} icon={<Home className="w-4 h-4" />} label="Varanda" />
-              <AmenityButton active={localFilters.hasPlayground} onClick={() => updateFilter('hasPlayground', !localFilters.hasPlayground)} icon="🎠" label="Playground" />
-              <AmenityButton active={localFilters.hasPartyRoom} onClick={() => updateFilter('hasPartyRoom', !localFilters.hasPartyRoom)} icon="🎉" label="Salão Festas" />
-              <AmenityButton active={localFilters.hasGourmet} onClick={() => updateFilter('hasGourmet', !localFilters.hasGourmet)} icon="🍖" label="Espaço Gourmet" />
-              <AmenityButton active={localFilters.hasConcierge24h} onClick={() => updateFilter('hasConcierge24h', !localFilters.hasConcierge24h)} icon="🛡️" label="Portaria 24h" />
+              <AmenityButton active={localFilters.hasPlayground} onClick={() => updateFilter('hasPlayground', !localFilters.hasPlayground)} icon={<Baby className="w-4 h-4" />} label="Playground" />
+              <AmenityButton active={localFilters.hasPartyRoom} onClick={() => updateFilter('hasPartyRoom', !localFilters.hasPartyRoom)} icon={<PartyPopper className="w-4 h-4" />} label="Salão de Festas" />
+              <AmenityButton active={localFilters.hasGourmet} onClick={() => updateFilter('hasGourmet', !localFilters.hasGourmet)} icon={<UtensilsCrossed className="w-4 h-4" />} label="Espaço Gourmet" />
+              <AmenityButton active={localFilters.hasConcierge24h} onClick={() => updateFilter('hasConcierge24h', !localFilters.hasConcierge24h)} icon={<ShieldCheck className="w-4 h-4" />} label="Portaria 24h" />
             </div>
           </div>
 
@@ -472,12 +472,12 @@ export default function SearchFiltersBarZillow({
               Conforto e Energia
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              <AmenityButton active={localFilters.comfortAC} onClick={() => updateFilter('comfortAC', !localFilters.comfortAC)} icon={<Wind className="w-4 h-4" />} label="Ar Condicionado" />
-              <AmenityButton active={localFilters.comfortHeating} onClick={() => updateFilter('comfortHeating', !localFilters.comfortHeating)} icon="🔥" label="Aquecimento" />
+              <AmenityButton active={localFilters.comfortAC} onClick={() => updateFilter('comfortAC', !localFilters.comfortAC)} icon={<Snowflake className="w-4 h-4" />} label="Ar Condicionado" />
+              <AmenityButton active={localFilters.comfortHeating} onClick={() => updateFilter('comfortHeating', !localFilters.comfortHeating)} icon={<Flame className="w-4 h-4" />} label="Aquecimento" />
               <AmenityButton active={localFilters.comfortSolar} onClick={() => updateFilter('comfortSolar', !localFilters.comfortSolar)} icon={<Sun className="w-4 h-4" />} label="Energia Solar" />
-              <AmenityButton active={localFilters.comfortNoiseWindows} onClick={() => updateFilter('comfortNoiseWindows', !localFilters.comfortNoiseWindows)} icon="🔇" label="Janelas Acústicas" />
-              <AmenityButton active={localFilters.comfortLED} onClick={() => updateFilter('comfortLED', !localFilters.comfortLED)} icon="💡" label="Iluminação LED" />
-              <AmenityButton active={localFilters.comfortWaterReuse} onClick={() => updateFilter('comfortWaterReuse', !localFilters.comfortWaterReuse)} icon="💧" label="Reuso de Água" />
+              <AmenityButton active={localFilters.comfortNoiseWindows} onClick={() => updateFilter('comfortNoiseWindows', !localFilters.comfortNoiseWindows)} icon={<Wind className="w-4 h-4" />} label="Janelas antirruído" />
+              <AmenityButton active={localFilters.comfortLED} onClick={() => updateFilter('comfortLED', !localFilters.comfortLED)} icon={<Lightbulb className="w-4 h-4" />} label="Iluminação LED" />
+              <AmenityButton active={localFilters.comfortWaterReuse} onClick={() => updateFilter('comfortWaterReuse', !localFilters.comfortWaterReuse)} icon={<Droplets className="w-4 h-4" />} label="Reuso de Água" />
             </div>
           </div>
 
@@ -489,9 +489,9 @@ export default function SearchFiltersBarZillow({
             </h3>
             <div className="grid grid-cols-2 gap-2">
               <AmenityButton active={localFilters.accRamps} onClick={() => updateFilter('accRamps', !localFilters.accRamps)} icon={<Accessibility className="w-4 h-4" />} label="Rampas" />
-              <AmenityButton active={localFilters.accWideDoors} onClick={() => updateFilter('accWideDoors', !localFilters.accWideDoors)} icon="🚪" label="Portas Largas" />
+              <AmenityButton active={localFilters.accWideDoors} onClick={() => updateFilter('accWideDoors', !localFilters.accWideDoors)} icon={<DoorOpen className="w-4 h-4" />} label="Portas Largas" />
               <AmenityButton active={localFilters.accAccessibleElevator} onClick={() => updateFilter('accAccessibleElevator', !localFilters.accAccessibleElevator)} icon={<ArrowUpCircle className="w-4 h-4" />} label="Elevador Acessível" />
-              <AmenityButton active={localFilters.accTactile} onClick={() => updateFilter('accTactile', !localFilters.accTactile)} icon="👆" label="Piso Tátil" />
+              <AmenityButton active={localFilters.accTactile} onClick={() => updateFilter('accTactile', !localFilters.accTactile)} icon={<Sparkles className="w-4 h-4" />} label="Sinalização tátil" />
             </div>
           </div>
 
@@ -502,9 +502,9 @@ export default function SearchFiltersBarZillow({
               Acabamentos
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              <AmenityButton active={localFilters.finishCabinets} onClick={() => updateFilter('finishCabinets', !localFilters.finishCabinets)} icon="🗄️" label="Armários Planejados" />
-              <AmenityButton active={localFilters.finishCounterGranite} onClick={() => updateFilter('finishCounterGranite', !localFilters.finishCounterGranite)} icon="⬛" label="Bancada Granito" />
-              <AmenityButton active={localFilters.finishCounterQuartz} onClick={() => updateFilter('finishCounterQuartz', !localFilters.finishCounterQuartz)} icon="⬜" label="Bancada Quartzo" />
+              <AmenityButton active={localFilters.finishCabinets} onClick={() => updateFilter('finishCabinets', !localFilters.finishCabinets)} icon={<Archive className="w-4 h-4" />} label="Armários Planejados" />
+              <AmenityButton active={localFilters.finishCounterGranite} onClick={() => updateFilter('finishCounterGranite', !localFilters.finishCounterGranite)} icon={<Gem className="w-4 h-4" />} label="Bancada Granito" />
+              <AmenityButton active={localFilters.finishCounterQuartz} onClick={() => updateFilter('finishCounterQuartz', !localFilters.finishCounterQuartz)} icon={<Gem className="w-4 h-4" />} label="Bancada Quartzo" />
             </div>
           </div>
 
@@ -515,10 +515,10 @@ export default function SearchFiltersBarZillow({
               Vista e Posição
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              <AmenityButton active={localFilters.viewSea} onClick={() => updateFilter('viewSea', !localFilters.viewSea)} icon={<MapPin className="w-4 h-4" />} label="Vista Mar" />
-              <AmenityButton active={localFilters.viewCity} onClick={() => updateFilter('viewCity', !localFilters.viewCity)} icon="🌆" label="Vista Cidade" />
-              <AmenityButton active={localFilters.positionFront} onClick={() => updateFilter('positionFront', !localFilters.positionFront)} icon="⬆️" label="Posição Frontal" />
-              <AmenityButton active={localFilters.positionBack} onClick={() => updateFilter('positionBack', !localFilters.positionBack)} icon="⬇️" label="Posição Fundos" />
+              <AmenityButton active={localFilters.viewSea} onClick={() => updateFilter('viewSea', !localFilters.viewSea)} icon={<Waves className="w-4 h-4" />} label="Vista Mar" />
+              <AmenityButton active={localFilters.viewCity} onClick={() => updateFilter('viewCity', !localFilters.viewCity)} icon={<Building2 className="w-4 h-4" />} label="Vista Cidade" />
+              <AmenityButton active={localFilters.positionFront} onClick={() => updateFilter('positionFront', !localFilters.positionFront)} icon={<ArrowUp className="w-4 h-4" />} label="Frente" />
+              <AmenityButton active={localFilters.positionBack} onClick={() => updateFilter('positionBack', !localFilters.positionBack)} icon={<ArrowDown className="w-4 h-4" />} label="Fundos" />
             </div>
           </div>
 
@@ -529,8 +529,8 @@ export default function SearchFiltersBarZillow({
               Política de Pets
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              <AmenityButton active={localFilters.petsSmall} onClick={() => updateFilter('petsSmall', !localFilters.petsSmall)} icon="🐕" label="Pets Pequenos" />
-              <AmenityButton active={localFilters.petsLarge} onClick={() => updateFilter('petsLarge', !localFilters.petsLarge)} icon="🐕‍🦺" label="Pets Grandes" />
+              <AmenityButton active={localFilters.petsSmall} onClick={() => updateFilter('petsSmall', !localFilters.petsSmall)} icon={<Dog className="w-4 h-4" />} label="Pets Pequenos" />
+              <AmenityButton active={localFilters.petsLarge} onClick={() => updateFilter('petsLarge', !localFilters.petsLarge)} icon={<Dog className="w-4 h-4" />} label="Pets Grandes" />
             </div>
           </div>
 
