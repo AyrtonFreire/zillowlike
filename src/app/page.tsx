@@ -763,7 +763,7 @@ export default function Home() {
       {/* Perfis principais: comprador, proprietário, corretor */}
       {!hasSearched && (
         <div className="bg-gradient-to-b from-gray-100 via-gray-100 to-gray-200">
-          <div className="mx-auto max-w-7xl px-4 py-12 sm:py-16">
+          <div className="mx-auto max-w-7xl px-4 py-8 sm:py-10">
             <div className="max-w-4xl mx-auto mb-10 sm:mb-12 px-1 sm:px-0">
               <p className="text-xs sm:text-sm font-semibold tracking-[0.18em] text-teal-600 uppercase text-left">
                 Para quem é o Zillowlike
