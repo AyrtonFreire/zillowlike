@@ -1,6 +1,8 @@
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 const providers = [] as any[];
@@ -15,6 +17,45 @@ if (process.env.GITHUB_ID && process.env.GITHUB_SECRET) {
     })
   );
 }
+
+providers.push(
+  CredentialsProvider({
+    name: "Email e senha",
+    credentials: {
+      email: { label: "E-mail", type: "email" },
+      password: { label: "Senha", type: "password" },
+    },
+    async authorize(credentials) {
+      if (!credentials?.email || !credentials.password) {
+        return null;
+      }
+
+      const email = credentials.email.toLowerCase().trim();
+      const user = await prisma.user.findUnique({ where: { email } });
+
+      if (!user || !user.passwordHash) {
+        return null;
+      }
+
+      const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+      if (!isValid) {
+        return null;
+      }
+
+      if (!user.emailVerified) {
+        return null;
+      }
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image,
+        role: user.role,
+      } as any;
+    },
+  })
+);
 
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   providers.push(
@@ -48,6 +89,11 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account, profile }) {
+      if (account?.provider === "credentials") {
+        // Login por email/senha já foi validado no authorize
+        return true;
+      }
+
       console.log("🔐 SignIn Callback START", {
         email: user?.email,
         provider: account?.provider,

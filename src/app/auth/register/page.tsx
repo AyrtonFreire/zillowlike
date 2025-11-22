@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -12,61 +11,48 @@ const IMAGES = [
   "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2000",
 ];
 
-export default function SignInPage() {
-  const searchParams = useSearchParams();
+export default function RegisterPage() {
   const router = useRouter();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
-
-  const [idx, setIdx] = useState(0);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const id = setInterval(() => setIdx((i) => (i + 1) % IMAGES.length), 5000);
-    return () => clearInterval(id);
-  }, []);
-
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
     if (!email || !password) {
-      setError("Informe e-mail e senha.");
+      setError("Preencha e-mail e senha.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("As senhas não conferem.");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const res = await signIn("credentials", {
-        redirect: false,
-        email,
-        password,
-        callbackUrl,
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
       });
 
-      if (!res) {
-        setError("Não foi possível entrar agora.");
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        setError(data?.error || "Não foi possível criar sua conta.");
         setIsLoading(false);
         return;
       }
 
-      if (res.error) {
-        setError("Credenciais inválidas ou conta não encontrada.");
-        setIsLoading(false);
-        return;
-      }
-
-      if (res.ok && res.url) {
-        router.push(res.url);
-      } else {
-        router.push(callbackUrl);
-      }
+      router.push(`/auth/verify-email-sent?email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError("Erro inesperado. Tente novamente.");
-    } finally {
       setIsLoading(false);
     }
   }
@@ -86,11 +72,11 @@ export default function SignInPage() {
 
           <div className="mb-8">
             <h1 className="text-2xl font-semibold text-white mb-2">
-              Entrar
+              Criar sua conta
             </h1>
             <p className="text-sm text-slate-400">
-              Acesse sua conta para salvar favoritos, criar alertas e gerenciar
-              seus anúncios.
+              Cadastre-se com seu e-mail para salvar favoritos, criar alertas e
+              gerenciar anúncios.
             </p>
           </div>
 
@@ -101,45 +87,20 @@ export default function SignInPage() {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={() =>
-                signIn("google", { callbackUrl, prompt: "select_account" })
-              }
-              className="w-full inline-flex items-center justify-center gap-3 border border-slate-600/70 bg-slate-900/40 hover:bg-slate-900/70 text-slate-100 rounded-xl py-2.5 text-sm font-semibold transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                className="w-5 h-5"
-              >
-                <path
-                  fill="#FFC107"
-                  d="M43.611,20.083H42V20H24v8h11.303C33.602,32.91,29.17,36,24,36c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"
-                />
-                <path
-                  fill="#FF3D00"
-                  d="M6.306,14.691l6.571,4.819C14.655,16.108,18.961,14,24,14c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.682,8.337,6.306,14.691z"
-                />
-                <path
-                  fill="#4CAF50"
-                  d="M24,44c5.113,0,9.81-1.957,13.363-5.146l-6.175-5.238C29.139,35.091,26.715,36,24,36c-5.146,0-9.489-3.112-11.189-7.444l-6.5,5.02C9.631,39.556,16.337,44,24,44z"
-                />
-                <path
-                  fill="#1976D2"
-                  d="M43.611,20.083H42V20H24v8h11.303c-1.091,3.204-3.513,5.793-6.642,7.115c0.001-0.001,0.002-0.001,0.003-0.002l6.175,5.238C34.496,40.638,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
-                />
-              </svg>
-              Continuar com Google
-            </button>
-
-            <div className="flex items-center gap-3 text-[11px] text-slate-500">
-              <div className="h-px flex-1 bg-slate-700/70" />
-              <span>ou entrar com e-mail</span>
-              <div className="h-px flex-1 bg-slate-700/70" />
-            </div>
-
             <form className="space-y-3" onSubmit={handleSubmit}>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-200">
+                  Nome completo
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700/70 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-400/70"
+                  placeholder="Como você quer ser chamado(a)"
+                />
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-200">
                   E-mail
@@ -160,21 +121,26 @@ export default function SignInPage() {
                 </label>
                 <input
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-lg border border-slate-700/70 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-400/70"
-                  placeholder="Sua senha"
+                  placeholder="Crie uma senha segura"
                 />
               </div>
 
-              <div className="flex items-center justify-between text-xs">
-                <Link
-                  href="/auth/forgot-password"
-                  className="text-teal-300 hover:text-teal-200 font-semibold"
-                >
-                  Esqueci minha senha
-                </Link>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-200">
+                  Confirmar senha
+                </label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700/70 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-400/70"
+                  placeholder="Repita a senha"
+                />
               </div>
 
               <button
@@ -182,17 +148,17 @@ export default function SignInPage() {
                 disabled={isLoading}
                 className="w-full inline-flex items-center justify-center gap-2 glass-teal text-white rounded-xl py-2.5 text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isLoading ? "Entrando..." : "Entrar"}
+                {isLoading ? "Criando conta..." : "Criar conta"}
               </button>
             </form>
 
             <p className="text-xs text-slate-400">
-              Ainda não tem conta?{" "}
+              Já tem conta?{" "}
               <Link
-                href="/auth/register"
+                href="/auth/signin"
                 className="text-teal-300 hover:text-teal-200 font-semibold"
               >
-                Criar conta
+                Entrar
               </Link>
             </p>
 
@@ -218,15 +184,13 @@ export default function SignInPage() {
       </div>
 
       <div className="relative hidden lg:block overflow-hidden">
-        {IMAGES.map((src, i) => (
+        {IMAGES.map((src) => (
           <Image
             key={src}
             src={src}
             alt="Casa"
             fill
-            className={`object-cover transition-opacity duration-700 ${
-              i === idx ? "opacity-100" : "opacity-0"
-            }`}
+            className="object-cover opacity-90"
           />
         ))}
       </div>

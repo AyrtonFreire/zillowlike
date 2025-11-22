@@ -274,6 +274,7 @@ model User {
   name          String?
   email         String?   @unique
   emailVerified DateTime?
+  passwordHash  String?
   image         String?
   role          Role      @default(USER)
 
