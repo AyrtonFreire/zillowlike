@@ -312,7 +312,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               {property.conditionTags.slice(0, 1).map((tag, index) => (
                 <span
                   key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold glass-teal text-white shadow-md"
+                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-teal-600 to-teal-500 text-white shadow-md"
                 >
                   {tag}
                 </span>

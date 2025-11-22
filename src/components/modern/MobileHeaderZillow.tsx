@@ -449,80 +449,200 @@ export default function MobileHeaderZillow() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'tween', duration: 0.3 }}
-              className="md:hidden fixed inset-y-0 right-0 w-[85%] max-w-sm bg-white z-[9999] overflow-y-auto"
+              className="md:hidden fixed inset-y-0 right-0 w-[85%] max-w-sm bg-white/95 backdrop-blur-xl z-[9999] shadow-2xl flex flex-col"
             >
-              <div className="p-4 border-b flex items-center justify-between">
-                <h2 className="text-lg font-bold text-gray-900">Minha conta</h2>
-                <button onClick={() => setIsRightMenuOpen(false)} className="p-2">
-                  <X className="w-6 h-6 text-gray-600" />
+              {/* Header com gradiente e avatar, igual ao menu esquerdo */}
+              <div className="px-5 py-4 border-b border-gray-100/80 flex items-center justify-between bg-gradient-to-r from-teal-600 to-teal-500 text-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-semibold">
+                    {session ? (
+                      <span>{(session as any)?.user?.name?.[0]?.toUpperCase() || 'U'}</span>
+                    ) : (
+                      <User className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold tracking-wide">Minha conta</span>
+                    <span className="text-xs text-teal-50/90">
+                      {session ? (session as any)?.user?.email || "Gerencie sua experiência" : "Entre para salvar favoritos e buscas"}
+                    </span>
+                  </div>
+                </div>
+                <button onClick={() => setIsRightMenuOpen(false)} className="p-2 rounded-full hover:bg-white/10">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="py-2">
+              <div className="flex-1 overflow-y-auto py-3">
                 {session ? (
                   <>
-                    <Link href="/favorites" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-4 text-lg font-semibold text-gray-900 border-b">
-                      Favoritos
-                    </Link>
-                    <Link href="/saved-searches" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-4 text-lg font-semibold text-gray-900 border-b">
-                      Buscas salvas
-                    </Link>
-                    
-                    {role === 'OWNER' && (
-                      <>
-                        <Link href="/owner/properties" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-4 text-lg font-semibold text-gray-900 border-b">
-                          Meus anúncios
+                    {/* Seção: Atividade */}
+                    <div className="border-b border-gray-100">
+                      <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                        Atividade
+                      </div>
+                      <div className="space-y-1">
+                        <Link
+                          href="/favorites"
+                          onClick={() => setIsRightMenuOpen(false)}
+                          className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                        >
+                          <span className="flex items-center gap-3">
+                            <Heart className="w-4 h-4 text-teal-600" />
+                            <span>Meus favoritos</span>
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
                         </Link>
-                        <Link href="/owner/leads" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-4 text-lg font-semibold text-gray-900 border-b">
-                          Meus leads
+                        <Link
+                          href="/saved-searches"
+                          onClick={() => setIsRightMenuOpen(false)}
+                          className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                        >
+                          <span className="flex items-center gap-3">
+                            <Bookmark className="w-4 h-4 text-teal-600" />
+                            <span>Buscas salvas</span>
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
                         </Link>
-                      </>
-                    )}
+                      </div>
+                    </div>
 
-                    {(role === 'REALTOR' || role === 'AGENCY') && (
-                      <Link href="/broker/leads" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-4 text-lg font-semibold text-gray-900 border-b">
-                        Leads
-                      </Link>
-                    )}
+                    {/* Seção: Painéis por perfil */}
+                    <div className="border-b border-gray-100 mt-2">
+                      <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                        Painéis
+                      </div>
+                      <div className="space-y-1">
+                        {role === 'OWNER' && (
+                          <>
+                            <Link
+                              href="/owner/properties"
+                              onClick={() => setIsRightMenuOpen(false)}
+                              className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                            >
+                              <span className="flex items-center gap-3">
+                                <Building2 className="w-4 h-4 text-teal-600" />
+                                <span>Meus anúncios</span>
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400" />
+                            </Link>
+                            <Link
+                              href="/owner/leads"
+                              onClick={() => setIsRightMenuOpen(false)}
+                              className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                            >
+                              <span className="flex items-center gap-3">
+                                <Users className="w-4 h-4 text-teal-600" />
+                                <span>Meus leads</span>
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400" />
+                            </Link>
+                          </>
+                        )}
 
-                    {role === 'ADMIN' && (
-                      <>
-                        <Link href="/admin" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-4 text-lg font-semibold text-gray-900 border-b">
-                          Painel Admin
-                        </Link>
-                        <Link href="/admin/properties" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-4 text-lg font-semibold text-gray-900 border-b">
-                          Gerenciar imóveis
-                        </Link>
-                        <Link href="/admin/users" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-4 text-lg font-semibold text-gray-900 border-b">
-                          Usuários
-                        </Link>
-                      </>
-                    )}
+                        {(role === 'REALTOR' || role === 'AGENCY') && (
+                          <Link
+                            href="/broker/leads"
+                            onClick={() => setIsRightMenuOpen(false)}
+                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                          >
+                            <span className="flex items-center gap-3">
+                              <Users className="w-4 h-4 text-teal-600" />
+                              <span>Leads</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                        )}
 
-                    <Link href="/profile" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-4 text-lg font-semibold text-gray-900 border-b">
-                      Configurações da conta
-                    </Link>
+                        {role === 'ADMIN' && (
+                          <>
+                            <Link
+                              href="/admin"
+                              onClick={() => setIsRightMenuOpen(false)}
+                              className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                            >
+                              <span className="flex items-center gap-3">
+                                <LineChart className="w-4 h-4 text-teal-600" />
+                                <span>Painel Admin</span>
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400" />
+                            </Link>
+                            <Link
+                              href="/admin/properties"
+                              onClick={() => setIsRightMenuOpen(false)}
+                              className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                            >
+                              <span className="flex items-center gap-3">
+                                <Building2 className="w-4 h-4 text-teal-600" />
+                                <span>Gerenciar imóveis</span>
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400" />
+                            </Link>
+                            <Link
+                              href="/admin/users"
+                              onClick={() => setIsRightMenuOpen(false)}
+                              className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                            >
+                              <span className="flex items-center gap-3">
+                                <Users className="w-4 h-4 text-teal-600" />
+                                <span>Usuários</span>
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400" />
+                            </Link>
+                          </>
+                        )}
+                      </div>
+                    </div>
 
+                    {/* Seção: Configurações */}
+                    <div className="mt-2 border-t border-gray-100 pt-2">
+                      <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                        Configurações
+                      </div>
+                      <div className="space-y-1">
+                        <Link
+                          href="/profile"
+                          onClick={() => setIsRightMenuOpen(false)}
+                          className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                        >
+                          <span className="flex items-center gap-3">
+                            <Settings className="w-4 h-4 text-teal-600" />
+                            <span>Configurações da conta</span>
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </Link>
+                        <button
+                          onClick={() => {
+                            setIsRightMenuOpen(false);
+                            signOut({ callbackUrl: "/" });
+                          }}
+                          className="w-full flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                        >
+                          <span className="flex items-center gap-3">
+                            <LogOut className="w-4 h-4 text-teal-600" />
+                            <span>Sair</span>
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="px-5 py-6 space-y-4">
+                    <p className="text-sm text-gray-700">
+                      Entre ou crie uma conta para salvar imóveis favoritos, guardar suas buscas e acompanhar seus anúncios.
+                    </p>
                     <button
                       onClick={() => {
                         setIsRightMenuOpen(false);
-                        signOut({ callbackUrl: "/" });
+                        signIn();
                       }}
-                      className="w-full text-left px-6 py-4 text-lg font-semibold text-gray-900 border-b"
+                      className="w-full flex items-center justify-center gap-2 rounded-full bg-white text-teal-700 font-semibold text-sm py-2.5 border border-teal-200 shadow-sm hover:bg-teal-50"
                     >
-                      Sair
+                      <User className="w-4 h-4" />
+                      <span>Entrar / Criar conta</span>
                     </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setIsRightMenuOpen(false);
-                      signIn();
-                    }}
-                    className="w-full text-left px-6 py-4 text-lg font-semibold text-teal-600"
-                  >
-                    Entrar / Criar conta
-                  </button>
+                  </div>
                 )}
               </div>
             </motion.div>
