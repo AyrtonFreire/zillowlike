@@ -36,7 +36,7 @@ export default function MobileHeaderZillow() {
 
           {/* Center: Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full bg-teal-600 flex items-center justify-center shadow-sm">
+            <div className="w-9 h-9 rounded-full bg-brand-teal flex items-center justify-center shadow-sm">
               <span className="text-white font-bold text-base">Z</span>
             </div>
             <span className="text-lg font-semibold text-slate-900 tracking-tight">ZillowLike</span>
@@ -52,7 +52,7 @@ export default function MobileHeaderZillow() {
             aria-label="Menu do usuário"
           >
             {session ? (
-              <div className="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm font-semibold shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-brand-teal text-white flex items-center justify-center text-sm font-semibold shadow-sm">
                 <span>{(session as any)?.user?.name?.[0]?.toUpperCase() || 'U'}</span>
               </div>
             ) : (
@@ -82,7 +82,7 @@ export default function MobileHeaderZillow() {
               transition={{ type: "tween", duration: 0.3 }}
               className="md:hidden fixed inset-y-0 left-0 w-[88%] max-w-sm bg-white/95 backdrop-blur-xl z-[9999] shadow-2xl flex flex-col"
             >
-              <div className="px-5 py-4 border-b border-gray-100/80 flex items-center justify-between bg-gradient-to-r from-teal-600 to-teal-500 text-white">
+              <div className="px-5 py-4 border-b border-gray-100/80 flex items-center justify-between bg-brand-gradient text-white">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-semibold">
                     Z
@@ -105,7 +105,7 @@ export default function MobileHeaderZillow() {
                     className="w-full flex items-center justify-between px-5 py-3.5 text-left"
                   >
                     <div className="flex items-center gap-3">
-                      <Home className="w-5 h-5 text-teal-600" />
+                      <Home className="w-5 h-5 text-brand-teal" />
                       <div>
                         <span className="block text-sm font-semibold text-gray-900">Comprar</span>
                         <span className="block text-xs text-gray-500">Casas, apartamentos, terrenos</span>
@@ -162,7 +162,7 @@ export default function MobileHeaderZillow() {
                     className="w-full flex items-center justify-between px-5 py-3.5 text-left"
                   >
                     <div className="flex items-center gap-3">
-                      <Building2 className="w-5 h-5 text-teal-600" />
+                      <Building2 className="w-5 h-5 text-brand-teal" />
                       <div>
                         <span className="block text-sm font-semibold text-gray-900">Alugar</span>
                         <span className="block text-xs text-gray-500">Casas e apartamentos para locação</span>
@@ -211,7 +211,7 @@ export default function MobileHeaderZillow() {
                     className="w-full flex items-center justify-between px-5 py-3.5 text-left"
                   >
                     <div className="flex items-center gap-3">
-                      <Megaphone className="w-5 h-5 text-teal-600" />
+                      <Megaphone className="w-5 h-5 text-brand-teal" />
                       <div>
                         <span className="block text-sm font-semibold text-gray-900">Vender</span>
                         <span className="block text-xs text-gray-500">Anunciar como pessoa física ou corretor</span>
@@ -264,7 +264,7 @@ export default function MobileHeaderZillow() {
                     className="w-full flex items-center justify-between px-5 py-3 text-left"
                   >
                     <div className="flex items-center gap-3">
-                      <LineChart className="w-5 h-5 text-teal-600" />
+                      <LineChart className="w-5 h-5 text-brand-teal" />
                       <div>
                         <span className="block text-sm font-semibold text-gray-900">Recursos</span>
                         <span className="block text-xs text-gray-500">Guias, ferramentas e serviços</span>
@@ -291,7 +291,7 @@ export default function MobileHeaderZillow() {
                             className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
                           >
                             <span className="flex items-center gap-3">
-                              <Home className="w-4 h-4 text-teal-600" />
+                              <Home className="w-4 h-4 text-brand-teal" />
                               <span>Guia do comprador</span>
                             </span>
                             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -313,7 +313,7 @@ export default function MobileHeaderZillow() {
                             className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
                           >
                             <span className="flex items-center gap-3">
-                              <Megaphone className="w-4 h-4 text-teal-600" />
+                              <Megaphone className="w-4 h-4 text-brand-teal" />
                               <span>Guia do vendedor</span>
                             </span>
                             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -324,7 +324,7 @@ export default function MobileHeaderZillow() {
                             className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
                           >
                             <span className="flex items-center gap-3">
-                              <ClipboardList className="w-4 h-4 text-teal-600" />
+                              <ClipboardList className="w-4 h-4 text-brand-teal" />
                               <span>Como anunciar</span>
                             </span>
                             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -344,7 +344,7 @@ export default function MobileHeaderZillow() {
                             className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
                           >
                             <span className="flex items-center gap-3">
-                              <LineChart className="w-4 h-4 text-teal-600" />
+                              <LineChart className="w-4 h-4 text-brand-teal" />
                               <span>Calculadora de financiamento</span>
                             </span>
                             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -364,7 +364,7 @@ export default function MobileHeaderZillow() {
                             className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
                           >
                             <span className="flex items-center gap-3">
-                              <Building2 className="w-4 h-4 text-teal-600" />
+                              <Building2 className="w-4 h-4 text-brand-teal" />
                               <span>Financiamento imobiliário</span>
                             </span>
                             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -386,7 +386,7 @@ export default function MobileHeaderZillow() {
                             className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
                           >
                             <span className="flex items-center gap-3">
-                              <Users className="w-4 h-4 text-teal-600" />
+                              <Users className="w-4 h-4 text-brand-teal" />
                               <span>Encontrar corretor</span>
                             </span>
                             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -406,7 +406,7 @@ export default function MobileHeaderZillow() {
                             className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
                           >
                             <span className="flex items-center gap-3">
-                              <Bookmark className="w-4 h-4 text-teal-600" />
+                              <Bookmark className="w-4 h-4 text-brand-teal" />
                               <span>Buscas salvas</span>
                             </span>
                             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -417,7 +417,7 @@ export default function MobileHeaderZillow() {
                             className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
                           >
                             <span className="flex items-center gap-3">
-                              <Heart className="w-4 h-4 text-teal-600" />
+                              <Heart className="w-4 h-4 text-brand-teal" />
                               <span>Meus favoritos</span>
                             </span>
                             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -451,20 +451,15 @@ export default function MobileHeaderZillow() {
               transition={{ type: 'tween', duration: 0.3 }}
               className="md:hidden fixed inset-y-0 right-0 w-[85%] max-w-sm bg-white/95 backdrop-blur-xl z-[9999] shadow-2xl flex flex-col"
             >
-              {/* Header com gradiente e avatar, igual ao menu esquerdo */}
-              <div className="px-5 py-4 border-b border-gray-100/80 flex items-center justify-between bg-gradient-to-r from-teal-600 to-teal-500 text-white">
+              <div className="px-5 py-4 border-b border-gray-100/80 flex items-center justify-between bg-brand-gradient text-white">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-semibold">
-                    {session ? (
-                      <span>{(session as any)?.user?.name?.[0]?.toUpperCase() || 'U'}</span>
-                    ) : (
-                      <User className="w-5 h-5" />
-                    )}
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-semibold">
+                    {session ? (session as any)?.user?.name?.[0]?.toUpperCase() || 'U' : 'Z'}
                   </div>
                   <div className="flex flex-col">
                     <span className="text-sm font-semibold tracking-wide">Minha conta</span>
                     <span className="text-xs text-teal-50/90">
-                      {session ? (session as any)?.user?.email || "Gerencie sua experiência" : "Entre para salvar favoritos e buscas"}
+                      {session ? 'Favoritos, buscas e painéis' : 'Entre para salvar imóveis e buscas'}
                     </span>
                   </div>
                 </div>
@@ -476,173 +471,68 @@ export default function MobileHeaderZillow() {
               <div className="flex-1 overflow-y-auto py-3">
                 {session ? (
                   <>
-                    {/* Seção: Atividade */}
-                    <div className="border-b border-gray-100">
-                      <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                        Atividade
-                      </div>
-                      <div className="space-y-1">
-                        <Link
-                          href="/favorites"
-                          onClick={() => setIsRightMenuOpen(false)}
-                          className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                        >
-                          <span className="flex items-center gap-3">
-                            <Heart className="w-4 h-4 text-teal-600" />
-                            <span>Meus favoritos</span>
-                          </span>
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                    <Link href="/favorites" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                      Favoritos
+                    </Link>
+                    <Link href="/saved-searches" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                      Buscas salvas
+                    </Link>
+                    
+                    {role === 'OWNER' && (
+                      <>
+                        <Link href="/owner/properties" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                          Meus anúncios
                         </Link>
-                        <Link
-                          href="/saved-searches"
-                          onClick={() => setIsRightMenuOpen(false)}
-                          className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                        >
-                          <span className="flex items-center gap-3">
-                            <Bookmark className="w-4 h-4 text-teal-600" />
-                            <span>Buscas salvas</span>
-                          </span>
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                        <Link href="/owner/leads" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                          Meus leads
                         </Link>
-                      </div>
-                    </div>
+                      </>
+                    )}
 
-                    {/* Seção: Painéis por perfil */}
-                    <div className="border-b border-gray-100 mt-2">
-                      <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                        Painéis
-                      </div>
-                      <div className="space-y-1">
-                        {role === 'OWNER' && (
-                          <>
-                            <Link
-                              href="/owner/properties"
-                              onClick={() => setIsRightMenuOpen(false)}
-                              className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                            >
-                              <span className="flex items-center gap-3">
-                                <Building2 className="w-4 h-4 text-teal-600" />
-                                <span>Meus anúncios</span>
-                              </span>
-                              <ChevronRight className="w-4 h-4 text-gray-400" />
-                            </Link>
-                            <Link
-                              href="/owner/leads"
-                              onClick={() => setIsRightMenuOpen(false)}
-                              className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                            >
-                              <span className="flex items-center gap-3">
-                                <Users className="w-4 h-4 text-teal-600" />
-                                <span>Meus leads</span>
-                              </span>
-                              <ChevronRight className="w-4 h-4 text-gray-400" />
-                            </Link>
-                          </>
-                        )}
+                    {(role === 'REALTOR' || role === 'AGENCY') && (
+                      <Link href="/broker/leads" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                        Leads
+                      </Link>
+                    )}
 
-                        {(role === 'REALTOR' || role === 'AGENCY') && (
-                          <Link
-                            href="/broker/leads"
-                            onClick={() => setIsRightMenuOpen(false)}
-                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                          >
-                            <span className="flex items-center gap-3">
-                              <Users className="w-4 h-4 text-teal-600" />
-                              <span>Leads</span>
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-gray-400" />
-                          </Link>
-                        )}
-
-                        {role === 'ADMIN' && (
-                          <>
-                            <Link
-                              href="/admin"
-                              onClick={() => setIsRightMenuOpen(false)}
-                              className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                            >
-                              <span className="flex items-center gap-3">
-                                <LineChart className="w-4 h-4 text-teal-600" />
-                                <span>Painel Admin</span>
-                              </span>
-                              <ChevronRight className="w-4 h-4 text-gray-400" />
-                            </Link>
-                            <Link
-                              href="/admin/properties"
-                              onClick={() => setIsRightMenuOpen(false)}
-                              className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                            >
-                              <span className="flex items-center gap-3">
-                                <Building2 className="w-4 h-4 text-teal-600" />
-                                <span>Gerenciar imóveis</span>
-                              </span>
-                              <ChevronRight className="w-4 h-4 text-gray-400" />
-                            </Link>
-                            <Link
-                              href="/admin/users"
-                              onClick={() => setIsRightMenuOpen(false)}
-                              className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                            >
-                              <span className="flex items-center gap-3">
-                                <Users className="w-4 h-4 text-teal-600" />
-                                <span>Usuários</span>
-                              </span>
-                              <ChevronRight className="w-4 h-4 text-gray-400" />
-                            </Link>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Seção: Configurações */}
-                    <div className="mt-2 border-t border-gray-100 pt-2">
-                      <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                        Configurações
-                      </div>
-                      <div className="space-y-1">
-                        <Link
-                          href="/profile"
-                          onClick={() => setIsRightMenuOpen(false)}
-                          className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                        >
-                          <span className="flex items-center gap-3">
-                            <Settings className="w-4 h-4 text-teal-600" />
-                            <span>Configurações da conta</span>
-                          </span>
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                    {role === 'ADMIN' && (
+                      <>
+                        <Link href="/admin" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                          Painel Admin
                         </Link>
-                        <button
-                          onClick={() => {
-                            setIsRightMenuOpen(false);
-                            signOut({ callbackUrl: "/" });
-                          }}
-                          className="w-full flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                        >
-                          <span className="flex items-center gap-3">
-                            <LogOut className="w-4 h-4 text-teal-600" />
-                            <span>Sair</span>
-                          </span>
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="px-5 py-6 space-y-4">
-                    <p className="text-sm text-gray-700">
-                      Entre ou crie uma conta para salvar imóveis favoritos, guardar suas buscas e acompanhar seus anúncios.
-                    </p>
+                        <Link href="/admin/properties" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                          Gerenciar imóveis
+                        </Link>
+                        <Link href="/admin/users" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                          Usuários
+                        </Link>
+                      </>
+                    )}
+
+                    <Link href="/profile" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                      Configurações da conta
+                    </Link>
+
                     <button
                       onClick={() => {
                         setIsRightMenuOpen(false);
-                        signIn();
+                        signOut({ callbackUrl: "/" });
                       }}
-                      className="w-full flex items-center justify-center gap-2 rounded-full bg-white text-teal-700 font-semibold text-sm py-2.5 border border-teal-200 shadow-sm hover:bg-teal-50"
+                      className="w-full text-left px-6 py-3 text-base font-semibold text-gray-900 border-b"
                     >
-                      <User className="w-4 h-4" />
-                      <span>Entrar / Criar conta</span>
+                      Sair
                     </button>
-                  </div>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setIsRightMenuOpen(false);
+                      signIn();
+                    }}
+                    className="w-full text-left px-6 py-3 text-base font-semibold text-brand-teal"
+                  >
+                    Entrar / Criar conta
+                  </button>
                 )}
               </div>
             </motion.div>

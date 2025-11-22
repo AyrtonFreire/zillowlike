@@ -28,6 +28,19 @@
   --animate-glow: glow 2s ease-in-out infinite alternate;
 }
 
+/* Brand helpers */
+.bg-brand-teal {
+  background-color: var(--brand-teal);
+}
+
+.text-brand-teal {
+  color: var(--brand-teal);
+}
+
+.bg-brand-gradient {
+  background: var(--brand-gradient);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;

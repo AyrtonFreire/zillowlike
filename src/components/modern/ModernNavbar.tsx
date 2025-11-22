@@ -181,7 +181,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         ref={navRef}
         className={`hidden md:block w-full relative z-[200] transition-all duration-300 ${
           isDashboardContext
-            ? "bg-gradient-to-r from-teal-light to-teal shadow-md"
+            ? "bg-brand-gradient shadow-md"
             : forceLight
             ? "bg-white shadow-md"
             : "bg-transparent"
