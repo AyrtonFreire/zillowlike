@@ -883,6 +883,8 @@ export default function Home() {
         </div>
       )}
 
+      {!hasSearched && <ContinueSearching />}
+
       {/* Perfis principais: comprador, proprietário, corretor */}
       {!hasSearched && (
         <div className="bg-gradient-to-b from-gray-100 via-gray-100 to-gray-200">

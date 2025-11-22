@@ -66,21 +66,26 @@ export default function ContinueSearching() {
   };
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10">
-      <div className="flex items-center justify-between mb-6">
+    <section className="mx-auto max-w-7xl px-4 pt-6 pb-8 sm:pt-8 sm:pb-10">
+      <div className="flex items-center justify-between mb-5 sm:mb-6">
         <div className="flex items-center gap-4">
           <div>
             <button
               onClick={handleGoToSearch}
-              className="text-left text-2xl font-bold text-gray-900 hover:text-teal transition-colors"
+              className="text-left group"
             >
-              Continue buscando: {label}
+              <div className="text-[11px] sm:text-xs font-semibold tracking-[0.18em] text-teal-600 uppercase mb-1">
+                Continue sua busca
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-gray-900 group-hover:text-teal transition-colors">
+                {label}
+              </div>
             </button>
-            <div className="text-sm text-gray-500 flex items-center gap-2">
-              Resultados mais recentes
+            <div className="mt-1 text-xs sm:text-sm text-gray-500 flex items-center gap-2">
+              Baseado na sua última busca
               {total > 0 && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full glass-teal text-white text-xs font-medium">
-                  +{total} novos
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full glass-teal text-white text-[10px] sm:text-xs font-medium">
+                  {total} {total === 1 ? 'imóvel' : 'imóveis'}
                 </span>
               )}
             </div>
@@ -107,7 +112,7 @@ export default function ContinueSearching() {
 
       <div
         ref={scrollerRef}
-        className="flex gap-6 overflow-x-auto snap-x snap-mandatory pb-4 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full"
+        className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory pb-4 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full"
       >
         {loading ? (
           [...Array(6)].map((_, i) => (
@@ -124,10 +129,10 @@ export default function ContinueSearching() {
             </div>
           ))
         ) : items.length === 0 ? (
-          <div className="text-gray-500">Sem resultados salvos para continuar.</div>
+          <div className="text-gray-500 text-sm">Sem resultados salvos para continuar.</div>
         ) : (
           items.map((p) => (
-            <div key={p.id} className="w-[320px] flex-shrink-0 snap-start">
+            <div key={p.id} className="w-[280px] sm:w-[320px] flex-shrink-0 snap-start">
               <PropertyCardPremium
                 property={p}
                 onOpenOverlay={(id) => window.dispatchEvent(new CustomEvent('open-overlay', { detail: { id } }))}
