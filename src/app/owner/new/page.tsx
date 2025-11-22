@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone } from "lucide-react";
+import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, ChevronDown } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -78,6 +78,14 @@ export default function NewPropertyPage() {
   const [secElectricFence, setSecElectricFence] = useState(false);
   // Accordion visibility
   const [openAcc, setOpenAcc] = useState<{[k:string]:boolean}>({});
+
+  // Contadores para grupos de detalhes (usados nos headers dos accordions)
+  const accAccessibilityCount = (accRamps ? 1 : 0) + (accWideDoors ? 1 : 0) + (accAccessibleElevator ? 1 : 0) + (accTactile ? 1 : 0);
+  const accComfortCount = (comfortAC ? 1 : 0) + (comfortHeating ? 1 : 0) + (comfortSolar ? 1 : 0) + (comfortNoiseWindows ? 1 : 0) + (comfortLED ? 1 : 0) + (comfortWaterReuse ? 1 : 0);
+  const accFinishCount = (finishFloor ? 1 : 0) + (finishCabinets ? 1 : 0) + (finishCounterGranite ? 1 : 0) + (finishCounterQuartz ? 1 : 0);
+  const accViewCount = (viewSea ? 1 : 0) + (viewCity ? 1 : 0) + (positionFront ? 1 : 0) + (positionBack ? 1 : 0) + (sunByRoomNote ? 1 : 0);
+  const accPetsCount = (petsSmall ? 1 : 0) + (petsLarge ? 1 : 0) + (condoRules ? 1 : 0);
+  const accSecurityCount = (secCCTV ? 1 : 0) + (secSallyPort ? 1 : 0) + (secNightGuard ? 1 : 0) + (secElectricFence ? 1 : 0);
 
   // Auto-open accordions if any inner field is filled
   useEffect(() => {
@@ -638,7 +646,7 @@ export default function NewPropertyPage() {
       cursor: isDragging ? 'grabbing' : 'grab',
     };
     return (
-      <div ref={setNodeRef} style={style} className={isDragging ? 'ring-2 ring-blue-500 shadow-lg scale-105' : ''} {...attributes} {...listeners}>
+      <div ref={setNodeRef} style={style} className={isDragging ? 'ring-2 ring-teal-500 shadow-lg scale-105' : ''} {...attributes} {...listeners}>
         {children}
       </div>
     );
@@ -746,7 +754,8 @@ export default function NewPropertyPage() {
     { id: 2, name: "Localização", description: "Endereço completo" },
     { id: 3, name: "Detalhes", description: "Quartos, banheiros e área" },
     { id: 4, name: "Fotos", description: "Imagens do imóvel" },
-    { id: 5, name: "Revisão", description: "Conferir dados e publicar" },
+    { id: 5, name: "Checklist", description: "Verificar pontos essenciais" },
+    { id: 6, name: "Revisão final", description: "Conferir dados e publicar" },
   ];
 
   function tipsForStep(step: number): string[] {
@@ -774,6 +783,16 @@ export default function NewPropertyPage() {
           "Adicione ao menos 1 foto; 8–15 fotos boas geram mais visitas.",
           "Prefira luz natural; mantenha os ambientes organizados.",
           "Arraste para ordenar; dá destaque às melhores fotos primeiro.",
+        ];
+      case 5:
+        return [
+          "Use o checklist para garantir que nada essencial ficou pendente.",
+          "Itens marcados como 'Ajustar' levam você direto para o passo correspondente.",
+        ];
+      case 6:
+        return [
+          "Revise os dados com calma antes de publicar o anúncio.",
+          "Use os botões 'Editar' para voltar rapidamente a qualquer etapa.",
         ];
       default:
         return [];
@@ -1041,7 +1060,7 @@ export default function NewPropertyPage() {
         return;
       }
     }
-    if (currentStep < 5) setCurrentStep(currentStep + 1);
+    if (currentStep < 6) setCurrentStep(currentStep + 1);
   };
 
   const prevStep = () => {
@@ -1149,7 +1168,7 @@ export default function NewPropertyPage() {
       actions={
         <Link
           href="/owner/properties"
-          className="px-4 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50 border border-blue-100"
+          className="px-4 py-2 bg-white text-teal-700 rounded-lg font-medium hover:bg-teal-50 border border-teal-100"
         >
           Meus Anúncios
         </Link>
@@ -1164,7 +1183,7 @@ export default function NewPropertyPage() {
           <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
           <p>
             Certifique-se de que seu telefone esteja preenchido em <Link href="/profile" className="font-semibold text-teal hover:text-teal-dark underline-offset-2 hover:underline">Meu Perfil</Link>.
-            {' '}Usamos esse número para contatos sobre seus anúncios. Ao publicar seu primeiro imóvel, seu perfil é atualizado automaticamente para Proprietário(a).
+            {' '}Usamos esse número para contatos sobre seus anúncios.
           </p>
         </div>
 
@@ -1176,14 +1195,14 @@ export default function NewPropertyPage() {
                 <div key={step.id} className="flex items-center">
                   <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
                     currentStep >= step.id 
-                      ? 'glass-teal border-blue-600 text-white' 
+                      ? 'glass-teal border-emerald-500 text-white' 
                       : 'bg-white border-gray-300 text-gray-500'
                   }`}>
                     {step.id}
                   </div>
                   <div className="ml-3 hidden sm:block min-w-[120px]">
                     <div className={`text-sm font-medium ${
-                      currentStep >= step.id ? 'text-blue-600' : 'text-gray-500'
+                      currentStep >= step.id ? 'text-emerald-700' : 'text-gray-500'
                     }`}>
                       {step.name}
                     </div>
@@ -1209,7 +1228,7 @@ export default function NewPropertyPage() {
                 >
                   Anterior
                 </button>
-                {currentStep < 5 ? (
+                {currentStep < 6 ? (
                   <button
                     type="button"
                     onClick={nextStep}
@@ -1240,140 +1259,236 @@ export default function NewPropertyPage() {
             {/* Step 1: Basic Info */}
             {currentStep === 1 && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900">Informações básicas</h2>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Finalidade *</label>
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => setPurpose('SALE')} className={`px-4 py-2 rounded-lg border ${purpose==='SALE' ? 'glass-teal text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Venda</button>
-                    <button type="button" onClick={() => setPurpose('RENT')} className={`px-4 py-2 rounded-lg border ${purpose==='RENT' ? 'glass-teal text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Aluguel</button>
+                <div className="rounded-xl bg-white/90 backdrop-blur-sm ring-1 ring-black/5 p-5 sm:p-6 space-y-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">Informações básicas</h2>
+                    <p className="mt-1 text-sm text-gray-600">Defina a finalidade, o preço e o tipo do imóvel. Essas informações aparecem nos filtros e na vitrine.</p>
                   </div>
-                  {purpose === '' && <p className="mt-1 text-xs text-red-600">Selecione a finalidade.</p>}
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Preço (R$) *
-                  </label>
-                  <input
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    placeholder="450.000"
-                    inputMode="numeric"
-                    value={priceBRL}
-                    onChange={(e) => setPriceBRL(formatBRLInput(e.target.value))}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo de imóvel *
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { id: 'HOUSE', label: 'Casa', Icon: House },
-                      { id: 'APARTMENT', label: 'Apartamento', Icon: Building2 },
-                      { id: 'CONDO', label: 'Condomínio', Icon: Landmark },
-                      { id: 'TOWNHOUSE', label: 'Sobrado', Icon: Home },
-                      { id: 'STUDIO', label: 'Studio', Icon: Building },
-                      { id: 'LAND', label: 'Terreno', Icon: Warehouse },
-                      { id: 'COMMERCIAL', label: 'Comercial', Icon: Building },
-                    ].map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setType(opt.id)}
-                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${type === opt.id ? 'border-transparent text-white glass-teal' : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'}`}
-                        aria-pressed={type === opt.id}
-                      >
-                        <opt.Icon className="w-4 h-4" /> {opt.label}
-                      </button>
-                    ))}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Finalidade *</label>
+                    <div className="flex flex-wrap gap-3">
+                      <button type="button" onClick={() => setPurpose('SALE')} className={`px-4 py-2 rounded-lg border ${purpose==='SALE' ? 'glass-teal text-white border-emerald-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Venda</button>
+                      <button type="button" onClick={() => setPurpose('RENT')} className={`px-4 py-2 rounded-lg border ${purpose==='RENT' ? 'glass-teal text-white border-emerald-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Aluguel</button>
+                    </div>
+                    {purpose === '' && <p className="mt-1 text-xs text-red-600">Selecione a finalidade.</p>}
                   </div>
-                </div>
 
-                
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Descrição (opcional)
-                  </label>
-                  <textarea
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    rows={4}
-                    placeholder="Descreva o imóvel, suas características e o que o torna especial..."
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                  {featureSuggestions.length > 0 && (
-                    <div className="mt-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700">Sugestões de características detectadas</span>
-                        <span className="text-xs text-gray-500">Clique para aplicar (1)</span>
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Preço (R$) *
+                      </label>
+                      <input
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200"
+                        placeholder="450.000"
+                        inputMode="numeric"
+                        value={priceBRL}
+                        onChange={(e) => setPriceBRL(formatBRLInput(e.target.value))}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tipo de imóvel *
+                      </label>
                       <div className="flex flex-wrap gap-2">
-                        {featureSuggestions.map((sug) => {
-                          const exists = conditionTags.includes(sug);
-                          return (
-                            <button
-                              key={sug}
-                              type="button"
-                              onClick={() => { setConditionTags([sug]); }}
-                              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${exists ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-default' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                              aria-disabled={exists}
-                            >
-                              {sug}
-                            </button>
-                          );
-                        })}
+                        {[
+                          { id: 'HOUSE', label: 'Casa', Icon: House },
+                          { id: 'APARTMENT', label: 'Apartamento', Icon: Building2 },
+                          { id: 'CONDO', label: 'Condomínio', Icon: Landmark },
+                          { id: 'TOWNHOUSE', label: 'Sobrado', Icon: Home },
+                          { id: 'STUDIO', label: 'Studio', Icon: Building },
+                          { id: 'LAND', label: 'Terreno', Icon: Warehouse },
+                          { id: 'COMMERCIAL', label: 'Comercial', Icon: Building },
+                        ].map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setType(opt.id)}
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${type === opt.id ? 'border-transparent text-white glass-teal' : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'}`}
+                            aria-pressed={type === opt.id}
+                          >
+                            <opt.Icon className="w-4 h-4" /> {opt.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Características/Diferenciais (1)</label>
-                  <div className="flex flex-wrap gap-2">
-                    {TAG_OPTIONS.map((tag) => {
-                      const selected = conditionTags.includes(tag);
-                      return (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => toggleTag(tag)}
-                          className={
-                            `px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ` +
-                            (selected
-                              ? "border-transparent text-white bg-gradient-to-r from-purple-600 to-blue-600"
-                              : "border-gray-300 text-gray-700 bg-white hover:bg-gray-50")
-                          }
-                          aria-pressed={selected}
-                        >
-                          {tag}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {conditionTags.length > 0 && (
-                    <p className="mt-1 text-xs text-gray-500">Selecionadas: {conditionTags.join(", ")}</p>
-                  )}
-                </div>
-                {/* Campos opcionais financeiros */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Condomínio (R$) (opcional)</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="350" value={condoFeeBRL} onChange={(e)=>setCondoFeeBRL(formatBRLInput(e.target.value))} />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Descrição
+                      <span className="ml-2 text-xs font-normal text-gray-400">Opcional</span>
+                    </label>
+                    <textarea
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200"
+                      rows={4}
+                      placeholder="Descreva o imóvel, suas características e o que o torna especial..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                    {featureSuggestions.length > 0 && (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700">Sugestões de características detectadas</span>
+                          <span className="text-xs text-gray-500">Clique para aplicar (1)</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {featureSuggestions.map((sug) => {
+                            const exists = conditionTags.includes(sug);
+                            return (
+                              <button
+                                key={sug}
+                                type="button"
+                                onClick={() => { setConditionTags([sug]); }}
+                                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${exists ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-default' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                                aria-disabled={exists}
+                              >
+                                {sug}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">IPTU anual (R$) (opcional)</label>
-                    <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="900" value={iptuYearBRL} onChange={(e)=>setIptuYearBRL(formatBRLInput(e.target.value))} />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Características/Diferenciais (1)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {TAG_OPTIONS.map((tag) => {
+                        const selected = conditionTags.includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => toggleTag(tag)}
+                            className={
+                              `px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ` +
+                              (selected
+                                ? "border-transparent text-white bg-gradient-to-r from-teal-600 to-emerald-600"
+                                : "border-gray-300 text-gray-700 bg-white hover:bg-gray-50")
+                            }
+                            aria-pressed={selected}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {conditionTags.length > 0 && (
+                      <p className="mt-1 text-xs text-gray-500">Selecionadas: {conditionTags.join(", ")}</p>
+                    )}
+                  </div>
+
+                  {/* Campos opcionais financeiros */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Condomínio (R$)
+                        <span className="ml-2 text-xs font-normal text-gray-400">Opcional</span>
+                      </label>
+                      <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200" placeholder="350" value={condoFeeBRL} onChange={(e)=>setCondoFeeBRL(formatBRLInput(e.target.value))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        IPTU anual (R$)
+                        <span className="ml-2 text-xs font-normal text-gray-400">Opcional</span>
+                      </label>
+                      <input className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200" placeholder="900" value={iptuYearBRL} onChange={(e)=>setIptuYearBRL(formatBRLInput(e.target.value))} />
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Step 5: Review */}
+            {/* Step 5: Checklist */}
             {currentStep === 5 && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-semibold text-gray-900">Checklist de publicação</h2>
+                <p className="text-sm text-gray-600">Revise os pontos essenciais antes da revisão final. Itens marcados como "Ajustar" levam você ao passo correspondente.</p>
+                <div className="max-w-3xl mx-auto rounded-xl bg-white/90 backdrop-blur-sm ring-1 ring-black/5 p-5 sm:p-6 space-y-4 text-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="font-semibold text-gray-900">Informações básicas</div>
+                      <div className="text-xs text-gray-500">Finalidade, preço e tipo de imóvel.</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${purpose && parseBRLToNumber(priceBRL) > 0 && !!type ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
+                        {purpose && parseBRLToNumber(priceBRL) > 0 && !!type ? 'OK' : 'Ajustar'}
+                      </span>
+                      {!(purpose && parseBRLToNumber(priceBRL) > 0 && !!type) && (
+                        <button type="button" onClick={()=>setCurrentStep(1)} className="text-xs text-teal-700 hover:underline">Ir para passo 1</button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-px bg-gray-100" />
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="font-semibold text-gray-900">Localização e mapa</div>
+                      <div className="text-xs text-gray-500">Endereço validado e posição aproximada no mapa.</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${geo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
+                        {geo ? 'OK' : 'Ajustar'}
+                      </span>
+                      {!geo && (
+                        <button type="button" onClick={()=>setCurrentStep(2)} className="text-xs text-teal-700 hover:underline">Ir para passo 2</button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-px bg-gray-100" />
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="font-semibold text-gray-900">Detalhes principais</div>
+                      <div className="text-xs text-gray-500">Quartos, banheiros e área do imóvel.</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${(bedrooms !== '' || bathrooms !== '' || areaM2 !== '') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
+                        {(bedrooms !== '' || bathrooms !== '' || areaM2 !== '') ? 'OK' : 'Recomendado'}
+                      </span>
+                      {!(bedrooms !== '' || bathrooms !== '' || areaM2 !== '') && (
+                        <button type="button" onClick={()=>setCurrentStep(3)} className="text-xs text-teal-700 hover:underline">Ir para passo 3</button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-px bg-gray-100" />
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="font-semibold text-gray-900">Fotos</div>
+                      <div className="text-xs text-gray-500">Ao menos uma foto adicionada.</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${images.some((it)=>it.url && it.url.trim().length > 0) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
+                        {images.some((it)=>it.url && it.url.trim().length > 0) ? 'OK' : 'Ajustar'}
+                      </span>
+                      {!images.some((it)=>it.url && it.url.trim().length > 0) && (
+                        <button type="button" onClick={()=>setCurrentStep(4)} className="text-xs text-teal-700 hover:underline">Ir para passo 4</button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-px bg-gray-100" />
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="font-semibold text-gray-900">Telefone para contato</div>
+                      <div className="text-xs text-gray-500">Telefone cadastrado, verificado e confirmado para este anúncio.</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${(profilePhone && profilePhone.trim() && profilePhoneVerified && phoneConfirmedForListing) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
+                        {(profilePhone && profilePhone.trim() && profilePhoneVerified && phoneConfirmedForListing) ? 'OK' : 'Ajustar'}
+                      </span>
+                      {!(profilePhone && profilePhone.trim() && profilePhoneVerified && phoneConfirmedForListing) && (
+                        <button type="button" onClick={()=>setCurrentStep(6)} className="text-xs text-teal-700 hover:underline">Ver na revisão</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 6: Review */}
+            {currentStep === 6 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Revisão final</h2>
                 <div className="w-full bg-gray-200 rounded-full h-2">
@@ -1384,7 +1499,7 @@ export default function NewPropertyPage() {
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <div className="text-sm font-semibold text-gray-800">Básico</div>
-                        <button type="button" onClick={()=>setCurrentStep(1)} className="text-xs text-blue-600 hover:underline">Editar</button>
+                        <button type="button" onClick={()=>setCurrentStep(1)} className="text-xs text-teal-700 hover:underline">Editar</button>
                       </div>
                       <ul className="list-disc ml-5 space-y-1">
                         <li>Finalidade: <span className="font-medium">{purpose === 'RENT' ? 'Aluguel' : 'Venda'}</span></li>
@@ -1396,7 +1511,7 @@ export default function NewPropertyPage() {
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <div className="text-sm font-semibold text-gray-800">Localização</div>
-                        <button type="button" onClick={()=>setCurrentStep(2)} className="text-xs text-blue-600 hover:underline">Editar</button>
+                        <button type="button" onClick={()=>setCurrentStep(2)} className="text-xs text-teal-700 hover:underline">Editar</button>
                       </div>
                       <ul className="list-disc ml-5 space-y-1">
                         <li>{street ? `${street}, ${addressNumber || ''}` : '—'}</li>
@@ -1407,7 +1522,7 @@ export default function NewPropertyPage() {
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <div className="text-sm font-semibold text-gray-800">Detalhes</div>
-                        <button type="button" onClick={()=>setCurrentStep(3)} className="text-xs text-blue-600 hover:underline">Editar</button>
+                        <button type="button" onClick={()=>setCurrentStep(3)} className="text-xs text-teal-700 hover:underline">Editar</button>
                       </div>
                       <ul className="list-disc ml-5 space-y-1 md:columns-2 [li:break-inside-avoid]">
                         <li>Quartos: {bedrooms || '—'} • Banheiros: {bathrooms || '—'} • Área: {areaM2 || '—'} m²</li>
@@ -1421,14 +1536,14 @@ export default function NewPropertyPage() {
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <div className="text-sm font-semibold text-gray-800">Lazer/Condomínio</div>
-                        <button type="button" onClick={()=>setCurrentStep(3)} className="text-xs text-blue-600 hover:underline">Editar</button>
+                        <button type="button" onClick={()=>setCurrentStep(3)} className="text-xs text-teal-700 hover:underline">Editar</button>
                       </div>
                       <ul className="list-disc ml-5 space-y-1">
                         <li>{[hasPool && 'Piscina', hasGym && 'Academia', hasPlayground && 'Playground', hasPartyRoom && 'Salão de festas', hasGourmet && 'Espaço gourmet', hasConcierge24h && 'Portaria 24h'].filter(Boolean).join(' • ') || '—'}</li>
                       </ul>
                     </div>
                   </div>
-                  <div className="rounded-xl p-4 ring-1 ring-black/5 bg-gradient-to-br from-white to-purple-50">
+                  <div className="rounded-xl p-4 ring-1 ring-black/5 bg-gradient-to-br from-white to-teal-50">
                     <div className="text-sm text-gray-600 mb-2">Pré-visualização na vitrine</div>
                     <PropertyCardPremium
                       property={{
@@ -1482,7 +1597,7 @@ export default function NewPropertyPage() {
                         <label className="inline-flex items-center gap-2">
                           <input
                             type="checkbox"
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                             checked={phoneConfirmedForListing}
                             onChange={(e) => setPhoneConfirmedForListing(e.target.checked)}
                           />
@@ -1492,7 +1607,7 @@ export default function NewPropertyPage() {
                         </label>
                         <button
                           type="button"
-                          className="self-start text-xs text-blue-600 hover:text-blue-700 underline"
+                          className="self-start text-xs text-teal-700 hover:text-teal-800 underline"
                           onClick={() => {
                             setPhoneConfirmedForListing(false);
                             if (typeof window !== "undefined") {
@@ -1513,7 +1628,7 @@ export default function NewPropertyPage() {
                         href="/profile"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 underline"
+                        className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800 underline"
                       >
                         Clique aqui para abrir Meu Perfil em outra aba e cadastrar
                       </Link>
@@ -1526,86 +1641,97 @@ export default function NewPropertyPage() {
             {/* Step 2: Location */}
             {currentStep === 2 && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900">Localização</h2>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">CEP</label>
-                  <input
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    placeholder="56300-000"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(formatCEP(e.target.value))}
-                    inputMode="numeric"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Digite apenas números; formatamos automaticamente (99999-999).</p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-xl bg-white/90 backdrop-blur-sm ring-1 ring-black/5 p-5 sm:p-6 space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Rua *
-                    </label>
-                    <input
-                      className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent'}`}
-                      placeholder="Rua das Flores, 123"
-                      value={street}
-                      onChange={(e) => setStreet(e.target.value)}
-                      disabled
-                      required
-                    />
+                    <h2 className="text-xl font-semibold text-gray-900">Localização</h2>
+                    <p className="mt-1 text-sm text-gray-600">Usamos o endereço para exibir o imóvel no mapa e nos filtros de região.</p>
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Número *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">CEP</label>
                     <input
-                      ref={numberInputRef}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      placeholder="123"
-                      value={addressNumber}
-                      onChange={(e) => setAddressNumber(e.target.value)}
-                      // número é opcional
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200"
+                      placeholder="56300-000"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(formatCEP(e.target.value))}
+                      inputMode="numeric"
                     />
+                    <p className="mt-1 text-xs text-gray-500">Digite apenas números; formatamos automaticamente (99999-999).</p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Bairro
-                    </label>
-                    <input
-                      className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent'}`}
-                      placeholder="Centro"
-                      value={neighborhood}
-                      onChange={(e) => setNeighborhood(e.target.value)}
-                      disabled
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cidade *
-                    </label>
-                    <input
-                      className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent'}`}
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      disabled
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Estado *
-                    </label>
-                    <input
-                      className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent'}`}
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
-                      disabled
-                      required
-                    />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Rua *
+                      </label>
+                      <input
+                        className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-teal-500 focus:border-transparent'}`}
+                        placeholder="Rua das Flores, 123"
+                        value={street}
+                        onChange={(e) => setStreet(e.target.value)}
+                        disabled
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Número
+                        <span className="ml-2 text-xs font-normal text-gray-400">Opcional</span>
+                      </label>
+                      <input
+                        ref={numberInputRef}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200"
+                        placeholder="123"
+                        value={addressNumber}
+                        onChange={(e) => setAddressNumber(e.target.value)}
+                        // número é opcional
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Bairro
+                      </label>
+                      <input
+                        className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-teal-500 focus:border-transparent'}`}
+                        placeholder="Centro"
+                        value={neighborhood}
+                        onChange={(e) => setNeighborhood(e.target.value)}
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Cidade *
+                      </label>
+                      <input
+                        className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-teal-500 focus:border-transparent'}`}
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        disabled
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Estado *
+                      </label>
+                      <input
+                        className={`w-full px-4 py-3 border rounded-lg transition-all duration-200 ${!cepValid ? 'bg-gray-100 border-gray-300 text-gray-500' : 'border-gray-300 focus:ring-2 focus:ring-teal-500 focus:border-transparent'}`}
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        disabled
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Mini mapa e coordenadas */}
-                <div className="rounded-xl border p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="inline-flex items-center gap-2 text-sm text-gray-700"><MapPinIcon className="w-4 h-4" /> Posição aproximada</div>
+                <div className="rounded-xl bg-white/90 backdrop-blur-sm ring-1 ring-black/5 p-4 sm:p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="inline-flex items-center gap-2 text-sm text-gray-700">
+                      <MapPinIcon className="w-4 h-4" /> Posição aproximada
+                    </div>
                     <span className="text-xs text-gray-500">Ajuste disponível após geolocalizar</span>
                   </div>
                   <div className="relative aspect-square md:aspect-square min-h-80 sm:min-h-96 rounded-lg overflow-hidden bg-gradient-to-tr from-teal/5 to-teal/10 flex items-center justify-center text-xs text-gray-600">
@@ -1634,60 +1760,60 @@ export default function NewPropertyPage() {
             {/* Step 3: Details */}
             {currentStep === 3 && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900">Detalhes do imóvel</h2>
-                <div className="text-xs text-gray-500">Campos principais</div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Card: campos principais */}
+                <div className="rounded-xl bg-white/90 backdrop-blur-sm ring-1 ring-black/5 p-5 sm:p-6 space-y-4">
                   <div>
-                    <Input label="Quartos" type="number" placeholder="Ex: 3" value={bedrooms as any} onChange={(e)=>setBedrooms(e.target.value)} />
+                    <h2 className="text-xl font-semibold text-gray-900">Detalhes do imóvel</h2>
+                    <p className="mt-1 text-sm text-gray-600">Preencha os campos básicos que aparecem nos filtros e na vitrine.</p>
                   </div>
-                  <div>
-                    <Input label="Banheiros" type="number" step="0.5" placeholder="Ex: 3" value={bathrooms as any} onChange={(e)=>setBathrooms(e.target.value)} />
-                  </div>
-                  <div>
-                    <Input label="Área (m²)" type="number" placeholder="Ex: 330" value={areaM2 as any} onChange={(e)=>setAreaM2(e.target.value)} />
+
+                  <div className="text-xs text-gray-500">Campos principais</div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                    <div>
+                      <Input label="Quartos" type="number" placeholder="Ex: 3" value={bedrooms as any} onChange={(e)=>setBedrooms(e.target.value)} />
+                    </div>
+                    <div>
+                      <Input label="Banheiros" type="number" step="0.5" placeholder="Ex: 3" value={bathrooms as any} onChange={(e)=>setBathrooms(e.target.value)} />
+                    </div>
+                    <div>
+                      <Input label="Área (m²)" type="number" placeholder="Ex: 330" value={areaM2 as any} onChange={(e)=>setAreaM2(e.target.value)} />
+                    </div>
+                    <div>
+                      <Input label="Vagas" type="number" placeholder="Ex: 2" value={parkingSpots as any} onChange={(e)=>setParkingSpots(e.target.value === '' ? '' : Number(e.target.value))} />
+                    </div>
+                    <div>
+                      <Input label="Suítes" type="number" placeholder="Ex: 1" value={suites as any} onChange={(e)=>setSuites(e.target.value === '' ? '' : Number(e.target.value))} />
+                    </div>
+                    <div>
+                      <Input label="Andar" type="number" placeholder="Ex: 5" value={floor as any} onChange={(e)=>setFloor(e.target.value === '' ? '' : Number(e.target.value))} />
+                    </div>
+                    <div>
+                      <Input label="Total de andares" type="number" placeholder="Ex: 10" value={totalFloors as any} onChange={(e)=>setTotalFloors(e.target.value === '' ? '' : Number(e.target.value))} />
+                    </div>
+                    <div>
+                      <Select label="Orientação solar" optional value={sunOrientation} onChange={(e)=>setSunOrientation(e.target.value)}>
+                        <option value="">Selecione</option>
+                        <option value="Nascente">Nascente</option>
+                        <option value="Poente">Poente</option>
+                      </Select>
+                    </div>
+                    <div>
+                      <Input label="Ano de construção" optional type="number" placeholder="Ex: 2015" value={yearBuilt as any} onChange={(e)=>setYearBuilt(e.target.value === '' ? '' : Number(e.target.value))} />
+                    </div>
+                    <div>
+                      <Input label="Ano de reforma" optional type="number" placeholder="Ex: 2022" value={yearRenovated as any} onChange={(e)=>setYearRenovated(e.target.value === '' ? '' : Number(e.target.value))} />
+                    </div>
                   </div>
                 </div>
 
-                {/* Interno / Estrutura */}
-                {/* Campos principais (texto/números) */}
-                <div className="pt-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Card: recursos e facilidades */}
+                <div className="rounded-xl bg-white/90 backdrop-blur-sm ring-1 ring-black/5 p-5 sm:p-6 space-y-3">
                   <div>
-                    <Input label="Vagas" type="number" placeholder="Ex: 2" value={parkingSpots as any} onChange={(e)=>setParkingSpots(e.target.value === '' ? '' : Number(e.target.value))} />
+                    <h3 className="text-sm font-semibold text-gray-900">Recursos e facilidades</h3>
+                    <p className="mt-1 text-xs text-gray-500">Marque os principais diferenciais do condomínio e do imóvel.</p>
                   </div>
-                  <div>
-                    <Input label="Suítes" type="number" placeholder="Ex: 1" value={suites as any} onChange={(e)=>setSuites(e.target.value === '' ? '' : Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <Input label="Andar" type="number" placeholder="Ex: 5" value={floor as any} onChange={(e)=>setFloor(e.target.value === '' ? '' : Number(e.target.value))} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <Input label="Total de andares" type="number" placeholder="Ex: 10" value={totalFloors as any} onChange={(e)=>setTotalFloors(e.target.value === '' ? '' : Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <Select label="Orientação solar (opcional)" value={sunOrientation} onChange={(e)=>setSunOrientation(e.target.value)}>
-                      <option value="">Selecione</option>
-                      <option value="Nascente">Nascente</option>
-                      <option value="Poente">Poente</option>
-                    </Select>
-                  </div>
-                  <div>
-                    <Input label="Ano de construção (opcional)" type="number" placeholder="Ex: 2015" value={yearBuilt as any} onChange={(e)=>setYearBuilt(e.target.value === '' ? '' : Number(e.target.value))} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <Input label="Ano de reforma (opcional)" type="number" placeholder="Ex: 2022" value={yearRenovated as any} onChange={(e)=>setYearRenovated(e.target.value === '' ? '' : Number(e.target.value))} />
-                  </div>
-                </div>
-
-                {/* Recursos e facilidades (checkboxes) */}
-                <div className="pt-2">
-                  <div className="text-sm font-medium text-gray-800 mb-2">Recursos e facilidades</div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                     <Checkbox label="Varanda" checked={hasBalcony} onChange={(e)=>setHasBalcony(e.target.checked)} />
                     <Checkbox label="Elevador" checked={hasElevator} onChange={(e)=>setHasElevator(e.target.checked)} />
                     <Checkbox label="Piscina" checked={hasPool} onChange={(e)=>setHasPool(e.target.checked)} />
@@ -1698,21 +1824,26 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
 
-                {/* Extras removidos: campos duplicados eliminados */}
+                {/* Card: mais detalhes (accordions) */}
+                <div className="rounded-xl bg-white/90 backdrop-blur-sm ring-1 ring-black/5 p-5 sm:p-6 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Mais detalhes</h3>
+                    <p className="mt-1 text-xs text-gray-500">Informações complementares (opcionais), organizadas por categoria.</p>
+                  </div>
 
                 {/* Accordions */}
                 <div className="space-y-3">
                   {/* Acessibilidade */}
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className={`rounded-lg border overflow-hidden transition-colors ${openAcc.acc_acc ? 'border-emerald-200 bg-emerald-50/40' : 'border-neutral-200 bg-white/80'}`}>
                     <button
                       type="button"
                       aria-expanded={!!openAcc.acc_acc}
                       aria-controls="acc-acc"
                       onClick={()=>setOpenAcc(prev => prev.acc_acc ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:true, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false })}
-                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-neutral-800"
                     >
-                      <span id="acc-acc-title" className="font-display text-base">Acessibilidade</span>
-                      <span>{openAcc.acc_acc ? '−' : '+'}</span>
+                      <span id="acc-acc-title" className="font-display text-base">{`Acessibilidade${accAccessibilityCount ? ` (${accAccessibilityCount})` : ''}`}</span>
+                      <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform ${openAcc.acc_acc ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_acc && (
                       <div role="region" aria-labelledby="acc-acc-title" id="acc-acc" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -1725,16 +1856,16 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Conforto/Energia */}
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className={`rounded-lg border overflow-hidden transition-colors ${openAcc.acc_ce ? 'border-emerald-200 bg-emerald-50/40' : 'border-neutral-200 bg-white/80'}`}>
                     <button
                       type="button"
                       aria-expanded={!!openAcc.acc_ce}
                       aria-controls="acc-ce"
                       onClick={()=>setOpenAcc(prev => prev.acc_ce ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:true, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false })}
-                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-neutral-800"
                     >
-                      <span id="acc-ce-title" className="font-display text-base">Conforto/Energia</span>
-                      <span>{openAcc.acc_ce ? '−' : '+'}</span>
+                      <span id="acc-ce-title" className="font-display text-base">{`Conforto/Energia${accComfortCount ? ` (${accComfortCount})` : ''}`}</span>
+                      <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform ${openAcc.acc_ce ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_ce && (
                       <div role="region" aria-labelledby="acc-ce-title" id="acc-ce" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -1749,16 +1880,16 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Acabamentos */}
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className={`rounded-lg border overflow-hidden transition-colors ${openAcc.acc_fin ? 'border-emerald-200 bg-emerald-50/40' : 'border-neutral-200 bg-white/80'}`}>
                     <button
                       type="button"
                       aria-expanded={!!openAcc.acc_fin}
                       aria-controls="acc-fin"
                       onClick={()=>setOpenAcc(prev => prev.acc_fin ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:true, acc_view:false, acc_pets:false, acc_sec:false })}
-                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-neutral-800"
                     >
-                      <span id="acc-fin-title" className="font-display text-base">Acabamentos</span>
-                      <span>{openAcc.acc_fin ? '−' : '+'}</span>
+                      <span id="acc-fin-title" className="font-display text-base">{`Acabamentos${accFinishCount ? ` (${accFinishCount})` : ''}`}</span>
+                      <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform ${openAcc.acc_fin ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_fin && (
                       <div role="region" aria-labelledby="acc-fin-title" id="acc-fin" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
@@ -1780,16 +1911,16 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Vista/Posição */}
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className={`rounded-lg border overflow-hidden transition-colors ${openAcc.acc_view ? 'border-emerald-200 bg-emerald-50/40' : 'border-neutral-200 bg-white/80'}`}>
                     <button
                       type="button"
                       aria-expanded={!!openAcc.acc_view}
                       aria-controls="acc-view"
                       onClick={()=>setOpenAcc(prev => prev.acc_view ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false })}
-                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-neutral-800"
                     >
-                      <span id="acc-view-title" className="font-display text-base">Vista/Posição</span>
-                      <span>{openAcc.acc_view ? '−' : '+'}</span>
+                      <span id="acc-view-title" className="font-display text-base">{`Vista/Posição${accViewCount ? ` (${accViewCount})` : ''}`}</span>
+                      <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform ${openAcc.acc_view ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_view && (
                       <div role="region" aria-labelledby="acc-view-title" id="acc-view" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -1797,45 +1928,45 @@ export default function NewPropertyPage() {
                         <Checkbox label="Vista cidade" checked={viewCity} onChange={(e)=>{setViewCity(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
                         <Checkbox label="Frente" checked={positionFront} onChange={(e)=>{setPositionFront(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
                         <Checkbox label="Fundos" checked={positionBack} onChange={(e)=>{setPositionBack(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
-                        <Input placeholder="Posição do sol por cômodo (opcional)" value={sunByRoomNote} onChange={(e)=>{setSunByRoomNote(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
+                        <Input placeholder="Posição do sol por cômodo" value={sunByRoomNote} onChange={(e)=>{setSunByRoomNote(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:true, acc_pets:false, acc_sec:false});}} />
                       </div>
                     )}
                   </div>
 
                   {/* Pets/Políticas */}
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className={`rounded-lg border overflow-hidden transition-colors ${openAcc.acc_pets ? 'border-emerald-200 bg-emerald-50/40' : 'border-neutral-200 bg-white/80'}`}>
                     <button
                       type="button"
                       aria-expanded={!!openAcc.acc_pets}
                       aria-controls="acc-pets"
                       onClick={()=>setOpenAcc(prev => prev.acc_pets ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false })}
-                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-neutral-800"
                     >
-                      <span id="acc-pets-title" className="font-display text-base">Pets/Políticas</span>
-                      <span>{openAcc.acc_pets ? '−' : '+'}</span>
+                      <span id="acc-pets-title" className="font-display text-base">{`Pets/Políticas${accPetsCount ? ` (${accPetsCount})` : ''}`}</span>
+                      <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform ${openAcc.acc_pets ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_pets && (
                       <div role="region" aria-labelledby="acc-pets-title" id="acc-pets" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                         <Checkbox label="Permite pets pequeno porte" checked={petsSmall} onChange={(e)=>{setPetsSmall(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} />
                         <Checkbox label="Permite pets grande porte" checked={petsLarge} onChange={(e)=>{setPetsLarge(e.target.checked); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} />
                         <div className="sm:col-span-2">
-                          <Input placeholder="Regras do condomínio (opcional)" value={condoRules} onChange={(e)=>{setCondoRules(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} />
+                          <Input placeholder="Regras do condomínio" value={condoRules} onChange={(e)=>{setCondoRules(e.target.value); setOpenAcc({acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:true, acc_sec:false});}} />
                         </div>
                       </div>
                     )}
                   </div>
 
                   {/* Segurança */}
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className={`rounded-lg border overflow-hidden transition-colors ${openAcc.acc_sec ? 'border-emerald-200 bg-emerald-50/40' : 'border-neutral-200 bg-white/80'}`}>
                     <button
                       type="button"
                       aria-expanded={!!openAcc.acc_sec}
                       aria-controls="acc-sec"
                       onClick={()=>setOpenAcc(prev => prev.acc_sec ? { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:false } : { acc_acc:false, acc_ce:false, acc_fin:false, acc_view:false, acc_pets:false, acc_sec:true })}
-                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-neutral-800"
                     >
-                      <span id="acc-sec-title" className="font-display text-base">Segurança</span>
-                      <span>{openAcc.acc_sec ? '−' : '+'}</span>
+                      <span id="acc-sec-title" className="font-display text-base">{`Segurança${accSecurityCount ? ` (${accSecurityCount})` : ''}`}</span>
+                      <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform ${openAcc.acc_sec ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_sec && (
                       <div role="region" aria-labelledby="acc-sec-title" id="acc-sec" className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -1848,6 +1979,7 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
               </div>
+            </div>
             )}
 
             {/* Step 4: Images */}
@@ -1855,15 +1987,15 @@ export default function NewPropertyPage() {
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Fotos do imóvel</h2>
                 {/* Dicas contextuais e watermark toggle */}
-                <div className="rounded-xl border p-4">
+                <div className="rounded-xl border border-teal-100 bg-teal/5 p-4">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium text-gray-800">Dicas</div>
                     <label className="inline-flex items-center gap-2 text-xs text-gray-600"><input type="checkbox" className="rounded" checked={showWatermark} onChange={(e)=>setShowWatermark(e.target.checked)} /> Watermark Zillowlike</label>
                   </div>
                   <ul className="mt-2 text-sm text-gray-700 space-y-1">
-                    <li className="flex items-center gap-2"><Camera className="w-4 h-4 text-purple-600" /> Priorize ambientes principais: fachada, sala, cozinha.</li>
-                    <li className="flex items-center gap-2"><ImageIcon className="w-4 h-4 text-purple-600" /> Prefira fotos horizontais e boa iluminação natural.</li>
-                    <li className="flex items-center gap-2"><Camera className="w-4 h-4 text-purple-600" /> Arraste para ordenar: capa primeiro.</li>
+                    <li className="flex items-center gap-2"><Camera className="w-4 h-4 text-teal-600" /> Priorize ambientes principais: fachada, sala, cozinha.</li>
+                    <li className="flex items-center gap-2"><ImageIcon className="w-4 h-4 text-teal-600" /> Prefira fotos horizontais e boa iluminação natural.</li>
+                    <li className="flex items-center gap-2"><Camera className="w-4 h-4 text-teal-600" /> Arraste para ordenar: capa primeiro.</li>
                   </ul>
                 </div>
                 <div className="flex justify-end sm:justify-between gap-3">
@@ -1879,7 +2011,7 @@ export default function NewPropertyPage() {
                 )}
                 
                 <div
-                  className={`space-y-4 ${isFileDragOver ? 'ring-2 ring-blue-400 rounded-lg' : ''}`}
+                  className={`space-y-4 ${isFileDragOver ? 'ring-2 ring-teal-400 rounded-lg' : ''}`}
                   onDragOver={(e) => {
                     if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
                       e.preventDefault();
@@ -1897,7 +2029,7 @@ export default function NewPropertyPage() {
                     }
                   }}
                 >
-                  <div className={`w-full rounded-lg border-2 border-dashed ${isFileDragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-gray-50'} p-6 text-center`}
+                  <div className={`w-full rounded-lg border-2 border-dashed ${isFileDragOver ? 'border-teal-400 bg-teal-50' : 'border-gray-300 bg-gray-50'} p-6 text-center`}
                        onClick={() => dropInputRef.current?.click()}
                        role="button" tabIndex={0}
                   >
@@ -1941,8 +2073,9 @@ export default function NewPropertyPage() {
                   >
                     <SortableContext items={images.map((img, i) => img.url ? `thumb-${i}` : null).filter(Boolean) as string[]} strategy={rectSortingStrategy}>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {images.map((img, i) => (
-                          img.url ? (
+                        {images.map((img, i) => {
+                          if (!img.url) return null;
+                          return (
                             <SortableItem key={`thumb-${i}`} id={`thumb-${i}`}>
                               <div className="group relative overflow-hidden rounded-lg border bg-white">
                                 <img
@@ -2015,14 +2148,14 @@ export default function NewPropertyPage() {
                                     <button
                                       type="button"
                                       onClick={() => setImages((prev) => prev.map((it, idx) => idx === i ? { ...it, editing: undefined } as any : it))}
-                                      className="px-2 py-1 text-xs rounded glass-teal text-white hover:bg-blue-700"
+                                      className="px-2 py-1 text-xs rounded glass-teal text-white hover:bg-teal-700"
                                     >Salvar</button>
                                   </div>
                                 )}
                               </div>
                             </SortableItem>
-                          ) : null
-                        ))}
+                          );
+                        })}
                       </div>
                     </SortableContext>
                   </DndContext>
@@ -2031,7 +2164,7 @@ export default function NewPropertyPage() {
                   <button
                     type="button"
                     onClick={() => dropInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 hover:bg-blue-50 transition-all duration-200"
+                    className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-teal-500 hover:bg-teal-50 transition-all duration-200"
                   >
                     <svg className="w-8 h-8 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                     <span className="text-gray-600">Adicionar mais fotos</span>
@@ -2059,7 +2192,7 @@ export default function NewPropertyPage() {
                 Anterior
               </button>
               
-              {currentStep < 5 ? (
+              {currentStep < 6 ? (
                 <button
                   type="button"
                   onClick={nextStep}
