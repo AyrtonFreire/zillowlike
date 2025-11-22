@@ -69,18 +69,24 @@ export default function Home() {
 
   // Fecha dropdown ao clicar fora ou pressionar ESC
   useEffect(() => {
-    if (!filtersOpen) return;
+    if (!filtersOpen && !activeFilterDropdown) return;
     const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
     const handleClick = (e: Event) => {
-      if (!isDesktop) return; // mobile: não fechar ao clicar fora
-      if (!filtersRef.current) return;
+      if (!isDesktop && filtersOpen) return; // mobile drawer: não fechar ao clicar fora
       const target = e.target as Node | null;
-      if (target && !filtersRef.current.contains(target)) {
+      if (target && filtersRef.current && !filtersRef.current.contains(target)) {
         setFiltersOpen(false);
+      }
+      // Fechar dropdown ativo ao clicar fora
+      if (activeFilterDropdown) {
+        setActiveFilterDropdown(null);
       }
     };
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setFiltersOpen(false); // ESC funciona em mobile e desktop
+      if (e.key === 'Escape') {
+        setFiltersOpen(false);
+        setActiveFilterDropdown(null);
+      }
     };
     document.addEventListener('mousedown', handleClick as EventListener, true);
     document.addEventListener('touchstart', handleClick as EventListener, true);
@@ -90,7 +96,7 @@ export default function Home() {
       document.removeEventListener('touchstart', handleClick as EventListener, true);
       document.removeEventListener('keydown', handleKey as EventListener, true);
     };
-  }, [filtersOpen]);
+  }, [filtersOpen, activeFilterDropdown]);
 
   // Estados do overlay
   const [overlayId, setOverlayId] = useState<string | null>(null);
@@ -200,6 +206,90 @@ export default function Home() {
   const hasSearched = useMemo(() => {
     return !!(search || city || type || minPrice || maxPrice || bedroomsMin || bathroomsMin || areaMin);
   }, [search, city, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin]);
+
+  // Helper: gerar resumo de preço
+  const getPriceSummary = () => {
+    if (!minPrice && !maxPrice) return 'Preço';
+    const formatPrice = (val: string) => {
+      const num = parseInt(val);
+      if (num >= 1000000) return `R$ ${(num / 1000000).toFixed(1).replace('.0', '')}M`;
+      if (num >= 1000) return `R$ ${(num / 1000).toFixed(0)}k`;
+      return `R$ ${num}`;
+    };
+    if (minPrice && maxPrice) return `${formatPrice(minPrice)}-${formatPrice(maxPrice)}`;
+    if (minPrice) return `${formatPrice(minPrice)}+`;
+    return `Até ${formatPrice(maxPrice)}`;
+  };
+
+  // Helper: gerar resumo de quartos e banheiros
+  const getBedsBathsSummary = () => {
+    if (!bedroomsMin && !bathroomsMin) return 'Quartos & Banheiros';
+    const parts: string[] = [];
+    if (bedroomsMin) parts.push(`${bedroomsMin}+ qts`);
+    if (bathroomsMin) parts.push(`${bathroomsMin}+ bhs`);
+    return parts.join(', ');
+  };
+
+  // Helper: gerar resumo de tipo
+  const getTypeSummary = () => {
+    if (!type) return 'Tipo de Imóvel';
+    const typeMap: Record<string, string> = { HOUSE: 'Casa', APARTMENT: 'Apartamento', CONDO: 'Condomínio', LAND: 'Terreno' };
+    return typeMap[type] || 'Tipo de Imóvel';
+  };
+
+  // Helper: gerar resumo de área
+  const getAreaSummary = () => {
+    if (!areaMin) return 'Área';
+    return `${areaMin}m²+`;
+  };
+
+  // Helper: gerar resumo de vagas
+  const getParkingSummary = () => {
+    if (!parkingSpots) return 'Vagas';
+    return `${parkingSpots} vagas`;
+  };
+
+  // Helper: contar filtros avançados ativos
+  const getAdvancedFiltersCount = () => {
+    let count = 0;
+    if (petFriendly) count++;
+    if (furnished) count++;
+    if (hasPool) count++;
+    if (hasGym) count++;
+    if (hasElevator) count++;
+    if (hasBalcony) count++;
+    if (hasPlayground) count++;
+    if (hasPartyRoom) count++;
+    if (hasGourmet) count++;
+    if (hasConcierge24h) count++;
+    if (comfortAC) count++;
+    if (comfortHeating) count++;
+    if (comfortSolar) count++;
+    if (comfortNoiseWindows) count++;
+    if (comfortLED) count++;
+    if (comfortWaterReuse) count++;
+    if (accRamps) count++;
+    if (accWideDoors) count++;
+    if (accAccessibleElevator) count++;
+    if (accTactile) count++;
+    if (finishCabinets) count++;
+    if (finishCounterGranite) count++;
+    if (finishCounterQuartz) count++;
+    if (viewSea) count++;
+    if (viewCity) count++;
+    if (positionFront) count++;
+    if (positionBack) count++;
+    if (petsSmall) count++;
+    if (petsLarge) count++;
+    if (condoFeeMin) count++;
+    if (condoFeeMax) count++;
+    if (iptuMin) count++;
+    if (iptuMax) count++;
+    if (keywords) count++;
+    if (yearBuiltMin) count++;
+    if (yearBuiltMax) count++;
+    return count;
+  };
 
   // Buscar sugestões da API quando o usuário digita na barra de resultados
   useEffect(() => {
@@ -984,11 +1074,13 @@ export default function Home() {
                   <div className="relative">
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'price' ? null : 'price')}
-                      className={`px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 ${
-                        activeFilterDropdown === 'price' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                        (minPrice || maxPrice)
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400'
+                          : activeFilterDropdown === 'price' ? 'border-blue-600 bg-blue-50' : 'bg-white border-gray-300 hover:border-gray-400'
                       }`}
                     >
-                      <span>Preço</span>
+                      <span>{getPriceSummary()}</span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
 
@@ -1050,11 +1142,13 @@ export default function Home() {
                   <div className="relative">
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'beds' ? null : 'beds')}
-                      className={`px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 ${
-                        activeFilterDropdown === 'beds' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                        (bedroomsMin || bathroomsMin)
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400'
+                          : activeFilterDropdown === 'beds' ? 'border-blue-600 bg-blue-50' : 'bg-white border-gray-300 hover:border-gray-400'
                       }`}
                     >
-                      <span>Quartos & Banheiros</span>
+                      <span>{getBedsBathsSummary()}</span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
 
@@ -1129,11 +1223,13 @@ export default function Home() {
                   <div className="relative">
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'type' ? null : 'type')}
-                      className={`px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 ${
-                        activeFilterDropdown === 'type' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                        type
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400'
+                          : activeFilterDropdown === 'type' ? 'border-blue-600 bg-blue-50' : 'bg-white border-gray-300 hover:border-gray-400'
                       }`}
                     >
-                      <span>Tipo de Imóvel</span>
+                      <span>{getTypeSummary()}</span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
 
@@ -1174,11 +1270,13 @@ export default function Home() {
                   <div className="relative">
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'area' ? null : 'area')}
-                      className={`px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 ${
-                        activeFilterDropdown === 'area' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                        areaMin
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400'
+                          : activeFilterDropdown === 'area' ? 'border-blue-600 bg-blue-50' : 'bg-white border-gray-300 hover:border-gray-400'
                       }`}
                     >
-                      <span>Área</span>
+                      <span>{getAreaSummary()}</span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
 
@@ -1226,11 +1324,13 @@ export default function Home() {
                   <div className="relative">
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'parking' ? null : 'parking')}
-                      className={`px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 ${
-                        activeFilterDropdown === 'parking' ? 'border-blue-600 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                        parkingSpots
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400'
+                          : activeFilterDropdown === 'parking' ? 'border-blue-600 bg-blue-50' : 'bg-white border-gray-300 hover:border-gray-400'
                       }`}
                     >
-                      <span>Vagas</span>
+                      <span>{getParkingSummary()}</span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
 
@@ -1265,9 +1365,13 @@ export default function Home() {
                   <div className="relative">
                     <button
                       onClick={() => setFiltersOpen(true)}
-                      className="px-3 py-2 border rounded-lg bg-white text-sm font-medium transition-colors flex items-center gap-1 border-gray-300 hover:border-gray-400"
+                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                        getAdvancedFiltersCount() > 0
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400'
+                          : 'bg-white border-gray-300 hover:border-gray-400'
+                      }`}
                     >
-                      <span>Mais</span>
+                      <span>Mais{getAdvancedFiltersCount() > 0 ? ` (${getAdvancedFiltersCount()})` : ''}</span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
                   </div>
