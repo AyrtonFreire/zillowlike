@@ -173,11 +173,39 @@ export async function GET(req: NextRequest) {
     const propertyStatus = searchParams.get("propertyStatus"); // Renamed to avoid conflict with listing status
     const petFriendly = searchParams.get("petFriendly");
     const furnished = searchParams.get("furnished");
+    // Lazer / Condomínio
     const hasPool = searchParams.get("hasPool");
     const hasGym = searchParams.get("hasGym");
     const hasElevator = searchParams.get("hasElevator");
     const hasBalcony = searchParams.get("hasBalcony");
+    const hasPlayground = searchParams.get("hasPlayground");
+    const hasPartyRoom = searchParams.get("hasPartyRoom");
+    const hasGourmet = searchParams.get("hasGourmet");
+    const hasConcierge24h = searchParams.get("hasConcierge24h");
+    // Conforto / Energia
+    const comfortAC = searchParams.get("comfortAC");
+    const comfortHeating = searchParams.get("comfortHeating");
+    const comfortSolar = searchParams.get("comfortSolar");
+    const comfortNoiseWindows = searchParams.get("comfortNoiseWindows");
+    const comfortLED = searchParams.get("comfortLED");
+    const comfortWaterReuse = searchParams.get("comfortWaterReuse");
+    // Acessibilidade
+    const accRamps = searchParams.get("accRamps");
+    const accWideDoors = searchParams.get("accWideDoors");
+    const accAccessibleElevator = searchParams.get("accAccessibleElevator");
+    const accTactile = searchParams.get("accTactile");
+    // Acabamentos
+    const finishCabinets = searchParams.get("finishCabinets");
+    const finishCounterGranite = searchParams.get("finishCounterGranite");
+    const finishCounterQuartz = searchParams.get("finishCounterQuartz");
+    // Vista / Posição
     const viewSea = searchParams.get("viewSea");
+    const viewCity = searchParams.get("viewCity");
+    const positionFront = searchParams.get("positionFront");
+    const positionBack = searchParams.get("positionBack");
+    // Pets
+    const petsSmall = searchParams.get("petsSmall");
+    const petsLarge = searchParams.get("petsLarge");
     const condoFeeMax = searchParams.get("condoFeeMax");
     const iptuMax = searchParams.get("iptuMax");
     const keywords = searchParams.get("keywords");
@@ -191,11 +219,39 @@ export async function GET(req: NextRequest) {
     if (propertyStatus) where.conditionTags = { has: propertyStatus };
     if (petFriendly === "true") where.petFriendly = true;
     if (furnished === "true") where.furnished = true;
+    // Lazer / Condomínio
     if (hasPool === "true") where.hasPool = true;
     if (hasGym === "true") where.hasGym = true;
     if (hasElevator === "true") where.hasElevator = true;
     if (hasBalcony === "true") where.hasBalcony = true;
+    if (hasPlayground === "true") where.hasPlayground = true;
+    if (hasPartyRoom === "true") where.hasPartyRoom = true;
+    if (hasGourmet === "true") where.hasGourmet = true;
+    if (hasConcierge24h === "true") where.hasConcierge24h = true;
+    // Conforto / Energia
+    if (comfortAC === "true") where.comfortAC = true;
+    if (comfortHeating === "true") where.comfortHeating = true;
+    if (comfortSolar === "true") where.comfortSolar = true;
+    if (comfortNoiseWindows === "true") where.comfortNoiseWindows = true;
+    if (comfortLED === "true") where.comfortLED = true;
+    if (comfortWaterReuse === "true") where.comfortWaterReuse = true;
+    // Acessibilidade
+    if (accRamps === "true") where.accRamps = true;
+    if (accWideDoors === "true") where.accWideDoors = true;
+    if (accAccessibleElevator === "true") where.accAccessibleElevator = true;
+    if (accTactile === "true") where.accTactile = true;
+    // Acabamentos
+    if (finishCabinets === "true") where.finishCabinets = true;
+    if (finishCounterGranite === "true") where.finishCounterGranite = true;
+    if (finishCounterQuartz === "true") where.finishCounterQuartz = true;
+    // Vista / Posição
     if (viewSea === "true") where.viewSea = true;
+    if (viewCity === "true") where.viewCity = true;
+    if (positionFront === "true") where.positionFront = true;
+    if (positionBack === "true") where.positionBack = true;
+    // Pets
+    if (petsSmall === "true") where.petsSmall = true;
+    if (petsLarge === "true") where.petsLarge = true;
     if (condoFeeMax) where.condoFee = { lte: Number(condoFeeMax) };
     if (iptuMax) {
       // IPTU não existe no schema atual, mas preparado para quando adicionar

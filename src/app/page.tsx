@@ -116,7 +116,7 @@ export default function Home() {
   const [parkingSpots, setParkingSpots] = useState("");
   const [yearBuiltMin, setYearBuiltMin] = useState("");
   const [yearBuiltMax, setYearBuiltMax] = useState("");
-  const [status, setStatus] = useState("");
+  const [purpose, setPurpose] = useState("");
   const [petFriendly, setPetFriendly] = useState(false);
   const [furnished, setFurnished] = useState(false);
   const [hasPool, setHasPool] = useState(false);
@@ -181,7 +181,7 @@ export default function Home() {
     setParkingSpots(filters.parkingSpots || "");
     setYearBuiltMin(filters.yearBuiltMin || "");
     setYearBuiltMax(filters.yearBuiltMax || "");
-    setStatus(filters.status || "");
+    setPurpose(filters.purpose || "");
     setPetFriendly(filters.petFriendly === "true");
     setFurnished(filters.furnished === "true");
     setHasPool(filters.hasPool === "true");
@@ -259,12 +259,12 @@ export default function Home() {
       bedroomsMin, 
       bathroomsMin, 
       areaMin, 
-      status,
+      purpose,
       sort, 
       page: 1 
     });
     router.push(`/?${params}`);
-  }, [type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, router]);
+  }, [type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, router]);
 
   // Aplicar busca quando usuário aperta Enter ou clica na lupa
   const applySearch = useCallback(() => {
@@ -282,14 +282,14 @@ export default function Home() {
       bedroomsMin,
       bathroomsMin,
       areaMin,
-      status,
+      purpose,
       sort,
       page: 1
     });
 
     setShowSearchSuggestions(false);
     router.push(`/?${params}`);
-  }, [searchInput, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, router]);
+  }, [searchInput, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, router]);
 
   // Helper para buscar categoria com fallback por localidade (pode receber city/state overrides)
   const fetchCategory = useCallback(async (baseParams: Record<string, any>, loc?: { city?: string; state?: string }) => {
@@ -432,7 +432,7 @@ export default function Home() {
       .then(async res => {
         if (!res.ok) {
           const text = await res.text();
-          console.error('Search failed (HTTP error):', { status: res.status, statusText: res.statusText, body: text });
+          console.error('Search failed (HTTP error):', { purpose: res.status, statusText: res.statusText, body: text });
           setSearchError('Não conseguimos carregar os imóveis agora. Se quiser, tente novamente em alguns instantes.');
           return null;
         }
@@ -836,10 +836,10 @@ export default function Home() {
                   <div className="flex-1 flex items-center gap-2 flex-wrap">
                   {/* For Sale / Aluguel */}
                   <select
-                    value={status}
+                    value={purpose}
                     onChange={(e) => {
-                      setStatus(e.target.value);
-                      const params = buildSearchParams({ q: search, city, state, status: e.target.value, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                      setPurpose(e.target.value);
+                      const params = buildSearchParams({ q: search, city, state, purpose: e.target.value, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
                       router.push(`/?${params}`);
                     }}
                     className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium hover:border-gray-400 transition-colors cursor-pointer"
@@ -900,7 +900,7 @@ export default function Home() {
                             </button>
                             <button
                               onClick={() => {
-                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
@@ -979,7 +979,7 @@ export default function Home() {
                             </button>
                             <button
                               onClick={() => {
-                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
@@ -1020,7 +1020,7 @@ export default function Home() {
                               key={option.value}
                               onClick={() => {
                                 setType(option.value);
-                                const params = buildSearchParams({ q: search, city, state, type: option.value, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                                const params = buildSearchParams({ q: search, city, state, type: option.value, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
@@ -1076,7 +1076,7 @@ export default function Home() {
                             </button>
                             <button
                               onClick={() => {
-                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
@@ -1111,7 +1111,7 @@ export default function Home() {
                               key={spots}
                               onClick={() => {
                                 setParkingSpots(spots);
-                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, parkingSpots: spots, status, sort, page: 1 });
+                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, parkingSpots: spots, purpose, sort, page: 1 });
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
@@ -1229,7 +1229,7 @@ export default function Home() {
                           setSearch('');
                           setCity('');
                           setState('');
-                          const params = buildSearchParams({ type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          const params = buildSearchParams({ type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1246,7 +1246,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setType('');
-                          const params = buildSearchParams({ q: search, city, state, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1263,7 +1263,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setMinPrice('');
-                          const params = buildSearchParams({ q: search, city, state, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1280,7 +1280,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setMaxPrice('');
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1297,7 +1297,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setBedroomsMin('');
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bathroomsMin, areaMin, status, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1314,7 +1314,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setBathroomsMin('');
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, areaMin, status, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1331,7 +1331,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setPetFriendly(false);
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1348,7 +1348,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setFurnished(false);
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1365,7 +1365,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setHasPool(false);
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1382,7 +1382,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setHasGym(false);
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1426,7 +1426,7 @@ export default function Home() {
                           parkingSpots,
                           yearBuiltMin,
                           yearBuiltMax,
-                          status,
+                          purpose,
                           petFriendly: petFriendly ? 'true' : '',
                           furnished: furnished ? 'true' : '',
                           hasPool: hasPool ? 'true' : '',
@@ -1494,7 +1494,7 @@ export default function Home() {
                         setSearch('');
                         setCity('');
                         setState('');
-                        const params = buildSearchParams({ type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                        const params = buildSearchParams({ type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1511,7 +1511,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setType('');
-                        const params = buildSearchParams({ q: search, city, state, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1528,7 +1528,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setMinPrice('');
-                        const params = buildSearchParams({ q: search, city, state, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1545,7 +1545,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setMaxPrice('');
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, type, minPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1562,7 +1562,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setBedroomsMin('');
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bathroomsMin, areaMin, status, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1579,7 +1579,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setBathroomsMin('');
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, areaMin, status, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1596,7 +1596,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setPetFriendly(false);
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1613,7 +1613,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setFurnished(false);
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1630,7 +1630,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setHasPool(false);
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1647,7 +1647,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setHasGym(false);
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, status, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
@@ -1828,7 +1828,7 @@ export default function Home() {
                     parkingSpots,
                     yearBuiltMin,
                     yearBuiltMax,
-                    status,
+                    purpose,
                     petFriendly: petFriendly ? "true" : "",
                     furnished: furnished ? "true" : "",
                     hasPool: hasPool ? "true" : "",
@@ -2069,7 +2069,7 @@ export default function Home() {
             parkingSpots,
             yearBuiltMin,
             yearBuiltMax,
-            status,
+            purpose,
             petFriendly,
             furnished,
             hasPool,
@@ -2119,7 +2119,7 @@ export default function Home() {
             setParkingSpots(newFilters.parkingSpots);
             setYearBuiltMin(newFilters.yearBuiltMin);
             setYearBuiltMax(newFilters.yearBuiltMax);
-            setStatus(newFilters.status);
+            setPurpose(newFilters.purpose);
             setPetFriendly(newFilters.petFriendly);
             setFurnished(newFilters.furnished);
             setHasPool(newFilters.hasPool);
@@ -2181,7 +2181,7 @@ export default function Home() {
               parkingSpots: appliedFilters.parkingSpots,
               yearBuiltMin: appliedFilters.yearBuiltMin,
               yearBuiltMax: appliedFilters.yearBuiltMax,
-              status: appliedFilters.status,
+              purpose: appliedFilters.purpose,
               petFriendly: appliedFilters.petFriendly ? 'true' : '',
               furnished: appliedFilters.furnished ? 'true' : '',
               hasPool: appliedFilters.hasPool ? 'true' : '',
@@ -2271,7 +2271,7 @@ export default function Home() {
                   parkingSpots,
                   yearBuiltMin,
                   yearBuiltMax,
-                  status,
+                  purpose,
                   petFriendly: petFriendly ? "true" : "",
                   furnished: furnished ? "true" : "",
                   hasPool: hasPool ? "true" : "",

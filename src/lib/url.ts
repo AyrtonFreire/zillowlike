@@ -20,7 +20,7 @@ export type Filters = {
   parkingSpots?: string;
   yearBuiltMin?: string;
   yearBuiltMax?: string;
-  status?: string;
+  purpose?: string;
   petFriendly?: string; // "true" | "false"
   furnished?: string;
   hasPool?: string;
@@ -89,7 +89,7 @@ export function parseFiltersFromSearchParams(sp: URLSearchParams): Filters {
   f.parkingSpots = get("parkingSpots");
   f.yearBuiltMin = get("yearBuiltMin");
   f.yearBuiltMax = get("yearBuiltMax");
-  f.status = get("status");
+  f.purpose = get("purpose");
   f.petFriendly = get("petFriendly");
   f.furnished = get("furnished");
   f.hasPool = get("hasPool");
@@ -154,7 +154,7 @@ export function buildSearchParams(filters: Filters): string {
   if (filters.parkingSpots) p.set("parkingSpots", filters.parkingSpots);
   if (filters.yearBuiltMin) p.set("yearBuiltMin", filters.yearBuiltMin);
   if (filters.yearBuiltMax) p.set("yearBuiltMax", filters.yearBuiltMax);
-  if (filters.status) p.set("status", filters.status);
+  if (filters.purpose) p.set("purpose", filters.purpose);
   if (filters.petFriendly) p.set("petFriendly", filters.petFriendly);
   if (filters.furnished) p.set("furnished", filters.furnished);
   if (filters.hasPool) p.set("hasPool", filters.hasPool);

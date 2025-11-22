@@ -14,7 +14,7 @@ type FilterValues = {
   parkingSpots: string;
   yearBuiltMin: string;
   yearBuiltMax: string;
-  status: string;
+  purpose: string;
   petFriendly: boolean;
   furnished: boolean;
   // Lazer / Condomínio
@@ -95,7 +95,7 @@ export default function SearchFiltersBarZillow({
   const handleClear = () => {
     const cleared: FilterValues = {
       minPrice: '', maxPrice: '', bedrooms: '', bathrooms: '', type: '', areaMin: '',
-      parkingSpots: '', yearBuiltMin: '', yearBuiltMax: '', status: '',
+      parkingSpots: '', yearBuiltMin: '', yearBuiltMax: '', purpose: '',
       petFriendly: false, furnished: false,
       hasPool: false, hasGym: false, hasElevator: false, hasBalcony: false,
       hasPlayground: false, hasPartyRoom: false, hasGourmet: false, hasConcierge24h: false,
@@ -138,7 +138,7 @@ export default function SearchFiltersBarZillow({
           parkingSpots: localFilters.parkingSpots,
           yearBuiltMin: localFilters.yearBuiltMin,
           yearBuiltMax: localFilters.yearBuiltMax,
-          status: localFilters.status,
+          purpose: localFilters.purpose,
           petFriendly: localFilters.petFriendly ? 'true' : '',
           furnished: localFilters.furnished ? 'true' : '',
           hasPool: localFilters.hasPool ? 'true' : '',
@@ -252,6 +252,36 @@ export default function SearchFiltersBarZillow({
               </button>
               <button onClick={() => updateFilter('furnished', true)} className="px-3 py-2 text-sm font-medium bg-white border border-gray-200 rounded-full hover:border-teal-dark hover:text-teal-dark transition-colors">
                 Mobiliado
+              </button>
+            </div>
+          </div>
+
+          {/* Para Alugar / Para Vender */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Home className="w-5 h-5 text-teal-600" />
+              <h3 className="text-sm font-bold text-gray-900">Tipo de Anúncio</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => updateFilter('purpose', localFilters.purpose === 'SALE' ? '' : 'SALE')}
+                className={`px-4 py-3 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2 ${
+                  localFilters.purpose === 'SALE'
+                    ? 'glass-teal text-white shadow-md'
+                    : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
+                }`}
+              >
+                <span>Para Vender</span>
+              </button>
+              <button
+                onClick={() => updateFilter('purpose', localFilters.purpose === 'RENT' ? '' : 'RENT')}
+                className={`px-4 py-3 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2 ${
+                  localFilters.purpose === 'RENT'
+                    ? 'glass-teal text-white shadow-md'
+                    : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
+                }`}
+              >
+                <span>Para Alugar</span>
               </button>
             </div>
           </div>

@@ -257,44 +257,176 @@ export default function MobileHeaderZillow() {
                   )}
                 </div>
 
-                {/* Mortgage */}
-                <Link
-                  href="/calculadora"
-                  onClick={() => setIsLeftMenuOpen(false)}
-                  className="flex items-center justify-between px-5 py-3.5 text-sm font-medium text-gray-900 border-b border-gray-100 hover:bg-gray-50"
-                >
-                  <span className="flex items-center gap-3">
-                    <LineChart className="w-5 h-5 text-teal-600" />
-                    <span>Calculadora de financiamento</span>
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </Link>
+                {/* Resources */}
+                <div className="mt-2 border-t border-gray-100 pt-2">
+                  <button
+                    onClick={() => toggleSection("resources")}
+                    className="w-full flex items-center justify-between px-5 py-3 text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <LineChart className="w-5 h-5 text-teal-600" />
+                      <div>
+                        <span className="block text-sm font-semibold text-gray-900">Recursos</span>
+                        <span className="block text-xs text-gray-500">Guias, ferramentas e serviços</span>
+                      </div>
+                    </div>
+                    <ChevronDown
+                      className={`w-5 h-5 text-gray-500 transition-transform ${
+                        expandedSection === "resources" ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
 
-                {/* Find agent */}
-                <Link
-                  href="/realtor"
-                  onClick={() => setIsLeftMenuOpen(false)}
-                  className="flex items-center justify-between px-5 py-3.5 text-sm font-medium text-gray-900 border-b border-gray-100 hover:bg-gray-50"
-                >
-                  <span className="flex items-center gap-3">
-                    <Users className="w-5 h-5 text-teal-600" />
-                    <span>Encontrar corretor</span>
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </Link>
+                  {expandedSection === "resources" && (
+                    <div className="bg-gray-50 pt-2 pb-4 space-y-4">
+                      {/* Guias e Dicas */}
+                      <div>
+                        <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                          Guias e dicas
+                        </div>
+                        <div className="space-y-1">
+                          <Link
+                            href="/guia/compra"
+                            onClick={() => setIsLeftMenuOpen(false)}
+                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                          >
+                            <span className="flex items-center gap-3">
+                              <Home className="w-4 h-4 text-teal-600" />
+                              <span>Guia do comprador</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                          <Link
+                            href="/guia/locacao"
+                            onClick={() => setIsLeftMenuOpen(false)}
+                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                          >
+                            <span className="flex items-center gap-3">
+                              <Home className="w-4 h-4 text-teal-600" />
+                              <span>Guia do inquilino</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                          <Link
+                            href="/guia/venda"
+                            onClick={() => setIsLeftMenuOpen(false)}
+                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                          >
+                            <span className="flex items-center gap-3">
+                              <Megaphone className="w-4 h-4 text-teal-600" />
+                              <span>Guia do vendedor</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                          <Link
+                            href="/como-anunciar"
+                            onClick={() => setIsLeftMenuOpen(false)}
+                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                          >
+                            <span className="flex items-center gap-3">
+                              <ClipboardList className="w-4 h-4 text-teal-600" />
+                              <span>Como anunciar</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                        </div>
+                      </div>
 
-                {/* Help */}
-                <Link
-                  href="/ajuda"
-                  onClick={() => setIsLeftMenuOpen(false)}
-                  className="flex items-center justify-between px-5 py-3.5 text-sm font-medium text-gray-900 hover:bg-gray-50"
-                >
-                  <span className="flex items-center gap-3">
-                    <ClipboardList className="w-5 h-5 text-teal-600" />
-                    <span>Ajuda</span>
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </Link>
+                      {/* Ferramentas */}
+                      <div>
+                        <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                          Ferramentas
+                        </div>
+                        <div className="space-y-1">
+                          <Link
+                            href="/calculadora"
+                            onClick={() => setIsLeftMenuOpen(false)}
+                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                          >
+                            <span className="flex items-center gap-3">
+                              <LineChart className="w-4 h-4 text-teal-600" />
+                              <span>Calculadora de financiamento</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Serviços */}
+                      <div>
+                        <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                          Serviços
+                        </div>
+                        <div className="space-y-1">
+                          <Link
+                            href="/financing"
+                            onClick={() => setIsLeftMenuOpen(false)}
+                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                          >
+                            <span className="flex items-center gap-3">
+                              <Building2 className="w-4 h-4 text-teal-600" />
+                              <span>Financiamento imobiliário</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                          <Link
+                            href="/owner/analytics"
+                            onClick={() => setIsLeftMenuOpen(false)}
+                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                          >
+                            <span className="flex items-center gap-3">
+                              <LineChart className="w-4 h-4 text-teal-600" />
+                              <span>Análise de mercado</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                          <Link
+                            href="/realtor"
+                            onClick={() => setIsLeftMenuOpen(false)}
+                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                          >
+                            <span className="flex items-center gap-3">
+                              <Users className="w-4 h-4 text-teal-600" />
+                              <span>Encontrar corretor</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Minha conta */}
+                      <div>
+                        <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                          Minha conta
+                        </div>
+                        <div className="space-y-1">
+                          <Link
+                            href="/saved-searches"
+                            onClick={() => setIsLeftMenuOpen(false)}
+                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                          >
+                            <span className="flex items-center gap-3">
+                              <Bookmark className="w-4 h-4 text-teal-600" />
+                              <span>Buscas salvas</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                          <Link
+                            href="/favorites"
+                            onClick={() => setIsLeftMenuOpen(false)}
+                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                          >
+                            <span className="flex items-center gap-3">
+                              <Heart className="w-4 h-4 text-teal-600" />
+                              <span>Meus favoritos</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           </>
