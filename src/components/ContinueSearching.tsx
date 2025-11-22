@@ -5,28 +5,94 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import type { ApiProperty } from "@/types/api";
 import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function ContinueSearching() {
   const { data: session } = useSession();
   const router = useRouter();
   const user = (session as any)?.user || null;
-  
+
   const [label, setLabel] = useState<string | null>(null);
-  const [params, setParams] = useState<string | null>(null);
+  const [query, setQuery] = useState<string | null>(null);
+  const [mode, setMode] = useState<"lastSearch" | "featured">("lastSearch");
   const [items, setItems] = useState<ApiProperty[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState<number>(0);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("lastSearch");
-      if (!raw) return;
-      const obj = JSON.parse(raw);
-      if (obj?.label) setLabel(String(obj.label));
-      if (obj?.params) setParams(String(obj.params));
-    } catch {}
+    let cancelled = false;
+
+    async function init() {
+      // Tentar usar a última busca salva
+      try {
+        if (typeof window !== "undefined") {
+          const raw = localStorage.getItem("lastSearch");
+          if (raw) {
+            const obj = JSON.parse(raw);
+            const lastLabel = obj?.label ? String(obj.label) : "Sua última busca";
+            const lastParams = obj?.params ? String(obj.params) : null;
+            if (lastParams) {
+              if (cancelled) return;
+              setMode("lastSearch");
+              setLabel(lastLabel);
+              // Reaproveita a mesma query da última busca, adicionando paginação padrão
+              setQuery(`${lastParams}&page=1&pageSize=12&sort=recent`);
+              return;
+            }
+          }
+        }
+      } catch {}
+
+      // Fallback: imóveis em destaque na região do usuário
+      setMode("featured");
+
+      let preferredCity: string | undefined;
+      let preferredState: string | undefined;
+
+      try {
+        if (typeof window !== "undefined") {
+          preferredCity = localStorage.getItem("lastCity") || undefined;
+          preferredState = localStorage.getItem("lastState") || undefined;
+        }
+
+        if (!preferredCity || !preferredState) {
+          const res = await fetch("/api/properties?pageSize=1&sort=recent");
+          if (res.ok) {
+            const data = await res.json();
+            const first = data?.properties?.[0];
+            if (first?.city && first?.state) {
+              preferredCity = preferredCity || first.city;
+              preferredState = preferredState || first.state;
+            }
+          }
+        }
+      } catch {}
+
+      if (cancelled) return;
+
+      const headerLabel =
+        preferredCity && preferredState
+          ? `Imóveis em destaque em ${preferredCity}, ${preferredState}`
+          : "Imóveis em destaque";
+
+      setLabel(headerLabel);
+
+      const params = new URLSearchParams();
+      params.set("page", "1");
+      params.set("pageSize", "12");
+      params.set("sort", "recent");
+      if (preferredCity) params.set("city", preferredCity);
+      if (preferredState) params.set("state", preferredState);
+
+      setQuery(params.toString());
+    }
+
+    init();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // (Removido) favoritos locais para simplificar o card
@@ -34,26 +100,28 @@ export default function ContinueSearching() {
   useEffect(() => {
     let ignore = false;
     async function load() {
-      if (!params) return;
+      if (!query) return;
       setLoading(true);
       try {
-        const url = `/api/properties?${params}&page=1&pageSize=12&sort=recent`;
+        const url = `/api/properties?${query}`;
         const r = await fetch(url);
         if (!r.ok) return;
         const d = await r.json();
         if (!ignore) {
           setItems(Array.isArray(d.properties) ? d.properties : []);
-          setTotal(typeof d.total === 'number' ? d.total : (Array.isArray(d.properties) ? d.properties.length : 0));
+          setTotal(typeof d.total === "number" ? d.total : (Array.isArray(d.properties) ? d.properties.length : 0));
         }
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     }
     load();
-    return () => { ignore = true; };
-  }, [params]);
-  
-  if (!params) return null;
+    return () => {
+      ignore = true;
+    };
+  }, [query]);
+
+  if (!label) return null;
 
   const scrollBy = (delta: number) => {
     const el = scrollerRef.current;
@@ -62,7 +130,8 @@ export default function ContinueSearching() {
   };
 
   const handleGoToSearch = () => {
-    router.push(`/?${params}`);
+    if (!query) return;
+    router.push(`/?${query}`);
   };
 
   return (
@@ -75,17 +144,17 @@ export default function ContinueSearching() {
               className="text-left group"
             >
               <div className="text-[11px] sm:text-xs font-semibold tracking-[0.18em] text-teal-600 uppercase mb-1">
-                Continue sua busca
+                {mode === "lastSearch" ? "Continue sua busca" : "Imóveis em destaque na sua região"}
               </div>
               <div className="text-xl sm:text-2xl font-bold text-gray-900 group-hover:text-teal transition-colors">
                 {label}
               </div>
             </button>
             <div className="mt-1 text-xs sm:text-sm text-gray-500 flex items-center gap-2">
-              Baseado na sua última busca
+              {mode === "lastSearch" ? "Baseado na sua última busca" : "Imóveis que podem te interessar perto de você"}
               {total > 0 && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full glass-teal text-white text-[10px] sm:text-xs font-medium">
-                  {total} {total === 1 ? 'imóvel' : 'imóveis'}
+                  {total} {total === 1 ? "imóvel" : "imóveis"}
                 </span>
               )}
             </div>
