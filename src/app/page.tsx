@@ -961,18 +961,23 @@ export default function Home() {
 
                   {/* Filter Buttons - Right Side (Desktop) */}
                   <div className="flex-1 flex items-center gap-2 flex-wrap">
-                  {/* For Sale / Aluguel */}
+                  {/* Finalidade: Para venda / Para alugar */}
                   <select
-                    value={purpose}
+                    value={purpose || "SALE"}
                     onChange={(e) => {
-                      setPurpose(e.target.value);
-                      const params = buildSearchParams({ q: search, city, state, purpose: e.target.value, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                      const newPurpose = e.target.value as "SALE" | "RENT";
+                      setPurpose(newPurpose);
+                      const params = buildSearchParams({ q: search, city, state, purpose: newPurpose, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
                       router.push(`/?${params}`);
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium hover:border-gray-400 transition-colors cursor-pointer"
+                    className={`px-3 py-2 rounded-full text-sm font-semibold cursor-pointer border transition-colors ${
+                      (purpose || "SALE") === "SALE" || (purpose || "SALE") === "RENT"
+                        ? "bg-emerald-50 border-emerald-300 text-emerald-800 hover:border-emerald-400"
+                        : "bg-white border-gray-300 text-gray-700 hover:border-gray-400"
+                    }`}
                   >
-                    <option value="">Para Venda</option>
-                    <option value="RENT">Para Alugar</option>
+                    <option value="SALE">Para venda</option>
+                    <option value="RENT">Para alugar</option>
                   </select>
 
                   {/* Price */}
@@ -1345,7 +1350,7 @@ export default function Home() {
                   
                   {/* Localização (cidade / busca) */}
                   {(city || search) && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                       <span>
                         {search
                           ? search
@@ -1359,7 +1364,7 @@ export default function Home() {
                           const params = buildSearchParams({ type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
-                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1368,7 +1373,7 @@ export default function Home() {
 
                   {/* Tipo de imóvel */}
                   {type && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                       <span>{type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type === 'CONDO' ? 'Condomínio' : 'Terreno'}</span>
                       <button
                         onClick={() => {
@@ -1376,7 +1381,7 @@ export default function Home() {
                           const params = buildSearchParams({ q: search, city, state, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
-                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1385,7 +1390,7 @@ export default function Home() {
 
                   {/* Preço mínimo */}
                   {minPrice && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                       <span>Min: R$ {parseInt(minPrice).toLocaleString('pt-BR')}</span>
                       <button
                         onClick={() => {
@@ -1393,7 +1398,7 @@ export default function Home() {
                           const params = buildSearchParams({ q: search, city, state, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
-                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1402,7 +1407,7 @@ export default function Home() {
 
                   {/* Preço máximo */}
                   {maxPrice && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                       <span>Max: R$ {parseInt(maxPrice).toLocaleString('pt-BR')}</span>
                       <button
                         onClick={() => {
@@ -1410,7 +1415,7 @@ export default function Home() {
                           const params = buildSearchParams({ q: search, city, state, type, minPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
-                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1419,7 +1424,7 @@ export default function Home() {
 
                   {/* Quartos */}
                   {bedroomsMin && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                       <span>{bedroomsMin}+ quartos</span>
                       <button
                         onClick={() => {
@@ -1427,7 +1432,7 @@ export default function Home() {
                           const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
-                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1436,7 +1441,7 @@ export default function Home() {
 
                   {/* Banheiros */}
                   {bathroomsMin && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                       <span>{bathroomsMin}+ banheiros</span>
                       <button
                         onClick={() => {
@@ -1444,7 +1449,7 @@ export default function Home() {
                           const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
-                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1453,7 +1458,7 @@ export default function Home() {
 
                   {/* Pet Friendly */}
                   {petFriendly && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                       <span>Aceita Pets</span>
                       <button
                         onClick={() => {
@@ -1461,7 +1466,7 @@ export default function Home() {
                           const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
-                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1470,7 +1475,7 @@ export default function Home() {
 
                   {/* Mobiliado */}
                   {furnished && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                       <span>Mobiliado</span>
                       <button
                         onClick={() => {
@@ -1478,7 +1483,7 @@ export default function Home() {
                           const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
-                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1487,7 +1492,7 @@ export default function Home() {
 
                   {/* Piscina */}
                   {hasPool && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                       <span>Piscina</span>
                       <button
                         onClick={() => {
@@ -1495,7 +1500,7 @@ export default function Home() {
                           const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
-                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1504,7 +1509,7 @@ export default function Home() {
 
                   {/* Academia */}
                   {hasGym && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                       <span>Academia</span>
                       <button
                         onClick={() => {
@@ -1512,7 +1517,7 @@ export default function Home() {
                           const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
-                        className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                        className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1610,7 +1615,7 @@ export default function Home() {
                 
                 {/* Localização (cidade / busca) */}
                 {(city || search) && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                     <span>
                       {search
                         ? search
@@ -1624,7 +1629,24 @@ export default function Home() {
                         const params = buildSearchParams({ type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
-                      className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Finalidade (venda / aluguel) */}
+                {purpose && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
+                    <span>{purpose === 'RENT' ? 'Para alugar' : 'Para venda'}</span>
+                    <button
+                      onClick={() => {
+                        setPurpose('');
+                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                        router.push(`/?${params}`);
+                      }}
+                      className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1633,7 +1655,7 @@ export default function Home() {
 
                 {/* Tipo de imóvel */}
                 {type && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                     <span>{type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type === 'CONDO' ? 'Condomínio' : 'Terreno'}</span>
                     <button
                       onClick={() => {
@@ -1641,7 +1663,7 @@ export default function Home() {
                         const params = buildSearchParams({ q: search, city, state, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
-                      className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1650,7 +1672,7 @@ export default function Home() {
 
                 {/* Preço mínimo */}
                 {minPrice && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                     <span>Min: R$ {parseInt(minPrice).toLocaleString('pt-BR')}</span>
                     <button
                       onClick={() => {
@@ -1658,7 +1680,7 @@ export default function Home() {
                         const params = buildSearchParams({ q: search, city, state, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
-                      className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1667,7 +1689,7 @@ export default function Home() {
 
                 {/* Preço máximo */}
                 {maxPrice && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                     <span>Max: R$ {parseInt(maxPrice).toLocaleString('pt-BR')}</span>
                     <button
                       onClick={() => {
@@ -1675,7 +1697,7 @@ export default function Home() {
                         const params = buildSearchParams({ q: search, city, state, type, minPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
-                      className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1684,7 +1706,7 @@ export default function Home() {
 
                 {/* Quartos */}
                 {bedroomsMin && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                     <span>{bedroomsMin}+ quartos</span>
                     <button
                       onClick={() => {
@@ -1692,7 +1714,7 @@ export default function Home() {
                         const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
-                      className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1701,7 +1723,7 @@ export default function Home() {
 
                 {/* Banheiros */}
                 {bathroomsMin && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                     <span>{bathroomsMin}+ banheiros</span>
                     <button
                       onClick={() => {
@@ -1709,7 +1731,7 @@ export default function Home() {
                         const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
-                      className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1718,7 +1740,7 @@ export default function Home() {
 
                 {/* Pet Friendly */}
                 {petFriendly && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                     <span>Aceita Pets</span>
                     <button
                       onClick={() => {
@@ -1726,7 +1748,7 @@ export default function Home() {
                         const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
-                      className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1735,7 +1757,7 @@ export default function Home() {
 
                 {/* Mobiliado */}
                 {furnished && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                     <span>Mobiliado</span>
                     <button
                       onClick={() => {
@@ -1743,7 +1765,7 @@ export default function Home() {
                         const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
-                      className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1752,7 +1774,7 @@ export default function Home() {
 
                 {/* Piscina */}
                 {hasPool && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                     <span>Piscina</span>
                     <button
                       onClick={() => {
@@ -1760,7 +1782,7 @@ export default function Home() {
                         const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
-                      className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1769,7 +1791,7 @@ export default function Home() {
 
                 {/* Academia */}
                 {hasGym && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium text-gray-700 hover:border-gray-400 transition-colors">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
                     <span>Academia</span>
                     <button
                       onClick={() => {
@@ -1777,7 +1799,7 @@ export default function Home() {
                         const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
-                      className="hover:bg-gray-100 rounded-full p-0.5 transition-colors"
+                      className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
