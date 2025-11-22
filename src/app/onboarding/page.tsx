@@ -25,13 +25,6 @@ export default function OnboardingPage() {
     if (isAdmin) return;
     if (!selectedRole) return;
 
-    // Se o usuário escolher Corretor, encaminhamos para o fluxo completo de aplicação,
-    // sem alterar a role diretamente via API.
-    if (selectedRole === "REALTOR") {
-      router.push("/become-realtor");
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await fetch("/api/user/update-role", {
@@ -44,8 +37,12 @@ export default function OnboardingPage() {
         // Update session
         await update();
         
-        // Neste fluxo só chegamos aqui como Proprietário
-        router.push("/owner/dashboard");
+        // Redireciona conforme o perfil escolhido
+        if (selectedRole === "REALTOR") {
+          router.push("/broker/dashboard");
+        } else {
+          router.push("/owner/dashboard");
+        }
       } else {
         alert("Erro ao atualizar perfil. Tente novamente.");
       }

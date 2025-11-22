@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
             dashboardUrl,
           });
           await sendEmail({
-            to: application.user.email,
+            to: application.user.email!,
             ...emailData,
           });
           console.log("✅ Realtor approval email sent to:", application.user.email);

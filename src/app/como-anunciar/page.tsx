@@ -199,7 +199,7 @@ export default function ComoAnunciarPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-600 mb-2">Passo 1</p>
             <h3 className="text-lg font-bold text-gray-900 mb-2">Crie sua conta e defina o perfil</h3>
             <p className="text-sm text-gray-700 mb-4 flex-1">
-              Acesse o site, crie seu login, cadastre um telefone para contato e informe se é corretor(a) ou anuncie um imóvel grátis como pessoa física para ter o perfil atualizado para Proprietário(a). Isso desbloqueia os fluxos corretos para cada tipo de usuário.
+              Acesse o site, crie seu login, cadastre e valide seu telefone para contato via SMS em Meu Perfil e informe se é corretor(a) ou pessoa física. Ao anunciar um imóvel grátis como pessoa física, seu perfil é atualizado automaticamente para Proprietário(a), desbloqueando os fluxos corretos para cada tipo de usuário.
             </p>
             <Link href="/onboarding" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
               Ir para onboarding
@@ -211,7 +211,7 @@ export default function ComoAnunciarPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-600 mb-2">Passo 2</p>
             <h3 className="text-lg font-bold text-gray-900 mb-2">Cadastre o imóvel com riqueza de detalhes</h3>
             <p className="text-sm text-gray-700 mb-4 flex-1">
-              Informe localização, características, comodidades, fotos de qualidade e diferenciais do imóvel. Quanto mais completo, melhor a performance do anúncio.
+              Informe localização, características, comodidades, fotos de qualidade e diferenciais do imóvel. Ao final, você revisa o anúncio e confirma o telefone de contato usado nas ligações e mensagens. Se precisar ajustar ou validar o número, pode abrir Meu Perfil em outra aba sem perder o que já preencheu.
             </p>
             <Link href="/owner/new" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
               Cadastrar meu primeiro anúncio

@@ -196,6 +196,9 @@ export default function NewPropertyPage() {
   const [showWatermark, setShowWatermark] = useState<boolean>(false);
   const [contactMode, setContactMode] = useState<'DIRECT' | 'BROKER'>('DIRECT');
   const [contactPrefs, setContactPrefs] = useState<{ preferredHours?: string; chatFirst?: boolean; noCall?: boolean }>({ chatFirst: true });
+  const [profilePhone, setProfilePhone] = useState<string | null>(null);
+  const [profilePhoneVerified, setProfilePhoneVerified] = useState<boolean>(false);
+  const [phoneConfirmedForListing, setPhoneConfirmedForListing] = useState(false);
   // Leaflet
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const leafletMap = useRef<any>(null);
@@ -258,6 +261,26 @@ export default function NewPropertyPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox.open, images]);
+
+  // Carrega telefone do usuário para confirmação no fluxo de publicação
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/user/profile");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data?.success || !data.user || cancelled) return;
+        setProfilePhone(data.user.phone || "");
+        setProfilePhoneVerified(!!data.user.phoneVerifiedAt);
+      } catch {
+        // Silencia falhas de rede; mantemos estado padrão
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Persist tips preference
   useEffect(() => {
@@ -788,6 +811,23 @@ export default function NewPropertyPage() {
       return;
     }
     setSubmitIntent(false);
+
+    // Confirmação e verificação do telefone antes de publicar
+    if (!profilePhone || !profilePhone.trim()) {
+      setToast({ message: "Antes de publicar, cadastre um telefone em Meu Perfil.", type: "error" });
+      return;
+    }
+
+    if (!profilePhoneVerified) {
+      setToast({ message: "Precisamos validar seu telefone via SMS em Meu Perfil antes de publicar.", type: "error" });
+      return;
+    }
+
+    if (!phoneConfirmedForListing) {
+      setToast({ message: "Confirme que este é o telefone correto para contato neste anúncio.", type: "error" });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Impede publicar enquanto houver uploads pendentes
@@ -1096,8 +1136,6 @@ export default function NewPropertyPage() {
     // Title-case final, cap 12
     return f.slice(0, 12).map((s) => title(s));
   }
-
-  
 
   return (
     <DashboardLayout
@@ -1412,6 +1450,75 @@ export default function NewPropertyPage() {
                       watermark={showWatermark}
                     />
                   </div>
+                </div>
+                <div className="mt-6 rounded-xl border border-gray-200 bg-white/80 p-4 space-y-3">
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    Telefone para contato neste anúncio
+                  </h3>
+                  {profilePhone && profilePhone.trim() ? (
+                    <>
+                      <p className="text-sm text-gray-600">
+                        Usaremos o telefone abaixo para contatos sobre este imóvel:
+                      </p>
+                      <p className="text-base font-medium text-gray-900">
+                        {profilePhone}
+                      </p>
+                      {!profilePhoneVerified && (
+                        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 space-y-1">
+                          <p>
+                            Seu telefone ainda não foi verificado via SMS.
+                          </p>
+                          <Link
+                            href="/profile"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-xs font-semibold text-amber-800 hover:text-amber-900 underline"
+                          >
+                            Clique aqui para abrir Meu Perfil em outra aba e validar
+                          </Link>
+                        </div>
+                      )}
+                      <div className="mt-3 flex flex-col gap-2 text-sm text-gray-700">
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            checked={phoneConfirmedForListing}
+                            onChange={(e) => setPhoneConfirmedForListing(e.target.checked)}
+                          />
+                          <span>
+                            Sim, este é o telefone correto para ser usado neste anúncio.
+                          </span>
+                        </label>
+                        <button
+                          type="button"
+                          className="self-start text-xs text-blue-600 hover:text-blue-700 underline"
+                          onClick={() => {
+                            setPhoneConfirmedForListing(false);
+                            if (typeof window !== "undefined") {
+                              window.open("/profile", "_blank", "noopener,noreferrer");
+                            }
+                          }}
+                        >
+                          Não é mais este número? Clique aqui para atualizar em outra aba
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-600">
+                        Você ainda não cadastrou um telefone para contato.
+                      </p>
+                      <Link
+                        href="/profile"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 underline"
+                      >
+                        Clique aqui para abrir Meu Perfil em outra aba e cadastrar
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
             )}
