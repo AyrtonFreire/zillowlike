@@ -35,6 +35,8 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -72,6 +74,29 @@ export default function AdminUsersPage() {
     } catch (error) {
       console.error("Error updating role:", error);
       alert("Erro ao atualizar role");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      setIsDeleting(true);
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        await fetchUsers();
+        setShowDeleteModal(false);
+        setSelectedUser(null);
+      } else {
+        const data = await response.json().catch(() => null);
+        alert(data?.error || "Erro ao excluir usuário");
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      alert("Erro ao excluir usuário");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -261,6 +286,18 @@ export default function AdminUsersPage() {
                         >
                           <Shield className="w-5 h-5" />
                         </button>
+                        {user.role !== "ADMIN" && (
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowDeleteModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-800"
+                            title="Excluir usuário"
+                          >
+                            <Ban className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -314,6 +351,49 @@ export default function AdminUsersPage() {
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Modal */}
+      {showDeleteModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Excluir usuário
+            </h3>
+            <p className="text-gray-700 mb-3">
+              Tem certeza que deseja excluir o usuário
+              {" "}
+              <span className="font-semibold">
+                {selectedUser.name || selectedUser.email}
+              </span>
+              ?
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              A conta será removida do sistema e, se essa pessoa tentar fazer
+              login novamente, vai precisar passar por todo o fluxo de cadastro
+              outra vez. Imóveis e leads existentes permanecem, apenas sem o
+              vínculo com este usuário.
+            </p>
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setSelectedUser(null);
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDeleteUser(selectedUser.id)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? "Excluindo..." : "Excluir usuário"}
               </button>
             </div>
           </div>
