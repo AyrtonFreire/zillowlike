@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     const userId = (session as any)?.userId || (session as any)?.user?.id;
     
-    const user = await prisma.user.findUnique({
+    const user = await (prisma as any).user.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -28,6 +28,13 @@ export async function GET(req: NextRequest) {
         emailVerified: true,
         phone: true,
         phoneVerifiedAt: true,
+        publicSlug: true,
+        publicProfileEnabled: true,
+        publicHeadline: true,
+        publicBio: true,
+        publicCity: true,
+        publicState: true,
+        publicPhoneOptIn: true,
         _count: {
           select: {
             leads: true,
@@ -90,9 +97,9 @@ export async function PATCH(req: NextRequest) {
     const userId = (session as any)?.userId || (session as any)?.user?.id;
     const body = await req.json();
 
-    const existing = await prisma.user.findUnique({
+    const existing = await (prisma as any).user.findUnique({
       where: { id: userId },
-      select: { phone: true },
+      select: { phone: true, role: true, publicSlug: true, name: true },
     });
 
     // Only allow updating certain fields
@@ -106,7 +113,34 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const updated = await prisma.user.update({
+    const role = (existing as any)?.role as string | undefined;
+
+    if (body.publicProfileEnabled !== undefined) {
+      updateData.publicProfileEnabled = Boolean(body.publicProfileEnabled);
+      if (updateData.publicProfileEnabled && !(existing as any).publicSlug) {
+        const defaultBase = role === "REALTOR" || role === "AGENCY" ? "corretor" : "anunciante";
+        const base = (body.name || (existing as any).name || defaultBase) as string;
+        const slugBase = String(base)
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/\p{Diacritic}/gu, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)+/g, "");
+        const random = Math.random().toString(36).slice(2, 6);
+        updateData.publicSlug = `${slugBase || defaultBase}-${random}`;
+      }
+    }
+
+    if (body.publicCity !== undefined) updateData.publicCity = body.publicCity;
+    if (body.publicState !== undefined) updateData.publicState = body.publicState;
+
+    if (role === "REALTOR" || role === "AGENCY") {
+      if (body.publicHeadline !== undefined) updateData.publicHeadline = body.publicHeadline;
+      if (body.publicBio !== undefined) updateData.publicBio = body.publicBio;
+      if (body.publicPhoneOptIn !== undefined) updateData.publicPhoneOptIn = Boolean(body.publicPhoneOptIn);
+    }
+
+    const updated = await (prisma as any).user.update({
       where: { id: userId },
       data: updateData,
       select: {
@@ -117,6 +151,13 @@ export async function PATCH(req: NextRequest) {
         role: true,
         phone: true,
         phoneVerifiedAt: true,
+        publicSlug: true,
+        publicProfileEnabled: true,
+        publicHeadline: true,
+        publicBio: true,
+        publicCity: true,
+        publicState: true,
+        publicPhoneOptIn: true,
       },
     });
 

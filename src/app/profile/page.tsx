@@ -35,6 +35,13 @@ interface UserProfile {
     leadsReceived: number;
     leadsSent: number;
   };
+  publicSlug?: string | null;
+  publicProfileEnabled?: boolean;
+  publicHeadline?: string | null;
+  publicBio?: string | null;
+  publicCity?: string | null;
+  publicState?: string | null;
+  publicPhoneOptIn?: boolean;
 }
 
 export default function ProfilePage() {
@@ -49,6 +56,12 @@ export default function ProfilePage() {
   const [verificationCode, setVerificationCode] = useState("");
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
+  const [publicProfileEnabled, setPublicProfileEnabled] = useState(false);
+  const [publicHeadline, setPublicHeadline] = useState("");
+  const [publicBio, setPublicBio] = useState("");
+  const [publicCity, setPublicCity] = useState("");
+  const [publicState, setPublicState] = useState("");
+  const [publicPhoneOptIn, setPublicPhoneOptIn] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -68,6 +81,12 @@ export default function ProfilePage() {
         setProfile(data.user);
         setName(data.user.name || "");
         setPhone(data.user.phone || "");
+        setPublicProfileEnabled(Boolean(data.user.publicProfileEnabled));
+        setPublicHeadline(data.user.publicHeadline || "");
+        setPublicBio(data.user.publicBio || "");
+        setPublicCity(data.user.publicCity || "");
+        setPublicState(data.user.publicState || "");
+        setPublicPhoneOptIn(Boolean(data.user.publicPhoneOptIn));
       }
     } catch (error) {
       console.error("Error:", error);
@@ -82,12 +101,29 @@ export default function ProfilePage() {
       const response = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone }),
+        body: JSON.stringify({
+          name,
+          phone,
+          publicProfileEnabled,
+          publicHeadline,
+          publicBio,
+          publicCity,
+          publicState,
+          publicPhoneOptIn,
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
         setProfile(data.user);
+        setName(data.user.name || "");
+        setPhone(data.user.phone || "");
+        setPublicProfileEnabled(Boolean(data.user.publicProfileEnabled));
+        setPublicHeadline(data.user.publicHeadline || "");
+        setPublicBio(data.user.publicBio || "");
+        setPublicCity(data.user.publicCity || "");
+        setPublicState(data.user.publicState || "");
+        setPublicPhoneOptIn(Boolean(data.user.publicPhoneOptIn));
         // Force session update
         await update();
         alert("Perfil atualizado com sucesso!");
@@ -478,20 +514,248 @@ export default function ProfilePage() {
 
                 {/* Save Button */}
                 <div className="flex justify-end pt-4 border-t">
-                  <button
-                    onClick={handleSave}
-                    disabled={
-                      saving ||
-                      (name === (profile.name || "") && phone === (profile.phone || ""))
-                    }
-                    className="flex items-center gap-2 px-6 py-2.5 glass-teal disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors"
-                  >
-                    <Save className="w-5 h-5" />
-                    {saving ? "Salvando..." : "Salvar Alterações"}
-                  </button>
+                  {(() => {
+                    const unchanged =
+                      name === (profile.name || "") &&
+                      phone === (profile.phone || "") &&
+                      publicProfileEnabled === Boolean(profile.publicProfileEnabled) &&
+                      publicHeadline === (profile.publicHeadline || "") &&
+                      publicBio === (profile.publicBio || "") &&
+                      publicCity === (profile.publicCity || "") &&
+                      publicState === (profile.publicState || "") &&
+                      publicPhoneOptIn === Boolean(profile.publicPhoneOptIn);
+                    return (
+                      <button
+                        onClick={handleSave}
+                        disabled={
+                      saving || unchanged
+                        }
+                        className="flex items-center gap-2 px-6 py-2.5 glass-teal disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors"
+                      >
+                        <Save className="w-5 h-5" />
+                        {saving ? "Salvando..." : "Salvar Alterações"}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
+
+            {/* Public profile settings for realtors/agencies */}
+            {(profile.role === "REALTOR" || profile.role === "AGENCY") && (
+              <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                  Perfil público de corretor
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Controle como você aparece publicamente para clientes interessados nos seus imóveis.
+                </p>
+
+                <div className="space-y-5">
+                  {/* Toggle */}
+                  <div className="flex items-start gap-3">
+                    <input
+                      id="public-profile-enabled"
+                      type="checkbox"
+                      checked={publicProfileEnabled}
+                      onChange={(e) => setPublicProfileEnabled(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div>
+                      <label
+                        htmlFor="public-profile-enabled"
+                        className="text-sm font-medium text-gray-900"
+                      >
+                        Ativar meu perfil público como corretor
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Quando ativado, seu perfil poderá ser acessado por qualquer pessoa através de um link público,
+                        mostrando apenas informações profissionais e sem expor seus dados sensíveis.
+                      </p>
+                      {publicProfileEnabled && profile.publicSlug && (
+                        <p className="text-xs text-blue-600 mt-2">
+                          Seu link público:
+                          {" "}
+                          <Link
+                            href={`/realtor/${profile.publicSlug}`}
+                            className="underline break-all"
+                            target="_blank"
+                          >
+                            {`/realtor/${profile.publicSlug}`}
+                          </Link>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {publicProfileEnabled && (
+                    <>
+                      {/* Headline */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Frase de apresentação
+                        </label>
+                        <input
+                          type="text"
+                          value={publicHeadline}
+                          onChange={(e) => setPublicHeadline(e.target.value)}
+                          placeholder="Ex: Especialista em imóveis residenciais em Petrolina e região."
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        />
+                      </div>
+
+                      {/* Cidade/Estado */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Cidade
+                          </label>
+                          <input
+                            type="text"
+                            value={publicCity}
+                            onChange={(e) => setPublicCity(e.target.value)}
+                            placeholder="Ex: Petrolina"
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Estado (UF)
+                          </label>
+                          <input
+                            type="text"
+                            value={publicState}
+                            onChange={(e) => setPublicState(e.target.value.toUpperCase())}
+                            maxLength={2}
+                            placeholder="Ex: PE"
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm uppercase"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Bio pública */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Sobre você (bio pública)
+                        </label>
+                        <textarea
+                          value={publicBio}
+                          onChange={(e) => setPublicBio(e.target.value)}
+                          rows={4}
+                          placeholder="Conte um pouco sobre sua experiência, regiões onde atua e tipos de imóvel que costuma trabalhar. Evite incluir dados pessoais muito sensíveis."
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-y"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Essa descrição aparece na página pública e ajuda o cliente a entender seu estilo de atendimento.
+                        </p>
+                      </div>
+
+                      {/* Opt-in de telefone público */}
+                      <div className="flex items-start gap-3">
+                        <input
+                          id="public-phone-opt-in"
+                          type="checkbox"
+                          checked={publicPhoneOptIn}
+                          onChange={(e) => setPublicPhoneOptIn(e.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div>
+                          <label
+                            htmlFor="public-phone-opt-in"
+                            className="text-sm font-medium text-gray-900"
+                          >
+                            Exibir meu telefone no perfil público
+                          </label>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Usaremos o mesmo telefone informado acima. Ele só será mostrado se estiver verificado e você marcar
+                            essa opção. Os clientes ainda podem entrar em contato pela plataforma mesmo sem ver seu número.
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {profile.role === "OWNER" && (
+              <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                  Perfil público de anunciante
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Permite que outras pessoas vejam um perfil discreto com seus imóveis ativos, sem mostrar seus dados de
+                  contato. Toda a conversa continua acontecendo pela plataforma.
+                </p>
+
+                <div className="space-y-5">
+                  <div className="flex items-start gap-3">
+                    <input
+                      id="owner-public-profile-enabled"
+                      type="checkbox"
+                      checked={publicProfileEnabled}
+                      onChange={(e) => setPublicProfileEnabled(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div>
+                      <label
+                        htmlFor="owner-public-profile-enabled"
+                        className="text-sm font-medium text-gray-900"
+                      >
+                        Ativar meu perfil público discreto
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        O perfil mostra apenas um apelido, sua cidade/estado (se desejar) e os imóveis ativos que você já
+                        anunciou na plataforma.
+                      </p>
+                      {publicProfileEnabled && profile.publicSlug && (
+                        <p className="text-xs text-blue-600 mt-2">
+                          Seu link público:
+                          {" "}
+                          <Link
+                            href={`/owner/${profile.publicSlug}`}
+                            className="underline break-all"
+                            target="_blank"
+                          >
+                            {`/owner/${profile.publicSlug}`}
+                          </Link>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {publicProfileEnabled && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Cidade
+                        </label>
+                        <input
+                          type="text"
+                          value={publicCity}
+                          onChange={(e) => setPublicCity(e.target.value)}
+                          placeholder="Ex: Petrolina"
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Estado (UF)
+                        </label>
+                        <input
+                          type="text"
+                          value={publicState}
+                          onChange={(e) => setPublicState(e.target.value.toUpperCase())}
+                          maxLength={2}
+                          placeholder="Ex: PE"
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm uppercase"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Quick Links */}
             <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">

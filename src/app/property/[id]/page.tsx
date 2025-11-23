@@ -23,7 +23,7 @@ type PageProps = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const property = await prisma.property.findUnique({
+  const property = await (prisma as any).property.findUnique({
     where: { id },
     select: {
       title: true,
@@ -131,11 +131,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function PropertyPage({ params }: PageProps) {
   const { id } = await params;
 
-  const property = await prisma.property.findUnique({
+  const property = await (prisma as any).property.findUnique({
     where: { id },
     include: { 
       images: { orderBy: { sortOrder: "asc" } },
-      owner: { select: { phone: true } },
+      owner: {
+        select: {
+          phone: true,
+          role: true,
+          publicProfileEnabled: true,
+          publicSlug: true,
+          name: true,
+          stats: {
+            select: {
+              avgRating: true,
+              totalRatings: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -152,6 +166,30 @@ export default async function PropertyPage({ params }: PageProps) {
       </div>
     );
   }
+
+  const owner = (property as any).owner as
+    | {
+        role?: string;
+        publicProfileEnabled?: boolean;
+        publicSlug?: string | null;
+        name?: string | null;
+        stats?: { avgRating?: number | null; totalRatings?: number | null } | null;
+      }
+    | undefined;
+
+  const realtorProfileSlug =
+    owner &&
+    (owner.role === "REALTOR" || owner.role === "AGENCY") &&
+    owner.publicProfileEnabled &&
+    owner.publicSlug
+      ? owner.publicSlug
+      : null;
+
+  const ownerIsRealtor =
+    owner && (owner.role === "REALTOR" || owner.role === "AGENCY") && !!realtorProfileSlug;
+
+  const ownerAvgRating = owner?.stats?.avgRating ?? null;
+  const ownerTotalRatings = owner?.stats?.totalRatings ?? 0;
 
   const items = [
     {
@@ -442,6 +480,49 @@ export default async function PropertyPage({ params }: PageProps) {
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
+            {ownerIsRealtor && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Corretor responsável</h3>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center text-sm font-semibold text-blue-700">
+                    {(owner?.name || "C").charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      {owner?.name || (owner.role === "AGENCY" ? "Imobiliária parceira" : "Corretor parceiro")}
+                    </div>
+                    <div className="text-[11px] font-medium text-blue-700 bg-blue-50 inline-flex items-center px-2 py-0.5 rounded-full mt-1">
+                      {owner.role === "AGENCY" ? "Imobiliária parceira Zillowlike" : "Corretor parceiro Zillowlike"}
+                    </div>
+                  </div>
+                </div>
+
+                {ownerAvgRating != null && ownerAvgRating > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-gray-700 mb-2">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-yellow-100 text-yellow-700 text-[11px] font-semibold">
+                      ★
+                    </span>
+                    <span className="font-semibold">{ownerAvgRating.toFixed(1)}</span>
+                    <span className="text-gray-500">
+                      ({ownerTotalRatings} avaliação{ownerTotalRatings === 1 ? "" : "s"})
+                    </span>
+                  </div>
+                )}
+
+                {realtorProfileSlug && (
+                  <div className="mt-2">
+                    <Link
+                      href={`/realtor/${realtorProfileSlug}`}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                    >
+                      <span>Ver perfil completo</span>
+                      <span aria-hidden="true">→</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
             <StickyActions
               priceCents={property.price}
               scheduleHref={scheduleHref}
@@ -479,6 +560,17 @@ export default async function PropertyPage({ params }: PageProps) {
                 <InfoRow k="Estado" v={property.state} />
                 {property.postalCode && <InfoRow k="CEP" v={property.postalCode} />}
               </div>
+              {realtorProfileSlug && (
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <Link
+                    href={`/realtor/${realtorProfileSlug}`}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    <span>Ver perfil do corretor</span>
+                    <span aria-hidden="true">→</span>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>

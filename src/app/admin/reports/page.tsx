@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   AlertTriangle,
@@ -26,6 +27,7 @@ interface ReportUser {
   name: string | null;
   email: string | null;
   role?: string;
+  publicSlug?: string | null;
 }
 
 interface ReportProperty {
@@ -77,6 +79,7 @@ export default function AdminReportsPage() {
   const [search, setSearch] = useState("");
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [realtorProfilesOnly, setRealtorProfilesOnly] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -146,6 +149,14 @@ export default function AdminReportsPage() {
       ];
       if (!parts.some((p) => p.toLowerCase().includes(term))) return false;
     }
+
+    if (realtorProfilesOnly) {
+      const isRealtorProfile =
+        report.targetType === "USER" &&
+        (report.targetUser?.role === "REALTOR" || report.targetUser?.role === "AGENCY");
+      if (!isRealtorProfile) return false;
+    }
+
     return true;
   });
 
@@ -342,6 +353,17 @@ export default function AdminReportsPage() {
                     : "Outros"}
                 </button>
               ))}
+
+              <button
+                onClick={() => setRealtorProfilesOnly((prev) => !prev)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                  realtorProfilesOnly
+                    ? "bg-teal-600 text-white border-teal-700"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                Somente perfis de corretores
+              </button>
             </div>
           </div>
         </div>
@@ -403,8 +425,22 @@ export default function AdminReportsPage() {
                           </span>
                         )}
                         {report.targetUser && (
-                          <span>
+                          <span className="flex items-center gap-1">
                             Usuário: {report.targetUser.name || report.targetUser.email} ({report.targetUser.role})
+                            {report.targetType === "USER" &&
+                              (report.targetUser.role === "REALTOR" || report.targetUser.role === "AGENCY") &&
+                              report.targetUser.publicSlug && (
+                                <>
+                                  <span className="text-gray-300">·</span>
+                                  <Link
+                                    href={`/realtor/${report.targetUser.publicSlug}`}
+                                    className="text-blue-600 hover:underline"
+                                    target="_blank"
+                                  >
+                                    Ver perfil
+                                  </Link>
+                                </>
+                              )}
                           </span>
                         )}
                         {report.reportedBy && (
@@ -470,10 +506,26 @@ export default function AdminReportsPage() {
                 {selectedReport.targetUser && (
                   <div className="p-3 rounded-lg border border-gray-200">
                     <div className="text-sm font-semibold text-gray-900 mb-1">Usuário relacionado</div>
-                    <div className="text-sm text-gray-700">
-                      {selectedReport.targetUser.name || selectedReport.targetUser.email} ({
-                        selectedReport.targetUser.role
-                      })
+                    <div className="text-sm text-gray-700 flex flex-wrap items-center gap-1">
+                      <span>
+                        {selectedReport.targetUser.name || selectedReport.targetUser.email} ({
+                          selectedReport.targetUser.role
+                        })
+                      </span>
+                      {selectedReport.targetType === "USER" &&
+                        (selectedReport.targetUser.role === "REALTOR" || selectedReport.targetUser.role === "AGENCY") &&
+                        selectedReport.targetUser.publicSlug && (
+                          <>
+                            <span className="text-gray-300">·</span>
+                            <Link
+                              href={`/realtor/${selectedReport.targetUser.publicSlug}`}
+                              className="text-blue-600 hover:underline"
+                              target="_blank"
+                            >
+                              Ver perfil público
+                            </Link>
+                          </>
+                        )}
                     </div>
                   </div>
                 )}

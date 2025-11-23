@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
           select: { id: true, name: true, email: true },
         },
         targetUser: {
-          select: { id: true, name: true, email: true, role: true },
+          select: { id: true, name: true, email: true, role: true, publicSlug: true },
         },
         property: {
           select: { id: true, title: true, city: true, state: true },
