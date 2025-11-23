@@ -342,7 +342,7 @@ export default function BrokerDashboard() {
             }
           >
             <div className="mb-4 flex gap-2">
-              {[ 
+              {[
                 { value: "ALL" as const, label: "Todos" },
                 { value: "NEW" as const, label: "Novos" },
                 { value: "IN_SERVICE" as const, label: "Em atendimento" },
@@ -352,7 +352,7 @@ export default function BrokerDashboard() {
                   onClick={() => setLeadFilter(item.value)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     leadFilter === item.value
-                      ? "glass-teal text-white"
+                      ? "bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >

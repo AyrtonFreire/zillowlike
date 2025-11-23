@@ -109,7 +109,7 @@ export default function AdminDashboard() {
                 setRefreshing(true);
                 fetchMetrics(false);
               }}
-              className="flex items-center gap-2 px-4 py-2 glass-teal text-white font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-teal-200 bg-white text-teal-700 hover:bg-teal-50 transition-colors"
             >
               <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "Atualizando..." : "Atualizar"}
@@ -175,22 +175,43 @@ export default function AdminDashboard() {
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="glass-teal rounded-xl p-6 text-white">
-            <p className="text-white/80 text-sm mb-2">Taxa de Conversão</p>
-            <p className="text-4xl font-bold mb-2">{overview.conversionRate}%</p>
-            <p className="text-white/80 text-sm">Leads aceitos vs total</p>
+          <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm text-gray-600">Taxa de Conversão</p>
+                <p className="text-3xl font-bold text-gray-900">{overview.conversionRate}%</p>
+              </div>
+              <div className="p-3 bg-teal-50 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-teal-600" />
+              </div>
+            </div>
+            <p className="text-sm text-gray-500">Leads aceitos vs total</p>
           </div>
 
-          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-6 text-white">
-            <p className="text-green-100 text-sm mb-2">Taxa de Resposta</p>
-            <p className="text-4xl font-bold mb-2">{overview.responseRate}%</p>
-            <p className="text-green-100 text-sm">Leads respondidos</p>
+          <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm text-gray-600">Taxa de Resposta</p>
+                <p className="text-3xl font-bold text-gray-900">{overview.responseRate}%</p>
+              </div>
+              <div className="p-3 bg-green-50 rounded-lg">
+                <Activity className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+            <p className="text-sm text-gray-500">Leads respondidos</p>
           </div>
 
-          <div className="bg-gradient-to-br from-teal to-teal-dark rounded-xl p-6 text-white">
-            <p className="text-white/80 text-sm mb-2">Leads Disponíveis</p>
-            <p className="text-4xl font-bold mb-2">{overview.availableLeads}</p>
-            <p className="text-white/80 text-sm">No mural agora</p>
+          <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm text-gray-600">Leads Disponíveis</p>
+                <p className="text-3xl font-bold text-gray-900">{overview.availableLeads}</p>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <Users className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+            <p className="text-sm text-gray-500">No mural agora</p>
           </div>
         </div>
 
