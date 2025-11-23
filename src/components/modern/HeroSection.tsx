@@ -194,7 +194,7 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="relative min-h-[420px] sm:min-h-[55vh] md:min-h-[55vh] lg:min-h-[55vh] flex items-center justify-center overflow-visible pt-16 md:pt-0 pb-4 md:pb-0">
+    <div className="relative min-h-[360px] sm:min-h-[55vh] md:min-h-[55vh] lg:min-h-[55vh] flex items-center justify-center overflow-visible pt-16 md:pt-0 pb-4 md:pb-0">
       {/* Top Hero Nav removed to avoid conflict with ModernNavbar */}
       {/* Slideshow Background with Overlay */}
       <div className="absolute inset-0">
