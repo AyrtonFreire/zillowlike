@@ -107,7 +107,7 @@ export default function AdminDashboard() {
           </Link>
           <Link
             href="/admin/properties"
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+            className="px-4 py-2 glass-teal text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
           >
             Gerenciar Imóveis
           </Link>
@@ -319,6 +319,23 @@ export default function AdminDashboard() {
                 <h3 className="font-semibold text-gray-900">Aplicações de Corretores</h3>
                 <p className="text-sm text-gray-600">
                   Aprovar novos corretores
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/admin/reports"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-red-100 rounded-lg">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Denúncias</h3>
+                <p className="text-sm text-gray-600">
+                  Ver e analisar denúncias de anúncios, usuários e bugs
                 </p>
               </div>
             </div>

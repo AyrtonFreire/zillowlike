@@ -16,6 +16,7 @@ import ReadMore from "@/components/ReadMore";
 import AgentModule from "@/components/AgentModule";
 import MapClient from "@/components/MapClient";
 import SimilarCarousel from "@/components/SimilarCarousel";
+import ReportPropertyButton from "@/components/ReportPropertyButton";
 
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -410,6 +411,12 @@ export default async function PropertyPage({ params }: PageProps) {
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 mb-3">Sobre este imóvel</h2>
               <ReadMore text={property.description} maxChars={360} />
+              <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <p className="text-xs text-gray-500">
+                  Percebeu algo estranho neste anúncio? Ajude-nos a melhorar a plataforma.
+                </p>
+                <ReportPropertyButton propertyId={property.id} propertyTitle={property.title} />
+              </div>
             </div>
 
             {nearby.length > 0 && (

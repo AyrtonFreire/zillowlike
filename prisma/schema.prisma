@@ -278,18 +278,21 @@ model User {
   image         String?
   role          Role      @default(USER)
 
-  accounts            Account[]
-  sessions            Session[]
-  leads               Lead[]
-  realtorLeads        Lead[]                @relation("RealtorLeads")
-  properties          Property[]            @relation("PropertyOwner")
-  queue               RealtorQueue?
-  stats               RealtorStats?
-  ratings             RealtorRating[]
-  phone               String?
-  phoneVerifiedAt     DateTime?
-  realtorApplication  RealtorApplication?
+  accounts             Account[]
+  sessions             Session[]
+  leads                Lead[]
+  realtorLeads         Lead[]                @relation("RealtorLeads")
+  properties           Property[]            @relation("PropertyOwner")
+  queue                RealtorQueue?
+  stats                RealtorStats?
+  ratings              RealtorRating[]
+  phone                String?
+  phoneVerifiedAt      DateTime?
+  realtorApplication   RealtorApplication?
   reviewedApplications RealtorApplication[] @relation("ReviewedApplications")
+  reportsCreated       Report[]             @relation("ReportsByUser")
+  reportsHandled       Report[]             @relation("ReportsHandledByAdmin")
+  reportsAgainstUser   Report[]             @relation("ReportsTargetUser")
 }
 
 model VerificationToken {
@@ -546,4 +549,70 @@ model RealtorApplication {
   @@index([status])
   @@index([createdAt])
   @@map("realtor_applications")
+}
+
+// ============================================
+// SISTEMA DE DENÚNCIAS
+// ============================================
+
+enum ReportTargetType {
+  PROPERTY
+  USER
+  LEAD
+  BUG
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportReason {
+  FAKE_LISTING
+  INAPPROPRIATE_PHOTO
+  SCAM
+  BAD_BEHAVIOR
+  BUG
+  OTHER
+}
+
+enum ReportSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Report {
+  id               String          @id @default(cuid())
+
+  reportedBy       User?           @relation("ReportsByUser", fields: [reportedByUserId], references: [id])
+  reportedByUserId String?
+
+  targetUser       User?           @relation("ReportsTargetUser", fields: [targetUserId], references: [id])
+  targetUserId     String?
+
+  handledBy        User?           @relation("ReportsHandledByAdmin", fields: [handledByAdminId], references: [id])
+  handledByAdminId String?
+
+  property         Property?       @relation(fields: [propertyId], references: [id])
+  propertyId       String?
+
+  lead             Lead?           @relation(fields: [leadId], references: [id])
+  leadId           String?
+
+  targetType       ReportTargetType
+  reason           ReportReason
+  severity         ReportSeverity?
+  description      String
+
+  status           ReportStatus    @default(OPEN)
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([status, createdAt])
+  @@index([targetType])
 }
