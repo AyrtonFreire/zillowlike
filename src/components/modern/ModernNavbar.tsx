@@ -171,10 +171,13 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
   const isDashboardContext = pathname?.startsWith("/admin") || pathname?.startsWith("/owner") || pathname?.startsWith("/broker");
 
+  const isHome = pathname === "/";
+  const mobileVariant = !isDashboardContext && isHome && !forceLight ? "overlay" : "solid";
+
   return (
     <>
-      {/* Mobile Header - Zillow Style */}
-      <MobileHeaderZillow />
+      {/* Mobile Header */}
+      <MobileHeaderZillow variant={mobileVariant} />
 
       {/* Desktop Navigation - JamesEdition style on home, solid on dashboards */}
       <motion.nav

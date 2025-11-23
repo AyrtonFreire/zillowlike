@@ -6,12 +6,18 @@ import Link from "next/link";
 import { Menu, X, User, Heart, ChevronDown, ChevronRight, Home, Building2, Megaphone, LineChart, Users, Bookmark, ClipboardList, LogOut, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function MobileHeaderZillow() {
+interface MobileHeaderZillowProps {
+  variant?: "overlay" | "solid";
+}
+
+export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZillowProps) {
   const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
   const [isRightMenuOpen, setIsRightMenuOpen] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const { data: session } = useSession();
   const role = (session as any)?.user?.role || "USER";
+
+  const isOverlay = variant === "overlay";
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -20,7 +26,14 @@ export default function MobileHeaderZillow() {
   return (
     <>
       {/* Header */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100/80 shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
+      <header
+        className={
+          "md:hidden w-full " +
+          (isOverlay
+            ? "bg-transparent text-white"
+            : "bg-white/90 backdrop-blur-xl border-b border-gray-100/80 shadow-[0_12px_30px_rgba(15,23,42,0.12)]")
+        }
+      >
         <div className="flex items-center justify-between px-4 h-16 max-w-5xl mx-auto">
           {/* Left: Hamburger Menu */}
           <button
@@ -28,10 +41,12 @@ export default function MobileHeaderZillow() {
               setIsLeftMenuOpen(true);
               setIsRightMenuOpen(false);
             }}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className={`p-2 rounded-full transition-colors ${
+              isOverlay ? "hover:bg-white/10" : "hover:bg-gray-100"
+            }`}
             aria-label="Menu de imóveis"
           >
-            <Menu className="w-6 h-6 text-gray-800" />
+            <Menu className={`w-6 h-6 ${isOverlay ? "text-white" : "text-gray-800"}`} />
           </button>
 
           {/* Center: Logo */}
@@ -39,7 +54,13 @@ export default function MobileHeaderZillow() {
             <div className="w-9 h-9 rounded-full bg-brand-teal flex items-center justify-center shadow-sm">
               <span className="text-white font-bold text-base">Z</span>
             </div>
-            <span className="text-lg font-semibold text-slate-900 tracking-tight">ZillowLike</span>
+            <span
+              className={`text-lg font-semibold tracking-tight ${
+                isOverlay ? "text-white" : "text-slate-900"
+              }`}
+            >
+              ZillowLike
+            </span>
           </Link>
 
           {/* Right: User Menu */}
@@ -48,7 +69,9 @@ export default function MobileHeaderZillow() {
               setIsRightMenuOpen(true);
               setIsLeftMenuOpen(false);
             }}
-            className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+            className={`p-1.5 rounded-full transition-colors ${
+              isOverlay ? "hover:bg-white/10" : "hover:bg-gray-100"
+            }`}
             aria-label="Menu do usuário"
           >
             {session ? (
@@ -56,8 +79,15 @@ export default function MobileHeaderZillow() {
                 <span>{(session as any)?.user?.name?.[0]?.toUpperCase() || 'U'}</span>
               </div>
             ) : (
-              <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
-                <User className="w-5 h-5 text-gray-700" />
+              <div
+                className={
+                  "w-8 h-8 rounded-full flex items-center justify-center " +
+                  (isOverlay
+                    ? "bg-white/15 border border-white/30"
+                    : "bg-gray-100 border border-gray-200")
+                }
+              >
+                <User className={`w-5 h-5 ${isOverlay ? "text-white" : "text-gray-700"}`} />
               </div>
             )}
           </button>

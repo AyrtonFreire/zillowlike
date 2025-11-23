@@ -878,7 +878,7 @@ export default function Home() {
         </div>
       )}
       {hasSearched && (
-        <div className="sticky top-0 z-50">
+        <div className="z-50">
           <ModernNavbar forceLight={true} />
         </div>
       )}
