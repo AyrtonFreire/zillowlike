@@ -16,11 +16,11 @@ import {
 } from "lucide-react";
 
 type PageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = params;
+  const { slug } = await params;
 
   const realtor = await (prisma as any).user.findFirst({
     where: {
@@ -59,7 +59,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function RealtorPublicProfilePage({ params }: PageProps) {
-  const { slug } = params;
+  const { slug } = await params;
 
   const realtor = await (prisma as any).user.findFirst({
     where: {

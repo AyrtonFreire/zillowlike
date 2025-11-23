@@ -6,11 +6,11 @@ import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
 import { Home as HomeIcon, User as UserIcon } from "lucide-react";
 
 interface PageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = params;
+  const { slug } = await params;
 
   const owner = await (prisma as any).user.findFirst({
     where: {
@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function OwnerPublicProfilePage({ params }: PageProps) {
-  const { slug } = params;
+  const { slug } = await params;
 
   const owner = await (prisma as any).user.findFirst({
     where: {
