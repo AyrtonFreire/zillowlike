@@ -72,31 +72,31 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-slate-950">
+    <main className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-gray-50">
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
           <Link href="/" className="inline-flex items-center gap-2 mb-10">
             <div className="w-9 h-9 rounded-2xl bg-brand-gradient flex items-center justify-center shadow-lg">
               <span className="text-white font-semibold text-lg">Z</span>
             </div>
-            <span className="text-sm font-semibold tracking-[0.18em] uppercase text-slate-300">
+            <span className="text-sm font-semibold tracking-[0.18em] uppercase text-gray-700">
               ZillowLike
             </span>
           </Link>
 
           <div className="mb-8">
-            <h1 className="text-2xl font-semibold text-white mb-2">
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">
               Entrar
             </h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-gray-600">
               Acesse sua conta para salvar favoritos, criar alertas e gerenciar
               seus anúncios.
             </p>
           </div>
 
-          <div className="space-y-4 bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-xl shadow-[0_18px_45px_rgba(15,23,42,0.55)]">
+          <div className="space-y-4 bg-white border border-gray-200 rounded-2xl p-6 shadow-lg">
             {error && (
-              <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/40 rounded-lg px-3 py-2">
+              <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                 {error}
               </div>
             )}
@@ -106,7 +106,7 @@ export default function SignInPage() {
               onClick={() =>
                 signIn("google", { callbackUrl, prompt: "select_account" })
               }
-              className="w-full inline-flex items-center justify-center gap-3 border border-slate-600/70 bg-slate-900/40 hover:bg-slate-900/70 text-slate-100 rounded-xl py-2.5 text-sm font-semibold transition-colors"
+              className="w-full inline-flex items-center justify-center gap-3 border border-gray-300 bg-white hover:bg-gray-50 text-gray-800 rounded-xl py-2.5 text-sm font-semibold transition-colors"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -133,15 +133,15 @@ export default function SignInPage() {
               Continuar com Google
             </button>
 
-            <div className="flex items-center gap-3 text-[11px] text-slate-500">
-              <div className="h-px flex-1 bg-slate-700/70" />
+            <div className="flex items-center gap-3 text-[11px] text-gray-500">
+              <div className="h-px flex-1 bg-gray-200" />
               <span>ou entrar com e-mail</span>
-              <div className="h-px flex-1 bg-slate-700/70" />
+              <div className="h-px flex-1 bg-gray-200" />
             </div>
 
             <form className="space-y-3" onSubmit={handleSubmit}>
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-200">
+                <label className="text-xs font-semibold text-gray-700">
                   E-mail
                 </label>
                 <input
@@ -149,13 +149,13 @@ export default function SignInPage() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700/70 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-400/70"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-500"
                   placeholder="voce@exemplo.com"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-200">
+                <label className="text-xs font-semibold text-gray-700">
                   Senha
                 </label>
                 <input
@@ -163,7 +163,7 @@ export default function SignInPage() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700/70 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-400/70"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-500"
                   placeholder="Sua senha"
                 />
               </div>
@@ -171,7 +171,7 @@ export default function SignInPage() {
               <div className="flex items-center justify-between text-xs">
                 <Link
                   href="/auth/forgot-password"
-                  className="text-teal-300 hover:text-teal-200 font-semibold"
+                  className="text-teal-700 hover:text-teal-800 font-semibold"
                 >
                   Esqueci minha senha
                 </Link>
@@ -186,28 +186,28 @@ export default function SignInPage() {
               </button>
             </form>
 
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-gray-600">
               Ainda não tem conta?{" "}
               <Link
                 href="/auth/register"
-                className="text-teal-300 hover:text-teal-200 font-semibold"
+                className="text-teal-700 hover:text-teal-800 font-semibold"
               >
                 Criar conta
               </Link>
             </p>
 
-            <p className="text-[11px] text-slate-500 leading-relaxed">
+            <p className="text-[11px] text-gray-500 leading-relaxed">
               Ao continuar, você concorda com os{" "}
               <Link
                 href="/terms"
-                className="underline hover:text-teal-200"
+                className="underline hover:text-teal-700"
               >
                 Termos de uso
               </Link>{" "}
               e a{" "}
               <Link
                 href="/privacy"
-                className="underline hover:text-teal-200"
+                className="underline hover:text-teal-700"
               >
                 Política de privacidade
               </Link>

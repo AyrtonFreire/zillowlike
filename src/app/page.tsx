@@ -1023,7 +1023,7 @@ export default function Home() {
       {hasSearched && (
         <>
           {/* Zillow-style Search Bar - Full Width Above Everything */}
-          <div className="bg-white border-b border-gray-200 sticky top-16 z-40">
+          <div className="bg-white border-b border-gray-200 sticky top-0 md:top-16 z-40">
               <div className="px-4 py-3 bg-white">
                 {/* Desktop: Search bar + Inline Filters in one row */}
                 <div className="hidden md:flex items-center gap-3">
@@ -1428,43 +1428,8 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Mobile: filtro de finalidade + Search bar + botão Filtros */}
+                {/* Mobile: Search bar + botão Filtros (finalidade fica dentro do drawer) */}
                 <div className="md:hidden space-y-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newPurpose: "SALE" = "SALE";
-                        setPurpose(newPurpose);
-                        const params = buildSearchParams({ q: search, city, state, purpose: newPurpose, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
-                        router.push(`/?${params}`);
-                      }}
-                      className={`flex-1 px-3 py-2 rounded-full text-xs font-semibold border transition-colors ${
-                        purpose === 'SALE'
-                          ? 'bg-emerald-600 text-white border-emerald-700'
-                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                      }`}
-                    >
-                      Para venda
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newPurpose: "RENT" = "RENT";
-                        setPurpose(newPurpose);
-                        const params = buildSearchParams({ q: search, city, state, purpose: newPurpose, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
-                        router.push(`/?${params}`);
-                      }}
-                      className={`flex-1 px-3 py-2 rounded-full text-xs font-semibold border transition-colors ${
-                        purpose === 'RENT'
-                          ? 'bg-emerald-600 text-white border-emerald-700'
-                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                      }`}
-                    >
-                      Para alugar
-                    </button>
-                  </div>
-
                   <div className="flex items-center gap-2 relative">
                     {/* Search Bar com Autocomplete */}
                     <div className="flex-1 relative">
@@ -1523,7 +1488,7 @@ export default function Home() {
                       )}
                     </div>
 
-                    {/* More Button (abre drawer com todos os filtros) */}
+                    {/* More Button (abre drawer com todos os filtros, incluindo finalidade) */}
                     <button
                       onClick={() => setFiltersOpen(true)}
                       className={`px-4 py-2.5 border rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
