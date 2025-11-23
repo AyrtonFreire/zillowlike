@@ -1428,76 +1428,113 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Mobile: Search bar + More button only */}
-                <div className="md:hidden flex items-center gap-2 relative">
-                  {/* Search Bar com Autocomplete */}
-                  <div className="flex-1 relative">
-                    <div className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg bg-white">
-                      <Search className="w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={searchInput}
-                        onChange={(e) => {
-                          setSearchInput(e.target.value);
-                          setShowSearchSuggestions(true);
-                        }}
-                        onFocus={() => setShowSearchSuggestions(true)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            applySearch();
-                          }
-                        }}
-                        placeholder="Cidade, bairro..."
-                        className="flex-1 outline-none text-sm"
-                      />
-                      <button
-                        onClick={() => {
-                          applySearch();
-                        }}
-                        className="p-1 hover:bg-gray-100 rounded transition-colors"
-                        aria-label="Buscar"
-                      >
-                        <Search className="w-4 h-4 text-gray-600" />
-                      </button>
-                    </div>
-                    
-                    {/* Autocomplete Dropdown Mobile */}
-                    {showSearchSuggestions && searchSuggestions.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-80 overflow-y-auto">
-                        {searchSuggestions.map((suggestion, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleSelectSuggestion(suggestion)}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="font-medium text-gray-900">{suggestion.label}</div>
-                                <div className="text-xs text-gray-500 mt-0.5">
-                                  {suggestion.city}, {suggestion.state}
-                                </div>
-                              </div>
-                              <div className="text-xs text-gray-400 ml-2">
-                                {suggestion.count} {suggestion.count === 1 ? 'imóvel' : 'imóveis'}
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                {/* Mobile: filtro de finalidade + Search bar + botão Filtros */}
+                <div className="md:hidden space-y-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newPurpose: "SALE" = "SALE";
+                        setPurpose(newPurpose);
+                        const params = buildSearchParams({ q: search, city, state, purpose: newPurpose, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                        router.push(`/?${params}`);
+                      }}
+                      className={`flex-1 px-3 py-2 rounded-full text-xs font-semibold border transition-colors ${
+                        purpose === 'SALE'
+                          ? 'bg-emerald-600 text-white border-emerald-700'
+                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                      }`}
+                    >
+                      Para venda
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newPurpose: "RENT" = "RENT";
+                        setPurpose(newPurpose);
+                        const params = buildSearchParams({ q: search, city, state, purpose: newPurpose, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                        router.push(`/?${params}`);
+                      }}
+                      className={`flex-1 px-3 py-2 rounded-full text-xs font-semibold border transition-colors ${
+                        purpose === 'RENT'
+                          ? 'bg-emerald-600 text-white border-emerald-700'
+                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                      }`}
+                    >
+                      Para alugar
+                    </button>
                   </div>
 
-                  {/* More Button (abre drawer com todos os filtros) */}
-                  <button
-                    onClick={() => setFiltersOpen(true)}
-                    className={`px-4 py-2.5 border rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                      advancedFiltersCount > 0
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:border-emerald-400'
-                        : 'bg-white border-gray-300 hover:border-gray-400'
-                    }`}
-                  >
-                    Filtros{advancedFiltersCount > 0 ? ` (${advancedFiltersCount})` : ''}
-                  </button>
+                  <div className="flex items-center gap-2 relative">
+                    {/* Search Bar com Autocomplete */}
+                    <div className="flex-1 relative">
+                      <div className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg bg-white">
+                        <Search className="w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          value={searchInput}
+                          onChange={(e) => {
+                            setSearchInput(e.target.value);
+                            setShowSearchSuggestions(true);
+                          }}
+                          onFocus={() => setShowSearchSuggestions(true)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              applySearch();
+                            }
+                          }}
+                          placeholder="Cidade, bairro..."
+                          className="flex-1 outline-none text-sm"
+                        />
+                        <button
+                          onClick={() => {
+                            applySearch();
+                          }}
+                          className="p-1 hover:bg-gray-100 rounded transition-colors"
+                          aria-label="Buscar"
+                        >
+                          <Search className="w-4 h-4 text-gray-600" />
+                        </button>
+                      </div>
+                      
+                      {/* Autocomplete Dropdown Mobile */}
+                      {showSearchSuggestions && searchSuggestions.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-80 overflow-y-auto">
+                          {searchSuggestions.map((suggestion, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => handleSelectSuggestion(suggestion)}
+                              className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900">{suggestion.label}</div>
+                                  <div className="text-xs text-gray-500 mt-0.5">
+                                    {suggestion.city}, {suggestion.state}
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-400 ml-2">
+                                  {suggestion.count} {suggestion.count === 1 ? 'imóvel' : 'imóveis'}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* More Button (abre drawer com todos os filtros) */}
+                    <button
+                      onClick={() => setFiltersOpen(true)}
+                      className={`px-4 py-2.5 border rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                        advancedFiltersCount > 0
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:border-emerald-400'
+                          : 'bg-white border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      Filtros{advancedFiltersCount > 0 ? ` (${advancedFiltersCount})` : ''}
+                    </button>
+                  </div>
                 </div>
               </div>
 

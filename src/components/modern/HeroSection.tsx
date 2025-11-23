@@ -73,7 +73,25 @@ export default function HeroSection() {
           const response = await fetch('/api/locations');
           const data = await response.json();
           if (data.success) {
-            setSuggestions(data.suggestions?.slice(0, 5) || []);
+            let items = (data.suggestions?.slice(0, 5) || []) as LocationSuggestion[];
+
+            // Reordenar para colocar a última cidade buscada em primeiro lugar
+            try {
+              if (typeof window !== 'undefined') {
+                const lastCity = localStorage.getItem('lastCity');
+                const lastState = localStorage.getItem('lastState');
+                if (lastCity && lastState) {
+                  items = [...items].sort((a, b) => {
+                    const aIsLast = a.city === lastCity && a.state === lastState;
+                    const bIsLast = b.city === lastCity && b.state === lastState;
+                    if (aIsLast === bIsLast) return 0;
+                    return aIsLast ? -1 : 1;
+                  });
+                }
+              }
+            } catch {}
+
+            setSuggestions(items);
           }
         } catch (error) {
           console.error('Error fetching popular suggestions:', error);
@@ -115,16 +133,20 @@ export default function HeroSection() {
       // Parse cidade e estado do query
       const parts = searchQuery.split(',').map(p => p.trim());
       let params = new URLSearchParams();
-      
-      // Add purpose
-      params.set('purpose', purpose);
-      
+
       if (parts.length >= 2) {
         // Formato: "Cidade, Estado" ou "Bairro, Cidade, Estado"
         const state = parts[parts.length - 1];
         const city = parts[parts.length - 2];
         params.set('city', city);
         params.set('state', state);
+        // Persistir última cidade buscada para priorizar nas sugestões populares
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('lastCity', city);
+            localStorage.setItem('lastState', state);
+          }
+        } catch {}
         if (parts.length === 3) {
           params.set('q', parts[0]); // Bairro como query geral
         }
@@ -175,7 +197,6 @@ export default function HeroSection() {
     } else {
       params.set('q', suggestion.label);
     }
-    params.set('purpose', purpose);
     // Persist last searched location from suggestion
     if (typeof window !== 'undefined' && suggestion.city && suggestion.state) {
       try {
