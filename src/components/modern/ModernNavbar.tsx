@@ -346,7 +346,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
           </div>
 
           {/* Center: Logo */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center gap-4">
             <Link href="/" className="flex items-center gap-2">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xl transition-colors ${
                 forceLight ? 'bg-teal-600 text-white' : 'bg-white/20 backdrop-blur text-white'
@@ -372,7 +372,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white/90 hover:bg-white/10'
                 }`}
               >
-                <HelpCircle className="w-4 h-4" />
                 <span>Recursos</span>
                 <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'recursos' ? 'rotate-180' : ''}`} />
               </button>
