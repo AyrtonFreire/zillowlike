@@ -19,6 +19,16 @@ export async function GET() {
         email: true,
         role: true,
         emailVerified: true,
+        realtorApplication: {
+          select: {
+            status: true,
+          },
+        },
+        queue: {
+          select: {
+            status: true,
+          },
+        },
         _count: {
           select: {
             leads: true,

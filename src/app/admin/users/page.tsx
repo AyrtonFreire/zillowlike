@@ -26,6 +26,12 @@ interface User {
     properties: number;
     leads: number;
   };
+  realtorApplication?: {
+    status: string;
+  } | null;
+  queue?: {
+    status: string;
+  } | null;
 }
 
 export default function AdminUsersPage() {
@@ -126,6 +132,38 @@ export default function AdminUsersPage() {
       USER: "Usuário",
     };
     return labels[role as keyof typeof labels] || role;
+  };
+
+  const getPartnerStatusLabel = (user: User) => {
+    const applicationStatus = user.realtorApplication?.status || null;
+    const queueStatus = user.queue?.status || null;
+
+    if (queueStatus === "ACTIVE") return "Parceiro ativo";
+    if (applicationStatus === "PENDING") return "Aplicação pendente";
+    if (applicationStatus === "REJECTED") return "Aplicação rejeitada";
+    return null;
+  };
+
+  const handleTogglePartner = async (userId: string, isPartner: boolean) => {
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/realtor-partner`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPartner }),
+      });
+
+      if (response.ok) {
+        await fetchUsers();
+        setShowRoleModal(false);
+        setSelectedUser(null);
+      } else {
+        const data = await response.json().catch(() => null);
+        alert(data?.error || "Erro ao atualizar status de corretor parceiro");
+      }
+    } catch (error) {
+      console.error("Error updating realtor partner status:", error);
+      alert("Erro ao atualizar status de corretor parceiro");
+    }
   };
 
   if (loading) {
@@ -233,6 +271,11 @@ export default function AdminUsersPage() {
                       >
                         {getRoleLabel(user.role)}
                       </span>
+                      {user.role === "REALTOR" && (
+                        <div className="mt-1 text-xs text-gray-500">
+                          {getPartnerStatusLabel(user) || "Não parceiro"}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {user._count.properties}
@@ -342,6 +385,42 @@ export default function AdminUsersPage() {
                 </button>
               ))}
             </div>
+            {selectedUser.role === "REALTOR" && (
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                  Programa de corretores parceiros
+                </h4>
+                <p className="text-xs text-gray-500 mb-3">
+                  Controle manual se este corretor participa ou não do programa de parceiros (fila inteligente de leads).
+                </p>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleTogglePartner(selectedUser.id, true)}
+                    disabled={selectedUser.queue?.status === "ACTIVE"}
+                    className={`w-full px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      selectedUser.queue?.status === "ACTIVE"
+                        ? "border-green-500 bg-green-50 text-green-700 cursor-not-allowed"
+                        : "border-gray-300 hover:border-green-500 hover:bg-green-50 hover:text-green-700"
+                    }`}
+                  >
+                    {selectedUser.queue?.status === "ACTIVE"
+                      ? "Já é corretor parceiro ativo"
+                      : "Ativar como corretor parceiro"}
+                  </button>
+                  <button
+                    onClick={() => handleTogglePartner(selectedUser.id, false)}
+                    disabled={!selectedUser.queue}
+                    className={`w-full px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      !selectedUser.queue
+                        ? "border-gray-200 text-gray-400 cursor-not-allowed"
+                        : "border-gray-300 hover:border-red-500 hover:bg-red-50 hover:text-red-700"
+                    }`}
+                  >
+                    Remover do programa de parceiros
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => {
