@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   Home,
   TrendingUp,
@@ -12,6 +13,7 @@ import {
   Eye,
   DollarSign,
   Activity,
+  Crown,
 } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
@@ -57,6 +59,7 @@ interface MyLead {
 }
 
 export default function BrokerDashboard() {
+  const { data: session } = useSession();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -186,7 +189,7 @@ export default function BrokerDashboard() {
 
   return (
     <DashboardLayout
-      title={`${getGreeting()}, João 👋`}
+      title={`${getGreeting()}, ${session?.user?.name ?? "Corretor"} 👋`}
       description="Aqui está um resumo do seu desempenho"
       breadcrumbs={[
         { label: "Home", href: "/" },
@@ -380,6 +383,33 @@ export default function BrokerDashboard() {
               )}
             </div>
           </StatCard>
+        </div>
+
+        {/* CTA: Programa de corretores parceiros */}
+        <div className="mb-8 rounded-2xl bg-gradient-to-r from-teal-dark via-teal to-accent text-white shadow-lg p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex-1">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[11px] font-semibold uppercase tracking-[0.16em] mb-3">
+              <Crown className="w-4 h-4" />
+              <span>Programa de corretores parceiros</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">
+              Quer aparecer na fila inteligente de leads do ZillowLike?
+            </h2>
+            <p className="text-sm sm:text-base text-white/85 max-w-xl">
+              Enviando seus documentos como <span className="font-semibold">corretor parceiro</span>, você pode receber leads indicados de imóveis publicados por pessoas físicas, com distribuição justa e acompanhamento organizado direto no seu painel.
+            </p>
+          </div>
+          <div className="w-full md:w-auto flex flex-col items-stretch gap-2">
+            <Link
+              href="/become-realtor"
+              className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold bg-white text-teal-dark shadow-md hover:shadow-lg hover:bg-teal-50 transition-all"
+            >
+              <span>Conhecer programa de parceria</span>
+            </Link>
+            <p className="text-[11px] text-white/80 md:text-right">
+              Cadastro gratuito, sujeito à validação dos seus dados profissionais.
+            </p>
+          </div>
         </div>
 
         {/* Quick Actions */}
