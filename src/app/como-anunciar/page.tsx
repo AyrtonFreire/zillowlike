@@ -32,7 +32,7 @@ export default function ComoAnunciarPage() {
                 Sou pessoa física e quero anunciar
               </Link>
               <Link
-                href="/onboarding"
+                href="/become-realtor"
                 className="inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-white/70 text-white/95 hover:bg-white/10 transition-all"
               >
                 <Briefcase className="w-4 h-4 mr-2" />
@@ -201,8 +201,8 @@ export default function ComoAnunciarPage() {
             <p className="text-sm text-gray-700 mb-4 flex-1">
               Acesse o site, crie seu login, cadastre e valide seu telefone para contato via SMS em Meu Perfil e informe se é corretor(a) ou pessoa física. Ao anunciar um imóvel grátis como pessoa física, seu perfil é atualizado automaticamente para Proprietário(a), desbloqueando os fluxos corretos para cada tipo de usuário.
             </p>
-            <Link href="/onboarding" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
-              Ir para onboarding
+            <Link href="/become-realtor" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
+              Ver fluxo completo para corretores parceiros
               <ArrowRightCircle className="w-4 h-4 ml-1" />
             </Link>
           </div>
@@ -249,7 +249,7 @@ export default function ComoAnunciarPage() {
               Anunciar como pessoa física
             </Link>
             <Link
-              href="/onboarding"
+              href="/become-realtor"
               className="inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-white/80 text-white hover:bg-white/10 transition-all"
             >
               <Briefcase className="w-4 h-4 mr-2" />

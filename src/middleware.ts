@@ -18,8 +18,8 @@ const roleBasedPaths: Record<string, string[]> = {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip onboarding page and home page
-  if (pathname === "/onboarding" || pathname === "/" || pathname === "/auth/signin") {
+  // Páginas públicas principais (não exigem sessão)
+  if (pathname === "/" || pathname === "/auth/signin") {
     return NextResponse.next();
   }
 
@@ -43,15 +43,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Se autenticado mas sem role definido (apenas USER), redireciona para onboarding
-  // EXCETO se estiver tentando acessar /dashboard (que USER pode acessar)
-  if ((!token.role || token.role === "USER") && !pathname.startsWith("/dashboard")) {
-    // Só redireciona para onboarding se estiver tentando acessar rotas que requerem role específico
-    const requiresSpecificRole = ["/broker", "/admin", "/owner", "/realtor"].some(path => pathname.startsWith(path));
-    if (requiresSpecificRole) {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
-    }
-  }
+  // Removido: fluxo automático de onboarding que promovia USER para OWNER/REALTOR
 
   // Checa role-based access
   for (const [path, allowedRoles] of Object.entries(roleBasedPaths)) {

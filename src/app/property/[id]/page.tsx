@@ -483,7 +483,7 @@ export default async function PropertyPage({ params }: PageProps) {
             {ownerIsRealtor && realtorProfileSlug && (
               <Link
                 href={`/realtor/${realtorProfileSlug}`}
-                className="block rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-[1px] transition-transform transition-shadow duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                className="block rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-[1px] transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               >
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Corretor responsável</h3>
                 <div className="flex items-center gap-3 mb-1.5">
