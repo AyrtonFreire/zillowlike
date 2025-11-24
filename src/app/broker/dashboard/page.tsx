@@ -69,6 +69,10 @@ export default function BrokerDashboard() {
   const [myLeadsLoading, setMyLeadsLoading] = useState(true);
   const [myLeadsError, setMyLeadsError] = useState<string | null>(null);
   const [leadFilter, setLeadFilter] = useState<"ALL" | "NEW" | "IN_SERVICE">("ALL");
+  const [partnerStatus, setPartnerStatus] = useState<
+    "NONE" | "PENDING" | "APPROVED" | "REJECTED"
+  >("NONE");
+  const [partnerStatusLoading, setPartnerStatusLoading] = useState(true);
 
   const searchParams = useSearchParams();
   const previewUserId = searchParams.get("previewUserId");
@@ -79,6 +83,10 @@ export default function BrokerDashboard() {
 
   useEffect(() => {
     fetchMyLeads();
+  }, []);
+
+  useEffect(() => {
+    fetchPartnerStatus();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -134,6 +142,42 @@ export default function BrokerDashboard() {
     }
   };
 
+  const fetchPartnerStatus = async () => {
+    try {
+      setPartnerStatusLoading(true);
+      const response = await fetch("/api/realtor/status");
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const applicationStatus = data?.partner?.applicationStatus as
+        | "PENDING"
+        | "APPROVED"
+        | "REJECTED"
+        | null;
+      const hasQueueEntry = Boolean(data?.partner?.hasQueueEntry);
+
+      let status: "NONE" | "PENDING" | "APPROVED" | "REJECTED" = "NONE";
+
+      if (applicationStatus === "APPROVED" || hasQueueEntry) {
+        status = "APPROVED";
+      } else if (applicationStatus === "PENDING") {
+        status = "PENDING";
+      } else if (applicationStatus === "REJECTED") {
+        status = "REJECTED";
+      }
+
+      setPartnerStatus(status);
+    } catch (error) {
+      console.error("Error fetching realtor partner status:", error);
+      setPartnerStatus("NONE");
+    } finally {
+      setPartnerStatusLoading(false);
+    }
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Bom dia";
@@ -165,6 +209,8 @@ export default function BrokerDashboard() {
     }
     return true;
   });
+
+  const showPartnerCta = !partnerStatusLoading && partnerStatus !== "APPROVED";
 
   if (loading) {
     return (
@@ -262,7 +308,9 @@ export default function BrokerDashboard() {
               </div>
             ) : myLeads.length === 0 ? (
               <div className="text-sm text-gray-600">
-                Nenhum lead ativo no momento. Quando novos leads chegarem ou forem aceitos, um resumo rápido do seu dia aparece aqui.
+                {partnerStatus === "APPROVED"
+                  ? "Nenhum lead ativo no momento. Assim que novos leads da plataforma ou dos seus anúncios chegarem, um resumo rápido do seu dia aparece aqui."
+                  : "Nenhum lead ativo no momento. Quando você tiver leads gerados pelos imóveis que anunciar, um resumo rápido do seu dia aparece aqui."}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-700">
@@ -385,32 +433,65 @@ export default function BrokerDashboard() {
           </StatCard>
         </div>
 
-        {/* CTA: Programa de corretores parceiros */}
-        <div className="mb-8 rounded-2xl bg-gradient-to-r from-teal-dark via-teal to-accent text-white shadow-lg p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[11px] font-semibold uppercase tracking-[0.16em] mb-3">
-              <Crown className="w-4 h-4" />
-              <span>Programa de corretores parceiros</span>
+        {showPartnerCta && (
+          <div className="mb-8 rounded-2xl bg-gradient-to-r from-teal-dark via-teal to-accent text-white shadow-lg p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[11px] font-semibold uppercase tracking-[0.16em] mb-3">
+                <Crown className="w-4 h-4" />
+                <span>
+                  {partnerStatus === "PENDING"
+                    ? "Aplicação em análise"
+                    : partnerStatus === "REJECTED"
+                    ? "Aplicação não aprovada"
+                    : "Programa de corretores parceiros"}
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold mb-2">
+                {partnerStatus === "PENDING"
+                  ? "Estamos revisando seu cadastro para o programa de parceiros"
+                  : partnerStatus === "REJECTED"
+                  ? "Sua aplicação para o programa de parceiros foi analisada"
+                  : "Quer aparecer na fila inteligente de leads do ZillowLike?"}
+              </h2>
+              <p className="text-sm sm:text-base text-white/85 max-w-xl">
+                {partnerStatus === "PENDING" ? (
+                  "Obrigado por se candidatar! Estamos validando seus dados profissionais e em breve você poderá começar a receber leads da fila inteligente, direto aqui no seu painel."
+                ) : partnerStatus === "REJECTED" ? (
+                  "Sua aplicação para o programa de corretores parceiros não foi aprovada neste momento. Se você tiver dúvidas sobre essa decisão, entre em contato com o suporte da plataforma."
+                ) : (
+                  <>
+                    Para se tornar <span className="font-semibold">corretor parceiro</span>, envie fotos dos seus documentos para análise e o site irá te conectar com interessados em imóveis publicados por pessoas físicas, com distribuição justa e acompanhamento organizado direto no seu painel.
+                  </>
+                )}
+              </p>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold mb-2">
-              Quer aparecer na fila inteligente de leads do ZillowLike?
-            </h2>
-            <p className="text-sm sm:text-base text-white/85 max-w-xl">
-              Enviando seus documentos como <span className="font-semibold">corretor parceiro</span>, você pode receber leads indicados de imóveis publicados por pessoas físicas, com distribuição justa e acompanhamento organizado direto no seu painel.
-            </p>
+            {partnerStatus === "REJECTED" ? (
+              <div className="w-full md:w-auto flex flex-col items-stretch gap-2">
+                <p className="text-[11px] text-white/80 md:text-right">
+                  Se você tiver dúvidas, envie uma mensagem pelos canais de contato do ZillowLike.
+                </p>
+              </div>
+            ) : (
+              <div className="w-full md:w-auto flex flex-col items-stretch gap-2">
+                <Link
+                  href="/become-realtor"
+                  className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold bg-white text-teal-dark shadow-md hover:shadow-lg hover:bg-teal-50 transition-all"
+                >
+                  <span>
+                    {partnerStatus === "PENDING"
+                      ? "Acompanhar status da aplicação"
+                      : "Conhecer programa de parceria"}
+                  </span>
+                </Link>
+                <p className="text-[11px] text-white/80 md:text-right">
+                  {partnerStatus === "PENDING"
+                    ? "Avisaremos por e-mail assim que sua análise for concluída."
+                    : "Cadastro gratuito, sujeito à validação dos seus dados profissionais."}
+                </p>
+              </div>
+            )}
           </div>
-          <div className="w-full md:w-auto flex flex-col items-stretch gap-2">
-            <Link
-              href="/become-realtor"
-              className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold bg-white text-teal-dark shadow-md hover:shadow-lg hover:bg-teal-50 transition-all"
-            >
-              <span>Conhecer programa de parceria</span>
-            </Link>
-            <p className="text-[11px] text-white/80 md:text-right">
-              Cadastro gratuito, sujeito à validação dos seus dados profissionais.
-            </p>
-          </div>
-        </div>
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
