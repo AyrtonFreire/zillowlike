@@ -77,7 +77,8 @@ export default function PriceRangeSlider({
         step={step}
         value={internalMin}
         onChange={(e) => handleMinChange(Number(e.target.value))}
-        className="pointer-events-auto absolute inset-x-0 top-1/2 -translate-y-1/2 w-full appearance-none bg-transparent
+        className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 w-full appearance-none bg-transparent
+          [&::-webkit-slider-thumb]:pointer-events-auto
           [&::-webkit-slider-thumb]:appearance-none
           [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4
           [&::-webkit-slider-thumb]:rounded-full
@@ -88,6 +89,7 @@ export default function PriceRangeSlider({
           [&::-webkit-slider-thumb]:hover:scale-[1.05]
           [&::-webkit-slider-runnable-track]:appearance-none
           [&::-webkit-slider-runnable-track]:bg-transparent
+          [&::-moz-range-thumb]:pointer-events-auto
           [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4
           [&::-moz-range-thumb]:rounded-full
           [&::-moz-range-thumb]:bg-emerald-600
@@ -104,7 +106,8 @@ export default function PriceRangeSlider({
         step={step}
         value={internalMax}
         onChange={(e) => handleMaxChange(Number(e.target.value))}
-        className="pointer-events-auto absolute inset-x-0 top-1/2 -translate-y-1/2 w-full appearance-none bg-transparent
+        className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 w-full appearance-none bg-transparent
+          [&::-webkit-slider-thumb]:pointer-events-auto
           [&::-webkit-slider-thumb]:appearance-none
           [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4
           [&::-webkit-slider-thumb]:rounded-full
@@ -115,6 +118,7 @@ export default function PriceRangeSlider({
           [&::-webkit-slider-thumb]:hover:scale-[1.05]
           [&::-webkit-slider-runnable-track]:appearance-none
           [&::-webkit-slider-runnable-track]:bg-transparent
+          [&::-moz-range-thumb]:pointer-events-auto
           [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4
           [&::-moz-range-thumb]:rounded-full
           [&::-moz-range-thumb]:bg-emerald-600
