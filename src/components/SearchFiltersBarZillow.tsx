@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, Home, DollarSign, Bed, Bath, Maximize2, Car, PawPrint, Sofa, Waves, Dumbbell, Building2, MapPin, Sun, Leaf, Accessibility, Sparkles, Mountain, ArrowUpCircle, Wind, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Lightbulb, Droplets, Archive, Gem, Dog, ArrowUp, ArrowDown, DoorOpen } from "lucide-react";
 import { buildSearchParams } from "@/lib/url";
+import PriceRangeSlider from "@/components/PriceRangeSlider";
 
 type FilterValues = {
   minPrice: string;
@@ -252,7 +253,7 @@ export default function SearchFiltersBarZillow({
                     : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
                 }`}
               >
-                Para venda
+                Comprar
               </button>
               <button
                 onClick={() => updateFilter('purpose', 'RENT')}
@@ -319,6 +320,17 @@ export default function SearchFiltersBarZillow({
                 </div>
               </div>
             </div>
+            <PriceRangeSlider
+              min={0}
+              max={3000000}
+              step={50000}
+              minValue={localFilters.minPrice ? Number(localFilters.minPrice) : null}
+              maxValue={localFilters.maxPrice ? Number(localFilters.maxPrice) : null}
+              onChange={({ min, max }) => {
+                updateFilter('minPrice', min ? String(min) : '');
+                updateFilter('maxPrice', max ? String(max) : '');
+              }}
+            />
             {/* Atalhos rápidos de preço */}
             <div className="flex flex-wrap gap-2">
               <button onClick={() => { updateFilter('minPrice', ''); updateFilter('maxPrice', '300000'); }} className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">Até 300k</button>

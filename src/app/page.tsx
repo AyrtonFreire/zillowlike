@@ -23,6 +23,7 @@ import SearchFiltersBarZillow from "@/components/SearchFiltersBarZillow";
 import Image from "next/image";
 import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
 import { track } from "@/lib/analytics";
+import PriceRangeSlider from "@/components/PriceRangeSlider";
 import type { ApiProperty } from "@/types/api";
 
 type Property = ApiProperty;
@@ -1101,8 +1102,8 @@ export default function Home() {
                         : "bg-white border-gray-300 text-gray-700 hover:border-gray-400"
                     }`}
                   >
-                    <option value="SALE">Para venda</option>
-                    <option value="RENT">Para alugar</option>
+                    <option value="SALE">Comprar</option>
+                    <option value="RENT">Alugar</option>
                   </select>
 
                   {/* Price */}
@@ -1148,6 +1149,17 @@ export default function Home() {
                                 />
                               </div>
                             </div>
+                            <PriceRangeSlider
+                              min={0}
+                              max={3000000}
+                              step={50000}
+                              minValue={minPrice ? Number(minPrice) : null}
+                              maxValue={maxPrice ? Number(maxPrice) : null}
+                              onChange={({ min, max }) => {
+                                setMinPrice(min ? String(min) : "");
+                                setMaxPrice(max ? String(max) : "");
+                              }}
+                            />
                           </div>
                           <div className="flex gap-2 pt-2">
                             <button
@@ -1799,7 +1811,7 @@ export default function Home() {
                 {/* Finalidade (venda / aluguel) */}
                 {purpose && (
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
-                    <span>{purpose === 'RENT' ? 'Para alugar' : 'Para venda'}</span>
+                    <span>{purpose === 'RENT' ? 'Alugar' : 'Comprar'}</span>
                     <button
                       onClick={() => {
                         setPurpose('');
