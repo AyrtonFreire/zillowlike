@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { User, Building2, Calendar, Clock } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import Button from "./ui/Button";
 
 type ContactCardProps = {
@@ -15,6 +16,8 @@ type ContactCardProps = {
   ownerName?: string;
   ownerImage?: string;
   ownerPhone?: string;
+  ownerPublicProfileEnabled?: boolean;
+  ownerPublicSlug?: string | null;
   
   // Lead board control
   allowRealtorBoard: boolean; // true = vai para mural de leads, false = contato direto
@@ -28,6 +31,8 @@ export default function PropertyContactCard({
   ownerName,
   ownerImage,
   ownerPhone,
+  ownerPublicProfileEnabled,
+  ownerPublicSlug,
   allowRealtorBoard,
 }: ContactCardProps) {
   const [formData, setFormData] = useState({
@@ -50,6 +55,7 @@ export default function PropertyContactCard({
   const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
   const isDirectOwner = (ownerRole === "OWNER" || ownerRole === "USER") && !allowRealtorBoard;
   const isLeadBoard = (ownerRole === "OWNER" || ownerRole === "USER") && allowRealtorBoard;
+  const hasPublicProfile = isRealtorOrAgency && !!ownerPublicProfileEnabled && !!ownerPublicSlug;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,34 +116,64 @@ export default function PropertyContactCard({
     <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
       {/* Header: foto/logo do corretor/imobiliária (se aplicável) */}
       {isRealtorOrAgency && ownerName && (
-        <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-200">
-          {ownerImage ? (
-            <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-teal/20">
-              <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
-            </div>
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal/20 to-teal/40 flex items-center justify-center">
-              {ownerRole === "AGENCY" ? (
-                <Building2 className="w-8 h-8 text-teal" />
+        <div className="mb-6 pb-6 border-b border-gray-200">
+          {hasPublicProfile ? (
+            <Link
+              href={`/realtor/${ownerPublicSlug}`}
+              className="flex items-center gap-3 rounded-lg -mx-1 px-1 hover:bg-teal/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            >
+              {ownerImage ? (
+                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-teal/20">
+                  <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
+                </div>
               ) : (
-                <User className="w-8 h-8 text-teal" />
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal/20 to-teal/40 flex items-center justify-center">
+                  {ownerRole === "AGENCY" ? (
+                    <Building2 className="w-8 h-8 text-teal" />
+                  ) : (
+                    <User className="w-8 h-8 text-teal" />
+                  )}
+                </div>
               )}
+              <div>
+                <p className="font-semibold text-gray-900">{ownerName}</p>
+                <p className="text-sm text-gray-600">
+                  {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
+                </p>
+              </div>
+            </Link>
+          ) : (
+            <div className="flex items-center gap-3">
+              {ownerImage ? (
+                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-teal/20">
+                  <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal/20 to-teal/40 flex items-center justify-center">
+                  {ownerRole === "AGENCY" ? (
+                    <Building2 className="w-8 h-8 text-teal" />
+                  ) : (
+                    <User className="w-8 h-8 text-teal" />
+                  )}
+                </div>
+              )}
+              <div>
+                <p className="font-semibold text-gray-900">{ownerName}</p>
+                <p className="text-sm text-gray-600">
+                  {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
+                </p>
+              </div>
             </div>
           )}
-          <div>
-            <p className="font-semibold text-gray-900">{ownerName}</p>
-            <p className="text-sm text-gray-600">
-              {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
-            </p>
-            {ownerPhone && (
-              <button 
-                onClick={() => window.open(`tel:${ownerPhone}`)}
-                className="text-sm text-teal hover:text-teal-dark mt-1"
-              >
-                📞 Mostrar telefone
-              </button>
-            )}
-          </div>
+
+          {ownerPhone && (
+            <button 
+              onClick={() => window.open(`tel:${ownerPhone}`)}
+              className="text-sm text-teal hover:text-teal-dark mt-3"
+            >
+              📞 Mostrar telefone
+            </button>
+          )}
         </div>
       )}
 

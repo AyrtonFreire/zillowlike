@@ -46,6 +46,8 @@ type PropertyDetails = {
     image: string | null;
     role: "USER" | "OWNER" | "REALTOR" | "AGENCY" | "ADMIN";
     phone: string | null;
+    publicProfileEnabled?: boolean | null;
+    publicSlug?: string | null;
   };
 };
 
@@ -800,6 +802,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   ownerName={property.owner?.name || undefined}
                   ownerImage={property.owner?.image || undefined}
                   ownerPhone={property.owner?.phone || undefined}
+                  ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
+                  ownerPublicSlug={property.owner?.publicSlug || null}
                   allowRealtorBoard={property.allowRealtorBoard || false}
                 />
 

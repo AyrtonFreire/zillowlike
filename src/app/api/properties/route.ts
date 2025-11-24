@@ -100,7 +100,19 @@ export async function GET(req: NextRequest) {
           createdAt: true,
           updatedAt: true,
           images: { select: { id: true, url: true, alt: true, sortOrder: true, blurDataURL: true }, orderBy: { sortOrder: 'asc' } },
-          owner: { select: { id: true, name: true, email: true, image: true, role: true, phone: true } },
+          owner: {
+            // Cast para any pois os tipos gerados podem não conhecer ainda os campos de perfil público
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              role: true,
+              phone: true,
+              publicProfileEnabled: true,
+              publicSlug: true,
+            } as any,
+          },
         },
       });
       if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
