@@ -173,15 +173,43 @@ function getPropertyImages(type: string): string[] {
 async function main() {
   console.log('🌱 Iniciando seed de imóveis...\n');
 
-  // Busca um usuário existente para ser o owner
-  const user = await prisma.user.findFirst();
-  
-  if (!user) {
-    console.error('❌ Nenhum usuário encontrado. Crie um usuário primeiro.');
-    return;
-  }
+  // Garante usuários de exemplo: pessoa física (OWNER) e corretor (REALTOR)
+  const [pfUser, realtorUser] = await Promise.all([
+    prisma.user.upsert({
+      where: { email: 'pf-demo@zillowlike.local' },
+      update: {
+        role: 'OWNER',
+      },
+      create: {
+        name: 'Proprietário Demo',
+        email: 'pf-demo@zillowlike.local',
+        role: 'OWNER',
+      },
+    }),
+    prisma.user.upsert({
+      where: { email: 'realtor-demo@zillowlike.local' },
+      update: {
+        role: 'REALTOR',
+        // Cast para any porque o tipo gerado pode não estar em sincronia com todos os campos de perfil público
+        publicProfileEnabled: true,
+        publicSlug: 'corretor-demo',
+      } as any,
+      create: {
+        name: 'Corretor Demo',
+        email: 'realtor-demo@zillowlike.local',
+        role: 'REALTOR',
+        publicProfileEnabled: true,
+        publicSlug: 'corretor-demo',
+        publicHeadline: 'Especialista em imóveis na região',
+        publicCity: 'Petrolina',
+        publicState: 'PE',
+      } as any,
+    }),
+  ]);
 
-  console.log(`✅ Usando usuário: ${user.email}\n`);
+  console.log(`✅ Usando usuários de seed:`);
+  console.log(`   • Pessoa física: ${pfUser.email} (OWNER)`);
+  console.log(`   • Corretor:      ${realtorUser.email} (REALTOR, perfil público)\n`);
 
   // Limpeza total de dados anteriores (imagens e imóveis)
   console.log('🧹 Limpando imóveis e dependências (favorites, leads, views, images)...');
@@ -269,6 +297,9 @@ async function main() {
         })(),
       };
 
+      // Distribui owners: primeiros 20 imóveis como pessoa física (OWNER), últimos 20 como corretor (REALTOR)
+      const isPfOwner = totalCreated < 20;
+
       const property = await prisma.property.create({
         data: {
           title: `${typeLabel} em ${neighborhood}`,
@@ -297,7 +328,7 @@ async function main() {
           longitude: city.coords.lng + (Math.random() - 0.5) * 0.03,
           conditionTags: tags,
           yearBuilt: type === 'LAND' ? null : getRandomInt(1995, 2024),
-          ownerId: user.id,
+          ownerId: isPfOwner ? pfUser.id : realtorUser.id,
           ...extras,
           images: {
             create: imageUrls.map((url, index) => ({

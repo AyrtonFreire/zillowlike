@@ -480,10 +480,13 @@ export default async function PropertyPage({ params }: PageProps) {
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            {ownerIsRealtor && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            {ownerIsRealtor && realtorProfileSlug && (
+              <Link
+                href={`/realtor/${realtorProfileSlug}`}
+                className="block rounded-2xl border border-gray-200 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-[1px] transition-transform transition-shadow duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Corretor responsável</h3>
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-3 mb-1.5">
                   <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center text-sm font-semibold text-blue-700">
                     {(owner?.name || "C").charAt(0).toUpperCase()}
                   </div>
@@ -498,7 +501,7 @@ export default async function PropertyPage({ params }: PageProps) {
                 </div>
 
                 {ownerAvgRating != null && ownerAvgRating > 0 && (
-                  <div className="flex items-center gap-2 text-xs text-gray-700 mb-2">
+                  <div className="flex items-center gap-2 text-xs text-gray-700 mt-2">
                     <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-yellow-100 text-yellow-700 text-[11px] font-semibold">
                       ★
                     </span>
@@ -508,19 +511,7 @@ export default async function PropertyPage({ params }: PageProps) {
                     </span>
                   </div>
                 )}
-
-                {realtorProfileSlug && (
-                  <div className="mt-2">
-                    <Link
-                      href={`/realtor/${realtorProfileSlug}`}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
-                    >
-                      <span>Ver perfil completo</span>
-                      <span aria-hidden="true">→</span>
-                    </Link>
-                  </div>
-                )}
-              </div>
+              </Link>
             )}
 
             <StickyActions
