@@ -282,6 +282,23 @@ export default function Home() {
     keywords, yearBuiltMin, yearBuiltMax
   ]);
 
+  // Limite dinâmico para o slider de preço (baseado nos imóveis carregados)
+  const dynamicMaxPrice = useMemo(() => {
+    if (!properties || properties.length === 0) {
+      return 3000000; // fallback padrão em reais
+    }
+    const maxCents = Math.max(
+      ...properties.map((p: any) => (typeof p.price === "number" ? p.price : 0))
+    );
+    if (!Number.isFinite(maxCents) || maxCents <= 0) {
+      return 3000000;
+    }
+    const maxReais = Math.round(maxCents / 100); // converter de centavos para reais
+    const step = 50000; // 50k
+    const rounded = Math.ceil(maxReais / step) * step;
+    return rounded;
+  }, [properties]);
+
   // Gerar resumo para chips
   const getPriceSummary = () => {
     if (!minPrice && !maxPrice) return 'Preço';
@@ -1151,7 +1168,7 @@ export default function Home() {
                             </div>
                             <PriceRangeSlider
                               min={0}
-                              max={3000000}
+                              max={dynamicMaxPrice}
                               step={50000}
                               minValue={minPrice ? Number(minPrice) : null}
                               maxValue={maxPrice ? Number(maxPrice) : null}
@@ -2430,6 +2447,7 @@ export default function Home() {
           city={city}
           state={state}
           search={search}
+          maxPriceLimit={dynamicMaxPrice}
           onFiltersChange={(newFilters) => {
             setMinPrice(newFilters.minPrice);
             setMaxPrice(newFilters.maxPrice);

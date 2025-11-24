@@ -68,6 +68,7 @@ type SearchFiltersBarZillowProps = {
   city?: string;
   state?: string;
   search?: string;
+  maxPriceLimit?: number;
 };
 
 export default function SearchFiltersBarZillow({ 
@@ -78,7 +79,8 @@ export default function SearchFiltersBarZillow({
   totalResults,
   city,
   state,
-  search
+  search,
+  maxPriceLimit
 }: SearchFiltersBarZillowProps) {
   const [localFilters, setLocalFilters] = useState(filters);
   const [previewTotal, setPreviewTotal] = useState<number | undefined>(totalResults);
@@ -263,7 +265,7 @@ export default function SearchFiltersBarZillow({
                     : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
                 }`}
               >
-                Para alugar
+                Alugar
               </button>
             </div>
           </div>
@@ -322,7 +324,7 @@ export default function SearchFiltersBarZillow({
             </div>
             <PriceRangeSlider
               min={0}
-              max={3000000}
+              max={maxPriceLimit ?? 3000000}
               step={50000}
               minValue={localFilters.minPrice ? Number(localFilters.minPrice) : null}
               maxValue={localFilters.maxPrice ? Number(localFilters.maxPrice) : null}
