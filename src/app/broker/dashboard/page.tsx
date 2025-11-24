@@ -11,7 +11,6 @@ import {
   Clock,
   Plus,
   Eye,
-  DollarSign,
   Activity,
   Crown,
 } from "lucide-react";
@@ -426,7 +425,19 @@ export default function BrokerDashboard() {
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>Nenhum lead encontrado para esse filtro</p>
+                  <p>
+                    {partnerStatus === "APPROVED"
+                      ? leadFilter === "NEW"
+                        ? "Nenhum lead novo da plataforma ou dos seus anúncios para esse filtro agora."
+                        : leadFilter === "IN_SERVICE"
+                        ? "Nenhum lead em atendimento no momento para esse filtro."
+                        : "Nenhum lead da plataforma ou dos seus anúncios encontrado para esse filtro."
+                      : leadFilter === "NEW"
+                      ? "Nenhum lead novo dos imóveis que você anunciou para esse filtro agora."
+                      : leadFilter === "IN_SERVICE"
+                      ? "Nenhum lead em atendimento no momento para esse filtro."
+                      : "Nenhum lead encontrado para esse filtro ainda. Assim que seus anúncios começarem a gerar contatos, eles aparecem aqui."}
+                  </p>
                 </div>
               )}
             </div>
@@ -494,7 +505,7 @@ export default function BrokerDashboard() {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link
             href="/broker/properties"
             className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
@@ -521,21 +532,6 @@ export default function BrokerDashboard() {
               <div>
                 <h3 className="font-semibold text-gray-900">Gerenciar Leads</h3>
                 <p className="text-sm text-gray-600">Acompanhar contatos</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href="/broker/credits"
-            className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-50 rounded-xl group-hover:bg-purple-100 transition-colors">
-                <DollarSign className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Créditos</h3>
-                <p className="text-sm text-gray-600">Gerenciar saldo</p>
               </div>
             </div>
           </Link>
