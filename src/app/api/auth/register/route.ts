@@ -21,6 +21,7 @@ export async function POST(request: Request) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
+    console.log("[REGISTER] Criando usuário:", normalizedEmail);
     const user = await prisma.user.create({
       data: {
         name: name || null,
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
         role: "USER",
       },
     });
+    console.log("[REGISTER] Usuário criado com ID:", user.id);
 
     const token = randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24h
@@ -40,17 +42,23 @@ export async function POST(request: Request) {
         expires,
       },
     });
+    console.log("[REGISTER] Token de verificação criado");
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
     const verifyUrl = `${baseUrl}/auth/verify-email?token=${token}`;
+    console.log("[REGISTER] URL de verificação:", verifyUrl);
+    console.log("[REGISTER] NEXT_PUBLIC_APP_URL:", process.env.NEXT_PUBLIC_APP_URL);
+    console.log("[REGISTER] NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
 
     const emailData = getAuthVerifyEmailEmail({ name, verifyUrl });
 
-    await sendEmail({
+    console.log("[REGISTER] Chamando sendEmail...");
+    const emailSent = await sendEmail({
       to: normalizedEmail,
       subject: emailData.subject,
       html: emailData.html,
     });
+    console.log("[REGISTER] Resultado do envio:", emailSent ? "✅ sucesso" : "❌ falha");
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -12,13 +12,17 @@ interface EmailOptions {
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   const apiKey = process.env.RESEND_API_KEY;
 
+  console.log("[EMAIL] Tentando enviar email para:", to);
+  console.log("[EMAIL] RESEND_API_KEY presente?", !!apiKey);
+
   // Se não houver API key configurada, apenas loga (modo desenvolvimento)
   if (!apiKey) {
-    console.log("📧 [DEV MOCK] Email:", { to, subject });
+    console.log("📧 [DEV MOCK] Email (API key ausente):", { to, subject });
     return true;
   }
 
   const from = process.env.EMAIL_FROM || "ZillowLike <onboarding@resend.dev>";
+  console.log("[EMAIL] Enviando de:", from);
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
@@ -35,15 +39,23 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
       }),
     });
 
+    console.log("[EMAIL] Response status:", response.status);
+
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      console.error("Email error (Resend):", response.status, text);
+      console.error("[EMAIL ERROR] Resend API retornou erro:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: text,
+      });
       return false;
     }
 
+    const data = await response.json().catch(() => null);
+    console.log("[EMAIL] ✅ Email enviado com sucesso via Resend:", data);
     return true;
   } catch (error) {
-    console.error("Email error (Resend):", error);
+    console.error("[EMAIL ERROR] Exceção ao chamar Resend:", error);
     return false;
   }
 }
