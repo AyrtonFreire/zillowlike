@@ -1156,17 +1156,8 @@ export default function NewPropertyPage() {
       description="Preencha as informações do seu imóvel para publicá-lo na plataforma."
       breadcrumbs={[
         { label: "Home", href: "/" },
-        { label: "Proprietário", href: "/owner/dashboard" },
         { label: "Novo Anúncio" },
       ]}
-      actions={
-        <Link
-          href="/owner/properties"
-          className="px-4 py-2 bg-white text-teal-700 rounded-lg font-medium hover:bg-teal-50 border border-teal-100"
-        >
-          Meus Anúncios
-        </Link>
-      }
     >
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
