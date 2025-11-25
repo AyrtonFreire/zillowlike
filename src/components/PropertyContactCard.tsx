@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { User, Building2, Calendar, Clock } from "lucide-react";
+import { User, Building2, Calendar, Clock, CheckCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import Button from "./ui/Button";
+import { useToast } from "@/contexts/ToastContext";
 
 type ContactCardProps = {
   propertyId: string;
@@ -50,6 +51,8 @@ export default function PropertyContactCard({
   const [loading, setLoading] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [notifySimilar, setNotifySimilar] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const toast = useToast();
 
   // Determinar cenário
   const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
@@ -60,7 +63,7 @@ export default function PropertyContactCard({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreeTerms) {
-      alert("Por favor, aceite os Termos de Uso e Política de Privacidade");
+      toast.warning("Por favor, aceite os Termos de Uso e Política de Privacidade");
       return;
     }
     
@@ -89,7 +92,8 @@ export default function PropertyContactCard({
 
       if (!res.ok) throw new Error("Erro ao enviar solicitação");
       
-      alert(isLeadBoard 
+      setSuccess(true);
+      toast.success(isLeadBoard 
         ? "Solicitação de visita enviada! Em breve um corretor entrará em contato."
         : "Mensagem enviada com sucesso!"
       );
@@ -100,7 +104,7 @@ export default function PropertyContactCard({
       setAgreeTerms(false);
     } catch (err) {
       console.error(err);
-      alert("Erro ao enviar. Tente novamente.");
+      toast.error("Erro ao enviar. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -190,7 +194,7 @@ export default function PropertyContactCard({
           required
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent"
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
         />
         <input
           type="email"
@@ -198,12 +202,12 @@ export default function PropertyContactCard({
           required
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent"
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
         />
         
         {/* Phone com country code */}
         <div className="flex gap-2">
-          <select className="w-24 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent">
+          <select className="w-24 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base">
             <option>+55</option>
           </select>
           <input
@@ -212,7 +216,7 @@ export default function PropertyContactCard({
             required
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent"
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
           />
         </div>
 
@@ -223,7 +227,7 @@ export default function PropertyContactCard({
             placeholder={formData.message}
             value={formData.message}
             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent resize-none"
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent resize-none text-base"
           />
         )}
 
@@ -241,7 +245,7 @@ export default function PropertyContactCard({
               value={visitData.date}
               onChange={(e) => setVisitData({ ...visitData, date: e.target.value })}
               min={new Date().toISOString().split("T")[0]}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
             />
             
             <div className="relative">
@@ -250,7 +254,7 @@ export default function PropertyContactCard({
                 required
                 value={visitData.time}
                 onChange={(e) => setVisitData({ ...visitData, time: e.target.value })}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-light focus:border-transparent appearance-none"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent appearance-none text-base"
               >
                 <option value="">Selecione o horário</option>
                 {availableTimes.map((time) => (
@@ -269,29 +273,29 @@ export default function PropertyContactCard({
 
         <Button 
           type="submit" 
-          className="w-full glass-teal"
+          className="w-full glass-teal py-3 text-base"
           disabled={loading}
         >
           {loading ? "Enviando..." : isLeadBoard ? "Solicitar Visita" : "Entrar em Contato"}
         </Button>
 
         {/* Checkboxes */}
-        <div className="space-y-2 text-xs text-gray-600">
+        <div className="space-y-3 text-sm text-gray-600">
           {!isLeadBoard && (
-            <label className="flex items-start gap-2">
+            <label className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
               <input 
                 type="checkbox" 
-                className="mt-0.5"
+                className="mt-0.5 w-5 h-5 rounded"
                 checked={notifySimilar}
                 onChange={(e) => setNotifySimilar(e.target.checked)}
               />
               <span>Notificar-me por e-mail sobre imóveis similares</span>
             </label>
           )}
-          <label className="flex items-start gap-2">
+          <label className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
             <input 
               type="checkbox" 
-              className="mt-0.5"
+              className="mt-0.5 w-5 h-5 rounded"
               required
               checked={agreeTerms}
               onChange={(e) => setAgreeTerms(e.target.checked)}

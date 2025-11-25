@@ -14,10 +14,11 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const base = "inline-flex items-center justify-center rounded-lg font-medium transition-colors duration-150 ease-default disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
+// Touch targets: min 44px height on mobile (min-h-11 = 44px)
 const sizes: Record<Size, string> = {
-  sm: "text-sm px-3 py-1.5",
-  md: "text-sm px-4 py-2",
-  lg: "text-base px-5 py-2.5",
+  sm: "text-sm px-3 py-2 min-h-[40px] sm:min-h-0 sm:py-1.5",
+  md: "text-sm px-4 py-2.5 min-h-[44px] sm:min-h-0 sm:py-2",
+  lg: "text-base px-5 py-3 min-h-[48px] sm:min-h-0 sm:py-2.5",
 };
 const variants: Record<Variant, string> = {
   primary: "bg-accent text-white hover:bg-accent-600 focus-visible:ring-accent",

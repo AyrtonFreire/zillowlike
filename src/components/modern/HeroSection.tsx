@@ -335,29 +335,43 @@ export default function HeroSection() {
                 </div>
               </div>
 
-              {/* Mobile: barra simples */}
+              {/* Mobile: barra otimizada com botão de busca */}
               <div className="sm:hidden">
-                <div className="bg-white/95 backdrop-blur rounded-full shadow-2xl border border-white/30 overflow-hidden px-4 py-3">
-                  <div ref={searchRef} className="flex items-center gap-2">
-                    <MapPin className="text-gray-400 flex-shrink-0 w-5 h-5" />
+                <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-white/30 overflow-hidden">
+                  <div ref={searchRef} className="flex items-center gap-3 px-4 py-4">
+                    <MapPin className="text-teal-600 flex-shrink-0 w-5 h-5" />
                     <input
                       type="text"
-                      placeholder="Cidade, região, bairro"
+                      placeholder="Buscar cidade ou bairro..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onFocus={() => setShowSuggestions(true)}
-                      className="flex-1 outline-none text-gray-800 placeholder:text-gray-500 text-sm bg-transparent"
+                      className="flex-1 outline-none text-gray-800 placeholder:text-gray-400 text-base bg-transparent min-w-0"
                     />
-                    {searchQuery && (
+                    {searchQuery ? (
                       <button
                         type="button"
                         onClick={() => {
                           setSearchQuery('');
                           setShowSuggestions(false);
                         }}
-                        className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-gray-100 transition-colors"
+                        className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-gray-100 transition-colors"
+                        aria-label="Limpar busca"
                       >
-                        <X className="w-4 h-4 text-gray-400" />
+                        <X className="w-5 h-5 text-gray-400" />
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-teal-600 hover:bg-teal-700 transition-colors disabled:opacity-60"
+                        aria-label="Buscar"
+                      >
+                        {isLoading ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Search className="w-5 h-5 text-white" />
+                        )}
                       </button>
                     )}
                   </div>
@@ -373,8 +387,23 @@ export default function HeroSection() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-y-auto z-[9999] max-h-[60vh] sm:max-h-[280px]"
+                  className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden z-[9999]"
                 >
+                  {/* Header mobile indicando que há sugestões */}
+                  <div className="sm:hidden flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      {searchQuery ? 'Resultados' : 'Sugestões'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowSuggestions(false)}
+                      className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+                      aria-label="Fechar sugestões"
+                    >
+                      <X className="w-4 h-4 text-gray-500" />
+                    </button>
+                  </div>
+                  <div className="overflow-y-auto max-h-[50vh] sm:max-h-[280px]">
                   {isFetchingSuggestions ? (
                     <div className="px-4 py-8 text-center text-gray-400">
                       <div className="w-5 h-5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -457,6 +486,7 @@ export default function HeroSection() {
                       })()}
                     </div>
                   )}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

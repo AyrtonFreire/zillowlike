@@ -29,14 +29,14 @@ export default function MetricCard({
 }: MetricCardProps) {
   return (
     <div
-      className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 ${className}`}
+      className={`bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 ${className}`}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mb-1">{value}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1 truncate">{title}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{value}</p>
           {subtitle && (
-            <p className="text-xs text-gray-500">{subtitle}</p>
+            <p className="text-[11px] sm:text-xs text-gray-500 truncate">{subtitle}</p>
           )}
           {trend && (
             <div className="flex items-center gap-1 mt-2">
@@ -47,12 +47,12 @@ export default function MetricCard({
               >
                 {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}%
               </span>
-              <span className="text-xs text-gray-500">vs. semana passada</span>
+              <span className="text-[10px] sm:text-xs text-gray-500 hidden sm:inline">vs. semana passada</span>
             </div>
           )}
         </div>
-        <div className={`p-3 rounded-xl ${iconBgColor}`}>
-          <Icon className={`w-6 h-6 ${iconColor}`} />
+        <div className={`p-2.5 sm:p-3 rounded-xl ${iconBgColor} flex-shrink-0`}>
+          <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />
         </div>
       </div>
     </div>

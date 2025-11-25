@@ -18,7 +18,7 @@ export default function Select({ label, error, optional, className = "", childre
       )}
       <select
         {...props}
-        className={`w-full px-4 py-2.5 rounded-lg border bg-white focus:ring-2 focus:ring-accent focus:border-transparent transition ${error ? 'border-danger' : 'border-neutral-300'} ${className}`}
+        className={`w-full px-4 py-3 sm:py-2.5 min-h-[48px] sm:min-h-0 text-base sm:text-sm rounded-lg border bg-white focus:ring-2 focus:ring-accent focus:border-transparent transition ${error ? 'border-danger' : 'border-neutral-300'} ${className}`}
       >
         {children}
       </select>

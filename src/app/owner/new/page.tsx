@@ -1456,10 +1456,10 @@ export default function NewPropertyPage() {
                     Adicione ao menos uma foto. Você pode arrastar as imagens para ordenar e usar a primeira como capa.
                   </p>
 
-                  {/* Por simplicidade, usamos apenas o input de arquivos básico aqui, reaproveitando handleDroppedFiles */}
+                  {/* Área de upload touch-friendly */}
                   <div
-                    className={`border-2 border-dashed rounded-xl p-6 text-center text-sm cursor-pointer ${
-                      isFileDragOver ? "border-teal bg-teal/5" : "border-gray-300 bg-gray-50"
+                    className={`border-2 border-dashed rounded-xl p-8 sm:p-6 text-center cursor-pointer transition-colors active:bg-teal/10 ${
+                      isFileDragOver ? "border-teal bg-teal/5" : "border-gray-300 bg-gray-50 hover:bg-gray-100"
                     }`}
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -1475,13 +1475,18 @@ export default function NewPropertyPage() {
                     }}
                     onClick={() => dropInputRef.current?.click()}
                   >
-                    <p className="font-medium text-gray-800 mb-1">Clique aqui ou arraste imagens do seu computador</p>
-                    <p className="text-xs text-gray-500">Formatos JPG/PNG. As melhores fotos devem ficar primeiro.</p>
+                    <Camera className="w-10 h-10 mx-auto mb-3 text-gray-400" />
+                    <p className="font-medium text-gray-800 mb-1 text-base sm:text-sm">
+                      <span className="sm:hidden">Toque para adicionar fotos</span>
+                      <span className="hidden sm:inline">Clique ou arraste imagens</span>
+                    </p>
+                    <p className="text-sm sm:text-xs text-gray-500">JPG/PNG · A primeira foto será a capa</p>
                     <input
                       ref={dropInputRef}
                       type="file"
                       accept="image/*"
                       multiple
+                      capture="environment"
                       className="hidden"
                       onChange={async (e) => {
                         if (e.target.files?.length) {

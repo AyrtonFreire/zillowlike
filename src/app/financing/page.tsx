@@ -1,6 +1,7 @@
 "use client";
 
-import TopNavMega from "@/components/TopNavMega";
+import { ModernNavbar } from "@/components/modern";
+import MobileHeaderZillow from "@/components/modern/MobileHeaderZillow";
 import SiteFooter from "@/components/Footer";
 import Link from "next/link";
 import { Calculator, Home, TrendingUp, FileText, CheckCircle } from "lucide-react";
@@ -8,7 +9,14 @@ import { Calculator, Home, TrendingUp, FileText, CheckCircle } from "lucide-reac
 export default function FinancingPage() {
   return (
     <main className="min-h-screen bg-gray-50">
-      <TopNavMega />
+      {/* Header mobile */}
+      <MobileHeaderZillow variant="solid" />
+      {/* Header desktop */}
+      <div className="hidden md:block">
+        <ModernNavbar />
+      </div>
+      {/* Espaço para header fixo no mobile */}
+      <div className="h-16 md:h-0" />
       
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-teal-600 to-teal-800 text-white">
