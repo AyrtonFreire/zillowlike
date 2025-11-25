@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import ModernNavbar from "@/components/modern/ModernNavbar";
-import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
+import RealtorPropertiesGrid from "@/components/RealtorPropertiesGrid";
+import RealtorServiceAreasMap from "@/components/RealtorServiceAreasMap";
+import RealtorSalesGallery from "@/components/RealtorSalesGallery";
 import ReportUserButton from "@/components/ReportUserButton";
 import {
   Star,
@@ -13,6 +15,15 @@ import {
   Home as HomeIcon,
   Building2,
   Users,
+  Instagram,
+  Linkedin,
+  Facebook,
+  MessageCircle,
+  Award,
+  TrendingUp,
+  CheckCircle,
+  Briefcase,
+  Target,
 } from "lucide-react";
 
 type PageProps = {
@@ -70,18 +81,37 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
     include: {
       stats: true,
       queue: true,
+      ratings: {
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        include: {
+          lead: {
+            select: {
+              user: {
+                select: {
+                  name: true,
+                  image: true,
+                },
+              },
+              createdAt: true,
+            },
+          },
+        },
+      },
       realtorApplication: {
         select: {
           creci: true,
           creciState: true,
+          creciExpiry: true,
           specialties: true,
           realtorType: true,
+          experience: true,
         },
       },
       properties: {
         where: { status: "ACTIVE" as any },
         orderBy: { createdAt: "desc" },
-        take: 12,
+        take: 24,
         select: {
           id: true,
           title: true,
@@ -110,6 +140,33 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
     notFound();
   }
 
+  // Buscar imóveis vendidos/alugados separadamente
+  const soldProperties = await (prisma as any).property.findMany({
+    where: {
+      ownerId: realtor.id,
+      status: { in: ["SOLD", "RENTED"] as any },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      title: true,
+      price: true,
+      city: true,
+      state: true,
+      neighborhood: true,
+      type: true,
+      purpose: true,
+      status: true,
+      updatedAt: true,
+      images: {
+        take: 1,
+        orderBy: { sortOrder: "asc" },
+        select: { url: true },
+      },
+    },
+  });
+
   const isAgency = realtor.role === "AGENCY";
   const name = realtor.name || (isAgency ? "Imobiliária" : "Corretor");
   const initial = name.charAt(0).toUpperCase();
@@ -133,15 +190,34 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
 
   const participatesInLeadBoard = Boolean(realtor.queue);
 
+  // Redes sociais
+  const instagram = realtor.publicInstagram;
+  const linkedin = realtor.publicLinkedIn;
+  const whatsapp = realtor.publicWhatsApp;
+  const facebook = realtor.publicFacebook;
+  const serviceAreas = realtor.publicServiceAreas || [];
+
+  // Reviews
+  const reviews = realtor.ratings || [];
+
+  // Top Producer badge (mais de 50 leads concluídos)
+  const isTopProducer = leadsCompleted >= 50;
+  const isFastResponder = avgResponseTime != null && avgResponseTime <= 30;
+  const isHighRated = avgRating >= 4.5 && totalRatings >= 5;
+
   const app = (realtor as any).realtorApplication as
     | {
         creci?: string | null;
         creciState?: string | null;
+        creciExpiry?: Date | null;
         specialties?: string[] | null;
         realtorType?: string | null;
+        experience?: number | null;
       }
     | null
     | undefined;
+
+  const creciVerified = Boolean(app?.creci && app?.creciState);
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001").replace(/\/$/, "");
   const pageUrl = `${siteUrl}/realtor/${slug}`;
@@ -238,10 +314,28 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
                         </>
                       )}
                     </span>
+                    {creciVerified && (
+                      <span className="inline-flex items-center rounded-full bg-green-500/20 px-3 py-1 text-xs font-medium text-green-50 border border-green-300/50">
+                        <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                        CRECI {app?.creci}/{app?.creciState}
+                      </span>
+                    )}
                     {participatesInLeadBoard && (
                       <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-50 border border-emerald-300/50">
                         <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-                        Programa Mural de Leads
+                        Mural de Leads
+                      </span>
+                    )}
+                    {isTopProducer && (
+                      <span className="inline-flex items-center rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-50 border border-amber-300/50">
+                        <Award className="mr-1.5 h-3.5 w-3.5" />
+                        Top Producer
+                      </span>
+                    )}
+                    {isFastResponder && (
+                      <span className="inline-flex items-center rounded-full bg-blue-500/20 px-3 py-1 text-xs font-medium text-blue-50 border border-blue-300/50">
+                        <TrendingUp className="mr-1.5 h-3.5 w-3.5" />
+                        Resposta Rápida
                       </span>
                     )}
                   </div>
@@ -280,7 +374,57 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
                     )}
                   </div>
 
-                  <div className="mt-2">
+                  {/* Redes sociais */}
+                  {(instagram || linkedin || facebook || whatsapp) && (
+                    <div className="flex items-center gap-2 mt-3">
+                      {instagram && (
+                        <a
+                          href={`https://instagram.com/${instagram.replace('@', '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                          aria-label="Instagram"
+                        >
+                          <Instagram className="h-4 w-4" />
+                        </a>
+                      )}
+                      {linkedin && (
+                        <a
+                          href={linkedin.startsWith('http') ? linkedin : `https://linkedin.com/in/${linkedin}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                          aria-label="LinkedIn"
+                        >
+                          <Linkedin className="h-4 w-4" />
+                        </a>
+                      )}
+                      {facebook && (
+                        <a
+                          href={facebook.startsWith('http') ? facebook : `https://facebook.com/${facebook}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                          aria-label="Facebook"
+                        >
+                          <Facebook className="h-4 w-4" />
+                        </a>
+                      )}
+                      {whatsapp && (
+                        <a
+                          href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/20 hover:bg-green-500/30 transition-colors text-xs font-medium"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          WhatsApp
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 mt-2">
                     <ReportUserButton userId={realtor.id} userDisplayName={name} />
                   </div>
                 </div>
@@ -365,54 +509,171 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
                     </div>
                   </div>
                 )}
+                {app?.experience != null && (
+                  <div>
+                    <div className="text-xs text-gray-500">Experiência</div>
+                    <div className="mt-0.5 text-xl font-semibold text-gray-900 flex items-center gap-1.5">
+                      <Briefcase className="h-4 w-4 text-gray-400" />
+                      {app.experience} ano{app.experience === 1 ? "" : "s"}
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
+
+            {/* Especialidades */}
+            {app?.specialties && app.specialties.length > 0 && (
+              <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Target className="h-5 w-5 text-purple-600" />
+                  Especialidades
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {app.specialties.map((spec: string) => (
+                    <span
+                      key={spec}
+                      className="inline-flex items-center px-3 py-1.5 rounded-full bg-purple-50 text-purple-700 text-sm font-medium border border-purple-100"
+                    >
+                      {spec}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Mapa de atuação */}
+            <RealtorServiceAreasMap areas={serviceAreas} city={city} state={state} />
+
+            {/* Avaliações de clientes */}
+            {reviews.length > 0 && (
+              <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Star className="h-5 w-5 text-yellow-500" />
+                  Avaliações de clientes
+                </h2>
+                <div className="space-y-4">
+                  {reviews.slice(0, 5).map((review: any) => (
+                    <div key={review.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                      <div className="flex items-start gap-3">
+                        {review.lead?.user?.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={review.lead.user.image}
+                            alt=""
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-sm font-medium">
+                            {review.lead?.user?.name?.charAt(0) || "?"}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-gray-900 text-sm truncate">
+                              {review.lead?.user?.name || "Cliente"}
+                            </span>
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`h-3.5 w-3.5 ${
+                                    star <= review.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          {review.comment && (
+                            <p className="text-sm text-gray-600 mt-1">{review.comment}</p>
+                          )}
+                          <span className="text-xs text-gray-400 mt-1 block">
+                            {new Date(review.createdAt).toLocaleDateString("pt-BR", {
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {reviews.length > 5 && (
+                  <p className="text-sm text-gray-500 mt-4 text-center">
+                    +{reviews.length - 5} avaliação{reviews.length - 5 === 1 ? "" : "s"}
+                  </p>
+                )}
+              </section>
+            )}
+
+            {/* Botões de contato direto (sticky no mobile) */}
+            {(realtor.publicPhoneOptIn && realtor.phone || whatsapp) && (
+              <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm lg:sticky lg:top-24">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Entre em contato</h2>
+                <div className="space-y-3">
+                  {whatsapp && (
+                    <a
+                      href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold transition-colors"
+                    >
+                      <MessageCircle className="h-5 w-5" />
+                      Conversar no WhatsApp
+                    </a>
+                  )}
+                  {realtor.publicPhoneOptIn && realtor.phone && (
+                    <a
+                      href={`tel:${realtor.phone.replace(/\D/g, '')}`}
+                      className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl font-semibold transition-colors"
+                    >
+                      <Phone className="h-5 w-5" />
+                      Ligar: {realtor.phone}
+                    </a>
+                  )}
+                </div>
+              </section>
+            )}
           </div>
 
           {/* Right column: Properties */}
-          <div className="lg:col-span-2">
-            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Imóveis anunciados por {name}</h2>
-                  <p className="text-sm text-gray-600">
-                    Veja os imóveis ativos deste profissional. Você sempre navega e agenda visitas com segurança pela plataforma.
-                  </p>
-                </div>
-              </div>
+          <div className="lg:col-span-2 space-y-6">
+            {/* Galeria de vendas realizadas */}
+            <RealtorSalesGallery 
+              properties={soldProperties.map((p: any) => ({
+                id: p.id,
+                title: p.title,
+                price: p.price,
+                city: p.city,
+                state: p.state,
+                neighborhood: p.neighborhood,
+                type: p.type,
+                purpose: p.purpose,
+                status: p.status,
+                soldAt: p.updatedAt?.toISOString(),
+                images: p.images,
+              }))}
+            />
 
-              {realtor.properties.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-center text-gray-600">
-                  <Building2 className="h-10 w-10 text-gray-300 mb-2" />
-                  <p className="text-sm">Nenhum imóvel ativo encontrado para este profissional no momento.</p>
-                  <p className="text-xs text-gray-500 mt-1">Volte em breve para ver novos anúncios.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {realtor.properties.map((p: any) => (
-                    <PropertyCardPremium
-                      key={p.id}
-                      property={{
-                        id: p.id,
-                        title: p.title,
-                        price: p.price,
-                        city: p.city,
-                        state: p.state,
-                        bedrooms: p.bedrooms ?? undefined,
-                        bathrooms: p.bathrooms != null ? Number(p.bathrooms) : undefined,
-                        areaM2: p.areaM2 ?? undefined,
-                        neighborhood: p.neighborhood ?? undefined,
-                        parkingSpots: p.parkingSpots ?? undefined,
-                        conditionTags: p.conditionTags ?? [],
-                        type: p.type as any,
-                        purpose: p.purpose as any,
-                        images: p.images,
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
+            {/* Grid de imóveis ativos */}
+            <RealtorPropertiesGrid 
+              properties={realtor.properties.map((p: any) => ({
+                id: p.id,
+                title: p.title,
+                price: p.price,
+                city: p.city,
+                state: p.state,
+                bedrooms: p.bedrooms ?? undefined,
+                bathrooms: p.bathrooms != null ? Number(p.bathrooms) : undefined,
+                areaM2: p.areaM2 ?? undefined,
+                neighborhood: p.neighborhood ?? undefined,
+                parkingSpots: p.parkingSpots ?? undefined,
+                conditionTags: p.conditionTags ?? [],
+                type: p.type,
+                purpose: p.purpose,
+                images: p.images,
+              }))}
+              realtorName={name}
+            />
           </div>
         </div>
       </main>

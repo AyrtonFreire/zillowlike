@@ -311,6 +311,15 @@ model User {
   publicState          String?
   publicPhoneOptIn     Boolean @default(false)
 
+  // Redes sociais públicas
+  publicInstagram       String?
+  publicLinkedIn        String?
+  publicWhatsApp        String? // Número com código do país (5581999999999)
+  publicFacebook        String?
+
+  // Áreas de atuação
+  publicServiceAreas    String[] // Bairros/regiões que o corretor atua
+
   accounts             Account[]
   sessions             Session[]
   leads                Lead[]
