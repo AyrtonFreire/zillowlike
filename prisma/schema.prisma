@@ -355,6 +355,9 @@ model User {
   realtorCreci      String?
   realtorCreciState String?
   realtorType       RealtorType?
+
+  // Rascunho de propriedade (1 por usuário)
+  propertyDraft     PropertyDraft?
 }
 
 model VerificationToken {
