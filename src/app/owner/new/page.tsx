@@ -1574,112 +1574,216 @@ export default function NewPropertyPage() {
               )}
 
               {currentStep === 3 && (
-                <div className="space-y-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Detalhes do imóvel</h2>
-                  <p className="text-sm text-gray-600">
-                    Informe quartos, banheiros, área e alguns diferenciais. Quanto mais claro, melhor para quem está buscando.
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <Input
-                      label="Quartos"
-                      value={bedrooms}
-                      onChange={(e) => setBedrooms(e.target.value)}
-                      inputMode="numeric"
-                    />
-                    <Input
-                      label="Banheiros"
-                      value={bathrooms}
-                      onChange={(e) => setBathrooms(e.target.value)}
-                      inputMode="numeric"
-                    />
-                    <Input
-                      label="Área (m²)"
-                      value={areaM2}
-                      onChange={(e) => setAreaM2(e.target.value)}
-                      inputMode="numeric"
-                    />
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Detalhes do imóvel</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Informe quartos, banheiros, área e características. Quanto mais completo, melhor para quem está buscando.
+                    </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <Input
-                      label="Vagas de garagem"
-                      value={parkingSpots as any}
-                      onChange={(e) => setParkingSpots(e.target.value)}
-                      inputMode="numeric"
-                      optional
-                    />
-                    <Input
-                      label="Suítes"
-                      value={suites as any}
-                      onChange={(e) => setSuites(e.target.value)}
-                      inputMode="numeric"
-                      optional
-                    />
-                    <Input
-                      label="Andar (se apartamento)"
-                      value={floor as any}
-                      onChange={(e) => setFloor(e.target.value)}
-                      inputMode="numeric"
-                      optional
-                    />
+                  {/* Números principais */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <Input label="Quartos" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} inputMode="numeric" />
+                    <Input label="Banheiros" value={bathrooms} onChange={(e) => setBathrooms(e.target.value)} inputMode="numeric" />
+                    <Input label="Área (m²)" value={areaM2} onChange={(e) => setAreaM2(e.target.value)} inputMode="numeric" />
+                    <Input label="Suítes" value={suites as any} onChange={(e) => setSuites(e.target.value)} inputMode="numeric" optional />
+                    <Input label="Vagas" value={parkingSpots as any} onChange={(e) => setParkingSpots(e.target.value)} inputMode="numeric" optional />
+                    <Input label="Andar" value={floor as any} onChange={(e) => setFloor(e.target.value)} inputMode="numeric" optional />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Select
-                      label="Orientação do sol"
-                      value={sunOrientation}
-                      onChange={(e) => setSunOrientation(e.target.value)}
-                      optional
-                    >
-                      <option value="">Selecione</option>
-                      <option value="NASCENTE">Nascente</option>
-                      <option value="POENTE">Poente</option>
-                      <option value="OUTRA">Outra</option>
-                    </Select>
-                    <Input
-                      label="Ano de construção (aprox.)"
-                      value={yearBuilt as any}
-                      onChange={(e) => setYearBuilt(e.target.value)}
-                      inputMode="numeric"
-                      optional
-                    />
+                  {/* Características principais - sempre visível */}
+                  <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+                    <h3 className="text-sm font-semibold text-gray-800 mb-3">🏠 Características do imóvel</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
+                      <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
+                      <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
+                      <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
+                      <Checkbox checked={hasGourmet} onChange={(e) => setHasGourmet(e.target.checked)} label="Espaço gourmet" />
+                      <Checkbox checked={hasPlayground} onChange={(e) => setHasPlayground(e.target.checked)} label="Playground" />
+                      <Checkbox checked={hasPartyRoom} onChange={(e) => setHasPartyRoom(e.target.checked)} label="Salão de festas" />
+                      <Checkbox checked={hasConcierge24h} onChange={(e) => setHasConcierge24h(e.target.checked)} label="Portaria 24h" />
+                    </div>
+                  </div>
+
+                  {/* Segurança */}
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_sec: !p.acc_sec }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                      <span className="text-sm font-semibold text-gray-800">🔒 Segurança {accSecurityCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accSecurityCount}</span>}</span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_sec ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openAcc.acc_sec && (
+                      <div className="p-4 pt-0 grid grid-cols-2 gap-3 bg-gray-50/50">
+                        <Checkbox checked={secCCTV} onChange={(e) => setSecCCTV(e.target.checked)} label="CFTV / Câmeras" />
+                        <Checkbox checked={secSallyPort} onChange={(e) => setSecSallyPort(e.target.checked)} label="Clausura (sally port)" />
+                        <Checkbox checked={secNightGuard} onChange={(e) => setSecNightGuard(e.target.checked)} label="Ronda noturna" />
+                        <Checkbox checked={secElectricFence} onChange={(e) => setSecElectricFence(e.target.checked)} label="Cerca elétrica" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Conforto e Energia */}
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_ce: !p.acc_ce }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                      <span className="text-sm font-semibold text-gray-800">❄️ Conforto e Energia {accComfortCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accComfortCount}</span>}</span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_ce ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openAcc.acc_ce && (
+                      <div className="p-4 pt-0 grid grid-cols-2 gap-3 bg-gray-50/50">
+                        <Checkbox checked={comfortAC} onChange={(e) => setComfortAC(e.target.checked)} label="Ar-condicionado" />
+                        <Checkbox checked={comfortHeating} onChange={(e) => setComfortHeating(e.target.checked)} label="Aquecimento" />
+                        <Checkbox checked={comfortSolar} onChange={(e) => setComfortSolar(e.target.checked)} label="Energia solar" />
+                        <Checkbox checked={comfortNoiseWindows} onChange={(e) => setComfortNoiseWindows(e.target.checked)} label="Janelas anti-ruído" />
+                        <Checkbox checked={comfortLED} onChange={(e) => setComfortLED(e.target.checked)} label="Iluminação LED" />
+                        <Checkbox checked={comfortWaterReuse} onChange={(e) => setComfortWaterReuse(e.target.checked)} label="Reúso de água" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Acabamentos */}
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_fin: !p.acc_fin }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                      <span className="text-sm font-semibold text-gray-800">✨ Acabamentos {accFinishCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFinishCount}</span>}</span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_fin ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openAcc.acc_fin && (
+                      <div className="p-4 pt-0 space-y-3 bg-gray-50/50">
+                        <Select label="Piso principal" value={finishFloor} onChange={(e) => setFinishFloor(e.target.value)} optional>
+                          <option value="">Selecione</option>
+                          <option value="porcelanato">Porcelanato</option>
+                          <option value="madeira">Madeira</option>
+                          <option value="vinilico">Vinílico</option>
+                        </Select>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Checkbox checked={finishCabinets} onChange={(e) => setFinishCabinets(e.target.checked)} label="Armários planejados" />
+                          <Checkbox checked={finishCounterGranite} onChange={(e) => setFinishCounterGranite(e.target.checked)} label="Bancada granito" />
+                          <Checkbox checked={finishCounterQuartz} onChange={(e) => setFinishCounterQuartz(e.target.checked)} label="Bancada quartzo" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Vista e Posição */}
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_view: !p.acc_view }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                      <span className="text-sm font-semibold text-gray-800">🌅 Vista e Posição {accViewCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accViewCount}</span>}</span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_view ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openAcc.acc_view && (
+                      <div className="p-4 pt-0 space-y-3 bg-gray-50/50">
+                        <div className="grid grid-cols-2 gap-3">
+                          <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
+                          <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
+                          <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="Frente" />
+                          <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Fundos" />
+                        </div>
+                        <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
+                          <option value="">Selecione</option>
+                          <option value="NASCENTE">Nascente (sol da manhã)</option>
+                          <option value="POENTE">Poente (sol da tarde)</option>
+                          <option value="OUTRA">Outra</option>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Acessibilidade */}
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_acc: !p.acc_acc }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                      <span className="text-sm font-semibold text-gray-800">♿ Acessibilidade {accAccessibilityCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accAccessibilityCount}</span>}</span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_acc ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openAcc.acc_acc && (
+                      <div className="p-4 pt-0 grid grid-cols-2 gap-3 bg-gray-50/50">
+                        <Checkbox checked={accRamps} onChange={(e) => setAccRamps(e.target.checked)} label="Rampas de acesso" />
+                        <Checkbox checked={accWideDoors} onChange={(e) => setAccWideDoors(e.target.checked)} label="Portas largas" />
+                        <Checkbox checked={accAccessibleElevator} onChange={(e) => setAccAccessibleElevator(e.target.checked)} label="Elevador acessível" />
+                        <Checkbox checked={accTactile} onChange={(e) => setAccTactile(e.target.checked)} label="Piso tátil" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pets e Regras */}
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_pets: !p.acc_pets }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                      <span className="text-sm font-semibold text-gray-800">🐾 Pets e Regras {accPetsCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accPetsCount}</span>}</span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_pets ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openAcc.acc_pets && (
+                      <div className="p-4 pt-0 space-y-3 bg-gray-50/50">
+                        <div className="grid grid-cols-2 gap-3">
+                          <Checkbox checked={petsSmall} onChange={(e) => setPetsSmall(e.target.checked)} label="Aceita pets pequenos" />
+                          <Checkbox checked={petsLarge} onChange={(e) => setPetsLarge(e.target.checked)} label="Aceita pets grandes" />
+                        </div>
+                        <Input label="Regras do condomínio (breve)" value={condoRules} onChange={(e) => setCondoRules(e.target.value)} optional />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Ano e taxas */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Input label="Ano de construção" value={yearBuilt as any} onChange={(e) => setYearBuilt(e.target.value)} inputMode="numeric" optional />
+                    <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
+                    <Input label="IPTU (R$/ano)" value={iptuYearBRL} onChange={(e) => setIptuYearBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
+                  </div>
+
+                  {/* Tags de condição */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-800 mb-2">Estado do imóvel</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {TAG_OPTIONS.map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleTag(tag)}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                            conditionTags.includes(tag)
+                              ? 'bg-teal-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
 
               {currentStep === 4 && (
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Fotos do imóvel</h2>
-                  <p className="text-sm text-gray-600">
-                    Adicione ao menos uma foto. Você pode arrastar as imagens para ordenar e usar a primeira como capa.
-                  </p>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Fotos do imóvel</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Adicione ao menos uma foto. Arraste para reordenar — a primeira será a capa do anúncio.
+                    </p>
+                  </div>
 
-                  {/* Área de upload touch-friendly */}
+                  {/* Área de upload */}
                   <div
-                    className={`border-2 border-dashed rounded-xl p-8 sm:p-6 text-center cursor-pointer transition-colors active:bg-teal/10 ${
-                      isFileDragOver ? "border-teal bg-teal/5" : "border-gray-300 bg-gray-50 hover:bg-gray-100"
+                    className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                      isFileDragOver 
+                        ? "border-teal-500 bg-teal-50 scale-[1.02]" 
+                        : "border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400"
                     }`}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsFileDragOver(true);
-                    }}
+                    onDragOver={(e) => { e.preventDefault(); setIsFileDragOver(true); }}
                     onDragLeave={() => setIsFileDragOver(false)}
                     onDrop={async (e) => {
                       e.preventDefault();
                       setIsFileDragOver(false);
-                      if (e.dataTransfer?.files?.length) {
-                        await handleDroppedFiles(e.dataTransfer.files);
-                      }
+                      if (e.dataTransfer?.files?.length) await handleDroppedFiles(e.dataTransfer.files);
                     }}
                     onClick={() => dropInputRef.current?.click()}
                   >
-                    <Camera className="w-10 h-10 mx-auto mb-3 text-gray-400" />
-                    <p className="font-medium text-gray-800 mb-1 text-base sm:text-sm">
+                    <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 flex items-center justify-center">
+                      <Camera className="w-7 h-7 text-teal-600" />
+                    </div>
+                    <p className="font-medium text-gray-800 mb-1">
                       <span className="sm:hidden">Toque para adicionar fotos</span>
                       <span className="hidden sm:inline">Clique ou arraste imagens</span>
                     </p>
-                    <p className="text-sm sm:text-xs text-gray-500">JPG/PNG · A primeira foto será a capa</p>
+                    <p className="text-sm text-gray-500">JPG, PNG • Máximo 10MB por foto</p>
                     <input
                       ref={dropInputRef}
                       type="file"
@@ -1696,23 +1800,152 @@ export default function NewPropertyPage() {
                     />
                   </div>
 
-                  {images.some((img) => img.url) && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-                      {images.filter((img) => img.url).map((img, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => openLightbox(idx)}
-                          className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={img.url}
-                            alt={img.alt || `Imagem ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </button>
-                      ))}
+                  {/* Contador e dicas */}
+                  {images.filter(img => img.url).length > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">
+                        <span className="font-semibold text-gray-900">{images.filter(img => img.url).length}</span> foto(s) adicionada(s)
+                      </span>
+                      <span className="text-gray-500 text-xs">Arraste para reordenar</span>
+                    </div>
+                  )}
+
+                  {/* Grid de imagens com drag & drop */}
+                  {images.filter(img => img.url || img.pending).length > 0 && (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event) => {
+                        const { active, over } = event;
+                        if (over && active.id !== over.id) {
+                          setImages((prev) => {
+                            const oldIndex = prev.findIndex((_, i) => `img-${i}` === active.id);
+                            const newIndex = prev.findIndex((_, i) => `img-${i}` === over.id);
+                            return arrayMove(prev, oldIndex, newIndex);
+                          });
+                        }
+                      }}
+                    >
+                      <SortableContext items={images.map((_, i) => `img-${i}`)} strategy={rectSortingStrategy}>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {images.map((img, idx) => {
+                            if (!img.url && !img.pending) return null;
+                            const isFirst = idx === 0;
+                            return (
+                              <SortableItem key={`img-${idx}`} id={`img-${idx}`}>
+                                <div className="relative group aspect-square rounded-xl overflow-hidden border-2 border-gray-200 bg-gray-100 hover:border-teal-400 transition-colors">
+                                  {/* Badge CAPA */}
+                                  {isFirst && img.url && (
+                                    <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-gradient-to-r from-teal-600 to-teal-500 text-white text-xs font-bold rounded-md shadow-lg">
+                                      📸 CAPA
+                                    </div>
+                                  )}
+
+                                  {/* Imagem */}
+                                  {img.url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={img.url}
+                                      alt={img.alt || `Imagem ${idx + 1}`}
+                                      className="w-full h-full object-cover"
+                                      onClick={(e) => { e.stopPropagation(); openLightbox(idx); }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                      <div className="text-center p-3">
+                                        <div className="w-8 h-8 mx-auto mb-2 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
+                                        <span className="text-xs text-gray-500">Enviando...</span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Barra de progresso durante upload */}
+                                  {img.pending && typeof img.progress === 'number' && (
+                                    <div className="absolute inset-x-0 bottom-0 bg-black/60 p-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                          <div 
+                                            className="h-full bg-gradient-to-r from-teal-400 to-teal-500 transition-all duration-300"
+                                            style={{ width: `${img.progress}%` }}
+                                          />
+                                        </div>
+                                        <span className="text-xs text-white font-medium">{img.progress}%</span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Erro no upload */}
+                                  {img.error && (
+                                    <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center">
+                                      <div className="text-center text-white p-2">
+                                        <span className="text-2xl">⚠️</span>
+                                        <p className="text-xs mt-1">{img.error}</p>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Overlay de ações */}
+                                  {img.url && !img.pending && (
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end justify-center opacity-0 group-hover:opacity-100">
+                                      <div className="flex gap-2 p-3 w-full">
+                                        {!isFirst && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setImages(prev => {
+                                                const newArr = [...prev];
+                                                const [item] = newArr.splice(idx, 1);
+                                                newArr.unshift(item);
+                                                return newArr;
+                                              });
+                                              setToast({ message: "Foto definida como capa!", type: "success" });
+                                            }}
+                                            className="flex-1 py-1.5 bg-white/90 hover:bg-white text-gray-800 text-xs font-semibold rounded-lg transition-colors"
+                                          >
+                                            Usar como capa
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            lastFocusRef.current = e.currentTarget;
+                                            setConfirmDelete({ open: true, index: idx });
+                                          }}
+                                          className="px-3 py-1.5 bg-red-500/90 hover:bg-red-500 text-white text-xs font-semibold rounded-lg transition-colors"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Indicador de drag */}
+                                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="w-6 h-6 bg-white/90 rounded-md flex items-center justify-center shadow">
+                                      <svg className="w-3.5 h-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                </div>
+                              </SortableItem>
+                            );
+                          })}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  )}
+
+                  {/* Dica de qualidade */}
+                  {images.filter(img => img.url).length > 0 && images.filter(img => img.url).length < 5 && (
+                    <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                      <span className="text-lg">💡</span>
+                      <div className="text-sm text-amber-800">
+                        <p className="font-medium">Dica: Anúncios com 5+ fotos recebem 2x mais visualizações!</p>
+                        <p className="text-amber-700 mt-0.5">Adicione mais fotos para destacar seu imóvel.</p>
+                      </div>
                     </div>
                   )}
                 </div>
