@@ -18,6 +18,16 @@ interface OnboardingTourProps {
   storageKey: string; // Chave para salvar no localStorage
   onComplete?: () => void;
   onSkip?: () => void;
+  forceShow?: boolean; // Forçar exibição mesmo se já completado
+}
+
+// Helper para resetar o onboarding
+export function resetOnboarding(storageKey: string) {
+  try {
+    localStorage.removeItem(storageKey);
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 export default function OnboardingTour({
@@ -55,11 +65,27 @@ export default function OnboardingTour({
     const updatePosition = () => {
       const target = document.querySelector(steps[currentStep].targetSelector!);
       if (target) {
-        setTargetRect(target.getBoundingClientRect());
+        const rect = target.getBoundingClientRect();
+        setTargetRect(rect);
+      } else {
+        // Elemento não encontrado - mostrar no centro
+        setTargetRect(null);
       }
     };
 
-    updatePosition();
+    // Scroll para o elemento se ele existir
+    const scrollToTarget = () => {
+      const target = document.querySelector(steps[currentStep].targetSelector!);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Aguardar scroll terminar antes de atualizar posição
+        setTimeout(updatePosition, 400);
+      } else {
+        updatePosition();
+      }
+    };
+
+    scrollToTarget();
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition);
 
@@ -110,46 +136,80 @@ export default function OnboardingTour({
   const isFirst = currentStep === 0;
 
   // Calcular posição do tooltip
-  const getTooltipPosition = () => {
+  const getTooltipPosition = (): React.CSSProperties => {
     if (!targetRect) {
-      return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+      // Centralizar na tela
+      return { 
+        top: "50%", 
+        left: "50%", 
+        transform: "translate(-50%, -50%)",
+        maxWidth: "90vw",
+      };
     }
 
     const position = step.position || "bottom";
     const padding = 16;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const tooltipWidth = 350; // Largura estimada do tooltip
+    const tooltipHeight = 200; // Altura estimada
+
+    // Calcular posição base
+    let top = 0;
+    let left = 0;
+    let transformX = "-50%";
+    let transformY = "0";
 
     switch (position) {
       case "top":
-        return {
-          top: `${targetRect.top - padding}px`,
-          left: `${targetRect.left + targetRect.width / 2}px`,
-          transform: "translate(-50%, -100%)",
-        };
+        top = targetRect.top - padding;
+        left = targetRect.left + targetRect.width / 2;
+        transformY = "-100%";
+        break;
       case "bottom":
-        return {
-          top: `${targetRect.bottom + padding}px`,
-          left: `${targetRect.left + targetRect.width / 2}px`,
-          transform: "translate(-50%, 0)",
-        };
+        top = targetRect.bottom + padding;
+        left = targetRect.left + targetRect.width / 2;
+        break;
       case "left":
-        return {
-          top: `${targetRect.top + targetRect.height / 2}px`,
-          left: `${targetRect.left - padding}px`,
-          transform: "translate(-100%, -50%)",
-        };
+        top = targetRect.top + targetRect.height / 2;
+        left = targetRect.left - padding;
+        transformX = "-100%";
+        transformY = "-50%";
+        break;
       case "right":
-        return {
-          top: `${targetRect.top + targetRect.height / 2}px`,
-          left: `${targetRect.right + padding}px`,
-          transform: "translate(0, -50%)",
-        };
+        top = targetRect.top + targetRect.height / 2;
+        left = targetRect.right + padding;
+        transformX = "0";
+        transformY = "-50%";
+        break;
       default:
-        return {
-          top: `${targetRect.bottom + padding}px`,
-          left: `${targetRect.left + targetRect.width / 2}px`,
-          transform: "translate(-50%, 0)",
-        };
+        top = targetRect.bottom + padding;
+        left = targetRect.left + targetRect.width / 2;
     }
+
+    // Ajustar se sair da tela horizontalmente
+    const estimatedLeft = left - (transformX === "-50%" ? tooltipWidth / 2 : transformX === "-100%" ? tooltipWidth : 0);
+    if (estimatedLeft < 16) {
+      left = 16 + (transformX === "-50%" ? tooltipWidth / 2 : transformX === "-100%" ? tooltipWidth : 0);
+    } else if (estimatedLeft + tooltipWidth > viewportWidth - 16) {
+      left = viewportWidth - 16 - tooltipWidth + (transformX === "-50%" ? tooltipWidth / 2 : 0);
+    }
+
+    // Ajustar se sair da tela verticalmente
+    if (top < 80) {
+      top = targetRect.bottom + padding;
+      transformY = "0";
+    } else if (top + tooltipHeight > viewportHeight - 16) {
+      top = targetRect.top - padding;
+      transformY = "-100%";
+    }
+
+    return {
+      top: `${top}px`,
+      left: `${left}px`,
+      transform: `translate(${transformX}, ${transformY})`,
+      maxWidth: "90vw",
+    };
   };
 
   return (

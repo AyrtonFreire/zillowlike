@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { logger } from "./logger";
+import { randomBytes } from "crypto";
+
+// Gera um token único para chat do cliente
+function generateChatToken(): string {
+  return randomBytes(32).toString("hex");
+}
 
 /**
  * Serviço de agendamento de visitas
@@ -71,7 +77,10 @@ export class VisitSchedulingService {
       });
     }
 
-    // Criar lead
+    // Gerar token para chat do cliente
+    const clientChatToken = generateChatToken();
+
+    // Criar lead (unificando message e clientNotes no campo message)
     const lead = await (prisma as any).lead.create({
       data: {
         propertyId,
@@ -79,12 +88,12 @@ export class VisitSchedulingService {
         realtorId, // Se fornecido, já atribui ao corretor
         visitDate,
         visitTime,
-        clientNotes,
-        message: clientNotes, // Manter compatibilidade
+        message: clientNotes, // Usando apenas campo message (clientNotes será deprecado)
         status: isDirect ? "WAITING_OWNER_APPROVAL" : "PENDING",
         isDirect,
         candidatesCount: 0,
         teamId: (property as any)?.teamId ?? undefined,
+        clientChatToken, // Token para o cliente acessar o chat
       },
       include: {
         property: {
@@ -108,7 +117,62 @@ export class VisitSchedulingService {
 
     logger.info("Visit request created successfully", { leadId: lead.id });
 
-    return lead;
+    // Enviar email de confirmação para o cliente (async)
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zillowlike.vercel.app';
+    const chatUrl = `${siteUrl}/chat/${clientChatToken}`;
+    
+    (async () => {
+      try {
+        const { sendEmail, getClientConfirmationEmail, getLeadNotificationEmail } = await import("@/lib/email");
+
+        // Email para o cliente
+        if (clientEmail) {
+          const clientEmailData = getClientConfirmationEmail({
+            clientName,
+            propertyTitle: lead.property?.title || "Imóvel",
+            chatUrl,
+            propertyUrl: `${siteUrl}/property/${propertyId}`,
+          });
+          
+          await sendEmail({
+            to: clientEmail,
+            ...clientEmailData,
+          });
+          
+          logger.info("✅ Confirmation email sent to client", { email: clientEmail });
+        }
+
+        // Email para o proprietário
+        if (lead.property?.ownerId) {
+          const owner = await prisma.user.findUnique({
+            where: { id: lead.property.ownerId },
+            select: { email: true, name: true },
+          });
+
+          if (owner?.email) {
+            const ownerEmailData = getLeadNotificationEmail({
+              propertyTitle: lead.property.title,
+              userName: clientName,
+              userEmail: clientEmail,
+              userPhone: clientPhone,
+              message: clientNotes || `Solicitação de visita: ${visitDate.toLocaleDateString('pt-BR')} às ${visitTime}`,
+              propertyUrl: `${siteUrl}/property/${propertyId}`,
+            });
+            
+            await sendEmail({
+              to: owner.email,
+              ...ownerEmailData,
+            });
+            
+            logger.info("✅ Lead notification sent to owner", { email: owner.email });
+          }
+        }
+      } catch (err) {
+        logger.error("❌ Error sending emails", { error: err });
+      }
+    })();
+
+    return { ...lead, clientChatToken, chatUrl };
   }
 
   /**

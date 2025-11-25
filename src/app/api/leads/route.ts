@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
+
+// Gera um token único para chat do cliente
+function generateChatToken(): string {
+  return randomBytes(32).toString("hex");
+}
 
 const rateMap = new Map<string, { ts: number[] }>();
 const WINDOW_MS = 60_000; // 1 min
@@ -91,7 +97,12 @@ export async function POST(req: NextRequest) {
         clientNotes: message,
       });
 
-      return NextResponse.json({ ok: true, leadId: lead.id });
+      return NextResponse.json({ 
+        ok: true, 
+        leadId: lead.id, 
+        chatToken: lead.clientChatToken,
+        chatUrl: lead.chatUrl,
+      });
     } catch (error: any) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
@@ -117,6 +128,9 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Gerar token para chat do cliente
+  const clientChatToken = generateChatToken();
+
   // Create lead with contact relation
   const lead = await (prisma as any).lead.create({
     data: {
@@ -125,27 +139,33 @@ export async function POST(req: NextRequest) {
       message,
       isDirect: isDirect ?? false,
       teamId: (prop as any)?.teamId ?? undefined,
+      clientChatToken, // Token para o cliente acessar o chat
     },
   });
 
-  // Send email notification to owner (async, don't wait)
-  if (propertyWithOwner?.ownerId) {
-    (async () => {
-      try {
+  const chatUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://zillowlike.vercel.app'}/chat/${clientChatToken}`;
+
+  // Send emails (async, don't wait)
+  (async () => {
+    try {
+      const { sendEmail, getLeadNotificationEmail, getClientConfirmationEmail } = await import("@/lib/email");
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zillowlike.vercel.app';
+
+      // 1. Email para o proprietário
+      if (propertyWithOwner?.ownerId) {
         const owner = await prisma.user.findUnique({
           where: { id: propertyWithOwner.ownerId! },
           select: { email: true, name: true },
         });
 
         if (owner?.email) {
-          const { sendEmail, getLeadNotificationEmail } = await import("@/lib/email");
           const emailData = getLeadNotificationEmail({
             propertyTitle: propertyWithOwner.title,
             userName: name,
             userEmail: email,
             userPhone: phone,
             message: message || "",
-            propertyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://zillowlike.vercel.app'}/property/${propertyId}`,
+            propertyUrl: `${siteUrl}/property/${propertyId}`,
           });
           
           await sendEmail({
@@ -153,13 +173,30 @@ export async function POST(req: NextRequest) {
             ...emailData,
           });
           
-          console.log("✅ Lead notification email sent to:", owner.email);
+          console.log("✅ Lead notification email sent to owner:", owner.email);
         }
-      } catch (err) {
-        console.error("❌ Error sending lead email:", err);
       }
-    })();
-  }
 
-  return NextResponse.json({ ok: true, leadId: lead.id });
+      // 2. Email de confirmação para o cliente com link do chat
+      if (email) {
+        const clientEmailData = getClientConfirmationEmail({
+          clientName: name,
+          propertyTitle: propertyWithOwner?.title || "Imóvel",
+          chatUrl,
+          propertyUrl: `${siteUrl}/property/${propertyId}`,
+        });
+        
+        await sendEmail({
+          to: email,
+          ...clientEmailData,
+        });
+        
+        console.log("✅ Confirmation email sent to client:", email);
+      }
+    } catch (err) {
+      console.error("❌ Error sending emails:", err);
+    }
+  })();
+
+  return NextResponse.json({ ok: true, leadId: lead.id, chatToken: clientChatToken });
 }

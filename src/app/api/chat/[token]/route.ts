@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, getClientMessageNotificationEmail } from "@/lib/email";
+import { getPusherServer, PUSHER_EVENTS, PUSHER_CHANNELS } from "@/lib/pusher-server";
 
 const messageSchema = z.object({
   content: z
@@ -130,6 +131,25 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         content: parsed.data.content.trim(),
       },
     });
+
+    // Enviar notificação em tempo real via Pusher
+    try {
+      const pusher = getPusherServer();
+      await pusher.trigger(
+        PUSHER_CHANNELS.CHAT(lead.id),
+        PUSHER_EVENTS.NEW_CHAT_MESSAGE,
+        {
+          id: message.id,
+          leadId: lead.id,
+          fromClient,
+          content: message.content,
+          createdAt: message.createdAt,
+        }
+      );
+    } catch (pusherError) {
+      console.error("Error sending Pusher notification:", pusherError);
+      // Não bloqueia a resposta se Pusher falhar
+    }
 
     // Enviar email de notificação para o corretor quando cliente envia mensagem
     if (fromClient && lead.realtorId) {

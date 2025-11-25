@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { User, Building2, Calendar, Clock, CheckCircle } from "lucide-react";
+import { User, Building2, Calendar, Clock, CheckCircle, MessageCircle, Mail, ArrowRight, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import Button from "./ui/Button";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -23,6 +24,114 @@ type ContactCardProps = {
   // Lead board control
   allowRealtorBoard: boolean; // true = vai para mural de leads, false = contato direto
 };
+
+// Tela de sucesso após envio
+function SuccessScreen({ 
+  chatUrl, 
+  userEmail, 
+  isLeadBoard,
+  onReset 
+}: { 
+  chatUrl: string; 
+  userEmail: string;
+  isLeadBoard: boolean;
+  onReset: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="text-center py-4"
+    >
+      {/* Ícone de sucesso */}
+      <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+        <CheckCircle className="w-8 h-8 text-green-600" />
+      </div>
+
+      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+        {isLeadBoard ? "Visita Solicitada!" : "Mensagem Enviada!"}
+      </h3>
+      
+      <p className="text-gray-600 mb-6">
+        {isLeadBoard 
+          ? "O responsável pelo imóvel receberá sua solicitação e poderá confirmar o horário."
+          : "O responsável pelo imóvel foi notificado e entrará em contato em breve."
+        }
+      </p>
+
+      {/* Card do Chat */}
+      <div className="bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-4 mb-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center">
+            <MessageCircle className="w-5 h-5 text-white" />
+          </div>
+          <div className="text-left">
+            <p className="font-semibold text-gray-900">Continue pelo Chat</p>
+            <p className="text-xs text-gray-600">Acompanhe e envie mensagens</p>
+          </div>
+        </div>
+        
+        <Link
+          href={chatUrl}
+          target="_blank"
+          className="flex items-center justify-center gap-2 w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition-colors"
+        >
+          Abrir Chat
+          <ExternalLink className="w-4 h-4" />
+        </Link>
+      </div>
+
+      {/* Info do email */}
+      <div className="flex items-center gap-2 text-sm text-gray-500 justify-center mb-6">
+        <Mail className="w-4 h-4" />
+        <span>Link do chat enviado para {userEmail}</span>
+      </div>
+
+      {/* Próximos passos */}
+      <div className="text-left bg-gray-50 rounded-lg p-4 mb-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Próximos Passos</p>
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-xs font-bold text-teal-700">1</span>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Aguarde o retorno</p>
+              <p className="text-xs text-gray-500">O responsável será notificado agora</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-xs font-bold text-teal-700">2</span>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Acompanhe pelo chat</p>
+              <p className="text-xs text-gray-500">Use o link acima para trocar mensagens</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-xs font-bold text-teal-700">3</span>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Agende a visita</p>
+              <p className="text-xs text-gray-500">Combine um horário para conhecer o imóvel</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Botão para enviar outra mensagem */}
+      <button
+        type="button"
+        onClick={onReset}
+        className="text-sm text-gray-500 hover:text-teal-600 transition-colors"
+      >
+        Enviar outra mensagem
+      </button>
+    </motion.div>
+  );
+}
 
 export default function PropertyContactCard({
   propertyId,
@@ -51,7 +160,7 @@ export default function PropertyContactCard({
   const [loading, setLoading] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [notifySimilar, setNotifySimilar] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [successData, setSuccessData] = useState<{ chatUrl: string; email: string } | null>(null);
   const toast = useToast();
 
   // Determinar cenário
@@ -92,16 +201,17 @@ export default function PropertyContactCard({
 
       if (!res.ok) throw new Error("Erro ao enviar solicitação");
       
-      setSuccess(true);
-      toast.success(isLeadBoard 
-        ? "Solicitação de visita enviada! Em breve um corretor entrará em contato."
-        : "Mensagem enviada com sucesso!"
-      );
+      const data = await res.json();
       
-      // Reset form
-      setFormData({ name: "", email: "", phone: "", message: `Tenho interesse em\n${propertyTitle}` });
-      setVisitData({ date: "", time: "" });
-      setAgreeTerms(false);
+      // Construir chatUrl
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const chatUrl = data.chatUrl || (data.chatToken ? `${siteUrl}/chat/${data.chatToken}` : '');
+      
+      // Mostrar tela de sucesso
+      setSuccessData({ 
+        chatUrl, 
+        email: formData.email 
+      });
     } catch (err) {
       console.error(err);
       toast.error("Erro ao enviar. Tente novamente.");
@@ -114,6 +224,28 @@ export default function PropertyContactCard({
   const availableTimes = [] as string[];
   for (let h = 7; h <= 18; h++) {
     availableTimes.push(`${h.toString().padStart(2, "0")}:00`);
+  }
+
+  // Função para resetar o formulário
+  const handleReset = () => {
+    setSuccessData(null);
+    setFormData({ name: "", email: "", phone: "", message: `Tenho interesse em\n${propertyTitle}` });
+    setVisitData({ date: "", time: "" });
+    setAgreeTerms(false);
+  };
+
+  // Mostrar tela de sucesso se houver dados
+  if (successData) {
+    return (
+      <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
+        <SuccessScreen 
+          chatUrl={successData.chatUrl}
+          userEmail={successData.email}
+          isLeadBoard={isLeadBoard}
+          onReset={handleReset}
+        />
+      </div>
+    );
   }
 
   return (

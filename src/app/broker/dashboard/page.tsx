@@ -19,7 +19,7 @@ import StatCard from "@/components/dashboard/StatCard";
 import PropertyListItem from "@/components/dashboard/PropertyListItem";
 import LeadListItem from "@/components/dashboard/LeadListItem";
 import DashboardLayout from "@/components/DashboardLayout";
-import BrokerOnboarding from "@/components/onboarding/BrokerOnboarding";
+import BrokerOnboarding, { resetBrokerOnboarding } from "@/components/onboarding/BrokerOnboarding";
 import LeadSearchBar from "@/components/crm/LeadSearchBar";
 
 interface Metrics {
@@ -471,7 +471,7 @@ export default function BrokerDashboard() {
         </div>
 
         {/* Meu funil de leads */}
-        <div className="mb-8">
+        <div className="mb-8" data-onboarding="pipeline-section">
           <StatCard title="Meu funil de leads">
             {pipelineError ? (
               <p className="text-sm text-gray-600">{pipelineError}</p>
@@ -518,7 +518,7 @@ export default function BrokerDashboard() {
         </div>
 
         {/* Tarefas de hoje */}
-        <div className="mb-8">
+        <div className="mb-8" data-onboarding="tasks-section">
           <StatCard title="Tarefas de hoje">
             {sortedRemindersToday.length === 0 ? (
               <p className="text-sm text-gray-600">
@@ -934,6 +934,20 @@ export default function BrokerDashboard() {
               </div>
             </Link>
           )}
+        </div>
+
+        {/* Botão para ver tutorial novamente */}
+        <div className="mt-8 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              resetBrokerOnboarding();
+              window.location.reload();
+            }}
+            className="text-sm text-gray-500 hover:text-teal-600 transition-colors underline-offset-2 hover:underline"
+          >
+            👋 Ver tutorial novamente
+          </button>
         </div>
       </div>
 

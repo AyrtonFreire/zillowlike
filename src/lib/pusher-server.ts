@@ -28,6 +28,11 @@ export const PUSHER_EVENTS = {
   SCORE_UPDATED: "score-updated",
   VISIT_CONFIRMED: "visit-confirmed",
   VISIT_REJECTED_BY_OWNER: "visit-rejected-by-owner",
+  // Chat events
+  NEW_CHAT_MESSAGE: "new-chat-message",
+  USER_TYPING: "user-typing",
+  USER_ONLINE: "user-online",
+  USER_OFFLINE: "user-offline",
 } as const;
 
 // Canais disponíveis
@@ -35,4 +40,7 @@ export const PUSHER_CHANNELS = {
   MURAL: "mural",
   REALTOR: (realtorId: string) => `private-realtor-${realtorId}`,
   QUEUE: "queue",
+  // Chat channels (público para clientes que só tem o token)
+  CHAT: (leadId: string) => `chat-${leadId}`,
+  PRESENCE_CHAT: (leadId: string) => `presence-chat-${leadId}`,
 } as const;

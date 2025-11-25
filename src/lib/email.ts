@@ -574,3 +574,120 @@ export function getClientMessageNotificationEmail(data: {
     `,
   };
 }
+
+/**
+ * Email de confirmação para o cliente com link do chat
+ */
+export function getClientConfirmationEmail(data: {
+  clientName: string;
+  propertyTitle: string;
+  chatUrl: string;
+  propertyUrl: string;
+}) {
+  return {
+    subject: `Seu interesse em "${data.propertyTitle}" foi registrado!`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background: #f3f4f6; }
+            .container { max-width: 600px; margin: 0 auto; background: white; }
+            .header { background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%); color: white; padding: 40px 30px; text-align: center; }
+            .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+            .header p { margin: 10px 0 0; opacity: 0.9; }
+            .content { padding: 30px; }
+            .success-badge { display: inline-block; background: #dcfce7; color: #166534; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; margin-bottom: 20px; }
+            .property-card { background: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb; }
+            .property-title { font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 8px; }
+            .steps { margin: 30px 0; }
+            .step { display: flex; align-items: flex-start; margin-bottom: 16px; }
+            .step-number { width: 32px; height: 32px; background: #0d9488; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; flex-shrink: 0; }
+            .step-content { margin-left: 16px; }
+            .step-title { font-weight: 600; color: #111827; margin-bottom: 4px; }
+            .step-desc { color: #6b7280; font-size: 14px; }
+            .cta-button { display: inline-block; background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%); color: white !important; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 20px 0; }
+            .cta-button:hover { opacity: 0.9; }
+            .tip-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0; border-radius: 0 8px 8px 0; }
+            .tip-box strong { color: #92400e; }
+            .footer { text-align: center; padding: 30px; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb; }
+            .footer a { color: #0d9488; text-decoration: none; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>✅ Mensagem Enviada!</h1>
+              <p>Seu interesse foi registrado com sucesso</p>
+            </div>
+            <div class="content">
+              <center>
+                <span class="success-badge">🎉 Tudo certo!</span>
+              </center>
+              
+              <p>Olá, <strong>${data.clientName}</strong>!</p>
+              
+              <p>Sua mensagem sobre o imóvel foi enviada. O proprietário ou corretor responsável será notificado e poderá entrar em contato com você em breve.</p>
+              
+              <div class="property-card">
+                <div class="property-title">🏠 ${data.propertyTitle}</div>
+                <a href="${data.propertyUrl}" style="color: #0d9488; font-size: 14px;">Ver detalhes do imóvel →</a>
+              </div>
+              
+              <h3 style="color: #111827; margin-top: 30px;">📱 Acompanhe pelo Chat</h3>
+              
+              <p>Você pode continuar a conversa e receber atualizações através do nosso chat exclusivo:</p>
+              
+              <center>
+                <a href="${data.chatUrl}" class="cta-button">
+                  Abrir Chat
+                </a>
+              </center>
+              
+              <div class="steps">
+                <h4 style="color: #6b7280; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Próximos Passos</h4>
+                
+                <div class="step">
+                  <div class="step-number">1</div>
+                  <div class="step-content">
+                    <div class="step-title">Aguarde o retorno</div>
+                    <div class="step-desc">O responsável pelo imóvel receberá sua mensagem e poderá responder pelo chat.</div>
+                  </div>
+                </div>
+                
+                <div class="step">
+                  <div class="step-number">2</div>
+                  <div class="step-content">
+                    <div class="step-title">Acompanhe pelo chat</div>
+                    <div class="step-desc">Use o link acima para enviar mais perguntas ou verificar respostas.</div>
+                  </div>
+                </div>
+                
+                <div class="step">
+                  <div class="step-number">3</div>
+                  <div class="step-content">
+                    <div class="step-title">Agende uma visita</div>
+                    <div class="step-desc">Combine com o responsável um horário para conhecer o imóvel pessoalmente.</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="tip-box">
+                <strong>💡 Dica:</strong> Salve o link do chat nos favoritos do seu navegador para acessar facilmente suas conversas!
+              </div>
+            </div>
+            <div class="footer">
+              <p>© 2025 ZillowLike. Todos os direitos reservados.</p>
+              <p>
+                <a href="${data.propertyUrl}">Ver imóvel</a> · 
+                <a href="${data.chatUrl}">Abrir chat</a>
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+}
