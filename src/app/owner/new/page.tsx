@@ -23,8 +23,8 @@ export default function NewPropertyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type?: "success"|"error"|"info" } | null>(null);
   const [submitIntent, setSubmitIntent] = useState(false);
+  const [publishedProperty, setPublishedProperty] = useState<{ id: string; title: string; url: string } | null>(null);
   
-  const [title, setTitle] = useState(""); // gerado via botão + fallback automático no submit
   const [description, setDescription] = useState("");
   const [priceBRL, setPriceBRL] = useState("");
   const [type, setType] = useState("HOUSE");
@@ -152,19 +152,6 @@ export default function NewPropertyPage() {
     } else {
       setToast({ message: 'Não encontramos uma fachada claramente identificada. Ajuste manualmente se desejar.', type: 'info' });
     }
-  }
-
-  // Completion indicator (simple): percent of key fields filled
-  function completionPercent(): number {
-    let total = 0; let ok = 0;
-    const add = (cond: boolean) => { total++; if (cond) ok++; };
-    add(!!purpose);
-    add(parseBRLToNumber(priceBRL) > 0);
-    add(!!type);
-    add(!!geo);
-    add(bedrooms !== '' || bathrooms !== '' || areaM2 !== '');
-    add(images.some(i => i.url));
-    return Math.round((ok / total) * 100);
   }
 
   function toggleTag(tag: string) {
@@ -596,7 +583,6 @@ export default function NewPropertyPage() {
     setIsSubmitting(false);
     setToast(null);
     setSubmitIntent(false);
-    setTitle("");
     setDescription("");
     setPriceBRL("");
     setType("HOUSE");
@@ -748,6 +734,94 @@ export default function NewPropertyPage() {
         .join(", "),
     [street, addressNumber, neighborhood, city, state, postalCode]
   );
+
+  // Título gerado automaticamente em tempo real
+  const generatedTitle = useMemo(() => {
+    const typeLabels: Record<string, string> = {
+      HOUSE: 'Casa',
+      APARTMENT: 'Apartamento',
+      CONDO: 'Condomínio',
+      LAND: 'Terreno',
+      COMMERCIAL: 'Comercial',
+      STUDIO: 'Studio',
+    };
+    const typeLabel = typeLabels[type] || 'Imóvel';
+    
+    const parts: string[] = [typeLabel];
+    
+    // Adicionar quartos se preenchido
+    if (bedrooms && Number(bedrooms) > 0) {
+      parts.push(`${bedrooms} quarto${Number(bedrooms) > 1 ? 's' : ''}`);
+    }
+    
+    // Adicionar bairro ou cidade
+    if (neighborhood) {
+      parts.push(`no ${neighborhood}`);
+    } else if (city) {
+      parts.push(`em ${city}`);
+    }
+    
+    return parts.join(' ');
+  }, [type, bedrooms, neighborhood, city]);
+
+  // Score de qualidade do anúncio
+  const adQualityScore = useMemo(() => {
+    let score = 0;
+    const maxScore = 100;
+    const items: { label: string; done: boolean; points: number }[] = [];
+    
+    // Campos obrigatórios (50 pontos)
+    const hasPurpose = !!purpose;
+    items.push({ label: 'Finalidade (Venda/Aluguel)', done: hasPurpose, points: 10 });
+    score += hasPurpose ? 10 : 0;
+    
+    const hasPrice = parseBRLToNumber(priceBRL) > 0;
+    items.push({ label: 'Preço definido', done: hasPrice, points: 10 });
+    score += hasPrice ? 10 : 0;
+    
+    const hasType = !!type;
+    items.push({ label: 'Tipo de imóvel', done: hasType, points: 5 });
+    score += hasType ? 5 : 0;
+    
+    const hasAddress = !!geo;
+    items.push({ label: 'Endereço validado', done: hasAddress, points: 15 });
+    score += hasAddress ? 15 : 0;
+    
+    const imageCount = images.filter(i => i.url && !i.pending).length;
+    const hasMinImages = imageCount >= 1;
+    items.push({ label: 'Pelo menos 1 foto', done: hasMinImages, points: 10 });
+    score += hasMinImages ? 10 : 0;
+    
+    // Campos recomendados (30 pontos)
+    const hasDescription = description.length >= 50;
+    items.push({ label: 'Descrição detalhada (50+ chars)', done: hasDescription, points: 10 });
+    score += hasDescription ? 10 : 0;
+    
+    const hasDetails = bedrooms !== '' || bathrooms !== '' || areaM2 !== '';
+    items.push({ label: 'Detalhes (quartos/área)', done: hasDetails, points: 10 });
+    score += hasDetails ? 10 : 0;
+    
+    const hasGoodImages = imageCount >= 5;
+    items.push({ label: '5+ fotos (recomendado)', done: hasGoodImages, points: 10 });
+    score += hasGoodImages ? 10 : 0;
+    
+    // Diferenciais (20 pontos)
+    const hasAmenities = hasBalcony || hasPool || hasGym || hasElevator || hasConcierge24h;
+    items.push({ label: 'Diferenciais do imóvel', done: hasAmenities, points: 10 });
+    score += hasAmenities ? 10 : 0;
+    
+    const hasExcellentImages = imageCount >= 10;
+    items.push({ label: '10+ fotos (destaque)', done: hasExcellentImages, points: 10 });
+    score += hasExcellentImages ? 10 : 0;
+    
+    // Classificação
+    let level: 'low' | 'medium' | 'good' | 'excellent' = 'low';
+    if (score >= 80) level = 'excellent';
+    else if (score >= 60) level = 'good';
+    else if (score >= 40) level = 'medium';
+    
+    return { score, maxScore, level, items, imageCount };
+  }, [purpose, priceBRL, type, geo, images, description, bedrooms, bathrooms, areaM2, hasBalcony, hasPool, hasGym, hasElevator, hasConcierge24h]);
 
   const steps = [
     { id: 1, name: "Informações básicas", description: "Título, preço e tipo" },
@@ -980,10 +1054,19 @@ export default function NewPropertyPage() {
         return;
       }
 
-      await res.json();
+      const result = await res.json();
+      
+      // Mostrar tela de sucesso com compartilhamento
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const propertyUrl = `${siteUrl}/property/${result.id}`;
+      
+      setPublishedProperty({
+        id: result.id,
+        title: generatedTitle,
+        url: propertyUrl,
+      });
+      
       setToast({ message: "Imóvel publicado com sucesso!", type: "success" });
-      resetForm();
-      window.location.href = "/?city=" + encodeURIComponent(city) + "&state=" + state;
     } finally {
       setIsSubmitting(false);
     }
@@ -1163,6 +1246,112 @@ export default function NewPropertyPage() {
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
 
+      {/* Tela de Sucesso com Compartilhamento */}
+      {publishedProperty && (
+        <div className="mx-auto max-w-2xl px-4 py-12">
+          <div className="rounded-2xl bg-white shadow-lg ring-1 ring-black/5 overflow-hidden">
+            {/* Header com gradiente */}
+            <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-6 py-8 text-center text-white">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold mb-2">Anúncio publicado!</h1>
+              <p className="text-white/90">Seu imóvel já está disponível na plataforma</p>
+            </div>
+            
+            {/* Conteúdo */}
+            <div className="p-6 space-y-6">
+              {/* Preview do título */}
+              <div className="text-center">
+                <p className="text-sm text-gray-500 mb-1">Título do anúncio</p>
+                <p className="text-lg font-semibold text-gray-900">{publishedProperty.title}</p>
+              </div>
+              
+              {/* Compartilhamento */}
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-3 text-center">Compartilhe seu anúncio</p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {/* WhatsApp */}
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`Confira este imóvel: ${publishedProperty.title}\n${publishedProperty.url}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-500 text-white font-medium hover:bg-green-600 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    WhatsApp
+                  </a>
+                  
+                  {/* Facebook */}
+                  <a
+                    href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publishedProperty.url)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Facebook
+                  </a>
+                  
+                  {/* Copiar Link */}
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(publishedProperty.url);
+                      setToast({ message: "Link copiado!", type: "success" });
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copiar Link
+                  </button>
+                </div>
+              </div>
+              
+              {/* Link do anúncio */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Link do anúncio</p>
+                <p className="text-sm text-gray-700 break-all font-mono">{publishedProperty.url}</p>
+              </div>
+              
+              {/* Ações */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <Link
+                  href={`/property/${publishedProperty.id}`}
+                  className="flex-1 text-center px-4 py-3 rounded-xl bg-teal-600 text-white font-semibold hover:bg-teal-700 transition-colors"
+                >
+                  Ver anúncio
+                </Link>
+                <button
+                  onClick={() => {
+                    setPublishedProperty(null);
+                    resetForm();
+                  }}
+                  className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  Publicar outro
+                </button>
+                <Link
+                  href="/owner/properties"
+                  className="flex-1 text-center px-4 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  Meus anúncios
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Formulário de criação */}
+      {!publishedProperty && (
       <div className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
           <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
@@ -1591,11 +1780,64 @@ export default function NewPropertyPage() {
             </form>
           </div>
 
-          <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start">
+          <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start space-y-4">
+            {/* Score de qualidade do anúncio */}
+            <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                  adQualityScore.level === 'excellent' ? 'bg-green-100 text-green-700' :
+                  adQualityScore.level === 'good' ? 'bg-blue-100 text-blue-700' :
+                  adQualityScore.level === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {adQualityScore.score}%
+                </span>
+              </div>
+              
+              {/* Barra de progresso */}
+              <div className="h-2 rounded-full bg-gray-200 mb-3 overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    adQualityScore.level === 'excellent' ? 'bg-gradient-to-r from-green-400 to-green-500' :
+                    adQualityScore.level === 'good' ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
+                    adQualityScore.level === 'medium' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
+                    'bg-gradient-to-r from-red-400 to-red-500'
+                  }`}
+                  style={{ width: `${adQualityScore.score}%` }}
+                />
+              </div>
+              
+              {/* Checklist resumido */}
+              <div className="space-y-1.5 text-xs">
+                {adQualityScore.items.slice(0, 5).map((item, idx) => (
+                  <div key={idx} className={`flex items-center gap-2 ${item.done ? 'text-gray-700' : 'text-gray-400'}`}>
+                    {item.done ? (
+                      <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                      </svg>
+                    )}
+                    <span className={item.done ? '' : 'line-through'}>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+              
+              {adQualityScore.score < 60 && (
+                <p className="mt-3 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1.5">
+                  💡 Complete mais campos para aumentar a visibilidade do seu anúncio
+                </p>
+              )}
+            </div>
+
+            {/* Preview do card */}
             <PropertyCardPremium
               property={{
                 id: 'preview',
-                title: title || 'Título do anúncio',
+                title: generatedTitle,
                 price: parseBRLToNumber(priceBRL) * 100,
                 images: images.filter((i)=>i.url).map((i)=>({ url: i.url })),
                 city,
@@ -1655,6 +1897,7 @@ export default function NewPropertyPage() {
           </aside>
         </div>
       </div>
+      )}
 
       {lightbox.open && images[lightbox.index]?.url && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={closeLightbox}>
