@@ -264,6 +264,19 @@ model SavedSearch {
   @@map("saved_searches")
 }
 
+model PropertyDraft {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data        Json
+  currentStep Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("property_drafts")
+}
+
 // NextAuth models (Prisma Adapter)
 model Account {
   id                String  @id @default(cuid())

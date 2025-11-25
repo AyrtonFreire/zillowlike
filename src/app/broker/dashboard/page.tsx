@@ -105,34 +105,47 @@ export default function BrokerDashboard() {
     activeLeads: number;
   } | null>(null);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  const userId = (session?.user as any)?.id as string | undefined;
 
   useEffect(() => {
-    fetchMyLeads();
-  }, []);
+    if (userId) {
+      fetchDashboardData();
+    }
+  }, [userId]);
 
   useEffect(() => {
-    fetchPartnerStatus();
-  }, []);
+    if (userId) {
+      fetchMyLeads();
+    }
+  }, [userId]);
 
   useEffect(() => {
-    fetchPipelineSummary();
-  }, []);
+    if (userId) {
+      fetchPartnerStatus();
+    }
+  }, [userId]);
 
   useEffect(() => {
-    fetchTeamsPreview();
-  }, []);
+    if (userId) {
+      fetchPipelineSummary();
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchTeamsPreview();
+    }
+  }, [userId]);
 
   const fetchDashboardData = async () => {
     try {
-      // TODO: Get real userId from auth session
-      const userId = previewUserId || "demo-realtor-id";
+      // Use real userId from session, or previewUserId for admin preview
+      const effectiveUserId = previewUserId || userId;
+      if (!effectiveUserId) return;
       
       setDashboardError(null);
       setLoading(true);
-      const response = await fetch(`/api/metrics/realtor?userId=${userId}`);
+      const response = await fetch(`/api/metrics/realtor?userId=${effectiveUserId}`);
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);

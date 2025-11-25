@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, ChevronDown } from "lucide-react";
+import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, ChevronDown, ArrowLeft } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -605,8 +605,14 @@ export default function NewPropertyPage() {
     setGeo(null);
     setGeoPreview("");
     setCepValid(false);
+  };
+
+  const clearDraft = () => {
     if (typeof window !== "undefined") {
       try { window.localStorage.removeItem(SAVE_KEY); } catch {}
+      try {
+        fetch("/api/properties/draft", { method: "DELETE" }).catch(() => {});
+      } catch {}
     }
   };
 
@@ -684,7 +690,50 @@ export default function NewPropertyPage() {
       if (typeof d.areaM2 !== 'undefined') setAreaM2(d.areaM2);
       if (Array.isArray(d.images)) setImages(d.images);
       if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
+      if (typeof d.currentStep === 'number' && d.currentStep >= 1 && d.currentStep <= 5) {
+        setCurrentStep(d.currentStep);
+      }
     } catch {}
+  }, []);
+
+  // Load draft from backend (por usuário autenticado)
+  useEffect(() => {
+    let cancelled = false;
+    const loadFromApi = async () => {
+      if (typeof window === "undefined") return;
+      try {
+        const res = await fetch("/api/properties/draft");
+        if (!res.ok) return;
+        const json = await res.json();
+        const draft = json?.draft as any;
+        if (!draft || cancelled) return;
+        const d = (draft.data || {}) as any;
+
+        if (d.description) setDescription(d.description);
+        if (d.priceBRL) setPriceBRL(d.priceBRL);
+        if (d.type) setType(d.type);
+        if (d.purpose) setPurpose(d.purpose);
+        if (d.street) setStreet(d.street);
+        if (d.neighborhood) setNeighborhood(d.neighborhood);
+        if (d.city) setCity(d.city);
+        if (d.state) setState(d.state);
+        if (d.postalCode) setPostalCode(d.postalCode);
+        if (typeof d.bedrooms !== "undefined") setBedrooms(d.bedrooms);
+        if (typeof d.bathrooms !== "undefined") setBathrooms(d.bathrooms);
+        if (typeof d.areaM2 !== "undefined") setAreaM2(d.areaM2);
+        if (Array.isArray(d.images)) setImages(d.images);
+        if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
+
+        const stepFromApi = typeof draft.currentStep === "number" ? draft.currentStep : d.currentStep;
+        if (typeof stepFromApi === "number" && stepFromApi >= 1 && stepFromApi <= 5) {
+          setCurrentStep(stepFromApi);
+        }
+
+        try { window.localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch {}
+      } catch {}
+    };
+    loadFromApi();
+    return () => { cancelled = true; };
   }, []);
 
   // Autosave draft (debounced)
@@ -692,16 +741,35 @@ export default function NewPropertyPage() {
     const id = setTimeout(() => {
       try {
         const payload = {
-          description, priceBRL, type, purpose,
-          street, neighborhood, city, state, postalCode,
-          bedrooms, bathrooms, areaM2, images, addressNumber,
+          description,
+          priceBRL,
+          type,
+          purpose,
+          street,
+          neighborhood,
+          city,
+          state,
+          postalCode,
+          bedrooms,
+          bathrooms,
+          areaM2,
+          images,
+          addressNumber,
           conditionTags,
+          currentStep,
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+
+        // Sincroniza rascunho com o backend por usuário
+        fetch("/api/properties/draft", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: payload, currentStep }),
+        }).catch(() => {});
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images, conditionTags]);
+  }, [description, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images, conditionTags, currentStep]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1081,6 +1149,10 @@ export default function NewPropertyPage() {
       const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
       const propertyUrl = `${siteUrl}/property/${result.id}`;
       
+      // Limpa rascunho após publicação bem-sucedida
+      clearDraft();
+      resetForm();
+
       setPublishedProperty({
         id: result.id,
         title: generatedTitle,
@@ -1354,6 +1426,7 @@ export default function NewPropertyPage() {
                 <button
                   onClick={() => {
                     setPublishedProperty(null);
+                    clearDraft();
                     resetForm();
                   }}
                   className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
@@ -1385,6 +1458,20 @@ export default function NewPropertyPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={prevStep}
+                disabled={currentStep === 1}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 text-sm font-medium text-teal-700 hover:bg-teal-100 hover:text-teal-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Voltar para etapa anterior</span>
+              </button>
+              <span className="text-xs text-gray-500">
+                Etapa {currentStep} de {steps.length}
+              </span>
+            </div>
             <div className="bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40 px-2 py-3 rounded-xl ring-1 ring-black/5 overflow-x-auto">
             <div className="flex items-center w-max gap-4">
               {steps.map((step, index) => (
@@ -1423,7 +1510,7 @@ export default function NewPropertyPage() {
                   disabled={currentStep === 1}
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Anterior
+                  Voltar para etapa anterior
                 </button>
                 {currentStep < 5 ? (
                   <button
@@ -2205,7 +2292,7 @@ export default function NewPropertyPage() {
                   disabled={currentStep === 1}
                   className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Voltar
+                  Voltar para etapa anterior
                 </button>
 
                 {currentStep < 5 ? (
