@@ -13,7 +13,7 @@ const ALLOWED_REASONS = [
 
 export type LeadLostReason = (typeof ALLOWED_REASONS)[number];
 
-export async function PATCH(req: NextRequest, context: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session: any = await getServerSession(authOptions);
 
@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    const { id } = context.params;
+    const { id } = await context.params;
     const body = await req.json().catch(() => ({}));
     const reason = (body?.reason || null) as LeadLostReason | null;
 
@@ -61,10 +61,10 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
       );
     }
 
-    const updated = await prisma.lead.update({
+    const updated = await (prisma as any).lead.update({
       where: { id },
       data: {
-        pipelineStage: "LOST" as any,
+        pipelineStage: "LOST",
         lostReason: reason,
       },
       select: {

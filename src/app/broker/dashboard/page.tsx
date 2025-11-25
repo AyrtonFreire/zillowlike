@@ -97,7 +97,11 @@ export default function BrokerDashboard() {
   const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number> | null>(null);
   const [pipelineLoading, setPipelineLoading] = useState(true);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
-  const [teamsCount, setTeamsCount] = useState<number | null>(null);
+  const [teamSummary, setTeamSummary] = useState<{
+    id: string;
+    name: string;
+    activeLeads: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -255,10 +259,33 @@ export default function BrokerDashboard() {
         throw new Error(data?.error || `API error: ${response.status}`);
       }
 
-      setTeamsCount(Array.isArray(data.teams) ? data.teams.length : 0);
+      const teams = Array.isArray(data.teams) ? data.teams : [];
+      if (teams.length === 0) {
+        setTeamSummary(null);
+        return;
+      }
+
+      const firstTeam = teams[0];
+      const pipelineResponse = await fetch(`/api/teams/${firstTeam.id}/pipeline`);
+      const pipelineData = await pipelineResponse.json();
+
+      if (!pipelineResponse.ok || !pipelineData?.success) {
+        throw new Error(pipelineData?.error || `API error: ${pipelineResponse.status}`);
+      }
+
+      const leads = Array.isArray(pipelineData.leads) ? pipelineData.leads : [];
+      const activeLeads = leads.filter(
+        (lead: any) => lead.pipelineStage !== "WON" && lead.pipelineStage !== "LOST"
+      ).length;
+
+      setTeamSummary({
+        id: String(firstTeam.id),
+        name: firstTeam.name || "Time",
+        activeLeads,
+      });
     } catch (error) {
       console.error("Error fetching teams for dashboard:", error);
-      setTeamsCount(0);
+      setTeamSummary(null);
     }
   };
 
@@ -877,9 +904,9 @@ export default function BrokerDashboard() {
             </div>
           </Link>
 
-          {teamsCount && teamsCount > 0 && (
+          {teamSummary && (
             <Link
-              href="/broker/teams"
+              href={`/broker/teams/${teamSummary.id}/crm`}
               className="p-6 bg-white rounded-2xl border border-teal-200 hover:border-teal-300 hover:shadow-md transition-all duration-300 group"
             >
               <div className="flex items-center gap-4">
@@ -887,9 +914,13 @@ export default function BrokerDashboard() {
                   <Users className="w-6 h-6 text-teal-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">Meus times</h3>
+                  <h3 className="font-semibold text-gray-900">Seu time</h3>
                   <p className="text-sm text-gray-600">
-                    Você faz parte de {teamsCount} {teamsCount === 1 ? "time" : "times"}. Ver funil da equipe.
+                    {teamSummary.activeLeads === 0
+                      ? "Seu time está sem leads em andamento no momento."
+                      : `Seu time: ${teamSummary.activeLeads} ${
+                          teamSummary.activeLeads === 1 ? "lead em andamento" : "leads em andamento"
+                        }`}
                   </p>
                 </div>
               </div>

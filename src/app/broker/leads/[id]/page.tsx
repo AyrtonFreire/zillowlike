@@ -313,6 +313,28 @@ export default function LeadDetailPage() {
     }
   };
 
+  const handleQuickReminder = (type: "CALL_TOMORROW" | "WAITING_RESPONSE" | "SCHEDULE_VISIT") => {
+    const now = new Date();
+
+    if (type === "CALL_TOMORROW") {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setReminderDate(tomorrow.toISOString().split("T")[0]);
+      setReminderNote("Ligar amanhã para saber a decisão.");
+      return;
+    }
+
+    if (type === "WAITING_RESPONSE") {
+      setReminderDate(now.toISOString().split("T")[0]);
+      setReminderNote("Aguardando resposta do cliente.");
+      return;
+    }
+
+    if (type === "SCHEDULE_VISIT") {
+      setReminderNote("Combinar visita com o cliente.");
+    }
+  };
+
   const handleSaveResult = async () => {
     try {
       setResultSaving(true);
@@ -488,6 +510,31 @@ export default function LeadDetailPage() {
                   Se quiser, você pode marcar um dia e um resumo curto para lembrar o que precisa fazer com este lead (ex: ligar,
                   enviar mensagem, combinar visita).
                 </p>
+
+                <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="text-gray-500">Atalhos rápidos:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickReminder("CALL_TOMORROW")}
+                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    Ligar amanhã
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickReminder("WAITING_RESPONSE")}
+                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    Aguardando resposta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickReminder("SCHEDULE_VISIT")}
+                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    Agendar visita
+                  </button>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <div>

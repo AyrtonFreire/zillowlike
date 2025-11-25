@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updatePipelineStageSchema } from "@/lib/validations/lead";
 
-export async function PATCH(req: NextRequest, context: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session: any = await getServerSession(authOptions);
 
@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    const { id } = context.params;
+    const { id } = await context.params;
     const body = await req.json();
     const { stage } = updatePipelineStageSchema.parse(body);
 
@@ -48,10 +48,10 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
       );
     }
 
-    const updated = await prisma.lead.update({
+    const updated = await (prisma as any).lead.update({
       where: { id },
       data: {
-        pipelineStage: stage as any,
+        pipelineStage: stage,
       },
       select: {
         id: true,

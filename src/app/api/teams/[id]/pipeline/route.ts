@@ -4,7 +4,7 @@ import { LeadStatus } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(req: NextRequest, context: { params: { id: string } }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session: any = await getServerSession(authOptions);
 
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, context: { params: { id: string } })
       return NextResponse.json({ error: "Usuário não encontrado na sessão" }, { status: 400 });
     }
 
-    const { id } = context.params;
+    const { id } = await context.params;
 
     const team = await (prisma as any).team.findUnique({
       where: { id },

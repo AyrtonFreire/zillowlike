@@ -21,9 +21,9 @@ async function getSessionContext() {
   return { userId, role };
 }
 
-export async function GET(_req: NextRequest, context: { params: { id: string } }) {
+export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = context.params;
+    const { id } = await context.params;
     const { userId, role } = await getSessionContext();
 
     if (!userId) {
@@ -68,9 +68,9 @@ export async function GET(_req: NextRequest, context: { params: { id: string } }
   }
 }
 
-export async function POST(req: NextRequest, context: { params: { id: string } }) {
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = context.params;
+    const { id } = await context.params;
     const { userId, role } = await getSessionContext();
 
     if (!userId) {

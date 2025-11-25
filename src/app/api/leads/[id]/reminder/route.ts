@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function PATCH(req: NextRequest, context: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session: any = await getServerSession(authOptions);
 
@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    const { id } = context.params;
+    const { id } = await context.params;
     const body = await req.json().catch(() => ({}));
 
     const { date, note } = body as { date?: string | null; note?: string | null };
@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
       nextActionDate = parsed;
     }
 
-    const updated = await prisma.lead.update({
+    const updated = await (prisma as any).lead.update({
       where: { id },
       data: {
         nextActionDate,

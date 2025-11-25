@@ -21,7 +21,7 @@ const assignLeadSchema = z.object({
   realtorId: z.string().min(1, "realtorId é obrigatório"),
 });
 
-export async function PATCH(req: NextRequest, context: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { userId, role } = await getSessionContext();
 
@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    const { id } = context.params;
+    const { id } = await context.params;
     const json = await req.json().catch(() => null);
     const parsed = assignLeadSchema.safeParse(json);
 
