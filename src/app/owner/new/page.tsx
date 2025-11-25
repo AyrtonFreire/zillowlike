@@ -1235,12 +1235,355 @@ export default function NewPropertyPage() {
               </div>
             </div>
 
-            {/* FORM STEPS GO HERE - placeholder for now */}
-            <div className="rounded-xl p-6 sm:p-8 bg-gradient-to-br from-teal/5 to-teal/10 ring-1 ring-black/5">
-              <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal to-teal-dark mb-2">Cadastrar Imóvel</h1>
-              <p className="text-gray-700/90 mb-8">Preencha as informações do seu imóvel para publicá-lo na plataforma.</p>
-              <p className="text-sm text-gray-600">Formulário sendo carregado (Step {currentStep})...</p>
-            </div>
+            <form
+              onSubmit={handleSubmit}
+              className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-4 sm:p-6 space-y-6"
+            >
+              {currentStep === 1 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Informações básicas</h2>
+                  <p className="text-sm text-gray-600">
+                    Comece definindo se o anúncio é de venda ou aluguel, o valor e o tipo de imóvel. Esses campos ajudam a
+                    organizar a busca para os interessados.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <Select
+                        label="Finalidade"
+                        value={purpose}
+                        onChange={(e) => setPurpose(e.target.value as any)}
+                      >
+                        <option value="">Selecione</option>
+                        <option value="SALE">Venda</option>
+                        <option value="RENT">Aluguel</option>
+                      </Select>
+                    </div>
+                    <div>
+                      <Input
+                        label="Preço (R$)"
+                        value={priceBRL}
+                        onChange={(e) => setPriceBRL(formatBRLInput(e.target.value))}
+                        placeholder="Ex: 450.000"
+                        inputMode="numeric"
+                      />
+                    </div>
+                    <div>
+                      <Select
+                        label="Tipo de imóvel"
+                        value={type}
+                        onChange={(e) => setType(e.target.value)}
+                      >
+                        <option value="HOUSE">Casa</option>
+                        <option value="APARTMENT">Apartamento</option>
+                        <option value="CONDO">Condomínio</option>
+                        <option value="STUDIO">Studio/Kitnet</option>
+                        <option value="LAND">Terreno</option>
+                        <option value="COMMERCIAL">Comercial</option>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">Descrição do imóvel</label>
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-2.5 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-accent focus:border-transparent text-sm resize-y"
+                      placeholder="Use este espaço para explicar os pontos fortes do imóvel, estado de conservação, diferenciais, etc."
+                    />
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 2 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Localização</h2>
+                  <p className="text-sm text-gray-600">
+                    Informe o CEP e o endereço completo. Usamos essas informações para posicionar o imóvel no mapa e melhorar a
+                    busca.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Input
+                      label="CEP"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(formatCEP(e.target.value))}
+                      placeholder="Ex: 56300-000"
+                      inputMode="numeric"
+                    />
+                    <Input
+                      label="Rua"
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                    />
+                    <label className="block">
+                      <span className="block mb-1">
+                        <span className="text-sm font-medium text-neutral-700">Número</span>
+                      </span>
+                      <input
+                        ref={numberInputRef}
+                        value={addressNumber}
+                        onChange={(e) => setAddressNumber(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent transition border-neutral-300"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Input
+                      label="Bairro"
+                      value={neighborhood}
+                      onChange={(e) => setNeighborhood(e.target.value)}
+                    />
+                    <Input
+                      label="Cidade"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                    />
+                    <Input
+                      label="Estado (UF)"
+                      value={state}
+                      onChange={(e) => setState(e.target.value.toUpperCase())}
+                      maxLength={2}
+                    />
+                  </div>
+
+                  {addressString && (
+                    <p className="text-xs text-gray-500">Endereço atual: {addressString}</p>
+                  )}
+
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={handleGeocode}
+                      disabled={isGeocoding}
+                      className="inline-flex items-center px-3 py-2 rounded-lg text-xs font-semibold bg-neutral-900 text-white disabled:opacity-60"
+                    >
+                      {isGeocoding ? "Validando endereço..." : "Validar endereço no mapa"}
+                    </button>
+                    {geoPreview && (
+                      <p className="mt-2 text-xs text-gray-500 truncate">Ponto aproximado: {geoPreview}</p>
+                    )}
+                  </div>
+
+                  <div className="mt-4 h-64 rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+                    <div ref={mapContainerRef} className="w-full h-full" />
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 3 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Detalhes do imóvel</h2>
+                  <p className="text-sm text-gray-600">
+                    Informe quartos, banheiros, área e alguns diferenciais. Quanto mais claro, melhor para quem está buscando.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Input
+                      label="Quartos"
+                      value={bedrooms}
+                      onChange={(e) => setBedrooms(e.target.value)}
+                      inputMode="numeric"
+                    />
+                    <Input
+                      label="Banheiros"
+                      value={bathrooms}
+                      onChange={(e) => setBathrooms(e.target.value)}
+                      inputMode="numeric"
+                    />
+                    <Input
+                      label="Área (m²)"
+                      value={areaM2}
+                      onChange={(e) => setAreaM2(e.target.value)}
+                      inputMode="numeric"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Input
+                      label="Vagas de garagem"
+                      value={parkingSpots as any}
+                      onChange={(e) => setParkingSpots(e.target.value)}
+                      inputMode="numeric"
+                      optional
+                    />
+                    <Input
+                      label="Suítes"
+                      value={suites as any}
+                      onChange={(e) => setSuites(e.target.value)}
+                      inputMode="numeric"
+                      optional
+                    />
+                    <Input
+                      label="Andar (se apartamento)"
+                      value={floor as any}
+                      onChange={(e) => setFloor(e.target.value)}
+                      inputMode="numeric"
+                      optional
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Select
+                      label="Orientação do sol"
+                      value={sunOrientation}
+                      onChange={(e) => setSunOrientation(e.target.value)}
+                      optional
+                    >
+                      <option value="">Selecione</option>
+                      <option value="NASCENTE">Nascente</option>
+                      <option value="POENTE">Poente</option>
+                      <option value="OUTRA">Outra</option>
+                    </Select>
+                    <Input
+                      label="Ano de construção (aprox.)"
+                      value={yearBuilt as any}
+                      onChange={(e) => setYearBuilt(e.target.value)}
+                      inputMode="numeric"
+                      optional
+                    />
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 4 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Fotos do imóvel</h2>
+                  <p className="text-sm text-gray-600">
+                    Adicione ao menos uma foto. Você pode arrastar as imagens para ordenar e usar a primeira como capa.
+                  </p>
+
+                  {/* Por simplicidade, usamos apenas o input de arquivos básico aqui, reaproveitando handleDroppedFiles */}
+                  <div
+                    className={`border-2 border-dashed rounded-xl p-6 text-center text-sm cursor-pointer ${
+                      isFileDragOver ? "border-teal bg-teal/5" : "border-gray-300 bg-gray-50"
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsFileDragOver(true);
+                    }}
+                    onDragLeave={() => setIsFileDragOver(false)}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      setIsFileDragOver(false);
+                      if (e.dataTransfer?.files?.length) {
+                        await handleDroppedFiles(e.dataTransfer.files);
+                      }
+                    }}
+                    onClick={() => dropInputRef.current?.click()}
+                  >
+                    <p className="font-medium text-gray-800 mb-1">Clique aqui ou arraste imagens do seu computador</p>
+                    <p className="text-xs text-gray-500">Formatos JPG/PNG. As melhores fotos devem ficar primeiro.</p>
+                    <input
+                      ref={dropInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={async (e) => {
+                        if (e.target.files?.length) {
+                          await handleDroppedFiles(e.target.files);
+                          e.target.value = "";
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {images.some((img) => img.url) && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                      {images.filter((img) => img.url).map((img, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => openLightbox(idx)}
+                          className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={img.url}
+                            alt={img.alt || `Imagem ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {currentStep === 5 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Revisão final</h2>
+                  <p className="text-sm text-gray-600">
+                    Confira um resumo dos dados principais antes de publicar. Se algo estiver errado, volte para o passo
+                    correspondente para ajustar.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700">
+                    <div className="space-y-1">
+                      <p><span className="font-medium">Finalidade:</span> {purpose === "RENT" ? "Aluguel" : "Venda"}</p>
+                      <p><span className="font-medium">Preço:</span> R$ {parseBRLToNumber(priceBRL).toLocaleString("pt-BR")}</p>
+                      <p><span className="font-medium">Tipo:</span> {type}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p><span className="font-medium">Endereço:</span> {addressString || "Não informado"}</p>
+                      <p><span className="font-medium">Quartos/Banheiros:</span> {bedrooms || "-"} / {bathrooms || "-"}</p>
+                      <p><span className="font-medium">Área:</span> {areaM2 || "-"} m²</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2 text-sm text-gray-700">
+                    <p className="font-medium">Telefone para contato</p>
+                    <p className="text-xs text-gray-500 mb-1">
+                      Usaremos o telefone cadastrado em "Meu Perfil" para os interessados entrarem em contato.
+                    </p>
+                    <Checkbox
+                      checked={phoneConfirmedForListing}
+                      onChange={(e) => setPhoneConfirmedForListing(e.target.checked)}
+                      label={
+                        profilePhone
+                          ? `Confirmo que ${profilePhone} é o telefone correto para este anúncio.`
+                          : "Confirmo que meu telefone em Meu Perfil está correto para este anúncio."
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Navegação desktop */}
+              <div className="hidden sm:flex justify-between items-center pt-4 border-t border-gray-100 mt-4">
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  disabled={currentStep === 1}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Voltar
+                </button>
+
+                {currentStep < 5 ? (
+                  <button
+                    type="button"
+                    onClick={nextStep}
+                    className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow"
+                  >
+                    {isGeocoding && currentStep === 2 ? "Validando..." : "Avançar"}
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    onClick={() => setSubmitIntent(true)}
+                    disabled={isSubmitting || images.some((i) => i.pending)}
+                    className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow disabled:opacity-70"
+                  >
+                    {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando imagens" : "Publicar anúncio"}
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
 
           <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start">

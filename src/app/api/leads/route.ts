@@ -70,7 +70,10 @@ export async function POST(req: NextRequest) {
   if (!ok) return NextResponse.json({ error: "Captcha failed" }, { status: 400 });
 
   const { propertyId, name, email, phone, message, visitDate, visitTime, isDirect } = parsed.data;
-  const prop = await prisma.property.findUnique({ where: { id: propertyId }, select: { id: true } });
+  const prop = await prisma.property.findUnique({
+    where: { id: propertyId },
+    select: { id: true, teamId: true } as any,
+  });
   if (!prop) return NextResponse.json({ error: "Property not found" }, { status: 404 });
 
   // 🆕 Se tiver visitDate e visitTime, usar VisitSchedulingService
@@ -115,12 +118,13 @@ export async function POST(req: NextRequest) {
   });
 
   // Create lead with contact relation
-  const lead = await prisma.lead.create({
+  const lead = await (prisma as any).lead.create({
     data: {
       propertyId,
       contactId: contact.id,
       message,
       isDirect: isDirect ?? false,
+      teamId: (prop as any)?.teamId ?? undefined,
     },
   });
 

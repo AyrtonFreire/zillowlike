@@ -42,6 +42,10 @@ interface UserProfile {
   publicCity?: string | null;
   publicState?: string | null;
   publicPhoneOptIn?: boolean;
+
+  realtorCreci?: string | null;
+  realtorCreciState?: string | null;
+  realtorType?: "AUTONOMO" | "IMOBILIARIA" | string | null;
 }
 
 export default function ProfilePage() {
@@ -398,6 +402,23 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
+
+              {profile.role === "REALTOR" && (profile.realtorCreci || profile.realtorType) && (
+                <div className="mt-4 border-t border-gray-200 pt-4 text-xs text-gray-700 space-y-1">
+                  <p className="font-semibold text-gray-900">Dados profissionais (corretor)</p>
+                  {profile.realtorCreci && (
+                    <p>
+                      CRECI: {profile.realtorCreci}
+                      {profile.realtorCreciState && ` / ${profile.realtorCreciState}`}
+                    </p>
+                  )}
+                  {profile.realtorType && (
+                    <p>
+                      Tipo de atuação: {profile.realtorType === "AUTONOMO" ? "Corretor(a) autônomo(a)" : profile.realtorType === "IMOBILIARIA" ? "Imobiliária" : profile.realtorType}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

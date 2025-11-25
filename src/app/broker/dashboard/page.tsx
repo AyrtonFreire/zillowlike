@@ -55,7 +55,25 @@ interface MyLead {
   id: string;
   status: "RESERVED" | "ACCEPTED";
   createdAt: string;
+  reservedUntil?: string | null;
+  property?: {
+    id: string;
+    title: string;
+    city: string;
+    state: string;
+  };
+  nextActionDate?: string | null;
+  nextActionNote?: string | null;
 }
+
+type PipelineStage =
+  | "NEW"
+  | "CONTACT"
+  | "VISIT"
+  | "PROPOSAL"
+  | "DOCUMENTS"
+  | "WON"
+  | "LOST";
 
 export default function BrokerDashboard() {
   const { data: session } = useSession();
@@ -76,6 +94,11 @@ export default function BrokerDashboard() {
   const searchParams = useSearchParams();
   const previewUserId = searchParams.get("previewUserId");
 
+  const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number> | null>(null);
+  const [pipelineLoading, setPipelineLoading] = useState(true);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
+  const [teamsCount, setTeamsCount] = useState<number | null>(null);
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -86,6 +109,14 @@ export default function BrokerDashboard() {
 
   useEffect(() => {
     fetchPartnerStatus();
+  }, []);
+
+  useEffect(() => {
+    fetchPipelineSummary();
+  }, []);
+
+  useEffect(() => {
+    fetchTeamsPreview();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -123,14 +154,13 @@ export default function BrokerDashboard() {
     try {
       setMyLeadsError(null);
       setMyLeadsLoading(true);
-      const realtorId = previewUserId || "demo-realtor-id"; // TODO: pegar do session
-      const response = await fetch(`/api/leads/my-leads?realtorId=${realtorId}`);
+      const response = await fetch("/api/leads/my-leads");
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        throw new Error(data?.error || `API error: ${response.status}`);
       }
 
-      const data = await response.json();
       setMyLeads(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching my leads:", error);
@@ -138,6 +168,45 @@ export default function BrokerDashboard() {
       setMyLeadsError("Não conseguimos carregar seus leads ativos agora. Se quiser, tente novamente em alguns instantes.");
     } finally {
       setMyLeadsLoading(false);
+    }
+  };
+
+  const fetchPipelineSummary = async () => {
+    try {
+      setPipelineError(null);
+      setPipelineLoading(true);
+      const response = await fetch("/api/leads/my-pipeline");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || `API error: ${response.status}`);
+      }
+      const initial: Record<PipelineStage, number> = {
+        NEW: 0,
+        CONTACT: 0,
+        VISIT: 0,
+        PROPOSAL: 0,
+        DOCUMENTS: 0,
+        WON: 0,
+        LOST: 0,
+      };
+
+      (Array.isArray(data) ? data : []).forEach((lead: any) => {
+        const stage = (lead.pipelineStage || "NEW") as PipelineStage;
+        if (initial[stage] !== undefined) {
+          initial[stage] += 1;
+        }
+      });
+
+      setPipelineCounts(initial);
+    } catch (error) {
+      console.error("Error fetching pipeline summary:", error);
+      setPipelineCounts(null);
+      setPipelineError(
+        "Não conseguimos carregar o resumo do seu funil agora. Se quiser, atualize a página em alguns instantes."
+      );
+    } finally {
+      setPipelineLoading(false);
     }
   };
 
@@ -177,6 +246,22 @@ export default function BrokerDashboard() {
     }
   };
 
+  const fetchTeamsPreview = async () => {
+    try {
+      const response = await fetch("/api/teams");
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || `API error: ${response.status}`);
+      }
+
+      setTeamsCount(Array.isArray(data.teams) ? data.teams.length : 0);
+    } catch (error) {
+      console.error("Error fetching teams for dashboard:", error);
+      setTeamsCount(0);
+    }
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Bom dia";
@@ -198,6 +283,17 @@ export default function BrokerDashboard() {
   const leadsToday = myLeads.filter((lead) =>
     isSameDay(new Date(lead.createdAt), today)
   );
+
+  const remindersToday = myLeads.filter((lead) => {
+    if (!lead.nextActionDate) return false;
+    const d = new Date(lead.nextActionDate);
+    return isSameDay(d, today) || d < today;
+  });
+
+  const sortedRemindersToday = [...remindersToday].sort((a, b) => {
+    if (!a.nextActionDate || !b.nextActionDate) return 0;
+    return new Date(a.nextActionDate).getTime() - new Date(b.nextActionDate).getTime();
+  });
 
   const filteredLeads = leads.filter((lead) => {
     if (leadFilter === "NEW") {
@@ -338,6 +434,221 @@ export default function BrokerDashboard() {
             )}
           </StatCard>
         </div>
+
+        {/* Meu funil de leads */}
+        <div className="mb-8">
+          <StatCard title="Meu funil de leads">
+            {pipelineError ? (
+              <p className="text-sm text-gray-600">{pipelineError}</p>
+            ) : pipelineLoading ? (
+              <p className="text-sm text-gray-600">Carregando resumo do funil...</p>
+            ) : !pipelineCounts ||
+              Object.values(pipelineCounts).reduce((sum, value) => sum + value, 0) === 0 ? (
+              <p className="text-sm text-gray-600">
+                Ainda não há leads suficientes para montar um funil completo. Assim que você começar a receber e atender leads,
+                este quadro mostra em que etapa estão suas oportunidades.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-700">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Topo do funil</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {pipelineCounts.NEW + pipelineCounts.CONTACT}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leads novos ou em primeiro contato.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Em negociação</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {pipelineCounts.VISIT + pipelineCounts.PROPOSAL + pipelineCounts.DOCUMENTS}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Visitas, propostas e documentação em andamento.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Resultado</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {pipelineCounts.WON + pipelineCounts.LOST}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Negócios fechados ou marcados como perdidos.
+                  </p>
+                </div>
+              </div>
+            )}
+          </StatCard>
+        </div>
+
+        {/* Tarefas de hoje */}
+        <div className="mb-8">
+          <StatCard title="Tarefas de hoje">
+            {sortedRemindersToday.length === 0 ? (
+              <p className="text-sm text-gray-600">
+                Você ainda não marcou lembretes específicos para os seus leads. Quando marcar um dia e um pequeno resumo na
+                ficha do lead, eles aparecem aqui para te ajudar a lembrar o que fazer.
+              </p>
+            ) : (
+              <div className="space-y-3 text-sm text-gray-700">
+                <p className="text-xs text-gray-500">
+                  Estes são os lembretes que você marcou para hoje (ou dias anteriores). Use como uma listinha rápida de
+                  próximos passos.
+                </p>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {sortedRemindersToday.map((lead) => {
+                    const due = lead.nextActionDate ? new Date(lead.nextActionDate) : null;
+                    const isOverdue = due && due < today && !isSameDay(due, today);
+                    const isToday = due && isSameDay(due, today);
+                    const label = isOverdue ? "Atrasado" : isToday ? "Hoje" : "Próximo";
+
+                    return (
+                      <div
+                        key={lead.id}
+                        className="flex items-start justify-between gap-3 border-b border-gray-100 pb-2 last:border-b-0"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold line-clamp-1">
+                            {lead.property?.title || "Lead"}
+                          </p>
+                          {lead.property && (
+                            <p className="text-xs text-gray-500">
+                              {lead.property.city} - {lead.property.state}
+                            </p>
+                          )}
+                          {lead.nextActionNote && (
+                            <p className="mt-1 text-xs text-gray-700 line-clamp-2">
+                              {lead.nextActionNote}
+                            </p>
+                          )}
+                          {due && (
+                            <p className="mt-1 text-[10px] text-gray-400">
+                              {label} · {due.toLocaleDateString("pt-BR")}
+                            </p>
+                          )}
+                        </div>
+                        <Link
+                          href={`/broker/leads/${lead.id}`}
+                          className="text-[11px] text-blue-600 hover:text-blue-700 flex-shrink-0"
+                        >
+                          Ver lead
+                        </Link>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </StatCard>
+        </div>
+
+        {/* Quadro simples de leads em andamento */}
+        {myLeads.length > 0 && (
+          <div className="mb-8">
+            <StatCard title="Meus leads em andamento">
+              <p className="text-xs text-gray-500 mb-4">
+                Aqui você vê, em blocos, os leads que ainda precisam de decisão e os que você já está atendendo. Para ver os
+                detalhes completos ou registrar notas, use a página Meus Leads.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Coluna: precisam de decisão */}
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-gray-900">
+                      Precisam de decisão
+                    </p>
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-100 text-orange-800">
+                      {newLeads.length}
+                    </span>
+                  </div>
+                  {newLeads.length === 0 ? (
+                    <p className="text-xs text-gray-500">
+                      Nenhum lead reservado aguardando sua decisão neste momento.
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {newLeads.map((lead) => (
+                        <div
+                          key={lead.id}
+                          className="bg-white rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-800"
+                        >
+                          <p className="font-semibold line-clamp-1">
+                            {lead.property?.title || "Imóvel deste lead"}
+                          </p>
+                          {lead.property && (
+                            <p className="text-[11px] text-gray-500">
+                              {lead.property.city} - {lead.property.state}
+                            </p>
+                          )}
+                          <p className="mt-1 text-[11px] text-gray-500">
+                            Recebido em {new Date(lead.createdAt).toLocaleString("pt-BR", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Coluna: em atendimento */}
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-gray-900">
+                      Em atendimento
+                    </p>
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
+                      {inServiceLeads.length}
+                    </span>
+                  </div>
+                  {inServiceLeads.length === 0 ? (
+                    <p className="text-xs text-gray-500">
+                      Assim que você aceitar um lead, ele aparece aqui como "Em atendimento".
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {inServiceLeads.map((lead) => (
+                        <div
+                          key={lead.id}
+                          className="bg-white rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-800"
+                        >
+                          <p className="font-semibold line-clamp-1">
+                            {lead.property?.title || "Imóvel deste lead"}
+                          </p>
+                          {lead.property && (
+                            <p className="text-[11px] text-gray-500">
+                              {lead.property.city} - {lead.property.state}
+                            </p>
+                          )}
+                          <p className="mt-1 text-[11px] text-gray-500">
+                            Em atendimento desde {new Date(lead.createdAt).toLocaleString("pt-BR", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 flex justify-end">
+                <Link
+                  href="/broker/leads"
+                  className="text-[11px] text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Abrir página completa de Meus Leads
+                </Link>
+              </div>
+            </StatCard>
+          </div>
+        )}
 
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -505,7 +816,7 @@ export default function BrokerDashboard() {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Link
             href="/broker/properties"
             className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
@@ -530,11 +841,60 @@ export default function BrokerDashboard() {
                 <Activity className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Gerenciar Leads</h3>
-                <p className="text-sm text-gray-600">Acompanhar contatos</p>
+                <h3 className="font-semibold text-gray-900">Minha lista de leads</h3>
+                <p className="text-sm text-gray-600">Ver e acompanhar todos os seus leads</p>
               </div>
             </div>
           </Link>
+
+          <Link
+            href="/broker/crm"
+            className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-50 rounded-xl group-hover:bg-purple-100 transition-colors">
+                <Activity className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Funil de Leads</h3>
+                <p className="text-sm text-gray-600">Ver etapas da negociação</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/broker/agenda"
+            className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-orange-50 rounded-xl group-hover:bg-orange-100 transition-colors">
+                <Clock className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Agenda de visitas</h3>
+                <p className="text-sm text-gray-600">Ver horários combinados</p>
+              </div>
+            </div>
+          </Link>
+
+          {teamsCount && teamsCount > 0 && (
+            <Link
+              href="/broker/teams"
+              className="p-6 bg-white rounded-2xl border border-teal-200 hover:border-teal-300 hover:shadow-md transition-all duration-300 group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-teal-50 rounded-xl group-hover:bg-teal-100 transition-colors">
+                  <Users className="w-6 h-6 text-teal-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">Meus times</h3>
+                  <p className="text-sm text-gray-600">
+                    Você faz parte de {teamsCount} {teamsCount === 1 ? "time" : "times"}. Ver funil da equipe.
+                  </p>
+                </div>
+              </div>
+            </Link>
+          )}
         </div>
       </div>
     </DashboardLayout>

@@ -32,7 +32,7 @@ export default function ComoAnunciarPage() {
                 Sou pessoa física e quero anunciar
               </Link>
               <Link
-                href="/become-realtor"
+                href="/realtor/register"
                 className="inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-white/70 text-white/95 hover:bg-white/10 transition-all"
               >
                 <Briefcase className="w-4 h-4 mr-2" />
@@ -141,10 +141,10 @@ export default function ComoAnunciarPage() {
             <div className="mt-6 flex justify-between items-center text-sm">
               <p className="text-gray-500">Sua atuação é integrada ao funil do ZillowLike, sem perder o controle da sua carteira.</p>
               <Link
-                href="/onboarding"
+                href="/realtor/register"
                 className="inline-flex items-center text-indigo-700 font-semibold hover:text-indigo-800"
               >
-                Ver como funciona
+                Fazer meu cadastro rápido como corretor(a)
                 <ArrowRightCircle className="w-4 h-4 ml-1" />
               </Link>
             </div>

@@ -1,19 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { LeadDistributionService } from "@/lib/lead-distribution-service";
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const realtorId = searchParams.get("realtorId");
+    const session: any = await getServerSession(authOptions);
 
-    if (!realtorId) {
+    if (!session) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    }
+
+    const userId = session.userId || session.user?.id;
+    const role = session.role || session.user?.role;
+
+    if (!userId) {
       return NextResponse.json(
-        { error: "realtorId is required" },
+        { error: "Usuário não encontrado na sessão" },
         { status: 400 }
       );
     }
 
-    const leads = await LeadDistributionService.getRealtorLeads(realtorId);
+    if (role !== "REALTOR" && role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Você não tem permissão para ver estes leads." },
+        { status: 403 }
+      );
+    }
+
+    const leads = await LeadDistributionService.getRealtorLeads(String(userId));
 
     return NextResponse.json(leads);
   } catch (error) {

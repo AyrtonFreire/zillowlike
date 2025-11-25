@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -15,6 +16,8 @@ interface Lead {
   createdAt: string;
   reservedUntil?: string | null;
   respondedAt?: string | null;
+  nextActionDate?: string | null;
+  nextActionNote?: string | null;
   property: {
     id: string;
     title: string;
@@ -36,37 +39,88 @@ interface Lead {
   };
 }
 
+interface LeadNote {
+  id: string;
+  leadId: string;
+  realtorId: string;
+  content: string;
+  createdAt: string;
+}
+
 export default function MyLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "reserved" | "accepted">("all");
+  const [filter, setFilter] = useState<"all" | "reserved" | "accepted" | "taskToday">("all");
   const [cityFilter, setCityFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "last7">("all");
 
-  // TODO: Get from auth session
-  const realtorId = "demo-realtor-id";
+  const [openNotesLeadId, setOpenNotesLeadId] = useState<string | null>(null);
+  const [notesByLead, setNotesByLead] = useState<Record<string, LeadNote[]>>({});
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [notesLoading, setNotesLoading] = useState<Record<string, boolean>>({});
+  const [notesError, setNotesError] = useState<Record<string, string | null>>({});
+
+  const { data: session } = useSession();
+  const realtorId = (session?.user as any)?.id || "";
 
   useEffect(() => {
+    if (!realtorId) return;
     fetchLeads();
     // Atualiza a cada 30 segundos
     const interval = setInterval(fetchLeads, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [realtorId]);
 
   const fetchLeads = async () => {
     try {
+      if (!realtorId) return;
       setError(null);
       setLoading(true);
-      const response = await fetch(`/api/leads/my-leads?realtorId=${realtorId}`);
+      const response = await fetch("/api/leads/my-leads");
       const data = await response.json();
-      setLeads(data);
-    } catch (error) {
-      console.error("Error fetching leads:", error);
-      setError('Não conseguimos carregar seus leads agora. Se quiser, tente novamente em alguns instantes.');
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+            "Não conseguimos carregar seus leads agora. Se quiser, tente novamente em alguns instantes."
+        );
+      }
+
+      setLeads(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      console.error("Error fetching leads:", err);
+      setError(
+        err?.message ||
+          "Não conseguimos carregar seus leads agora. Se quiser, tente novamente em alguns instantes."
+      );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLeadNotes = async (leadId: string) => {
+    try {
+      setNotesError((prev) => ({ ...prev, [leadId]: null }));
+      setNotesLoading((prev) => ({ ...prev, [leadId]: true }));
+
+      const response = await fetch(`/api/leads/${leadId}/notes`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Não foi possível carregar as notas deste lead.");
+      }
+
+      setNotesByLead((prev) => ({ ...prev, [leadId]: data.notes || [] }));
+    } catch (err: any) {
+      console.error("Error fetching lead notes:", err);
+      setNotesError((prev) => ({
+        ...prev,
+        [leadId]: err?.message || "Não foi possível carregar as notas deste lead.",
+      }));
+    } finally {
+      setNotesLoading((prev) => ({ ...prev, [leadId]: false }));
     }
   };
 
@@ -118,6 +172,84 @@ export default function MyLeadsPage() {
     }
   };
 
+  const handleComplete = async (leadId: string) => {
+    if (!confirm("Você concluiu o atendimento deste lead? Essa ação é apenas para controle do seu painel.")) return;
+
+    try {
+      const response = await fetch(`/api/leads/${leadId}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ realtorId }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert("Atendimento marcado como concluído. O lead sai da lista de ativos, mas continua registrado nos relatórios.");
+        fetchLeads();
+      } else {
+        alert(data.error || "Não conseguimos concluir este atendimento agora. Se quiser, tente de novo em alguns instantes.");
+      }
+    } catch (error) {
+      console.error("Error completing lead:", error);
+      alert("Não conseguimos concluir este atendimento agora. Tente novamente mais tarde.");
+    }
+  };
+
+  const handleToggleNotes = (leadId: string) => {
+    if (openNotesLeadId === leadId) {
+      setOpenNotesLeadId(null);
+      return;
+    }
+
+    setOpenNotesLeadId(leadId);
+
+    if (!notesByLead[leadId]) {
+      fetchLeadNotes(leadId);
+    }
+  };
+
+  const handleAddNote = async (leadId: string) => {
+    const content = (noteDrafts[leadId] || "").trim();
+
+    if (!content) {
+      alert("Escreva uma nota antes de salvar.");
+      return;
+    }
+
+    try {
+      setNotesError((prev) => ({ ...prev, [leadId]: null }));
+      setNotesLoading((prev) => ({ ...prev, [leadId]: true }));
+
+      const response = await fetch(`/api/leads/${leadId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Não conseguimos salvar esta nota agora.");
+      }
+
+      setNotesByLead((prev) => ({
+        ...prev,
+        [leadId]: [...(prev[leadId] || []), data.note],
+      }));
+
+      setNoteDrafts((prev) => ({ ...prev, [leadId]: "" }));
+    } catch (err: any) {
+      console.error("Error creating lead note:", err);
+      setNotesError((prev) => ({
+        ...prev,
+        [leadId]: err?.message || "Não conseguimos salvar esta nota agora.",
+      }));
+    } finally {
+      setNotesLoading((prev) => ({ ...prev, [leadId]: false }));
+    }
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -138,6 +270,14 @@ export default function MyLeadsPage() {
     return `${diffDays}d atrás`;
   };
 
+  const getWhatsAppUrl = (phone?: string | null) => {
+    if (!phone) return "";
+    const digits = phone.replace(/\D/g, "");
+    if (!digits) return "";
+    const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
+    return `https://wa.me/${withCountry}`;
+  };
+
   const isSameDay = (a: Date, b: Date) => {
     return (
       a.getFullYear() === b.getFullYear() &&
@@ -149,10 +289,21 @@ export default function MyLeadsPage() {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
+  const leadsWithTaskToday = leads.filter((lead) => {
+    if (!lead.nextActionDate) return false;
+    const d = new Date(lead.nextActionDate);
+    return isSameDay(d, now) || d < now;
+  });
+
   const filteredLeads = leads.filter((lead) => {
     // Status filter
     if (filter === "reserved" && lead.status !== "RESERVED") return false;
     if (filter === "accepted" && lead.status !== "ACCEPTED") return false;
+    if (filter === "taskToday") {
+      if (!lead.nextActionDate) return false;
+      const d = new Date(lead.nextActionDate);
+      if (!(isSameDay(d, now) || d < now)) return false;
+    }
 
     // City filter
     if (
@@ -234,7 +385,7 @@ export default function MyLeadsPage() {
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                Reservados ({leads.filter((l) => l.status === "RESERVED").length})
+                Novos ({leads.filter((l) => l.status === "RESERVED").length})
               </button>
               <button
                 onClick={() => setFilter("accepted")}
@@ -245,6 +396,16 @@ export default function MyLeadsPage() {
                 }`}
               >
                 Em Atendimento ({leads.filter((l) => l.status === "ACCEPTED").length})
+              </button>
+              <button
+                onClick={() => setFilter("taskToday")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  filter === "taskToday"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Com tarefa para hoje ({leadsWithTaskToday.length})
               </button>
             </div>
 
@@ -400,14 +561,26 @@ export default function MyLeadsPage() {
                               <span className="font-medium">{lead.contact.name}</span>
                             </div>
                             {lead.contact.phone && (
-                              <div className="flex items-center gap-2 text-gray-700">
-                                <Phone className="w-4 h-4" />
-                                <a
-                                  href={`tel:${lead.contact.phone}`}
-                                  className="hover:text-blue-600 transition-colors"
-                                >
-                                  {lead.contact.phone}
-                                </a>
+                              <div className="flex items-center gap-3 text-gray-700 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                  <Phone className="w-4 h-4" />
+                                  <a
+                                    href={`tel:${lead.contact.phone}`}
+                                    className="hover:text-blue-600 transition-colors"
+                                  >
+                                    {lead.contact.phone}
+                                  </a>
+                                </div>
+                                {getWhatsAppUrl(lead.contact.phone) && (
+                                  <a
+                                    href={getWhatsAppUrl(lead.contact.phone)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-green-700 hover:text-green-800 font-medium"
+                                  >
+                                    Abrir WhatsApp
+                                  </a>
+                                )}
                               </div>
                             )}
                             <div className="flex items-center gap-2 text-gray-700">
@@ -466,11 +639,98 @@ export default function MyLeadsPage() {
                               <Calendar className="w-5 h-5" />
                               Marcar Visita
                             </button>
-                            <button className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">
+                            <button
+                              onClick={() => handleComplete(lead.id)}
+                              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+                            >
                               <CheckCircle className="w-5 h-5" />
                               Concluir Atendimento
                             </button>
                           </>
+                        )}
+                      </div>
+
+                      <div className="mt-2">
+                        <Link
+                          href={`/broker/leads/${lead.id}`}
+                          className="text-xs text-blue-600 hover:text-blue-700"
+                        >
+                          Abrir tela de detalhes deste lead
+                        </Link>
+                      </div>
+
+                      {/* Notas rápidas do lead */}
+                      <div className="mt-4 border-t border-gray-100 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleNotes(lead.id)}
+                          className="text-xs font-medium text-gray-700 hover:text-gray-900"
+                        >
+                          {openNotesLeadId === lead.id
+                            ? "Esconder notas"
+                            : "Ver / adicionar notas rápidas sobre este cliente"}
+                        </button>
+
+                        {openNotesLeadId === lead.id && (
+                          <div className="mt-3 space-y-3">
+                            {notesError[lead.id] && (
+                              <p className="text-xs text-red-600">{notesError[lead.id]}</p>
+                            )}
+
+                            {notesLoading[lead.id] && !notesByLead[lead.id] ? (
+                              <p className="text-xs text-gray-500">Carregando notas...</p>
+                            ) : (
+                              <>
+                                {notesByLead[lead.id]?.length ? (
+                                  <div className="space-y-1 max-h-32 overflow-y-auto pr-1 text-xs text-gray-700">
+                                    {notesByLead[lead.id].map((note) => (
+                                      <div
+                                        key={note.id}
+                                        className="px-2 py-1 rounded-md bg-gray-50 border border-gray-100"
+                                      >
+                                        <p className="whitespace-pre-wrap">{note.content}</p>
+                                        <p className="mt-1 text-[10px] text-gray-400">
+                                          {new Date(note.createdAt).toLocaleString("pt-BR", {
+                                            day: "2-digit",
+                                            month: "2-digit",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          })}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-500">
+                                    Use este espaço para anotar, com suas próprias palavras, pontos importantes da conversa
+                                    ou próximos passos combinados com o cliente.
+                                  </p>
+                                )}
+                              </>
+                            )}
+
+                            <div className="space-y-2">
+                              <textarea
+                                value={noteDrafts[lead.id] || ""}
+                                onChange={(e) =>
+                                  setNoteDrafts((prev) => ({ ...prev, [lead.id]: e.target.value }))
+                                }
+                                rows={2}
+                                placeholder="Ex: Combinou retorno amanhã à tarde; prefere contato por WhatsApp."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              />
+                              <div className="flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddNote(lead.id)}
+                                  disabled={!!notesLoading[lead.id]}
+                                  className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                  {notesLoading[lead.id] ? "Salvando..." : "Salvar nota"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>

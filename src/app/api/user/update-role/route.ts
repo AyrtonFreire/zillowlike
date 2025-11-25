@@ -73,9 +73,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const data: any = { role };
+
+    if (role === "REALTOR") {
+      data.realtorCreci = creci;
+      data.realtorCreciState = creciState;
+      data.realtorType = realtorType;
+    } else {
+      data.realtorCreci = null;
+      data.realtorCreciState = null;
+      data.realtorType = null;
+    }
+
     await prisma.user.update({
       where: { id: userId as string },
-      data: { role },
+      data,
     });
 
     return NextResponse.json({ success: true, role });

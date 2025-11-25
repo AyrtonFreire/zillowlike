@@ -26,15 +26,16 @@ export class VisitSchedulingService {
     // Verifica se o imóvel existe e pega info do proprietário
     const property = await prisma.property.findUnique({
       where: { id: propertyId },
-      select: { 
-        id: true, 
+      select: {
+        id: true,
         ownerId: true,
+        teamId: true,
         owner: {
           select: {
-            role: true
-          }
-        }
-      },
+            role: true,
+          },
+        },
+      } as any,
     });
 
     if (!property) {
@@ -42,7 +43,7 @@ export class VisitSchedulingService {
     }
 
     // REGRA: Imóveis de corretores são sempre diretos
-    const isOwnerRealtor = property.owner?.role === "REALTOR";
+    const isOwnerRealtor = (property as any).owner?.role === "REALTOR";
     const isDirect = !!realtorId || isOwnerRealtor;
 
     if (isOwnerRealtor && !realtorId) {
@@ -71,18 +72,19 @@ export class VisitSchedulingService {
     }
 
     // Criar lead
-    const lead = await prisma.lead.create({
+    const lead = await (prisma as any).lead.create({
       data: {
         propertyId,
         contactId: contact.id,
-        realtorId, // 🆕 Se fornecido, já atribui ao corretor
+        realtorId, // Se fornecido, já atribui ao corretor
         visitDate,
         visitTime,
         clientNotes,
         message: clientNotes, // Manter compatibilidade
-        status: isDirect ? "WAITING_OWNER_APPROVAL" : "PENDING", // 🆕 Direto já vai para aprovação
-        isDirect, // 🆕 Marca como direto
+        status: isDirect ? "WAITING_OWNER_APPROVAL" : "PENDING",
+        isDirect,
         candidatesCount: 0,
+        teamId: (property as any)?.teamId ?? undefined,
       },
       include: {
         property: {

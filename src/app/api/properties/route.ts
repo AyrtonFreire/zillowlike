@@ -591,6 +591,19 @@ export async function POST(req: NextRequest) {
             }
           : undefined,
     };
+
+    // Se o usuário fizer parte de exatamente um time, amarra esse imóvel a esse time automaticamente.
+    try {
+      const memberships = await (prisma as any).teamMember.findMany({
+        where: { userId },
+        select: { teamId: true },
+      });
+      if (Array.isArray(memberships) && memberships.length === 1 && memberships[0]?.teamId) {
+        createData.teamId = memberships[0].teamId;
+      }
+    } catch (err) {
+      console.error("api/properties POST: failed to infer teamId", err);
+    }
     const created = await prisma.property.create({ data: createData, include: { images: true } });
     console.log("api/properties POST created", { id: created.id, ownerId: created.ownerId, city: created.city, state: created.state, status: created.status, requestId });
     const res = NextResponse.json(created, { status: 201 });

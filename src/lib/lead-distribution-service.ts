@@ -635,4 +635,63 @@ export class LeadDistributionService {
 
     return expiredLeads.length;
   }
+
+  /**
+   * Conclui atendimento de um lead aceito
+   */
+  static async completeLead(leadId: string, realtorId: string) {
+    logger.info("Completing lead", { leadId, realtorId });
+
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+    });
+
+    if (!lead) {
+      throw new Error("Lead não encontrado");
+    }
+
+    if (lead.realtorId !== realtorId) {
+      throw new Error("Este lead não está atribuído a este corretor");
+    }
+
+    if (lead.status !== "ACCEPTED") {
+      throw new Error("Apenas leads em atendimento podem ser concluídos");
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedLead = await tx.lead.update({
+        where: { id: leadId },
+        data: {
+          status: "COMPLETED",
+          completedAt: new Date(),
+        },
+      });
+
+      const statsUpdate: any = {
+        leadsCompleted: { increment: 1 },
+      };
+
+      if (lead.visitDate && lead.visitTime) {
+        statsUpdate.visitsCompleted = { increment: 1 };
+      }
+
+      await tx.realtorStats.update({
+        where: { realtorId },
+        data: statsUpdate,
+      });
+
+      return updatedLead;
+    });
+
+    await QueueService.decrementActiveLeads(realtorId);
+
+    await QueueService.updateScore(
+      realtorId,
+      3,
+      "COMPLETE_LEAD",
+      "Concluiu atendimento de lead"
+    );
+
+    return result;
+  }
 }

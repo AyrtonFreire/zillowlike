@@ -79,6 +79,26 @@ enum LeadStatus {
   AVAILABLE // Deprecated - manter compatibilidade
 }
 
+// Estágios comerciais do funil do corretor
+enum LeadPipelineStage {
+  NEW
+  CONTACT
+  VISIT
+  PROPOSAL
+  DOCUMENTS
+  WON
+  LOST
+}
+
+// Motivos simples de perda de lead
+enum LeadLostReason {
+  CLIENT_DESISTIU
+  FECHOU_OUTRO_IMOVEL
+  CONDICAO_FINANCEIRA
+  NAO_RESPONDEU
+  OUTRO
+}
+
 // Status do corretor na fila
 enum RealtorQueueStatus {
   ACTIVE
@@ -118,6 +138,8 @@ model Property {
   purpose     Purpose?
   ownerId     String?
   owner       User?          @relation("PropertyOwner", fields: [ownerId], references: [id])
+  teamId      String?
+  team        Team?          @relation(fields: [teamId], references: [id])
 
   // Location & address
   street       String
@@ -210,6 +232,7 @@ model Property {
   @@index([purpose])
   @@index([ownerId])
   @@index([status])
+  @@index([teamId])
   @@map("properties")
 }
 
@@ -292,10 +315,13 @@ model User {
   sessions             Session[]
   leads                Lead[]
   realtorLeads         Lead[]               @relation("RealtorLeads")
+  leadMessages         LeadMessage[]
   properties           Property[]           @relation("PropertyOwner")
   queue                RealtorQueue?
   stats                RealtorStats?
   ratings              RealtorRating[]
+  teamMemberships      TeamMember[]
+  ownedTeams           Team[]
   phone                String?
   phoneVerifiedAt      DateTime?
   realtorApplication   RealtorApplication?
@@ -303,6 +329,10 @@ model User {
   reportsCreated       Report[]             @relation("ReportsByUser")
   reportsHandled       Report[]             @relation("ReportsHandledByAdmin")
   reportsAgainstUser   Report[]             @relation("ReportsTargetUser")
+
+  realtorCreci      String?
+  realtorCreciState String?
+  realtorType       RealtorType?
 }
 
 model VerificationToken {
@@ -322,6 +352,8 @@ model Lead {
   userId     String?
   realtor    User?      @relation("RealtorLeads", fields: [realtorId], references: [id])
   realtorId  String?
+  team       Team?      @relation(fields: [teamId], references: [id])
+  teamId     String?
   contact    Contact?   @relation(fields: [contactId], references: [id])
   contactId  String?
   status     LeadStatus @default(PENDING)
@@ -356,9 +388,23 @@ model Lead {
   // Contador de candidatos
   candidatesCount Int @default(0)
 
+  // Estágio comercial no funil do corretor
+  pipelineStage LeadPipelineStage @default(NEW)
+
+  // Motivo de perda (quando pipelineStage = LOST)
+  lostReason LeadLostReason?
+
+  // Lembrete simples de próximo passo para o corretor
+  nextActionDate DateTime?
+  nextActionNote String?
+
   candidatures LeadCandidature[]
   rating       RealtorRating?
   reports      Report[]
+
+  notes LeadNote[]
+
+  messages LeadMessage[]
 
   @@index([propertyId])
   @@index([userId])
@@ -371,7 +417,50 @@ model Lead {
   @@index([realtorId, status]) // Para buscar leads de um corretor por status
   @@index([status, reservedUntil]) // Para worker de reservas expiradas
   @@index([status, visitDate]) // Para dashboard de visitas
+  @@index([teamId])
   @@map("leads")
+}
+
+model LeadNote {
+  id        String   @id @default(cuid())
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId    String
+  realtorId String
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([realtorId])
+  @@map("lead_notes")
+}
+
+model LeadMessage {
+  id         String   @id @default(cuid())
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId     String
+  sender     User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId   String
+  senderRole Role
+  content    String
+  createdAt  DateTime @default(now())
+
+  @@index([leadId])
+  @@index([senderId])
+  @@map("lead_messages")
+}
+
+model LeadAssignmentLog {
+  id              String   @id @default(cuid())
+  leadId          String
+  fromRealtorId   String?
+  toRealtorId     String?
+  changedByUserId String
+  teamId          String?
+  createdAt       DateTime @default(now())
+
+  @@index([leadId])
+  @@index([teamId])
+  @@map("lead_assignment_logs")
 }
 
 // Contact information for leads
@@ -510,6 +599,12 @@ model RealtorRating {
   @@map("realtor_ratings")
 }
 
+enum TeamMemberRole {
+  OWNER
+  AGENT
+  ASSISTANT
+}
+
 // Status de aplicação de corretor
 enum ApplicationStatus {
   PENDING
@@ -560,6 +655,36 @@ model RealtorApplication {
   @@index([status])
   @@index([createdAt])
   @@map("realtor_applications")
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId   String
+  members   TeamMember[]
+  properties Property[]
+  leads      Lead[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String         @id @default(cuid())
+  team      Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      TeamMemberRole @default(AGENT)
+  queuePosition Int        @default(0)
+  createdAt DateTime       @default(now())
+
+  @@unique([teamId, userId])
+  @@index([userId])
+  @@map("team_members")
 }
 
 // ============================================

@@ -35,6 +35,9 @@ export async function GET(req: NextRequest) {
         publicCity: true,
         publicState: true,
         publicPhoneOptIn: true,
+        realtorCreci: true,
+        realtorCreciState: true,
+        realtorType: true,
         _count: {
           select: {
             leads: true,
@@ -158,6 +161,9 @@ export async function PATCH(req: NextRequest) {
         publicCity: true,
         publicState: true,
         publicPhoneOptIn: true,
+        realtorCreci: true,
+        realtorCreciState: true,
+        realtorType: true,
       },
     });
 
