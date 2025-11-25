@@ -64,8 +64,66 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       },
     });
 
+    const leadIds = leads.map((lead) => lead.id);
+
+    // Resumo de conversas por lead (última mensagem interna ou do cliente)
+    const lastMessageByLead = new Map<
+      string,
+      {
+        createdAt: Date;
+        content: string;
+        fromClient: boolean;
+      }
+    >();
+
+    if (leadIds.length > 0) {
+      const [internalMessages, clientMessages] = await Promise.all([
+        (prisma as any).leadMessage.findMany({
+          where: {
+            leadId: { in: leadIds },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        (prisma as any).leadClientMessage.findMany({
+          where: {
+            leadId: { in: leadIds },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+      ]);
+
+      for (const msg of internalMessages) {
+        const leadId = msg.leadId as string;
+        if (!leadId) continue;
+        const current = lastMessageByLead.get(leadId);
+        const createdAt: Date = msg.createdAt;
+        if (!current || createdAt > current.createdAt) {
+          lastMessageByLead.set(leadId, {
+            createdAt,
+            content: msg.content as string,
+            fromClient: false,
+          });
+        }
+      }
+
+      for (const msg of clientMessages) {
+        const leadId = msg.leadId as string;
+        if (!leadId) continue;
+        const current = lastMessageByLead.get(leadId);
+        const createdAt: Date = msg.createdAt;
+        if (!current || createdAt > current.createdAt) {
+          lastMessageByLead.set(leadId, {
+            createdAt,
+            content: msg.content as string,
+            fromClient: !!msg.fromClient,
+          });
+        }
+      }
+    }
+
     const formattedLeads = leads.map((lead) => {
       const l: any = lead;
+      const last = lastMessageByLead.get(lead.id);
 
       return {
         id: lead.id,
@@ -79,11 +137,14 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
         nextActionDate: l.nextActionDate,
         nextActionNote: l.nextActionNote,
         contact: lead.contact
-        ? {
-            name: lead.contact.name,
-            phone: lead.contact.phone,
-          }
-        : null,
+          ? {
+              name: lead.contact.name,
+              phone: lead.contact.phone,
+            }
+          : null,
+        lastMessageAt: last?.createdAt ?? null,
+        lastMessagePreview: last?.content ?? null,
+        lastMessageFromClient: last?.fromClient ?? null,
       };
     });
 

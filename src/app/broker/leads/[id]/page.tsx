@@ -10,6 +10,7 @@ import CountdownTimer from "@/components/queue/CountdownTimer";
 import StatusIndicator from "@/components/queue/StatusIndicator";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import { getPusherClient } from "@/lib/pusher-client";
 
 interface Lead {
   id: string;
@@ -45,6 +46,7 @@ interface Lead {
     email: string;
     phone?: string | null;
   };
+  clientChatToken?: string | null;
 }
 
 interface LeadNote {
@@ -112,6 +114,8 @@ export default function LeadDetailPage() {
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [lastMessageId, setLastMessageId] = useState<string | null>(null);
 
+  const [clientChatLoading, setClientChatLoading] = useState(false);
+
   const [showMessagesHistory, setShowMessagesHistory] = useState(false);
   const [showNotesHistory, setShowNotesHistory] = useState(false);
   const [showLeadHelp, setShowLeadHelp] = useState(false);
@@ -145,6 +149,44 @@ export default function LeadDetailPage() {
       fetchMessages({ isBackground: true });
     }, 30000);
     return () => clearInterval(interval);
+  }, [leadId]);
+
+  useEffect(() => {
+    if (!leadId) return;
+
+    let cancelled = false;
+    try {
+      const pusher = getPusherClient();
+      const channelName = `private-lead-${leadId}`;
+      const channel = pusher.subscribe(channelName);
+
+      const handler = (data: { leadId: string; message: LeadMessage }) => {
+        if (!data?.message || cancelled) return;
+
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === data.message.id)) {
+            return prev;
+          }
+          return [...prev, data.message];
+        });
+
+        setLastMessageId((prev) => data.message.id || prev);
+      };
+
+      channel.bind("lead-message", handler as any);
+
+      return () => {
+        cancelled = true;
+        try {
+          channel.unbind("lead-message", handler as any);
+          pusher.unsubscribe(channelName);
+        } catch {
+          // ignore pusher errors on cleanup
+        }
+      };
+    } catch (err) {
+      console.error("Error subscribing to lead messages channel:", err);
+    }
   }, [leadId]);
 
   useEffect(() => {
@@ -332,6 +374,43 @@ export default function LeadDetailPage() {
 
     if (type === "SCHEDULE_VISIT") {
       setReminderNote("Combinar visita com o cliente.");
+    }
+  };
+
+  const openClientChatWindow = (token: string) => {
+    if (typeof window === "undefined") return;
+    const base = window.location.origin;
+    const url = `${base}/chat/${token}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleOpenClientChat = async () => {
+    if (!lead || !leadId) return;
+
+    if (lead.clientChatToken) {
+      openClientChatWindow(lead.clientChatToken);
+      return;
+    }
+
+    try {
+      setClientChatLoading(true);
+      const response = await fetch(`/api/leads/${leadId}/client-chat/token`, {
+        method: "POST",
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data?.success || !data?.token) {
+        throw new Error(data?.error || "Não conseguimos gerar o link de conversa agora.");
+      }
+
+      const token = String(data.token);
+      setLead((prev) => (prev ? { ...prev, clientChatToken: token } : prev));
+      openClientChatWindow(token);
+    } catch (err: any) {
+      console.error("Error opening client chat:", err);
+      alert(err?.message || "Não conseguimos abrir esta conversa agora. Tente novamente em alguns instantes.");
+    } finally {
+      setClientChatLoading(false);
     }
   };
 
@@ -684,6 +763,21 @@ export default function LeadDetailPage() {
                     Use o canal que fizer mais sentido para você e para o cliente. Este painel é apenas um apoio para organizar
                     seus atendimentos.
                   </p>
+
+                  <div className="mt-4 border-t border-gray-200 pt-3">
+                    <p className="text-xs text-gray-500 mb-2">
+                      Se preferir, você também pode usar um chat simples pela plataforma. Ele é pensado para clientes que não
+                      querem depender só do WhatsApp.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleOpenClientChat}
+                      disabled={clientChatLoading}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {clientChatLoading ? "Abrindo conversa..." : "Abrir área de conversa com o cliente"}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <p className="text-sm text-gray-500">Os dados de contato não estão disponíveis para este lead.</p>

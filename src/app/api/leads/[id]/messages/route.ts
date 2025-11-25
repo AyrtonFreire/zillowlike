@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getPusherServer } from "@/lib/pusher-server";
 
 const messageSchema = z.object({
   content: z.string().min(1, "Escreva uma mensagem antes de enviar.").max(2000, "A mensagem está muito longa."),
@@ -152,6 +153,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         },
       },
     });
+
+    try {
+      const pusher = getPusherServer();
+      await pusher.trigger(`private-lead-${id}`, "lead-message", {
+        leadId: id,
+        message,
+      });
+    } catch (pusherError) {
+      console.error("Error triggering pusher for lead message:", pusherError);
+    }
 
     return NextResponse.json({ message });
   } catch (error) {

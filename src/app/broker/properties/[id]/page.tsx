@@ -49,6 +49,9 @@ interface PropertyLead {
     name: string;
     phone: string | null;
   } | null;
+  lastMessageAt?: string | null;
+  lastMessagePreview?: string | null;
+  lastMessageFromClient?: boolean | null;
 }
 
 export default function BrokerPropertyDetailPage() {
@@ -305,6 +308,13 @@ export default function BrokerPropertyDetailPage() {
                       {lead.nextActionDate && (
                         <p className="text-[11px] text-gray-500 mt-1">
                           Próximo passo em {new Date(lead.nextActionDate).toLocaleDateString("pt-BR")} — {lead.nextActionNote}
+                        </p>
+                      )}
+                      {lead.lastMessageAt && lead.lastMessagePreview && (
+                        <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">
+                          Última mensagem ({lead.lastMessageFromClient ? "cliente" : "equipe"}) em
+                          {" "}
+                          {new Date(lead.lastMessageAt).toLocaleDateString("pt-BR")} — {lead.lastMessagePreview}
                         </p>
                       )}
                     </div>

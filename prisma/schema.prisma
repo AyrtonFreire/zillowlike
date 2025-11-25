@@ -398,9 +398,12 @@ model Lead {
   nextActionDate DateTime?
   nextActionNote String?
 
+  clientChatToken String? @unique
+
   candidatures LeadCandidature[]
   rating       RealtorRating?
   reports      Report[]
+  clientMessages LeadClientMessage[]
 
   notes LeadNote[]
 
@@ -447,6 +450,18 @@ model LeadMessage {
   @@index([leadId])
   @@index([senderId])
   @@map("lead_messages")
+}
+
+model LeadClientMessage {
+  id         String   @id @default(cuid())
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId     String
+  fromClient Boolean
+  content    String
+  createdAt  DateTime @default(now())
+
+  @@index([leadId])
+  @@map("lead_client_messages")
 }
 
 model LeadAssignmentLog {

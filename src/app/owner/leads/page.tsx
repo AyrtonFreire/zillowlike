@@ -319,17 +319,25 @@ export default function OwnerLeadsPage() {
                     )}
                   </div>
 
-                  {/* Status Changer */}
-                  <select
-                    value={lead.status}
-                    onChange={(e) => handleStatusChange(lead.id, e.target.value)}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="NEW">Novo</option>
-                    <option value="CONTACTED">Contatado</option>
-                    <option value="QUALIFIED">Qualificado</option>
-                    <option value="CLOSED">Fechado</option>
-                  </select>
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={lead.status}
+                      onChange={(e) => handleStatusChange(lead.id, e.target.value)}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="NEW">Novo</option>
+                      <option value="CONTACTED">Contatado</option>
+                      <option value="QUALIFIED">Qualificado</option>
+                      <option value="CLOSED">Fechado</option>
+                    </select>
+
+                    <Link
+                      href={`/owner/leads/${lead.id}`}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Conversar com o corretor
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}

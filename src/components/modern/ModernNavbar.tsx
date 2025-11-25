@@ -26,6 +26,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const pathname = usePathname();
   
   const role = (session as any)?.user?.role || "USER";
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   
@@ -61,6 +62,64 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Inbox de mensagens internas para corretores - verifica se há conversas não lidas
+  useEffect(() => {
+    if (!session) return;
+    if (role !== 'REALTOR' && role !== 'AGENCY' && role !== 'ADMIN') return;
+
+    let cancelled = false;
+
+    const STORAGE_PREFIX = 'zlw_inbox_last_read_';
+
+    const updateUnread = async () => {
+      try {
+        const response = await fetch('/api/broker/messages/inbox');
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.success || !Array.isArray(data.conversations)) {
+          if (!cancelled) setHasUnreadMessages(false);
+          return;
+        }
+
+        let anyUnread = false;
+
+        if (typeof window !== 'undefined') {
+          for (const conv of data.conversations) {
+            const leadId = conv.leadId as string;
+            const key = `${STORAGE_PREFIX}${leadId}`;
+            const stored = window.localStorage.getItem(key);
+
+            if (!stored) {
+              anyUnread = true;
+              break;
+            }
+
+            const lastRead = new Date(stored).getTime();
+            const lastMsg = new Date(conv.lastMessageCreatedAt).getTime();
+
+            if (Number.isNaN(lastRead) || lastMsg > lastRead) {
+              anyUnread = true;
+              break;
+            }
+          }
+        }
+
+        if (!cancelled) setHasUnreadMessages(anyUnread);
+      } catch (error) {
+        console.error('Error checking unread messages:', error);
+        if (!cancelled) setHasUnreadMessages(false);
+      }
+    };
+
+    updateUnread();
+    const interval = setInterval(updateUnread, 60000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [session, role]);
 
   // Mega menu Comprar - inspirado em Zillow/Daft/James Edition
   const buyMenuSections = [
@@ -422,6 +481,19 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             >
               <Heart className="w-5 h-5" />
             </Link>
+            {(role === 'REALTOR' || role === 'AGENCY' || role === 'ADMIN') && (
+              <Link
+                href="/broker/messages"
+                className={`relative p-2 rounded-lg transition-colors ${
+                  forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'
+                }`}
+              >
+                <Bell className="w-5 h-5" />
+                {hasUnreadMessages && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 border border-white" />
+                )}
+              </Link>
+            )}
             {session ? (
               <div className="relative" id="user-menu-trigger">
                 <button
