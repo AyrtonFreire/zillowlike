@@ -21,21 +21,37 @@ function normalizePhoneE164(phone: string): string {
 
 /**
  * Envia um SMS usando a API HTTP do Twilio.
- * Em desenvolvimento, se as variáveis TWILIO_* não estiverem configuradas,
- * apenas loga no console (modo mock) para não quebrar o fluxo.
+ * 
+ * Modos de operação:
+ * - Se SMS_MODE=mock: loga no console (para desenvolvimento)
+ * - Se variáveis TWILIO_* não estiverem configuradas: loga no console
+ * - Caso contrário: envia via Twilio
  */
 export async function sendSms(to: string, body: string): Promise<void> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const fromNumber = process.env.TWILIO_FROM_NUMBER;
+  const smsMode = process.env.SMS_MODE; // "mock" para desenvolvimento
 
   const normalizedTo = normalizePhoneE164(to);
 
+  // Modo mock explícito para desenvolvimento
+  if (smsMode === "mock") {
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("📱 [SMS MOCK] Código de verificação:");
+    console.log(`   Para: ${normalizedTo}`);
+    console.log(`   Mensagem: ${body}`);
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    return;
+  }
+
   if (!accountSid || !authToken || !fromNumber) {
-    console.log("\ud83d\udcf1 [SMS MOCK] Twilio env vars missing. SMS not actually sent.", {
-      to: normalizedTo,
-      body,
-    });
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("📱 [SMS MOCK] Twilio não configurado:");
+    console.log(`   Para: ${normalizedTo}`);
+    console.log(`   Mensagem: ${body}`);
+    console.log("   💡 Dica: Configure TWILIO_* no .env ou use SMS_MODE=mock");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     return;
   }
 
@@ -62,10 +78,30 @@ export async function sendSms(to: string, body: string): Promise<void> {
       text = await res.text();
     } catch {}
 
-    console.error("\u274c Twilio SMS send failed", {
-      status: res.status,
-      body: text,
-    });
+    // Parse error for better logging
+    let errorCode: number | null = null;
+    let errorMessage = "";
+    try {
+      const errorJson = JSON.parse(text);
+      errorCode = errorJson.code;
+      errorMessage = errorJson.message;
+    } catch {}
+
+    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.error("❌ Twilio SMS falhou:");
+    console.error(`   Status: ${res.status}`);
+    if (errorCode) console.error(`   Código: ${errorCode}`);
+    if (errorMessage) console.error(`   Erro: ${errorMessage}`);
+    
+    // Dicas específicas por erro
+    if (errorCode === 21659) {
+      console.error("");
+      console.error("   💡 O número em TWILIO_FROM_NUMBER não é um número Twilio válido.");
+      console.error("   📋 Soluções:");
+      console.error("      1. Compre um número em: https://console.twilio.com/us1/develop/phone-numbers");
+      console.error("      2. Ou use SMS_MODE=mock no .env para desenvolvimento");
+    }
+    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     throw new Error("Failed to send SMS");
   }
