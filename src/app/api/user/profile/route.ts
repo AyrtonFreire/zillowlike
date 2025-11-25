@@ -118,10 +118,26 @@ export async function PATCH(req: NextRequest) {
 
     const role = (existing as any)?.role as string | undefined;
 
-    if (body.publicProfileEnabled !== undefined) {
+    // Perfil público: para corretores/imobiliárias é sempre ativo;
+    // para outros perfis continua opcional.
+    if (role === "REALTOR" || role === "AGENCY") {
+      updateData.publicProfileEnabled = true;
+      if (!(existing as any).publicSlug) {
+        const defaultBase = "corretor";
+        const base = (body.name || (existing as any).name || defaultBase) as string;
+        const slugBase = String(base)
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/\p{Diacritic}/gu, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)+/g, "");
+        const random = Math.random().toString(36).slice(2, 6);
+        updateData.publicSlug = `${slugBase || defaultBase}-${random}`;
+      }
+    } else if (body.publicProfileEnabled !== undefined) {
       updateData.publicProfileEnabled = Boolean(body.publicProfileEnabled);
       if (updateData.publicProfileEnabled && !(existing as any).publicSlug) {
-        const defaultBase = role === "REALTOR" || role === "AGENCY" ? "corretor" : "anunciante";
+        const defaultBase = "anunciante";
         const base = (body.name || (existing as any).name || defaultBase) as string;
         const slugBase = String(base)
           .toLowerCase()

@@ -290,6 +290,8 @@ export default function ProfilePage() {
     return null;
   }
 
+  const isRealtorOrAgency = profile.role === "REALTOR" || profile.role === "AGENCY";
+
   return (
     <DashboardLayout
       title="Meu Perfil"
@@ -563,37 +565,29 @@ export default function ProfilePage() {
             </div>
 
             {/* Public profile settings for realtors/agencies */}
-            {(profile.role === "REALTOR" || profile.role === "AGENCY") && (
+            {isRealtorOrAgency && (
               <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-1">
                   Perfil público de corretor
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Controle como você aparece publicamente para clientes interessados nos seus imóveis.
+                  Seu perfil de corretor é sempre público quando você tem um link público. Use esta seção apenas para ajustar
+                  texto e cidade/estado exibidos.
                 </p>
 
                 <div className="space-y-5">
-                  {/* Toggle */}
+                  {/* Estado do perfil */}
                   <div className="flex items-start gap-3">
-                    <input
-                      id="public-profile-enabled"
-                      type="checkbox"
-                      checked={publicProfileEnabled}
-                      onChange={(e) => setPublicProfileEnabled(e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
+                    <div className="mt-1 h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
+                      <span className="w-2 h-2 rounded-full bg-white" />
+                    </div>
                     <div>
-                      <label
-                        htmlFor="public-profile-enabled"
-                        className="text-sm font-medium text-gray-900"
-                      >
-                        Ativar meu perfil público como corretor
-                      </label>
+                      <p className="text-sm font-medium text-gray-900">Perfil público sempre ativo</p>
                       <p className="text-xs text-gray-500 mt-1">
-                        Quando ativado, seu perfil poderá ser acessado por qualquer pessoa através de um link público,
-                        mostrando apenas informações profissionais e sem expor seus dados sensíveis.
+                        Corretores e imobiliárias têm sempre uma página pública ativa. Basta compartilhar o link abaixo com seus
+                        clientes.
                       </p>
-                      {publicProfileEnabled && profile.publicSlug && (
+                      {profile.publicSlug && (
                         <p className="text-xs text-blue-600 mt-2">
                           Seu link público:
                           {" "}
@@ -609,92 +603,88 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  {publicProfileEnabled && (
-                    <>
-                      {/* Headline */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Frase de apresentação
-                        </label>
-                        <input
-                          type="text"
-                          value={publicHeadline}
-                          onChange={(e) => setPublicHeadline(e.target.value)}
-                          placeholder="Ex: Especialista em imóveis residenciais em Petrolina e região."
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        />
-                      </div>
+                  {/* Headline */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Frase de apresentação
+                    </label>
+                    <input
+                      type="text"
+                      value={publicHeadline}
+                      onChange={(e) => setPublicHeadline(e.target.value)}
+                      placeholder="Ex: Especialista em imóveis residenciais em Petrolina e região."
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    />
+                  </div>
 
-                      {/* Cidade/Estado */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className="sm:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Cidade
-                          </label>
-                          <input
-                            type="text"
-                            value={publicCity}
-                            onChange={(e) => setPublicCity(e.target.value)}
-                            placeholder="Ex: Petrolina"
-                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Estado (UF)
-                          </label>
-                          <input
-                            type="text"
-                            value={publicState}
-                            onChange={(e) => setPublicState(e.target.value.toUpperCase())}
-                            maxLength={2}
-                            placeholder="Ex: PE"
-                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm uppercase"
-                          />
-                        </div>
-                      </div>
+                  {/* Cidade/Estado */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Cidade
+                      </label>
+                      <input
+                        type="text"
+                        value={publicCity}
+                        onChange={(e) => setPublicCity(e.target.value)}
+                        placeholder="Ex: Petrolina"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Estado (UF)
+                      </label>
+                      <input
+                        type="text"
+                        value={publicState}
+                        onChange={(e) => setPublicState(e.target.value.toUpperCase())}
+                        maxLength={2}
+                        placeholder="Ex: PE"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm uppercase"
+                      />
+                    </div>
+                  </div>
 
-                      {/* Bio pública */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Sobre você (bio pública)
-                        </label>
-                        <textarea
-                          value={publicBio}
-                          onChange={(e) => setPublicBio(e.target.value)}
-                          rows={4}
-                          placeholder="Conte um pouco sobre sua experiência, regiões onde atua e tipos de imóvel que costuma trabalhar. Evite incluir dados pessoais muito sensíveis."
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-y"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Essa descrição aparece na página pública e ajuda o cliente a entender seu estilo de atendimento.
-                        </p>
-                      </div>
+                  {/* Bio pública */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Sobre você (bio pública)
+                    </label>
+                    <textarea
+                      value={publicBio}
+                      onChange={(e) => setPublicBio(e.target.value)}
+                      rows={4}
+                      placeholder="Conte um pouco sobre sua experiência, regiões onde atua e tipos de imóvel que costuma trabalhar. Evite incluir dados pessoais muito sensíveis."
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-y"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Essa descrição aparece na página pública e ajuda o cliente a entender seu estilo de atendimento.
+                    </p>
+                  </div>
 
-                      {/* Opt-in de telefone público */}
-                      <div className="flex items-start gap-3">
-                        <input
-                          id="public-phone-opt-in"
-                          type="checkbox"
-                          checked={publicPhoneOptIn}
-                          onChange={(e) => setPublicPhoneOptIn(e.target.checked)}
-                          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <div>
-                          <label
-                            htmlFor="public-phone-opt-in"
-                            className="text-sm font-medium text-gray-900"
-                          >
-                            Exibir meu telefone no perfil público
-                          </label>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Usaremos o mesmo telefone informado acima. Ele só será mostrado se estiver verificado e você marcar
-                            essa opção. Os clientes ainda podem entrar em contato pela plataforma mesmo sem ver seu número.
-                          </p>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  {/* Opt-in de telefone público */}
+                  <div className="flex items-start gap-3">
+                    <input
+                      id="public-phone-opt-in"
+                      type="checkbox"
+                      checked={publicPhoneOptIn}
+                      onChange={(e) => setPublicPhoneOptIn(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div>
+                      <label
+                        htmlFor="public-phone-opt-in"
+                        className="text-sm font-medium text-gray-900"
+                      >
+                        Exibir meu telefone no perfil público
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Usaremos o mesmo telefone informado acima. Ele só será mostrado se estiver verificado e você marcar
+                        essa opção. Os clientes ainda podem entrar em contato pela plataforma mesmo sem ver seu número.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

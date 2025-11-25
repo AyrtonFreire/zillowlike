@@ -15,6 +15,7 @@ import Toast from "@/components/Toast";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Checkbox from "@/components/ui/Checkbox";
+import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 
 type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File };
 
@@ -194,6 +195,10 @@ export default function NewPropertyPage() {
   const [profilePhone, setProfilePhone] = useState<string | null>(null);
   const [profilePhoneVerified, setProfilePhoneVerified] = useState<boolean>(false);
   const [phoneConfirmedForListing, setPhoneConfirmedForListing] = useState(false);
+  const [showPhoneVerificationModal, setShowPhoneVerificationModal] = useState(false);
+  const [phoneMode, setPhoneMode] = useState<"existing" | "new">("existing");
+  const [newPhoneInput, setNewPhoneInput] = useState("");
+  const [savingNewPhone, setSavingNewPhone] = useState(false);
   // Leaflet
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const leafletMap = useRef<any>(null);
@@ -909,13 +914,20 @@ export default function NewPropertyPage() {
     setSubmitIntent(false);
 
     // Confirmação e verificação do telefone antes de publicar
-    if (!profilePhone || !profilePhone.trim()) {
-      setToast({ message: "Antes de publicar, cadastre um telefone em Meu Perfil.", type: "error" });
+    // Se está no modo "new" e o usuário digitou um novo telefone, verificar se salvou
+    if (phoneMode === "new" && newPhoneInput.trim() && newPhoneInput !== profilePhone) {
+      setToast({ message: "Salve e verifique o novo telefone antes de publicar.", type: "error" });
       return;
     }
 
+    if (!profilePhone || !profilePhone.trim()) {
+      setToast({ message: "Cadastre um telefone para continuar.", type: "error" });
+      return;
+    }
+
+    // Se tem telefone mas não está verificado, abrir modal de verificação
     if (!profilePhoneVerified) {
-      setToast({ message: "Precisamos validar seu telefone via SMS em Meu Perfil antes de publicar.", type: "error" });
+      setShowPhoneVerificationModal(true);
       return;
     }
 
@@ -1972,20 +1984,215 @@ export default function NewPropertyPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 space-y-2 text-sm text-gray-700">
-                    <p className="font-medium">Telefone para contato</p>
-                    <p className="text-xs text-gray-500 mb-1">
-                      Usaremos o telefone cadastrado em "Meu Perfil" para os interessados entrarem em contato.
-                    </p>
-                    <Checkbox
-                      checked={phoneConfirmedForListing}
-                      onChange={(e) => setPhoneConfirmedForListing(e.target.checked)}
-                      label={
-                        profilePhone
-                          ? `Confirmo que ${profilePhone} é o telefone correto para este anúncio.`
-                          : "Confirmo que meu telefone em Meu Perfil está correto para este anúncio."
-                      }
-                    />
+                  {/* Seção de telefone melhorada */}
+                  <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Phone className="w-5 h-5 text-teal-600" />
+                      <p className="font-semibold text-gray-900">Telefone para contato</p>
+                    </div>
+
+                    {/* Opções de telefone */}
+                    {profilePhone ? (
+                      <div className="space-y-3">
+                        {/* Opção: usar telefone existente */}
+                        <label 
+                          className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            phoneMode === "existing" 
+                              ? "border-teal-500 bg-teal-50" 
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="phoneMode"
+                            checked={phoneMode === "existing"}
+                            onChange={() => setPhoneMode("existing")}
+                            className="mt-1 w-4 h-4 text-teal-600"
+                          />
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">
+                              Usar meu telefone cadastrado
+                            </p>
+                            <p className="text-sm text-gray-600 mt-0.5">
+                              {profilePhone}
+                              {profilePhoneVerified ? (
+                                <span className="ml-2 inline-flex items-center gap-1 text-green-600">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                  </svg>
+                                  Verificado
+                                </span>
+                              ) : (
+                                <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Não verificado
+                                </span>
+                              )}
+                            </p>
+                            {!profilePhoneVerified && phoneMode === "existing" && (
+                              <button
+                                type="button"
+                                onClick={() => setShowPhoneVerificationModal(true)}
+                                className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
+                              >
+                                Verificar agora →
+                              </button>
+                            )}
+                          </div>
+                        </label>
+
+                        {/* Opção: usar outro número */}
+                        <label 
+                          className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            phoneMode === "new" 
+                              ? "border-teal-500 bg-teal-50" 
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="phoneMode"
+                            checked={phoneMode === "new"}
+                            onChange={() => setPhoneMode("new")}
+                            className="mt-1 w-4 h-4 text-teal-600"
+                          />
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">
+                              Usar outro número
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Cadastrar e verificar um novo telefone
+                            </p>
+                          </div>
+                        </label>
+
+                        {/* Input para novo telefone */}
+                        {phoneMode === "new" && (
+                          <div className="mt-3 pl-7 space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Novo telefone (com DDD)
+                              </label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="tel"
+                                  value={newPhoneInput}
+                                  onChange={(e) => setNewPhoneInput(e.target.value.replace(/\D/g, ""))}
+                                  placeholder="11999999999"
+                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                />
+                                <button
+                                  type="button"
+                                  disabled={!newPhoneInput.trim() || savingNewPhone}
+                                  onClick={async () => {
+                                    if (!newPhoneInput.trim()) return;
+                                    setSavingNewPhone(true);
+                                    try {
+                                      const res = await fetch("/api/user/profile", {
+                                        method: "PATCH",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ phone: newPhoneInput }),
+                                      });
+                                      if (res.ok) {
+                                        setProfilePhone(newPhoneInput);
+                                        setProfilePhoneVerified(false);
+                                        setShowPhoneVerificationModal(true);
+                                      } else {
+                                        setToast({ message: "Erro ao salvar telefone", type: "error" });
+                                      }
+                                    } catch {
+                                      setToast({ message: "Erro ao salvar telefone", type: "error" });
+                                    } finally {
+                                      setSavingNewPhone(false);
+                                    }
+                                  }}
+                                  className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                  {savingNewPhone ? (
+                                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    "Salvar e verificar"
+                                  )}
+                                </button>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Digite apenas números (DDD + número)
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Confirmação */}
+                        {phoneMode === "existing" && profilePhoneVerified && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <Checkbox
+                              checked={phoneConfirmedForListing}
+                              onChange={(e) => setPhoneConfirmedForListing(e.target.checked)}
+                              label={`Confirmo que ${profilePhone} é o telefone correto para este anúncio.`}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Sem telefone cadastrado */
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          Você ainda não tem um telefone cadastrado. Adicione um para que interessados possam entrar em contato.
+                        </p>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Telefone (com DDD)
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="tel"
+                              value={newPhoneInput}
+                              onChange={(e) => setNewPhoneInput(e.target.value.replace(/\D/g, ""))}
+                              placeholder="11999999999"
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                            />
+                            <button
+                              type="button"
+                              disabled={!newPhoneInput.trim() || savingNewPhone}
+                              onClick={async () => {
+                                if (!newPhoneInput.trim()) return;
+                                setSavingNewPhone(true);
+                                try {
+                                  const res = await fetch("/api/user/profile", {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ phone: newPhoneInput }),
+                                  });
+                                  if (res.ok) {
+                                    setProfilePhone(newPhoneInput);
+                                    setProfilePhoneVerified(false);
+                                    setShowPhoneVerificationModal(true);
+                                  } else {
+                                    setToast({ message: "Erro ao salvar telefone", type: "error" });
+                                  }
+                                } catch {
+                                  setToast({ message: "Erro ao salvar telefone", type: "error" });
+                                } finally {
+                                  setSavingNewPhone(false);
+                                }
+                              }}
+                              className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                              {savingNewPhone ? (
+                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                "Salvar e verificar"
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Digite apenas números (DDD + número)
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -2180,6 +2387,23 @@ export default function NewPropertyPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de verificação de telefone */}
+      <PhoneVerificationModal
+        isOpen={showPhoneVerificationModal}
+        onClose={() => setShowPhoneVerificationModal(false)}
+        onVerified={() => {
+          setProfilePhoneVerified(true);
+          setPhoneConfirmedForListing(true);
+          setToast({ message: "Telefone verificado! Agora você pode publicar seu anúncio.", type: "success" });
+        }}
+        phone={profilePhone || ""}
+        allowEdit={true}
+        onPhoneChange={(newPhone) => {
+          setProfilePhone(newPhone);
+          setProfilePhoneVerified(false);
+        }}
+      />
     </DashboardLayout>
   );
 }

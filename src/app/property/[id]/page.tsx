@@ -139,7 +139,6 @@ export default async function PropertyPage({ params }: PageProps) {
         select: {
           phone: true,
           role: true,
-          publicProfileEnabled: true,
           publicSlug: true,
           name: true,
           stats: {
@@ -170,7 +169,6 @@ export default async function PropertyPage({ params }: PageProps) {
   const owner = (property as any).owner as
     | {
         role?: string;
-        publicProfileEnabled?: boolean;
         publicSlug?: string | null;
         name?: string | null;
         stats?: { avgRating?: number | null; totalRatings?: number | null } | null;
@@ -180,7 +178,6 @@ export default async function PropertyPage({ params }: PageProps) {
   const realtorProfileSlug =
     owner &&
     (owner.role === "REALTOR" || owner.role === "AGENCY") &&
-    owner.publicProfileEnabled &&
     owner.publicSlug
       ? owner.publicSlug
       : null;

@@ -25,7 +25,6 @@ import {
 
 interface ProfileData {
   publicSlug: string;
-  publicProfileEnabled: boolean;
   publicHeadline: string;
   publicBio: string;
   publicCity: string;
@@ -48,7 +47,6 @@ export default function BrokerProfilePage() {
 
   const [profile, setProfile] = useState<ProfileData>({
     publicSlug: "",
-    publicProfileEnabled: false,
     publicHeadline: "",
     publicBio: "",
     publicCity: "",
@@ -78,7 +76,6 @@ export default function BrokerProfilePage() {
         const data = await res.json();
         setProfile({
           publicSlug: data.publicSlug || "",
-          publicProfileEnabled: data.publicProfileEnabled || false,
           publicHeadline: data.publicHeadline || "",
           publicBio: data.publicBio || "",
           publicCity: data.publicCity || "",
@@ -168,7 +165,7 @@ export default function BrokerProfilePage() {
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Ações */}
         <div className="flex items-center justify-end gap-3">
-          {profileUrl && profile.publicProfileEnabled && (
+          {profileUrl && (
             <a
               href={profileUrl}
               target="_blank"
@@ -189,34 +186,18 @@ export default function BrokerProfilePage() {
           </button>
         </div>
 
-        {/* Ativar/Desativar perfil */}
+        {/* Perfil público (info apenas) */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${profile.publicProfileEnabled ? "bg-green-100" : "bg-gray-100"}`}>
-                <Globe className={`w-5 h-5 ${profile.publicProfileEnabled ? "text-green-600" : "text-gray-500"}`} />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Perfil público</h3>
-                <p className="text-sm text-gray-500">
-                  {profile.publicProfileEnabled
-                    ? "Seu perfil está visível para todos"
-                    : "Seu perfil está oculto"}
-                </p>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-green-100">
+              <Globe className="w-5 h-5 text-green-600" />
             </div>
-            <button
-              onClick={() => setProfile((p) => ({ ...p, publicProfileEnabled: !p.publicProfileEnabled }))}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                profile.publicProfileEnabled ? "bg-teal-600" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  profile.publicProfileEnabled ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
+            <div>
+              <h3 className="font-semibold text-gray-900">Perfil público sempre ativo</h3>
+              <p className="text-sm text-gray-500">
+                Seu perfil de corretor é sempre visível para clientes quando você possui um link público.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -423,7 +404,7 @@ export default function BrokerProfilePage() {
         </div>
 
         {/* Prévia */}
-        {profile.publicProfileEnabled && profile.publicSlug && (
+        {profile.publicSlug && (
           <div className="bg-gradient-to-r from-teal-600 to-blue-600 rounded-2xl p-6 text-white">
             <div className="flex items-center gap-3 mb-3">
               <CheckCircle className="w-6 h-6" />

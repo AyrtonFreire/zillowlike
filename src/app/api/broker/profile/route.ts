@@ -19,7 +19,6 @@ export async function GET() {
         name: true,
         role: true,
         publicSlug: true,
-        publicProfileEnabled: true,
         publicHeadline: true,
         publicBio: true,
         publicCity: true,
@@ -92,12 +91,12 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    // Atualizar perfil
+    // Atualizar perfil (sempre mantendo perfil público ativo para corretores)
     const updated = await prisma.user.update({
       where: { id: user.id },
       data: {
         publicSlug: body.publicSlug?.toLowerCase().replace(/[^a-z0-9-]/g, "") || null,
-        publicProfileEnabled: Boolean(body.publicProfileEnabled),
+        publicProfileEnabled: true,
         publicHeadline: body.publicHeadline?.slice(0, 200) || null,
         publicBio: body.publicBio?.slice(0, 500) || null,
         publicCity: body.publicCity || null,

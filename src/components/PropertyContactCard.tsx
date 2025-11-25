@@ -167,7 +167,9 @@ export default function PropertyContactCard({
   const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
   const isDirectOwner = (ownerRole === "OWNER" || ownerRole === "USER") && !allowRealtorBoard;
   const isLeadBoard = (ownerRole === "OWNER" || ownerRole === "USER") && allowRealtorBoard;
-  const hasPublicProfile = isRealtorOrAgency && !!ownerPublicProfileEnabled && !!ownerPublicSlug;
+  const hasPublicProfile =
+    (isRealtorOrAgency && !!ownerPublicSlug) ||
+    (!isRealtorOrAgency && !!ownerPublicProfileEnabled && !!ownerPublicSlug);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
