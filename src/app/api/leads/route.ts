@@ -120,16 +120,30 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Get property with owner info
+  // Get property with owner info (including owner role)
   const propertyWithOwner = await prisma.property.findUnique({
     where: { id: propertyId },
     include: {
       images: { take: 1, orderBy: { sortOrder: "asc" } },
+      owner: { select: { id: true, role: true, email: true, name: true } },
     },
   });
 
   // Gerar token para chat do cliente
   const clientChatToken = generateChatToken();
+
+  // Determinar se o owner é corretor/imobiliária para atribuir automaticamente como realtor do lead
+  const ownerIsRealtor = propertyWithOwner?.owner?.role === "REALTOR" || propertyWithOwner?.owner?.role === "AGENCY";
+  const autoRealtorId = ownerIsRealtor ? propertyWithOwner?.owner?.id : undefined;
+
+  console.log("[LEAD] Criando lead:", {
+    propertyId,
+    ownerId: propertyWithOwner?.ownerId,
+    ownerRole: propertyWithOwner?.owner?.role,
+    ownerIsRealtor,
+    autoRealtorId,
+    isDirect,
+  });
 
   // Create lead with contact relation
   const lead = await (prisma as any).lead.create({
@@ -140,6 +154,10 @@ export async function POST(req: NextRequest) {
       isDirect: isDirect ?? false,
       teamId: (prop as any)?.teamId ?? undefined,
       clientChatToken, // Token para o cliente acessar o chat
+      // Se o owner é REALTOR/AGENCY, atribuir automaticamente como corretor responsável
+      realtorId: autoRealtorId,
+      // Se tem realtorId, já marca como ACCEPTED
+      status: autoRealtorId ? "ACCEPTED" : "NEW",
     },
   });
 
@@ -151,30 +169,38 @@ export async function POST(req: NextRequest) {
       const { sendEmail, getLeadNotificationEmail, getClientConfirmationEmail } = await import("@/lib/email");
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zillowlike.vercel.app';
 
-      // 1. Email para o proprietário
-      if (propertyWithOwner?.ownerId) {
-        const owner = await prisma.user.findUnique({
-          where: { id: propertyWithOwner.ownerId! },
-          select: { email: true, name: true },
-        });
+      // 1. Email para o proprietário/corretor
+      const owner = propertyWithOwner?.owner;
+      console.log("[EMAIL] Dados do owner:", {
+        ownerId: propertyWithOwner?.ownerId,
+        ownerEmail: owner?.email,
+        ownerName: owner?.name,
+        ownerRole: owner?.role,
+      });
 
-        if (owner?.email) {
-          const emailData = getLeadNotificationEmail({
-            propertyTitle: propertyWithOwner.title,
-            userName: name,
-            userEmail: email,
-            userPhone: phone,
-            message: message || "",
-            propertyUrl: `${siteUrl}/property/${propertyId}`,
-          });
-          
-          await sendEmail({
-            to: owner.email,
-            ...emailData,
-          });
-          
+      if (owner?.email) {
+        const emailData = getLeadNotificationEmail({
+          propertyTitle: propertyWithOwner?.title || "Imóvel",
+          userName: name,
+          userEmail: email,
+          userPhone: phone,
+          message: message || "",
+          propertyUrl: `${siteUrl}/property/${propertyId}`,
+        });
+        
+        console.log("[EMAIL] Enviando notificação para owner:", owner.email);
+        const sent = await sendEmail({
+          to: owner.email,
+          ...emailData,
+        });
+        
+        if (sent) {
           console.log("✅ Lead notification email sent to owner:", owner.email);
+        } else {
+          console.error("❌ Falha ao enviar email para owner:", owner.email);
         }
+      } else {
+        console.warn("⚠️ Owner não tem email cadastrado, pulando notificação");
       }
 
       // 2. Email de confirmação para o cliente com link do chat
@@ -198,5 +224,5 @@ export async function POST(req: NextRequest) {
     }
   })();
 
-  return NextResponse.json({ ok: true, leadId: lead.id, chatToken: clientChatToken });
+  return NextResponse.json({ ok: true, leadId: lead.id, chatToken: clientChatToken, chatUrl });
 }

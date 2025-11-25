@@ -49,12 +49,19 @@ export class VisitSchedulingService {
     }
 
     // REGRA: Imóveis de corretores são sempre diretos
-    const isOwnerRealtor = (property as any).owner?.role === "REALTOR";
-    const isDirect = !!realtorId || isOwnerRealtor;
-
-    if (isOwnerRealtor && !realtorId) {
-      throw new Error("REALTOR_PROPERTY"); // Código especial para frontend identificar
-    }
+    const isOwnerRealtor = (property as any).owner?.role === "REALTOR" || (property as any).owner?.role === "AGENCY";
+    
+    // Se o owner é REALTOR/AGENCY, atribuir automaticamente como corretor responsável
+    const effectiveRealtorId = realtorId || (isOwnerRealtor ? (property as any).ownerId : undefined);
+    const isDirect = !!effectiveRealtorId;
+    
+    logger.info("Visit request owner check", { 
+      isOwnerRealtor, 
+      ownerId: (property as any).ownerId,
+      providedRealtorId: realtorId,
+      effectiveRealtorId,
+      isDirect,
+    });
 
     // Verifica se o horário está disponível
     const isAvailable = await this.isSlotTaken(propertyId, visitDate, visitTime);
@@ -85,11 +92,11 @@ export class VisitSchedulingService {
       data: {
         propertyId,
         contactId: contact.id,
-        realtorId, // Se fornecido, já atribui ao corretor
+        realtorId: effectiveRealtorId, // Atribui ao corretor (auto se owner é REALTOR/AGENCY)
         visitDate,
         visitTime,
         message: clientNotes, // Usando apenas campo message (clientNotes será deprecado)
-        status: isDirect ? "WAITING_OWNER_APPROVAL" : "PENDING",
+        status: effectiveRealtorId ? "ACCEPTED" : "PENDING", // Já aceito se tem corretor atribuído
         isDirect,
         candidatesCount: 0,
         teamId: (property as any)?.teamId ?? undefined,

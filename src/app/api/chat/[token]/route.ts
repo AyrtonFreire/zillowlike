@@ -108,19 +108,47 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       const userId = session.userId || session.user?.id;
       const role = session.role || session.user?.role;
 
-      if (userId && (role === "REALTOR" || role === "AGENCY" || role === "OWNER" || role === "ADMIN")) {
+      console.log("[CHAT] Verificando permissão:", {
+        userId,
+        role,
+        leadRealtorId: lead.realtorId,
+        propertyOwnerId: lead.property?.ownerId,
+        teamOwnerId: lead.team?.ownerId,
+      });
+
+      // Se o usuário está logado e tem um papel profissional (ou é dono do imóvel)
+      if (userId) {
         const isRealtor = lead.realtorId && lead.realtorId === userId;
         const isPropertyOwner = lead.property?.ownerId && lead.property.ownerId === userId;
         const isTeamOwner = lead.team?.ownerId && lead.team.ownerId === userId;
+        const isAdmin = role === "ADMIN";
+        // Qualquer role profissional que seja dono do imóvel pode responder
+        const isProfessionalOwner = isPropertyOwner && (role === "REALTOR" || role === "AGENCY" || role === "OWNER");
 
-        if (!isRealtor && !isPropertyOwner && !isTeamOwner && role !== "ADMIN") {
+        console.log("[CHAT] Resultado verificação:", {
+          isRealtor,
+          isPropertyOwner,
+          isTeamOwner,
+          isAdmin,
+          isProfessionalOwner,
+        });
+
+        // Se é corretor atribuído, dono do imóvel, dono da equipe ou admin, pode responder
+        if (isRealtor || isPropertyOwner || isTeamOwner || isAdmin) {
+          fromClient = false;
+        } else if (role === "REALTOR" || role === "AGENCY" || role === "OWNER") {
+          // Usuário profissional tentando acessar chat de lead que não é dele
+          console.warn("[CHAT] Usuário profissional sem permissão:", {
+            userId,
+            role,
+            leadId: lead.id,
+          });
           return NextResponse.json(
-            { error: "Você não pode enviar mensagens para este chat." },
+            { error: "Você não pode enviar mensagens para este chat. Este lead não está atribuído a você." },
             { status: 403 }
           );
         }
-
-        fromClient = false;
+        // Se for USER comum, continua como fromClient = true (cliente)
       }
     }
 
