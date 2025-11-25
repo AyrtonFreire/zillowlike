@@ -19,6 +19,8 @@ import StatCard from "@/components/dashboard/StatCard";
 import PropertyListItem from "@/components/dashboard/PropertyListItem";
 import LeadListItem from "@/components/dashboard/LeadListItem";
 import DashboardLayout from "@/components/DashboardLayout";
+import BrokerOnboarding from "@/components/onboarding/BrokerOnboarding";
+import LeadSearchBar from "@/components/crm/LeadSearchBar";
 
 interface Metrics {
   activeProperties: number;
@@ -380,6 +382,12 @@ export default function BrokerDashboard() {
             {dashboardError}
           </div>
         )}
+
+        {/* Busca global de leads */}
+        <div className="mb-6" data-onboarding="leads-section">
+          <LeadSearchBar className="max-w-md" />
+        </div>
+
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
@@ -928,6 +936,9 @@ export default function BrokerDashboard() {
           )}
         </div>
       </div>
+
+      {/* Onboarding Tour */}
+      <BrokerOnboarding />
     </DashboardLayout>
   );
 }

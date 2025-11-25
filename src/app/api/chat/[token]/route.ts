@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendEmail, getClientMessageNotificationEmail } from "@/lib/email";
 
 const messageSchema = z.object({
   content: z
@@ -129,6 +130,60 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         content: parsed.data.content.trim(),
       },
     });
+
+    // Enviar email de notificação para o corretor quando cliente envia mensagem
+    if (fromClient && lead.realtorId) {
+      try {
+        // Buscar dados completos para o email
+        const leadWithDetails = await prisma.lead.findUnique({
+          where: { id: lead.id },
+          select: {
+            clientChatToken: true,
+            realtor: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
+            contact: {
+              select: {
+                name: true,
+              },
+            },
+            property: {
+              select: {
+                title: true,
+              },
+            },
+          },
+        });
+
+        if (leadWithDetails?.realtor?.email) {
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+          const chatUrl = `${siteUrl}/broker/leads/${lead.id}`;
+          
+          const emailData = getClientMessageNotificationEmail({
+            realtorName: leadWithDetails.realtor.name || "Corretor",
+            clientName: leadWithDetails.contact?.name || "Cliente",
+            propertyTitle: leadWithDetails.property?.title || "Imóvel",
+            messagePreview: parsed.data.content.trim().substring(0, 200),
+            chatUrl,
+          });
+
+          // Enviar email em background (não bloqueia a resposta)
+          sendEmail({
+            to: leadWithDetails.realtor.email,
+            subject: emailData.subject,
+            html: emailData.html,
+          }).catch((err) => {
+            console.error("Error sending client message notification email:", err);
+          });
+        }
+      } catch (emailError) {
+        // Não bloqueia a criação da mensagem se o email falhar
+        console.error("Error preparing client message notification email:", emailError);
+      }
+    }
 
     return NextResponse.json({ success: true, message });
   } catch (error) {

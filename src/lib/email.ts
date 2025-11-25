@@ -515,3 +515,62 @@ export function getPropertyFavoritedEmail(data: {
     `,
   };
 }
+
+export function getClientMessageNotificationEmail(data: {
+  realtorName: string;
+  clientName: string;
+  propertyTitle: string;
+  messagePreview: string;
+  chatUrl: string;
+}) {
+  return {
+    subject: `💬 Nova mensagem de ${data.clientName} sobre ${data.propertyTitle}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f3f4f6; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 30px; text-align: center; border-radius: 12px 12px 0 0; }
+            .content { background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none; }
+            .message-box { background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 16px; border-radius: 0 8px 8px 0; margin: 20px 0; }
+            .button { display: inline-block; background: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 600; }
+            .tip { background: #fef3c7; border-radius: 8px; padding: 12px 16px; margin-top: 20px; font-size: 13px; color: #92400e; }
+            .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0; font-size: 24px;">💬 Nova Mensagem!</h1>
+              <p style="margin: 10px 0 0; opacity: 0.9;">Um cliente enviou uma mensagem no chat</p>
+            </div>
+            <div class="content">
+              <p>Olá, <strong>${data.realtorName}</strong>!</p>
+              <p>Você recebeu uma nova mensagem de <strong>${data.clientName}</strong> sobre o imóvel:</p>
+              <p><strong>Imóvel:</strong> ${data.propertyTitle}</p>
+              
+              <div class="message-box">
+                <p style="margin: 0 0 8px; font-weight: bold; color: #3b82f6;">Mensagem:</p>
+                <p style="margin: 0; font-style: italic; color: #374151;">"${data.messagePreview}"</p>
+              </div>
+              
+              <center>
+                <a href="${data.chatUrl}" class="button">Responder no Chat</a>
+              </center>
+              
+              <div class="tip">
+                💡 <strong>Dica:</strong> Responder rapidamente aumenta suas chances de conversão!
+              </div>
+            </div>
+            <div class="footer">
+              <p>© 2025 ZillowLike. Todos os direitos reservados.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+}

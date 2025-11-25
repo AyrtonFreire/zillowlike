@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock, RefreshCw } from "lucide-react";
+import { Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock, RefreshCw, MessageCircle, AlertCircle } from "lucide-react";
+import { useToast } from "@/contexts/ToastContext";
 import Image from "next/image";
 import Link from "next/link";
 import CountdownTimer from "@/components/queue/CountdownTimer";
@@ -18,6 +19,8 @@ interface Lead {
   respondedAt?: string | null;
   nextActionDate?: string | null;
   nextActionNote?: string | null;
+  lastContactAt?: string | null;
+  hasUnreadMessages?: boolean;
   property: {
     id: string;
     title: string;
@@ -64,6 +67,7 @@ export default function MyLeadsPage() {
 
   const { data: session } = useSession();
   const realtorId = (session?.user as any)?.id || "";
+  const toast = useToast();
 
   useEffect(() => {
     if (!realtorId) return;
@@ -125,7 +129,15 @@ export default function MyLeadsPage() {
   };
 
   const handleAccept = async (leadId: string) => {
-    if (!confirm("Você quer assumir este lead agora? Se ainda estiver em dúvida, pode decidir mais tarde.")) return;
+    const confirmed = await toast.confirm({
+      title: "Assumir este lead?",
+      message: "Você quer assumir este lead agora? Se ainda estiver em dúvida, pode decidir mais tarde.",
+      confirmText: "Sim, assumir",
+      cancelText: "Agora não",
+      variant: "info",
+    });
+
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/leads/${leadId}/accept`, {
@@ -137,19 +149,27 @@ export default function MyLeadsPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("Lead assumido. Fique à vontade para fazer o primeiro contato do seu jeito, sem pressa.");
+        toast.success("Lead assumido!", "Fique à vontade para fazer o primeiro contato do seu jeito, sem pressa.");
         fetchLeads();
       } else {
-        alert(data.error || "Não conseguimos assumir este lead agora. Se quiser, tente de novo em alguns instantes.");
+        toast.error("Não foi possível assumir", data.error || "Tente novamente em alguns instantes.");
       }
     } catch (error) {
       console.error("Error accepting lead:", error);
-      alert("Não foi possível assumir este lead agora. Tente novamente mais tarde.");
+      toast.error("Erro ao assumir lead", "Não foi possível assumir este lead agora. Tente novamente mais tarde.");
     }
   };
 
   const handleReject = async (leadId: string) => {
-    if (!confirm("Tem certeza de que prefere não assumir este lead agora? Tudo bem se sim.")) return;
+    const confirmed = await toast.confirm({
+      title: "Liberar este lead?",
+      message: "Tem certeza de que prefere não assumir este lead agora? Tudo bem se sim.",
+      confirmText: "Sim, liberar",
+      cancelText: "Cancelar",
+      variant: "warning",
+    });
+
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/leads/${leadId}/reject`, {
@@ -161,19 +181,27 @@ export default function MyLeadsPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("Lead liberado. Você continua disponível para outras oportunidades.");
+        toast.info("Lead liberado", "Você continua disponível para outras oportunidades.");
         fetchLeads();
       } else {
-        alert(data.error || "Não conseguimos liberar este lead agora. Se quiser, tente de novo em alguns instantes.");
+        toast.error("Não foi possível liberar", data.error || "Tente novamente em alguns instantes.");
       }
     } catch (error) {
       console.error("Error rejecting lead:", error);
-      alert("Não conseguimos liberar este lead agora. Se quiser, tente de novo em alguns instantes.");
+      toast.error("Erro ao liberar lead", "Não foi possível liberar este lead agora. Tente novamente.");
     }
   };
 
   const handleComplete = async (leadId: string) => {
-    if (!confirm("Você concluiu o atendimento deste lead? Essa ação é apenas para controle do seu painel.")) return;
+    const confirmed = await toast.confirm({
+      title: "Concluir atendimento?",
+      message: "Você concluiu o atendimento deste lead? O lead sairá da lista de ativos, mas continuará registrado nos relatórios.",
+      confirmText: "Sim, concluir",
+      cancelText: "Ainda não",
+      variant: "info",
+    });
+
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/leads/${leadId}/complete`, {
@@ -185,14 +213,14 @@ export default function MyLeadsPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("Atendimento marcado como concluído. O lead sai da lista de ativos, mas continua registrado nos relatórios.");
+        toast.success("Atendimento concluído!", "O lead foi arquivado mas continua registrado nos relatórios.");
         fetchLeads();
       } else {
-        alert(data.error || "Não conseguimos concluir este atendimento agora. Se quiser, tente de novo em alguns instantes.");
+        toast.error("Não foi possível concluir", data.error || "Tente novamente em alguns instantes.");
       }
     } catch (error) {
       console.error("Error completing lead:", error);
-      alert("Não conseguimos concluir este atendimento agora. Tente novamente mais tarde.");
+      toast.error("Erro ao concluir", "Não foi possível concluir este atendimento agora. Tente novamente.");
     }
   };
 
@@ -213,7 +241,7 @@ export default function MyLeadsPage() {
     const content = (noteDrafts[leadId] || "").trim();
 
     if (!content) {
-      alert("Escreva uma nota antes de salvar.");
+      toast.warning("Campo vazio", "Escreva uma nota antes de salvar.");
       return;
     }
 
@@ -515,6 +543,60 @@ export default function MyLeadsPage() {
                           <p className="text-2xl font-bold text-blue-600 mt-1">
                             {formatPrice(lead.property.price)}
                           </p>
+                          {/* Indicadores visuais de pendências */}
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {lead.nextActionDate && (() => {
+                              const actionDate = new Date(lead.nextActionDate);
+                              const today = new Date();
+                              const isOverdue = actionDate < today && !isSameDay(actionDate, today);
+                              const isToday = isSameDay(actionDate, today);
+                              if (isOverdue || isToday) {
+                                return (
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                                    isOverdue 
+                                      ? "bg-red-100 text-red-700 border border-red-200" 
+                                      : "bg-orange-100 text-orange-700 border border-orange-200"
+                                  }`}>
+                                    <Clock className="w-3 h-3" />
+                                    {isOverdue ? "Tarefa atrasada" : "Tarefa para hoje"}
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                            {lead.hasUnreadMessages && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                                <MessageCircle className="w-3 h-3" />
+                                Nova mensagem
+                              </span>
+                            )}
+                            {!lead.lastContactAt && lead.status === "ACCEPTED" && (() => {
+                              const created = new Date(lead.createdAt);
+                              const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+                              if (created < fiveDaysAgo) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-yellow-100 text-yellow-700 border border-yellow-200">
+                                    <AlertCircle className="w-3 h-3" />
+                                    Sem contato recente
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                            {lead.lastContactAt && (() => {
+                              const lastContact = new Date(lead.lastContactAt);
+                              const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+                              if (lastContact < fiveDaysAgo) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-yellow-100 text-yellow-700 border border-yellow-200">
+                                    <AlertCircle className="w-3 h-3" />
+                                    +5 dias sem contato
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
                         </div>
                         <StatusIndicator status={lead.status} />
                       </div>

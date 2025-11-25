@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import Image from "next/image";
-import Link from "next/link";
-import { MapPin, ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
+import { useToast } from "@/contexts/ToastContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
+import DraggableLeadCard from "@/components/crm/DraggableLeadCard";
+import DroppableStageColumn from "@/components/crm/DroppableStageColumn";
 
 interface PipelineLead {
   id: string;
@@ -73,12 +75,22 @@ const STAGE_CONFIG: Record<PipelineLead["pipelineStage"], { label: string; descr
 export default function BrokerCrmPage() {
   const { data: session } = useSession();
   const realtorId = (session?.user as any)?.id || "";
+  const toast = useToast();
 
   const [leads, setLeads] = useState<PipelineLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
   const [showCrmHelp, setShowCrmHelp] = useState(false);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   useEffect(() => {
     if (!realtorId) return;
@@ -130,44 +142,86 @@ export default function BrokerCrmPage() {
     setShowCrmHelp(false);
   };
 
+  const moveLeadToStage = useCallback(async (leadId: string, newStage: PipelineLead["pipelineStage"]) => {
+    const lead = leads.find((l) => l.id === leadId);
+    if (!lead || lead.pipelineStage === newStage) return;
+
+    try {
+      setUpdating((prev) => ({ ...prev, [leadId]: true }));
+      
+      // Atualização otimista
+      setLeads((prev) =>
+        prev.map((l) => (l.id === leadId ? { ...l, pipelineStage: newStage } : l))
+      );
+
+      const response = await fetch(`/api/leads/${leadId}/pipeline`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: newStage }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        // Reverte a atualização otimista
+        setLeads((prev) =>
+          prev.map((l) => (l.id === leadId ? { ...l, pipelineStage: lead.pipelineStage } : l))
+        );
+        throw new Error(data?.error || "Não conseguimos atualizar a etapa deste lead agora.");
+      }
+
+      toast.success("Etapa atualizada!", `Lead movido para "${STAGE_CONFIG[newStage].label}".`);
+    } catch (err: any) {
+      console.error("Error updating pipeline stage:", err);
+      toast.error("Erro ao mover lead", err?.message || "Não conseguimos atualizar a etapa deste lead agora.");
+    } finally {
+      setUpdating((prev) => ({ ...prev, [leadId]: false }));
+    }
+  }, [leads, toast]);
+
   const handleAdvanceStage = async (leadId: string) => {
     const lead = leads.find((l) => l.id === leadId);
     if (!lead) return;
 
     const currentIndex = STAGE_ORDER.indexOf(lead.pipelineStage);
     if (currentIndex === -1 || currentIndex >= STAGE_ORDER.length - 2) {
-      // Se já estiver em FECHADO ou PERDIDO, não avança automaticamente
       return;
     }
 
     const nextStage = STAGE_ORDER[currentIndex + 1];
 
-    if (!confirm(`Mover este lead para a etapa "${STAGE_CONFIG[nextStage].label}"?`)) return;
+    const confirmed = await toast.confirm({
+      title: "Mover lead de etapa?",
+      message: `Deseja mover este lead para a etapa "${STAGE_CONFIG[nextStage].label}"?`,
+      confirmText: "Sim, mover",
+      cancelText: "Cancelar",
+      variant: "info",
+    });
 
-    try {
-      setUpdating((prev) => ({ ...prev, [leadId]: true }));
-      const response = await fetch(`/api/leads/${leadId}/pipeline`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: nextStage }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.error || "Não conseguimos atualizar a etapa deste lead agora.");
-      }
-
-      setLeads((prev) =>
-        prev.map((l) => (l.id === leadId ? { ...l, pipelineStage: nextStage } : l))
-      );
-    } catch (err: any) {
-      console.error("Error updating pipeline stage:", err);
-      alert(err?.message || "Não conseguimos atualizar a etapa deste lead agora.");
-    } finally {
-      setUpdating((prev) => ({ ...prev, [leadId]: false }));
-    }
+    if (!confirmed) return;
+    await moveLeadToStage(leadId, nextStage);
   };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+
+    if (!over) return;
+
+    const leadId = active.id as string;
+    const newStage = over.id as PipelineLead["pipelineStage"];
+
+    // Verifica se é uma etapa válida
+    if (!STAGE_ORDER.includes(newStage)) return;
+
+    await moveLeadToStage(leadId, newStage);
+  };
+
+  const activeLead = activeDragId ? leads.find((l) => l.id === activeDragId) : null;
 
   const leadsByStage = useMemo(() => {
     const map: Record<PipelineLead["pipelineStage"], PipelineLead[]> = {
@@ -235,101 +289,67 @@ export default function BrokerCrmPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-x-auto md:overflow-visible">
-          {STAGE_ORDER.map((stage) => {
-            const config = STAGE_CONFIG[stage];
-            const stageLeads = leadsByStage[stage];
+        {/* Dica mobile */}
+        <div className="md:hidden mb-4 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-xs text-blue-700">
+            💡 Deslize para o lado para ver todas as etapas do funil
+          </p>
+        </div>
 
-            return (
-              <div
-                key={stage}
-                className="bg-gray-50 rounded-2xl border border-gray-200 flex flex-col max-h-[70vh]"
-              >
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-semibold text-gray-900">{config.label}</p>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-white text-gray-700 border border-gray-200">
-                      {stageLeads.length}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-gray-500 leading-snug">
-                    {config.description}
-                  </p>
-                </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          {/* Container com scroll horizontal no mobile */}
+          <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible">
+            <div className="flex md:grid md:grid-cols-3 lg:grid-cols-4 gap-4 min-w-max md:min-w-0">
+            {STAGE_ORDER.map((stage) => {
+              const config = STAGE_CONFIG[stage];
+              const stageLeads = leadsByStage[stage];
 
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+              return (
+                <DroppableStageColumn
+                  key={stage}
+                  stageId={stage}
+                  label={config.label}
+                  description={config.description}
+                  count={stageLeads.length}
+                >
                   {stageLeads.length === 0 ? (
                     <p className="text-[11px] text-gray-400 px-2 py-1">
-                      Nenhum lead nesta etapa por enquanto.
+                      Arraste leads para cá ou aguarde novas oportunidades.
                     </p>
                   ) : (
                     stageLeads.map((lead) => (
-                      <div
+                      <DraggableLeadCard
                         key={lead.id}
-                        className="bg-white rounded-xl border border-gray-200 p-3 text-xs text-gray-800 flex flex-col gap-1"
-                      >
-                        <div className="flex items-start gap-2">
-                          <div className="relative w-10 h-10 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
-                            <Image
-                              src={lead.property.images[0]?.url || "/placeholder.jpg"}
-                              alt={lead.property.title}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold line-clamp-2">
-                              {lead.property.title}
-                            </p>
-                            <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                              <MapPin className="w-3 h-3" />
-                              <span className="truncate">
-                                {lead.property.neighborhood && `${lead.property.neighborhood}, `}
-                                {lead.property.city} - {lead.property.state}
-                              </span>
-                            </p>
-                            {lead.contact?.name && (
-                              <p className="text-[11px] text-gray-500 mt-0.5">
-                                Cliente: {lead.contact.name}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="mt-1 flex items-center justify-between gap-2">
-                          <Link
-                            href={`/broker/leads/${lead.id}`}
-                            className="inline-flex items-center text-[11px] text-blue-600 hover:text-blue-700"
-                          >
-                            Ver detalhes
-                            <ChevronRight className="w-3 h-3 ml-0.5" />
-                          </Link>
-                          {stage !== "WON" && stage !== "LOST" && (
-                            <button
-                              type="button"
-                              onClick={() => handleAdvanceStage(lead.id)}
-                              disabled={!!updating[lead.id]}
-                              className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
-                              {updating[lead.id] ? (
-                                <>
-                                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                  Movendo...
-                                </>
-                              ) : (
-                                "Avançar etapa"
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                        lead={lead}
+                        isUpdating={updating[lead.id]}
+                        showAdvanceButton={stage !== "WON" && stage !== "LOST"}
+                        onAdvance={() => handleAdvanceStage(lead.id)}
+                      />
                     ))
                   )}
-                </div>
+                </DroppableStageColumn>
+              );
+            })}
+            </div>
+          </div>
+
+          {/* Drag Overlay - mostra o card enquanto arrasta */}
+          <DragOverlay>
+            {activeLead ? (
+              <div className="bg-white rounded-xl border border-blue-400 p-3 text-xs text-gray-800 shadow-2xl opacity-90 rotate-3 scale-105">
+                <p className="font-semibold line-clamp-1">{activeLead.property.title}</p>
+                <p className="text-[11px] text-gray-500">
+                  {activeLead.property.city} - {activeLead.property.state}
+                </p>
               </div>
-            );
-          })}
-        </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </div>
     </DashboardLayout>
   );

@@ -3,6 +3,7 @@
 import { SessionProvider } from "next-auth/react";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/modern";
+import { ToastProvider } from "@/contexts/ToastContext";
 
 export default function ClientProviders({ children, session }: { children: React.ReactNode; session?: any }) {
   return (
@@ -13,7 +14,9 @@ export default function ClientProviders({ children, session }: { children: React
           refetchInterval={60} // Refetch session every 60 seconds to get latest role
           refetchOnWindowFocus={true} // Refetch when user returns to tab
         >
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </SessionProvider>
       </ThemeProvider>
     </ErrorBoundary>

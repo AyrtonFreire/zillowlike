@@ -11,6 +11,8 @@ import StatusIndicator from "@/components/queue/StatusIndicator";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { getPusherClient } from "@/lib/pusher-client";
+import { useToast } from "@/contexts/ToastContext";
+import LeadTimeline from "@/components/crm/LeadTimeline";
 
 interface Lead {
   id: string;
@@ -135,6 +137,7 @@ export default function LeadDetailPage() {
   const [resultSaving, setResultSaving] = useState(false);
 
   const leadId = (params?.id as string) || "";
+  const toast = useToast();
 
   useEffect(() => {
     if (!realtorId || !leadId) return;
@@ -258,7 +261,7 @@ export default function LeadDetailPage() {
   const handleSendMessage = async () => {
     const content = messageDraft.trim();
     if (!content) {
-      alert("Escreva uma mensagem antes de enviar.");
+      toast.warning("Campo vazio", "Escreva uma mensagem antes de enviar.");
       return;
     }
 
@@ -347,9 +350,10 @@ export default function LeadDetailPage() {
       if (!response.ok || !data?.success) {
         throw new Error(data?.error || "Não conseguimos salvar este lembrete agora.");
       }
+    toast.success("Lembrete salvo!", "O próximo passo foi registrado.");
     } catch (err: any) {
       console.error("Error saving lead reminder:", err);
-      alert(err?.message || "Não conseguimos salvar este lembrete agora. Tente novamente mais tarde.");
+      toast.error("Erro ao salvar lembrete", err?.message || "Não conseguimos salvar este lembrete agora.");
     } finally {
       setReminderSaving(false);
     }
@@ -408,7 +412,7 @@ export default function LeadDetailPage() {
       openClientChatWindow(token);
     } catch (err: any) {
       console.error("Error opening client chat:", err);
-      alert(err?.message || "Não conseguimos abrir esta conversa agora. Tente novamente em alguns instantes.");
+      toast.error("Erro ao abrir chat", err?.message || "Não conseguimos abrir esta conversa agora.");
     } finally {
       setClientChatLoading(false);
     }
@@ -435,9 +439,10 @@ export default function LeadDetailPage() {
       }
 
       setLead((prev) => (prev ? { ...prev, pipelineStage: "LOST", lostReason: resultReason || null } : prev));
+      toast.info("Lead marcado como perdido", "O registro foi atualizado.");
     } catch (err: any) {
       console.error("Error saving lead result:", err);
-      alert(err?.message || "Não conseguimos salvar este resultado agora. Tente novamente mais tarde.");
+      toast.error("Erro ao salvar resultado", err?.message || "Não conseguimos salvar este resultado agora.");
     } finally {
       setResultSaving(false);
     }
@@ -457,7 +462,7 @@ export default function LeadDetailPage() {
   const handleAddNote = async () => {
     const content = noteDraft.trim();
     if (!content) {
-      alert("Escreva uma nota antes de salvar.");
+      toast.warning("Campo vazio", "Escreva uma nota antes de salvar.");
       return;
     }
 
@@ -1084,6 +1089,17 @@ export default function LeadDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Timeline de atividades */}
+          <LeadTimeline
+            leadId={leadId}
+            createdAt={lead.createdAt}
+            respondedAt={lead.respondedAt}
+            completedAt={lead.completedAt}
+            pipelineStage={lead.pipelineStage}
+            notes={notes}
+            messages={messages}
+          />
         </div>
       </div>
     </div>

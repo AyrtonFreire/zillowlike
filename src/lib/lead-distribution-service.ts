@@ -532,10 +532,10 @@ export class LeadDistributionService {
   }
 
   /**
-   * Lista leads do corretor (ativos)
+   * Lista leads do corretor (ativos) com indicadores de pendências
    */
   static async getRealtorLeads(realtorId: string) {
-    return await prisma.lead.findMany({
+    const leads = await prisma.lead.findMany({
       where: {
         realtorId,
         status: {
@@ -573,6 +573,60 @@ export class LeadDistributionService {
       orderBy: {
         createdAt: "desc",
       },
+    });
+
+    // Buscar dados adicionais para indicadores (notas, mensagens)
+    const leadIds = leads.map(l => l.id);
+    
+    // Buscar última nota de cada lead
+    const lastNotes = await prisma.leadNote.findMany({
+      where: { leadId: { in: leadIds } },
+      orderBy: { createdAt: "desc" },
+      distinct: ["leadId"],
+      select: { leadId: true, createdAt: true },
+    });
+    const lastNoteMap = new Map(lastNotes.map(n => [n.leadId, n.createdAt]));
+
+    // Buscar última mensagem interna de cada lead
+    const lastMessages = await prisma.leadMessage.findMany({
+      where: { leadId: { in: leadIds }, senderId: realtorId },
+      orderBy: { createdAt: "desc" },
+      distinct: ["leadId"],
+      select: { leadId: true, createdAt: true },
+    });
+    const lastMessageMap = new Map(lastMessages.map(m => [m.leadId, m.createdAt]));
+
+    // Buscar última mensagem do cliente de cada lead
+    const lastClientMessages = await prisma.leadClientMessage.findMany({
+      where: { leadId: { in: leadIds }, fromClient: true },
+      orderBy: { createdAt: "desc" },
+      distinct: ["leadId"],
+      select: { leadId: true, createdAt: true },
+    });
+    const lastClientMessageMap = new Map(lastClientMessages.map(m => [m.leadId, m.createdAt]));
+
+    // Enriquecer leads com indicadores
+    return leads.map((lead) => {
+      // Último contato = mais recente entre nota e mensagem enviada pelo corretor
+      const lastNoteAt = lastNoteMap.get(lead.id);
+      const lastMsgAt = lastMessageMap.get(lead.id);
+      
+      let lastContactAt: Date | null = null;
+      if (lastNoteAt && lastMsgAt) {
+        lastContactAt = lastNoteAt > lastMsgAt ? lastNoteAt : lastMsgAt;
+      } else {
+        lastContactAt = lastNoteAt || lastMsgAt || null;
+      }
+
+      // Verificar se há mensagens não lidas do cliente
+      const lastClientMsgAt = lastClientMessageMap.get(lead.id);
+      const hasUnreadMessages = !!lastClientMsgAt;
+
+      return {
+        ...lead,
+        lastContactAt: lastContactAt?.toISOString() || null,
+        hasUnreadMessages,
+      };
     });
   }
 
