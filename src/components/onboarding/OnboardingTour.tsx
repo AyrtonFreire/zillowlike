@@ -135,26 +135,28 @@ export default function OnboardingTour({
   const isLast = currentStep === steps.length - 1;
   const isFirst = currentStep === 0;
 
-  // Calcular posição do tooltip
+  // Calcular posição do tooltip - simplificado para mobile
   const getTooltipPosition = (): React.CSSProperties => {
-    if (!targetRect) {
-      // Centralizar na tela
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const isMobile = viewportWidth < 640;
+    
+    // No mobile ou quando não tem alvo, centraliza na tela
+    if (isMobile || !targetRect) {
       return { 
         top: "50%", 
         left: "50%", 
         transform: "translate(-50%, -50%)",
-        maxWidth: "90vw",
+        width: "calc(100vw - 32px)",
+        maxWidth: "400px",
       };
     }
 
     const position = step.position || "bottom";
     const padding = 16;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const tooltipWidth = 350; // Largura estimada do tooltip
-    const tooltipHeight = 200; // Altura estimada
+    const tooltipWidth = Math.min(380, viewportWidth - 32);
+    const tooltipHeight = 280;
 
-    // Calcular posição base
     let top = 0;
     let left = 0;
     let transformX = "-50%";
@@ -208,7 +210,8 @@ export default function OnboardingTour({
       top: `${top}px`,
       left: `${left}px`,
       transform: `translate(${transformX}, ${transformY})`,
-      maxWidth: "90vw",
+      width: `${tooltipWidth}px`,
+      maxWidth: "400px",
     };
   };
 
@@ -254,12 +257,15 @@ export default function OnboardingTour({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ type: "spring", damping: 25 }}
-            className="fixed z-[70002] bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5"
-            style={getTooltipPosition()}
+            className="fixed z-[70002] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            style={{
+              ...getTooltipPosition(),
+              maxHeight: "calc(100vh - 64px)",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex items-start justify-between mb-3">
+            {/* Header - sempre visível */}
+            <div className="flex items-start justify-between p-4 pb-2 shrink-0">
               <div className="flex items-center gap-2">
                 {step.icon || <Sparkles className="w-5 h-5 text-blue-500" />}
                 <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
@@ -275,49 +281,54 @@ export default function OnboardingTour({
               </button>
             </div>
 
-            {/* Content */}
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
-            <p className="text-sm text-gray-600 leading-relaxed mb-4">{step.description}</p>
-
-            {/* Progress dots */}
-            <div className="flex items-center justify-center gap-1.5 mb-4">
-              {steps.map((_, index) => (
-                <div
-                  key={index}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    index === currentStep ? "bg-blue-500" : "bg-gray-200"
-                  }`}
-                />
-              ))}
+            {/* Content - scrollável se necessário */}
+            <div className="px-4 overflow-y-auto flex-1">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{step.description}</p>
             </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={handleSkip}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                Pular tour
-              </button>
-              <div className="flex items-center gap-2">
-                {!isFirst && (
-                  <button
-                    type="button"
-                    onClick={handlePrev}
-                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                )}
+            {/* Footer - sempre visível */}
+            <div className="p-4 pt-3 shrink-0 border-t border-gray-100 mt-2">
+              {/* Progress dots */}
+              <div className="flex items-center justify-center gap-1.5 mb-3">
+                {steps.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`w-2 h-2 rounded-full transition-colors ${
+                      index === currentStep ? "bg-blue-500" : "bg-gray-200"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Buttons */}
+              <div className="flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={handleNext}
-                  className="flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  onClick={handleSkip}
+                  className="text-sm text-gray-500 hover:text-gray-700"
                 >
-                  {isLast ? "Concluir" : "Próximo"}
-                  {!isLast && <ChevronRight className="w-4 h-4" />}
+                  Pular tour
                 </button>
+                <div className="flex items-center gap-2">
+                  {!isFirst && (
+                    <button
+                      type="button"
+                      onClick={handlePrev}
+                      className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    {isLast ? "Concluir" : "Próximo"}
+                    {!isLast && <ChevronRight className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
