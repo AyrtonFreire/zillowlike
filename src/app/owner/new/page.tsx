@@ -701,7 +701,11 @@ export default function NewPropertyPage() {
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
     const cepDigits = postalCode.replace(/\D+/g, "");
-    if (cepDigits.length !== 8) { setCepValid(false); return; }
+    if (cepDigits.length !== 8) {
+      // Ainda não completou os 8 dígitos: não considera válido
+      setCepValid(false);
+      return;
+    }
     const id = setTimeout(async () => {
       try {
         const res = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`, { cache: 'no-store' });
@@ -719,8 +723,13 @@ export default function NewPropertyPage() {
         // Focar no número
         setTimeout(() => numberInputRef.current?.focus(), 50);
       } catch {
-        setToast({ message: "Falha ao buscar CEP", type: "error" });
-        setCepValid(false);
+        // Se a consulta externa falhar (offline, tempo excedido, etc.),
+        // não vamos travar o fluxo: o usuário pode preencher endereço manualmente.
+        setToast({
+          message:
+            "O preenchimento automático pelo CEP está temporariamente indisponível. Preencha o endereço manualmente e você poderá validar o CEP depois.",
+          type: "error",
+        });
       }
     }, 400);
     return () => clearTimeout(id);
@@ -1091,9 +1100,10 @@ export default function NewPropertyPage() {
     }
     // Validação de endereço no Step 2 antes de avançar
     if (currentStep === 2) {
-      // Campos obrigatórios: CEP válido, rua, bairro, cidade, estado
-      if (!cepValid || !postalCode) {
-        setToast({ message: "Informe um CEP válido.", type: "error" });
+      // Campos obrigatórios: CEP com 8 dígitos, rua, bairro, cidade, estado
+      const cepDigits = postalCode.replace(/\D+/g, "");
+      if (!postalCode || cepDigits.length !== 8) {
+        setToast({ message: "Informe um CEP válido (8 dígitos).", type: "error" });
         return;
       }
       if (!street || !neighborhood || !city || !state) {

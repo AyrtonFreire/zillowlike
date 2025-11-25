@@ -301,7 +301,7 @@ export default function OwnerDashboard() {
           className="flex items-center gap-2 px-6 py-3 rounded-xl border border-teal-200 bg-white text-teal-700 hover:bg-teal-50 font-medium transition-colors"
         >
           <Plus className="w-5 h-5" />
-          Novo Anúncio
+          Anunciar imóvel
         </Link>
       }
     >
