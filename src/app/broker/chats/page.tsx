@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,6 +35,7 @@ interface ChatPreview {
   lastMessage?: string;
   lastMessageAt?: string;
   unreadCount: number;
+  daysUntilArchive?: number | null;
   property: {
     id: string;
     title: string;
@@ -55,6 +57,8 @@ interface Message {
 
 export default function BrokerChatsPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const leadIdFromUrl = searchParams.get("lead");
   const userId = (session?.user as any)?.id || "";
 
   const [chats, setChats] = useState<ChatPreview[]>([]);
@@ -76,6 +80,16 @@ export default function BrokerChatsPage() {
     if (!userId) return;
     fetchChats();
   }, [userId]);
+
+  // Selecionar chat automaticamente se vier lead na URL
+  useEffect(() => {
+    if (leadIdFromUrl && chats.length > 0 && !selectedChat) {
+      const chatFromUrl = chats.find(c => c.leadId === leadIdFromUrl);
+      if (chatFromUrl) {
+        setSelectedChat(chatFromUrl);
+      }
+    }
+  }, [leadIdFromUrl, chats, selectedChat]);
 
   // Fetch messages when chat is selected
   useEffect(() => {
@@ -321,10 +335,23 @@ export default function BrokerChatsPage() {
                         {chat.lastMessage}
                       </p>
                     )}
+                    {/* Indicador de expiração próxima */}
+                    {chat.daysUntilArchive !== null && chat.daysUntilArchive !== undefined && chat.daysUntilArchive <= 3 && (
+                      <p className="text-[10px] text-amber-600 mt-1">
+                        ⏳ {chat.daysUntilArchive === 0 ? "Expira hoje" : `Expira em ${chat.daysUntilArchive} dia${chat.daysUntilArchive > 1 ? "s" : ""}`}
+                      </p>
+                    )}
                   </div>
                 </button>
               ))
             )}
+          </div>
+
+          {/* Aviso de política de armazenamento */}
+          <div className="p-3 border-t border-gray-200 bg-gray-50">
+            <p className="text-[10px] text-gray-400 text-center leading-relaxed">
+              💡 Conversas sem atividade por 10 dias são arquivadas automaticamente para manter seu painel organizado.
+            </p>
           </div>
         </div>
 

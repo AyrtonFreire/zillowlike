@@ -105,6 +105,7 @@ export default function BrokerDashboard() {
     name: string;
     activeLeads: number;
   } | null>(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   const userId = (session?.user as any)?.id as string | undefined;
 
@@ -137,6 +138,25 @@ export default function BrokerDashboard() {
       fetchTeamsPreview();
     }
   }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchUnreadMessages();
+    }
+  }, [userId]);
+
+  const fetchUnreadMessages = async () => {
+    try {
+      const response = await fetch("/api/broker/chats");
+      const data = await response.json();
+      if (response.ok && data.chats) {
+        const total = data.chats.reduce((acc: number, chat: any) => acc + (chat.unreadCount || 0), 0);
+        setUnreadMessages(total);
+      }
+    } catch (err) {
+      console.error("Error fetching unread messages:", err);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -898,15 +918,27 @@ export default function BrokerDashboard() {
 
           <Link
             href="/broker/chats"
-            className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
+            className="relative p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
           >
+            {unreadMessages > 0 && (
+              <div className="absolute -top-2 -right-2 min-w-[24px] h-6 px-2 bg-red-500 rounded-full flex items-center justify-center shadow-sm">
+                <span className="text-xs font-bold text-white">
+                  {unreadMessages > 99 ? "99+" : unreadMessages}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors">
+              <div className="relative p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors">
                 <MessageSquare className="w-6 h-6 text-blue-600" />
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">Conversas</h3>
-                <p className="text-sm text-gray-600">Responda clientes pelo chat</p>
+                <p className="text-sm text-gray-600">
+                  {unreadMessages > 0 
+                    ? `${unreadMessages} mensagem${unreadMessages > 1 ? "s" : ""} não lida${unreadMessages > 1 ? "s" : ""}`
+                    : "Responda clientes pelo chat"
+                  }
+                </p>
               </div>
             </div>
           </Link>

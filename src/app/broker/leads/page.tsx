@@ -1157,16 +1157,14 @@ export default function MyLeadsPage() {
                                   <CheckCircle className="w-4 h-4" />
                                   Concluir
                                 </button>
-                                {lead.clientChatToken && (
-                                  <Link
-                                    href={`/chat/${lead.clientChatToken}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm"
-                                  >
-                                    <MessageCircle className="w-4 h-4" />
-                                    Chat
-                                  </Link>
-                                )}
+                                <Link
+                                  href={`/broker/chats?lead=${lead.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm"
+                                >
+                                  <MessageCircle className="w-4 h-4" />
+                                  Chat
+                                </Link>
                                 <Link
                                   href={`/broker/leads/${lead.id}`}
                                   onClick={(e) => e.stopPropagation()}

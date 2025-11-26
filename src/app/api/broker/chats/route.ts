@@ -27,13 +27,27 @@ export async function GET(_req: NextRequest) {
     }
 
     // Busca leads que o usuário é responsável (realtorId) ou é dono do imóvel
+    // Inclui leads que têm token de chat ou mensagens do cliente
     const leads = await prisma.lead.findMany({
       where: {
         OR: [
           { realtorId: String(userId) },
           { property: { ownerId: String(userId) } },
         ],
-        status: { in: ["RESERVED", "ACCEPTED"] },
+        // Inclui qualquer lead com chat token ativo ou status não-cancelado
+        AND: [
+          {
+            OR: [
+              { clientChatToken: { not: null } },
+              { clientMessages: { some: {} } },
+            ],
+          },
+          {
+            status: { 
+              notIn: ["CANCELLED", "EXPIRED", "OWNER_REJECTED"] 
+            },
+          },
+        ],
       },
       include: {
         contact: {
@@ -55,6 +69,11 @@ export async function GET(_req: NextRequest) {
               select: { url: true },
             },
           },
+        },
+        clientMessages: {
+          take: 1,
+          orderBy: { createdAt: "desc" },
+          select: { id: true },
         },
       },
       orderBy: { updatedAt: "desc" },
@@ -115,6 +134,17 @@ export async function GET(_req: NextRequest) {
           },
         });
 
+        // Calcular dias até arquivamento (10 dias sem atividade)
+        const ARCHIVE_DAYS = 10;
+        let daysUntilArchive: number | null = null;
+        if (lastMessageAt) {
+          const lastActivity = new Date(lastMessageAt);
+          const archiveDate = new Date(lastActivity.getTime() + ARCHIVE_DAYS * 24 * 60 * 60 * 1000);
+          const now = new Date();
+          const daysRemaining = Math.ceil((archiveDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+          daysUntilArchive = Math.max(0, daysRemaining);
+        }
+
         return {
           leadId: lead.id,
           clientChatToken: lead.clientChatToken,
@@ -124,6 +154,7 @@ export async function GET(_req: NextRequest) {
           lastMessage: lastMessage ? (lastMessage.length > 50 ? lastMessage.slice(0, 50) + "..." : lastMessage) : undefined,
           lastMessageAt,
           unreadCount,
+          daysUntilArchive,
           property: {
             id: lead.property.id,
             title: lead.property.title,

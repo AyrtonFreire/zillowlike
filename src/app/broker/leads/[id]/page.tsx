@@ -10,6 +10,7 @@ import CountdownTimer from "@/components/queue/CountdownTimer";
 import StatusIndicator from "@/components/queue/StatusIndicator";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import DashboardLayout from "@/components/DashboardLayout";
 import { getPusherClient } from "@/lib/pusher-client";
 import { useToast } from "@/contexts/ToastContext";
 import LeadTimeline from "@/components/crm/LeadTimeline";
@@ -115,8 +116,6 @@ export default function LeadDetailPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [lastMessageId, setLastMessageId] = useState<string | null>(null);
-
-  const [clientChatLoading, setClientChatLoading] = useState(false);
 
   const [showMessagesHistory, setShowMessagesHistory] = useState(false);
   const [showNotesHistory, setShowNotesHistory] = useState(false);
@@ -381,41 +380,10 @@ export default function LeadDetailPage() {
     }
   };
 
-  const openClientChatWindow = (token: string) => {
-    if (typeof window === "undefined") return;
-    const base = window.location.origin;
-    const url = `${base}/chat/${token}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
-
-  const handleOpenClientChat = async () => {
-    if (!lead || !leadId) return;
-
-    if (lead.clientChatToken) {
-      openClientChatWindow(lead.clientChatToken);
-      return;
-    }
-
-    try {
-      setClientChatLoading(true);
-      const response = await fetch(`/api/leads/${leadId}/client-chat/token`, {
-        method: "POST",
-      });
-      const data = await response.json();
-
-      if (!response.ok || !data?.success || !data?.token) {
-        throw new Error(data?.error || "Não conseguimos gerar o link de conversa agora.");
-      }
-
-      const token = String(data.token);
-      setLead((prev) => (prev ? { ...prev, clientChatToken: token } : prev));
-      openClientChatWindow(token);
-    } catch (err: any) {
-      console.error("Error opening client chat:", err);
-      toast.error("Erro ao abrir chat", err?.message || "Não conseguimos abrir esta conversa agora.");
-    } finally {
-      setClientChatLoading(false);
-    }
+  const handleOpenClientChat = () => {
+    if (!leadId) return;
+    // Redireciona para o hub de conversas com o lead selecionado
+    router.push(`/broker/chats?lead=${leadId}`);
   };
 
   const handleSaveResult = async () => {
@@ -529,22 +497,35 @@ export default function LeadDetailPage() {
   };
 
   if (loading) {
-    return <CenteredSpinner message="Carregando detalhes do lead..." />;
+    return (
+      <DashboardLayout
+        title="Lead do imóvel"
+        description="Carregando detalhes..."
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Corretor", href: "/broker/dashboard" },
+          { label: "Leads", href: "/broker/leads" },
+          { label: "Detalhes" },
+        ]}
+      >
+        <CenteredSpinner message="Carregando detalhes do lead..." />
+      </DashboardLayout>
+    );
   }
 
   if (error || !lead) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <button
-            type="button"
-            onClick={() => router.push("/broker/leads")}
-            className="mb-4 inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Voltar para Meus Leads
-          </button>
-
+      <DashboardLayout
+        title="Lead do imóvel"
+        description="Erro ao carregar"
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Corretor", href: "/broker/dashboard" },
+          { label: "Leads", href: "/broker/leads" },
+          { label: "Detalhes" },
+        ]}
+      >
+        <div className="max-w-4xl mx-auto py-10">
           <EmptyState
             title="Não conseguimos carregar este lead"
             description={error || "Ele pode ter sido removido ou não está mais ativo na sua lista."}
@@ -558,22 +539,22 @@ export default function LeadDetailPage() {
             }
           />
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <button
-          type="button"
-          onClick={() => router.push("/broker/leads")}
-          className="mb-4 inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
-        >
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          Voltar para Meus Leads
-        </button>
-
+    <DashboardLayout
+      title="Lead do imóvel"
+      description={lead.property.title}
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Corretor", href: "/broker/dashboard" },
+        { label: "Leads", href: "/broker/leads" },
+        { label: "Detalhes" },
+      ]}
+    >
+      <div className="max-w-5xl mx-auto py-8">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Imagem do imóvel */}
@@ -777,10 +758,9 @@ export default function LeadDetailPage() {
                     <button
                       type="button"
                       onClick={handleOpenClientChat}
-                      disabled={clientChatLoading}
-                      className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                      {clientChatLoading ? "Abrindo conversa..." : "Abrir área de conversa com o cliente"}
+                      Ir para área de conversas
                     </button>
                   </div>
                 </div>
@@ -1102,6 +1082,6 @@ export default function LeadDetailPage() {
           />
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

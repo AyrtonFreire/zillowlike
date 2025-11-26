@@ -101,9 +101,13 @@ export default function PropertyListItem({
       </div>
 
       {/* Actions */}
-      <div className="relative">
+      <div className="relative" onClick={(e) => e.stopPropagation()}>
         <button
-          onClick={() => setShowMenu(!showMenu)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowMenu(!showMenu);
+          }}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <MoreVertical className="w-5 h-5 text-gray-600" />
@@ -113,11 +117,17 @@ export default function PropertyListItem({
           <>
             <div
               className="fixed inset-0 z-10"
-              onClick={() => setShowMenu(false)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowMenu(false);
+              }}
             />
             <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   onEdit?.(id);
                   setShowMenu(false);
                 }}
@@ -127,7 +137,9 @@ export default function PropertyListItem({
                 Editar
               </button>
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   onToggleStatus?.(id);
                   setShowMenu(false);
                 }}
@@ -146,7 +158,9 @@ export default function PropertyListItem({
                 )}
               </button>
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   onDelete?.(id);
                   setShowMenu(false);
                 }}
