@@ -384,9 +384,9 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 )}
               </div>
 
-              {/* Anunciar imóvel - link direto */}
+              {/* Anunciar imóvel - redireciona para onboarding se necessário */}
               <Link
-                href="/owner/new"
+                href="/start"
                 className={`font-semibold text-[15px] transition-colors relative group ${
                   forceLight
                     ? (primary === 'anunciar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')

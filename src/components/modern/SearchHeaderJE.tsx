@@ -307,7 +307,7 @@ export default function SearchHeaderJE({ value, onChange, onSubmit }: Props) {
                 </button>
                 {expanded === 'sell' && (
                   <div className="bg-gray-50 py-2">
-                    <Link href="/owner/new" onClick={() => setLeftOpen(false)} className="block px-8 py-3 text-gray-700 hover:bg-gray-100">Anunciar imóvel</Link>
+                    <Link href="/start" onClick={() => setLeftOpen(false)} className="block px-8 py-3 text-gray-700 hover:bg-gray-100">Anunciar imóvel</Link>
                     {session && role === 'OWNER' && (
                       <>
                         <Link href="/owner/properties" onClick={() => setLeftOpen(false)} className="block px-8 py-3 text-gray-700 hover:bg-gray-100">Meus anúncios</Link>

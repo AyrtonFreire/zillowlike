@@ -256,7 +256,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                   {expandedSection === "sell" && (
                     <div className="bg-gray-50 pt-1 pb-3 space-y-1">
                       <Link
-                        href="/owner/new"
+                        href="/start"
                         onClick={() => setIsLeftMenuOpen(false)}
                         className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >

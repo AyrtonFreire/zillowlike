@@ -25,7 +25,7 @@ export default function ComoAnunciarPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
-                href="/owner/new"
+                href="/start"
                 className="inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold bg-white text-teal-700 shadow-md hover:shadow-lg hover:bg-teal-50 transition-all"
               >
                 <Home className="w-4 h-4 mr-2" />
@@ -105,7 +105,7 @@ export default function ComoAnunciarPage() {
             <div className="mt-6 flex justify-between items-center text-sm">
               <p className="text-gray-500">Você controla o anúncio: pode pausar, editar ou remover quando quiser.</p>
               <Link
-                href="/owner/new"
+                href="/start"
                 className="inline-flex items-center text-teal font-semibold hover:text-teal-dark"
               >
                 Começar agora
@@ -213,7 +213,7 @@ export default function ComoAnunciarPage() {
             <p className="text-sm text-gray-700 mb-4 flex-1">
               Informe localização, características, comodidades, fotos de qualidade e diferenciais do imóvel. Ao final, você revisa o anúncio e confirma o telefone de contato usado nas ligações e mensagens. Se precisar ajustar ou validar o número, pode abrir Meu Perfil em outra aba sem perder o que já preencheu.
             </p>
-            <Link href="/owner/new" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
+            <Link href="/start" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
               Cadastrar meu primeiro anúncio
               <ArrowRightCircle className="w-4 h-4 ml-1" />
             </Link>
@@ -242,7 +242,7 @@ export default function ComoAnunciarPage() {
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link
-              href="/owner/new"
+              href="/start"
               className="inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold bg-white text-teal-700 shadow-md hover:shadow-lg hover:bg-teal-50 transition-all"
             >
               <Home className="w-4 h-4 mr-2" />

@@ -197,7 +197,7 @@ export default function TopNavMega() {
               </Link>
             )}
             
-            <Link href="/owner/new" className="hidden lg:inline-flex btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all">
+            <Link href="/start" className="hidden lg:inline-flex btn btn-ghost px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition-all">
               Anunciar
             </Link>
             
@@ -325,7 +325,7 @@ export default function TopNavMega() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                       </svg>
                     }>
-                      <Item href="/owner/new">Anunciar imóvel grátis</Item>
+                      <Item href="/start">Anunciar imóvel grátis</Item>
                       <Item href="/owner/properties">Meus anúncios</Item>
                       <Item href="/owner/dashboard">Painel do proprietário</Item>
                       <Item href="/owner/leads">Meus leads</Item>
@@ -431,7 +431,7 @@ function quickLinksByRole(role: string): QuickItem[] {
   return [
     { href: "/favorites", label: "Favoritos", icon: ico("M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364 4.318 12.682z") },
     { href: "/saved-searches", label: "Buscas salvas", icon: ico("M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z") },
-    { href: "/owner/new", label: "Anunciar imóvel", icon: ico("M12 4v16m8-8H4") },
+    { href: "/start", label: "Anunciar imóvel", icon: ico("M12 4v16m8-8H4") },
     { href: "/dashboard", label: "Meu painel", icon: ico("M4 4h16v16H4z") },
   ];
 }

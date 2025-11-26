@@ -200,7 +200,7 @@ export default function GuiaVendaPage() {
               Anuncie seu imóvel gratuitamente e receba propostas de compradores interessados!
             </p>
             <Link 
-              href="/owner/new" 
+              href="/start" 
               className="inline-block px-8 py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold text-lg transition-colors shadow-lg"
             >
               Anunciar Meu Imóvel Grátis →
