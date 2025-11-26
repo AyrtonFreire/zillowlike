@@ -21,17 +21,43 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
       where: { clientChatToken: token },
       select: {
         id: true,
+        createdAt: true,
         property: {
           select: {
             id: true,
             title: true,
             city: true,
             state: true,
+            neighborhood: true,
+            price: true,
+            type: true,
+            purpose: true,
+            images: {
+              take: 1,
+              orderBy: { sortOrder: "asc" },
+              select: { url: true },
+            },
+            owner: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+                role: true,
+              },
+            },
+          },
+        },
+        realtor: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
           },
         },
         contact: {
           select: {
             name: true,
+            email: true,
           },
         },
         clientMessages: {
@@ -50,12 +76,25 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
       return NextResponse.json({ error: "Chat não encontrado" }, { status: 404 });
     }
 
+    // Determinar quem é o responsável pelo chat (corretor atribuído ou dono do imóvel)
+    const responsible = lead.realtor || lead.property?.owner;
+
     return NextResponse.json({
       success: true,
       lead: {
         id: lead.id,
-        property: lead.property,
+        createdAt: lead.createdAt,
+        property: {
+          ...lead.property,
+          image: lead.property?.images?.[0]?.url || null,
+        },
         contact: lead.contact,
+        responsible: responsible ? {
+          id: responsible.id,
+          name: responsible.name,
+          image: responsible.image,
+          role: lead.realtor ? "REALTOR" : lead.property?.owner?.role,
+        } : null,
       },
       messages: lead.clientMessages,
     });
@@ -133,22 +172,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
           isProfessionalOwner,
         });
 
-        // Se é corretor atribuído, dono do imóvel, dono da equipe ou admin, pode responder
+        // Se é corretor atribuído, dono do imóvel, dono da equipe ou admin, responde como profissional
         if (isRealtor || isPropertyOwner || isTeamOwner || isAdmin) {
           fromClient = false;
-        } else if (role === "REALTOR" || role === "AGENCY" || role === "OWNER") {
-          // Usuário profissional tentando acessar chat de lead que não é dele
-          console.warn("[CHAT] Usuário profissional sem permissão:", {
-            userId,
-            role,
-            leadId: lead.id,
-          });
-          return NextResponse.json(
-            { error: "Você não pode enviar mensagens para este chat. Este lead não está atribuído a você." },
-            { status: 403 }
-          );
         }
-        // Se for USER comum, continua como fromClient = true (cliente)
+        // Caso contrário (incluindo outros corretores), envia como cliente
+        // Isso permite que corretores interessados em imóveis de outros corretores possam usar o chat
       }
     }
 

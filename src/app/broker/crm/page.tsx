@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { ArrowLeft } from "lucide-react";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
+import { ArrowLeft, Users, Phone, Eye, FileText, FileCheck, Trophy, XCircle, ChevronRight, Sparkles } from "lucide-react";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, TouchSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
+import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/contexts/ToastContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
@@ -41,34 +42,69 @@ const STAGE_ORDER: PipelineLead["pipelineStage"][] = [
   "LOST",
 ];
 
-const STAGE_CONFIG: Record<PipelineLead["pipelineStage"], { label: string; description: string }> = {
+const STAGE_CONFIG: Record<PipelineLead["pipelineStage"], { 
+  label: string; 
+  description: string; 
+  icon: any;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+}> = {
   NEW: {
-    label: "Novo",
-    description: "Leads que chegaram e ainda não tiveram contato.",
+    label: "Novos",
+    description: "Aguardando primeiro contato",
+    icon: Users,
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    borderColor: "border-blue-200",
   },
   CONTACT: {
-    label: "Em contato",
-    description: "Você já falou ou tentou falar com o cliente.",
+    label: "Contato",
+    description: "Em conversa com o cliente",
+    icon: Phone,
+    color: "text-amber-600",
+    bgColor: "bg-amber-50",
+    borderColor: "border-amber-200",
   },
   VISIT: {
     label: "Visita",
-    description: "Visita combinada ou já realizada.",
+    description: "Visita agendada ou realizada",
+    icon: Eye,
+    color: "text-purple-600",
+    bgColor: "bg-purple-50",
+    borderColor: "border-purple-200",
   },
   PROPOSAL: {
     label: "Proposta",
-    description: "Cliente avaliando valores ou condições.",
+    description: "Negociando condições",
+    icon: FileText,
+    color: "text-cyan-600",
+    bgColor: "bg-cyan-50",
+    borderColor: "border-cyan-200",
   },
   DOCUMENTS: {
-    label: "Documentação",
-    description: "Acertando documentos e detalhes finais.",
+    label: "Docs",
+    description: "Documentação em andamento",
+    icon: FileCheck,
+    color: "text-orange-600",
+    bgColor: "bg-orange-50",
+    borderColor: "border-orange-200",
   },
   WON: {
     label: "Fechado",
-    description: "Negócio concluído (vendido/alugado).",
+    description: "Negócio concluído!",
+    icon: Trophy,
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    borderColor: "border-emerald-200",
   },
   LOST: {
     label: "Perdido",
-    description: "Negócio não avançou.",
+    description: "Não avançou",
+    icon: XCircle,
+    color: "text-gray-500",
+    bgColor: "bg-gray-50",
+    borderColor: "border-gray-200",
   },
 };
 
@@ -89,8 +125,17 @@ export default function BrokerCrmPage() {
       activationConstraint: {
         distance: 8,
       },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
     })
   );
+
+  // Estado para visualização móvel
+  const [mobileActiveStage, setMobileActiveStage] = useState<PipelineLead["pipelineStage"]>("NEW");
 
   useEffect(() => {
     if (!realtorId) return;
@@ -242,59 +287,132 @@ export default function BrokerCrmPage() {
     return map;
   }, [leads]);
 
+  // Total de leads para cálculo de progresso
+  const totalLeads = leads.length;
+  const wonLeads = leadsByStage["WON"].length;
+  const progressPercent = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
+
   if (loading) {
-    return <CenteredSpinner message="Carregando seu funil de leads..." />;
+    return (
+      <DashboardLayout
+        title="Jornada do Cliente"
+        description="Acompanhe a evolução dos seus leads."
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Corretor", href: "/broker/dashboard" },
+          { label: "Jornada" },
+        ]}
+      >
+        <CenteredSpinner message="Carregando sua jornada de leads..." />
+      </DashboardLayout>
+    );
   }
 
   return (
     <DashboardLayout
-      title="Funil de Leads"
-      description="Veja em que etapa estão as suas oportunidades."
+      title="Jornada do Cliente"
+      description="Acompanhe a evolução dos seus leads em cada etapa."
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Corretor", href: "/broker/dashboard" },
-        { label: "Funil de Leads" },
+        { label: "Jornada" },
       ]}
+      actions={
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg border border-white/20">
+            <Trophy className="w-4 h-4 text-yellow-300" />
+            <span className="text-sm text-white font-medium">{wonLeads} fechados</span>
+          </div>
+        </div>
+      }
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => history.back()}
-            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Voltar
-          </button>
-          {showCrmHelp && (
-            <div className="text-xs text-gray-500 max-w-md text-right flex flex-col items-end gap-1">
-              <p>
-                Este quadro ajuda você a enxergar rapidamente em que etapa estão os seus leads. Vá movendo conforme for
-                falando com os clientes, sem pressa.
-              </p>
-              <button
-                type="button"
-                onClick={handleDismissCrmHelp}
-                className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
-              >
-                Entendi
-              </button>
+      <div className="bg-gray-50 min-h-screen">
+        {/* Stats bar mobile */}
+        <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-600">Progresso geral</span>
+            <span className="text-sm font-semibold text-teal-600">{progressPercent}% fechados</span>
+          </div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <motion.div 
+              className="h-full bg-gradient-to-r from-teal-500 to-emerald-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPercent}%` }}
+              transition={{ duration: 0.5 }}
+            />
+          </div>
+        </div>
+
+        {/* Navegação de etapas no mobile */}
+        <div className="md:hidden sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1 p-2 min-w-max">
+              {STAGE_ORDER.map((stage) => {
+                const config = STAGE_CONFIG[stage];
+                const count = leadsByStage[stage].length;
+                const Icon = config.icon;
+                const isActive = mobileActiveStage === stage;
+                
+                return (
+                  <button
+                    key={stage}
+                    onClick={() => setMobileActiveStage(stage)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                      isActive 
+                        ? `${config.bgColor} ${config.color} ${config.borderColor} border shadow-sm` 
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {config.label}
+                    {count > 0 && (
+                      <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${
+                        isActive ? "bg-white/50" : "bg-gray-200"
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-          )}
+          </div>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
+          <div className="mx-4 mt-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
             {error}
           </div>
         )}
 
-        {/* Dica mobile */}
-        <div className="md:hidden mb-4 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-xs text-blue-700">
-            💡 Deslize para o lado para ver todas as etapas do funil
-          </p>
-        </div>
+        {/* Help tooltip */}
+        <AnimatePresence>
+          {showCrmHelp && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mx-4 mt-4 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-xl"
+            >
+              <div className="flex items-start gap-3">
+                <Sparkles className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-teal-800 font-medium mb-1">Bem-vindo à Jornada do Cliente!</p>
+                  <p className="text-xs text-teal-700">
+                    Arraste os leads entre as etapas conforme avançar nas negociações. 
+                    No mobile, toque em uma etapa para ver seus leads.
+                  </p>
+                </div>
+                <button
+                  onClick={handleDismissCrmHelp}
+                  className="text-xs font-semibold text-teal-700 hover:text-teal-900 whitespace-nowrap"
+                >
+                  Entendi
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <DndContext
           sensors={sensors}
@@ -302,48 +420,140 @@ export default function BrokerCrmPage() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          {/* Container com scroll horizontal no mobile */}
-          <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible">
-            <div className="flex md:grid md:grid-cols-3 lg:grid-cols-4 gap-4 min-w-max md:min-w-0">
-            {STAGE_ORDER.map((stage) => {
-              const config = STAGE_CONFIG[stage];
-              const stageLeads = leadsByStage[stage];
+          {/* Desktop: Grid de colunas */}
+          <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="grid grid-cols-4 lg:grid-cols-7 gap-3">
+              {STAGE_ORDER.map((stage) => {
+                const config = STAGE_CONFIG[stage];
+                const stageLeads = leadsByStage[stage];
+                const Icon = config.icon;
 
-              return (
-                <DroppableStageColumn
-                  key={stage}
-                  stageId={stage}
-                  label={config.label}
-                  description={config.description}
-                  count={stageLeads.length}
-                >
-                  {stageLeads.length === 0 ? (
-                    <p className="text-[11px] text-gray-400 px-2 py-1">
-                      Arraste leads para cá ou aguarde novas oportunidades.
-                    </p>
-                  ) : (
-                    stageLeads.map((lead) => (
-                      <DraggableLeadCard
-                        key={lead.id}
-                        lead={lead}
-                        isUpdating={updating[lead.id]}
-                        showAdvanceButton={stage !== "WON" && stage !== "LOST"}
-                        onAdvance={() => handleAdvanceStage(lead.id)}
-                      />
-                    ))
-                  )}
-                </DroppableStageColumn>
-              );
-            })}
+                return (
+                  <DroppableStageColumn
+                    key={stage}
+                    stageId={stage}
+                    label={config.label}
+                    description={config.description}
+                    count={stageLeads.length}
+                  >
+                    {stageLeads.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <Icon className={`w-8 h-8 ${config.color} opacity-30 mb-2`} />
+                        <p className="text-[11px] text-gray-400">
+                          Nenhum lead
+                        </p>
+                      </div>
+                    ) : (
+                      stageLeads.map((lead) => (
+                        <DraggableLeadCard
+                          key={lead.id}
+                          lead={lead}
+                          isUpdating={updating[lead.id]}
+                          showAdvanceButton={stage !== "WON" && stage !== "LOST"}
+                          onAdvance={() => handleAdvanceStage(lead.id)}
+                        />
+                      ))
+                    )}
+                  </DroppableStageColumn>
+                );
+              })}
             </div>
           </div>
 
-          {/* Drag Overlay - mostra o card enquanto arrasta */}
+          {/* Mobile: Uma etapa por vez */}
+          <div className="md:hidden px-4 py-4">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={mobileActiveStage}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                {(() => {
+                  const config = STAGE_CONFIG[mobileActiveStage];
+                  const stageLeads = leadsByStage[mobileActiveStage];
+                  const Icon = config.icon;
+                  const currentIndex = STAGE_ORDER.indexOf(mobileActiveStage);
+                  const nextStage = currentIndex < STAGE_ORDER.length - 1 ? STAGE_ORDER[currentIndex + 1] : null;
+                  const prevStage = currentIndex > 0 ? STAGE_ORDER[currentIndex - 1] : null;
+
+                  return (
+                    <div className="space-y-3">
+                      {/* Header da etapa */}
+                      <div className={`p-4 rounded-xl ${config.bgColor} ${config.borderColor} border`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full ${config.bgColor} flex items-center justify-center`}>
+                            <Icon className={`w-5 h-5 ${config.color}`} />
+                          </div>
+                          <div>
+                            <h3 className={`font-semibold ${config.color}`}>{config.label}</h3>
+                            <p className="text-xs text-gray-600">{config.description}</p>
+                          </div>
+                          <div className="ml-auto">
+                            <span className={`text-2xl font-bold ${config.color}`}>{stageLeads.length}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Lista de leads */}
+                      {stageLeads.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <Icon className={`w-12 h-12 ${config.color} opacity-20 mb-3`} />
+                          <p className="text-sm text-gray-500">Nenhum lead nesta etapa</p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Arraste leads de outras etapas para cá
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {stageLeads.map((lead) => (
+                            <DraggableLeadCard
+                              key={lead.id}
+                              lead={lead}
+                              isUpdating={updating[lead.id]}
+                              showAdvanceButton={mobileActiveStage !== "WON" && mobileActiveStage !== "LOST"}
+                              onAdvance={() => handleAdvanceStage(lead.id)}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Navegação entre etapas */}
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                        {prevStage ? (
+                          <button
+                            onClick={() => setMobileActiveStage(prevStage)}
+                            className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+                          >
+                            <ChevronRight className="w-4 h-4 rotate-180" />
+                            {STAGE_CONFIG[prevStage].label}
+                          </button>
+                        ) : <div />}
+                        
+                        {nextStage && (
+                          <button
+                            onClick={() => setMobileActiveStage(nextStage)}
+                            className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+                          >
+                            {STAGE_CONFIG[nextStage].label}
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Drag Overlay */}
           <DragOverlay>
             {activeLead ? (
-              <div className="bg-white rounded-xl border border-blue-400 p-3 text-xs text-gray-800 shadow-2xl opacity-90 rotate-3 scale-105">
+              <div className="bg-white rounded-xl border-2 border-teal-400 p-3 text-xs text-gray-800 shadow-2xl rotate-2 scale-105">
                 <p className="font-semibold line-clamp-1">{activeLead.property.title}</p>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-gray-500 mt-0.5">
                   {activeLead.property.city} - {activeLead.property.state}
                 </p>
               </div>

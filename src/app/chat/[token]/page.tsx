@@ -1,8 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Send, Wifi, WifiOff } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
+import { 
+  Send, 
+  Wifi, 
+  WifiOff, 
+  Home, 
+  MapPin, 
+  ExternalLink,
+  User,
+  Clock,
+  CheckCheck,
+  MessageCircle
+} from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
 
 interface ChatMessage {
@@ -14,16 +27,37 @@ interface ChatMessage {
 
 interface ChatLeadInfo {
   id: string;
+  createdAt?: string;
   property?: {
     id: string;
     title: string;
     city?: string | null;
     state?: string | null;
+    neighborhood?: string | null;
+    price?: number | null;
+    type?: string | null;
+    purpose?: string | null;
+    image?: string | null;
   } | null;
   contact?: {
     name?: string | null;
+    email?: string | null;
+  } | null;
+  responsible?: {
+    id: string;
+    name?: string | null;
+    image?: string | null;
+    role?: string | null;
   } | null;
 }
+
+// Mensagens rápidas sugeridas
+const QUICK_MESSAGES = [
+  "Olá! Gostaria de agendar uma visita.",
+  "Qual a disponibilidade para visitar?",
+  "O imóvel ainda está disponível?",
+  "Podemos negociar o valor?",
+];
 
 function formatTime(iso: string) {
   if (!iso) return "";
@@ -34,6 +68,40 @@ function formatTime(iso: string) {
   } catch {
     return "";
   }
+}
+
+function formatDate(iso: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  if (d.toDateString() === today.toDateString()) return "Hoje";
+  if (d.toDateString() === yesterday.toDateString()) return "Ontem";
+  
+  try {
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
+  } catch {
+    return "";
+  }
+}
+
+function formatPrice(price: number | null | undefined) {
+  if (!price) return null;
+  return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+}
+
+function isSameDay(d1: string, d2: string) {
+  const date1 = new Date(d1);
+  const date2 = new Date(d2);
+  return date1.toDateString() === date2.toDateString();
+}
+
+function getInitials(name?: string | null) {
+  if (!name) return "?";
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
 export default function ClientChatPage() {
@@ -47,9 +115,12 @@ export default function ClientChatPage() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [realtorOnline, setRealtorOnline] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showQuickMessages, setShowQuickMessages] = useState(true);
+  const [showPropertyCard, setShowPropertyCard] = useState(true);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Carregar chat inicial
   useEffect(() => {
@@ -122,6 +193,11 @@ export default function ClientChatPage() {
       }) => {
         if (cancelled) return;
         
+        // Quando corretor envia mensagem, parar indicador de digitando
+        if (!data.fromClient) {
+          setIsTyping(false);
+        }
+        
         // Só adiciona se não for mensagem do próprio cliente (já foi adicionada localmente)
         if (!data.fromClient) {
           setMessages((prev) => {
@@ -137,16 +213,15 @@ export default function ClientChatPage() {
         }
       });
 
-      // Ouvir status online do corretor
-      channel.bind("user-online", (data: { userId: string; role: string }) => {
-        if (!cancelled && data.role !== "CLIENT") {
-          setRealtorOnline(true);
-        }
-      });
-
-      channel.bind("user-offline", (data: { userId: string; role: string }) => {
-        if (!cancelled && data.role !== "CLIENT") {
-          setRealtorOnline(false);
+      // Ouvir indicador de digitando do corretor
+      channel.bind("typing", (data: { fromClient: boolean }) => {
+        if (!cancelled && !data.fromClient) {
+          setIsTyping(true);
+          // Auto-desligar após 3 segundos
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => {
+            if (!cancelled) setIsTyping(false);
+          }, 3000);
         }
       });
 
@@ -272,83 +347,209 @@ export default function ClientChatPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
+      {/* Header com avatar do responsável */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <p className="text-xs uppercase tracking-wide text-gray-400">Conversa com o corretor</p>
-              {/* Indicador de conexão */}
-              {isConnected ? (
-                <span className="flex items-center gap-1 text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
-                  <Wifi className="w-3 h-3" />
-                  Conectado
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
-                  <WifiOff className="w-3 h-3" />
-                  Offline
-                </span>
-              )}
-            </div>
-            <h1 className="text-sm font-semibold text-gray-900 truncate">{title}</h1>
-            {lead?.contact?.name && (
-              <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-[11px] text-gray-500">Para: {lead.contact.name}</p>
-                {/* Indicador de corretor online */}
-                {realtorOnline && (
-                  <span className="flex items-center gap-1 text-[10px] text-blue-600">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                    Corretor online
+        <div className="max-w-3xl mx-auto px-4 py-3">
+          <div className="flex items-center gap-3">
+            {/* Avatar do responsável */}
+            {lead?.responsible && (
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center overflow-hidden border-2 border-white shadow-md">
+                  {lead.responsible.image ? (
+                    <Image 
+                      src={lead.responsible.image} 
+                      alt={lead.responsible.name || ""} 
+                      width={48} 
+                      height={48} 
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span className="text-white font-semibold text-sm">
+                      {getInitials(lead.responsible.name)}
+                    </span>
+                  )}
+                </div>
+                {/* Badge de conexão */}
+                <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${
+                  isConnected ? "bg-green-500" : "bg-gray-400"
+                }`} />
+              </div>
+            )}
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-semibold text-gray-900 truncate">
+                  {lead?.responsible?.name || "Corretor"}
+                </h1>
+                {lead?.responsible?.role === "REALTOR" && (
+                  <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-medium">
+                    Corretor
                   </span>
                 )}
               </div>
+              <p className="text-xs text-gray-500 truncate">{title}</p>
+              {/* Indicador de digitando */}
+              {isTyping && (
+                <span className="flex items-center gap-1 text-[11px] text-teal-600 mt-0.5">
+                  <span className="flex gap-0.5">
+                    <span className="w-1 h-1 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1 h-1 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1 h-1 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </span>
+                  digitando...
+                </span>
+              )}
+            </div>
+            
+            {/* Link para ver imóvel */}
+            {lead?.property?.id && (
+              <Link
+                href={`/property/${lead.property.id}`}
+                target="_blank"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors"
+              >
+                <Home className="w-3.5 h-3.5" />
+                Ver imóvel
+              </Link>
             )}
           </div>
         </div>
+        
+        {/* Card do imóvel colapsável */}
+        {showPropertyCard && lead?.property && (
+          <div className="border-t border-gray-100 bg-gray-50/50">
+            <div className="max-w-3xl mx-auto px-4 py-3">
+              <div className="flex gap-3 items-start">
+                {/* Imagem */}
+                {lead.property.image && (
+                  <div className="relative w-20 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200">
+                    <Image 
+                      src={lead.property.image} 
+                      alt={lead.property.title} 
+                      fill 
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{lead.property.title}</p>
+                  <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                    <MapPin className="w-3 h-3" />
+                    <span className="truncate">
+                      {[lead.property.neighborhood, lead.property.city, lead.property.state].filter(Boolean).join(", ")}
+                    </span>
+                  </div>
+                  {lead.property.price && (
+                    <p className="text-sm font-semibold text-teal-600 mt-1">
+                      {formatPrice(lead.property.price)}
+                    </p>
+                  )}
+                </div>
+                <button 
+                  onClick={() => setShowPropertyCard(false)}
+                  className="text-gray-400 hover:text-gray-600 p-1"
+                  title="Esconder"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Messages */}
       <main className="flex-1 overflow-hidden">
-        <div className="max-w-3xl mx-auto px-4 py-4 h-full">
-          <div className="h-full overflow-y-auto rounded-2xl bg-white border border-gray-200 p-4 flex flex-col">
+        <div className="max-w-3xl mx-auto px-4 py-4 h-full flex flex-col">
+          <div className="flex-1 overflow-y-auto rounded-2xl bg-white border border-gray-200 p-4 flex flex-col">
             {messages.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-center text-sm text-gray-500 px-4">
-                <div>
-                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Send className="w-5 h-5 text-gray-400" />
-                  </div>
-                  <p className="font-medium text-gray-700 mb-1">Inicie a conversa</p>
-                  <p className="text-xs">
-                    Esta é a sua área de conversa com o corretor. Você pode enviar uma mensagem para combinar detalhes, tirar dúvidas ou avisar sobre qualquer mudança.
-                  </p>
+              <div className="flex-1 flex flex-col items-center justify-center text-center text-sm text-gray-500 px-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-teal-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MessageCircle className="w-7 h-7 text-teal-600" />
                 </div>
+                <p className="font-medium text-gray-800 mb-1">Inicie a conversa</p>
+                <p className="text-xs text-gray-500 mb-6 max-w-xs">
+                  Tire suas dúvidas, agende uma visita ou negocie diretamente com o responsável pelo imóvel.
+                </p>
+                
+                {/* Mensagens rápidas sugeridas */}
+                {showQuickMessages && (
+                  <div className="w-full max-w-sm space-y-2">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-2">Sugestões</p>
+                    {QUICK_MESSAGES.map((msg, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setDraft(msg);
+                          setShowQuickMessages(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs bg-gray-50 hover:bg-teal-50 border border-gray-200 hover:border-teal-200 rounded-lg transition-colors text-gray-700 hover:text-teal-700"
+                      >
+                        {msg}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="flex flex-col gap-3 flex-1">
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.fromClient ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
-                        msg.fromClient
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-100 text-gray-900"
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                      <p
-                        className={`mt-1 text-[10px] ${
-                          msg.fromClient ? "text-blue-200" : "text-gray-400"
-                        }`}
-                      >
-                        {msg.fromClient ? "Você" : "Corretor"} · {formatTime(msg.createdAt)}
-                      </p>
+              <div className="flex flex-col gap-2 flex-1">
+                {messages.map((msg, index) => {
+                  // Verificar se precisa mostrar separador de data
+                  const showDateSeparator = index === 0 || 
+                    !isSameDay(messages[index - 1].createdAt, msg.createdAt);
+                  
+                  return (
+                    <div key={msg.id}>
+                      {/* Separador de data */}
+                      {showDateSeparator && (
+                        <div className="flex items-center justify-center my-4">
+                          <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full">
+                            <Clock className="w-3 h-3 text-gray-400" />
+                            <span className="text-[11px] font-medium text-gray-500">
+                              {formatDate(msg.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className={`flex ${msg.fromClient ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                            msg.fromClient
+                              ? "bg-teal-600 text-white"
+                              : "bg-gray-100 text-gray-900"
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                          <div className={`flex items-center gap-1 mt-1 text-[10px] ${
+                            msg.fromClient ? "text-teal-200 justify-end" : "text-gray-400"
+                          }`}>
+                            <span>{msg.fromClient ? "Você" : (lead?.responsible?.name?.split(" ")[0] || "Corretor")}</span>
+                            <span>·</span>
+                            <span>{formatTime(msg.createdAt)}</span>
+                            {msg.fromClient && !msg.id.startsWith("temp-") && (
+                              <CheckCheck className="w-3 h-3 ml-0.5" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* Indicador de digitando */}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 rounded-2xl px-4 py-3 text-sm">
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
                     </div>
                   </div>
-                ))}
+                )}
+                
                 <div ref={bottomRef} />
               </div>
             )}
@@ -357,7 +558,7 @@ export default function ClientChatPage() {
       </main>
 
       {/* Input */}
-      <footer className="bg-white border-t border-gray-200 sticky bottom-0">
+      <footer className="bg-white border-t border-gray-200 sticky bottom-0 safe-area-pb">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-end gap-2">
           <textarea
             value={draft}
@@ -365,7 +566,7 @@ export default function ClientChatPage() {
             onKeyDown={handleKeyDown}
             rows={1}
             placeholder="Escreva sua mensagem..."
-            className="flex-1 resize-none text-sm px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[48px] max-h-32"
+            className="flex-1 resize-none text-sm px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-teal-500 focus:border-transparent min-h-[48px] max-h-32 bg-gray-50"
             style={{ height: "auto" }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
@@ -377,7 +578,7 @@ export default function ClientChatPage() {
             type="button"
             onClick={handleSend}
             disabled={sending || !draft.trim()}
-            className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 text-white disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-teal-600 text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:bg-teal-700 active:scale-95 transition-all"
           >
             {sending ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -386,8 +587,8 @@ export default function ClientChatPage() {
             )}
           </button>
         </div>
-        <p className="text-center text-[10px] text-gray-400 pb-2">
-          Pressione Enter para enviar · Shift+Enter para nova linha
+        <p className="text-center text-[10px] text-gray-400 pb-3">
+          Enter para enviar · Shift+Enter nova linha
         </p>
       </footer>
     </div>
