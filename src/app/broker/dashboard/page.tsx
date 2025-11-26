@@ -13,6 +13,7 @@ import {
   Eye,
   Activity,
   Crown,
+  MessageSquare,
 } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
@@ -896,16 +897,16 @@ export default function BrokerDashboard() {
           </Link>
 
           <Link
-            href="/broker/crm"
+            href="/broker/chats"
             className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
           >
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-50 rounded-xl group-hover:bg-purple-100 transition-colors">
-                <Activity className="w-6 h-6 text-purple-600" />
+              <div className="p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors">
+                <MessageSquare className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Funil de Leads</h3>
-                <p className="text-sm text-gray-600">Ver etapas da negociação</p>
+                <h3 className="font-semibold text-gray-900">Conversas</h3>
+                <p className="text-sm text-gray-600">Responda clientes pelo chat</p>
               </div>
             </div>
           </Link>

@@ -125,7 +125,11 @@ export default function BrokerPropertiesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {properties.map((property) => (
-              <div key={property.id} className="space-y-2">
+              <Link 
+                key={property.id} 
+                href={`/broker/properties/${property.id}`}
+                className="block hover:scale-[1.01] transition-transform"
+              >
                 <PropertyListItem
                   id={property.id}
                   title={property.title}
@@ -138,15 +142,7 @@ export default function BrokerPropertiesPage() {
                   completedVisits={property.completedVisits}
                   pendingApprovals={property.pendingApprovals}
                 />
-                <div className="flex justify-end">
-                  <Link
-                    href={`/broker/properties/${property.id}`}
-                    className="text-[11px] text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    Ver leads &amp; negociação
-                  </Link>
-                </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

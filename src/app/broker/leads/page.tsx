@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { 
   Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock, RefreshCw, 
   MessageCircle, AlertCircle, ChevronDown, ChevronRight, Filter, User,
@@ -64,6 +65,8 @@ interface Lead {
   nextActionNote?: string | null;
   lastContactAt?: string | null;
   hasUnreadMessages?: boolean;
+  clientChatToken?: string | null;
+  chatUrl?: string | null;
   property: {
     id: string;
     title: string;
@@ -190,8 +193,12 @@ export default function MyLeadsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
   
-  // Toggle visualização Lista/Pipeline
-  const [viewMode, setViewMode] = useState<"list" | "pipeline">("list");
+  // Toggle visualização Lista/Pipeline (lendo query param `view`)
+  const searchParams = useSearchParams();
+  const initialView = (searchParams.get("view") === "pipeline" ? "pipeline" : "list") as
+    | "list"
+    | "pipeline";
+  const [viewMode, setViewMode] = useState<"list" | "pipeline">(initialView);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   
   // Sensors para drag-and-drop
@@ -1150,6 +1157,16 @@ export default function MyLeadsPage() {
                                   <CheckCircle className="w-4 h-4" />
                                   Concluir
                                 </button>
+                                {lead.clientChatToken && (
+                                  <Link
+                                    href={`/chat/${lead.clientChatToken}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm"
+                                  >
+                                    <MessageCircle className="w-4 h-4" />
+                                    Chat
+                                  </Link>
+                                )}
                                 <Link
                                   href={`/broker/leads/${lead.id}`}
                                   onClick={(e) => e.stopPropagation()}
