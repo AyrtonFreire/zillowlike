@@ -92,7 +92,7 @@ export async function GET(_req: NextRequest) {
             select: {
               content: true,
               createdAt: true,
-              senderType: true,
+              fromClient: true,
             },
           }),
           (prisma as any).leadMessage.findFirst({
@@ -127,12 +127,12 @@ export async function GET(_req: NextRequest) {
           lastMessageAt = lastInternalMessage.createdAt;
         }
 
-        // Contar mensagens não lidas do cliente
+        // Contar mensagens do cliente (não há campo de leitura no modelo atual)
+        // TODO: Adicionar campo 'read' ao modelo LeadClientMessage se quiser rastrear lidas
         const unreadCount = await (prisma as any).leadClientMessage.count({
           where: {
             leadId: lead.id,
-            senderType: "CLIENT",
-            read: false,
+            fromClient: true,
           },
         });
 
