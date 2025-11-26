@@ -15,6 +15,7 @@ import {
   Award,
   Clock,
   Eye,
+  Activity,
 } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 
@@ -288,6 +289,13 @@ export default function AdminQueuePage() {
                           title="Ver como corretor"
                         >
                           <Eye className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          href={`/admin/realtors/${queue.realtorId}`}
+                          className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Painel 360º do corretor"
+                        >
+                          <Activity className="w-4 h-4" />
                         </Link>
                         <button
                           onClick={() => handleMoveUp(queue.id)}

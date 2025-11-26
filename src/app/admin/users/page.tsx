@@ -11,6 +11,7 @@ import {
   CheckCircle,
   XCircle,
   Eye,
+  Activity,
 } from "lucide-react";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -317,6 +318,15 @@ export default function AdminUsersPage() {
                             title="Ver como corretor"
                           >
                             <Eye className="w-5 h-5" />
+                          </Link>
+                        )}
+                        {user.role === "REALTOR" && (
+                          <Link
+                            href={`/admin/realtors/${user.id}`}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Painel 360º do corretor"
+                          >
+                            <Activity className="w-5 h-5" />
                           </Link>
                         )}
                         <button

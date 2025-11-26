@@ -37,6 +37,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
             bathrooms: true,
             areaM2: true,
             teamId: true,
+            ownerId: true,
             images: {
               take: 1,
               orderBy: { sortOrder: "asc" },
@@ -48,6 +49,23 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
             name: true,
             email: true,
             phone: true,
+          },
+        },
+        // Dados básicos do corretor responsável (se houver)
+        realtor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        // Dados básicos do usuário/cliente vinculado (se cadastrado)
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
       },
