@@ -26,58 +26,60 @@ export async function GET(_req: NextRequest) {
       );
     }
 
-    // Busca leads que o usuário é responsável (realtorId) ou é dono do imóvel
-    // Inclui leads que têm token de chat ou mensagens do cliente
-    const leads = await prisma.lead.findMany({
+    console.log("[Broker Chats] userId:", userId, "role:", role);
+
+    // Abordagem: buscar mensagens de cliente primeiro, depois agrupar por lead
+    // Similar à API de inbox que funciona
+    const clientMessages = await (prisma as any).leadClientMessage.findMany({
       where: {
-        OR: [
-          { realtorId: String(userId) },
-          { property: { ownerId: String(userId) } },
-        ],
-        // Inclui qualquer lead com chat token ativo ou status não-cancelado
-        AND: [
-          {
-            OR: [
-              { clientChatToken: { not: null } },
-              { clientMessages: { some: {} } },
-            ],
-          },
-          {
-            status: { 
-              notIn: ["CANCELLED", "EXPIRED", "OWNER_REJECTED"] 
-            },
-          },
-        ],
+        lead: {
+          OR: [
+            { realtorId: String(userId) },
+            { property: { ownerId: String(userId) } },
+          ],
+        },
       },
       include: {
-        contact: {
-          select: {
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-        property: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            city: true,
-            state: true,
-            images: {
-              take: 1,
-              select: { url: true },
+        lead: {
+          include: {
+            contact: {
+              select: {
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+            property: {
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                city: true,
+                state: true,
+                images: {
+                  take: 1,
+                  select: { url: true },
+                },
+              },
             },
           },
         },
-        clientMessages: {
-          take: 1,
-          orderBy: { createdAt: "desc" },
-          select: { id: true },
-        },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { createdAt: "desc" },
     });
+
+    console.log("[Broker Chats] Mensagens de cliente encontradas:", clientMessages.length);
+
+    // Agrupar por leadId para obter leads únicos
+    const leadsMap = new Map<string, any>();
+    for (const msg of clientMessages) {
+      if (!leadsMap.has(msg.leadId)) {
+        leadsMap.set(msg.leadId, msg.lead);
+      }
+    }
+    const leads = Array.from(leadsMap.values());
+
+    console.log("[Broker Chats] Leads únicos com mensagens:", leads.length);
 
     // Para cada lead, buscar última mensagem e contagem de não lidas
     const chatsWithMessages = await Promise.all(
