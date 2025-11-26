@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { 
   Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock, RefreshCw, 
   MessageCircle, AlertCircle, ChevronDown, ChevronRight, Filter, User,
-  ExternalLink, MoreHorizontal, Sparkles
+  ExternalLink, LayoutList, Columns3, Users, Handshake, Trophy, X,
+  Bell, PhoneOff, CalendarClock, Sparkles, GripVertical
 } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, TouchSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import CountdownTimer from "@/components/queue/CountdownTimer";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
@@ -25,6 +28,31 @@ const PROPERTY_TYPES: Record<string, string> = {
   LAND: "Terreno",
   COMMERCIAL: "Comercial",
 };
+
+// Pipeline simplificado: 4 etapas ao invés de 7
+type PipelineStage = "NEW" | "CONTACT" | "NEGOTIATION" | "CLOSED";
+const PIPELINE_STAGES: { id: PipelineStage; label: string; icon: any; color: string; bgColor: string }[] = [
+  { id: "NEW", label: "Novos", icon: Users, color: "text-blue-600", bgColor: "bg-blue-50" },
+  { id: "CONTACT", label: "Contato", icon: Phone, color: "text-amber-600", bgColor: "bg-amber-50" },
+  { id: "NEGOTIATION", label: "Negociação", icon: Handshake, color: "text-purple-600", bgColor: "bg-purple-50" },
+  { id: "CLOSED", label: "Fechado", icon: Trophy, color: "text-emerald-600", bgColor: "bg-emerald-50" },
+];
+
+// Mapeamento de status do lead para etapa do pipeline
+function getLeadPipelineStage(lead: Lead): PipelineStage {
+  // Se tem pipelineStage definido, usar
+  if ((lead as any).pipelineStage) {
+    const stage = (lead as any).pipelineStage;
+    // Mapear as 7 etapas antigas para as 4 novas
+    if (stage === "NEW") return "NEW";
+    if (stage === "CONTACT") return "CONTACT";
+    if (["VISIT", "PROPOSAL", "DOCUMENTS"].includes(stage)) return "NEGOTIATION";
+    if (stage === "WON") return "CLOSED";
+    if (stage === "LOST") return "CLOSED"; // Perdidos também vão para fechado
+  }
+  // Fallback baseado no status
+  return lead.status === "RESERVED" ? "NEW" : "CONTACT";
+}
 
 interface Lead {
   id: string;
@@ -65,6 +93,84 @@ interface LeadNote {
   createdAt: string;
 }
 
+// Componente de coluna droppable para o pipeline
+function DroppableColumn({ stageId, children }: { stageId: PipelineStage; children: React.ReactNode }) {
+  const { isOver, setNodeRef } = useDroppable({ id: stageId });
+  
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg border transition-colors ${
+        isOver ? "border-teal-400 bg-teal-50/50" : "border-gray-200 bg-white"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+// Componente de card draggable para o pipeline (ultra-compacto)
+function DraggableCard({ lead, formatPrice }: { lead: Lead; formatPrice: (n: number) => string }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
+  
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`bg-white rounded-lg border border-gray-200 p-2 cursor-grab active:cursor-grabbing transition-shadow ${
+        isDragging ? "opacity-50 shadow-lg" : "hover:shadow-sm"
+      }`}
+    >
+      <div className="flex gap-2">
+        {/* Mini thumbnail */}
+        <div className="relative w-10 h-10 rounded bg-gray-100 overflow-hidden flex-shrink-0">
+          {lead.property.images[0]?.url ? (
+            <Image src={lead.property.images[0].url} alt="" fill className="object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              <MapPin className="w-4 h-4" />
+            </div>
+          )}
+        </div>
+        
+        {/* Info compacta */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold text-gray-900 truncate leading-tight">
+            {lead.property.title}
+          </p>
+          <p className="text-[10px] text-teal-600 font-bold">
+            {formatPrice(lead.property.price)}
+          </p>
+          <p className="text-[9px] text-gray-500 truncate">
+            {lead.contact?.name || "Sem contato"}
+          </p>
+        </div>
+        
+        {/* Indicador de drag */}
+        <GripVertical className="w-3 h-3 text-gray-300 flex-shrink-0" />
+      </div>
+      
+      {/* Indicadores de alerta */}
+      {(lead.hasUnreadMessages || lead.nextActionDate) && (
+        <div className="flex gap-1 mt-1.5">
+          {lead.hasUnreadMessages && (
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" title="Mensagem não lida" />
+          )}
+          {lead.nextActionDate && new Date(lead.nextActionDate) <= new Date() && (
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" title="Tarefa pendente" />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MyLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +189,16 @@ export default function MyLeadsPage() {
   // Estados para UI mobile
   const [showFilters, setShowFilters] = useState(false);
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
+  
+  // Toggle visualização Lista/Pipeline
+  const [viewMode, setViewMode] = useState<"list" | "pipeline">("list");
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  
+  // Sensors para drag-and-drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
 
   const { data: session } = useSession();
   const realtorId = (session?.user as any)?.id || "";
@@ -342,6 +458,99 @@ export default function MyLeadsPage() {
     return isSameDay(d, now) || d < now;
   });
 
+  // Contadores inteligentes
+  const smartCounters = useMemo(() => {
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    
+    return {
+      // Leads aguardando resposta (com mensagens não lidas)
+      awaitingResponse: leads.filter(l => l.hasUnreadMessages).length,
+      // Leads com visita/tarefa hoje
+      taskToday: leadsWithTaskToday.length,
+      // Leads sem contato há 48h
+      noContact48h: leads.filter(l => {
+        if (!l.lastContactAt) return true; // Nunca contactado
+        return new Date(l.lastContactAt) < fortyEightHoursAgo;
+      }).length,
+    };
+  }, [leads, leadsWithTaskToday, now]);
+
+  // Leads agrupados por etapa do pipeline
+  const leadsByPipelineStage = useMemo(() => {
+    const grouped: Record<PipelineStage, Lead[]> = {
+      NEW: [],
+      CONTACT: [],
+      NEGOTIATION: [],
+      CLOSED: [],
+    };
+    
+    leads.forEach(lead => {
+      const stage = getLeadPipelineStage(lead);
+      grouped[stage].push(lead);
+    });
+    
+    return grouped;
+  }, [leads]);
+
+  // Função para mover lead de etapa no pipeline
+  const moveLeadToStage = async (leadId: string, newStage: PipelineStage) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+    
+    const currentStage = getLeadPipelineStage(lead);
+    if (currentStage === newStage) return;
+
+    try {
+      // Atualização otimista
+      setLeads(prev => prev.map(l => 
+        l.id === leadId ? { ...l, pipelineStage: newStage } as any : l
+      ));
+
+      const response = await fetch(`/api/leads/${leadId}/pipeline`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: newStage }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        // Reverter se falhar
+        setLeads(prev => prev.map(l => 
+          l.id === leadId ? { ...l, pipelineStage: currentStage } as any : l
+        ));
+        toast.error("Erro ao mover lead", data?.error || "Tente novamente.");
+      } else {
+        const stageLabel = PIPELINE_STAGES.find(s => s.id === newStage)?.label || newStage;
+        toast.success("Lead atualizado!", `Movido para "${stageLabel}".`);
+      }
+    } catch (error) {
+      console.error("Error moving lead:", error);
+      toast.error("Erro ao mover lead", "Não foi possível atualizar.");
+    }
+  };
+
+  // Handlers para drag-and-drop
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    
+    if (!over) return;
+    
+    const leadId = active.id as string;
+    const newStage = over.id as PipelineStage;
+    
+    if (PIPELINE_STAGES.some(s => s.id === newStage)) {
+      await moveLeadToStage(leadId, newStage);
+    }
+  };
+
+  const activeLead = activeDragId ? leads.find(l => l.id === activeDragId) : null;
+
   const filteredLeads = leads.filter((lead) => {
     // Status filter
     if (filter === "reserved" && lead.status !== "RESERVED") return false;
@@ -422,7 +631,7 @@ export default function MyLeadsPage() {
   return (
     <DashboardLayout
       title="Meus Leads"
-      description="Organize seus leads com calma e acompanhe cada oportunidade."
+      description="Gerencie seus leads de forma simples e eficiente."
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Corretor", href: "/broker/dashboard" },
@@ -430,54 +639,120 @@ export default function MyLeadsPage() {
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Link
-            href="/broker/crm"
-            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl transition-colors border border-white/20"
-          >
-            <Sparkles className="w-4 h-4" />
-            Jornada
-          </Link>
+          {/* Toggle Lista/Pipeline */}
+          <div className="hidden sm:flex items-center bg-white/10 rounded-lg p-0.5 border border-white/20">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === "list" ? "bg-white text-teal-700" : "text-white/80 hover:text-white"
+              }`}
+            >
+              <LayoutList className="w-4 h-4" />
+              Lista
+            </button>
+            <button
+              onClick={() => setViewMode("pipeline")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === "pipeline" ? "bg-white text-teal-700" : "text-white/80 hover:text-white"
+              }`}
+            >
+              <Columns3 className="w-4 h-4" />
+              Pipeline
+            </button>
+          </div>
           <button
             onClick={fetchLeads}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl transition-colors border border-white/20"
+            className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-colors border border-white/20"
           >
             <RefreshCw className="w-4 h-4" />
-            <span className="hidden sm:inline">Atualizar</span>
           </button>
         </div>
       }
     >
       <div className="bg-gray-50 min-h-screen">
-        {/* Barra de filtros fixa no mobile */}
+        {/* Contadores inteligentes - visíveis quando tem algo relevante */}
+        {(smartCounters.awaitingResponse > 0 || smartCounters.noContact48h > 0) && (
+          <div className="bg-white border-b border-gray-200">
+            <div className="max-w-7xl mx-auto px-4 py-2">
+              <div className="flex gap-4 overflow-x-auto scrollbar-hide">
+                {smartCounters.awaitingResponse > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg text-xs whitespace-nowrap">
+                    <Bell className="w-3.5 h-3.5 text-rose-600" />
+                    <span className="text-rose-700 font-medium">{smartCounters.awaitingResponse} aguardando resposta</span>
+                  </div>
+                )}
+                {smartCounters.taskToday > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs whitespace-nowrap">
+                    <CalendarClock className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="text-amber-700 font-medium">{smartCounters.taskToday} tarefa(s) hoje</span>
+                  </div>
+                )}
+                {smartCounters.noContact48h > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-lg text-xs whitespace-nowrap">
+                    <PhoneOff className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="text-gray-600 font-medium">{smartCounters.noContact48h} sem contato há 48h</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Barra de filtros e toggle de visualização */}
         <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto">
-            {/* Filtros principais - scroll horizontal no mobile */}
-            <div className="px-4 py-3 overflow-x-auto scrollbar-hide">
-              <div className="flex gap-2 min-w-max">
-                {[
-                  { key: "all" as const, label: "Todos", count: counts.all, color: "teal" },
-                  { key: "reserved" as const, label: "Novos", count: counts.reserved, color: "amber" },
-                  { key: "accepted" as const, label: "Em atendimento", count: counts.accepted, color: "emerald" },
-                  { key: "taskToday" as const, label: "Tarefas hoje", count: counts.taskToday, color: "rose" },
-                ].map((item) => (
+            {/* Toggle mobile + Filtros */}
+            <div className="px-4 py-3">
+              <div className="flex items-center gap-3">
+                {/* Toggle Lista/Pipeline - Mobile */}
+                <div className="sm:hidden flex items-center bg-gray-100 rounded-lg p-0.5">
                   <button
-                    key={item.key}
-                    onClick={() => setFilter(item.key)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                      filter === item.key
-                        ? `bg-${item.color}-600 text-white shadow-md`
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    onClick={() => setViewMode("list")}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      viewMode === "list" ? "bg-white text-teal-700 shadow-sm" : "text-gray-600"
                     }`}
-                    style={filter === item.key ? { backgroundColor: item.color === "teal" ? "#0d9488" : item.color === "amber" ? "#d97706" : item.color === "emerald" ? "#059669" : "#e11d48" } : {}}
                   >
-                    {item.label}
-                    <span className={`px-1.5 py-0.5 rounded-full text-xs ${
-                      filter === item.key ? "bg-white/20" : "bg-gray-200"
-                    }`}>
-                      {item.count}
-                    </span>
+                    <LayoutList className="w-3.5 h-3.5" />
+                    Lista
                   </button>
-                ))}
+                  <button
+                    onClick={() => setViewMode("pipeline")}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      viewMode === "pipeline" ? "bg-white text-teal-700 shadow-sm" : "text-gray-600"
+                    }`}
+                  >
+                    <Columns3 className="w-3.5 h-3.5" />
+                    Pipeline
+                  </button>
+                </div>
+
+                {/* Filtros - scroll horizontal */}
+                <div className="flex-1 overflow-x-auto scrollbar-hide">
+                  <div className="flex gap-2 min-w-max">
+                    {[
+                      { key: "all" as const, label: "Todos", count: counts.all, color: "teal" },
+                      { key: "reserved" as const, label: "Novos", count: counts.reserved, color: "amber" },
+                      { key: "accepted" as const, label: "Em atendimento", count: counts.accepted, color: "emerald" },
+                    ].map((item) => (
+                      <button
+                        key={item.key}
+                        onClick={() => setFilter(item.key)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                          filter === item.key
+                            ? "bg-teal-600 text-white shadow-sm"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
+                      >
+                        {item.label}
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                          filter === item.key ? "bg-white/20" : "bg-gray-200"
+                        }`}>
+                          {item.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -572,8 +847,8 @@ export default function MyLeadsPage() {
           </div>
         </div>
 
-        {/* Leads List */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Leads Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {error ? (
           <EmptyState
             title="Não foi possível carregar seus leads"
@@ -587,10 +862,10 @@ export default function MyLeadsPage() {
               </button>
             }
           />
-        ) : filteredLeads.length === 0 ? (
+        ) : leads.length === 0 ? (
           <EmptyState
             title="Nenhum lead ativo no momento"
-            description="Quando você assumir ou receber novos leads, eles aparecem aqui para você acompanhar com calma."
+            description="Quando você assumir ou receber novos leads, eles aparecem aqui."
             action={
               <Link
                 href="/broker/leads/mural"
@@ -600,7 +875,60 @@ export default function MyLeadsPage() {
               </Link>
             }
           />
+        ) : viewMode === "pipeline" ? (
+          /* ===== MODO PIPELINE ===== */
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {PIPELINE_STAGES.map((stage) => {
+                const stageLeads = leadsByPipelineStage[stage.id];
+                const Icon = stage.icon;
+                
+                return (
+                  <DroppableColumn key={stage.id} stageId={stage.id}>
+                    {/* Header da coluna */}
+                    <div className={`flex items-center gap-2 p-2 ${stage.bgColor} rounded-t-lg border-b border-gray-200`}>
+                      <Icon className={`w-4 h-4 ${stage.color}`} />
+                      <span className={`text-xs font-semibold ${stage.color}`}>{stage.label}</span>
+                      <span className="ml-auto text-xs font-bold text-gray-600">{stageLeads.length}</span>
+                    </div>
+                    
+                    {/* Cards da coluna */}
+                    <div className="p-2 space-y-2 min-h-[150px] bg-gray-50/50">
+                      {stageLeads.length === 0 ? (
+                        <p className="text-[10px] text-gray-400 text-center py-4">Nenhum lead</p>
+                      ) : (
+                        stageLeads.map((lead) => (
+                          <DraggableCard key={lead.id} lead={lead} formatPrice={formatPrice} />
+                        ))
+                      )}
+                    </div>
+                  </DroppableColumn>
+                );
+              })}
+            </div>
+            
+            {/* Drag Overlay */}
+            <DragOverlay>
+              {activeLead ? (
+                <div className="bg-white rounded-lg border-2 border-teal-400 p-2 shadow-xl text-xs rotate-2 scale-105">
+                  <p className="font-semibold truncate">{activeLead.property.title}</p>
+                  <p className="text-gray-500 text-[10px]">{activeLead.property.city}</p>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        ) : filteredLeads.length === 0 ? (
+          <EmptyState
+            title="Nenhum lead encontrado"
+            description="Tente ajustar os filtros para ver mais leads."
+          />
         ) : (
+          /* ===== MODO LISTA ===== */
           <div className="space-y-3">
             {filteredLeads.map((lead) => {
               const isExpanded = expandedLeadId === lead.id;

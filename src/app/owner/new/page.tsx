@@ -1463,7 +1463,7 @@ export default function NewPropertyPage() {
                 type="button"
                 onClick={prevStep}
                 disabled={currentStep === 1}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 text-sm font-medium text-teal-700 hover:bg-teal-100 hover:text-teal-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 text-sm font-medium text-teal-700 hover:bg-teal-100 hover:text-teal-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Voltar para etapa anterior</span>
@@ -1502,13 +1502,13 @@ export default function NewPropertyPage() {
           </div>
 
             {/* Mobile sticky nav */}
-            <div className="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/90 backdrop-blur border-t p-3">
-              <div className="flex gap-3">
+            <div className="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/90 backdrop-blur border-t p-2">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={prevStep}
                   disabled={currentStep === 1}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Voltar para etapa anterior
                 </button>
@@ -1516,7 +1516,7 @@ export default function NewPropertyPage() {
                   <button
                     type="button"
                     onClick={nextStep}
-                    className="flex-1 px-4 py-3 glass-teal text-white rounded-lg shadow"
+                    className="flex-1 px-3 py-2 glass-teal text-sm text-white rounded-lg shadow"
                   >
                     {isGeocoding && currentStep === 2 ? "Validando..." : "Próximo"}
                   </button>
@@ -1525,7 +1525,7 @@ export default function NewPropertyPage() {
                     type="submit"
                     onClick={() => setSubmitIntent(true)}
                     disabled={isSubmitting || images.some((i) => i.pending)}
-                    className="flex-1 px-4 py-3 glass-teal text-white rounded-lg disabled:opacity-70"
+                    className="flex-1 px-3 py-2 glass-teal text-sm text-white rounded-lg disabled:opacity-70"
                   >
                     {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando" : "Publicar"}
                   </button>
@@ -2285,16 +2285,7 @@ export default function NewPropertyPage() {
               )}
 
               {/* Navegação desktop */}
-              <div className="hidden sm:flex justify-between items-center pt-4 border-t border-gray-100 mt-4">
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  disabled={currentStep === 1}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Voltar para etapa anterior
-                </button>
-
+              <div className="hidden sm:flex justify-end items-center pt-4 border-t border-gray-100 mt-4">
                 {currentStep < 5 ? (
                   <button
                     type="button"
