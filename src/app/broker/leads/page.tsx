@@ -685,7 +685,7 @@ export default function MyLeadsPage() {
                 {smartCounters.awaitingResponse > 0 && (
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg text-xs whitespace-nowrap">
                     <Bell className="w-3.5 h-3.5 text-rose-600" />
-                    <span className="text-rose-700 font-medium">{smartCounters.awaitingResponse} aguardando resposta</span>
+                    <span className="text-rose-700 font-medium">{smartCounters.awaitingResponse} cliente(s) aguardando seu retorno</span>
                   </div>
                 )}
                 {smartCounters.taskToday > 0 && (

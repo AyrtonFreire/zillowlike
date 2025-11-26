@@ -587,7 +587,7 @@ export class LeadDistributionService {
     });
     const lastNoteMap = new Map(lastNotes.map(n => [n.leadId, n.createdAt]));
 
-    // Buscar última mensagem interna de cada lead
+    // Buscar última mensagem interna de cada lead (enviada pelo corretor)
     const lastMessages = await prisma.leadMessage.findMany({
       where: { leadId: { in: leadIds }, senderId: realtorId },
       orderBy: { createdAt: "desc" },
@@ -595,6 +595,15 @@ export class LeadDistributionService {
       select: { leadId: true, createdAt: true },
     });
     const lastMessageMap = new Map(lastMessages.map(m => [m.leadId, m.createdAt]));
+
+    // Buscar última mensagem de chat enviada por profissional (fromClient = false)
+    const lastProChatMessages = await prisma.leadClientMessage.findMany({
+      where: { leadId: { in: leadIds }, fromClient: false },
+      orderBy: { createdAt: "desc" },
+      distinct: ["leadId"],
+      select: { leadId: true, createdAt: true },
+    });
+    const lastProChatMap = new Map(lastProChatMessages.map(m => [m.leadId, m.createdAt]));
 
     // Buscar última mensagem do cliente de cada lead
     const lastClientMessages = await prisma.leadClientMessage.findMany({
@@ -607,20 +616,33 @@ export class LeadDistributionService {
 
     // Enriquecer leads com indicadores
     return leads.map((lead) => {
-      // Último contato = mais recente entre nota e mensagem enviada pelo corretor
-      const lastNoteAt = lastNoteMap.get(lead.id);
-      const lastMsgAt = lastMessageMap.get(lead.id);
-      
+      // Último contato profissional = nota, mensagem interna ou resposta via chat (fromClient=false)
+      const lastNoteAt = lastNoteMap.get(lead.id) as Date | undefined;
+      const lastMsgAt = lastMessageMap.get(lead.id) as Date | undefined;
+      const lastProChatAt = lastProChatMap.get(lead.id) as Date | undefined;
+
       let lastContactAt: Date | null = null;
-      if (lastNoteAt && lastMsgAt) {
-        lastContactAt = lastNoteAt > lastMsgAt ? lastNoteAt : lastMsgAt;
+      const candidates: Date[] = [];
+      if (lastNoteAt) candidates.push(lastNoteAt);
+      if (lastMsgAt) candidates.push(lastMsgAt);
+      if (lastProChatAt) candidates.push(lastProChatAt);
+
+      if (candidates.length > 0) {
+        lastContactAt = new Date(Math.max(...candidates.map(d => d.getTime())));
       } else {
-        lastContactAt = lastNoteAt || lastMsgAt || null;
+        lastContactAt = null;
       }
 
-      // Verificar se há mensagens não lidas do cliente
-      const lastClientMsgAt = lastClientMessageMap.get(lead.id);
-      const hasUnreadMessages = !!lastClientMsgAt;
+      // Verificar se há mensagens do cliente mais recentes do que o último contato profissional
+      const lastClientMsgAt = lastClientMessageMap.get(lead.id) as Date | undefined;
+      let hasUnreadMessages = false;
+      if (lastClientMsgAt) {
+        if (!lastContactAt) {
+          hasUnreadMessages = true; // Cliente já falou, mas ainda não houve nenhum contato do corretor
+        } else {
+          hasUnreadMessages = lastClientMsgAt > lastContactAt;
+        }
+      }
 
       return {
         ...lead,
