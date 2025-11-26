@@ -105,9 +105,10 @@ export async function GET(_req: NextRequest) {
           }),
         ]);
 
-        // Determinar última mensagem
+        // Determinar última mensagem e se ela foi enviada pelo cliente
         let lastMessage: string | undefined;
         let lastMessageAt: string | undefined;
+        let lastMessageFromClient = false;
 
         if (lastClientMessage && lastInternalMessage) {
           const clientTime = new Date(lastClientMessage.createdAt).getTime();
@@ -115,26 +116,25 @@ export async function GET(_req: NextRequest) {
           if (clientTime > internalTime) {
             lastMessage = lastClientMessage.content;
             lastMessageAt = lastClientMessage.createdAt;
+            lastMessageFromClient = !!lastClientMessage.fromClient;
           } else {
             lastMessage = lastInternalMessage.content;
             lastMessageAt = lastInternalMessage.createdAt;
+            lastMessageFromClient = false;
           }
         } else if (lastClientMessage) {
           lastMessage = lastClientMessage.content;
           lastMessageAt = lastClientMessage.createdAt;
+          lastMessageFromClient = !!lastClientMessage.fromClient;
         } else if (lastInternalMessage) {
           lastMessage = lastInternalMessage.content;
           lastMessageAt = lastInternalMessage.createdAt;
+          lastMessageFromClient = false;
         }
 
-        // Contar mensagens do cliente (não há campo de leitura no modelo atual)
-        // TODO: Adicionar campo 'read' ao modelo LeadClientMessage se quiser rastrear lidas
-        const unreadCount = await (prisma as any).leadClientMessage.count({
-          where: {
-            leadId: lead.id,
-            fromClient: true,
-          },
-        });
+        // unreadCount indica apenas se há uma mensagem recente do cliente ainda sem resposta
+        // (última mensagem do lead enviada pelo cliente)
+        const unreadCount = lastMessageFromClient ? 1 : 0;
 
         // Calcular dias até arquivamento (10 dias sem atividade)
         const ARCHIVE_DAYS = 10;
