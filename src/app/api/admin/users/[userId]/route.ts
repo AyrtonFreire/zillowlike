@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
 
 export async function DELETE(
   request: NextRequest,
@@ -19,7 +20,7 @@ export async function DELETE(
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true },
+      select: { role: true, email: true, name: true },
     });
 
     if (!user) {
@@ -64,6 +65,24 @@ export async function DELETE(
       // Deletar usuário (cascateia para accounts, sessions, etc. onde onDelete foi configurado)
       await tx.user.delete({ where: { id: userId } });
     });
+
+    try {
+      await createAuditLog({
+        level: "INFO",
+        action: AUDIT_LOG_ACTIONS.ADMIN_USER_DELETE,
+        message: "Admin excluiu usuário",
+        actorId: (session as any).userId || (session as any).user?.id || null,
+        actorEmail: (session as any).user?.email || null,
+        actorRole: role,
+        targetType: "USER",
+        targetId: userId,
+        metadata: {
+          deletedUserRole: user.role,
+          deletedUserEmail: user.email,
+          deletedUserName: user.name,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({ success: true });
   } catch (error) {

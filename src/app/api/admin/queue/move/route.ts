@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
 
 export async function POST(req: NextRequest) {
   try {
@@ -67,7 +68,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Swap positions using transaction
     await prisma.$transaction([
       // Temporarily set to -1 to avoid unique constraint violation
       prisma.realtorQueue.update({
@@ -85,6 +85,27 @@ export async function POST(req: NextRequest) {
         data: { position: newPosition },
       }),
     ]);
+
+    try {
+      await createAuditLog({
+        level: "INFO",
+        action: AUDIT_LOG_ACTIONS.ADMIN_QUEUE_MOVE,
+        message: "Admin moveu corretor na fila",
+        actorId: (session as any).userId || (session as any).user?.id || null,
+        actorEmail: (session as any).user?.email || null,
+        actorRole: role,
+        targetType: "REALTOR_QUEUE",
+        targetId: currentQueue.id,
+        metadata: {
+          direction,
+          oldPosition: currentPosition,
+          newPosition,
+          realtorId: currentQueue.realtorId,
+          swappedWithQueueId: targetQueue.id,
+          swappedWithRealtorId: targetQueue.realtorId,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({
       success: true,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
 import { z } from "zod";
 
 const updateRoleSchema = z.object({
@@ -24,7 +25,19 @@ export async function PATCH(
     const body = await request.json();
     const { role } = updateRoleSchema.parse(body);
 
-    // Update user role
+    const existing = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        role: true,
+        email: true,
+        name: true,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: { role },
@@ -35,6 +48,24 @@ export async function PATCH(
         role: true,
       },
     });
+
+    try {
+      await createAuditLog({
+        level: "INFO",
+        action: AUDIT_LOG_ACTIONS.ADMIN_USER_ROLE_CHANGE,
+        message: "Admin alterou o papel de um usuário",
+        actorId: (session as any).userId || (session as any).user?.id || null,
+        actorEmail: (session as any).user?.email || null,
+        actorRole: userRole,
+        targetType: "USER",
+        targetId: userId,
+        metadata: {
+          fromRole: existing.role,
+          toRole: updatedUser.role,
+          userEmail: updatedUser.email,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({ user: updatedUser });
   } catch (error) {

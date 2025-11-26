@@ -16,6 +16,7 @@ import {
   Clock,
   ArrowUpRight,
   ArrowDownRight,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -353,6 +354,23 @@ export default function AdminDashboard() {
                 <h3 className="font-semibold text-gray-900">Logs do Sistema</h3>
                 <p className="text-sm text-gray-600">
                   Auditoria e monitoramento
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/admin/settings"
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <Settings className="w-6 h-6 text-gray-700" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Configurações Globais</h3>
+                <p className="text-sm text-gray-600">
+                  Parâmetros da fila, mural e regras gerais
                 </p>
               </div>
             </div>

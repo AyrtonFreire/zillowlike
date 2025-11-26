@@ -1,13 +1,33 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Janela dos últimos 30 dias
+    const searchParams = request.nextUrl.searchParams;
+    const daysParam = parseInt(searchParams.get("days") || "30", 10);
+    const allowedDays = [7, 30, 90];
+    const days = allowedDays.includes(daysParam) ? daysParam : 30;
+
+    const sourceParam = (searchParams.get("source") || "all").toLowerCase();
+    const source: "all" | "board" | "direct" =
+      sourceParam === "board" || sourceParam === "direct" ? (sourceParam as any) : "all";
+
+    // Janela de tempo dinâmica
     const since = new Date();
-    since.setDate(since.getDate() - 30);
+    since.setDate(since.getDate() - days);
+
+    // Filtro base para leads por período/origem
+    const baseLeadWhere: any = {
+      createdAt: { gte: since },
+    };
+
+    if (source === "board") {
+      baseLeadWhere.isDirect = false;
+    } else if (source === "direct") {
+      baseLeadWhere.isDirect = true;
+    }
 
     // Métricas gerais (contadores simples)
     const [
@@ -20,10 +40,10 @@ export async function GET() {
     ] = await Promise.all([
       prisma.realtorQueue.count(),
       prisma.realtorQueue.count({ where: { status: "ACTIVE" } }),
-      prisma.lead.count(),
+      prisma.lead.count({ where: baseLeadWhere }),
       prisma.lead.count({ where: { status: "AVAILABLE" } }),
-      prisma.lead.count({ where: { status: "ACCEPTED" } }),
-      prisma.lead.count({ where: { status: "EXPIRED" } }),
+      prisma.lead.count({ where: { ...baseLeadWhere, status: "ACCEPTED" } }),
+      prisma.lead.count({ where: { ...baseLeadWhere, status: "EXPIRED" } }),
     ]);
 
     // Médias por agregação
@@ -57,13 +77,13 @@ export async function GET() {
     const statusCounts = await Promise.all(
       statuses.map(async (s) => ({
         status: s,
-        count: await prisma.lead.count({ where: { status: s as any } }),
+        count: await prisma.lead.count({ where: { ...baseLeadWhere, status: s as any } }),
       }))
     );
 
     // Leads por dia (últimos 30 dias) via JS
     const leadsLast30 = await prisma.lead.findMany({
-      where: { createdAt: { gte: since } },
+      where: baseLeadWhere,
       select: { createdAt: true },
       orderBy: { createdAt: "asc" },
     });

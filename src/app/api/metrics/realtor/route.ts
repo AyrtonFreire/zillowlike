@@ -56,23 +56,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Calculate acceptance rate
-    const acceptedLeads = await prisma.lead.count({
-      where: {
-        realtorId: userId,
-        status: "ACCEPTED",
-      },
-    });
-
-    const totalLeads = await prisma.lead.count({
-      where: {
-        realtorId: userId,
-      },
-    });
-
-    const acceptanceRate = totalLeads > 0 ? (acceptedLeads / totalLeads) * 100 : 0;
-
-    // Get average response time (in minutes)
+    // Get average response time (in minutes) for leads efetivamente respondidos
     const leads = await prisma.lead.findMany({
       where: {
         realtorId: userId,
@@ -100,6 +84,26 @@ export async function GET(request: NextRequest) {
       }, 0);
       avgResponseTime = Math.round(totalMinutes / leads.length);
     }
+
+    // Leads atualmente em atendimento (reservados ou aceitos)
+    const activeLeads = await prisma.lead.count({
+      where: {
+        realtorId: userId,
+        status: {
+          in: ["RESERVED", "ACCEPTED"],
+        },
+      },
+    });
+
+    // Leads com lembrete marcado (próximas ações)
+    const leadsWithReminders = await prisma.lead.count({
+      where: {
+        realtorId: userId,
+        nextActionDate: {
+          not: null,
+        },
+      },
+    });
 
     // Get recent properties
     const recentProperties = await prisma.property.findMany({
@@ -174,8 +178,9 @@ export async function GET(request: NextRequest) {
           value: Math.round(leadTrend),
           isPositive: leadTrend >= 0,
         },
-        acceptanceRate: Math.round(acceptanceRate),
         avgResponseTime,
+        activeLeads,
+        leadsWithReminders,
       },
       recentProperties: recentProperties.map((p) => ({
         id: p.id,

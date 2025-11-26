@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,6 +49,25 @@ export async function POST(req: NextRequest) {
         status: "PENDING",
       },
     });
+
+    try {
+      await createAuditLog({
+        level: "INFO",
+        action: AUDIT_LOG_ACTIONS.REALTOR_APPLICATION_SUBMITTED,
+        message: "Usuário enviou aplicação para se tornar corretor",
+        actorId: application.userId,
+        actorEmail: (session.user as any).email || null,
+        actorRole: (session.user as any).role || null,
+        targetType: "REALTOR_APPLICATION",
+        targetId: application.id,
+        metadata: {
+          cpf: application.cpf,
+          creci: application.creci,
+          creciState: application.creciState,
+          realtorType: application.realtorType,
+        },
+      });
+    } catch {}
 
     // Notify admin about new application (fire-and-forget)
     const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;

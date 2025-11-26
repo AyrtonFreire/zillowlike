@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import type { LeadStatus } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
 
 const ALLOWED_STATUSES: LeadStatus[] = [
   "PENDING",
@@ -80,6 +81,23 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         cancelledAt: true,
       },
     });
+
+    try {
+      await createAuditLog({
+        level: "INFO",
+        action: AUDIT_LOG_ACTIONS.ADMIN_LEAD_STATUS_FORCE,
+        message: "Admin atualizou manualmente o status de um lead",
+        actorId: session.userId || session.user?.id || null,
+        actorEmail: session.user?.email || null,
+        actorRole: role,
+        targetType: "LEAD",
+        targetId: id,
+        metadata: {
+          fromStatus: existing.status,
+          toStatus: status,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({ success: true, lead: updated });
   } catch (error) {

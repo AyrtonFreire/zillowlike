@@ -358,6 +358,7 @@ model User {
 
   // Rascunho de propriedade (1 por usuário)
   propertyDraft     PropertyDraft?
+  systemSettings    SystemSetting[] @relation("UserSystemSettings")
 }
 
 model VerificationToken {
@@ -791,4 +792,42 @@ model Report {
 
   @@index([status, createdAt])
   @@index([targetType])
+}
+
+model SystemSetting {
+  key             String   @id
+  value           String
+  description     String?
+  updatedByUser   User?    @relation("UserSystemSettings", fields: [updatedByUserId], references: [id])
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+enum AuditLogLevel {
+  INFO
+  WARN
+  ERROR
+  SUCCESS
+}
+
+model AuditLog {
+  id         String        @id @default(cuid())
+  level      AuditLogLevel @default(INFO)
+  action     String
+  message    String?
+  actorId    String?
+  actorEmail String?
+  actorRole  Role?
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime      @default(now())
+
+  @@index([createdAt])
+  @@index([level, createdAt])
+  @@index([action])
+  @@map("audit_logs")
 }

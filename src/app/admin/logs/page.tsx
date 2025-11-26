@@ -8,8 +8,13 @@ import { ModernNavbar } from "@/components/modern";
 interface Log {
   id: string;
   level: string;
+  action: string;
   message: string;
   metadata: any;
+  actorEmail?: string | null;
+  actorRole?: string | null;
+  targetType?: string | null;
+  targetId?: string | null;
   createdAt: string;
 }
 
@@ -17,17 +22,39 @@ export default function AdminLogsPage() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
   const [levelFilter, setLevelFilter] = useState<string>("ALL");
+  const [days, setDays] = useState<7 | 30 | 90>(7);
+  const [actionFilter, setActionFilter] = useState<string>("ALL");
+  const [search, setSearch] = useState<string>("");
+
+  const exportParams = new URLSearchParams();
+  exportParams.set("days", String(days));
+  if (levelFilter !== "ALL") {
+    exportParams.set("level", levelFilter.toUpperCase());
+  }
+  if (actionFilter !== "ALL") {
+    exportParams.set("action", actionFilter);
+  }
+  if (search.trim()) {
+    exportParams.set("q", search.trim());
+  }
+  const exportUrl = `/api/admin/logs/export?${exportParams.toString()}`;
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [days, levelFilter]);
 
   const fetchLogs = async () => {
     try {
-      const response = await fetch("/api/logs");
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.set("days", String(days));
+      if (levelFilter !== "ALL") {
+        params.set("level", levelFilter.toUpperCase());
+      }
+      const response = await fetch(`/api/admin/logs?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
-        setLogs(data.logs || []);
+        setLogs(Array.isArray(data.logs) ? data.logs : []);
       }
     } catch (error) {
       console.error("Error fetching logs:", error);
@@ -36,8 +63,33 @@ export default function AdminLogsPage() {
     }
   };
 
+  const actionOptions = Array.from(
+    new Set(logs.map((log) => log.action).filter((a) => typeof a === "string" && a.length > 0)),
+  );
+
   const filteredLogs = logs.filter((log) => {
-    return levelFilter === "ALL" || log.level === levelFilter;
+    if (levelFilter !== "ALL" && log.level !== levelFilter) {
+      return false;
+    }
+    if (actionFilter !== "ALL" && log.action !== actionFilter) {
+      return false;
+    }
+    if (search.trim()) {
+      const term = search.trim().toLowerCase();
+      const haystack = [
+        log.message || "",
+        log.action || "",
+        log.actorEmail || "",
+        log.targetId || "",
+        log.targetType || "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(term)) {
+        return false;
+      }
+    }
+    return true;
   });
 
   const getLevelIcon = (level: string) => {
@@ -97,18 +149,84 @@ export default function AdminLogsPage() {
           </div>
 
           {/* Filters */}
-          <div className="flex gap-4">
-            <select
-              value={levelFilter}
-              onChange={(e) => setLevelFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="ALL">Todos os Níveis</option>
-              <option value="ERROR">Erros</option>
-              <option value="WARN">Avisos</option>
-              <option value="INFO">Informações</option>
-              <option value="SUCCESS">Sucesso</option>
-            </select>
+          <div className="flex flex-col md:flex-row gap-4 md:items-center">
+            <div className="flex flex-wrap gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">Período:</span>
+                {[7, 30, 90].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setDays(d as 7 | 30 | 90)}
+                    className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
+                      days === d
+                        ? "bg-teal-50 border-teal-300 text-teal-700"
+                        : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">Nível:</span>
+                <select
+                  value={levelFilter}
+                  onChange={(e) => setLevelFilter(e.target.value)}
+                  className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="ALL">Todos</option>
+                  <option value="ERROR">Erros</option>
+                  <option value="WARN">Avisos</option>
+                  <option value="INFO">Informações</option>
+                  <option value="SUCCESS">Sucesso</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">Ação:</span>
+                <select
+                  value={actionFilter}
+                  onChange={(e) => setActionFilter(e.target.value)}
+                  className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs max-w-[220px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="ALL">Todas</option>
+                  {actionOptions.map((action) => (
+                    <option key={action} value={action}>
+                      {action}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex-1 flex justify-end gap-2">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por mensagem, ação, usuário ou alvo"
+                className="w-full md:max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <a
+                href={exportUrl}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors text-xs md:text-sm"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4"
+                >
+                  <path d="M4 4h16v4" />
+                  <path d="M9 12l3 3 3-3" />
+                  <path d="M12 3v12" />
+                  <path d="M4 20h16" />
+                </svg>
+                <span>Exportar CSV</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -135,8 +253,22 @@ export default function AdminLogsPage() {
                           {new Date(log.createdAt).toLocaleString("pt-BR")}
                         </span>
                       </div>
-                      <p className="text-gray-900 font-medium mb-2">
-                        {log.message}
+                      <p className="text-gray-900 font-medium mb-1">
+                        {log.message || log.action}
+                      </p>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Ação: <span className="font-mono">{log.action}</span>
+                        {log.actorEmail && (
+                          <>
+                            {" "}· Admin: <span className="font-mono">{log.actorEmail}</span>
+                          </>
+                        )}
+                        {log.targetType && (
+                          <>
+                            {" "}· Alvo: <span className="font-mono">{log.targetType}</span>
+                            {log.targetId ? ` (${log.targetId})` : ""}
+                          </>
+                        )}
                       </p>
                       {log.metadata && Object.keys(log.metadata).length > 0 && (
                         <details className="text-sm">

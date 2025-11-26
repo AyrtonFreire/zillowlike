@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
 
 export async function DELETE(
   request: NextRequest,
@@ -17,10 +18,42 @@ export async function DELETE(
 
     const { propertyId } = await params;
 
-    // Delete property (cascade will handle related records)
+    const existing = await prisma.property.findUnique({
+      where: { id: propertyId },
+      select: {
+        ownerId: true,
+        title: true,
+        city: true,
+        state: true,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Imóvel não encontrado" }, { status: 404 });
+    }
+
     await prisma.property.delete({
       where: { id: propertyId },
     });
+
+    try {
+      await createAuditLog({
+        level: "INFO",
+        action: AUDIT_LOG_ACTIONS.ADMIN_PROPERTY_DELETE,
+        message: "Admin deletou imóvel",
+        actorId: (session as any).userId || (session as any).user?.id || null,
+        actorEmail: (session as any).user?.email || null,
+        actorRole: userRole,
+        targetType: "PROPERTY",
+        targetId: propertyId,
+        metadata: {
+          ownerId: existing.ownerId,
+          title: existing.title,
+          city: existing.city,
+          state: existing.state,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({ success: true });
   } catch (error) {

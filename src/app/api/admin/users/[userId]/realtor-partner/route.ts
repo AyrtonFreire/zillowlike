@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
 import { z } from "zod";
 
 const updatePartnerSchema = z.object({
@@ -96,6 +97,26 @@ export async function PATCH(
         data: { status: "INACTIVE" },
       });
     }
+
+    try {
+      await createAuditLog({
+        level: "INFO",
+        action: AUDIT_LOG_ACTIONS.ADMIN_REALTOR_PARTNER_UPDATE,
+        message: "Admin alterou status de parceiro de corretor",
+        actorId: (session as any).userId || (session as any).user?.id || null,
+        actorEmail: (session as any).user?.email || null,
+        actorRole: role,
+        targetType: "USER",
+        targetId: userId,
+        metadata: {
+          isPartner,
+          previousRole: user.role,
+          previousQueueStatus: user.queue?.status ?? null,
+          newRole: isPartner ? "REALTOR" : user.role,
+          newQueueStatus: isPartner ? "ACTIVE" : "INACTIVE",
+        },
+      });
+    } catch {}
 
     return NextResponse.json({ success: true });
   } catch (error) {

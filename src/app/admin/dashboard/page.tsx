@@ -50,18 +50,28 @@ export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [days, setDays] = useState<7 | 30 | 90>(30);
+  const [source, setSource] = useState<"all" | "board" | "direct">("all");
 
   useEffect(() => {
-    fetchMetrics(true);
+    fetchMetrics(true, days, source);
     // Auto-refresh a cada 1 minuto
-    const interval = setInterval(() => fetchMetrics(false), 60000);
+    const interval = setInterval(() => fetchMetrics(false, days, source), 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [days, source]);
 
-  const fetchMetrics = async (isInitial = false) => {
+  const fetchMetrics = async (
+    isInitial = false,
+    customDays: 7 | 30 | 90 = days,
+    customSource: "all" | "board" | "direct" = source,
+  ) => {
     try {
       if (isInitial) setLoading(true);
-      const url = `/api/admin/metrics?t=${Date.now()}`;
+      const params = new URLSearchParams();
+      params.set("t", String(Date.now()));
+      params.set("days", String(customDays));
+      params.set("source", customSource);
+      const url = `/api/admin/metrics?${params.toString()}`;
       const response = await fetch(url, { cache: "no-store" });
       const data = await response.json();
       setMetrics(data);
@@ -99,21 +109,84 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
               <p className="text-gray-600 mt-1">Visão geral do sistema de fila</p>
             </div>
-            <button
-              onClick={() => {
-                setRefreshing(true);
-                fetchMetrics(false);
-              }}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-teal-200 bg-white text-teal-700 hover:bg-teal-50 transition-colors"
-            >
-              <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
-              {refreshing ? "Atualizando..." : "Atualizar"}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+              <div className="flex flex-wrap gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">Período:</span>
+                  {[7, 30, 90].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setDays(d as 7 | 30 | 90)}
+                      className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
+                        days === d
+                          ? "bg-teal-50 border-teal-300 text-teal-700"
+                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {d}d
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">Origem:</span>
+                  {[
+                    { value: "all", label: "Todos" },
+                    { value: "board", label: "Fila / mural" },
+                    { value: "direct", label: "Diretos" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setSource(opt.value as "all" | "board" | "direct")}
+                      className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
+                        source === opt.value
+                          ? "bg-blue-50 border-blue-300 text-blue-700"
+                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => {
+                    setRefreshing(true);
+                    fetchMetrics(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-teal-200 bg-white text-teal-700 hover:bg-teal-50 transition-colors text-sm"
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                  {refreshing ? "Atualizando..." : "Atualizar"}
+                </button>
+                <a
+                  href={`/api/admin/leads/export?days=${days}&source=${source}`}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors text-sm"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-4 h-4"
+                  >
+                    <path d="M4 4h16v4" />
+                    <path d="M9 12l3 3 3-3" />
+                    <path d="M12 3v12" />
+                    <path d="M4 20h16" />
+                  </svg>
+                  Exportar CSV
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>

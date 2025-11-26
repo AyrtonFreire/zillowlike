@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
 
 export async function POST(req: NextRequest) {
   try {
@@ -94,6 +95,24 @@ export async function POST(req: NextRequest) {
         },
       });
     });
+
+    try {
+      await createAuditLog({
+        level: "INFO",
+        action: AUDIT_LOG_ACTIONS.ADMIN_REALTOR_APPLICATION_DECISION,
+        message: "Admin aprovou aplicação de corretor",
+        actorId: (session.user as any).id,
+        actorEmail: (session.user as any).email || null,
+        actorRole: (session.user as any).role || null,
+        targetType: "REALTOR_APPLICATION",
+        targetId: applicationId,
+        metadata: {
+          decision: "APPROVED",
+          applicantUserId: application.userId,
+          applicantEmail: application.user.email,
+        },
+      });
+    } catch {}
 
     // Send approval email (fire-and-forget)
     if (application.user.email) {

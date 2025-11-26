@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,11 +32,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Update queue status
+    const existingQueue = await prisma.realtorQueue.findUnique({
+      where: { id: queueId },
+      select: {
+        status: true,
+        realtorId: true,
+      },
+    });
+
+    if (!existingQueue) {
+      return NextResponse.json(
+        { success: false, error: "Fila não encontrada" },
+        { status: 404 },
+      );
+    }
+
     await prisma.realtorQueue.update({
       where: { id: queueId },
       data: { status },
     });
+
+    try {
+      await createAuditLog({
+        level: "INFO",
+        action: AUDIT_LOG_ACTIONS.ADMIN_QUEUE_STATUS_CHANGE,
+        message: "Admin atualizou status da fila do corretor",
+        actorId: (session as any).userId || (session as any).user?.id || null,
+        actorEmail: (session as any).user?.email || null,
+        actorRole: role,
+        targetType: "REALTOR_QUEUE",
+        targetId: queueId,
+        metadata: {
+          fromStatus: existingQueue.status,
+          toStatus: status,
+          realtorId: existingQueue.realtorId,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({
       success: true,

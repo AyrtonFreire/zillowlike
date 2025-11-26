@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
   Home,
-  TrendingUp,
   Users,
   Clock,
   Plus,
@@ -31,8 +30,9 @@ interface Metrics {
     value: number;
     isPositive: boolean;
   };
-  acceptanceRate: number;
   avgResponseTime: number;
+  activeLeads: number;
+  leadsWithReminders: number;
 }
 
 interface Property {
@@ -369,6 +369,7 @@ export default function BrokerDashboard() {
   });
 
   const showPartnerCta = !partnerStatusLoading && partnerStatus !== "APPROVED";
+  const isPartner = partnerStatus === "APPROVED";
 
   if (loading) {
     return (
@@ -442,21 +443,32 @@ export default function BrokerDashboard() {
             iconBgColor="bg-green-50"
           />
           <MetricCard
-            title="Taxa de Aceitação"
-            value={`${metrics?.acceptanceRate || 0}%`}
-            icon={TrendingUp}
-            subtitle="De todos os leads"
+            title="Leads em atendimento"
+            value={metrics?.activeLeads || 0}
+            icon={Activity}
+            subtitle="Reservados ou em atendimento"
             iconColor="text-purple-600"
             iconBgColor="bg-purple-50"
           />
-          <MetricCard
-            title="Tempo de Resposta"
-            value={`${metrics?.avgResponseTime || 0}min`}
-            icon={Clock}
-            subtitle="Média de resposta"
-            iconColor="text-orange-600"
-            iconBgColor="bg-orange-50"
-          />
+          {isPartner ? (
+            <MetricCard
+              title="Tempo de Resposta"
+              value={`${metrics?.avgResponseTime || 0}min`}
+              icon={Clock}
+              subtitle="Média de resposta nos leads da fila"
+              iconColor="text-orange-600"
+              iconBgColor="bg-orange-50"
+            />
+          ) : (
+            <MetricCard
+              title="Lembretes marcados"
+              value={metrics?.leadsWithReminders || 0}
+              icon={Clock}
+              subtitle="Leads com próxima ação definida"
+              iconColor="text-orange-600"
+              iconBgColor="bg-orange-50"
+            />
+          )}
         </div>
 
         {/* Meu dia hoje */}
