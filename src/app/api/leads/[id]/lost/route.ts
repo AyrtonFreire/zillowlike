@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
+import { QueueService } from "@/lib/queue-service";
 
 const ALLOWED_REASONS = [
   "CLIENT_DESISTIU",
@@ -67,6 +68,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const updated = await (prisma as any).lead.update({
       where: { id },
       data: {
+        status: "COMPLETED",
+        completedAt: new Date(),
         pipelineStage: "LOST",
         lostReason: reason,
       },
@@ -77,6 +80,15 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         lostReason: true,
       },
     });
+
+    // Se o lead estava em atendimento, decrementa contador de ativos da fila
+    if (lead.status === "ACCEPTED" && lead.realtorId) {
+      try {
+        await QueueService.decrementActiveLeads(String(lead.realtorId));
+      } catch (err) {
+        console.error("Error decrementing active leads after marking lost:", err);
+      }
+    }
 
     await LeadEventService.record({
       leadId: id,

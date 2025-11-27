@@ -571,12 +571,24 @@ export class LeadDistributionService {
    * Lista leads do corretor (ativos) com indicadores de pendências
    */
   static async getRealtorLeads(realtorId: string) {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
     const leads = await prisma.lead.findMany({
       where: {
         realtorId,
-        status: {
-          in: ["RESERVED", "ACCEPTED"],
-        },
+        OR: [
+          {
+            status: {
+              in: ["RESERVED", "ACCEPTED"] as any,
+            },
+          },
+          {
+            status: "COMPLETED" as any,
+            completedAt: {
+              gte: sevenDaysAgo,
+            },
+          },
+        ],
       },
       include: {
         property: {

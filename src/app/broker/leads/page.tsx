@@ -59,10 +59,11 @@ function mapPipelineGroupToCanonicalStage(lead: Lead, newStage: PipelineStage): 
 
 interface Lead {
   id: string;
-  status: "RESERVED" | "ACCEPTED";
+  status: "RESERVED" | "ACCEPTED" | "COMPLETED";
   createdAt: string;
   reservedUntil?: string | null;
   respondedAt?: string | null;
+  completedAt?: string | null;
   nextActionDate?: string | null;
   nextActionNote?: string | null;
   lastContactAt?: string | null;
@@ -356,9 +357,10 @@ export default function MyLeadsPage() {
 
   const handleComplete = async (leadId: string) => {
     const confirmed = await toast.confirm({
-      title: "Concluir atendimento?",
-      message: "Você concluiu o atendimento deste lead? O lead sairá da lista de ativos, mas continuará registrado nos relatórios.",
-      confirmText: "Sim, concluir",
+      title: "Encerrar lead?",
+      message:
+        "Você já finalizou o atendimento deste lead? Ele será removido da sua lista de leads ativos, mas continuará aparecendo na coluna \"Fechado\" do quadro por 7 dias e seguirá registrado nos relatórios.",
+      confirmText: "Sim, encerrar lead",
       cancelText: "Ainda não",
       variant: "info",
     });
@@ -375,14 +377,20 @@ export default function MyLeadsPage() {
       const data = await response.json();
 
       if (data.success) {
-        toast.success("Atendimento concluído!", "O lead foi arquivado mas continua registrado nos relatórios.");
+        toast.success(
+          "Lead encerrado!",
+          "Ele saiu da sua lista de leads ativos e ficará na coluna \"Fechado\" do quadro por 7 dias, além de continuar registrado nos relatórios."
+        );
         fetchLeads();
       } else {
-        toast.error("Não foi possível concluir", data.error || "Tente novamente em alguns instantes.");
+        toast.error("Não foi possível encerrar o lead", data.error || "Tente novamente em alguns instantes.");
       }
     } catch (error) {
       console.error("Error completing lead:", error);
-      toast.error("Erro ao concluir", "Não foi possível concluir este atendimento agora. Tente novamente.");
+      toast.error(
+        "Erro ao encerrar lead",
+        "Não foi possível encerrar este lead agora. Tente novamente em alguns instantes."
+      );
     }
   };
 
@@ -479,7 +487,10 @@ export default function MyLeadsPage() {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const leadsWithTaskToday = leads.filter((lead) => {
+  // Leads ativos (não encerrados) para contagens e lista
+  const activeLeads = useMemo(() => leads.filter((lead) => lead.status !== "COMPLETED"), [leads]);
+
+  const leadsWithTaskToday = activeLeads.filter((lead) => {
     if (!lead.nextActionDate) return false;
     const d = new Date(lead.nextActionDate);
     return isSameDay(d, now) || d < now;
@@ -491,16 +502,16 @@ export default function MyLeadsPage() {
     
     return {
       // Leads aguardando resposta (com mensagens não lidas)
-      awaitingResponse: leads.filter(l => l.hasUnreadMessages).length,
+      awaitingResponse: activeLeads.filter(l => l.hasUnreadMessages).length,
       // Leads com visita/tarefa hoje
       taskToday: leadsWithTaskToday.length,
       // Leads sem contato há 48h
-      noContact48h: leads.filter(l => {
+      noContact48h: activeLeads.filter(l => {
         if (!l.lastContactAt) return true; // Nunca contactado
         return new Date(l.lastContactAt) < fortyEightHoursAgo;
       }).length,
     };
-  }, [leads, leadsWithTaskToday, now]);
+  }, [activeLeads, leadsWithTaskToday, now]);
 
   // Leads agrupados por etapa do pipeline (4 colunas visuais)
   const leadsByPipelineStage = useMemo(() => {
@@ -585,7 +596,7 @@ export default function MyLeadsPage() {
 
   const activeLead = activeDragId ? leads.find(l => l.id === activeDragId) : null;
 
-  const filteredLeads = leads.filter((lead) => {
+  const filteredLeads = activeLeads.filter((lead) => {
     // Status filter
     if (filter === "reserved" && lead.status !== "RESERVED") return false;
     if (filter === "accepted" && lead.status !== "ACCEPTED") return false;
@@ -637,12 +648,20 @@ export default function MyLeadsPage() {
   }
 
   // Função para obter badge de status
-  const getStatusBadge = (status: "RESERVED" | "ACCEPTED") => {
+  const getStatusBadge = (status: "RESERVED" | "ACCEPTED" | "COMPLETED") => {
     if (status === "RESERVED") {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
           <Clock className="w-3 h-3" />
           Novo
+        </span>
+      );
+    }
+    if (status === "COMPLETED") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+          <CheckCircle className="w-3 h-3" />
+          Encerrado
         </span>
       );
     }
@@ -656,9 +675,9 @@ export default function MyLeadsPage() {
 
   // Contadores para os filtros
   const counts = {
-    all: leads.length,
-    reserved: leads.filter((l) => l.status === "RESERVED").length,
-    accepted: leads.filter((l) => l.status === "ACCEPTED").length,
+    all: activeLeads.length,
+    reserved: activeLeads.filter((l) => l.status === "RESERVED").length,
+    accepted: activeLeads.filter((l) => l.status === "ACCEPTED").length,
     taskToday: leadsWithTaskToday.length,
   };
 
@@ -1184,11 +1203,12 @@ export default function MyLeadsPage() {
                             {lead.status === "ACCEPTED" && (
                               <>
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); handleComplete(lead.id); }}
+                                  type="button"
+                                  onClick={() => handleComplete(lead.id)}
                                   className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors text-sm"
                                 >
                                   <CheckCircle className="w-4 h-4" />
-                                  Concluir
+                                  Encerrar lead
                                 </button>
                                 <Link
                                   href={`/broker/chats?lead=${lead.id}`}
