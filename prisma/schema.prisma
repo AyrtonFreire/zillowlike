@@ -379,6 +379,8 @@ model User {
   // Rascunho de propriedade (1 por usuário)
   propertyDraft     PropertyDraft?
   systemSettings    SystemSetting[] @relation("UserSystemSettings")
+
+  leadRecommendationLists LeadRecommendationList[]
 }
 
 model VerificationToken {
@@ -456,6 +458,8 @@ model Lead {
   messages LeadMessage[]
 
   events LeadEvent[]
+
+  recommendationLists LeadRecommendationList[]
 
   @@index([propertyId])
   @@index([userId])
