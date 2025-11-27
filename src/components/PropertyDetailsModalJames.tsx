@@ -72,6 +72,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [photoViewMode, setPhotoViewMode] = useState<"feed" | "fullscreen" | null>(null);
   const [showThumbGrid, setShowThumbGrid] = useState(false);
   // Zoom/Pan state for lightbox
   const [zoom, setZoom] = useState(1);
@@ -106,6 +107,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   ]), [nearbyPlaces]);
 
   const [poiPage, setPoiPage] = useState(0);
+  const [contactOverlayOpen, setContactOverlayOpen] = useState(false);
 
   // Distância aproximada
   const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -224,22 +226,36 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setProperty(null);
       setCurrentImageIndex(0);
       setShowAllPhotos(false);
+      setPhotoViewMode(null);
       setShowMore(false);
       setError(null);
       setLoading(false);
+      setContactOverlayOpen(false);
     }
   }, [open]);
 
-  // Close on ESC
+  // Close on ESC (respeitando overlay de fotos/contato)
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      if (showAllPhotos) {
+        setShowAllPhotos(false);
+        setPhotoViewMode(null);
+        setContactOverlayOpen(false);
+        setShowThumbGrid(false);
+        return;
+      }
+      if (contactOverlayOpen) {
+        setContactOverlayOpen(false);
+        return;
+      }
+      onClose();
     };
     if (open) window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [open, onClose]);
+  }, [open, onClose, showAllPhotos, contactOverlayOpen]);
 
-  // Keyboard navigation only when full-screen gallery is open
+  // Keyboard navigation only when gallery overlay is open
   useEffect(() => {
     if (!showAllPhotos || !open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -251,7 +267,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         if (!property) return;
         setCurrentImageIndex((prev) => (prev === property.images.length - 1 ? 0 : prev + 1));
       }
-      if (e.key === 'Escape') setShowAllPhotos(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -401,7 +416,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           <div className="md:hidden relative rounded-xl overflow-hidden h-[380px]">
             <div
               className="absolute inset-0"
-              onClick={() => setShowAllPhotos(true)}
+              onClick={() => { setShowAllPhotos(true); setPhotoViewMode("feed"); }}
               onTouchStart={(e) => { mobSwipeStartX.current = e.touches[0].clientX; mobSwipeDeltaX.current = 0; }}
               onTouchMove={(e) => { if (mobSwipeStartX.current == null) return; const dx = e.touches[0].clientX - mobSwipeStartX.current; mobSwipeDeltaX.current = dx; }}
               onTouchEnd={() => {
@@ -429,7 +444,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             </div>
             {/* Hints: open all, count, arrows, dots */}
             <button
-              onClick={() => setShowAllPhotos(true)}
+              onClick={() => { setShowAllPhotos(true); setPhotoViewMode("feed"); }}
               className="absolute top-3 right-3 z-10 px-3 py-1.5 text-xs font-medium rounded-full bg-white/90 text-gray-900 shadow"
             >
               Ver todas as fotos ({property.images.length})
@@ -455,7 +470,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
           {/* Desktop: mosaic */}
           <div className="hidden md:grid grid-cols-2 gap-2 h-[500px]">
-            <div className="relative rounded-lg overflow-hidden col-span-1 cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+            <div className="relative rounded-lg overflow-hidden col-span-1 cursor-pointer" onClick={() => { setShowAllPhotos(true); setPhotoViewMode("feed"); }}>
               <Image
                 src={displayImages[0]?.url ? transformCloudinary(displayImages[0].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto") : "/placeholder.jpg"}
                 alt={property.title}
@@ -467,7 +482,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             </div>
             <div className="grid grid-cols-2 gap-2">
               {displayImages.slice(1, 5).map((img, i) => (
-                <div key={i} className="relative rounded-lg overflow-hidden cursor-pointer" onClick={() => setShowAllPhotos(true)}>
+                <div key={i} className="relative rounded-lg overflow-hidden cursor-pointer" onClick={() => { setShowAllPhotos(true); setPhotoViewMode("feed"); }}>
                   <Image
                     src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_800,h_600,c_fill,g_auto")}
                     alt={`${property.title} ${i + 2}`}
@@ -477,7 +492,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   />
                   {i === 3 && property.images.length > 5 && (
                     <button
-                      onClick={() => setShowAllPhotos(true)}
+                      onClick={() => { setShowAllPhotos(true); setPhotoViewMode("feed"); }}
                       className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-medium hover:bg-black/60 transition-colors"
                     >
                       <span className="flex items-center gap-2">
@@ -837,87 +852,116 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           {/* Seções Nearby/Similar já estão acima, após Google Maps */}
         </div>
         </motion.div>
-      {/* Lightbox de fotos */}
-      {showAllPhotos && (
-        <div className="fixed inset-0 z-[13000] bg-black/90 flex items-center justify-center" onClick={() => setShowAllPhotos(false)}>
-          <button
-            type="button"
-            aria-label="Fechar"
-            onClick={(e) => { e.stopPropagation(); setShowAllPhotos(false); }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full border border-white/20 text-white/90 hover:text-white hover:bg-white/10 flex items-center justify-center z-[13010] pointer-events-auto"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            aria-label="Anterior"
-            onClick={(e) => { e.stopPropagation(); prevImage(); }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            className="absolute left-4 md:left-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center z-[13010] pointer-events-auto"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            aria-label="Próximo"
-            onClick={(e) => { e.stopPropagation(); nextImage(); }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            className="absolute right-4 md:right-8 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-gray-900 flex items-center justify-center z-[13010] pointer-events-auto"
-          >
-            ›
-          </button>
+      {/* Lightbox de fotos em modo feed (1 grande + 2 menores) */}
+      {showAllPhotos && photoViewMode === "feed" && property && (
+        <div className="fixed inset-0 z-[13000] bg-black/80 flex items-center justify-center" onClick={() => { setShowAllPhotos(false); setPhotoViewMode(null); }}>
           <div
-            className="relative w-[92vw] md:w-[80vw] lg:w-[70vw] aspect-[16/10]"
+            className="relative w-full max-w-6xl h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
-            onTouchStart={(e) => {
-              e.stopPropagation();
-              lbStartX.current = e.touches[0].clientX;
-              lbLastX.current = e.touches[0].clientX;
-              lbMoved.current = false;
-            }}
-            onTouchMove={(e) => {
-              if (lbStartX.current == null) return;
-              const x = e.touches[0].clientX;
-              lbLastX.current = x;
-              lbMoved.current = true;
-              const diff = x - lbStartX.current;
-              if (!property?.images || property.images.length <= 1) {
-                const elastic = Math.max(-28, Math.min(28, diff * 0.25));
-                setLbDragOffset(elastic);
-                e.stopPropagation();
-                e.preventDefault();
-              }
-            }}
-            onTouchEnd={(e) => {
-              const count = property?.images?.length || 0;
-              if (count <= 1) {
-                setLbDragOffset(0);
-              } else if (lbStartX.current != null && lbLastX.current != null && lbMoved.current) {
-                const dx = lbLastX.current - lbStartX.current;
-                const threshold = 60;
-                if (dx <= -threshold) { e.stopPropagation(); nextImage(); }
-                else if (dx >= threshold) { e.stopPropagation(); prevImage(); }
-              }
-              lbStartX.current = null;
-              lbLastX.current = null;
-              lbMoved.current = false;
-            }}
           >
-            <div className="absolute inset-0" style={{ transform: `translateX(${lbDragOffset}px)` }}>
-            <Image
-              src={transformCloudinary(property.images[currentImageIndex]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_center")}
-              alt={`${property.title} ${currentImageIndex + 1}`}
-              fill
-              className="object-contain"
-              sizes="90vw"
-            />
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+              <span className="text-sm font-medium text-gray-700">Fotos do imvel</span>
+              <button
+                type="button"
+                aria-label="Fechar"
+                onClick={() => { setShowAllPhotos(false); setPhotoViewMode(null); }}
+                className="w-8 h-8 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 flex overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+                {(() => {
+                  const groups: { main: number; thumbs: number[] }[] = [];
+                  const total = property.images.length;
+                  for (let i = 0; i < total; i += 3) {
+                    const main = i;
+                    const thumbs: number[] = [];
+                    if (i + 1 < total) thumbs.push(i + 1);
+                    if (i + 2 < total) thumbs.push(i + 2);
+                    groups.push({ main, thumbs });
+                  }
+                  return groups.map((g, idx) => (
+                    <div key={idx} className="space-y-2">
+                      <div
+                        className="relative w-full aspect-[16/9] rounded-xl overflow-hidden cursor-pointer"
+                        onClick={() => { setCurrentImageIndex(g.main); setPhotoViewMode("fullscreen"); }}
+                      >
+                        <Image
+                          src={transformCloudinary(property.images[g.main]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto")}
+                          alt={`${property.title} ${g.main + 1}`}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 1024px) 100vw, 60vw"
+                        />
+                      </div>
+                      {g.thumbs.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {g.thumbs.map((ti) => (
+                            <div
+                              key={ti}
+                              className="relative w-full aspect-[4/3] rounded-xl overflow-hidden cursor-pointer"
+                              onClick={() => { setCurrentImageIndex(ti); setPhotoViewMode("fullscreen"); }}
+                            >
+                              <Image
+                                src={transformCloudinary(property.images[ti]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1200,h_900,c_fill,g_auto")}
+                                alt={`${property.title} ${ti + 1}`}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 1024px) 50vw, 30vw"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ));
+                })()}
+              </div>
+              <div className="hidden md:block w-[320px] border-l border-gray-100 bg-gray-50 px-4 py-5 space-y-4">
+                <div className="space-y-1">
+                  <div className="text-sm text-gray-500">Preo</div>
+                  <div className="text-2xl font-semibold text-gray-900">
+                    {typeof property.price === "number" && property.price > 0
+                      ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(property.price / 100)
+                      : "Sob consulta"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-900 mb-1">{property.title}</div>
+                  <div className="text-xs text-gray-600">
+                    {property.neighborhood && `${property.neighborhood}, `}
+                    {property.city}, {property.state}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setContactOverlayOpen(true)}
+                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
+                >
+                  Entrar em contato
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFavorite}
+                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                >
+                  <Heart className={`w-4 h-4 mr-2 ${isFavorite ? "fill-teal-500 text-teal-500" : "text-gray-700"}`} />
+                  Salvar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                >
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Compartilhar
+                </button>
+                <div className="text-xs text-gray-500">
+                  {currentImageIndex + 1} de {property.images.length} fotos
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -925,19 +969,47 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       </div>
 
       {/* Full-screen Lightbox (no header, thumbnails below) */}
-      {showAllPhotos && property && (
+      {photoViewMode === "fullscreen" && property && (
         <>
           {/* Backdrop above any header */}
-          <div className="fixed inset-0 bg-black/95 z-[30000]" onClick={() => setShowAllPhotos(false)} />
+          <div className="fixed inset-0 bg-black/95 z-[30000]" onClick={() => { setPhotoViewMode("feed"); }} />
           <div className="fixed inset-0 z-[30001] flex flex-col items-center justify-center select-none">
-            {/* Close button */}
-            <button
-              aria-label="Fechar galeria"
-              onClick={() => setShowAllPhotos(false)}
-              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {/* Top bar with actions */}
+            <div className="absolute top-4 inset-x-4 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setPhotoViewMode("feed")}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Voltar às fotos</span>
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setContactOverlayOpen(true)}
+                  className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow"
+                >
+                  <span>Entrar em contato</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFavorite}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm"
+                >
+                  <Heart className={`w-4 h-4 ${isFavorite ? "fill-teal-400 text-teal-400" : "text-white"}`} />
+                  <span className="hidden sm:inline">Salvar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Compartilhar</span>
+                </button>
+              </div>
+            </div>
 
             {/* Main image */}
             <div
@@ -1126,6 +1198,33 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             </div>
           </div>
         </>
+      )}
+      {/* Overlay dedicado de contato (abre a partir das fotos) */}
+      {contactOverlayOpen && property && (
+        <div className="fixed inset-0 z-[32000] bg-black/60 flex items-center justify-center px-4" onClick={() => setContactOverlayOpen(false)}>
+          <div className="relative w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              aria-label="Fechar contato"
+              onClick={() => setContactOverlayOpen(false)}
+              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-gray-700"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <PropertyContactCard
+              propertyId={property.id}
+              propertyTitle={property.title}
+              propertyPurpose={property.purpose}
+              ownerRole={property.owner?.role || "USER"}
+              ownerName={property.owner?.name || undefined}
+              ownerImage={property.owner?.image || undefined}
+              ownerPhone={property.owner?.phone || undefined}
+              ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
+              ownerPublicSlug={property.owner?.publicSlug || null}
+              allowRealtorBoard={property.allowRealtorBoard || false}
+            />
+          </div>
+        </div>
       )}
     </AnimatePresence>
   );
