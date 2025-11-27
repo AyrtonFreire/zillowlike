@@ -380,8 +380,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
           className="pointer-events-auto w-full md:w-[92vw] lg:w-[85vw] xl:w-[75vw] max-w-[1400px] h-full bg-white md:rounded-2xl shadow-2xl overflow-y-auto"
         >
-        {/* Header - muda baseado no modo de visualização */}
-        <div className="sticky top-0 z-20 bg-white border-b border-teal/10">
+        {/* Header principal do modal (desktop/tablet). No mobile usamos controles sobre a foto. */}
+        <div className="sticky top-0 z-20 bg-white border-b border-teal/10 hidden sm:block">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <button
               onClick={photoViewMode === "feed" ? () => setPhotoViewMode(null) : onClose}
@@ -392,7 +392,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 {photoViewMode === "feed" ? "Voltar ao anúncio" : "Voltar à busca"}
               </span>
             </button>
-            <div className="flex items-center gap-3">
+            {/* Ações só aparecem em sm+; no mobile usamos os botões sobre a foto */}
+            <div className="hidden sm:flex items-center gap-3">
               <button
                 onClick={handleShare}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
@@ -503,7 +504,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             </div>
             <div className="grid grid-cols-2 gap-2">
               {displayImages.slice(1, 5).map((img, i) => (
-                <div key={i} className="relative rounded-lg overflow-hidden cursor-pointer" onClick={() => setPhotoViewMode("feed")}>
+                <div
+                  key={i}
+                  className="relative rounded-lg overflow-hidden cursor-pointer"
+                  onClick={() => setPhotoViewMode("feed")}
+                >
                   <Image
                     src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_800,h_600,c_fill,g_auto")}
                     alt={`${property.title} ${i + 2}`}
@@ -528,7 +533,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           </div>
 
           {/* Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 px-4 md:px-0">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
               {/* Price */}
@@ -974,10 +979,9 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                     })()}
                   </div>
                 </div>
-              </div>
 
-              {/* Card resumo à direita (desktop) */}
-              <div className="hidden md:block w-[340px] border-l border-gray-100 bg-white px-5 py-6 space-y-5">
+                {/* Card resumo à direita (desktop) */}
+                <div className="hidden md:block w-[340px] border-l border-gray-100 bg-white px-5 py-6 space-y-5">
                 {/* Preço */}
                 <div>
                   <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Preço</div>
@@ -1046,6 +1050,9 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 <div className="text-xs text-teal-600 font-medium">
                   {property.images.length} fotos
                 </div>
+              </div>
+
+              {/* fecha o container flex do feed (fotos + card) */}
               </div>
 
               {/* Botão de contato mobile (fixo no bottom) */}
