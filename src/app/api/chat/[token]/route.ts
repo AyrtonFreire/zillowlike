@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail, getClientMessageNotificationEmail, getRealtorReplyNotificationEmail } from "@/lib/email";
 import { sendWhatsApp } from "@/lib/sms";
 import { getPusherServer, PUSHER_EVENTS, PUSHER_CHANNELS } from "@/lib/pusher-server";
+import { logger } from "@/lib/logger";
+import { LeadEventService } from "@/lib/lead-event-service";
 
 const messageSchema = z.object({
   content: z
@@ -143,6 +145,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     }
 
     let fromClient = true;
+    let actorId: string | undefined;
+    let actorRole: string | undefined;
 
     if (session) {
       const userId = session.userId || session.user?.id;
@@ -158,6 +162,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
 
       // Se o usuário está logado e tem um papel profissional (ou é dono do imóvel)
       if (userId) {
+        actorId = String(userId);
+        actorRole = role || undefined;
         const isRealtor = lead.realtorId && lead.realtorId === userId;
         const isPropertyOwner = lead.property?.ownerId && lead.property.ownerId === userId;
         const isTeamOwner = lead.team?.ownerId && lead.team.ownerId === userId;
@@ -194,6 +200,17 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         content: parsed.data.content.trim(),
       },
     });
+
+    if (fromClient) {
+      await LeadEventService.record({
+        leadId: lead.id,
+        type: "CLIENT_MESSAGE",
+        actorId,
+        actorRole,
+        title: "Mensagem do cliente",
+        description: parsed.data.content.trim().slice(0, 200),
+      });
+    }
 
     // Enviar notificação em tempo real via Pusher
     try {

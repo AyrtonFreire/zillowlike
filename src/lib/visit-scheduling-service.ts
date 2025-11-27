@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { logger } from "./logger";
+import { LeadEventService } from "./lead-event-service";
 import { randomBytes } from "crypto";
 
 // Gera um token único para chat do cliente
@@ -88,6 +89,7 @@ export class VisitSchedulingService {
     const clientChatToken = generateChatToken();
 
     // Criar lead (unificando message e clientNotes no campo message)
+    // Como já entra com horário marcado, iniciamos o funil em VISIT
     const lead = await (prisma as any).lead.create({
       data: {
         propertyId,
@@ -101,6 +103,7 @@ export class VisitSchedulingService {
         candidatesCount: 0,
         teamId: (property as any)?.teamId ?? undefined,
         clientChatToken, // Token para o cliente acessar o chat
+        pipelineStage: "VISIT", // Lead já entra na etapa de visita agendada
       },
       include: {
         property: {
@@ -119,6 +122,30 @@ export class VisitSchedulingService {
           },
         },
         contact: true,
+      },
+    });
+
+    await LeadEventService.record({
+      leadId: lead.id,
+      type: "LEAD_CREATED",
+      title: "Lead de visita criado",
+      description: clientNotes || null,
+      metadata: {
+        source: "VISIT_REQUEST",
+        propertyId,
+        clientEmail,
+        visitDate: visitDate.toISOString(),
+        visitTime,
+        isDirect,
+      },
+    });
+
+    await LeadEventService.record({
+      leadId: lead.id,
+      type: "VISIT_REQUESTED",
+      metadata: {
+        visitDate: visitDate.toISOString(),
+        visitTime,
       },
     });
 

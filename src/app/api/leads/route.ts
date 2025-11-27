@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { LeadEventService } from "@/lib/lead-event-service";
 
 // Gera um token único para chat do cliente
 function generateChatToken(): string {
@@ -158,6 +159,19 @@ export async function POST(req: NextRequest) {
       realtorId: autoRealtorId,
       // Se tem realtorId, já marca como ACCEPTED; caso contrário, segue fluxo padrão PENDING
       status: autoRealtorId ? "ACCEPTED" : "PENDING",
+    },
+  });
+
+  await LeadEventService.record({
+    leadId: lead.id,
+    type: "LEAD_CREATED",
+    title: "Lead criado pelo formulário",
+    description: message || null,
+    metadata: {
+      source: "CONTACT_FORM",
+      propertyId,
+      email,
+      isDirect: isDirect ?? false,
     },
   });
 

@@ -19,6 +19,7 @@ import CountdownTimer from "@/components/queue/CountdownTimer";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import DashboardLayout from "@/components/DashboardLayout";
+import { canonicalToBoardGroup, boardGroupToCanonical } from "@/lib/lead-pipeline";
 
 // Tipo de imóvel traduzido
 const PROPERTY_TYPES: Record<string, string> = {
@@ -30,29 +31,30 @@ const PROPERTY_TYPES: Record<string, string> = {
   COMMERCIAL: "Comercial",
 };
 
-// Pipeline simplificado: 4 etapas ao invés de 7
+// Pipeline simplificado: 4 grupos das 7 etapas do CRM
 type PipelineStage = "NEW" | "CONTACT" | "NEGOTIATION" | "CLOSED";
 const PIPELINE_STAGES: { id: PipelineStage; label: string; icon: any; color: string; bgColor: string }[] = [
+  // Mesmas cores da coluna NEW do CRM (/broker/crm)
   { id: "NEW", label: "Novos", icon: Users, color: "text-blue-600", bgColor: "bg-blue-50" },
+  // Mesmas cores da coluna CONTACT do CRM
   { id: "CONTACT", label: "Contato", icon: Phone, color: "text-amber-600", bgColor: "bg-amber-50" },
+  // Agrupa VISIT/PROPOSAL/DOCUMENTS usando a cor de VISIT do CRM (roxo)
   { id: "NEGOTIATION", label: "Negociação", icon: Handshake, color: "text-purple-600", bgColor: "bg-purple-50" },
+  // Agrupa WON/LOST usando a cor de WON do CRM (verde)
   { id: "CLOSED", label: "Fechado", icon: Trophy, color: "text-emerald-600", bgColor: "bg-emerald-50" },
 ];
 
-// Mapeamento de status do lead para etapa do pipeline
+// Mapeamento de status do lead para etapa do pipeline (4 colunas agrupadas)
 function getLeadPipelineStage(lead: Lead): PipelineStage {
-  // Se tem pipelineStage definido, usar
-  if ((lead as any).pipelineStage) {
-    const stage = (lead as any).pipelineStage;
-    // Mapear as 7 etapas antigas para as 4 novas
-    if (stage === "NEW") return "NEW";
-    if (stage === "CONTACT") return "CONTACT";
-    if (["VISIT", "PROPOSAL", "DOCUMENTS"].includes(stage)) return "NEGOTIATION";
-    if (stage === "WON") return "CLOSED";
-    if (stage === "LOST") return "CLOSED"; // Perdidos também vão para fechado
-  }
-  // Fallback baseado no status
-  return lead.status === "RESERVED" ? "NEW" : "CONTACT";
+  // Se tem pipelineStage canônico definido, usar
+  const canonicalStage = ((lead as any).pipelineStage as string | undefined) || null;
+  return canonicalToBoardGroup(canonicalStage as any, lead.status) as PipelineStage;
+}
+
+// Mapeia a coluna do quadro (4 grupos) para um estágio canônico (7 etapas) ao salvar no backend
+function mapPipelineGroupToCanonicalStage(lead: Lead, newStage: PipelineStage): "NEW" | "CONTACT" | "VISIT" | "PROPOSAL" | "DOCUMENTS" | "WON" | "LOST" {
+  const currentStage = ((lead as any).pipelineStage as string | undefined) || null;
+  return boardGroupToCanonical(newStage as any, currentStage as any);
 }
 
 interface Lead {
@@ -482,7 +484,7 @@ export default function MyLeadsPage() {
     };
   }, [leads, leadsWithTaskToday, now]);
 
-  // Leads agrupados por etapa do pipeline
+  // Leads agrupados por etapa do pipeline (4 colunas visuais)
   const leadsByPipelineStage = useMemo(() => {
     const grouped: Record<PipelineStage, Lead[]> = {
       NEW: [],
@@ -504,19 +506,22 @@ export default function MyLeadsPage() {
     const lead = leads.find(l => l.id === leadId);
     if (!lead) return;
     
-    const currentStage = getLeadPipelineStage(lead);
-    if (currentStage === newStage) return;
+    const currentGroupStage = getLeadPipelineStage(lead);
+    if (currentGroupStage === newStage) return;
+
+    const currentCanonicalStage = ((lead as any).pipelineStage as string | undefined) || null;
+    const targetCanonicalStage = mapPipelineGroupToCanonicalStage(lead, newStage);
 
     try {
-      // Atualização otimista
+      // Atualização otimista: atualiza o estágio canônico no array de leads
       setLeads(prev => prev.map(l => 
-        l.id === leadId ? { ...l, pipelineStage: newStage } as any : l
+        l.id === leadId ? { ...l, pipelineStage: targetCanonicalStage } as any : l
       ));
 
       const response = await fetch(`/api/leads/${leadId}/pipeline`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: newStage }),
+        body: JSON.stringify({ stage: targetCanonicalStage }),
       });
 
       const data = await response.json();
@@ -524,7 +529,7 @@ export default function MyLeadsPage() {
       if (!response.ok || !data?.success) {
         // Reverter se falhar
         setLeads(prev => prev.map(l => 
-          l.id === leadId ? { ...l, pipelineStage: currentStage } as any : l
+          l.id === leadId ? { ...l, pipelineStage: currentCanonicalStage } as any : l
         ));
         toast.error("Erro ao mover lead", data?.error || "Tente novamente.");
       } else {
@@ -533,6 +538,10 @@ export default function MyLeadsPage() {
       }
     } catch (error) {
       console.error("Error moving lead:", error);
+      // Reverte em caso de erro inesperado
+      setLeads(prev => prev.map(l => 
+        l.id === leadId ? { ...l, pipelineStage: currentCanonicalStage } as any : l
+      ));
       toast.error("Erro ao mover lead", "Não foi possível atualizar.");
     }
   };

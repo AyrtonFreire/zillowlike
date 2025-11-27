@@ -15,6 +15,36 @@ import {
   ChevronUp,
 } from "lucide-react";
 
+type LeadEventApiType =
+  | "LEAD_CREATED"
+  | "LEAD_ACCEPTED"
+  | "LEAD_REJECTED"
+  | "LEAD_COMPLETED"
+  | "LEAD_LOST"
+  | "STAGE_CHANGED"
+  | "NOTE_ADDED"
+  | "INTERNAL_MESSAGE"
+  | "CLIENT_MESSAGE"
+  | "REMINDER_SET"
+  | "REMINDER_CLEARED"
+  | "VISIT_REQUESTED"
+  | "VISIT_CONFIRMED"
+  | "VISIT_REJECTED"
+  | "OWNER_APPROVAL_REQUESTED";
+
+interface LeadEventApi {
+  id: string;
+  type: LeadEventApiType | string;
+  createdAt: string;
+  title?: string | null;
+  description?: string | null;
+  fromStage?: string | null;
+  toStage?: string | null;
+  fromStatus?: string | null;
+  toStatus?: string | null;
+  metadata?: Record<string, any> | null;
+}
+
 interface TimelineEvent {
   id: string;
   type: "created" | "status_change" | "note" | "message" | "reminder" | "stage_change";
@@ -57,6 +87,174 @@ const stageLabels: Record<string, string> = {
   LOST: "Perdido",
 };
 
+function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
+  const date = event.createdAt;
+  const type = event.type;
+
+  switch (type) {
+    case "LEAD_CREATED":
+      return {
+        id: event.id,
+        type: "created",
+        title: event.title || "Lead criado",
+        description:
+          event.description || "O cliente demonstrou interesse no imóvel",
+        date,
+        icon: "user",
+        metadata: event.metadata || undefined,
+      };
+    case "LEAD_ACCEPTED":
+      return {
+        id: event.id,
+        type: "status_change",
+        title: event.title || "Lead aceito",
+        description:
+          event.description || "Você assumiu este lead para atendimento",
+        date,
+        icon: "check",
+        metadata: event.metadata || undefined,
+      };
+    case "LEAD_REJECTED":
+      return {
+        id: event.id,
+        type: "status_change",
+        title: event.title || "Lead recusado",
+        description: event.description || undefined,
+        date,
+        icon: "x",
+        metadata: event.metadata || undefined,
+      };
+    case "LEAD_COMPLETED": {
+      const isWon = event.toStage === "WON";
+      return {
+        id: event.id,
+        type: "status_change",
+        title: isWon ? "Negócio fechado! 🎉" : "Atendimento concluído",
+        description:
+          event.description ||
+          (isWon
+            ? "Parabéns! O negócio foi concluído com sucesso."
+            : "O atendimento deste lead foi finalizado."),
+        date,
+        icon: isWon ? "check" : "x",
+        metadata: event.metadata || undefined,
+      };
+    }
+    case "LEAD_LOST":
+      return {
+        id: event.id,
+        type: "status_change",
+        title: event.title || "Lead perdido",
+        description: event.description || undefined,
+        date,
+        icon: "x",
+        metadata: event.metadata || undefined,
+      };
+    case "STAGE_CHANGED": {
+      const fromLabel =
+        (event.fromStage && stageLabels[event.fromStage]) || event.fromStage;
+      const toLabel =
+        (event.toStage && stageLabels[event.toStage]) || event.toStage;
+      const description =
+        event.description ||
+        (fromLabel && toLabel
+          ? `Do estágio "${fromLabel}" para "${toLabel}"`
+          : undefined);
+      return {
+        id: event.id,
+        type: "stage_change",
+        title: event.title || "Etapa do funil atualizada",
+        description,
+        date,
+        icon: "arrow",
+        metadata: event.metadata || undefined,
+      };
+    }
+    case "NOTE_ADDED":
+      return {
+        id: event.id,
+        type: "note",
+        title: event.title || "Nota adicionada",
+        description: event.description || undefined,
+        date,
+        icon: "note",
+        metadata: event.metadata || undefined,
+      };
+    case "INTERNAL_MESSAGE":
+    case "CLIENT_MESSAGE":
+      return {
+        id: event.id,
+        type: "message",
+        title:
+          event.title ||
+          (type === "CLIENT_MESSAGE"
+            ? "Mensagem do cliente"
+            : "Mensagem interna adicionada"),
+        description: event.description || undefined,
+        date,
+        icon: "message",
+        metadata: event.metadata || undefined,
+      };
+    case "REMINDER_SET":
+    case "REMINDER_CLEARED":
+      return {
+        id: event.id,
+        type: "reminder",
+        title:
+          event.title ||
+          (type === "REMINDER_SET"
+            ? "Lembrete definido"
+            : "Lembrete removido"),
+        description: event.description || undefined,
+        date,
+        icon: "clock",
+        metadata: event.metadata || undefined,
+      };
+    case "VISIT_REQUESTED":
+      return {
+        id: event.id,
+        type: "status_change",
+        title: event.title || "Visita solicitada",
+        description: event.description || undefined,
+        date,
+        icon: "calendar",
+        metadata: event.metadata || undefined,
+      };
+    case "VISIT_CONFIRMED":
+      return {
+        id: event.id,
+        type: "status_change",
+        title: event.title || "Visita confirmada",
+        description: event.description || undefined,
+        date,
+        icon: "calendar",
+        metadata: event.metadata || undefined,
+      };
+    case "VISIT_REJECTED":
+      return {
+        id: event.id,
+        type: "status_change",
+        title: event.title || "Visita recusada",
+        description: event.description || undefined,
+        date,
+        icon: "x",
+        metadata: event.metadata || undefined,
+      };
+    case "OWNER_APPROVAL_REQUESTED":
+      return {
+        id: event.id,
+        type: "status_change",
+        title: event.title || "Aprovação do proprietário solicitada",
+        description: event.description || undefined,
+        date,
+        icon: "user",
+        metadata: event.metadata || undefined,
+      };
+    default:
+      return null;
+  }
+}
+
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("pt-BR", {
@@ -95,73 +293,123 @@ export default function LeadTimeline({
   const [events, setEvents] = useState<TimelineEvent[]>([]);
 
   useEffect(() => {
-    const allEvents: TimelineEvent[] = [];
+    let cancelled = false;
 
-    // Evento de criação
-    allEvents.push({
-      id: "created",
-      type: "created",
-      title: "Lead criado",
-      description: "O cliente demonstrou interesse no imóvel",
-      date: createdAt,
-      icon: "user",
-    });
+    async function loadEvents() {
+      try {
+        const response = await fetch(`/api/leads/${leadId}/events`);
 
-    // Evento de resposta
-    if (respondedAt) {
+        if (response.ok) {
+          const data = await response.json();
+          const apiEvents: LeadEventApi[] = data.events || [];
+
+          if (!cancelled && apiEvents.length > 0) {
+            const mapped = apiEvents
+              .map(mapLeadEventToTimeline)
+              .filter((e): e is TimelineEvent => Boolean(e));
+
+            mapped.sort(
+              (a, b) =>
+                new Date(b.date).getTime() - new Date(a.date).getTime()
+            );
+
+            setEvents(mapped);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Error loading lead events from API:", error);
+      }
+
+      if (cancelled) return;
+
+      const allEvents: TimelineEvent[] = [];
+
+      // Evento de criação
       allEvents.push({
-        id: "responded",
-        type: "status_change",
-        title: "Lead aceito",
-        description: "Você assumiu este lead para atendimento",
-        date: respondedAt,
-        icon: "check",
+        id: "created",
+        type: "created",
+        title: "Lead criado",
+        description: "O cliente demonstrou interesse no imóvel",
+        date: createdAt,
+        icon: "user",
       });
+
+      // Evento de resposta
+      if (respondedAt) {
+        allEvents.push({
+          id: "responded",
+          type: "status_change",
+          title: "Lead aceito",
+          description: "Você assumiu este lead para atendimento",
+          date: respondedAt,
+          icon: "check",
+        });
+      }
+
+      // Notas
+      notes.forEach((note) => {
+        allEvents.push({
+          id: `note-${note.id}`,
+          type: "note",
+          title: "Nota adicionada",
+          description:
+            note.content.length > 100
+              ? note.content.substring(0, 100) + "..."
+              : note.content,
+          date: note.createdAt,
+          icon: "note",
+        });
+      });
+
+      // Mensagens (últimas 5)
+      const recentMessages = messages.slice(-5);
+      recentMessages.forEach((msg) => {
+        allEvents.push({
+          id: `msg-${msg.id}`,
+          type: "message",
+          title: "Mensagem enviada",
+          description:
+            msg.content.length > 80
+              ? msg.content.substring(0, 80) + "..."
+              : msg.content,
+          date: msg.createdAt,
+          icon: "message",
+        });
+      });
+
+      // Evento de conclusão
+      if (completedAt) {
+        allEvents.push({
+          id: "completed",
+          type: "status_change",
+          title:
+            pipelineStage === "WON"
+              ? "Negócio fechado! 🎉"
+              : "Atendimento concluído",
+          description:
+            pipelineStage === "WON"
+              ? "Parabéns! O negócio foi concluído com sucesso."
+              : "O atendimento deste lead foi finalizado.",
+          date: completedAt,
+          icon: pipelineStage === "WON" ? "check" : "x",
+        });
+      }
+
+      allEvents.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      if (!cancelled) {
+        setEvents(allEvents);
+      }
     }
 
-    // Notas
-    notes.forEach((note) => {
-      allEvents.push({
-        id: `note-${note.id}`,
-        type: "note",
-        title: "Nota adicionada",
-        description: note.content.length > 100 ? note.content.substring(0, 100) + "..." : note.content,
-        date: note.createdAt,
-        icon: "note",
-      });
-    });
+    loadEvents();
 
-    // Mensagens (últimas 5)
-    const recentMessages = messages.slice(-5);
-    recentMessages.forEach((msg) => {
-      allEvents.push({
-        id: `msg-${msg.id}`,
-        type: "message",
-        title: "Mensagem enviada",
-        description: msg.content.length > 80 ? msg.content.substring(0, 80) + "..." : msg.content,
-        date: msg.createdAt,
-        icon: "message",
-      });
-    });
-
-    // Evento de conclusão
-    if (completedAt) {
-      allEvents.push({
-        id: "completed",
-        type: "status_change",
-        title: pipelineStage === "WON" ? "Negócio fechado! 🎉" : "Atendimento concluído",
-        description: pipelineStage === "WON" 
-          ? "Parabéns! O negócio foi concluído com sucesso."
-          : "O atendimento deste lead foi finalizado.",
-        date: completedAt,
-        icon: pipelineStage === "WON" ? "check" : "x",
-      });
-    }
-
-    // Ordenar por data (mais recente primeiro)
-    allEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    setEvents(allEvents);
+    return () => {
+      cancelled = true;
+    };
   }, [leadId, createdAt, respondedAt, completedAt, pipelineStage, notes, messages]);
 
   const visibleEvents = isExpanded ? events : events.slice(0, 4);

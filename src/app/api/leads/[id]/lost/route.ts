@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { LeadEventService } from "@/lib/lead-event-service";
 
 const ALLOWED_REASONS = [
   "CLIENT_DESISTIU",
@@ -39,6 +40,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const lead: any = await (prisma as any).lead.findUnique({
       where: { id },
       select: {
+        status: true,
+        pipelineStage: true,
         realtorId: true,
         team: {
           select: {
@@ -73,6 +76,20 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         pipelineStage: true,
         lostReason: true,
       },
+    });
+
+    await LeadEventService.record({
+      leadId: id,
+      type: "LEAD_LOST",
+      actorId: String(userId),
+      actorRole: role,
+      title: "Lead marcado como perdido",
+      description: reason || undefined,
+      fromStage: lead.pipelineStage || null,
+      toStage: updated.pipelineStage || null,
+      fromStatus: lead.status,
+      toStatus: updated.status,
+      metadata: { reason },
     });
 
     return NextResponse.json({ success: true, lead: updated });

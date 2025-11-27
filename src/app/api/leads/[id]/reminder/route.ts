@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { LeadEventService } from "@/lib/lead-event-service";
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -67,6 +68,20 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         id: true,
         nextActionDate: true,
         nextActionNote: true,
+      },
+    });
+
+    const eventType = nextActionDate || note ? "REMINDER_SET" : "REMINDER_CLEARED";
+
+    await LeadEventService.record({
+      leadId: id,
+      type: eventType as any,
+      actorId: String(userId),
+      actorRole: role,
+      title: eventType === "REMINDER_SET" ? "Lembrete definido" : "Lembrete removido",
+      description: updated.nextActionNote || undefined,
+      metadata: {
+        nextActionDate: updated.nextActionDate,
       },
     });
 

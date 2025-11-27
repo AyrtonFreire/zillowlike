@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { QueueService } from "./queue-service";
 import { getPusherServer, PUSHER_EVENTS, PUSHER_CHANNELS } from "./pusher-server";
 import { logger } from "./logger";
+import { LeadEventService } from "./lead-event-service";
 
 const prisma = new PrismaClient();
 
@@ -84,14 +85,25 @@ export class LeadDistributionService {
 
     // Usa transação para garantir consistência
     const result = await prisma.$transaction(async (tx) => {
+      // Define próximo estágio de funil
+      const currentPipelineStage = (lead as any).pipelineStage as string | null | undefined;
+      const shouldMoveToContact = !currentPipelineStage || currentPipelineStage === "NEW";
+
+      const updateData: any = {
+        status: "ACCEPTED",
+        realtorId,
+        respondedAt: new Date(),
+      };
+
+      // Se ainda estava em "NEW" (ou sem estágio), mover automaticamente para "CONTACT"
+      if (shouldMoveToContact) {
+        updateData.pipelineStage = "CONTACT";
+      }
+
       // Atualiza lead
       const updatedLead = await tx.lead.update({
         where: { id: leadId },
-        data: {
-          status: "ACCEPTED",
-          realtorId,
-          respondedAt: new Date(),
-        },
+        data: updateData,
       });
 
       // Atualiza estatísticas
@@ -126,6 +138,21 @@ export class LeadDistributionService {
       }
 
       return updatedLead;
+    });
+
+    // Registrar evento de aceitação de lead
+    await LeadEventService.record({
+      leadId,
+      type: "LEAD_ACCEPTED",
+      actorId: realtorId,
+      actorRole: "REALTOR",
+      fromStatus: lead.status as any,
+      toStatus: "ACCEPTED",
+      fromStage: (lead as any).pipelineStage || null,
+      toStage: (result as any)?.pipelineStage || null,
+      metadata: {
+        responseTimeMinutes: responseTime,
+      },
     });
 
     // Atualiza fila (fora da transação pois usa raw SQL)
@@ -184,7 +211,7 @@ export class LeadDistributionService {
       console.error("Error sending pusher notification:", error);
     }
 
-    return lead;
+    return result;
   }
 
   /**
@@ -232,6 +259,15 @@ export class LeadDistributionService {
       "REJECT_LEAD",
       "Recusou lead"
     );
+
+    await LeadEventService.record({
+      leadId,
+      type: "LEAD_REJECTED",
+      actorId: realtorId,
+      actorRole: "REALTOR",
+      fromStatus: lead.status as any,
+      toStatus: "AVAILABLE",
+    });
 
     logger.info("Lead rejected successfully", { leadId, realtorId });
     return lead;
@@ -740,6 +776,7 @@ export class LeadDistributionService {
         data: {
           status: "COMPLETED",
           completedAt: new Date(),
+          pipelineStage: "WON",
         },
       });
 
@@ -767,6 +804,20 @@ export class LeadDistributionService {
       "COMPLETE_LEAD",
       "Concluiu atendimento de lead"
     );
+
+    await LeadEventService.record({
+      leadId,
+      type: "LEAD_COMPLETED",
+      actorId: realtorId,
+      actorRole: "REALTOR",
+      fromStatus: lead.status as any,
+      toStatus: "COMPLETED",
+      fromStage: (lead as any).pipelineStage || null,
+      toStage: (result as any)?.pipelineStage || null,
+      metadata: {
+        hadVisit: !!(lead.visitDate && lead.visitTime),
+      },
+    });
 
     return result;
   }

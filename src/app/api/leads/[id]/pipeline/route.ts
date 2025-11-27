@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updatePipelineStageSchema } from "@/lib/validations/lead";
+import { LeadEventService } from "@/lib/lead-event-service";
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -26,6 +27,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const lead: any = await (prisma as any).lead.findUnique({
       where: { id },
       select: {
+        status: true,
+        pipelineStage: true,
         realtorId: true,
         team: {
           select: {
@@ -58,6 +61,17 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         status: true,
         pipelineStage: true,
       },
+    });
+
+    await LeadEventService.record({
+      leadId: id,
+      type: "STAGE_CHANGED",
+      actorId: String(userId),
+      actorRole: role,
+      fromStage: lead.pipelineStage || null,
+      toStage: updated.pipelineStage || null,
+      fromStatus: lead.status,
+      toStatus: updated.status,
     });
 
     return NextResponse.json({ success: true, lead: updated });

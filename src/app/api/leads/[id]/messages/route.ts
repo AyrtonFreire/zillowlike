@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPusherServer } from "@/lib/pusher-server";
+import { LeadEventService } from "@/lib/lead-event-service";
 
 const messageSchema = z.object({
   content: z.string().min(1, "Escreva uma mensagem antes de enviar.").max(2000, "A mensagem está muito longa."),
@@ -46,6 +47,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
         id: true,
         realtorId: true,
         userId: true,
+        pipelineStage: true,
         property: {
           select: { ownerId: true },
         },
@@ -107,6 +109,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         id: true,
         realtorId: true,
         userId: true,
+        pipelineStage: true,
         property: {
           select: { ownerId: true },
         },
@@ -136,6 +139,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Dados inválidos", issues: parsed.error.issues }, { status: 400 });
     }
 
+    const previousStage = (lead as any)?.pipelineStage as string | null | undefined;
+
     const message = await (prisma as any).leadMessage.create({
       data: {
         leadId: id,
@@ -152,6 +157,31 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           },
         },
       },
+    });
+
+    // 🆕 Automatizar funil: primeira resposta profissional move de NEW para CONTACT
+    try {
+      const isProfessional = role === "REALTOR" || role === "AGENCY" || role === "ADMIN";
+      const currentStage = previousStage;
+      if (isProfessional && (!currentStage || currentStage === "NEW")) {
+        await (prisma as any).lead.update({
+          where: { id },
+          data: { pipelineStage: "CONTACT" },
+        });
+      }
+    } catch (updateError) {
+      console.error("Error auto-updating lead pipelineStage on message:", updateError);
+    }
+
+    await LeadEventService.record({
+      leadId: id,
+      type: "INTERNAL_MESSAGE",
+      actorId: userId,
+      actorRole: role,
+      title: "Mensagem interna adicionada",
+      description: parsed.data.content.trim().slice(0, 200),
+      fromStage: previousStage || null,
+      toStage: previousStage === "NEW" ? "CONTACT" : previousStage || null,
     });
 
     try {

@@ -99,6 +99,24 @@ enum LeadLostReason {
   OUTRO
 }
 
+enum LeadEventType {
+  LEAD_CREATED
+  LEAD_ACCEPTED
+  LEAD_REJECTED
+  LEAD_COMPLETED
+  LEAD_LOST
+  STAGE_CHANGED
+  NOTE_ADDED
+  INTERNAL_MESSAGE
+  CLIENT_MESSAGE
+  REMINDER_SET
+  REMINDER_CLEARED
+  VISIT_REQUESTED
+  VISIT_CONFIRMED
+  VISIT_REJECTED
+  OWNER_APPROVAL_REQUESTED
+}
+
 // Status do corretor na fila
 enum RealtorQueueStatus {
   ACTIVE
@@ -435,6 +453,8 @@ model Lead {
 
   messages LeadMessage[]
 
+  events LeadEvent[]
+
   @@index([propertyId])
   @@index([userId])
   @@index([realtorId])
@@ -488,6 +508,26 @@ model LeadClientMessage {
 
   @@index([leadId])
   @@map("lead_client_messages")
+}
+
+model LeadEvent {
+  id          String         @id @default(cuid())
+  lead        Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId      String
+  type        LeadEventType
+  createdAt   DateTime       @default(now())
+  actorId     String?
+  actorRole   Role?
+  title       String?
+  description String?
+  fromStage   LeadPipelineStage?
+  toStage     LeadPipelineStage?
+  fromStatus  LeadStatus?
+  toStatus    LeadStatus?
+  metadata    Json?
+
+  @@index([leadId, createdAt])
+  @@map("lead_events")
 }
 
 model LeadAssignmentLog {

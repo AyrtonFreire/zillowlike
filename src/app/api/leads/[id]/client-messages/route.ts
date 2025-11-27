@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPusherServer } from "@/lib/pusher-server";
 import { sendEmail, getRealtorReplyNotificationEmail } from "@/lib/email";
+import { LeadEventService } from "@/lib/lead-event-service";
 
 const messageSchema = z.object({
   content: z.string().min(1, "Escreva uma mensagem antes de enviar.").max(2000, "A mensagem está muito longa."),
@@ -148,6 +149,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         fromClient: false,
         content: parsed.data.content.trim(),
       },
+    });
+
+    await LeadEventService.record({
+      leadId: id,
+      type: "CLIENT_MESSAGE",
+      actorId: userId,
+      actorRole: role,
+      title: "Mensagem enviada ao cliente",
+      description: parsed.data.content.trim().slice(0, 200),
     });
 
     // Enviar notificação via Pusher para o chat do cliente

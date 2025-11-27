@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { QueueService } from "./queue-service";
 import { logger } from "./logger";
 import { getPusherServer, PUSHER_EVENTS, PUSHER_CHANNELS } from "./pusher-server";
+import { LeadEventService } from "./lead-event-service";
 
 /**
  * Serviço de aprovação de visitas pelo proprietário
@@ -38,6 +39,7 @@ export class OwnerApprovalService {
             phone: true,
           },
         },
+        
       },
     });
 
@@ -50,11 +52,25 @@ export class OwnerApprovalService {
     }
 
     // Atualizar status do lead
-    await prisma.lead.update({
+    const updated = await prisma.lead.update({
       where: { id: leadId },
       data: {
         status: "WAITING_OWNER_APPROVAL",
       },
+    });
+
+    await LeadEventService.record({
+      leadId,
+      type: "OWNER_APPROVAL_REQUESTED",
+      actorId: lead.realtorId || undefined,
+      actorRole: lead.realtorId ? "REALTOR" : undefined,
+      title: "Aprovação de visita solicitada",
+      metadata: {
+        visitDate: lead.visitDate,
+        visitTime: lead.visitTime,
+      },
+      fromStatus: lead.status as any,
+      toStatus: updated.status as any,
     });
 
     logger.info("Owner approval requested", {
@@ -121,6 +137,20 @@ export class OwnerApprovalService {
         ownerApproved: true,
         ownerApprovedAt: new Date(),
         confirmedAt: new Date(),
+      },
+    });
+
+    await LeadEventService.record({
+      leadId,
+      type: "VISIT_CONFIRMED",
+      actorId: ownerId,
+      actorRole: "OWNER",
+      title: "Visita aprovada pelo proprietário",
+      fromStatus: lead.status as any,
+      toStatus: updatedLead.status as any,
+      metadata: {
+        visitDate: lead.visitDate,
+        visitTime: lead.visitTime,
       },
     });
 
@@ -232,6 +262,18 @@ export class OwnerApprovalService {
         },
       }),
     ]);
+
+    await LeadEventService.record({
+      leadId,
+      type: "VISIT_REJECTED",
+      actorId: ownerId,
+      actorRole: "OWNER",
+      title: "Visita recusada pelo proprietário",
+      description: reason,
+      fromStatus: lead.status as any,
+      toStatus: "PENDING",
+      metadata: { reason },
+    });
 
     // Notificar corretor via Pusher
     try {

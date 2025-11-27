@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { LeadEventService } from "@/lib/lead-event-service";
 
 const noteSchema = z.object({
   content: z.string().min(1, "Escreva uma nota antes de salvar.").max(2000, "A nota está muito longa."),
@@ -113,6 +114,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         realtorId: userId,
         content: parsed.data.content.trim(),
       },
+    });
+
+    await LeadEventService.record({
+      leadId: id,
+      type: "NOTE_ADDED",
+      actorId: userId,
+      actorRole: role,
+      title: "Nota adicionada",
+      description: parsed.data.content.trim().slice(0, 200),
     });
 
     return NextResponse.json({ note });
