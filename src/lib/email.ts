@@ -574,6 +574,60 @@ export function getClientMessageNotificationEmail(data: {
     `,
   };
 }
+ 
+export function getRealtorReplyNotificationEmail(data: {
+  clientName: string;
+  propertyTitle: string;
+  messagePreview: string;
+  chatUrl: string;
+}) {
+  return {
+    subject: `💬 Nova resposta sobre ${data.propertyTitle}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #f3f4f6; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%); color: white; padding: 30px; text-align: center; border-radius: 12px 12px 0 0; }
+            .content { background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none; }
+            .message-box { background: #ecfeff; border-left: 4px solid #06b6d4; padding: 16px; border-radius: 0 8px 8px 0; margin: 20px 0; color: #0f172a; }
+            .button { display: inline-block; background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 600; }
+            .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0; font-size: 22px;">💬 Nova mensagem no chat</h1>
+              <p style="margin: 10px 0 0; opacity: 0.9;">Sobre o imóvel ${data.propertyTitle}</p>
+            </div>
+            <div class="content">
+              <p>Olá, <strong>${data.clientName}</strong>!</p>
+              <p>O responsável pelo imóvel enviou uma nova mensagem para você no chat.</p>
+              <div class="message-box">
+                <p style="margin: 0 0 8px; font-weight: 600; color: #0f172a;">Prévia da mensagem:</p>
+                <p style="margin: 0; font-style: italic; color: #334155;">"${data.messagePreview}"</p>
+              </div>
+              <center>
+                <a href="${data.chatUrl}" class="button">Ver mensagem no chat</a>
+              </center>
+              <p style="font-size: 13px; color: #6b7280; margin-top: 16px;">
+                Se o botão acima não funcionar, copie e cole este link no seu navegador:<br />
+                <span style="color: #0d9488; word-break: break-all;">${data.chatUrl}</span>
+              </p>
+            </div>
+            <div class="footer">
+              <p>© 2025 ZillowLike. Todos os direitos reservados.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+}
 
 /**
  * Email de confirmação para o cliente com link do chat

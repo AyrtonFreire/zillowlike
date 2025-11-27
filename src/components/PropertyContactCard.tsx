@@ -5,6 +5,8 @@ import { User, Building2, Calendar, Clock, CheckCircle, MessageCircle, Mail, Arr
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession, signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Button from "./ui/Button";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -30,12 +32,14 @@ function SuccessScreen({
   chatUrl, 
   userEmail, 
   isLeadBoard,
-  onReset 
+  onReset,
+  onOpenChat,
 }: { 
   chatUrl: string; 
   userEmail: string;
   isLeadBoard: boolean;
   onReset: () => void;
+  onOpenChat: (chatUrl: string) => void;
 }) {
   return (
     <motion.div
@@ -71,14 +75,14 @@ function SuccessScreen({
           </div>
         </div>
         
-        <Link
-          href={chatUrl}
-          target="_blank"
+        <button
+          type="button"
+          onClick={() => onOpenChat(chatUrl)}
           className="flex items-center justify-center gap-2 w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition-colors"
         >
           Abrir Chat
           <ExternalLink className="w-4 h-4" />
-        </Link>
+        </button>
       </div>
 
       {/* Info do email */}
@@ -162,6 +166,12 @@ export default function PropertyContactCard({
   const [notifySimilar, setNotifySimilar] = useState(false);
   const [successData, setSuccessData] = useState<{ chatUrl: string; email: string } | null>(null);
   const toast = useToast();
+  const { data: session } = useSession();
+  const router = useRouter();
+  const [showLoginOverlay, setShowLoginOverlay] = useState(false);
+  const [pendingChatUrl, setPendingChatUrl] = useState<string | null>(null);
+
+  const isAuthenticated = !!session;
 
   // Determinar cenário
   const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
@@ -222,6 +232,16 @@ export default function PropertyContactCard({
     }
   };
 
+  const handleOpenChat = (chatUrl: string) => {
+    if (!chatUrl) return;
+    if (isAuthenticated) {
+      router.push(chatUrl);
+      return;
+    }
+    setPendingChatUrl(chatUrl);
+    setShowLoginOverlay(true);
+  };
+
   // Gerar horários disponíveis (7h-19h) em intervalos de 1h
   const availableTimes = [] as string[];
   for (let h = 7; h <= 18; h++) {
@@ -239,13 +259,43 @@ export default function PropertyContactCard({
   // Mostrar tela de sucesso se houver dados
   if (successData) {
     return (
-      <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
+      <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm relative">
         <SuccessScreen 
           chatUrl={successData.chatUrl}
           userEmail={successData.email}
           isLeadBoard={isLeadBoard}
           onReset={handleReset}
+          onOpenChat={handleOpenChat}
         />
+
+        {showLoginOverlay && pendingChatUrl && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                Entre ou crie sua conta para usar o chat
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Para acompanhar respostas e continuar a conversa sobre este imóvel, você precisa estar logado.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => pendingChatUrl && signIn(undefined, { callbackUrl: pendingChatUrl })}
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition-colors"
+                >
+                  Entrar / Criar conta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLoginOverlay(false)}
+                  className="text-sm text-gray-500 hover:text-gray-700 mt-1"
+                >
+                  Agora não
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

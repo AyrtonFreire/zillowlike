@@ -106,3 +106,79 @@ export async function sendSms(to: string, body: string): Promise<void> {
     throw new Error("Failed to send SMS");
   }
 }
+
+export async function sendWhatsApp(to: string, body: string): Promise<void> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const smsMode = process.env.SMS_MODE;
+  const fromWhatsAppEnv = process.env.TWILIO_WHATSAPP_FROM;
+  const fromNumber = process.env.TWILIO_FROM_NUMBER;
+
+  const normalizedTo = normalizePhoneE164(to);
+  const toWhatsApp = `whatsapp:${normalizedTo}`;
+
+  // Modo mock explícito para desenvolvimento
+  if (smsMode === "mock") {
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("📱 [WHATSAPP MOCK] Notificação de chat:");
+    console.log(`   Para: ${toWhatsApp}`);
+    console.log(`   Mensagem: ${body}`);
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    return;
+  }
+
+  let fromWhatsApp = fromWhatsAppEnv;
+  if (!fromWhatsApp && fromNumber) {
+    const normalizedFrom = normalizePhoneE164(fromNumber);
+    fromWhatsApp = `whatsapp:${normalizedFrom}`;
+  }
+
+  if (!accountSid || !authToken || !fromWhatsApp) {
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("📱 [WHATSAPP MOCK] Twilio WhatsApp não configurado:");
+    console.log(`   Para: ${toWhatsApp}`);
+    console.log(`   Mensagem: ${body}`);
+    console.log("   💡 Dica: Configure TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_WHATSAPP_FROM (ou TWILIO_FROM_NUMBER) no .env");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    return;
+  }
+
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+  const params = new URLSearchParams();
+  params.append("To", toWhatsApp);
+  params.append("From", fromWhatsApp);
+  params.append("Body", body);
+
+  const authHeader = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${authHeader}`,
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+    },
+    body: params.toString(),
+  });
+
+  if (!res.ok) {
+    let text = "";
+    try {
+      text = await res.text();
+    } catch {}
+
+    let errorCode: number | null = null;
+    let errorMessage = "";
+    try {
+      const errorJson = JSON.parse(text);
+      errorCode = errorJson.code;
+      errorMessage = errorJson.message;
+    } catch {}
+
+    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.error("❌ Twilio WhatsApp falhou:");
+    console.error(`   Status: ${res.status}`);
+    if (errorCode) console.error(`   Código: ${errorCode}`);
+    if (errorMessage) console.error(`   Erro: ${errorMessage}`);
+    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  }
+}

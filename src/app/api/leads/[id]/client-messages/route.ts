@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPusherServer } from "@/lib/pusher-server";
+import { sendEmail, getRealtorReplyNotificationEmail } from "@/lib/email";
 
 const messageSchema = z.object({
   content: z.string().min(1, "Escreva uma mensagem antes de enviar.").max(2000, "A mensagem está muito longa."),
@@ -161,6 +162,48 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       });
     } catch (pusherError) {
       console.error("Error triggering pusher for client message:", pusherError);
+    }
+
+    // Enviar email para o cliente avisando da nova mensagem
+    try {
+      const fullLead: any = await (prisma as any).lead.findUnique({
+        where: { id },
+        select: {
+          clientChatToken: true,
+          contact: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+          property: {
+            select: {
+              title: true,
+            },
+          },
+        },
+      });
+
+      if (fullLead?.contact?.email && fullLead.clientChatToken) {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://zillowlike.vercel.app";
+        const chatUrl = `${siteUrl}/chat/${fullLead.clientChatToken}`;
+        const emailData = getRealtorReplyNotificationEmail({
+          clientName: fullLead.contact.name || "Cliente",
+          propertyTitle: fullLead.property?.title || "Imóvel",
+          messagePreview: parsed.data.content.trim().substring(0, 200),
+          chatUrl,
+        });
+
+        sendEmail({
+          to: fullLead.contact.email,
+          subject: emailData.subject,
+          html: emailData.html,
+        }).catch((err) => {
+          console.error("Error sending realtor reply notification email to client:", err);
+        });
+      }
+    } catch (emailError) {
+      console.error("Error preparing realtor reply notification email to client:", emailError);
     }
 
     return NextResponse.json({

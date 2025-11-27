@@ -156,8 +156,8 @@ export async function POST(req: NextRequest) {
       clientChatToken, // Token para o cliente acessar o chat
       // Se o owner é REALTOR/AGENCY, atribuir automaticamente como corretor responsável
       realtorId: autoRealtorId,
-      // Se tem realtorId, já marca como ACCEPTED
-      status: autoRealtorId ? "ACCEPTED" : "NEW",
+      // Se tem realtorId, já marca como ACCEPTED; caso contrário, segue fluxo padrão PENDING
+      status: autoRealtorId ? "ACCEPTED" : "PENDING",
     },
   });
 

@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { sendEmail, getClientMessageNotificationEmail } from "@/lib/email";
+import { sendEmail, getClientMessageNotificationEmail, getRealtorReplyNotificationEmail } from "@/lib/email";
+import { sendWhatsApp } from "@/lib/sms";
 import { getPusherServer, PUSHER_EVENTS, PUSHER_CHANNELS } from "@/lib/pusher-server";
 
 const messageSchema = z.object({
@@ -181,6 +182,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       }
     }
 
+    const lastMessageBefore = await (prisma as any).leadClientMessage.findFirst({
+      where: { leadId: lead.id },
+      orderBy: { createdAt: "desc" },
+    });
+
     const message = await (prisma as any).leadClientMessage.create({
       data: {
         leadId: lead.id,
@@ -208,7 +214,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       // Não bloqueia a resposta se Pusher falhar
     }
 
-    // Enviar email de notificação para o corretor quando cliente envia mensagem
+    // Enviar email e WhatsApp de notificação para o corretor quando cliente envia mensagem
     if (fromClient && lead.realtorId) {
       try {
         // Buscar dados completos para o email
@@ -220,6 +226,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
               select: {
                 name: true,
                 email: true,
+                phone: true,
               },
             },
             contact: {
@@ -256,9 +263,86 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
             console.error("Error sending client message notification email:", err);
           });
         }
+
+        // Enviar WhatsApp apenas na "primeira" mensagem nova do cliente, para evitar spam
+        if (leadWithDetails?.realtor?.phone) {
+          try {
+            const isFirstAfterRealtor =
+              !lastMessageBefore || lastMessageBefore.fromClient === false;
+
+            if (isFirstAfterRealtor) {
+              const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+              const chatUrl = `${siteUrl}/broker/leads/${lead.id}`;
+              const preview = parsed.data.content.trim().substring(0, 120);
+
+              const body = [
+                `Novo contato no ZillowLike`,
+                `Imóvel: ${leadWithDetails.property?.title || "Imóvel"}`,
+                leadWithDetails.contact?.name ? `Cliente: ${leadWithDetails.contact.name}` : null,
+                `Mensagem: ${preview}`,
+                "",
+                `Responder pelo painel: ${chatUrl}`,
+              ]
+                .filter(Boolean)
+                .join("\n");
+
+              // Não bloqueia a resposta se o WhatsApp falhar
+              sendWhatsApp(leadWithDetails.realtor.phone, body).catch((err) => {
+                console.error("Error sending WhatsApp notification to realtor:", err);
+              });
+            }
+          } catch (whatsError) {
+            console.error("Error preparing WhatsApp notification to realtor:", whatsError);
+          }
+        }
       } catch (emailError) {
         // Não bloqueia a criação da mensagem se o email falhar
         console.error("Error preparing client message notification email:", emailError);
+      }
+    }
+
+    // Enviar email de notificação para o cliente quando profissional responde pelo chat
+    if (!fromClient) {
+      try {
+        const leadWithDetails = await prisma.lead.findUnique({
+          where: { id: lead.id },
+          select: {
+            clientChatToken: true,
+            contact: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
+            property: {
+              select: {
+                title: true,
+              },
+            },
+          },
+        });
+
+        if (leadWithDetails?.contact?.email && leadWithDetails.clientChatToken) {
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+          const chatUrl = `${siteUrl}/chat/${leadWithDetails.clientChatToken}`;
+
+          const emailData = getRealtorReplyNotificationEmail({
+            clientName: leadWithDetails.contact.name || "Cliente",
+            propertyTitle: leadWithDetails.property?.title || "Imóvel",
+            messagePreview: parsed.data.content.trim().substring(0, 200),
+            chatUrl,
+          });
+
+          sendEmail({
+            to: leadWithDetails.contact.email,
+            subject: emailData.subject,
+            html: emailData.html,
+          }).catch((err) => {
+            console.error("Error sending realtor reply notification email to client:", err);
+          });
+        }
+      } catch (emailError) {
+        console.error("Error preparing realtor reply notification email to client:", emailError);
       }
     }
 
