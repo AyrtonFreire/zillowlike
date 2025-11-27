@@ -335,16 +335,16 @@ export default function HeroSection() {
 
               {/* Mobile: barra otimizada com botão de busca */}
               <div className="sm:hidden">
-                <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-white/30 overflow-hidden">
-                  <div ref={searchRef} className="flex items-center gap-3 px-4 py-4">
-                    <MapPin className="text-teal-600 flex-shrink-0 w-5 h-5" />
+                <div className="bg-white/95 backdrop-blur rounded-xl shadow-xl border border-white/30 overflow-hidden">
+                  <div ref={searchRef} className="flex items-center gap-3 px-4 py-3">
+                    <MapPin className="text-teal-600 flex-shrink-0 w-4 h-4" />
                     <input
                       type="text"
                       placeholder="Buscar cidade ou bairro..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onFocus={() => setShowSuggestions(true)}
-                      className="flex-1 outline-none text-gray-800 placeholder:text-gray-400 text-base bg-transparent min-w-0"
+                      className="flex-1 outline-none text-gray-800 placeholder:text-gray-400 text-sm bg-transparent min-w-0"
                     />
                     {searchQuery ? (
                       <button
@@ -353,22 +353,22 @@ export default function HeroSection() {
                           setSearchQuery('');
                           setShowSuggestions(false);
                         }}
-                        className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-gray-100 transition-colors"
+                        className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition-colors"
                         aria-label="Limpar busca"
                       >
-                        <X className="w-5 h-5 text-gray-400" />
+                        <X className="w-4 h-4 text-gray-400" />
                       </button>
                     ) : (
                       <button
                         type="submit"
                         disabled={isLoading}
-                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-teal-600 hover:bg-teal-700 transition-colors disabled:opacity-60"
+                        className="flex items-center justify-center w-9 h-9 rounded-lg bg-teal-600 hover:bg-teal-700 transition-colors disabled:opacity-60"
                         aria-label="Buscar"
                       >
                         {isLoading ? (
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <Search className="w-5 h-5 text-white" />
+                          <Search className="w-4 h-4 text-white" />
                         )}
                       </button>
                     )}
