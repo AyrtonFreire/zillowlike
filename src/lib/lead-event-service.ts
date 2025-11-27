@@ -16,7 +16,9 @@ export type LeadEventTypeString =
   | "VISIT_REQUESTED"
   | "VISIT_CONFIRMED"
   | "VISIT_REJECTED"
-  | "OWNER_APPROVAL_REQUESTED";
+  | "OWNER_APPROVAL_REQUESTED"
+  | "SIMILAR_LIST_SHARED"
+  | "SIMILAR_PROPERTY_INTEREST";
 
 interface RecordLeadEventParams {
   leadId: string;

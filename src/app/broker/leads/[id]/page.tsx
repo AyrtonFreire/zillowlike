@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Phone, Mail, MapPin, Calendar, Clock, ArrowLeft, MessageCircle } from "lucide-react";
+import { Phone, Mail, MapPin, Calendar, Clock, ArrowLeft, MessageCircle, Link as LinkIcon } from "lucide-react";
 import CountdownTimer from "@/components/queue/CountdownTimer";
 import StatusIndicator from "@/components/queue/StatusIndicator";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
@@ -74,6 +74,23 @@ interface LeadMessage {
   } | null;
 }
 
+interface SimilarPropertyItem {
+  property: {
+    id: string;
+    title: string;
+    price: number | null;
+    city: string;
+    state: string;
+    neighborhood?: string | null;
+    bedrooms?: number | null;
+    bathrooms?: number | null;
+    areaM2?: number | null;
+    images: { url: string }[];
+  };
+  matchScore: number;
+  matchReasons: string[];
+}
+
 const MESSAGE_TEMPLATES = [
   {
     id: "first-contact",
@@ -135,6 +152,13 @@ export default function LeadDetailPage() {
   >("");
   const [resultSaving, setResultSaving] = useState(false);
 
+  const [similarItems, setSimilarItems] = useState<SimilarPropertyItem[]>([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
+  const [similarError, setSimilarError] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
+  const [shareGenerating, setShareGenerating] = useState(false);
+
   const leadId = (params?.id as string) || "";
   const toast = useToast();
 
@@ -143,6 +167,7 @@ export default function LeadDetailPage() {
     fetchLead();
     fetchLeadNotes();
     fetchMessages();
+    fetchSimilar();
   }, [realtorId, leadId]);
 
   useEffect(() => {
@@ -254,6 +279,34 @@ export default function LeadDetailPage() {
       setNotesError(err?.message || "Não foi possível carregar as notas deste lead.");
     } finally {
       setNotesLoading(false);
+    }
+  };
+
+  const fetchSimilar = async () => {
+    try {
+      setSimilarError(null);
+      setSimilarLoading(true);
+
+      const response = await fetch(`/api/leads/${leadId}/similar-properties?limit=6`);
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        throw new Error(
+          data?.error ||
+            "Não conseguimos carregar imóveis similares do seu estoque agora. Se quiser, tente novamente em alguns instantes."
+        );
+      }
+
+      setSimilarItems(Array.isArray(data.items) ? data.items : []);
+    } catch (err: any) {
+      console.error("Error fetching similar properties:", err);
+      setSimilarError(
+        err?.message ||
+          "Não conseguimos carregar imóveis similares do seu estoque agora. Se quiser, tente novamente em alguns instantes."
+      );
+      setSimilarItems([]);
+    } finally {
+      setSimilarLoading(false);
     }
   };
 
@@ -413,6 +466,47 @@ export default function LeadDetailPage() {
       toast.error("Erro ao salvar resultado", err?.message || "Não conseguimos salvar este resultado agora.");
     } finally {
       setResultSaving(false);
+    }
+  };
+
+  const handleGenerateSimilarLink = async () => {
+    try {
+      setShareGenerating(true);
+
+      const body: any = {};
+      if (similarItems.length > 0) {
+        body.propertyIds = similarItems.map((item) => item.property.id);
+      }
+
+      const response = await fetch(`/api/leads/${leadId}/similar-properties`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        throw new Error(
+          data?.error || "Não conseguimos gerar o link de imóveis similares agora. Tente novamente em alguns instantes."
+        );
+      }
+
+      setShareUrl(data.shareUrl || null);
+      setShareExpiresAt(data.expiresAt || null);
+
+      toast.success(
+        "Link gerado!",
+        "Você pode enviar este link para o cliente ver outros imóveis do seu estoque."
+      );
+    } catch (err: any) {
+      console.error("Error generating similar properties link:", err);
+      toast.error(
+        "Erro ao gerar link",
+        err?.message || "Não conseguimos gerar o link de imóveis similares agora. Tente novamente em alguns instantes."
+      );
+    } finally {
+      setShareGenerating(false);
     }
   };
 
@@ -1079,6 +1173,112 @@ export default function LeadDetailPage() {
                 >
                   Ver anúncio do imóvel
                 </Link>
+              </div>
+
+              {/* Imóveis similares do seu estoque */}
+              <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                <h2 className="text-sm font-semibold text-gray-900 mb-1">
+                  Imóveis similares do seu estoque
+                </h2>
+                <p className="text-xs text-gray-500 mb-3">
+                  Aqui aparecem alguns imóveis seus que se parecem com este (tipo, região e faixa de preço). Você pode usar
+                  isso como apoio na conversa ou gerar um link para o cliente ver a lista completa.
+                </p>
+
+                {similarError && (
+                  <p className="text-[11px] text-red-600 mb-2">{similarError}</p>
+                )}
+
+                {similarLoading && !similarItems.length ? (
+                  <p className="text-xs text-gray-500">Buscando imóveis do seu estoque...</p>
+                ) : similarItems.length === 0 ? (
+                  <p className="text-xs text-gray-500 mb-3">
+                    Ainda não encontramos outros imóveis seus parecidos com este. Conforme você for cadastrando mais imóveis na
+                    mesma região e faixa, eles passam a aparecer aqui.
+                  </p>
+                ) : (
+                  <div className="space-y-2 mb-3">
+                    {similarItems.map((item) => (
+                      <Link
+                        key={item.property.id}
+                        href={`/property/${item.property.id}`}
+                        className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 hover:bg-white hover:border-gray-200 transition-colors"
+                      >
+                        <div className="relative h-12 w-16 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
+                          {item.property.images?.[0]?.url && (
+                            <Image
+                              src={item.property.images[0].url}
+                              alt={item.property.title}
+                              fill
+                              className="object-cover"
+                            />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-900 truncate">
+                            {item.property.title}
+                          </p>
+                          <p className="text-[11px] text-gray-500 truncate">
+                            {item.property.neighborhood ? `${item.property.neighborhood}, ` : ""}
+                            {item.property.city}/{item.property.state}
+                          </p>
+                          <p className="text-[11px] text-gray-900 font-semibold">
+                            {typeof item.property.price === "number"
+                              ? `R$ ${(item.property.price / 100).toLocaleString("pt-BR")}`
+                              : "Preço sob consulta"}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-3 space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleGenerateSimilarLink}
+                    disabled={shareGenerating}
+                    className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {shareGenerating ? (
+                      "Gerando link..."
+                    ) : (
+                      <>
+                        <LinkIcon className="w-3.5 h-3.5" />
+                        Gerar link para enviar ao cliente
+                      </>
+                    )}
+                  </button>
+
+                  {shareUrl && (
+                    <div className="text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                      <p className="font-medium mb-1">Link gerado:</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={shareUrl}
+                          className="flex-1 px-2 py-1 rounded border border-gray-200 bg-white text-[11px] text-gray-700"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(shareUrl);
+                            toast.success("Link copiado!", "Cole onde preferir (WhatsApp, e-mail, etc.).");
+                          }}
+                          className="px-2 py-1 rounded bg-gray-900 text-white text-[11px] font-semibold"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                      {shareExpiresAt && (
+                        <p className="mt-1 text-[10px] text-gray-500">
+                          Válido até {new Date(shareExpiresAt).toLocaleDateString("pt-BR")}.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Resultado da negociação */}

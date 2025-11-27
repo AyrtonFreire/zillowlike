@@ -115,6 +115,8 @@ enum LeadEventType {
   VISIT_CONFIRMED
   VISIT_REJECTED
   OWNER_APPROVAL_REQUESTED
+  SIMILAR_LIST_SHARED
+  SIMILAR_PROPERTY_INTEREST
 }
 
 // Status do corretor na fila
@@ -528,6 +530,32 @@ model LeadEvent {
 
   @@index([leadId, createdAt])
   @@map("lead_events")
+}
+
+model LeadRecommendationList {
+  id        String   @id @default(cuid())
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId    String
+  realtor   User     @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+  realtorId String
+
+  token     String   @unique
+
+  title     String?
+  message   String?
+
+  // Lista de imóveis recomendados (em ordem)
+  propertyIds String[]
+
+  // Snapshot opcional dos filtros/critério usados para montar a lista
+  filters   Json?
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([realtorId])
+  @@index([expiresAt])
 }
 
 model LeadAssignmentLog {
