@@ -187,9 +187,8 @@ export default function HeroSection() {
   const handleSuggestionClick = (suggestion: LocationSuggestion) => {
     setSearchQuery(suggestion.label);
     setShowSuggestions(false);
-    // Mobile: iniciar busca imediatamente; Desktop: somente preencher
-    const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches;
-    if (!isMobile) return;
+    
+    // Navegar para a busca imediatamente (mobile e desktop)
     const params = new URLSearchParams();
     if (suggestion.city && suggestion.state) {
       params.set('city', suggestion.city);
@@ -197,20 +196,19 @@ export default function HeroSection() {
     } else {
       params.set('q', suggestion.label);
     }
-    // Persist last searched location from suggestion
+    
+    if (suggestion.neighborhood) {
+      params.set('neighborhood', suggestion.neighborhood);
+    }
+    
+    // Persist last searched location
     if (typeof window !== 'undefined' && suggestion.city && suggestion.state) {
       try {
         localStorage.setItem('lastCity', suggestion.city);
         localStorage.setItem('lastState', suggestion.state);
       } catch {}
     }
-    // Persist last searched location if present
-    if (typeof window !== 'undefined' && params.get('city') && params.get('state')) {
-      try {
-        localStorage.setItem('lastCity', params.get('city') as string);
-        localStorage.setItem('lastState', params.get('state') as string);
-      } catch {}
-    }
+    
     router.push(`/?${params.toString()}`);
   };
 

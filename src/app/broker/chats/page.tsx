@@ -135,7 +135,7 @@ export default function BrokerChatsPage() {
   const fetchMessages = async (leadId: string, silent = false) => {
     try {
       if (!silent) setMessagesLoading(true);
-      const response = await fetch(`/api/leads/${leadId}/messages`);
+      const response = await fetch(`/api/leads/${leadId}/client-messages`);
       const data = await response.json();
 
       if (response.ok && data.messages) {
@@ -153,7 +153,7 @@ export default function BrokerChatsPage() {
 
     try {
       setSending(true);
-      const response = await fetch(`/api/leads/${selectedChat.leadId}/messages`, {
+      const response = await fetch(`/api/leads/${selectedChat.leadId}/client-messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: newMessage.trim() }),

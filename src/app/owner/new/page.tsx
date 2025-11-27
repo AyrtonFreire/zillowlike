@@ -1888,7 +1888,6 @@ export default function NewPropertyPage() {
                       type="file"
                       accept="image/*"
                       multiple
-                      capture="environment"
                       className="hidden"
                       onChange={async (e) => {
                         if (e.target.files?.length) {
