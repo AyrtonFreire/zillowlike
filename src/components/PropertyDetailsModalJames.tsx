@@ -71,7 +71,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [thumbsPerPage, setThumbsPerPage] = useState(9);
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [photoViewMode, setPhotoViewMode] = useState<"feed" | "fullscreen" | null>(null);
   const [showThumbGrid, setShowThumbGrid] = useState(false);
   // Zoom/Pan state for lightbox
@@ -225,12 +224,12 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     if (!open) {
       setProperty(null);
       setCurrentImageIndex(0);
-      setShowAllPhotos(false);
       setPhotoViewMode(null);
       setShowMore(false);
       setError(null);
       setLoading(false);
       setContactOverlayOpen(false);
+      setShowThumbGrid(false);
     }
   }, [open]);
 
@@ -238,26 +237,31 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if (showAllPhotos) {
-        setShowAllPhotos(false);
-        setPhotoViewMode(null);
-        setContactOverlayOpen(false);
-        setShowThumbGrid(false);
+      // Se está em fullscreen, volta para feed
+      if (photoViewMode === "fullscreen") {
+        setPhotoViewMode("feed");
         return;
       }
+      // Se está em feed, volta para detalhes
+      if (photoViewMode === "feed") {
+        setPhotoViewMode(null);
+        return;
+      }
+      // Se overlay de contato está aberto, fecha
       if (contactOverlayOpen) {
         setContactOverlayOpen(false);
         return;
       }
+      // Caso contrário, fecha o modal
       onClose();
     };
     if (open) window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [open, onClose, showAllPhotos, contactOverlayOpen]);
+  }, [open, onClose, photoViewMode, contactOverlayOpen]);
 
-  // Keyboard navigation only when gallery overlay is open
+  // Keyboard navigation only when in fullscreen gallery
   useEffect(() => {
-    if (!showAllPhotos || !open) return;
+    if (photoViewMode !== "fullscreen" || !open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
         if (!property) return;
@@ -270,24 +274,24 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [showAllPhotos, open, property]);
+  }, [photoViewMode, open, property]);
 
   // Prefetch próximas imagens (usa window.Image para não conflitar com Next/Image)
   useEffect(() => {
-    if (!showAllPhotos || !property || !open) return;
+    if (photoViewMode !== "fullscreen" || !property || !open) return;
     const total = property.images.length;
     const urls = [1, 2, 3]
       .map((d) => property.images[(currentImageIndex + d) % total]?.url)
       .filter(Boolean) as string[];
     urls.forEach((src) => { try { const img = new (window as any).Image(); img.src = src; } catch {} });
-  }, [showAllPhotos, property, currentImageIndex, open]);
+  }, [photoViewMode, property, currentImageIndex, open]);
 
   // Reset zoom/pan whenever foto muda ou lightbox fecha
   useEffect(() => { 
     if (!open) return;
     setZoom(1); 
     setOffset({ x: 0, y: 0 }); 
-  }, [currentImageIndex, showAllPhotos, open]);
+  }, [currentImageIndex, photoViewMode, open]);
 
   // Definir quantidade de miniaturas por página (responsivo)
   useEffect(() => {
@@ -381,15 +385,17 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
           className="pointer-events-auto w-full md:w-[92vw] lg:w-[85vw] xl:w-[75vw] max-w-[1400px] h-full bg-white md:rounded-2xl shadow-2xl overflow-y-auto"
         >
-        {/* Header */}
+        {/* Header - muda baseado no modo de visualização */}
         <div className="sticky top-0 z-20 bg-white border-b border-teal/10">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <button
-              onClick={onClose}
+              onClick={photoViewMode === "feed" ? () => setPhotoViewMode(null) : onClose}
               className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
             >
               <ChevronLeft className="w-5 h-5" />
-              <span className="hidden sm:inline">Voltar à busca</span>
+              <span className="hidden sm:inline">
+                {photoViewMode === "feed" ? "Voltar ao anúncio" : "Voltar à busca"}
+              </span>
             </button>
             <div className="flex items-center gap-3">
               <button
@@ -410,13 +416,23 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           </div>
         </div>
 
+        {/* Conteúdo com transição animada */}
+        <AnimatePresence mode="wait">
+          {photoViewMode !== "feed" ? (
+            <motion.div
+              key="details"
+              initial={{ opacity: 0, x: 0 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25 }}
+            >
         {/* Gallery */}
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Mobile: single large image with indicators and swipe */}
           <div className="md:hidden relative rounded-xl overflow-hidden h-[380px]">
             <div
               className="absolute inset-0"
-              onClick={() => { setShowAllPhotos(true); setPhotoViewMode("feed"); }}
+              onClick={() => setPhotoViewMode("feed")}
               onTouchStart={(e) => { mobSwipeStartX.current = e.touches[0].clientX; mobSwipeDeltaX.current = 0; }}
               onTouchMove={(e) => { if (mobSwipeStartX.current == null) return; const dx = e.touches[0].clientX - mobSwipeStartX.current; mobSwipeDeltaX.current = dx; }}
               onTouchEnd={() => {
@@ -444,7 +460,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             </div>
             {/* Hints: open all, count, arrows, dots */}
             <button
-              onClick={() => { setShowAllPhotos(true); setPhotoViewMode("feed"); }}
+              onClick={() => setPhotoViewMode("feed")}
               className="absolute top-3 right-3 z-10 px-3 py-1.5 text-xs font-medium rounded-full bg-white/90 text-gray-900 shadow"
             >
               Ver todas as fotos ({property.images.length})
@@ -470,7 +486,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
           {/* Desktop: mosaic */}
           <div className="hidden md:grid grid-cols-2 gap-2 h-[500px]">
-            <div className="relative rounded-lg overflow-hidden col-span-1 cursor-pointer" onClick={() => { setShowAllPhotos(true); setPhotoViewMode("feed"); }}>
+            <div className="relative rounded-lg overflow-hidden col-span-1 cursor-pointer" onClick={() => setPhotoViewMode("feed")}>
               <Image
                 src={displayImages[0]?.url ? transformCloudinary(displayImages[0].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto") : "/placeholder.jpg"}
                 alt={property.title}
@@ -482,7 +498,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             </div>
             <div className="grid grid-cols-2 gap-2">
               {displayImages.slice(1, 5).map((img, i) => (
-                <div key={i} className="relative rounded-lg overflow-hidden cursor-pointer" onClick={() => { setShowAllPhotos(true); setPhotoViewMode("feed"); }}>
+                <div key={i} className="relative rounded-lg overflow-hidden cursor-pointer" onClick={() => setPhotoViewMode("feed")}>
                   <Image
                     src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_800,h_600,c_fill,g_auto")}
                     alt={`${property.title} ${i + 2}`}
@@ -492,7 +508,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   />
                   {i === 3 && property.images.length > 5 && (
                     <button
-                      onClick={() => { setShowAllPhotos(true); setPhotoViewMode("feed"); }}
+                      onClick={() => setPhotoViewMode("feed")}
                       className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-medium hover:bg-black/60 transition-colors"
                     >
                       <span className="flex items-center gap-2">
@@ -851,27 +867,19 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           
           {/* Seções Nearby/Similar já estão acima, após Google Maps */}
         </div>
-        </motion.div>
-      {/* Lightbox de fotos em modo feed (1 grande + 2 menores) */}
-      {showAllPhotos && photoViewMode === "feed" && property && (
-        <div className="fixed inset-0 z-[13000] bg-black/80 flex items-center justify-center" onClick={() => { setShowAllPhotos(false); setPhotoViewMode(null); }}>
-          <div
-            className="relative w-full max-w-6xl h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-              <span className="text-sm font-medium text-gray-700">Fotos do imvel</span>
-              <button
-                type="button"
-                aria-label="Fechar"
-                onClick={() => { setShowAllPhotos(false); setPhotoViewMode(null); }}
-                className="w-8 h-8 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 flex items-center justify-center"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1 flex overflow-hidden">
-              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            </motion.div>
+          ) : (
+            /* Feed de fotos (1 grande + 2 menores) com card resumo */
+            <motion.div
+              key="feed"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.25 }}
+              className="flex-1 flex flex-col md:flex-row h-[calc(100vh-64px)] md:h-auto"
+            >
+              {/* Feed de fotos à esquerda */}
+              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
                 {(() => {
                   const groups: { main: number; thumbs: number[] }[] = [];
                   const total = property.images.length;
@@ -885,7 +893,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   return groups.map((g, idx) => (
                     <div key={idx} className="space-y-2">
                       <div
-                        className="relative w-full aspect-[16/9] rounded-xl overflow-hidden cursor-pointer"
+                        className="relative w-full aspect-[16/9] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
                         onClick={() => { setCurrentImageIndex(g.main); setPhotoViewMode("fullscreen"); }}
                       >
                         <Image
@@ -901,7 +909,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                           {g.thumbs.map((ti) => (
                             <div
                               key={ti}
-                              className="relative w-full aspect-[4/3] rounded-xl overflow-hidden cursor-pointer"
+                              className="relative w-full aspect-[4/3] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
                               onClick={() => { setCurrentImageIndex(ti); setPhotoViewMode("fullscreen"); }}
                             >
                               <Image
@@ -919,53 +927,93 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   ));
                 })()}
               </div>
-              <div className="hidden md:block w-[320px] border-l border-gray-100 bg-gray-50 px-4 py-5 space-y-4">
-                <div className="space-y-1">
-                  <div className="text-sm text-gray-500">Preo</div>
-                  <div className="text-2xl font-semibold text-gray-900">
+
+              {/* Card resumo à direita (desktop) */}
+              <div className="hidden md:block w-[340px] border-l border-gray-100 bg-white px-5 py-6 space-y-5">
+                {/* Preço */}
+                <div>
+                  <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Preço</div>
+                  <div className="text-3xl font-bold text-gray-900">
                     {typeof property.price === "number" && property.price > 0
                       ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(property.price / 100)
                       : "Sob consulta"}
                   </div>
                 </div>
+
+                {/* Specs inline */}
+                <div className="flex items-center gap-3 text-sm text-gray-700">
+                  {property.bedrooms != null && (
+                    <span className="font-semibold">{property.bedrooms} <span className="font-normal text-gray-500">quartos</span></span>
+                  )}
+                  {property.bathrooms != null && (
+                    <span className="font-semibold">{property.bathrooms} <span className="font-normal text-gray-500">banheiros</span></span>
+                  )}
+                  {property.areaM2 != null && (
+                    <span className="font-semibold">{property.areaM2} <span className="font-normal text-gray-500">m²</span></span>
+                  )}
+                </div>
+
+                {/* Título e endereço */}
                 <div>
-                  <div className="text-sm font-medium text-gray-900 mb-1">{property.title}</div>
-                  <div className="text-xs text-gray-600">
-                    {property.neighborhood && `${property.neighborhood}, `}
+                  <div className="text-base font-semibold text-gray-900 mb-1">{property.title}</div>
+                  <div className="text-sm text-teal-600">
+                    {property.street && `${property.street}, `}
+                    {property.neighborhood && `${property.neighborhood}`}
+                  </div>
+                  <div className="text-sm text-gray-500">
                     {property.city}, {property.state}
                   </div>
                 </div>
+
+                {/* Botão de contato principal */}
                 <button
                   type="button"
                   onClick={() => setContactOverlayOpen(true)}
-                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
+                  className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl glass-teal text-white text-sm font-semibold shadow-md hover:shadow-lg transition-shadow"
                 >
                   Entrar em contato
                 </button>
-                <button
-                  type="button"
-                  onClick={handleFavorite}
-                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-800 hover:bg-gray-50"
-                >
-                  <Heart className={`w-4 h-4 mr-2 ${isFavorite ? "fill-teal-500 text-teal-500" : "text-gray-700"}`} />
-                  Salvar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-800 hover:bg-gray-50"
-                >
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Compartilhar
-                </button>
-                <div className="text-xs text-gray-500">
-                  {currentImageIndex + 1} de {property.images.length} fotos
+
+                {/* Botões secundários */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleFavorite}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Heart className={`w-4 h-4 ${isFavorite ? "fill-teal-500 text-teal-500" : ""}`} />
+                    Salvar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Compartilhar
+                  </button>
+                </div>
+
+                {/* Contador de fotos */}
+                <div className="text-xs text-teal-600 font-medium">
+                  {property.images.length} fotos
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+
+              {/* Botão de contato mobile (fixo no bottom) */}
+              <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-10">
+                <button
+                  type="button"
+                  onClick={() => setContactOverlayOpen(true)}
+                  className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl glass-teal text-white text-sm font-semibold"
+                >
+                  Entrar em contato
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        </motion.div>
       </div>
 
       {/* Full-screen Lightbox (no header, thumbnails below) */}
@@ -1173,7 +1221,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         </>
       )}
       {/* Grid de miniaturas em overlay */}
-      {showAllPhotos && showThumbGrid && property && (
+      {photoViewMode === "fullscreen" && showThumbGrid && property && (
         <>
           <div className="fixed inset-0 bg-black/80 z-[30010]" onClick={() => setShowThumbGrid(false)} />
           <div className="fixed inset-0 z-[30011] flex items-center justify-center p-4">
