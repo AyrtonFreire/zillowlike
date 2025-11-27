@@ -237,19 +237,14 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      // Se está em fullscreen, volta para feed
-      if (photoViewMode === "fullscreen") {
-        setPhotoViewMode("feed");
-        return;
-      }
-      // Se está em feed, volta para detalhes
-      if (photoViewMode === "feed") {
-        setPhotoViewMode(null);
-        return;
-      }
-      // Se overlay de contato está aberto, fecha
+      // Se overlay de contato está aberto, fecha primeiro
       if (contactOverlayOpen) {
         setContactOverlayOpen(false);
+        return;
+      }
+      // Se está em fullscreen ou feed, volta para detalhes
+      if (photoViewMode) {
+        setPhotoViewMode(null);
         return;
       }
       // Caso contrário, fecha o modal
@@ -427,9 +422,9 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               transition={{ duration: 0.25 }}
             >
         {/* Gallery */}
-        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Mobile: single large image with indicators and swipe */}
-          <div className="md:hidden relative rounded-xl overflow-hidden h-[380px]">
+        <div className="max-w-screen-2xl mx-auto md:px-6 lg:px-8 md:py-6">
+          {/* Mobile: single large image - full width estilo Zillow */}
+          <div className="md:hidden relative overflow-hidden aspect-[4/3]">
             <div
               className="absolute inset-0"
               onClick={() => setPhotoViewMode("feed")}
@@ -458,30 +453,40 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 priority
               />
             </div>
-            {/* Hints: open all, count, arrows, dots */}
+            {/* Botão voltar no canto superior esquerdo - estilo Zillow */}
             <button
-              onClick={() => setPhotoViewMode("feed")}
-              className="absolute top-3 right-3 z-10 px-3 py-1.5 text-xs font-medium rounded-full bg-white/90 text-gray-900 shadow"
+              onClick={onClose}
+              className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center"
             >
-              Ver todas as fotos ({property.images.length})
+              <ChevronLeft className="w-5 h-5 text-gray-800" />
             </button>
-            <div className="absolute bottom-3 inset-x-3 flex flex-col items-center gap-2">
-              <div className="px-3 py-1.5 text-[11px] font-medium rounded-full bg-black/55 text-white">
-                Foto {currentImageIndex + 1} de {property.images.length} — deslize
-              </div>
-              <div className="flex items-center gap-1.5">
-                {property.images.slice(0, 8).map((_, i) => (
-                  <span key={i} className={`h-1.5 rounded-full transition-all ${i === currentImageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/60'}`} />
-                ))}
-              </div>
+            
+            {/* Ações no canto superior direito */}
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-white rounded-full px-1 py-1 shadow-lg">
+              <button onClick={handleFavorite} className="w-8 h-8 flex items-center justify-center">
+                <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-700"}`} />
+              </button>
+              <button onClick={handleShare} className="w-8 h-8 flex items-center justify-center">
+                <Share2 className="w-5 h-5 text-gray-700" />
+              </button>
             </div>
-            {/* Subtle chevrons as hints (tap advances) */}
-            <button aria-label="Anterior" onClick={() => setCurrentImageIndex((prev) => (prev === 0 ? property.images.length - 1 : prev - 1))} className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/30 text-white flex items-center justify-center">
-              ‹
-            </button>
-            <button aria-label="Próximo" onClick={() => setCurrentImageIndex((prev) => (prev === property.images.length - 1 ? 0 : prev + 1))} className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/30 text-white flex items-center justify-center">
-              ›
-            </button>
+
+            {/* Contador no canto inferior direito */}
+            <div className="absolute bottom-4 right-4 bg-black/70 text-white text-sm font-medium px-3 py-1.5 rounded-lg">
+              {currentImageIndex + 1} de {property.images.length}
+            </div>
+
+            {/* Setas de navegação invisíveis nas laterais */}
+            <button 
+              aria-label="Anterior" 
+              onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev === 0 ? property.images.length - 1 : prev - 1)); }} 
+              className="absolute left-0 top-0 bottom-0 w-1/4 z-5"
+            />
+            <button 
+              aria-label="Próximo" 
+              onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev === property.images.length - 1 ? 0 : prev + 1)); }} 
+              className="absolute right-0 top-0 bottom-0 w-1/4 z-5"
+            />
           </div>
 
           {/* Desktop: mosaic */}
@@ -869,63 +874,106 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         </div>
             </motion.div>
           ) : (
-            /* Feed de fotos (1 grande + 2 menores) com card resumo */
+            /* Feed de fotos - Mobile: todas grandes / Desktop: 1+2 layout */
             <motion.div
               key="feed"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.25 }}
-              className="flex-1 flex flex-col md:flex-row h-[calc(100vh-64px)] md:h-auto"
+              className="flex-1 flex flex-col h-[calc(100vh-64px)]"
             >
-              {/* Feed de fotos à esquerda */}
-              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-                {(() => {
-                  const groups: { main: number; thumbs: number[] }[] = [];
-                  const total = property.images.length;
-                  for (let i = 0; i < total; i += 3) {
-                    const main = i;
-                    const thumbs: number[] = [];
-                    if (i + 1 < total) thumbs.push(i + 1);
-                    if (i + 2 < total) thumbs.push(i + 2);
-                    groups.push({ main, thumbs });
-                  }
-                  return groups.map((g, idx) => (
-                    <div key={idx} className="space-y-2">
+              {/* Header mobile estilo Zillow - apenas no feed */}
+              <div className="md:hidden sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                <button
+                  onClick={() => setPhotoViewMode(null)}
+                  className="inline-flex items-center gap-2 text-gray-800"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                  <span className="text-sm font-medium">Voltar ao anúncio</span>
+                </button>
+                <div className="flex items-center gap-3">
+                  <button onClick={handleFavorite}>
+                    <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-700"}`} />
+                  </button>
+                  <button onClick={handleShare}>
+                    <Share2 className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                {/* Feed de fotos */}
+                <div className="flex-1 overflow-y-auto">
+                  {/* Mobile: todas as fotos do mesmo tamanho, full width */}
+                  <div className="md:hidden">
+                    {property.images.map((img, i) => (
                       <div
-                        className="relative w-full aspect-[16/9] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
-                        onClick={() => { setCurrentImageIndex(g.main); setPhotoViewMode("fullscreen"); }}
+                        key={i}
+                        className="relative w-full aspect-[4/3] cursor-pointer"
+                        onClick={() => { setCurrentImageIndex(i); setPhotoViewMode("fullscreen"); }}
                       >
                         <Image
-                          src={transformCloudinary(property.images[g.main]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto")}
-                          alt={`${property.title} ${g.main + 1}`}
+                          src={transformCloudinary(img.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1440,c_fill,g_auto")}
+                          alt={`${property.title} ${i + 1}`}
                           fill
                           className="object-cover"
-                          sizes="(max-width: 1024px) 100vw, 60vw"
+                          sizes="100vw"
                         />
                       </div>
-                      {g.thumbs.length > 0 && (
-                        <div className="grid grid-cols-2 gap-2">
-                          {g.thumbs.map((ti) => (
-                            <div
-                              key={ti}
-                              className="relative w-full aspect-[4/3] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
-                              onClick={() => { setCurrentImageIndex(ti); setPhotoViewMode("fullscreen"); }}
-                            >
-                              <Image
-                                src={transformCloudinary(property.images[ti]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1200,h_900,c_fill,g_auto")}
-                                alt={`${property.title} ${ti + 1}`}
-                                fill
-                                className="object-cover"
-                                sizes="(max-width: 1024px) 50vw, 30vw"
-                              />
+                    ))}
+                  </div>
+
+                  {/* Desktop: layout 1 grande + 2 menores */}
+                  <div className="hidden md:block px-4 py-4 space-y-3">
+                    {(() => {
+                      const groups: { main: number; thumbs: number[] }[] = [];
+                      const total = property.images.length;
+                      for (let i = 0; i < total; i += 3) {
+                        const main = i;
+                        const thumbs: number[] = [];
+                        if (i + 1 < total) thumbs.push(i + 1);
+                        if (i + 2 < total) thumbs.push(i + 2);
+                        groups.push({ main, thumbs });
+                      }
+                      return groups.map((g, idx) => (
+                        <div key={idx} className="space-y-2">
+                          <div
+                            className="relative w-full aspect-[16/9] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
+                            onClick={() => { setCurrentImageIndex(g.main); setPhotoViewMode("fullscreen"); }}
+                          >
+                            <Image
+                              src={transformCloudinary(property.images[g.main]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto")}
+                              alt={`${property.title} ${g.main + 1}`}
+                              fill
+                              className="object-cover"
+                              sizes="60vw"
+                            />
+                          </div>
+                          {g.thumbs.length > 0 && (
+                            <div className="grid grid-cols-2 gap-2">
+                              {g.thumbs.map((ti) => (
+                                <div
+                                  key={ti}
+                                  className="relative w-full aspect-[4/3] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
+                                  onClick={() => { setCurrentImageIndex(ti); setPhotoViewMode("fullscreen"); }}
+                                >
+                                  <Image
+                                    src={transformCloudinary(property.images[ti]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1200,h_900,c_fill,g_auto")}
+                                    alt={`${property.title} ${ti + 1}`}
+                                    fill
+                                    className="object-cover"
+                                    sizes="30vw"
+                                  />
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ));
-                })()}
+                      ));
+                    })()}
+                  </div>
+                </div>
               </div>
 
               {/* Card resumo à direita (desktop) */}
@@ -1016,206 +1064,125 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         </motion.div>
       </div>
 
-      {/* Full-screen Lightbox (no header, thumbnails below) */}
+      {/* Full-screen Lightbox - Estilo Zillow */}
       {photoViewMode === "fullscreen" && property && (
         <>
-          {/* Backdrop above any header */}
-          <div className="fixed inset-0 bg-black/95 z-[30000]" onClick={() => { setPhotoViewMode("feed"); }} />
-          <div className="fixed inset-0 z-[30001] flex flex-col items-center justify-center select-none">
-            {/* Top bar with actions */}
-            <div className="absolute top-4 inset-x-4 flex items-center justify-between">
+          {/* Backdrop */}
+          <div className="fixed inset-0 bg-[#1a1a1a] z-[30000]" />
+          <div className="fixed inset-0 z-[30001] flex flex-col select-none">
+            {/* Header bar - estilo Zillow */}
+            <div className="bg-[#2b2b2b] h-14 flex items-center justify-between px-4 shrink-0 relative">
               <button
                 type="button"
-                onClick={() => setPhotoViewMode("feed")}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm"
+                onClick={() => setPhotoViewMode(null)}
+                className="inline-flex items-center gap-2 text-white hover:text-white/80 text-sm"
               >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Voltar às fotos</span>
+                <ChevronLeft className="w-5 h-5" />
+                <span className="hidden sm:inline">Voltar ao anúncio</span>
               </button>
-              <div className="flex items-center gap-2">
+              
+              {/* Centro - "Fotos" com underline */}
+              <div className="flex flex-col items-center">
+                <span className="text-white font-medium">Fotos</span>
+                <div className="w-12 h-0.5 bg-white/60 mt-1 rounded-full" />
+              </div>
+
+              {/* Ações à direita */}
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setContactOverlayOpen(true)}
-                  className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow"
+                  className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg glass-teal text-white text-sm font-semibold"
                 >
-                  <span>Entrar em contato</span>
+                  Entrar em contato
                 </button>
                 <button
                   type="button"
                   onClick={handleFavorite}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm"
+                  className="inline-flex items-center gap-2 text-white hover:text-white/80"
                 >
-                  <Heart className={`w-4 h-4 ${isFavorite ? "fill-teal-400 text-teal-400" : "text-white"}`} />
-                  <span className="hidden sm:inline">Salvar</span>
+                  <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
                 </button>
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm"
+                  className="hidden sm:inline-flex items-center gap-2 text-white hover:text-white/80"
                 >
-                  <Share2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Compartilhar</span>
+                  <Share2 className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Main image */}
-            <div
-              className="relative w-[92vw] max-w-6xl aspect-[16/9] bg-black/40 rounded-lg overflow-hidden touch-pan-y"
-              onWheel={(e) => {
-                // Desktop zoom com scroll
-                e.preventDefault();
-                const delta = -e.deltaY;
-                const factor = delta > 0 ? 1.08 : 0.92;
-                setZoom((z) => Math.max(1, Math.min(4, z * factor)));
-              }}
-              onMouseDown={(e) => {
-                if (zoom <= 1) return;
-                panRef.current = { down: true, x: e.clientX, y: e.clientY };
-              }}
-              onMouseMove={(e) => {
-                if (!panRef.current.down || zoom <= 1) return;
-                const dx = e.clientX - panRef.current.x;
-                const dy = e.clientY - panRef.current.y;
-                panRef.current.x = e.clientX; panRef.current.y = e.clientY;
-                setOffset((o) => ({ x: o.x + dx, y: o.y + dy }));
-              }}
-              onMouseUp={() => { panRef.current.down = false; }}
-              onMouseLeave={() => { panRef.current.down = false; }}
-              onTouchStart={(e) => {
-                if (e.touches.length === 2) {
-                  const [t1, t2] = [e.touches[0], e.touches[1]];
-                  const dx = t1.clientX - t2.clientX; const dy = t1.clientY - t2.clientY;
-                  const dist = Math.hypot(dx, dy);
-                  pinchRef.current = { active: true, startDist: dist, startZoom: zoom, cx: (t1.clientX + t2.clientX) / 2, cy: (t1.clientY + t2.clientY) / 2 };
-                } else if (e.touches.length === 1 && zoom > 1) {
-                  panRef.current = { down: true, x: e.touches[0].clientX, y: e.touches[0].clientY };
-                } else if (e.touches.length === 1 && zoom === 1) {
-                  // iniciar swipe para trocar foto
-                  lbStartX.current = e.touches[0].clientX;
-                  lbLastX.current = e.touches[0].clientX;
-                  lbMoved.current = false;
-                }
-              }}
-              onTouchMove={(e) => {
-                if (pinchRef.current.active && e.touches.length === 2) {
-                  const [t1, t2] = [e.touches[0], e.touches[1]];
-                  const dx = t1.clientX - t2.clientX; const dy = t1.clientY - t2.clientY;
-                  const dist = Math.hypot(dx, dy);
-                  const ratio = dist / Math.max(1, pinchRef.current.startDist);
-                  setZoom(() => Math.max(1, Math.min(4, pinchRef.current.startZoom * ratio)));
-                  e.preventDefault();
-                } else if (panRef.current.down && e.touches.length === 1 && zoom > 1) {
-                  const t = e.touches[0];
-                  const dx = t.clientX - panRef.current.x; const dy = t.clientY - panRef.current.y;
-                  panRef.current.x = t.clientX; panRef.current.y = t.clientY;
-                  setOffset((o) => ({ x: o.x + dx, y: o.y + dy }));
-                  e.preventDefault();
-                } else if (e.touches.length === 1 && zoom === 1 && lbStartX.current != null) {
-                  const x = e.touches[0].clientX;
-                  lbLastX.current = x;
-                  lbMoved.current = true;
-                }
-              }}
-              onTouchEnd={() => {
-                if (zoom === 1 && lbStartX.current != null && lbLastX.current != null && lbMoved.current) {
-                  const dx = lbLastX.current - lbStartX.current;
-                  const threshold = 60;
-                  if (dx <= -threshold) nextImage();
-                  else if (dx >= threshold) prevImage();
-                }
-                lbStartX.current = null; lbLastX.current = null; lbMoved.current = false;
-                pinchRef.current.active = false; panRef.current.down = false;
-              }}
-            >
-              <div className="absolute inset-0" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, transformOrigin: 'center center' }}>
+            {/* Main image area - ocupa todo o resto */}
+            <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+              {/* Setas de navegação - fora da imagem */}
+              <button
+                aria-label="Anterior"
+                onClick={prevImage}
+                className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-lg text-gray-800 flex items-center justify-center hover:bg-gray-100 z-10"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                aria-label="Próxima"
+                onClick={nextImage}
+                className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-lg text-gray-800 flex items-center justify-center hover:bg-gray-100 z-10"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+
+              {/* Container da imagem - adapta ao aspect ratio */}
+              <div
+                className="relative w-full h-full flex items-center justify-center"
+                onTouchStart={(e) => {
+                  if (e.touches.length === 1) {
+                    lbStartX.current = e.touches[0].clientX;
+                    lbLastX.current = e.touches[0].clientX;
+                    lbMoved.current = false;
+                  }
+                }}
+                onTouchMove={(e) => {
+                  if (e.touches.length === 1 && lbStartX.current != null) {
+                    lbLastX.current = e.touches[0].clientX;
+                    lbMoved.current = true;
+                  }
+                }}
+                onTouchEnd={() => {
+                  if (lbStartX.current != null && lbLastX.current != null && lbMoved.current) {
+                    const dx = lbLastX.current - lbStartX.current;
+                    const threshold = 60;
+                    if (dx <= -threshold) nextImage();
+                    else if (dx >= threshold) prevImage();
+                  }
+                  lbStartX.current = null; lbLastX.current = null; lbMoved.current = false;
+                }}
+              >
                 <Image
                   src={property!.images[currentImageIndex]?.url || "/placeholder.jpg"}
                   alt={`${property!.title} - foto ${currentImageIndex + 1}`}
                   fill
                   className="object-contain"
-                  sizes="(max-width: 1536px) 92vw, 1200px"
+                  sizes="100vw"
                   priority
                 />
+                {/* Badge contador no canto */}
+                <div className="absolute top-4 right-4 bg-black/70 text-white text-sm font-medium px-3 py-1.5 rounded-lg">
+                  {currentImageIndex + 1} de {property!.images.length}
+                </div>
               </div>
-              {/* Prev/Next */}
-              <button
-                aria-label="Anterior"
-                onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                aria-label="Próxima"
-                onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-              {/* Indicators and grid trigger */}
-              <div className="absolute top-3 left-3 text-white/90 text-sm bg-black/40 rounded-md px-2 py-1">
-                {currentImageIndex + 1} / {property!.images.length}
-              </div>
-              <button
-                aria-label="Abrir grade de miniaturas"
-                onClick={(e) => { e.stopPropagation(); setShowThumbGrid(true); }}
-                className="absolute top-3 right-3 w-9 h-9 rounded-md bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
-              >
-                …
-              </button>
             </div>
 
-            {/* Thumbnails carousel (previews of upcoming photos) */}
-            <div className="mt-4 w-[92vw] max-w-6xl">
-              {(() => {
-                const total = property!.images.length;
-                // Responsive thumbnails per page
-                // update on mount and resize
-                // note: hook-safe inline effect below
-                return (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <button
-                        aria-label="Anterior"
-                        onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((currentImageIndex - 1 + total) % total); }}
-                        className="hidden sm:flex w-9 h-9 rounded-full border border-white/20 text-white/90 hover:bg-white/10 items-center justify-center"
-                      >
-                        ‹
-                      </button>
-                      <div className="flex items-center gap-2 mx-auto">
-                        {Array.from({ length: Math.min(thumbsPerPage, total) }).map((_, idx) => {
-                          const i = (currentImageIndex + idx) % total; // upcoming sequence
-                          const img = property!.images[i];
-                          const isActive = i === currentImageIndex;
-                          return (
-                            <button
-                              key={`thumb-${i}`}
-                              onClick={() => setCurrentImageIndex(i)}
-                              className={`relative w-24 h-16 rounded-md overflow-hidden ring-2 transition-all ${isActive ? 'ring-white' : 'ring-transparent hover:ring-white/60'}`}
-                            >
-                              <Image
-                                src={img.url}
-                                alt={`thumb ${i + 1}`}
-                                fill
-                                className="object-cover"
-                                sizes="96px"
-                              />
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <button
-                        aria-label="Próximo"
-                        onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((currentImageIndex + 1) % total); }}
-                        className="hidden sm:flex w-9 h-9 rounded-full border border-white/20 text-white/90 hover:bg-white/10 items-center justify-center"
-                      >
-                        ›
-                      </button>
-                    </div>
-                  </>
-                );
-              })()}
+            {/* Info caption no rodapé - estilo Zillow */}
+            <div className="bg-[#2b2b2b] py-3 px-4 text-center shrink-0">
+              <p className="text-white/90 text-sm">
+                {property.purpose === "SALE" ? "Venda" : "Aluguel"}: {typeof property.price === "number" && property.price > 0 
+                  ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(property.price / 100)
+                  : "Sob consulta"}
+                {property.bedrooms != null && ` (${property.bedrooms} quartos`}
+                {property.bathrooms != null && `, ${property.bathrooms} banheiros`}
+                {property.areaM2 != null && `, ${property.areaM2} m²`}
+                {(property.bedrooms != null || property.bathrooms != null || property.areaM2 != null) && ")"}
+              </p>
             </div>
           </div>
         </>
