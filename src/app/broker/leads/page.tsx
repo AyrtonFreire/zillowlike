@@ -216,16 +216,18 @@ export default function MyLeadsPage() {
   useEffect(() => {
     if (!realtorId) return;
     fetchLeads();
-    // Atualiza a cada 30 segundos
-    const interval = setInterval(fetchLeads, 30000);
+    // Atualiza a cada 30 segundos em background, sem flicker visual
+    const interval = setInterval(() => fetchLeads({ isBackground: true }), 30000);
     return () => clearInterval(interval);
   }, [realtorId]);
 
-  const fetchLeads = async () => {
+  const fetchLeads = async (options?: { isBackground?: boolean }) => {
     try {
       if (!realtorId) return;
-      setError(null);
-      setLoading(true);
+      if (!options?.isBackground) {
+        setError(null);
+        setLoading(true);
+      }
       const response = await fetch("/api/leads/my-leads");
       const data = await response.json();
 
@@ -236,7 +238,21 @@ export default function MyLeadsPage() {
         );
       }
 
-      setLeads(Array.isArray(data) ? data : []);
+      const nextLeads = Array.isArray(data) ? data : [];
+
+      // Só atualiza o estado se houver mudança real para evitar animações desnecessárias
+      setLeads((prev) => {
+        try {
+          const prevJson = JSON.stringify(prev);
+          const nextJson = JSON.stringify(nextLeads);
+          if (prevJson === nextJson) {
+            return prev;
+          }
+        } catch {
+          // Se der algum erro na comparação, segue com a atualização normal
+        }
+        return nextLeads;
+      });
     } catch (err: any) {
       console.error("Error fetching leads:", err);
       setError(
@@ -244,7 +260,9 @@ export default function MyLeadsPage() {
           "Não conseguimos carregar seus leads agora. Se quiser, tente novamente em alguns instantes."
       );
     } finally {
-      setLoading(false);
+      if (!options?.isBackground) {
+        setLoading(false);
+      }
     }
   };
 
@@ -677,7 +695,7 @@ export default function MyLeadsPage() {
             </button>
           </div>
           <button
-            onClick={fetchLeads}
+            onClick={() => fetchLeads()}
             className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-colors border border-white/20"
           >
             <RefreshCw className="w-4 h-4" />
@@ -871,7 +889,7 @@ export default function MyLeadsPage() {
             description={error}
             action={
               <button
-                onClick={fetchLeads}
+                onClick={() => fetchLeads()}
                 className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
               >
                 Tentar novamente
