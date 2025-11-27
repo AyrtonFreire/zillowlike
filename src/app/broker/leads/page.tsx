@@ -985,6 +985,12 @@ export default function MyLeadsPage() {
                             <p className="text-teal-600 font-bold text-base sm:text-lg">
                               {formatPrice(lead.property.price)}
                             </p>
+                            {lead.contact?.name && (
+                              <p className="mt-0.5 text-xs text-gray-600 flex items-center gap-1 truncate">
+                                <User className="w-3 h-3" />
+                                <span className="truncate">{lead.contact.name}</span>
+                              </p>
+                            )}
                           </div>
                           {getStatusBadge(lead.status)}
                         </div>
