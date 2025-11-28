@@ -35,6 +35,8 @@ import {
   File,
   Globe,
   LockKeyhole,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 
@@ -159,6 +161,7 @@ export default function PropertyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("resumo");
   const [copied, setCopied] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   
   // Document upload states
   const [showDocForm, setShowDocForm] = useState(false);
@@ -184,6 +187,7 @@ export default function PropertyDetailPage() {
       const data = await response.json();
       if (data.success && data.property) {
         setProperty(data.property);
+        setActiveImageIndex(0);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -285,6 +289,18 @@ export default function PropertyDetailPage() {
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const showPrevImage = () => {
+    if (!property || !property.images.length) return;
+    setActiveImageIndex((prev) => (prev === 0 ? property.images.length - 1 : prev - 1));
+  };
+
+  const showNextImage = () => {
+    if (!property || !property.images.length) return;
+    setActiveImageIndex((prev) =>
+      prev === property.images.length - 1 ? 0 : prev + 1
+    );
   };
 
   const formatPrice = (price: number) => {
@@ -472,32 +488,84 @@ export default function PropertyDetailPage() {
             {/* Coluna principal */}
             <div className="lg:col-span-2 space-y-6">
               {/* Galeria de fotos */}
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="bg-white rounded-xl border border-gray-200 p-4">
                 {property.images.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
-                    {property.images.slice(0, 6).map((img, idx) => (
-                      <div
-                        key={img.id}
-                        className={`relative aspect-[4/3] ${idx === 0 ? "col-span-2 row-span-2" : ""}`}
-                      >
-                        <Image
-                          src={img.url}
-                          alt={img.alt || property.title}
-                          fill
-                          className="object-cover"
-                        />
-                        {idx === 5 && property.images.length > 6 && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                            <span className="text-white text-lg font-semibold">
-                              +{property.images.length - 6}
-                            </span>
+                  <div className="space-y-3">
+                    {/* Imagem principal */}
+                    <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden bg-gray-100">
+                      <Image
+                        src={
+                          property.images[activeImageIndex]?.url ||
+                          property.images[0].url
+                        }
+                        alt={
+                          property.images[activeImageIndex]?.alt ||
+                          property.title
+                        }
+                        fill
+                        className="object-cover"
+                      />
+                      {property.images.length > 1 && (
+                        <div className="absolute inset-0 flex items-center justify-between px-2">
+                          <button
+                            type="button"
+                            onClick={showPrevImage}
+                            className="inline-flex items-center justify-center rounded-full bg-black/50 text-white p-1.5 hover:bg-black/70 transition-colors"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={showNextImage}
+                            className="inline-flex items-center justify-center rounded-full bg-black/50 text-white p-1.5 hover:bg-black/70 transition-colors"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                      {property.images.length > 1 && (
+                        <div className="absolute bottom-2 right-3 px-2 py-1 rounded-full bg-black/60 text-white text-xs font-medium">
+                          {activeImageIndex + 1} / {property.images.length}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Miniaturas */}
+                    {property.images.length > 1 && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 overflow-x-auto">
+                          <div className="flex gap-2">
+                            {property.images.slice(0, 12).map((img, idx) => (
+                              <button
+                                key={img.id}
+                                type="button"
+                                onClick={() => setActiveImageIndex(idx)}
+                                className={`relative w-16 h-16 rounded-md overflow-hidden border flex-shrink-0 ${
+                                  idx === activeImageIndex
+                                    ? "border-teal-500 ring-2 ring-teal-400"
+                                    : "border-gray-200"
+                                }`}
+                              >
+                                <Image
+                                  src={img.url}
+                                  alt={img.alt || property.title}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </button>
+                            ))}
                           </div>
+                        </div>
+                        {property.images.length > 12 && (
+                          <span className="text-xs text-gray-500 whitespace-nowrap">
+                            +{property.images.length - 12} fotos
+                          </span>
                         )}
                       </div>
-                    ))}
+                    )}
                   </div>
                 ) : (
-                  <div className="aspect-video bg-gray-100 flex items-center justify-center">
+                  <div className="aspect-video bg-gray-100 flex items-center justify-center rounded-lg">
                     <Home className="w-12 h-12 text-gray-300" />
                   </div>
                 )}
