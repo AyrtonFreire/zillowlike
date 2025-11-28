@@ -287,7 +287,6 @@ export default async function PropertyPage({ params }: PageProps) {
             ← Voltar à busca
           </Link>
           <div className="hidden md:flex items-center gap-2">
-            <button onClick={async()=>{ try { if (navigator.share) await navigator.share({ title: property.title, url: pageUrl }); else await navigator.clipboard.writeText(pageUrl); } catch{} }} className="px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100">Compartilhar</button>
             {whatsapp && (
               <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Olá! Tenho interesse no imóvel: ${property.title} - ${pageUrl}`)}`} target="_blank" className="px-3 py-2 rounded-lg text-sm text-green-700 hover:bg-green-50">WhatsApp</a>
             )}
@@ -307,9 +306,6 @@ export default async function PropertyPage({ params }: PageProps) {
                   <GalleryCarousel images={property.images.map((i: any) => ({ url: i.url, alt: i.alt || property.title, blurDataURL: (i as any).blurDataURL }))} title={property.title} />
                   <div className="absolute top-3 right-3 flex gap-2">
                     <FavoriteButton propertyId={property.id} />
-                    <button aria-label="Compartilhar este imóvel" title="Compartilhar" onClick={async()=>{ try { if (navigator.share) await navigator.share({ title: property.title, url: pageUrl }); else await navigator.clipboard.writeText(pageUrl); } catch{} }} className="p-2 rounded-full bg-white/90 hover:bg-white shadow">
-                      <svg className="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v14"/></svg>
-                    </button>
                   </div>
                 </div>
               )}
