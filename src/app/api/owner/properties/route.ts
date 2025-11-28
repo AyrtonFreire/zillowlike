@@ -38,7 +38,6 @@ export async function GET(req: NextRequest) {
       include: {
         images: {
           orderBy: { sortOrder: "asc" },
-          take: 1, // Just the first image
         },
         _count: {
           select: {
@@ -133,10 +132,14 @@ export async function GET(req: NextRequest) {
       type: p.type,
       city: p.city,
       state: p.state,
+      street: p.street,
+      neighborhood: p.neighborhood,
       bedrooms: p.bedrooms,
       bathrooms: p.bathrooms,
       areaM2: p.areaM2,
+      description: p.description,
       image: p.images[0]?.url || null,
+      images: p.images?.map((img: any) => ({ url: img.url })) || [],
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
       stats: {
