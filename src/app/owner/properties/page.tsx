@@ -264,6 +264,7 @@ export default function OwnerPropertiesPage() {
               <PropertyCardV2
                 key={property.id}
                 id={property.id}
+                href={`/owner/properties/${property.id}`}
                 title={property.title}
                 price={property.price}
                 status={property.status}
@@ -283,7 +284,6 @@ export default function OwnerPropertiesPage() {
                 hasDescription={typeof property.description === "string" && property.description.length >= 100}
                 hasMinPhotos={Array.isArray(property.images) && property.images.length >= 5}
                 missingFields={getMissingFields(property)}
-                onStatusToggle={handleStatusToggle}
               />
             ))}
           </div>

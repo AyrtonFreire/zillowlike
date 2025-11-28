@@ -328,6 +328,7 @@ export default function BrokerPropertiesPage() {
                   <PropertyCardV2
                     key={property.id}
                     id={property.id}
+                    href={`/broker/properties/${property.id}`}
                     title={property.title}
                     price={property.price}
                     status={property.status}
