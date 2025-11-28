@@ -155,8 +155,8 @@ export default function BrokerPropertiesPage() {
                 leads={property.leads}
                 favorites={property.favorites}
                 qualityScore={75}
-                hasDescription={property.description !== null && property.description.length >= 100}
-                hasMinPhotos={property.images !== null && property.images.length >= 5}
+                hasDescription={typeof property.description === "string" && property.description.length >= 100}
+                hasMinPhotos={Array.isArray(property.images) && property.images.length >= 5}
                 missingFields={[]}
               />
             ))}

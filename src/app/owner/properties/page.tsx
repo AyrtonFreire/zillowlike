@@ -280,8 +280,8 @@ export default function OwnerPropertiesPage() {
                 leads={property.stats.leads}
                 favorites={property.stats.favorites}
                 qualityScore={calculateQualityScore(property)}
-                hasDescription={property.description !== null && property.description.length >= 100}
-                hasMinPhotos={property.images !== null && property.images.length >= 5}
+                hasDescription={typeof property.description === "string" && property.description.length >= 100}
+                hasMinPhotos={Array.isArray(property.images) && property.images.length >= 5}
                 missingFields={getMissingFields(property)}
                 onStatusToggle={handleStatusToggle}
               />
