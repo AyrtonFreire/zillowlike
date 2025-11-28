@@ -504,6 +504,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               const startT = mobSwipeStartTime.current;
               const lastT = mobSwipeLastTime.current;
               const lock = mobSwipeLock.current;
+              let handledSwipe = false;
 
               if (startX != null && lastX != null && lock === "horizontal" && property && property.images.length > 1) {
                 const dx = lastX - startX;
@@ -515,8 +516,10 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
                 if (velocity <= -velocityThreshold || dx <= -distanceThreshold) {
                   setCurrentImageIndex((prev) => (prev === total - 1 ? 0 : prev + 1));
+                  handledSwipe = true;
                 } else if (velocity >= velocityThreshold || dx >= distanceThreshold) {
                   setCurrentImageIndex((prev) => (prev === 0 ? total - 1 : prev - 1));
+                  handledSwipe = true;
                 }
               }
 
@@ -528,6 +531,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               mobSwipeLock.current = null;
               setMobIsDragging(false);
               setMobDragX(0);
+
+              // Se não foi swipe horizontal, foi um tap - abre o feed de fotos
+              if (!handledSwipe && lock !== "vertical") {
+                setPhotoViewMode("feed");
+              }
             }}
           >
             {/* Todas as imagens lado a lado - segue o dedo */}
