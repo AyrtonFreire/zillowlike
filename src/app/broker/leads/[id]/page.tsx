@@ -1226,7 +1226,6 @@ export default function LeadDetailPage() {
                             <option value="CONDICAO_FINANCEIRA">Condição financeira / crédito</option>
                             <option value="NAO_RESPONDEU">Cliente não respondeu mais</option>
                             <option value="OUTRO">Outro motivo</option>
-                          </option>
                           </select>
                         </div>
                         <div className="flex justify-end sm:justify-start">
