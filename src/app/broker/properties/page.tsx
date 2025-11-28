@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Home, Plus } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
-import PropertyListItem from "@/components/dashboard/PropertyListItem";
+import PropertyCardV2 from "@/components/dashboard/PropertyCardV2";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -14,9 +14,20 @@ interface BrokerProperty {
   title: string;
   price: number;
   status: "ACTIVE" | "PAUSED" | "DRAFT";
+  type: string;
+  city: string;
+  state: string;
+  street: string;
+  neighborhood: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  areaM2: number | null;
+  description: string | null;
   image: string | null;
+  images: Array<{ url: string }> | null;
   views: number;
   leads: number;
+  favorites: number;
   scheduledVisits: number;
   completedVisits: number;
   pendingApprovals: number;
@@ -123,26 +134,31 @@ export default function BrokerPropertiesPage() {
             />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {properties.map((property) => (
-              <Link 
-                key={property.id} 
-                href={`/broker/properties/${property.id}`}
-                className="block hover:scale-[1.01] transition-transform"
-              >
-                <PropertyListItem
-                  id={property.id}
-                  title={property.title}
-                  price={property.price}
-                  image={property.image || "/placeholder.jpg"}
-                  status={property.status}
-                  views={property.views}
-                  leads={property.leads}
-                  scheduledVisits={property.scheduledVisits}
-                  completedVisits={property.completedVisits}
-                  pendingApprovals={property.pendingApprovals}
-                />
-              </Link>
+              <PropertyCardV2
+                key={property.id}
+                id={property.id}
+                title={property.title}
+                price={property.price}
+                status={property.status}
+                image={property.image}
+                street={property.street}
+                neighborhood={property.neighborhood}
+                city={property.city}
+                state={property.state}
+                bedrooms={property.bedrooms}
+                bathrooms={property.bathrooms}
+                areaM2={property.areaM2}
+                type={property.type}
+                views={property.views}
+                leads={property.leads}
+                favorites={property.favorites}
+                qualityScore={75}
+                hasDescription={property.description !== null && property.description.length >= 100}
+                hasMinPhotos={property.images !== null && property.images.length >= 5}
+                missingFields={[]}
+              />
             ))}
           </div>
         )}

@@ -4,22 +4,9 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import {
-  Home,
-  Eye,
-  Heart,
-  MessageSquare,
-  Edit2,
-  Trash2,
-  Plus,
-  AlertCircle,
-  CheckCircle,
-  Pause,
-  Play,
-  Search,
-} from "lucide-react";
+import { Home, Plus, Search } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PropertyCardV2 from "@/components/dashboard/PropertyCardV2";
 
 type PropertyStatus = "ACTIVE" | "PAUSED" | "DRAFT";
 
@@ -31,10 +18,14 @@ interface Property {
   type: string;
   city: string;
   state: string;
+  street: string;
+  neighborhood: string | null;
   bedrooms: number | null;
   bathrooms: number | null;
   areaM2: number | null;
   image: string | null;
+  description: string | null;
+  images: Array<{ url: string }> | null;
   createdAt: string;
   stats: {
     views: number;
@@ -59,7 +50,7 @@ export default function OwnerPropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [statusLoading, setStatusLoading] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("ALL");
   const [search, setSearch] = useState("");
 
@@ -88,29 +79,10 @@ export default function OwnerPropertiesPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (deleteConfirm !== id) {
-      setDeleteConfirm(id);
-      setTimeout(() => setDeleteConfirm(null), 3000);
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/owner/properties/${id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        setProperties(prev => prev.filter(p => p.id !== id));
-        setDeleteConfirm(null);
-      }
-    } catch (error) {
-      console.error("Error deleting:", error);
-    }
-  };
 
   const handleStatusToggle = async (id: string, currentStatus: PropertyStatus) => {
     const newStatus = currentStatus === "ACTIVE" ? "PAUSED" : "ACTIVE";
+    setStatusLoading(id);
     
     try {
       const response = await fetch(`/api/owner/properties/${id}`, {
@@ -126,7 +98,32 @@ export default function OwnerPropertiesPage() {
       }
     } catch (error) {
       console.error("Error updating status:", error);
+    } finally {
+      setStatusLoading(null);
     }
+  };
+
+  const calculateQualityScore = (property: Property): number => {
+    let score = 0;
+    const checks = [
+      property.images && property.images.length >= 5,
+      property.description && property.description.length >= 100,
+      property.bedrooms !== null,
+      property.bathrooms !== null,
+      property.areaM2 !== null,
+      property.neighborhood !== null,
+    ];
+    score = (checks.filter(Boolean).length / checks.length) * 100;
+    return Math.round(score);
+  };
+
+  const getMissingFields = (property: Property): string[] => {
+    const missing: string[] = [];
+    if (!property.neighborhood) missing.push("Preencher bairro");
+    if (!property.bedrooms) missing.push("Adicionar n° de quartos");
+    if (!property.bathrooms) missing.push("Adicionar n° de banheiros");
+    if (!property.areaM2) missing.push("Informar área em m²");
+    return missing;
   };
 
   const filteredProperties = properties.filter(p => {
@@ -137,30 +134,6 @@ export default function OwnerPropertiesPage() {
     return matchesFilter && matchesSearch;
   });
 
-  const formatPrice = (cents: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(cents / 100);
-  };
-
-  const getStatusBadge = (status: PropertyStatus) => {
-    const styles = {
-      ACTIVE: "bg-green-100 text-green-800",
-      PAUSED: "bg-yellow-100 text-yellow-800",
-      DRAFT: "bg-gray-100 text-gray-800",
-    };
-    const labels = {
-      ACTIVE: "Ativo",
-      PAUSED: "Pausado",
-      DRAFT: "Rascunho",
-    };
-    return (
-      <span className={`px-3 py-1 rounded-full text-xs font-medium ${styles[status]}`}>
-        {labels[status]}
-      </span>
-    );
-  };
 
   if (loading) {
     return (
@@ -183,7 +156,7 @@ export default function OwnerPropertiesPage() {
   return (
     <DashboardLayout
       title="Meus Imóveis"
-      description={`${metrics?.totalProperties || 0} anúncios publicados`}
+      description="Gerencie seu portfólio de anúncios e acompanhe o desempenho de cada imóvel"
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Proprietário", href: "/owner/dashboard" },
@@ -200,38 +173,27 @@ export default function OwnerPropertiesPage() {
       }
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-600 text-sm font-medium">Total</span>
-              <Home className="w-5 h-5 text-blue-600" />
+        {/* Summary Bar */}
+        <div className="bg-gradient-to-r from-teal-600 to-teal-500 rounded-2xl p-6 mb-8 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold mb-1">{metrics?.totalProperties || 0}</h2>
+              <p className="text-teal-100">Imóveis no seu portfólio</p>
             </div>
-            <div className="text-3xl font-bold text-gray-900">{metrics?.totalProperties || 0}</div>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-600 text-sm font-medium">Visualizações</span>
-              <Eye className="w-5 h-5 text-green-600" />
+            <div className="grid grid-cols-3 gap-6 text-center">
+              <div>
+                <div className="text-2xl font-bold">{metrics?.totalViews || 0}</div>
+                <div className="text-xs text-teal-100">Visualizações</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{metrics?.totalLeads || 0}</div>
+                <div className="text-xs text-teal-100">Leads</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{metrics?.totalFavorites || 0}</div>
+                <div className="text-xs text-teal-100">Favoritos</div>
+              </div>
             </div>
-            <div className="text-3xl font-bold text-gray-900">{metrics?.totalViews || 0}</div>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-600 text-sm font-medium">Leads</span>
-              <MessageSquare className="w-5 h-5 text-purple-600" />
-            </div>
-            <div className="text-3xl font-bold text-gray-900">{metrics?.totalLeads || 0}</div>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-600 text-sm font-medium">Favoritos</span>
-              <Heart className="w-5 h-5 text-red-600" />
-            </div>
-            <div className="text-3xl font-bold text-gray-900">{metrics?.totalFavorites || 0}</div>
           </div>
         </div>
 
@@ -274,7 +236,7 @@ export default function OwnerPropertiesPage() {
           </div>
         </div>
 
-        {/* Properties List */}
+        {/* Properties Grid */}
         {filteredProperties.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
             <Home className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -297,113 +259,32 @@ export default function OwnerPropertiesPage() {
             )}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredProperties.map((property) => (
-              <div
+              <PropertyCardV2
                 key={property.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex gap-6">
-                  {/* Image */}
-                  <div className="w-48 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                    {property.image ? (
-                      <Image
-                        src={property.image}
-                        alt={property.title}
-                        width={192}
-                        height={128}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        <Home className="w-12 h-12" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                          {property.title}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {property.city}, {property.state}
-                        </p>
-                      </div>
-                      {getStatusBadge(property.status)}
-                    </div>
-
-                    <div className="text-2xl font-bold text-blue-600 mb-3">
-                      {formatPrice(property.price)}
-                    </div>
-
-                    {/* Stats */}
-                    <div className="flex items-center gap-6 text-sm text-gray-600 mb-4">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-4 h-4" />
-                        <span>{property.stats.views} views</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <MessageSquare className="w-4 h-4" />
-                        <span>{property.stats.leads} leads</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-4 h-4" />
-                        <span>{property.stats.favorites} favoritos</span>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/owner/properties/${property.id}`}
-                        className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors text-sm font-medium"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Ver detalhes
-                      </Link>
-                      <Link
-                        href={`/owner/properties/edit/${property.id}`}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        Editar
-                      </Link>
-
-                      <button
-                        onClick={() => handleStatusToggle(property.id, property.status)}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
-                      >
-                        {property.status === "ACTIVE" ? (
-                          <>
-                            <Pause className="w-4 h-4" />
-                            Pausar
-                          </>
-                        ) : (
-                          <>
-                            <Play className="w-4 h-4" />
-                            Ativar
-                          </>
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => handleDelete(property.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
-                          deleteConfirm === property.id
-                            ? "bg-red-600 hover:bg-red-700 text-white"
-                            : "bg-gray-100 hover:bg-red-50 text-red-600"
-                        }`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        {deleteConfirm === property.id ? "Confirmar?" : "Excluir"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                id={property.id}
+                title={property.title}
+                price={property.price}
+                status={property.status}
+                image={property.image}
+                street={property.street}
+                neighborhood={property.neighborhood}
+                city={property.city}
+                state={property.state}
+                bedrooms={property.bedrooms}
+                bathrooms={property.bathrooms}
+                areaM2={property.areaM2}
+                type={property.type}
+                views={property.stats.views}
+                leads={property.stats.leads}
+                favorites={property.stats.favorites}
+                qualityScore={calculateQualityScore(property)}
+                hasDescription={property.description !== null && property.description.length >= 100}
+                hasMinPhotos={property.images !== null && property.images.length >= 5}
+                missingFields={getMissingFields(property)}
+                onStatusToggle={handleStatusToggle}
+              />
             ))}
           </div>
         )}
