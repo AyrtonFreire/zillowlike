@@ -41,6 +41,7 @@ interface PropertyCardV2Props {
   hasMinPhotos?: boolean;
   missingFields?: string[];
   onStatusToggle?: (id: string, currentStatus: "ACTIVE" | "PAUSED" | "DRAFT") => void;
+  expandedByDefault?: boolean;
 }
 
 export default function PropertyCardV2({
@@ -65,8 +66,10 @@ export default function PropertyCardV2({
   hasMinPhotos = true,
   missingFields = [],
   onStatusToggle,
+  expandedByDefault = false,
 }: PropertyCardV2Props) {
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(expandedByDefault);
 
   const formatPrice = (cents: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -170,7 +173,7 @@ export default function PropertyCardV2({
         </div>
 
         {/* Property Details */}
-        <div className="flex items-center gap-4 text-sm text-gray-600 mb-4 pb-4 border-b border-gray-100">
+        <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
           {type && (
             <span className="font-medium text-gray-700">{type}</span>
           )}
@@ -193,98 +196,123 @@ export default function PropertyCardV2({
             </div>
           )}
         </div>
-
-        {/* Metrics */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          <div className="text-center p-2 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
-              <Eye className="w-3.5 h-3.5" />
-              <span>Views</span>
-            </div>
-            <div className="text-lg font-bold text-gray-900">{views}</div>
-          </div>
-          <div className="text-center p-2 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
-              <Users className="w-3.5 h-3.5" />
-              <span>Leads</span>
-            </div>
-            <div className="text-lg font-bold text-gray-900">{leads}</div>
-          </div>
-          {favorites !== undefined && (
-            <div className="text-center p-2 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
-                <BarChart3 className="w-3.5 h-3.5" />
-                <span>Favoritos</span>
-              </div>
-              <div className="text-lg font-bold text-gray-900">{favorites}</div>
-            </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setExpanded((prev) => !prev);
+          }}
+          className="text-xs font-medium text-teal-700 hover:text-teal-800 flex items-center gap-1 mb-2"
+        >
+          {expanded ? (
+            <>
+              <span>Recolher</span>
+              <span>▲</span>
+            </>
+          ) : (
+            <>
+              <span>Ver desempenho e opções</span>
+              <span>▼</span>
+            </>
           )}
-        </div>
+        </button>
 
-        {/* Quality Warnings */}
-        {(missingFields.length > 0 || !hasDescription || !hasMinPhotos) && (
-          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-xs font-medium text-yellow-800 mb-1">
-              ⚠️ Melhore seu anúncio:
-            </p>
-            <ul className="text-xs text-yellow-700 space-y-0.5">
-              {!hasMinPhotos && <li>• Adicione mais fotos (mínimo 5)</li>}
-              {!hasDescription && <li>• Escreva uma descrição completa</li>}
-              {missingFields.slice(0, 2).map((field, idx) => (
-                <li key={idx}>• {field}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {expanded && (
+          <>
+            {/* Metrics */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="text-center p-2 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Views</span>
+                </div>
+                <div className="text-lg font-bold text-gray-900">{views}</div>
+              </div>
+              <div className="text-center p-2 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Leads</span>
+                </div>
+                <div className="text-lg font-bold text-gray-900">{leads}</div>
+              </div>
+              {favorites !== undefined && (
+                <div className="text-center p-2 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    <span>Favoritos</span>
+                  </div>
+                  <div className="text-lg font-bold text-gray-900">{favorites}</div>
+                </div>
+              )}
+            </div>
 
-        {/* Actions */}
-        <div className="grid grid-cols-2 gap-2">
-          <Link
-            href={`/owner/properties/edit/${id}`}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition-colors text-sm font-medium"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Edit2 className="w-4 h-4" />
-            Editar
-          </Link>
-          
-          <button
-            onClick={handleStatusToggle}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors text-sm font-medium"
-          >
-            {status === "ACTIVE" ? (
-              <>
-                <Pause className="w-4 h-4" />
-                Pausar
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                Ativar
-              </>
+            {/* Quality Warnings */}
+            {(missingFields.length > 0 || !hasDescription || !hasMinPhotos) && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-xs font-medium text-yellow-800 mb-1">
+                  ⚠️ Melhore seu anúncio:
+                </p>
+                <ul className="text-xs text-yellow-700 space-y-0.5">
+                  {!hasMinPhotos && <li>• Adicione mais fotos (mínimo 5)</li>}
+                  {!hasDescription && <li>• Escreva uma descrição completa</li>}
+                  {missingFields.slice(0, 2).map((field, idx) => (
+                    <li key={idx}>• {field}</li>
+                  ))}
+                </ul>
+              </div>
             )}
-          </button>
 
-          <Link
-            href={`/owner/properties/${id}#leads`}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl transition-colors text-sm font-medium"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Users className="w-4 h-4" />
-            Ver Leads
-          </Link>
+            {/* Actions */}
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href={`/owner/properties/edit/${id}`}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition-colors text-sm font-medium"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Edit2 className="w-4 h-4" />
+                Editar
+              </Link>
+              
+              <button
+                onClick={handleStatusToggle}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors text-sm font-medium"
+              >
+                {status === "ACTIVE" ? (
+                  <>
+                    <Pause className="w-4 h-4" />
+                    Pausar
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Ativar
+                  </>
+                )}
+              </button>
 
-          <Link
-            href={`/property/${id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl transition-colors text-sm font-medium"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ExternalLink className="w-4 h-4" />
-            Ver anúncio
-          </Link>
-        </div>
+              <Link
+                href={`/owner/properties/${id}#leads`}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl transition-colors text-sm font-medium"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Users className="w-4 h-4" />
+                Ver Leads
+              </Link>
+
+              <Link
+                href={`/property/${id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl transition-colors text-sm font-medium"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className="w-4 h-4" />
+                Ver anúncio
+              </Link>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
