@@ -86,11 +86,20 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [poiLoading, setPoiLoading] = useState(false);
   // Lightbox touch resistance state
   const lbStartX = useRef<number | null>(null);
+  const lbStartY = useRef<number | null>(null);
+  const lbStartTime = useRef<number | null>(null);
   const lbLastX = useRef<number | null>(null);
+  const lbLastTime = useRef<number | null>(null);
   const lbMoved = useRef(false);
-  const [lbDragOffset, setLbDragOffset] = useState(0);
+  const lbLock = useRef<null | "horizontal" | "vertical">(null);
   // Mobile inline gallery swipe state (outside lightbox)
   const mobSwipeStartX = useRef<number | null>(null);
+  const mobSwipeStartY = useRef<number | null>(null);
+  const mobSwipeStartTime = useRef<number | null>(null);
+  const mobSwipeLastX = useRef<number | null>(null);
+  const mobSwipeLastTime = useRef<number | null>(null);
+  const mobSwipeMoved = useRef(false);
+  const mobSwipeLock = useRef<null | "horizontal" | "vertical">(null);
   const mobSwipeDeltaX = useRef(0);
 
   const poiCategories = useMemo(() => ([
@@ -428,20 +437,96 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           <div className="md:hidden relative overflow-hidden aspect-[4/3]">
             <div
               className="absolute inset-0"
-              onClick={() => setPhotoViewMode("feed")}
-              onTouchStart={(e) => { mobSwipeStartX.current = e.touches[0].clientX; mobSwipeDeltaX.current = 0; }}
-              onTouchMove={(e) => { if (mobSwipeStartX.current == null) return; const dx = e.touches[0].clientX - mobSwipeStartX.current; mobSwipeDeltaX.current = dx; }}
-              onTouchEnd={() => {
-                const threshold = 40;
-                const total = property.images.length;
-                const dx = mobSwipeDeltaX.current || 0;
-                mobSwipeStartX.current = null; mobSwipeDeltaX.current = 0;
-                if (Math.abs(dx) > threshold) {
-                  if (dx < 0) {
-                    setCurrentImageIndex((prev) => (prev === total - 1 ? 0 : prev + 1));
-                  } else {
-                    setCurrentImageIndex((prev) => (prev === 0 ? total - 1 : prev - 1));
+              onTouchStart={(e) => {
+                if (!property || e.touches.length !== 1) return;
+                const t = e.touches[0];
+                const now = performance.now();
+                mobSwipeStartX.current = t.clientX;
+                mobSwipeStartY.current = t.clientY;
+                mobSwipeStartTime.current = now;
+                mobSwipeLastX.current = t.clientX;
+                mobSwipeLastTime.current = now;
+                mobSwipeDeltaX.current = 0;
+                mobSwipeMoved.current = false;
+                mobSwipeLock.current = null;
+              }}
+              onTouchMove={(e) => {
+                if (mobSwipeStartX.current == null || mobSwipeStartY.current == null || !property) return;
+                const t = e.touches[0];
+                const currentX = t.clientX;
+                const currentY = t.clientY;
+                const now = performance.now();
+                mobSwipeLastX.current = currentX;
+                mobSwipeLastTime.current = now;
+
+                const dxTotal = currentX - mobSwipeStartX.current;
+                const dyTotal = currentY - mobSwipeStartY.current;
+
+                if (!mobSwipeLock.current) {
+                  const dx0 = Math.abs(dxTotal);
+                  const dy0 = Math.abs(dyTotal);
+                  const intentionThreshold = 8;
+                  if (dx0 < intentionThreshold && dy0 < intentionThreshold) {
+                    return;
                   }
+                  mobSwipeLock.current = dx0 > dy0 ? "horizontal" : "vertical";
+                }
+
+                if (mobSwipeLock.current === "vertical") {
+                  // deixa o scroll vertical passar
+                  return;
+                }
+
+                mobSwipeMoved.current = true;
+                mobSwipeDeltaX.current = dxTotal;
+                e.preventDefault();
+              }}
+              onTouchEnd={() => {
+                const startX = mobSwipeStartX.current;
+                const lastX = mobSwipeLastX.current;
+                const startT = mobSwipeStartTime.current;
+                const lastT = mobSwipeLastTime.current;
+                const lock = mobSwipeLock.current;
+                let handledSwipe = false;
+
+                if (
+                  startX != null &&
+                  lastX != null &&
+                  lock === "horizontal" &&
+                  mobSwipeMoved.current &&
+                  property &&
+                  property.images.length > 0
+                ) {
+                  const dx = lastX - startX;
+                  const dt = Math.max(1, (lastT ?? performance.now()) - (startT ?? performance.now()));
+                  const velocity = dx / dt; // px/ms
+                  const width = typeof window !== "undefined" ? window.innerWidth || 320 : 320;
+                  const distanceThreshold = Math.max(50, width * 0.15);
+                  const velocityThreshold = 0.5;
+                  const total = property.images.length;
+
+                  if (velocity <= -velocityThreshold || dx <= -distanceThreshold) {
+                    setCurrentImageIndex((prev) => (prev === total - 1 ? 0 : prev + 1));
+                    handledSwipe = true;
+                  } else if (velocity >= velocityThreshold || dx >= distanceThreshold) {
+                    setCurrentImageIndex((prev) => (prev === 0 ? total - 1 : prev - 1));
+                    handledSwipe = true;
+                  }
+                }
+
+                // Reset refs
+                mobSwipeStartX.current = null;
+                mobSwipeStartY.current = null;
+                mobSwipeStartTime.current = null;
+                mobSwipeLastX.current = null;
+                mobSwipeLastTime.current = null;
+                mobSwipeMoved.current = false;
+                mobSwipeLock.current = null;
+                mobSwipeDeltaX.current = 0;
+
+                // Se não foi swipe horizontal, tratamos como tap para abrir o feed de fotos
+                if (!handledSwipe) {
+                  setPhotoViewMode("feed");
                 }
               }}
             >
@@ -1142,26 +1227,79 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               <div
                 className="relative w-full h-full flex items-center justify-center"
                 onTouchStart={(e) => {
-                  if (e.touches.length === 1) {
-                    lbStartX.current = e.touches[0].clientX;
-                    lbLastX.current = e.touches[0].clientX;
-                    lbMoved.current = false;
-                  }
+                  if (e.touches.length !== 1) return;
+                  const t = e.touches[0];
+                  const now = performance.now();
+                  lbStartX.current = t.clientX;
+                  lbStartY.current = t.clientY;
+                  lbStartTime.current = now;
+                  lbLastX.current = t.clientX;
+                  lbLastTime.current = now;
+                  lbMoved.current = false;
+                  lbLock.current = null;
                 }}
                 onTouchMove={(e) => {
-                  if (e.touches.length === 1 && lbStartX.current != null) {
-                    lbLastX.current = e.touches[0].clientX;
-                    lbMoved.current = true;
+                  if (!property || e.touches.length !== 1 || lbStartX.current == null || lbStartY.current == null) return;
+                  const t = e.touches[0];
+                  const currentX = t.clientX;
+                  const currentY = t.clientY;
+                  const now = performance.now();
+                  lbLastX.current = currentX;
+                  lbLastTime.current = now;
+
+                  const dxTotal = currentX - lbStartX.current;
+                  const dyTotal = currentY - lbStartY.current;
+
+                  if (!lbLock.current) {
+                    const dx0 = Math.abs(dxTotal);
+                    const dy0 = Math.abs(dyTotal);
+                    const intentionThreshold = 8;
+                    if (dx0 < intentionThreshold && dy0 < intentionThreshold) return;
+                    lbLock.current = dx0 > dy0 ? "horizontal" : "vertical";
                   }
+
+                  if (lbLock.current === "vertical") {
+                    return; // deixar scroll vertical livre (se existir)
+                  }
+
+                  lbMoved.current = true;
+                  e.preventDefault();
                 }}
                 onTouchEnd={() => {
-                  if (lbStartX.current != null && lbLastX.current != null && lbMoved.current) {
-                    const dx = lbLastX.current - lbStartX.current;
-                    const threshold = 60;
-                    if (dx <= -threshold) nextImage();
-                    else if (dx >= threshold) prevImage();
+                  const startX = lbStartX.current;
+                  const lastX = lbLastX.current;
+                  const startT = lbStartTime.current;
+                  const lastT = lbLastTime.current;
+                  const lock = lbLock.current;
+
+                  if (
+                    property &&
+                    startX != null &&
+                    lastX != null &&
+                    lock === "horizontal" &&
+                    lbMoved.current
+                  ) {
+                    const dx = lastX - startX;
+                    const dt = Math.max(1, (lastT ?? performance.now()) - (startT ?? performance.now()));
+                    const velocity = dx / dt; // px/ms
+                    const width = typeof window !== "undefined" ? window.innerWidth || 320 : 320;
+                    const distanceThreshold = Math.max(50, width * 0.15);
+                    const velocityThreshold = 0.5;
+
+                    if (velocity <= -velocityThreshold || dx <= -distanceThreshold) {
+                      nextImage();
+                    } else if (velocity >= velocityThreshold || dx >= distanceThreshold) {
+                      prevImage();
+                    }
                   }
-                  lbStartX.current = null; lbLastX.current = null; lbMoved.current = false;
+
+                  lbStartX.current = null;
+                  lbStartY.current = null;
+                  lbStartTime.current = null;
+                  lbLastX.current = null;
+                  lbLastTime.current = null;
+                  lbMoved.current = false;
+                  lbLock.current = null;
                 }}
               >
                 <Image

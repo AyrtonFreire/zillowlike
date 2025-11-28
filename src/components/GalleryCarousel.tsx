@@ -8,6 +8,14 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [index, setIndex] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
+  // Swipe state para fullscreen
+  const fsStartX = useRef<number | null>(null);
+  const fsStartY = useRef<number | null>(null);
+  const fsStartT = useRef<number | null>(null);
+  const fsLastX = useRef<number | null>(null);
+  const fsLastT = useRef<number | null>(null);
+  const fsLock = useRef<null | "h" | "v">(null);
+  const fsMoved = useRef(false);
 
   const transformCloudinary = (url: string, transformation: string) => {
     try {
@@ -133,7 +141,82 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
             </svg>
           </button>
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative w-[92vw] h-[82vh]">
+            <div
+              className="relative w-[92vw] h-[82vh]"
+              onTouchStart={(e) => {
+                if (e.touches.length !== 1) return;
+                const t = e.touches[0];
+                const now = performance.now();
+                fsStartX.current = t.clientX;
+                fsStartY.current = t.clientY;
+                fsStartT.current = now;
+                fsLastX.current = t.clientX;
+                fsLastT.current = now;
+                fsLock.current = null;
+                fsMoved.current = false;
+              }}
+              onTouchMove={(e) => {
+                if (e.touches.length !== 1 || fsStartX.current == null || fsStartY.current == null) return;
+                const t = e.touches[0];
+                const cx = t.clientX;
+                const cy = t.clientY;
+                const now = performance.now();
+                fsLastX.current = cx;
+                fsLastT.current = now;
+
+                const dxTotal = cx - fsStartX.current;
+                const dyTotal = cy - fsStartY.current;
+
+                if (!fsLock.current) {
+                  const dx0 = Math.abs(dxTotal);
+                  const dy0 = Math.abs(dyTotal);
+                  const thr = 8;
+                  if (dx0 < thr && dy0 < thr) return;
+                  fsLock.current = dx0 > dy0 ? "h" : "v";
+                }
+
+                if (fsLock.current === "v") return; // deixa o scroll vertical
+
+                fsMoved.current = true;
+                e.preventDefault();
+              }}
+              onTouchEnd={() => {
+                const sx = fsStartX.current;
+                const lx = fsLastX.current;
+                const st = fsStartT.current;
+                const lt = fsLastT.current;
+                const lock = fsLock.current;
+
+                if (
+                  sx != null &&
+                  lx != null &&
+                  lock === "h" &&
+                  fsMoved.current &&
+                  images.length > 1
+                ) {
+                  const dx = lx - sx;
+                  const dt = Math.max(1, (lt ?? performance.now()) - (st ?? performance.now()));
+                  const velocity = dx / dt; // px/ms
+                  const width = typeof window !== "undefined" ? window.innerWidth || 320 : 320;
+                  const dThr = Math.max(50, width * 0.15);
+                  const vThr = 0.5;
+
+                  if (velocity <= -vThr || dx <= -dThr) {
+                    setIndex((i) => Math.min(images.length - 1, i + 1));
+                  } else if (velocity >= vThr || dx >= dThr) {
+                    setIndex((i) => Math.max(0, i - 1));
+                  }
+                }
+
+                fsStartX.current = null;
+                fsStartY.current = null;
+                fsStartT.current = null;
+                fsLastX.current = null;
+                fsLastT.current = null;
+                fsLock.current = null;
+                fsMoved.current = false;
+              }}
+            >
               {current && (
                 <Image src={current.url} alt={current.alt || title} fill sizes="100vw" className="object-contain" priority />
               )}
