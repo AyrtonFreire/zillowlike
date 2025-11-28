@@ -128,6 +128,28 @@ const DOCUMENT_CATEGORIES: Record<string, string> = {
   OTHER: "Outros",
 };
 
+const calculateQualityScore = (property: PropertyData): number => {
+  const checks = [
+    property.images.length >= 5,
+    property.description && property.description.length >= 100,
+    property.bedrooms !== null,
+    property.bathrooms !== null,
+    property.areaM2 !== null,
+    property.neighborhood !== null,
+  ];
+  const score = (checks.filter(Boolean).length / checks.length) * 100;
+  return Math.round(score);
+};
+
+const getMissingFields = (property: PropertyData): string[] => {
+  const missing: string[] = [];
+  if (!property.neighborhood) missing.push("Preencher bairro");
+  if (!property.bedrooms) missing.push("Adicionar n° de quartos");
+  if (!property.bathrooms) missing.push("Adicionar n° de banheiros");
+  if (!property.areaM2) missing.push("Informar área em m²");
+  return missing;
+};
+
 export default function PropertyDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -312,6 +334,18 @@ export default function PropertyDetailPage() {
     );
   }
 
+  const qualityScore = calculateQualityScore(property);
+  const missingFields = getMissingFields(property);
+  const hasDescriptionQuality = !!(property.description && property.description.length >= 100);
+  const hasMinPhotosQuality = property.images.length >= 5;
+
+  let qualityLabel = "Precisa de atenção";
+  if (qualityScore >= 80) {
+    qualityLabel = "Excelente";
+  } else if (qualityScore >= 60) {
+    qualityLabel = "Bom, mas pode melhorar";
+  }
+
   return (
     <DashboardLayout
       title={property.title}
@@ -364,6 +398,49 @@ export default function PropertyDetailPage() {
               Editar
             </Link>
           </div>
+        </div>
+      </div>
+
+      {/* Resumo rápido de desempenho e qualidade */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+            <Eye className="w-4 h-4 text-gray-500" />
+            Visualizações
+          </p>
+          <p className="text-2xl font-bold text-gray-900">{property._count?.views ?? 0}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+            <Users className="w-4 h-4 text-gray-500" />
+            Leads
+          </p>
+          <p className="text-2xl font-bold text-gray-900">{property._count?.leads ?? leads.length}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+            <Home className="w-4 h-4 text-gray-500" />
+            Favoritos
+          </p>
+          <p className="text-2xl font-bold text-gray-900">{property._count?.favorites ?? 0}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-xs font-semibold text-gray-600 mb-1">Qualidade do anúncio</p>
+          <p className="text-xl font-bold text-gray-900 mb-1">{qualityScore}%</p>
+          <p className="text-[11px] text-gray-500 mb-2">{qualityLabel}</p>
+          {missingFields.length > 0 || !hasDescriptionQuality || !hasMinPhotosQuality ? (
+            <ul className="text-[11px] text-yellow-700 space-y-0.5">
+              {!hasMinPhotosQuality && <li>• Adicione mais fotos (mínimo 5)</li>}
+              {!hasDescriptionQuality && <li>• Escreva uma descrição mais completa</li>}
+              {missingFields.slice(0, 2).map((field, idx) => (
+                <li key={idx}>• {field}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11px] text-green-700">
+              Anúncio bem otimizado. Boas chances de atrair interessados.
+            </p>
+          )}
         </div>
       </div>
 

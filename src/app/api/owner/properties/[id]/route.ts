@@ -26,6 +26,13 @@ export async function GET(req: NextRequest, context: RouteContext) {
       where: { id },
       include: {
         images: { orderBy: { sortOrder: "asc" } },
+        _count: {
+          select: {
+            favorites: true,
+            leads: true,
+            views: true,
+          },
+        },
       },
     });
 
@@ -160,7 +167,16 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     // Fetch complete updated property
     const result = await prisma.property.findUnique({
       where: { id },
-      include: { images: { orderBy: { sortOrder: "asc" } } },
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        _count: {
+          select: {
+            favorites: true,
+            leads: true,
+            views: true,
+          },
+        },
+      },
     });
 
     return NextResponse.json({ success: true, property: result });
