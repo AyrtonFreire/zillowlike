@@ -2,20 +2,24 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 
 type Img = { url: string; alt?: string; blurDataURL?: string };
 export default function GalleryCarousel({ images, title }: { images: Img[]; title: string }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [index, setIndex] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
-  // Swipe state para fullscreen
+  // Fullscreen swipe state - IGUAL AO CARD
+  const fsContainerRef = useRef<HTMLDivElement>(null);
+  const [fsContainerW, setFsContainerW] = useState(0);
+  const [fsIsDragging, setFsIsDragging] = useState(false);
+  const [fsDragX, setFsDragX] = useState(0);
   const fsStartX = useRef<number | null>(null);
   const fsStartY = useRef<number | null>(null);
   const fsStartT = useRef<number | null>(null);
   const fsLastX = useRef<number | null>(null);
   const fsLastT = useRef<number | null>(null);
   const fsLock = useRef<null | "h" | "v">(null);
-  const fsMoved = useRef(false);
 
   const transformCloudinary = (url: string, transformation: string) => {
     try {
@@ -127,13 +131,13 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
         </div>
       )}
 
-      {/* Fullscreen viewer */}
+      {/* Fullscreen viewer - swipeable IGUAL AO CARD */}
       {fullscreen && (
         <div className="fixed inset-0 z-50">
           <button aria-label="Fechar" className="absolute inset-0 bg-black/80" onClick={() => setFullscreen(false)} />
           <button
             aria-label="Fechar"
-            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/70 text-white hover:bg-black/80"
+            className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/70 text-white hover:bg-black/80"
             onClick={() => setFullscreen(false)}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -142,9 +146,12 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
           </button>
           <div className="absolute inset-0 flex items-center justify-center">
             <div
-              className="relative w-[92vw] h-[82vh]"
+              ref={fsContainerRef}
+              className="relative w-[92vw] h-[82vh] overflow-hidden"
+              style={{ touchAction: 'pan-y' }}
               onTouchStart={(e) => {
                 if (e.touches.length !== 1) return;
+                setFsContainerW(fsContainerRef.current?.clientWidth || window.innerWidth * 0.92);
                 const t = e.touches[0];
                 const now = performance.now();
                 fsStartX.current = t.clientX;
@@ -153,7 +160,8 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                 fsLastX.current = t.clientX;
                 fsLastT.current = now;
                 fsLock.current = null;
-                fsMoved.current = false;
+                setFsIsDragging(true);
+                setFsDragX(0);
               }}
               onTouchMove={(e) => {
                 if (e.touches.length !== 1 || fsStartX.current == null || fsStartY.current == null) return;
@@ -175,9 +183,16 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                   fsLock.current = dx0 > dy0 ? "h" : "v";
                 }
 
-                if (fsLock.current === "v") return; // deixa o scroll vertical
+                if (fsLock.current === "v") return;
 
-                fsMoved.current = true;
+                // Rubber-band nas bordas
+                let dx = dxTotal;
+                const atFirst = index === 0;
+                const atLast = index === images.length - 1;
+                if ((atFirst && dx > 0) || (atLast && dx < 0)) {
+                  dx = dx * 0.35;
+                }
+                setFsDragX(dx);
                 e.preventDefault();
               }}
               onTouchEnd={() => {
@@ -187,18 +202,11 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                 const lt = fsLastT.current;
                 const lock = fsLock.current;
 
-                if (
-                  sx != null &&
-                  lx != null &&
-                  lock === "h" &&
-                  fsMoved.current &&
-                  images.length > 1
-                ) {
+                if (sx != null && lx != null && lock === "h" && images.length > 1) {
                   const dx = lx - sx;
                   const dt = Math.max(1, (lt ?? performance.now()) - (st ?? performance.now()));
-                  const velocity = dx / dt; // px/ms
-                  const width = typeof window !== "undefined" ? window.innerWidth || 320 : 320;
-                  const dThr = Math.max(50, width * 0.15);
+                  const velocity = dx / dt;
+                  const dThr = Math.max(50, fsContainerW * 0.15);
                   const vThr = 0.5;
 
                   if (velocity <= -vThr || dx <= -dThr) {
@@ -214,19 +222,39 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                 fsLastX.current = null;
                 fsLastT.current = null;
                 fsLock.current = null;
-                fsMoved.current = false;
+                setFsIsDragging(false);
+                setFsDragX(0);
               }}
             >
-              {current && (
-                <Image src={current.url} alt={current.alt || title} fill sizes="100vw" className="object-contain" priority />
-              )}
-              <button aria-label="Anterior" className="absolute left-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/90 hover:bg-white shadow" onClick={(e)=>{e.stopPropagation(); setIndex((i) => Math.max(0, i - 1));}}>
+              {/* Todas as imagens lado a lado - segue o dedo */}
+              <motion.div
+                animate={{ x: fsIsDragging ? -index * fsContainerW + fsDragX : -index * fsContainerW }}
+                transition={fsIsDragging ? { type: 'tween', duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+                className="flex h-full items-center"
+                style={{ width: `${images.length * 100}%` }}
+              >
+                {images.map((img, i) => (
+                  <div key={i} className="relative h-full flex items-center justify-center" style={{ width: `${100 / images.length}%` }}>
+                    <Image
+                      src={img.url}
+                      alt={img.alt || title}
+                      fill
+                      sizes="100vw"
+                      className="object-contain"
+                      priority={i === index}
+                    />
+                  </div>
+                ))}
+              </motion.div>
+
+              {/* Setas de navegação */}
+              <button aria-label="Anterior" className="absolute left-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/90 hover:bg-white shadow z-10" onClick={(e)=>{e.stopPropagation(); setIndex((i) => Math.max(0, i - 1));}}>
                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
               </button>
-              <button aria-label="Próxima" className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/90 hover:bg-white shadow" onClick={(e)=>{e.stopPropagation(); setIndex((i) => Math.min(images.length - 1, i + 1));}}>
+              <button aria-label="Próxima" className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/90 hover:bg-white shadow z-10" onClick={(e)=>{e.stopPropagation(); setIndex((i) => Math.min(images.length - 1, i + 1));}}>
                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
               </button>
-              <div className="absolute bottom-4 inset-x-0 flex justify-center">
+              <div className="absolute bottom-4 inset-x-0 flex justify-center z-10">
                 <span className="px-3 py-1 rounded-full bg-black/60 text-xs text-white font-medium">
                   {index + 1} / {images.length}
                 </span>

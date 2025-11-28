@@ -92,15 +92,29 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const lbLastTime = useRef<number | null>(null);
   const lbMoved = useRef(false);
   const lbLock = useRef<null | "horizontal" | "vertical">(null);
-  // Mobile inline gallery swipe state (outside lightbox)
+  // Mobile inline gallery swipe state (outside lightbox) - IGUAL AO CARD
+  const mobContainerRef = useRef<HTMLDivElement>(null);
+  const [mobContainerW, setMobContainerW] = useState(0);
+  const [mobIsDragging, setMobIsDragging] = useState(false);
+  const [mobDragX, setMobDragX] = useState(0);
   const mobSwipeStartX = useRef<number | null>(null);
   const mobSwipeStartY = useRef<number | null>(null);
   const mobSwipeStartTime = useRef<number | null>(null);
   const mobSwipeLastX = useRef<number | null>(null);
   const mobSwipeLastTime = useRef<number | null>(null);
-  const mobSwipeMoved = useRef(false);
   const mobSwipeLock = useRef<null | "horizontal" | "vertical">(null);
-  const mobSwipeDeltaX = useRef(0);
+  
+  // Fullscreen gallery swipe state - IGUAL AO CARD
+  const fsContainerRef = useRef<HTMLDivElement>(null);
+  const [fsContainerW, setFsContainerW] = useState(0);
+  const [fsIsDragging, setFsIsDragging] = useState(false);
+  const [fsDragX, setFsDragX] = useState(0);
+  const fsSwipeStartX = useRef<number | null>(null);
+  const fsSwipeStartY = useRef<number | null>(null);
+  const fsSwipeStartTime = useRef<number | null>(null);
+  const fsSwipeLastX = useRef<number | null>(null);
+  const fsSwipeLastTime = useRef<number | null>(null);
+  const fsSwipeLock = useRef<null | "horizontal" | "vertical">(null);
 
   const poiCategories = useMemo(() => ([
     { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools },
@@ -433,112 +447,110 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             >
         {/* Gallery */}
         <div className="max-w-screen-2xl mx-auto md:px-6 lg:px-8 md:py-6">
-          {/* Mobile: single large image - full width estilo Zillow */}
-          <div className="md:hidden relative overflow-hidden aspect-[4/3]">
-            <div
-              className="absolute inset-0"
-              onTouchStart={(e) => {
-                if (!property || e.touches.length !== 1) return;
-                const t = e.touches[0];
-                const now = performance.now();
-                mobSwipeStartX.current = t.clientX;
-                mobSwipeStartY.current = t.clientY;
-                mobSwipeStartTime.current = now;
-                mobSwipeLastX.current = t.clientX;
-                mobSwipeLastTime.current = now;
-                mobSwipeDeltaX.current = 0;
-                mobSwipeMoved.current = false;
-                mobSwipeLock.current = null;
-              }}
-              onTouchMove={(e) => {
-                if (mobSwipeStartX.current == null || mobSwipeStartY.current == null || !property) return;
-                const t = e.touches[0];
-                const currentX = t.clientX;
-                const currentY = t.clientY;
-                const now = performance.now();
-                mobSwipeLastX.current = currentX;
-                mobSwipeLastTime.current = now;
+          {/* Mobile: swipeable gallery - IGUAL AO CARD */}
+          <div
+            ref={mobContainerRef}
+            className="md:hidden relative overflow-hidden aspect-[4/3]"
+            style={{ touchAction: 'pan-y' }}
+            onTouchStart={(e) => {
+              if (!property || e.touches.length !== 1) return;
+              setMobContainerW(mobContainerRef.current?.clientWidth || 0);
+              const t = e.touches[0];
+              const now = performance.now();
+              mobSwipeStartX.current = t.clientX;
+              mobSwipeStartY.current = t.clientY;
+              mobSwipeStartTime.current = now;
+              mobSwipeLastX.current = t.clientX;
+              mobSwipeLastTime.current = now;
+              mobSwipeLock.current = null;
+              setMobIsDragging(true);
+              setMobDragX(0);
+            }}
+            onTouchMove={(e) => {
+              if (mobSwipeStartX.current == null || mobSwipeStartY.current == null || !property) return;
+              const t = e.touches[0];
+              const currentX = t.clientX;
+              const currentY = t.clientY;
+              const now = performance.now();
+              mobSwipeLastX.current = currentX;
+              mobSwipeLastTime.current = now;
 
-                const dxTotal = currentX - mobSwipeStartX.current;
-                const dyTotal = currentY - mobSwipeStartY.current;
+              const dxTotal = currentX - mobSwipeStartX.current;
+              const dyTotal = currentY - mobSwipeStartY.current;
 
-                if (!mobSwipeLock.current) {
-                  const dx0 = Math.abs(dxTotal);
-                  const dy0 = Math.abs(dyTotal);
-                  const intentionThreshold = 8;
-                  if (dx0 < intentionThreshold && dy0 < intentionThreshold) {
-                    return;
-                  }
-                  mobSwipeLock.current = dx0 > dy0 ? "horizontal" : "vertical";
+              if (!mobSwipeLock.current) {
+                const dx0 = Math.abs(dxTotal);
+                const dy0 = Math.abs(dyTotal);
+                const intentionThreshold = 8;
+                if (dx0 < intentionThreshold && dy0 < intentionThreshold) return;
+                mobSwipeLock.current = dx0 > dy0 ? "horizontal" : "vertical";
+              }
+
+              if (mobSwipeLock.current === "vertical") return;
+
+              // Rubber-band nas bordas
+              let dx = dxTotal;
+              const atFirst = currentImageIndex === 0;
+              const atLast = currentImageIndex === property.images.length - 1;
+              if ((atFirst && dx > 0) || (atLast && dx < 0)) {
+                dx = dx * 0.35;
+              }
+              setMobDragX(dx);
+              e.preventDefault();
+            }}
+            onTouchEnd={() => {
+              const startX = mobSwipeStartX.current;
+              const lastX = mobSwipeLastX.current;
+              const startT = mobSwipeStartTime.current;
+              const lastT = mobSwipeLastTime.current;
+              const lock = mobSwipeLock.current;
+
+              if (startX != null && lastX != null && lock === "horizontal" && property && property.images.length > 1) {
+                const dx = lastX - startX;
+                const dt = Math.max(1, (lastT ?? performance.now()) - (startT ?? performance.now()));
+                const velocity = dx / dt;
+                const distanceThreshold = Math.max(50, mobContainerW * 0.15);
+                const velocityThreshold = 0.5;
+                const total = property.images.length;
+
+                if (velocity <= -velocityThreshold || dx <= -distanceThreshold) {
+                  setCurrentImageIndex((prev) => (prev === total - 1 ? 0 : prev + 1));
+                } else if (velocity >= velocityThreshold || dx >= distanceThreshold) {
+                  setCurrentImageIndex((prev) => (prev === 0 ? total - 1 : prev - 1));
                 }
+              }
 
-                if (mobSwipeLock.current === "vertical") {
-                  // deixa o scroll vertical passar
-                  return;
-                }
-
-                mobSwipeMoved.current = true;
-                mobSwipeDeltaX.current = dxTotal;
-                e.preventDefault();
-              }}
-              onTouchEnd={() => {
-                const startX = mobSwipeStartX.current;
-                const lastX = mobSwipeLastX.current;
-                const startT = mobSwipeStartTime.current;
-                const lastT = mobSwipeLastTime.current;
-                const lock = mobSwipeLock.current;
-                let handledSwipe = false;
-
-                if (
-                  startX != null &&
-                  lastX != null &&
-                  lock === "horizontal" &&
-                  mobSwipeMoved.current &&
-                  property &&
-                  property.images.length > 0
-                ) {
-                  const dx = lastX - startX;
-                  const dt = Math.max(1, (lastT ?? performance.now()) - (startT ?? performance.now()));
-                  const velocity = dx / dt; // px/ms
-                  const width = typeof window !== "undefined" ? window.innerWidth || 320 : 320;
-                  const distanceThreshold = Math.max(50, width * 0.15);
-                  const velocityThreshold = 0.5;
-                  const total = property.images.length;
-
-                  if (velocity <= -velocityThreshold || dx <= -distanceThreshold) {
-                    setCurrentImageIndex((prev) => (prev === total - 1 ? 0 : prev + 1));
-                    handledSwipe = true;
-                  } else if (velocity >= velocityThreshold || dx >= distanceThreshold) {
-                    setCurrentImageIndex((prev) => (prev === 0 ? total - 1 : prev - 1));
-                    handledSwipe = true;
-                  }
-                }
-
-                // Reset refs
-                mobSwipeStartX.current = null;
-                mobSwipeStartY.current = null;
-                mobSwipeStartTime.current = null;
-                mobSwipeLastX.current = null;
-                mobSwipeLastTime.current = null;
-                mobSwipeMoved.current = false;
-                mobSwipeLock.current = null;
-                mobSwipeDeltaX.current = 0;
-
-                // Se não foi swipe horizontal, tratamos como tap para abrir o feed de fotos
-                if (!handledSwipe) {
-                  setPhotoViewMode("feed");
-                }
-              }}
+              mobSwipeStartX.current = null;
+              mobSwipeStartY.current = null;
+              mobSwipeStartTime.current = null;
+              mobSwipeLastX.current = null;
+              mobSwipeLastTime.current = null;
+              mobSwipeLock.current = null;
+              setMobIsDragging(false);
+              setMobDragX(0);
+            }}
+          >
+            {/* Todas as imagens lado a lado - segue o dedo */}
+            <motion.div
+              animate={{ x: mobIsDragging ? -currentImageIndex * mobContainerW + mobDragX : -currentImageIndex * mobContainerW }}
+              transition={mobIsDragging ? { type: 'tween', duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+              className="flex h-full"
+              style={{ width: `${property.images.length * 100}%` }}
             >
-              <Image
-                src={transformCloudinary(property.images[currentImageIndex]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto")}
-                alt={`${property.title} ${currentImageIndex + 1}`}
-                fill
-                className="object-cover"
-                sizes="100vw"
-                priority
-              />
-            </div>
+              {property.images.map((img, i) => (
+                <div key={i} className="relative h-full" style={{ width: `${100 / property.images.length}%` }}>
+                  <Image
+                    src={transformCloudinary(img.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto")}
+                    alt={`${property.title} ${i + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="100vw"
+                    priority={i === 0}
+                  />
+                </div>
+              ))}
+            </motion.div>
+
             {/* Botão voltar no canto superior esquerdo - estilo Zillow */}
             <button
               onClick={onClose}
@@ -562,17 +574,18 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               {currentImageIndex + 1} de {property.images.length}
             </div>
 
-            {/* Setas de navegação invisíveis nas laterais */}
-            <button 
-              aria-label="Anterior" 
-              onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev === 0 ? property.images.length - 1 : prev - 1)); }} 
-              className="absolute left-0 top-0 bottom-0 w-1/4 z-5"
-            />
-            <button 
-              aria-label="Próximo" 
-              onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev === property.images.length - 1 ? 0 : prev + 1)); }} 
-              className="absolute right-0 top-0 bottom-0 w-1/4 z-5"
-            />
+            {/* Dots indicadores */}
+            {property.images.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                {property.images.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(i); }}
+                    className={`h-2 rounded-full transition-all ${i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Desktop: mosaic */}
@@ -1205,8 +1218,89 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               </div>
             </div>
 
-            {/* Main image area - ocupa todo o resto */}
-            <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+            {/* Main image area - swipeable IGUAL AO CARD */}
+            <div
+              ref={fsContainerRef}
+              className="flex-1 relative overflow-hidden"
+              style={{ touchAction: 'pan-y' }}
+              onTouchStart={(e) => {
+                if (!property || e.touches.length !== 1) return;
+                setFsContainerW(fsContainerRef.current?.clientWidth || window.innerWidth);
+                const t = e.touches[0];
+                const now = performance.now();
+                fsSwipeStartX.current = t.clientX;
+                fsSwipeStartY.current = t.clientY;
+                fsSwipeStartTime.current = now;
+                fsSwipeLastX.current = t.clientX;
+                fsSwipeLastTime.current = now;
+                fsSwipeLock.current = null;
+                setFsIsDragging(true);
+                setFsDragX(0);
+              }}
+              onTouchMove={(e) => {
+                if (fsSwipeStartX.current == null || fsSwipeStartY.current == null || !property) return;
+                const t = e.touches[0];
+                const currentX = t.clientX;
+                const currentY = t.clientY;
+                const now = performance.now();
+                fsSwipeLastX.current = currentX;
+                fsSwipeLastTime.current = now;
+
+                const dxTotal = currentX - fsSwipeStartX.current;
+                const dyTotal = currentY - fsSwipeStartY.current;
+
+                if (!fsSwipeLock.current) {
+                  const dx0 = Math.abs(dxTotal);
+                  const dy0 = Math.abs(dyTotal);
+                  const intentionThreshold = 8;
+                  if (dx0 < intentionThreshold && dy0 < intentionThreshold) return;
+                  fsSwipeLock.current = dx0 > dy0 ? "horizontal" : "vertical";
+                }
+
+                if (fsSwipeLock.current === "vertical") return;
+
+                // Rubber-band nas bordas
+                let dx = dxTotal;
+                const atFirst = currentImageIndex === 0;
+                const atLast = currentImageIndex === property.images.length - 1;
+                if ((atFirst && dx > 0) || (atLast && dx < 0)) {
+                  dx = dx * 0.35;
+                }
+                setFsDragX(dx);
+                e.preventDefault();
+              }}
+              onTouchEnd={() => {
+                const startX = fsSwipeStartX.current;
+                const lastX = fsSwipeLastX.current;
+                const startT = fsSwipeStartTime.current;
+                const lastT = fsSwipeLastTime.current;
+                const lock = fsSwipeLock.current;
+
+                if (startX != null && lastX != null && lock === "horizontal" && property && property.images.length > 1) {
+                  const dx = lastX - startX;
+                  const dt = Math.max(1, (lastT ?? performance.now()) - (startT ?? performance.now()));
+                  const velocity = dx / dt;
+                  const distanceThreshold = Math.max(50, fsContainerW * 0.15);
+                  const velocityThreshold = 0.5;
+                  const total = property.images.length;
+
+                  if (velocity <= -velocityThreshold || dx <= -distanceThreshold) {
+                    setCurrentImageIndex((prev) => Math.min(total - 1, prev + 1));
+                  } else if (velocity >= velocityThreshold || dx >= distanceThreshold) {
+                    setCurrentImageIndex((prev) => Math.max(0, prev - 1));
+                  }
+                }
+
+                fsSwipeStartX.current = null;
+                fsSwipeStartY.current = null;
+                fsSwipeStartTime.current = null;
+                fsSwipeLastX.current = null;
+                fsSwipeLastTime.current = null;
+                fsSwipeLock.current = null;
+                setFsIsDragging(false);
+                setFsDragX(0);
+              }}
+            >
               {/* Setas de navegação - fora da imagem */}
               <button
                 aria-label="Anterior"
@@ -1223,97 +1317,30 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 <ChevronRight className="w-6 h-6" />
               </button>
 
-              {/* Container da imagem - adapta ao aspect ratio */}
-              <div
-                className="relative w-full h-full flex items-center justify-center"
-                onTouchStart={(e) => {
-                  if (e.touches.length !== 1) return;
-                  const t = e.touches[0];
-                  const now = performance.now();
-                  lbStartX.current = t.clientX;
-                  lbStartY.current = t.clientY;
-                  lbStartTime.current = now;
-                  lbLastX.current = t.clientX;
-                  lbLastTime.current = now;
-                  lbMoved.current = false;
-                  lbLock.current = null;
-                }}
-                onTouchMove={(e) => {
-                  if (!property || e.touches.length !== 1 || lbStartX.current == null || lbStartY.current == null) return;
-                  const t = e.touches[0];
-                  const currentX = t.clientX;
-                  const currentY = t.clientY;
-                  const now = performance.now();
-                  lbLastX.current = currentX;
-                  lbLastTime.current = now;
-
-                  const dxTotal = currentX - lbStartX.current;
-                  const dyTotal = currentY - lbStartY.current;
-
-                  if (!lbLock.current) {
-                    const dx0 = Math.abs(dxTotal);
-                    const dy0 = Math.abs(dyTotal);
-                    const intentionThreshold = 8;
-                    if (dx0 < intentionThreshold && dy0 < intentionThreshold) return;
-                    lbLock.current = dx0 > dy0 ? "horizontal" : "vertical";
-                  }
-
-                  if (lbLock.current === "vertical") {
-                    return; // deixar scroll vertical livre (se existir)
-                  }
-
-                  lbMoved.current = true;
-                  e.preventDefault();
-                }}
-                onTouchEnd={() => {
-                  const startX = lbStartX.current;
-                  const lastX = lbLastX.current;
-                  const startT = lbStartTime.current;
-                  const lastT = lbLastTime.current;
-                  const lock = lbLock.current;
-
-                  if (
-                    property &&
-                    startX != null &&
-                    lastX != null &&
-                    lock === "horizontal" &&
-                    lbMoved.current
-                  ) {
-                    const dx = lastX - startX;
-                    const dt = Math.max(1, (lastT ?? performance.now()) - (startT ?? performance.now()));
-                    const velocity = dx / dt; // px/ms
-                    const width = typeof window !== "undefined" ? window.innerWidth || 320 : 320;
-                    const distanceThreshold = Math.max(50, width * 0.15);
-                    const velocityThreshold = 0.5;
-
-                    if (velocity <= -velocityThreshold || dx <= -distanceThreshold) {
-                      nextImage();
-                    } else if (velocity >= velocityThreshold || dx >= distanceThreshold) {
-                      prevImage();
-                    }
-                  }
-
-                  lbStartX.current = null;
-                  lbStartY.current = null;
-                  lbStartTime.current = null;
-                  lbLastX.current = null;
-                  lbLastTime.current = null;
-                  lbMoved.current = false;
-                  lbLock.current = null;
-                }}
+              {/* Todas as imagens lado a lado - segue o dedo */}
+              <motion.div
+                animate={{ x: fsIsDragging ? -currentImageIndex * fsContainerW + fsDragX : -currentImageIndex * fsContainerW }}
+                transition={fsIsDragging ? { type: 'tween', duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+                className="flex h-full items-center"
+                style={{ width: `${property.images.length * 100}%` }}
               >
-                <Image
-                  src={property!.images[currentImageIndex]?.url || "/placeholder.jpg"}
-                  alt={`${property!.title} - foto ${currentImageIndex + 1}`}
-                  fill
-                  className="object-contain"
-                  sizes="100vw"
-                  priority
-                />
-                {/* Badge contador no canto */}
-                <div className="absolute top-4 right-4 bg-black/70 text-white text-sm font-medium px-3 py-1.5 rounded-lg">
-                  {currentImageIndex + 1} de {property!.images.length}
-                </div>
+                {property.images.map((img, i) => (
+                  <div key={i} className="relative h-full flex items-center justify-center" style={{ width: `${100 / property.images.length}%` }}>
+                    <Image
+                      src={img.url || "/placeholder.jpg"}
+                      alt={`${property.title} - foto ${i + 1}`}
+                      fill
+                      className="object-contain"
+                      sizes="100vw"
+                      priority={i === currentImageIndex}
+                    />
+                  </div>
+                ))}
+              </motion.div>
+
+              {/* Badge contador no canto */}
+              <div className="absolute top-4 right-4 bg-black/70 text-white text-sm font-medium px-3 py-1.5 rounded-lg z-10">
+                {currentImageIndex + 1} de {property.images.length}
               </div>
             </div>
 
