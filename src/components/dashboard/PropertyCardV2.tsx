@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { Home, MapPin, Bed, Bath, Maximize } from "lucide-react";
 
@@ -85,7 +84,7 @@ export default function PropertyCardV2({
   };
 
   return (
-    <Link href={href} className="block group">
+    <a href={href} className="block group">
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all">
         {/* Image Section */}
         <div className="relative aspect-[16/10] bg-gray-100 overflow-hidden">
@@ -156,6 +155,6 @@ export default function PropertyCardV2({
           </div>
         </div>
       </div>
-    </Link>
+    </a>
   );
 }
