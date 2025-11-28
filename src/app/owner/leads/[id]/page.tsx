@@ -104,12 +104,10 @@ export default function OwnerLeadChatPage() {
       const channel = pusher.subscribe(channelName);
 
       const handler = (data: { leadId: string; message: LeadMessage }) => {
-        if (!data?.message || cancelled) return;
-
+        if (cancelled) return;
+        if (data.leadId !== leadId) return;
         setMessages((prev) => {
-          if (prev.some((m) => m.id === data.message.id)) {
-            return prev;
-          }
+          if (prev.some((m) => m.id === data.message.id)) return prev;
           return [...prev, data.message];
         });
       };

@@ -211,7 +211,7 @@ export default async function PropertyPage({ params }: PageProps) {
         id: { not: property.id },
         latitude: { gte: lat - latDelta, lte: lat + latDelta },
         longitude: { gte: lng - lngDelta, lte: lng + lngDelta },
-        status: { in: ["ACTIVE", "PUBLISHED"] as any },
+        status: { in: ["ACTIVE"] },
       },
       select: {
         id: true,
@@ -234,7 +234,7 @@ export default async function PropertyPage({ params }: PageProps) {
       .slice(0, 6);
   } else {
     const candidates = await prisma.property.findMany({
-      where: { id: { not: property.id }, city: property.city, state: property.state, status: { in: ["ACTIVE", "PUBLISHED"] as any } },
+      where: { id: { not: property.id }, city: property.city, state: property.state, status: { in: ["ACTIVE"] } },
       select: { id: true, title: true, price: true, city: true, state: true, latitude: true, longitude: true, images: { take: 1, orderBy: { sortOrder: "asc" }, select: { url: true } } },
       take: 6,
     });

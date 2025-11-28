@@ -162,7 +162,10 @@ export default function BrokerChatsPage() {
       const data = await response.json();
 
       if (response.ok && data.message) {
-        setMessages((prev) => [...prev, data.message]);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === data.message.id)) return prev;
+          return [...prev, data.message];
+        });
         setNewMessage("");
         inputRef.current?.focus();
       }

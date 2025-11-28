@@ -197,20 +197,36 @@ export default function ClientChatPage() {
         if (!data.fromClient) {
           setIsTyping(false);
         }
-        
-        // Só adiciona se não for mensagem do próprio cliente (já foi adicionada localmente)
-        if (!data.fromClient) {
-          setMessages((prev) => {
-            // Evita duplicatas
-            if (prev.some((m) => m.id === data.id)) return prev;
-            return [...prev, {
+
+        setMessages((prev) => {
+          // Se já temos uma mensagem com esse ID, não faz nada
+          if (prev.some((m) => m.id === data.id)) return prev;
+
+          // Se veio do cliente, pode ser a mesma mensagem que acabamos de colocar como temp-*
+          if (data.fromClient) {
+            const tempIndex = prev.findIndex((m) => m.id.startsWith("temp-") && m.content === data.content);
+            if (tempIndex !== -1) {
+              const clone = [...prev];
+              clone[tempIndex] = {
+                ...clone[tempIndex],
+                id: data.id,
+                createdAt: data.createdAt,
+              };
+              return clone;
+            }
+          }
+
+          // Caso geral: apenas adiciona ao final, evitando duplicatas
+          return [
+            ...prev,
+            {
               id: data.id,
               fromClient: data.fromClient,
               content: data.content,
               createdAt: data.createdAt,
-            }];
-          });
-        }
+            },
+          ];
+        });
       });
 
       // Ouvir indicador de digitando do corretor

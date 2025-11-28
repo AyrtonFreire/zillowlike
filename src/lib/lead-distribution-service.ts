@@ -106,36 +106,35 @@ export class LeadDistributionService {
         data: updateData,
       });
 
-      // Atualiza estatísticas
-      await tx.realtorStats.update({
+      // Atualiza estatísticas (garante criação se ainda não existir)
+      const stats = await tx.realtorStats.upsert({
         where: { realtorId },
-        data: {
+        create: {
+          realtorId,
+          leadsAccepted: 1,
+          totalResponseTime: responseTime,
+          lastLeadAcceptedAt: new Date(),
+        },
+        update: {
           leadsAccepted: { increment: 1 },
           totalResponseTime: { increment: responseTime },
           lastLeadAcceptedAt: new Date(),
         },
       });
 
-      // Calcula nova média de tempo de resposta
-      const stats = await tx.realtorStats.findUnique({
+      const avgResponseTime = Math.round(
+        stats.totalResponseTime / Math.max(1, stats.leadsAccepted)
+      );
+
+      await tx.realtorStats.update({
         where: { realtorId },
+        data: { avgResponseTime },
       });
 
-      if (stats) {
-        const avgResponseTime = Math.round(
-          stats.totalResponseTime / stats.leadsAccepted
-        );
-
-        await tx.realtorStats.update({
-          where: { realtorId },
-          data: { avgResponseTime },
-        });
-
-        await tx.realtorQueue.update({
-          where: { realtorId },
-          data: { avgResponseTime },
-        });
-      }
+      await tx.realtorQueue.update({
+        where: { realtorId },
+        data: { avgResponseTime },
+      });
 
       return updatedLead;
     });
@@ -240,10 +239,14 @@ export class LeadDistributionService {
         },
       });
 
-      // Atualiza estatísticas
-      await tx.realtorStats.update({
+      // Atualiza estatísticas (garante criação se ainda não existir)
+      await tx.realtorStats.upsert({
         where: { realtorId },
-        data: {
+        create: {
+          realtorId,
+          leadsRejected: 1,
+        },
+        update: {
           leadsRejected: { increment: 1 },
         },
       });
@@ -733,9 +736,13 @@ export class LeadDistributionService {
           "Não aceitou lead no tempo"
         );
 
-        await prisma.realtorStats.update({
+        await prisma.realtorStats.upsert({
           where: { realtorId: lead.realtorId },
-          data: {
+          create: {
+            realtorId: lead.realtorId,
+            leadsExpired: 1,
+          },
+          update: {
             leadsExpired: { increment: 1 },
           },
         });
@@ -792,17 +799,24 @@ export class LeadDistributionService {
         },
       });
 
+      const hadVisit = !!(lead.visitDate && lead.visitTime);
+
       const statsUpdate: any = {
         leadsCompleted: { increment: 1 },
       };
 
-      if (lead.visitDate && lead.visitTime) {
+      if (hadVisit) {
         statsUpdate.visitsCompleted = { increment: 1 };
       }
 
-      await tx.realtorStats.update({
+      await tx.realtorStats.upsert({
         where: { realtorId },
-        data: statsUpdate,
+        create: {
+          realtorId,
+          leadsCompleted: 1,
+          ...(hadVisit ? { visitsCompleted: 1 } : {}),
+        },
+        update: statsUpdate,
       });
 
       return updatedLead;
