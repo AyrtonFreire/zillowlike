@@ -93,6 +93,30 @@ export const PropertyCreateSchema = z.object({
     })
     .optional(),
   conditionTags: z.array(ConditionTagEnum).max(12).optional(),
+  // Dados privados do proprietário (visíveis apenas para o dono do imóvel)
+  privateData: z.object({
+    ownerName: z.string().max(200).nullable().optional(),
+    ownerPhone: z.string().max(50).nullable().optional(),
+    ownerEmail: z.string().max(200).nullable().optional(),
+    ownerAddress: z.string().max(500).nullable().optional(),
+    ownerPrice: z.number().int().nullable().optional(), // em centavos
+    brokerFeePercent: z.number().nullable().optional(), // percentual (ex: 5.0)
+    brokerFeeFixed: z.number().int().nullable().optional(), // em centavos
+    exclusive: z.boolean().optional(),
+    exclusiveUntil: z.string().nullable().optional(), // ISO date
+    occupied: z.boolean().optional(),
+    occupantInfo: z.string().max(500).nullable().optional(),
+    keyLocation: z.string().max(200).nullable().optional(),
+    notes: z.string().max(2000).nullable().optional(),
+  }).optional(),
+  // Configurações de visibilidade do anúncio
+  visibility: z.object({
+    hidePrice: z.boolean().optional(),
+    hideExactAddress: z.boolean().optional(),
+    hideCondoFee: z.boolean().optional(),
+    hideIPTU: z.boolean().optional(),
+    iptuYearly: z.number().int().nullable().optional(), // em centavos
+  }).optional(),
   images: z
     .array(
       z.object({

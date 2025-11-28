@@ -134,8 +134,6 @@ export default function LeadDetailPage() {
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [lastMessageId, setLastMessageId] = useState<string | null>(null);
 
-  const [showMessagesHistory, setShowMessagesHistory] = useState(false);
-  const [showNotesHistory, setShowNotesHistory] = useState(false);
   const [showLeadHelp, setShowLeadHelp] = useState(false);
 
   const [reminderDate, setReminderDate] = useState("");
@@ -158,6 +156,8 @@ export default function LeadDetailPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
   const [shareGenerating, setShareGenerating] = useState(false);
+
+  const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
 
   const leadId = (params?.id as string) || "";
   const toast = useToast();
@@ -747,12 +747,17 @@ export default function LeadDetailPage() {
               </div>
             </div>
 
-            {/* Informações principais */}
+            {/* Informações principais / Cabeçalho do lead */}
             <div className="flex-1 space-y-4">
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-1">Lead do imóvel</h1>
-                  <p className="text-lg font-semibold text-gray-900">{lead.property.title}</p>
+                <div className="space-y-1">
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {lead.contact?.name || "Lead sem nome"}
+                  </h1>
+                  <p className="text-sm text-gray-600">
+                    Interessado em: {" "}
+                    <span className="font-semibold text-gray-900">{lead.property.title}</span>
+                  </p>
                   <p className="mt-1 text-sm text-gray-600 flex items-center gap-1">
                     <MapPin className="w-4 h-4" />
                     <span>
@@ -760,8 +765,26 @@ export default function LeadDetailPage() {
                       {lead.property.city} - {lead.property.state}
                     </span>
                   </p>
+                  {lead.contact && (
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
+                      {lead.contact.phone && (
+                        <span className="inline-flex items-center gap-1">
+                          <Phone className="w-3.5 h-3.5" />
+                          {lead.contact.phone}
+                        </span>
+                      )}
+                      {lead.contact.email && (
+                        <span className="inline-flex items-center gap-1">
+                          <Mail className="w-3.5 h-3.5" />
+                          {lead.contact.email}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <StatusIndicator status={lead.status as any} />
+                <div className="flex flex-col items-end gap-2">
+                  <StatusIndicator status={lead.status as any} />
+                </div>
               </div>
 
               {/* Linha do tempo simples */}
@@ -787,51 +810,70 @@ export default function LeadDetailPage() {
                 )}
               </div>
 
+              {hasReminderActive && (
+                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-xs text-emerald-800">
+                  <Clock className="w-3 h-3" />
+                  <span>
+                    Próximo passo:
+                    {" "}
+                    {reminderNote || "rever este lead"}
+                    {reminderDate &&
+                      `  b7 ${new Date(reminderDate).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      })}`}
+                  </span>
+                </div>
+              )}
+
               {/* Ações rápidas */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {lead.contact?.phone && (
-                  <a
-                    href={`tel:${lead.contact.phone}`}
+              <div className="mt-4">
+                <p className="text-[11px] text-gray-500 mb-1">Ações rápidas</p>
+                <div className="flex flex-wrap gap-2">
+                  {lead.contact?.phone && (
+                    <a
+                      href={`tel:${lead.contact.phone}`}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      Ligar
+                    </a>
+                  )}
+                  {lead.contact?.phone && getWhatsAppUrl(lead.contact.phone) && (
+                    <a
+                      href={getWhatsAppUrl(lead.contact.phone)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      WhatsApp
+                    </a>
+                  )}
+                  {lead.contact?.email && (
+                    <a
+                      href={`mailto:${lead.contact.email}`}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      E-mail
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleOpenClientChat}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-indigo-200 bg-indigo-50 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    Abrir conversa
+                  </button>
+                  <Link
+                    href={`/property/${lead.property.id}`}
                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
                   >
-                    <Phone className="w-3.5 h-3.5" />
-                    Ligar
-                  </a>
-                )}
-                {lead.contact?.phone && getWhatsAppUrl(lead.contact.phone) && (
-                  <a
-                    href={getWhatsAppUrl(lead.contact.phone)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    WhatsApp
-                  </a>
-                )}
-                {lead.contact?.email && (
-                  <a
-                    href={`mailto:${lead.contact.email}`}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-xs font-medium text-blue-700 hover:bg-blue-100"
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    E-mail
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={handleOpenClientChat}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-indigo-200 bg-indigo-50 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  Abrir conversa
-                </button>
-                <Link
-                  href={`/property/${lead.property.id}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Ver anúncio do imóvel
-                </Link>
+                    Ver anúncio do imóvel
+                  </Link>
+                </div>
               </div>
 
               {showLeadHelp && (
@@ -865,6 +907,17 @@ export default function LeadDetailPage() {
             </div>
           </div>
 
+          {/* Timeline de atividades */}
+          <LeadTimeline
+            leadId={leadId}
+            createdAt={lead.createdAt}
+            respondedAt={lead.respondedAt}
+            completedAt={lead.completedAt}
+            pipelineStage={lead.pipelineStage}
+            notes={notes}
+            messages={messages}
+          />
+
           {/* Corpo principal em duas colunas */}
           <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             {/* Coluna esquerda: interação e acompanhamento */}
@@ -882,64 +935,12 @@ export default function LeadDetailPage() {
                 </h2>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-gray-500">
-                    Use este espaço para registrar, em forma de conversa, os pontos combinados sobre este lead. No início, as
-                    mensagens ficam visíveis apenas para você; no futuro, poderão ser compartilhadas também com o proprietário.
+                    Use este espaço para registrar, em forma de conversa, os pontos combinados sobre este lead. As mensagens que
+                    você enviar aqui ficam registradas no histórico de atividades acima.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowMessagesHistory((prev) => !prev)}
-                    className="text-[11px] text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    {showMessagesHistory ? "Esconder histórico" : "Ver histórico de mensagens"}
-                  </button>
                 </div>
 
                 {messagesError && <p className="text-xs text-red-600 mb-2">{messagesError}</p>}
-
-                {showMessagesHistory && (
-                  <>
-                    {messagesLoading && messages.length === 0 ? (
-                      <p className="text-xs text-gray-500">Carregando mensagens...</p>
-                    ) : messages.length === 0 ? (
-                      <p className="text-xs text-gray-500 mb-3">
-                        Ainda não há mensagens registradas para este lead. Você pode usar este espaço como uma conversa organizada
-                        sobre o atendimento.
-                      </p>
-                    ) : (
-                      <div className="mb-4 space-y-2 max-h-48 overflow-y-auto pr-1 text-xs text-gray-700">
-                        {messages.map((message) => (
-                          <div key={message.id} className="px-3 py-2 rounded-md bg-gray-50 border border-gray-100">
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <p className="font-semibold text-[11px] text-gray-800 truncate">
-                                {message.sender?.name || "Você"}
-                                {message.sender?.role && (
-                                  <span className="ml-1 text-[10px] text-gray-500 uppercase">
-                                    {message.sender.role === "REALTOR"
-                                      ? "Corretor(a)"
-                                      : message.sender.role === "OWNER"
-                                      ? "Proprietário(a)"
-                                      : message.sender.role === "ADMIN"
-                                      ? "Admin"
-                                      : message.sender.role}
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-[10px] text-gray-400">
-                                {new Date(message.createdAt).toLocaleString("pt-BR", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </p>
-                            </div>
-                            <p className="whitespace-pre-wrap">{message.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
 
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-2 justify-between items-center">
@@ -988,44 +989,11 @@ export default function LeadDetailPage() {
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-gray-500">
                     Anote com suas próprias palavras os pontos combinados, dúvidas do cliente ou próximos passos. Essas notas ficam
-                    visíveis apenas para você.
+                    visíveis apenas para você e também aparecem no histórico de atividades.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowNotesHistory((prev) => !prev)}
-                    className="text-[11px] text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    {showNotesHistory ? "Esconder histórico" : "Ver histórico de notas"}
-                  </button>
                 </div>
 
                 {notesError && <p className="text-xs text-red-600 mb-2">{notesError}</p>}
-
-                {showNotesHistory && (
-                  <>
-                    {notesLoading && notes.length === 0 ? (
-                      <p className="text-xs text-gray-500">Carregando notas...</p>
-                    ) : notes.length === 0 ? (
-                      <p className="text-xs text-gray-500 mb-3">Ainda não há notas registradas para este lead.</p>
-                    ) : (
-                      <div className="mb-4 space-y-1 max-h-40 overflow-y-auto pr-1 text-xs text-gray-700">
-                        {notes.map((note) => (
-                          <div key={note.id} className="px-2 py-1 rounded-md bg-gray-50 border border-gray-100">
-                            <p className="whitespace-pre-wrap">{note.content}</p>
-                            <p className="mt-1 text-[10px] text-gray-400">
-                              {new Date(note.createdAt).toLocaleString("pt-BR", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
 
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-2 justify-between items-center">
@@ -1078,64 +1046,8 @@ export default function LeadDetailPage() {
               </div>
             </div>
 
-            {/* Coluna direita: contexto do lead */}
+            {/* Coluna direita: contexto do imóvel e negociação */}
             <div className="lg:col-span-1 space-y-6">
-              {/* Contato */}
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">Dados de contato</h2>
-                {lead.contact ? (
-                  <div className="space-y-2 text-sm text-gray-700">
-                    <p className="font-medium">{lead.contact.name}</p>
-                    {lead.contact.phone && (
-                      <p className="flex items-center gap-3 flex-wrap">
-                        <span className="inline-flex items-center gap-2 text-gray-700">
-                          <Phone className="w-4 h-4" />
-                          <a href={`tel:${lead.contact.phone}`} className="hover:text-blue-600">
-                            {lead.contact.phone}
-                          </a>
-                        </span>
-                        {getWhatsAppUrl(lead.contact.phone) && (
-                          <a
-                            href={getWhatsAppUrl(lead.contact.phone)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-green-700 hover:text-green-800 font-medium"
-                          >
-                            Abrir WhatsApp
-                          </a>
-                        )}
-                      </p>
-                    )}
-                    <p className="flex items-center gap-2">
-                      <Mail className="w-4 h-4" />
-                      <a href={`mailto:${lead.contact.email}`} className="hover:text-blue-600">
-                        {lead.contact.email}
-                      </a>
-                    </p>
-                    <p className="mt-3 text-xs text-gray-500">
-                      Use o canal que fizer mais sentido para você e para o cliente. Este painel é apenas um apoio para organizar
-                      seus atendimentos.
-                    </p>
-
-                    <div className="mt-4 border-t border-gray-200 pt-3">
-                      <p className="text-xs text-gray-500 mb-2">
-                        Se preferir, você também pode usar um chat simples pela plataforma. Ele é pensado para clientes que não
-                        querem depender só do WhatsApp.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleOpenClientChat}
-                        className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        Ir para área de conversas
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">Os dados de contato não estão disponíveis para este lead.</p>
-                )}
-              </div>
-
               {/* Resumo do imóvel */}
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                 <h2 className="text-sm font-semibold text-gray-900 mb-3">Resumo do imóvel</h2>
@@ -1163,26 +1075,25 @@ export default function LeadDetailPage() {
                     </div>
                   )}
                 </div>
-                <p className="mt-4 text-xs text-gray-500">
-                  Se você quiser ver o anúncio completo, pode abrir a página do imóvel em outra aba e continuar com este painel
-                  aberto.
-                </p>
-                <Link
-                  href={`/property/${lead.property.id}`}
-                  className="mt-2 inline-flex items-center text-xs text-blue-600 hover:text-blue-700"
-                >
-                  Ver anúncio do imóvel
-                </Link>
+                <div className="mt-3 flex justify-between items-center gap-2">
+                  <p className="text-xs text-gray-500">
+                    Abra o anúncio completo se precisar de mais detalhes, fotos ou descrição completa.
+                  </p>
+                  <Link
+                    href={`/property/${lead.property.id}`}
+                    className="inline-flex items-center px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
+                  >
+                    Ver anúncio completo
+                  </Link>
+                </div>
               </div>
 
               {/* Imóveis similares do seu estoque */}
               <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                <h2 className="text-sm font-semibold text-gray-900 mb-1">
-                  Imóveis similares do seu estoque
-                </h2>
+                <h2 className="text-sm font-semibold text-gray-900 mb-1">Imóveis similares do seu estoque</h2>
                 <p className="text-xs text-gray-500 mb-3">
-                  Aqui aparecem alguns imóveis seus que se parecem com este (tipo, região e faixa de preço). Você pode usar
-                  isso como apoio na conversa ou gerar um link para o cliente ver a lista completa.
+                  Sugestões de imóveis seus parecidos com este (tipo, região e faixa de preço). Use como apoio na conversa ou
+                  gere um link para o cliente.
                 </p>
 
                 {similarError && (
@@ -1193,8 +1104,8 @@ export default function LeadDetailPage() {
                   <p className="text-xs text-gray-500">Buscando imóveis do seu estoque...</p>
                 ) : similarItems.length === 0 ? (
                   <p className="text-xs text-gray-500 mb-3">
-                    Ainda não encontramos outros imóveis seus parecidos com este. Conforme você for cadastrando mais imóveis na
-                    mesma região e faixa, eles passam a aparecer aqui.
+                    Ainda não encontramos imóveis seus parecidos com este. Assim que você tiver mais imóveis na mesma região e
+                    faixa de preço, eles aparecem aqui.
                   </p>
                 ) : (
                   <div className="space-y-2 mb-3">
@@ -1281,71 +1192,80 @@ export default function LeadDetailPage() {
                 </div>
               </div>
 
-              {/* Resultado da negociação */}
-              <div className="border-t border-gray-200 pt-6">
-                <h2 className="text-sm font-semibold text-gray-900 mb-1">Resultado da negociação</h2>
-                <p className="text-xs text-gray-500 mb-3">
-                  Se este lead não for adiante, você pode marcar um motivo simples. Isso ajuda você (e, no futuro, o sistema) a
-                  entender melhor por que alguns negócios não avançam.
-                </p>
+              {/* Seção avançada: mais detalhes da negociação */}
+              <div className="bg-white rounded-xl border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedDetails((prev) => !prev)}
+                  className="w-full flex items-center justify-between px-4 py-3"
+                >
+                  <span className="text-sm font-semibold text-gray-900">Mais detalhes da negociação</span>
+                  <span className="text-xs text-gray-500">
+                    {showAdvancedDetails ? "Recolher" : "Ver opções"}
+                  </span>
+                </button>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs items-end">
-                  <div className="sm:col-span-2">
-                    <label className="block text-gray-700 mb-1">Motivo da perda (opcional)</label>
-                    <select
-                      value={resultReason}
-                      onChange={(e) => setResultReason(e.target.value as any)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Selecione um motivo (se aplicável)</option>
-                      <option value="CLIENT_DESISTIU">Cliente desistiu / mudou de ideia</option>
-                      <option value="FECHOU_OUTRO_IMOVEL">Fechou com outro imóvel</option>
-                      <option value="CONDICAO_FINANCEIRA">Condição financeira / crédito</option>
-                      <option value="NAO_RESPONDEU">Cliente não respondeu mais</option>
-                      <option value="OUTRO">Outro motivo</option>
-                    </select>
-                  </div>
-                  <div className="flex justify-end sm:justify-start">
-                    <button
-                      type="button"
-                      onClick={handleSaveResult}
-                      disabled={resultSaving || !resultReason}
-                      className="inline-flex items-center px-3 py-2 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {resultSaving ? "Salvando..." : "Marcar como perdido"}
-                    </button>
-                  </div>
-                </div>
+                {showAdvancedDetails && (
+                  <div className="px-4 pb-4 pt-1 border-t border-gray-100 text-xs text-gray-600 space-y-4">
+                    <div>
+                      <p className="mb-2">
+                        Se este lead não for adiante, marque um motivo simples. Isso ajuda você (e, no futuro, o sistema) a
+                        entender por que alguns negócios não avançam.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                        <div className="sm:col-span-2">
+                          <label className="block text-gray-700 mb-1">Motivo da perda (opcional)</label>
+                          <select
+                            value={resultReason}
+                            onChange={(e) => setResultReason(e.target.value as any)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="">Selecione um motivo (se aplicável)</option>
+                            <option value="CLIENT_DESISTIU">Cliente desistiu / mudou de ideia</option>
+                            <option value="FECHOU_OUTRO_IMOVEL">Fechou com outro imóvel</option>
+                            <option value="CONDICAO_FINANCEIRA">Condição financeira / crédito</option>
+                            <option value="NAO_RESPONDEU">Cliente não respondeu mais</option>
+                            <option value="OUTRO">Outro motivo</option>
+                          </option>
+                          </select>
+                        </div>
+                        <div className="flex justify-end sm:justify-start">
+                          <button
+                            type="button"
+                            onClick={handleSaveResult}
+                            disabled={resultSaving || !resultReason}
+                            className="inline-flex items-center px-3 py-2 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {resultSaving ? "Salvando..." : "Marcar como perdido"}
+                          </button>
+                        </div>
+                      </div>
 
-                {lead.pipelineStage === "LOST" && lead.lostReason && (
-                  <p className="mt-2 text-[11px] text-gray-500">
-                    Este lead está marcado como perdido ({" "}
-                    {resultReason === "CLIENT_DESISTIU"
-                      ? "cliente desistiu/mudou de ideia"
-                      : resultReason === "FECHOU_OUTRO_IMOVEL"
-                      ? "fechou com outro imóvel"
-                      : resultReason === "CONDICAO_FINANCEIRA"
-                      ? "condição financeira/crédito"
-                      : resultReason === "NAO_RESPONDEU"
-                      ? "cliente não respondeu mais"
-                      : "outro motivo"}
-                    ).
-                  </p>
+                      {lead.pipelineStage === "LOST" && lead.lostReason && (
+                        <p className="mt-2 text-[11px] text-gray-500">
+                          Este lead está marcado como perdido ( {" "}
+                          {resultReason === "CLIENT_DESISTIU"
+                            ? "cliente desistiu/mudou de ideia"
+                            : resultReason === "FECHOU_OUTRO_IMOVEL"
+                            ? "fechou com outro imóvel"
+                            : resultReason === "CONDICAO_FINANCEIRA"
+                            ? "condição financeira/crédito"
+                            : resultReason === "NAO_RESPONDEU"
+                            ? "cliente não respondeu mais"
+                            : "outro motivo"}
+                          ).
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-100 text-[11px] text-gray-500">
+                      Em breve, esta área poderá reunir também documentos do cliente, visitas agendadas e preferências de contato.
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
           </div>
-
-          {/* Timeline de atividades */}
-          <LeadTimeline
-            leadId={leadId}
-            createdAt={lead.createdAt}
-            respondedAt={lead.respondedAt}
-            completedAt={lead.completedAt}
-            pipelineStage={lead.pipelineStage}
-            notes={notes}
-            messages={messages}
-          />
         </div>
       </div>
     </DashboardLayout>

@@ -27,6 +27,7 @@ export default function NewPropertyPage() {
   const [publishedProperty, setPublishedProperty] = useState<{ id: string; title: string; url: string } | null>(null);
   
   const [description, setDescription] = useState("");
+  const [customTitle, setCustomTitle] = useState(""); // Título editável pelo usuário
   const [priceBRL, setPriceBRL] = useState("");
   const [type, setType] = useState("HOUSE");
   const [purpose, setPurpose] = useState<"SALE"|"RENT"|"">("");
@@ -199,6 +200,29 @@ export default function NewPropertyPage() {
   const [phoneMode, setPhoneMode] = useState<"existing" | "new">("existing");
   const [newPhoneInput, setNewPhoneInput] = useState("");
   const [savingNewPhone, setSavingNewPhone] = useState(false);
+  
+  // Dados privados do proprietário (não visíveis no anúncio)
+  const [privateOwnerName, setPrivateOwnerName] = useState("");
+  const [privateOwnerPhone, setPrivateOwnerPhone] = useState("");
+  const [privateOwnerEmail, setPrivateOwnerEmail] = useState("");
+  const [privateOwnerAddress, setPrivateOwnerAddress] = useState("");
+  const [privateOwnerPriceBRL, setPrivateOwnerPriceBRL] = useState("");
+  const [privateBrokerFeePercent, setPrivateBrokerFeePercent] = useState("");
+  const [privateBrokerFeeFixedBRL, setPrivateBrokerFeeFixedBRL] = useState("");
+  const [privateExclusive, setPrivateExclusive] = useState(false);
+  const [privateExclusiveUntil, setPrivateExclusiveUntil] = useState("");
+  const [privateOccupied, setPrivateOccupied] = useState(false);
+  const [privateOccupantInfo, setPrivateOccupantInfo] = useState("");
+  const [privateKeyLocation, setPrivateKeyLocation] = useState("");
+  const [privateNotes, setPrivateNotes] = useState("");
+  
+  // Configurações de visibilidade pública
+  const [hidePrice, setHidePrice] = useState(false);
+  const [hideExactAddress, setHideExactAddress] = useState(false);
+  const [hideCondoFee, setHideCondoFee] = useState(false);
+  const [hideIPTU, setHideIPTU] = useState(false);
+  const [iptuYearlyBRL, setIptuYearlyBRL] = useState("");
+  
   // Leaflet
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const leafletMap = useRef<any>(null);
@@ -589,6 +613,7 @@ export default function NewPropertyPage() {
     setToast(null);
     setSubmitIntent(false);
     setDescription("");
+    setCustomTitle("");
     setPriceBRL("");
     setType("HOUSE");
     setConditionTags([]);
@@ -605,6 +630,26 @@ export default function NewPropertyPage() {
     setGeo(null);
     setGeoPreview("");
     setCepValid(false);
+    // Campos privados do proprietário
+    setPrivateOwnerName("");
+    setPrivateOwnerPhone("");
+    setPrivateOwnerEmail("");
+    setPrivateOwnerAddress("");
+    setPrivateOwnerPriceBRL("");
+    setPrivateBrokerFeePercent("");
+    setPrivateBrokerFeeFixedBRL("");
+    setPrivateExclusive(false);
+    setPrivateExclusiveUntil("");
+    setPrivateOccupied(false);
+    setPrivateOccupantInfo("");
+    setPrivateKeyLocation("");
+    setPrivateNotes("");
+    // Configurações de visibilidade
+    setHidePrice(false);
+    setHideExactAddress(false);
+    setHideCondoFee(false);
+    setHideIPTU(false);
+    setIptuYearlyBRL("");
   };
 
   const clearDraft = () => {
@@ -677,6 +722,7 @@ export default function NewPropertyPage() {
       if (!raw) return;
       const d = JSON.parse(raw);
       if (d.description) setDescription(d.description);
+      if (d.customTitle) setCustomTitle(d.customTitle);
       if (d.priceBRL) setPriceBRL(d.priceBRL);
       if (d.type) setType(d.type);
       if (d.purpose) setPurpose(d.purpose);
@@ -690,9 +736,29 @@ export default function NewPropertyPage() {
       if (typeof d.areaM2 !== 'undefined') setAreaM2(d.areaM2);
       if (Array.isArray(d.images)) setImages(d.images);
       if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
-      if (typeof d.currentStep === 'number' && d.currentStep >= 1 && d.currentStep <= 5) {
+      if (typeof d.currentStep === 'number' && d.currentStep >= 1 && d.currentStep <= 6) {
         setCurrentStep(d.currentStep);
       }
+      // Campos privados do proprietário
+      if (d.privateOwnerName) setPrivateOwnerName(d.privateOwnerName);
+      if (d.privateOwnerPhone) setPrivateOwnerPhone(d.privateOwnerPhone);
+      if (d.privateOwnerEmail) setPrivateOwnerEmail(d.privateOwnerEmail);
+      if (d.privateOwnerAddress) setPrivateOwnerAddress(d.privateOwnerAddress);
+      if (d.privateOwnerPriceBRL) setPrivateOwnerPriceBRL(d.privateOwnerPriceBRL);
+      if (d.privateBrokerFeePercent) setPrivateBrokerFeePercent(d.privateBrokerFeePercent);
+      if (d.privateBrokerFeeFixedBRL) setPrivateBrokerFeeFixedBRL(d.privateBrokerFeeFixedBRL);
+      if (typeof d.privateExclusive === 'boolean') setPrivateExclusive(d.privateExclusive);
+      if (d.privateExclusiveUntil) setPrivateExclusiveUntil(d.privateExclusiveUntil);
+      if (typeof d.privateOccupied === 'boolean') setPrivateOccupied(d.privateOccupied);
+      if (d.privateOccupantInfo) setPrivateOccupantInfo(d.privateOccupantInfo);
+      if (d.privateKeyLocation) setPrivateKeyLocation(d.privateKeyLocation);
+      if (d.privateNotes) setPrivateNotes(d.privateNotes);
+      // Configurações de visibilidade
+      if (typeof d.hidePrice === 'boolean') setHidePrice(d.hidePrice);
+      if (typeof d.hideExactAddress === 'boolean') setHideExactAddress(d.hideExactAddress);
+      if (typeof d.hideCondoFee === 'boolean') setHideCondoFee(d.hideCondoFee);
+      if (typeof d.hideIPTU === 'boolean') setHideIPTU(d.hideIPTU);
+      if (d.iptuYearlyBRL) setIptuYearlyBRL(d.iptuYearlyBRL);
     } catch {}
   }, []);
 
@@ -710,6 +776,7 @@ export default function NewPropertyPage() {
         const d = (draft.data || {}) as any;
 
         if (d.description) setDescription(d.description);
+        if (d.customTitle) setCustomTitle(d.customTitle);
         if (d.priceBRL) setPriceBRL(d.priceBRL);
         if (d.type) setType(d.type);
         if (d.purpose) setPurpose(d.purpose);
@@ -725,9 +792,30 @@ export default function NewPropertyPage() {
         if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
 
         const stepFromApi = typeof draft.currentStep === "number" ? draft.currentStep : d.currentStep;
-        if (typeof stepFromApi === "number" && stepFromApi >= 1 && stepFromApi <= 5) {
+        if (typeof stepFromApi === "number" && stepFromApi >= 1 && stepFromApi <= 6) {
           setCurrentStep(stepFromApi);
         }
+
+        // Campos privados do proprietário
+        if (d.privateOwnerName) setPrivateOwnerName(d.privateOwnerName);
+        if (d.privateOwnerPhone) setPrivateOwnerPhone(d.privateOwnerPhone);
+        if (d.privateOwnerEmail) setPrivateOwnerEmail(d.privateOwnerEmail);
+        if (d.privateOwnerAddress) setPrivateOwnerAddress(d.privateOwnerAddress);
+        if (d.privateOwnerPriceBRL) setPrivateOwnerPriceBRL(d.privateOwnerPriceBRL);
+        if (d.privateBrokerFeePercent) setPrivateBrokerFeePercent(d.privateBrokerFeePercent);
+        if (d.privateBrokerFeeFixedBRL) setPrivateBrokerFeeFixedBRL(d.privateBrokerFeeFixedBRL);
+        if (typeof d.privateExclusive === 'boolean') setPrivateExclusive(d.privateExclusive);
+        if (d.privateExclusiveUntil) setPrivateExclusiveUntil(d.privateExclusiveUntil);
+        if (typeof d.privateOccupied === 'boolean') setPrivateOccupied(d.privateOccupied);
+        if (d.privateOccupantInfo) setPrivateOccupantInfo(d.privateOccupantInfo);
+        if (d.privateKeyLocation) setPrivateKeyLocation(d.privateKeyLocation);
+        if (d.privateNotes) setPrivateNotes(d.privateNotes);
+        // Configurações de visibilidade
+        if (typeof d.hidePrice === 'boolean') setHidePrice(d.hidePrice);
+        if (typeof d.hideExactAddress === 'boolean') setHideExactAddress(d.hideExactAddress);
+        if (typeof d.hideCondoFee === 'boolean') setHideCondoFee(d.hideCondoFee);
+        if (typeof d.hideIPTU === 'boolean') setHideIPTU(d.hideIPTU);
+        if (d.iptuYearlyBRL) setIptuYearlyBRL(d.iptuYearlyBRL);
 
         try { window.localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch {}
       } catch {}
@@ -742,6 +830,7 @@ export default function NewPropertyPage() {
       try {
         const payload = {
           description,
+          customTitle,
           priceBRL,
           type,
           purpose,
@@ -757,6 +846,26 @@ export default function NewPropertyPage() {
           addressNumber,
           conditionTags,
           currentStep,
+          // Dados privados do proprietário
+          privateOwnerName,
+          privateOwnerPhone,
+          privateOwnerEmail,
+          privateOwnerAddress,
+          privateOwnerPriceBRL,
+          privateBrokerFeePercent,
+          privateBrokerFeeFixedBRL,
+          privateExclusive,
+          privateExclusiveUntil,
+          privateOccupied,
+          privateOccupantInfo,
+          privateKeyLocation,
+          privateNotes,
+          // Configurações de visibilidade
+          hidePrice,
+          hideExactAddress,
+          hideCondoFee,
+          hideIPTU,
+          iptuYearlyBRL,
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
 
@@ -769,7 +878,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images, conditionTags, currentStep]);
+  }, [description, customTitle, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images, conditionTags, currentStep, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, iptuYearlyBRL]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -817,7 +926,7 @@ export default function NewPropertyPage() {
     [street, addressNumber, neighborhood, city, state, postalCode]
   );
 
-  // Título gerado automaticamente em tempo real
+  // Título gerado automaticamente em tempo real (usado como sugestão)
   const generatedTitle = useMemo(() => {
     const typeLabels: Record<string, string> = {
       HOUSE: 'Casa',
@@ -845,6 +954,9 @@ export default function NewPropertyPage() {
     
     return parts.join(' ');
   }, [type, bedrooms, neighborhood, city]);
+
+  // Título final: usa customTitle se preenchido, senão usa o gerado
+  const finalTitle = customTitle.trim() || generatedTitle;
 
   // Score de qualidade do anúncio
   const adQualityScore = useMemo(() => {
@@ -910,7 +1022,8 @@ export default function NewPropertyPage() {
     { id: 2, name: "Localização", description: "Endereço completo" },
     { id: 3, name: "Detalhes", description: "Quartos, banheiros e área" },
     { id: 4, name: "Fotos", description: "Imagens do imóvel" },
-    { id: 5, name: "Revisão final", description: "Conferir dados e publicar" },
+    { id: 5, name: "Dados do proprietário", description: "Informações internas (opcional)" },
+    { id: 6, name: "Revisão final", description: "Conferir dados e publicar" },
   ];
 
   function tipsForStep(step: number): string[] {
@@ -940,6 +1053,12 @@ export default function NewPropertyPage() {
           "Arraste para ordenar; dá destaque às melhores fotos primeiro.",
         ];
       case 5:
+        return [
+          "Esses dados são apenas para seu controle e não aparecem no anúncio.",
+          "Use para registrar informações do proprietário, comissão e chave.",
+          "Você pode preencher depois; essa etapa é opcional.",
+        ];
+      case 6:
         return [
           "Revise os dados com calma antes de publicar o anúncio.",
           "Use os botões 'Editar' para voltar rapidamente a qualquer etapa.",
@@ -1034,11 +1153,6 @@ export default function NewPropertyPage() {
         return;
       }
 
-      // título gerado automaticamente (não exibido ao usuário)
-      const typeLabel = type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type === 'CONDO' ? 'Condomínio' : type === 'LAND' ? 'Terreno' : type === 'COMMERCIAL' ? 'Comercial' : type === 'STUDIO' ? 'Studio' : 'Imóvel';
-      const purposeLabel = purpose === 'RENT' ? 'Aluguel' : 'Venda';
-      const autoTitle = `${typeLabel} ${purposeLabel}${city && state ? ` - ${city}/${state}` : ''}`.trim();
-
       const amenityTags = [
         hasBalcony && 'Varanda',
         hasElevator && 'Elevador',
@@ -1056,7 +1170,7 @@ export default function NewPropertyPage() {
       const isPetFriendly = mergedTags.includes('Aceita pets') || petsSmall || petsLarge;
 
       const payload = {
-        title: autoTitle,
+        title: finalTitle,
         description,
         priceBRL: parseBRLToNumber(priceBRL),
         type,
@@ -1114,6 +1228,30 @@ export default function NewPropertyPage() {
           yearRenovated: yearRenovated === "" ? null : Number(yearRenovated as any),
           totalFloors: totalFloors === "" ? null : Number(totalFloors as any),
         },
+        // Dados privados do proprietário (visíveis apenas para o dono)
+        privateData: {
+          ownerName: privateOwnerName || null,
+          ownerPhone: privateOwnerPhone || null,
+          ownerEmail: privateOwnerEmail || null,
+          ownerAddress: privateOwnerAddress || null,
+          ownerPrice: privateOwnerPriceBRL ? parseBRLToNumber(privateOwnerPriceBRL) * 100 : null,
+          brokerFeePercent: privateBrokerFeePercent ? parseFloat(privateBrokerFeePercent.replace(',', '.')) : null,
+          brokerFeeFixed: privateBrokerFeeFixedBRL ? parseBRLToNumber(privateBrokerFeeFixedBRL) * 100 : null,
+          exclusive: privateExclusive,
+          exclusiveUntil: privateExclusiveUntil ? new Date(privateExclusiveUntil).toISOString() : null,
+          occupied: privateOccupied,
+          occupantInfo: privateOccupantInfo || null,
+          keyLocation: privateKeyLocation || null,
+          notes: privateNotes || null,
+        },
+        // Configurações de visibilidade
+        visibility: {
+          hidePrice,
+          hideExactAddress,
+          hideCondoFee,
+          hideIPTU,
+          iptuYearly: iptuYearlyBRL ? parseBRLToNumber(iptuYearlyBRL) * 100 : null,
+        },
         conditionTags: mergedTags,
         images: images
           .filter((img) => typeof img.url === 'string' && /^https?:\/\//.test(img.url))
@@ -1155,7 +1293,7 @@ export default function NewPropertyPage() {
 
       setPublishedProperty({
         id: result.id,
-        title: generatedTitle,
+        title: finalTitle,
         url: propertyUrl,
       });
       
@@ -1231,7 +1369,10 @@ export default function NewPropertyPage() {
         return;
       }
     }
-    if (currentStep < 5) setCurrentStep(currentStep + 1);
+    // Step 5: dados do proprietário (opcional, pode pular)
+    // Não há validação obrigatória neste step
+    
+    if (currentStep < 6) setCurrentStep(currentStep + 1);
   };
 
   const prevStep = () => {
@@ -1512,7 +1653,7 @@ export default function NewPropertyPage() {
                 >
                   Voltar para etapa anterior
                 </button>
-                {currentStep < 5 ? (
+                {currentStep < 6 ? (
                   <button
                     type="button"
                     onClick={nextStep}
@@ -1591,6 +1732,39 @@ export default function NewPropertyPage() {
                       className="w-full px-4 py-2.5 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-accent focus:border-transparent text-sm resize-y"
                       placeholder="Use este espaço para explicar os pontos fortes do imóvel, estado de conservação, diferenciais, etc."
                     />
+                  </div>
+
+                  {/* Título do anúncio */}
+                  <div className="pt-4 border-t border-gray-100">
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Título do anúncio
+                      <span className="ml-1 text-xs font-normal text-gray-500">(opcional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customTitle}
+                      onChange={(e) => setCustomTitle(e.target.value)}
+                      placeholder={generatedTitle}
+                      className="w-full px-4 py-2.5 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-accent focus:border-transparent text-sm"
+                      maxLength={100}
+                    />
+                    <div className="mt-2 flex items-center justify-between">
+                      <p className="text-xs text-gray-500">
+                        {customTitle.trim() 
+                          ? 'Título personalizado' 
+                          : `Sugestão automática: "${generatedTitle}"`
+                        }
+                      </p>
+                      {customTitle.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomTitle('')}
+                          className="text-xs text-teal-600 hover:text-teal-700 font-medium"
+                        >
+                          Usar sugestão
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -2050,6 +2224,193 @@ export default function NewPropertyPage() {
               )}
 
               {currentStep === 5 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Dados do proprietário</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Informações internas para seu controle. Esses dados <strong>não aparecem no anúncio</strong> e só você pode ver.
+                    </p>
+                  </div>
+
+                  {/* Informações de contato do proprietário */}
+                  <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <h3 className="font-medium text-gray-900 mb-3">Contato do proprietário</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Input
+                        label="Nome do proprietário"
+                        value={privateOwnerName}
+                        onChange={(e) => setPrivateOwnerName(e.target.value)}
+                        placeholder="Ex: João Silva"
+                      />
+                      <Input
+                        label="Telefone do proprietário"
+                        value={privateOwnerPhone}
+                        onChange={(e) => setPrivateOwnerPhone(e.target.value)}
+                        placeholder="Ex: (11) 99999-9999"
+                      />
+                      <Input
+                        label="E-mail do proprietário"
+                        value={privateOwnerEmail}
+                        onChange={(e) => setPrivateOwnerEmail(e.target.value)}
+                        placeholder="Ex: joao@email.com"
+                      />
+                      <Input
+                        label="Endereço do proprietário"
+                        value={privateOwnerAddress}
+                        onChange={(e) => setPrivateOwnerAddress(e.target.value)}
+                        placeholder="Para correspondência ou visitas"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Informações financeiras */}
+                  <div className="p-4 bg-green-50 rounded-xl border border-green-100">
+                    <h3 className="font-medium text-gray-900 mb-3">Valores e comissão</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <Input
+                        label="Valor desejado pelo proprietário (R$)"
+                        value={privateOwnerPriceBRL}
+                        onChange={(e) => setPrivateOwnerPriceBRL(formatBRLInput(e.target.value))}
+                        placeholder="Valor que ele quer receber"
+                        inputMode="numeric"
+                      />
+                      <Input
+                        label="Taxa de corretagem (%)"
+                        value={privateBrokerFeePercent}
+                        onChange={(e) => setPrivateBrokerFeePercent(e.target.value.replace(/[^0-9.,]/g, ''))}
+                        placeholder="Ex: 5"
+                        inputMode="decimal"
+                      />
+                      <Input
+                        label="Ou taxa fixa (R$)"
+                        value={privateBrokerFeeFixedBRL}
+                        onChange={(e) => setPrivateBrokerFeeFixedBRL(formatBRLInput(e.target.value))}
+                        placeholder="Ex: 10.000"
+                        inputMode="numeric"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Exclusividade */}
+                  <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
+                    <h3 className="font-medium text-gray-900 mb-3">Exclusividade</h3>
+                    <div className="space-y-4">
+                      <Checkbox
+                        label="Imóvel exclusivo (só você pode vender)"
+                        checked={privateExclusive}
+                        onChange={(e) => setPrivateExclusive(e.target.checked)}
+                      />
+                      {privateExclusive && (
+                        <Input
+                          label="Exclusividade até"
+                          type="date"
+                          value={privateExclusiveUntil}
+                          onChange={(e) => setPrivateExclusiveUntil(e.target.value)}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Situação do imóvel */}
+                  <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                    <h3 className="font-medium text-gray-900 mb-3">Situação do imóvel</h3>
+                    <div className="space-y-4">
+                      <Checkbox
+                        label="Imóvel está ocupado"
+                        checked={privateOccupied}
+                        onChange={(e) => setPrivateOccupied(e.target.checked)}
+                      />
+                      {privateOccupied && (
+                        <Input
+                          label="Quem mora / informações do contrato"
+                          value={privateOccupantInfo}
+                          onChange={(e) => setPrivateOccupantInfo(e.target.value)}
+                          placeholder="Ex: Inquilino até dezembro, contrato de 12 meses"
+                        />
+                      )}
+                      <Input
+                        label="Onde está a chave"
+                        value={privateKeyLocation}
+                        onChange={(e) => setPrivateKeyLocation(e.target.value)}
+                        placeholder="Ex: Com o porteiro, ou na imobiliária X"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notas internas */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Observações internas
+                    </label>
+                    <textarea
+                      value={privateNotes}
+                      onChange={(e) => setPrivateNotes(e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-accent focus:border-transparent text-sm resize-y"
+                      placeholder="Anotações particulares sobre este imóvel ou negociação..."
+                    />
+                  </div>
+
+                  {/* Seção de visibilidade */}
+                  <div className="pt-6 border-t border-gray-200">
+                    <h3 className="font-semibold text-gray-900 mb-2">Privacidade do anúncio</h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Escolha quais informações devem ficar ocultas no anúncio público. Clientes interessados precisarão entrar em contato para saber.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <Checkbox
+                          label="Ocultar preço (mostrar 'Consulte')"
+                          checked={hidePrice}
+                          onChange={(e) => setHidePrice(e.target.checked)}
+                        />
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <Checkbox
+                          label="Ocultar endereço exato (só bairro)"
+                          checked={hideExactAddress}
+                          onChange={(e) => setHideExactAddress(e.target.checked)}
+                        />
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <Checkbox
+                          label="Ocultar taxa de condomínio"
+                          checked={hideCondoFee}
+                          onChange={(e) => setHideCondoFee(e.target.checked)}
+                        />
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <Checkbox
+                          label="Ocultar IPTU"
+                          checked={hideIPTU}
+                          onChange={(e) => setHideIPTU(e.target.checked)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Campo de IPTU */}
+                    <div className="mt-4">
+                      <Input
+                        label="IPTU anual (R$)"
+                        value={iptuYearlyBRL}
+                        onChange={(e) => setIptuYearlyBRL(formatBRLInput(e.target.value))}
+                        placeholder="Valor anual do IPTU"
+                        inputMode="numeric"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {hideIPTU ? "Este valor não será exibido no anúncio" : "Este valor será exibido no anúncio"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
+                    💡 Esses campos são opcionais e salvos junto com o imóvel. Você poderá editá-los depois na página do imóvel.
+                  </p>
+                </div>
+              )}
+
+              {currentStep === 6 && (
                 <div className="space-y-4">
                   <h2 className="text-lg font-semibold text-gray-900">Revisão final</h2>
                   <p className="text-sm text-gray-600">
@@ -2285,7 +2646,7 @@ export default function NewPropertyPage() {
 
               {/* Navegação desktop */}
               <div className="hidden sm:flex justify-end items-center pt-4 border-t border-gray-100 mt-4">
-                {currentStep < 5 ? (
+                {currentStep < 6 ? (
                   <button
                     type="button"
                     onClick={nextStep}
@@ -2364,7 +2725,7 @@ export default function NewPropertyPage() {
             <PropertyCardPremium
               property={{
                 id: 'preview',
-                title: generatedTitle,
+                title: finalTitle,
                 price: parseBRLToNumber(priceBRL) * 100,
                 images: images.filter((i)=>i.url).map((i)=>({ url: i.url })),
                 city,

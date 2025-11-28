@@ -358,6 +358,13 @@ export default function OwnerPropertiesPage() {
                     {/* Actions */}
                     <div className="flex items-center gap-2">
                       <Link
+                        href={`/owner/properties/${property.id}`}
+                        className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors text-sm font-medium"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Ver detalhes
+                      </Link>
+                      <Link
                         href={`/owner/properties/edit/${property.id}`}
                         className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
                       >

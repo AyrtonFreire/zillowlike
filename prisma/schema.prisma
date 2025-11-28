@@ -234,10 +234,40 @@ model Property {
   yearRenovated  Int?
   totalFloors    Int?
 
+  // ============================
+  // DADOS PRIVADOS DO PROPRIETÁRIO
+  // (Visíveis apenas para o dono do anúncio)
+  // ============================
+  privateOwnerName       String?   // Nome do proprietário
+  privateOwnerPhone      String?   // Telefone do proprietário
+  privateOwnerEmail      String?   // Email do proprietário
+  privateOwnerAddress    String?   // Endereço do proprietário (para visitas, etc.)
+  privateOwnerPrice      Int?      // Valor que o proprietário quer (em centavos)
+  privateBrokerFeePercent Float?   // Taxa de corretagem em percentual (ex: 5.0 = 5%)
+  privateBrokerFeeFixed  Int?      // Taxa de corretagem fixa (em centavos)
+  privateExclusive       Boolean?  @default(false) // Exclusividade do corretor
+  privateExclusiveUntil  DateTime? // Data limite da exclusividade
+  privateOccupied        Boolean?  @default(false) // Imóvel está ocupado?
+  privateOccupantInfo    String?   // Quem mora, contrato, etc.
+  privateKeyLocation     String?   // Onde está a chave do imóvel
+  privateNotes           String?   // Observações internas do corretor
+
+  // ============================
+  // CONFIGURAÇÕES DE VISIBILIDADE PÚBLICA
+  // (Permite ocultar informações do anúncio público)
+  // ============================
+  hidePrice        Boolean? @default(false) // Ocultar preço (mostrar "Consulte")
+  hideExactAddress Boolean? @default(false) // Ocultar endereço exato (mostrar só bairro/cidade)
+  hideOwnerContact Boolean? @default(false) // Ocultar contato do proprietário
+  hideCondoFee     Boolean? @default(false) // Ocultar taxa de condomínio
+  hideIPTU         Boolean? @default(false) // Ocultar IPTU
+  iptuYearly       Int?                     // Valor anual do IPTU (em centavos)
+
   // 🆕 Controle de leads
   allowRealtorBoard Boolean? @default(false) // Se true, leads vão para o mural; se false, contato direto
 
   images    Image[]
+  documents PropertyDocument[]
   favorites Favorite[]
   leads     Lead[]
   views     PropertyView[]
@@ -270,6 +300,43 @@ model Image {
 
   @@index([propertyId])
   @@map("images")
+}
+
+// Documentos anexados ao imóvel (escritura, IPTU, contratos, etc.)
+model PropertyDocument {
+  id          String              @id @default(cuid())
+  property    Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId  String
+  
+  name        String              // Nome do documento (ex: "Escritura", "IPTU 2024")
+  fileName    String              // Nome original do arquivo
+  url         String              // URL do arquivo (storage)
+  mimeType    String?             // Tipo do arquivo (application/pdf, etc)
+  sizeBytes   Int?                // Tamanho em bytes
+  category    DocumentCategory    @default(OTHER)
+  
+  // Controle de visibilidade
+  isPublic    Boolean             @default(false) // Se true, cliente pode ver; se false, só o dono
+  
+  uploadedBy  String?             // ID do usuário que fez upload
+  
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([propertyId])
+  @@index([category])
+  @@map("property_documents")
+}
+
+enum DocumentCategory {
+  DEED        // Escritura
+  IPTU        // IPTU
+  CONDO       // Boleto/contrato condomínio
+  CONTRACT    // Contrato de locação/venda
+  FLOOR_PLAN  // Planta baixa
+  INSPECTION  // Laudo/vistoria
+  PHOTO_360   // Tour virtual / fotos 360
+  OTHER       // Outros
 }
 
 /// Saved searches per user

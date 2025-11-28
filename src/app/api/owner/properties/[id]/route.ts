@@ -103,6 +103,26 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       "petFriendly",
       "condoFee",
       "yearBuilt",
+      // Dados privados do proprietário
+      "privateOwnerName",
+      "privateOwnerPhone",
+      "privateOwnerEmail",
+      "privateOwnerAddress",
+      "privateOwnerPrice",
+      "privateBrokerFeePercent",
+      "privateBrokerFeeFixed",
+      "privateExclusive",
+      "privateExclusiveUntil",
+      "privateOccupied",
+      "privateOccupantInfo",
+      "privateKeyLocation",
+      "privateNotes",
+      // Configurações de visibilidade
+      "hidePrice",
+      "hideExactAddress",
+      "hideCondoFee",
+      "hideIPTU",
+      "iptuYearly",
     ];
 
     for (const field of allowedFields) {

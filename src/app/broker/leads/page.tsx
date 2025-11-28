@@ -532,20 +532,26 @@ export default function MyLeadsPage() {
 
   // Função para mover lead de etapa no pipeline
   const moveLeadToStage = async (leadId: string, newStage: PipelineStage) => {
-    const lead = leads.find(l => l.id === leadId);
+    const lead = leads.find((l) => l.id === leadId);
     if (!lead) return;
-    
+
     const currentGroupStage = getLeadPipelineStage(lead);
     if (currentGroupStage === newStage) return;
 
     const currentCanonicalStage = ((lead as any).pipelineStage as string | undefined) || null;
     const targetCanonicalStage = mapPipelineGroupToCanonicalStage(lead, newStage);
 
+    // Regra: mover para coluna "Fechado" com estágio canônico WON e status ACEITO encerra o lead de vez
+    if (newStage === "CLOSED" && targetCanonicalStage === "WON" && lead.status === "ACCEPTED") {
+      await handleComplete(leadId);
+      return;
+    }
+
     try {
       // Atualização otimista: atualiza o estágio canônico no array de leads
-      setLeads(prev => prev.map(l => 
-        l.id === leadId ? { ...l, pipelineStage: targetCanonicalStage } as any : l
-      ));
+      setLeads((prev) =>
+        prev.map((l) => (l.id === leadId ? ({ ...l, pipelineStage: targetCanonicalStage } as any) : l))
+      );
 
       const response = await fetch(`/api/leads/${leadId}/pipeline`, {
         method: "PATCH",
@@ -557,20 +563,20 @@ export default function MyLeadsPage() {
 
       if (!response.ok || !data?.success) {
         // Reverter se falhar
-        setLeads(prev => prev.map(l => 
-          l.id === leadId ? { ...l, pipelineStage: currentCanonicalStage } as any : l
-        ));
+        setLeads((prev) =>
+          prev.map((l) => (l.id === leadId ? ({ ...l, pipelineStage: currentCanonicalStage } as any) : l))
+        );
         toast.error("Erro ao mover lead", data?.error || "Tente novamente.");
       } else {
-        const stageLabel = PIPELINE_STAGES.find(s => s.id === newStage)?.label || newStage;
+        const stageLabel = PIPELINE_STAGES.find((s) => s.id === newStage)?.label || newStage;
         toast.success("Lead atualizado!", `Movido para "${stageLabel}".`);
       }
     } catch (error) {
       console.error("Error moving lead:", error);
       // Reverte em caso de erro inesperado
-      setLeads(prev => prev.map(l => 
-        l.id === leadId ? { ...l, pipelineStage: currentCanonicalStage } as any : l
-      ));
+      setLeads((prev) =>
+        prev.map((l) => (l.id === leadId ? ({ ...l, pipelineStage: currentCanonicalStage } as any) : l))
+      );
       toast.error("Erro ao mover lead", "Não foi possível atualizar.");
     }
   };

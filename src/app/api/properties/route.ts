@@ -465,7 +465,7 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    const { title, description, priceBRL, type, purpose, address, geo, details, images, conditionTags, furnished, petFriendly } = parsed.data;
+    const { title, description, priceBRL, type, purpose, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility } = parsed.data;
 
     const price = Math.round(Number(priceBRL) * 100);
     const userId = (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub;
@@ -576,6 +576,26 @@ export async function POST(req: NextRequest) {
       sunOrientation: (details as any)?.sunOrientation ?? null,
       yearRenovated: (details as any)?.yearRenovated ?? null,
       totalFloors: (details as any)?.totalFloors ?? null,
+      // Dados privados do proprietário
+      privateOwnerName: (privateData as any)?.ownerName ?? null,
+      privateOwnerPhone: (privateData as any)?.ownerPhone ?? null,
+      privateOwnerEmail: (privateData as any)?.ownerEmail ?? null,
+      privateOwnerAddress: (privateData as any)?.ownerAddress ?? null,
+      privateOwnerPrice: (privateData as any)?.ownerPrice ?? null,
+      privateBrokerFeePercent: (privateData as any)?.brokerFeePercent ?? null,
+      privateBrokerFeeFixed: (privateData as any)?.brokerFeeFixed ?? null,
+      privateExclusive: (privateData as any)?.exclusive ?? null,
+      privateExclusiveUntil: (privateData as any)?.exclusiveUntil ? new Date((privateData as any).exclusiveUntil) : null,
+      privateOccupied: (privateData as any)?.occupied ?? null,
+      privateOccupantInfo: (privateData as any)?.occupantInfo ?? null,
+      privateKeyLocation: (privateData as any)?.keyLocation ?? null,
+      privateNotes: (privateData as any)?.notes ?? null,
+      // Configurações de visibilidade
+      hidePrice: (visibility as any)?.hidePrice ?? null,
+      hideExactAddress: (visibility as any)?.hideExactAddress ?? null,
+      hideCondoFee: (visibility as any)?.hideCondoFee ?? null,
+      hideIPTU: (visibility as any)?.hideIPTU ?? null,
+      iptuYearly: (visibility as any)?.iptuYearly ?? null,
       conditionTags: Array.isArray(conditionTags) ? conditionTags : undefined,
       images:
         Array.isArray(images) && images.length > 0
