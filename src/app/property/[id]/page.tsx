@@ -2,13 +2,13 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import GalleryCarousel from "@/components/GalleryCarousel";
 import ContactForm from "@/components/ContactForm";
 import FavoriteButton from "../../../components/FavoriteButton";
 import FinancingButton from "@/components/FinancingButton";
 import FinancingModal from "@/components/FinancingModal";
 import StatCard from "@/components/StatCard";
-import StickyActions from "@/components/StickyActions";
 import PropertyStickyHeader from "@/components/PropertyStickyHeader";
 import FeatureChips from "@/components/FeatureChips";
 import { ptBR, amenitiesFromProperty } from "@/lib/i18n/property";
@@ -17,6 +17,10 @@ import AgentModule from "@/components/AgentModule";
 import MapClient from "@/components/MapClient";
 import SimilarCarousel from "@/components/SimilarCarousel";
 import ReportPropertyButton from "@/components/ReportPropertyButton";
+
+const ModernNavbar = dynamic(() => import("@/components/modern/ModernNavbar"), {
+  ssr: false,
+});
 
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -271,6 +275,7 @@ export default async function PropertyPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      <ModernNavbar forceLight />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <PropertyStickyHeader
         title={property.title}
@@ -280,20 +285,6 @@ export default async function PropertyPage({ params }: PageProps) {
         propertyId={property.id}
         pageUrl={pageUrl}
       />
-      {/* Header */}
-      <div className="bg-white/90 backdrop-blur border-b">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200">
-            ← Voltar à busca
-          </Link>
-          <div className="hidden md:flex items-center gap-2">
-            {whatsapp && (
-              <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Olá! Tenho interesse no imóvel: ${property.title} - ${pageUrl}`)}`} target="_blank" className="px-3 py-2 rounded-lg text-sm text-green-700 hover:bg-green-50">WhatsApp</a>
-            )}
-          </div>
-        </div>
-      </div>
-
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
@@ -507,13 +498,6 @@ export default async function PropertyPage({ params }: PageProps) {
               </Link>
             )}
 
-            <StickyActions
-              priceCents={property.price}
-              scheduleHref={scheduleHref}
-              phone={(property as any)?.owner?.phone ?? null}
-              whatsapp={whatsapp || null}
-              financingHint={{ perMonth: Math.max(1, Math.round((property.price/100) / 240)), lender: 'Caixa', rateLabel: '10.5% a.a.' }}
-            />
             <AgentModule agent={{ name: "Zillowlike Imóveis", email: "contato@zillowlike.com", phone: whatsapp, whatsapp, verified: true }} />
             <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
               <div className="p-4 border-b">

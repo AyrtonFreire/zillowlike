@@ -33,7 +33,7 @@ export default function PropertyStickyHeader({
   const price = (priceCents / 100).toLocaleString("pt-BR");
 
   return (
-    <div className={`fixed top-0 inset-x-0 z-40 transition-transform duration-300 ${visible ? 'translate-y-0' : '-translate-y-20'}`}>
+    <div className={`fixed inset-x-0 top-16 z-40 transition-transform duration-300 ${visible ? 'translate-y-0' : '-translate-y-24'}`}>
       <div className="bg-white/90 backdrop-blur border-b">
         <div className="mx-auto max-w-7xl px-4 py-2 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
