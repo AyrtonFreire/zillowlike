@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
 import Image from "next/image";
-import dynamic from "next/dynamic";
 import GalleryCarousel from "@/components/GalleryCarousel";
 import ContactForm from "@/components/ContactForm";
 import FavoriteButton from "../../../components/FavoriteButton";
@@ -17,10 +16,7 @@ import AgentModule from "@/components/AgentModule";
 import MapClient from "@/components/MapClient";
 import SimilarCarousel from "@/components/SimilarCarousel";
 import ReportPropertyButton from "@/components/ReportPropertyButton";
-
-const ModernNavbar = dynamic(() => import("@/components/modern/ModernNavbar"), {
-  ssr: false,
-});
+import ModernNavbar from "@/components/modern/ModernNavbar";
 
 
 type PageProps = { params: Promise<{ id: string }> };
