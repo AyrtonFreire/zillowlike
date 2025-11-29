@@ -140,6 +140,9 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     }
     if (onOpenOverlay) {
       onOpenOverlay(property.id);
+    } else {
+      // Fallback: navigate to property detail page
+      window.location.href = `/property/${property.id}`;
     }
   };
 
