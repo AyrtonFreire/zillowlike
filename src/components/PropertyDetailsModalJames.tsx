@@ -71,6 +71,7 @@ const FEATURES_ICONS = {
 export default function PropertyDetailsModalJames({ propertyId, open, onClose }: PropertyDetailsModalProps) {
   const { variant = "overlay", mode = "public", backHref, backLabel } = arguments[0] as PropertyDetailsModalProps;
   const isOpen = variant === "page" ? true : open;
+  const [activePropertyId, setActivePropertyId] = useState<string | null>(propertyId);
   const [property, setProperty] = useState<PropertyDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,6 +127,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const fsSwipeLastTime = useRef<number | null>(null);
   const fsSwipeLock = useRef<null | "horizontal" | "vertical">(null);
 
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
   const poiCategories = useMemo(() => ([
     { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools },
     { key: 'pharmacies', label: 'Farmácias', Icon: Pill, items: nearbyPlaces.pharmacies },
@@ -171,62 +174,82 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
   // Fetch property data
   useEffect(() => {
-    if (!isOpen || !propertyId) return;
-
+    if (!isOpen) return;
+    if (!activePropertyId) return;
     setLoading(true);
     setError(null);
-    fetch(`/api/properties?id=${propertyId}`)
+    fetch(`/api/properties?id=${activePropertyId}`)
       .then(async (res) => {
         if (!res.ok) {
           const text = await res.text().catch(() => "");
-          console.error("Property modal load failed (HTTP)", { status: res.status, statusText: res.statusText, body: text });
-          throw new Error("http-error");
+          throw new Error(text || "Erro ao carregar imóvel");
         }
         return res.json();
       })
-      .then(data => {
-        if (data.item) {
-          setProperty(data.item);
-          // Buscar imóveis próximos e similares usando endpoints dedicados
-          if (data.item.id) {
-            console.log('[PropertyModal] Buscando nearby properties (endpoint /api/properties/nearby)...', { id: data.item.id });
-            fetch(`/api/properties/nearby?id=${data.item.id}&radius=3&limit=8`)
-              .then(r => r.json())
-              .then(d => {
-                const arr = d?.properties || d?.items || [];
-                console.log('[PropertyModal] Nearby properties encontrados:', Array.isArray(arr) ? arr.length : 0);
-                setNearbyProperties(arr);
-              })
-              .catch((err) => {
-                console.error('[PropertyModal] Erro ao buscar nearby properties:', err);
-              });
-          }
-          if (data.item.id) {
-            console.log('[PropertyModal] Buscando similar properties (endpoint /api/properties/similar)...', { id: data.item.id });
-            fetch(`/api/properties/similar?id=${data.item.id}&limit=8`)
-              .then(r => r.json())
-              .then(d => {
-                const arr = d?.properties || d?.items || [];
-                console.log('[PropertyModal] Similar properties encontrados:', Array.isArray(arr) ? arr.length : 0);
-                setSimilarProperties(arr);
-              })
-              .catch((err) => {
-                console.error('[PropertyModal] Erro ao buscar similar properties:', err);
-              });
-          }
-        } else {
-          console.error('[PropertyModal] Nenhum item retornado pela API de propriedades.', data);
-          setProperty(null);
-          setError('Não encontramos os detalhes deste imóvel agora. Se quiser, volte à lista e tente abrir novamente em instantes.');
+      .then((data) => {
+        setProperty(data.item);
+        // Buscar imóveis próximos e similares usando endpoints dedicados
+        if (data.item.id) {
+          console.log('[PropertyModal] Buscando nearby properties (endpoint /api/properties/nearby)...', { id: data.item.id });
+          fetch(`/api/properties/nearby?id=${data.item.id}&radius=3&limit=8`)
+            .then(r => r.json())
+            .then(d => {
+              const arr = d?.properties || d?.items || [];
+              setNearbyProperties(arr);
+            })
+            .catch(() => setNearbyProperties([]));
+        }
+        if (data.item.id) {
+          console.log('[PropertyModal] Buscando similar properties (endpoint /api/properties/similar)...', { id: data.item.id });
+          fetch(`/api/properties/similar?id=${data.item.id}&limit=8`)
+            .then(r => r.json())
+            .then(d => {
+              const arr = d?.properties || d?.items || [];
+              setSimilarProperties(arr);
+            })
+            .catch(() => setSimilarProperties([]));
         }
       })
       .catch((err) => {
+        setError(err.message || "Erro ao carregar imóvel");
         console.error('[PropertyModal] Erro ao carregar detalhes do imóvel:', err);
         setProperty(null);
         setError('Não conseguimos carregar os detalhes deste imóvel agora. Se quiser, volte à lista e tente novamente em instantes.');
       })
       .finally(() => setLoading(false));
-  }, [propertyId, isOpen]);
+  }, [activePropertyId, isOpen]);
+
+  useEffect(() => {
+    setActivePropertyId(propertyId);
+  }, [propertyId]);
+
+  const handleOpenRelated = useCallback(
+    (id: string) => {
+      if (!id) return;
+      if (variant === "overlay") {
+        try {
+          window.dispatchEvent(new CustomEvent('open-overlay', { detail: { id } }));
+        } catch {}
+        return;
+      }
+
+      setProperty(null);
+      setNearbyProperties([]);
+      setSimilarProperties([]);
+      setPhotoViewMode(null);
+      setCurrentImageIndex(0);
+      setShowThumbGrid(false);
+      setActivePropertyId(id);
+      requestAnimationFrame(() => {
+        try {
+          scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch {
+          if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+        }
+      });
+    },
+    [scrollContainerRef, variant]
+  );
 
   // Load nearby places (Overpass API) com mirrors/retries/cache
   useEffect(() => {
@@ -428,6 +451,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.98 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          ref={scrollContainerRef}
           className={
             variant === "overlay"
               ? "pointer-events-auto w-full md:w-[92vw] lg:w-[85vw] xl:w-[75vw] max-w-[1400px] h-full bg-white md:rounded-2xl shadow-2xl overflow-y-auto"
@@ -973,7 +997,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 {/* Imóveis Próximos */}
                 {nearbyProperties.length > 0 ? (
                   <div className="border-t border-teal/10 pt-8 mt-8">
-                    <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" />
+                    <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" onOpenOverlay={handleOpenRelated} />
                   </div>
                 ) : (
                   <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
@@ -984,7 +1008,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 {/* Imóveis similares */}
                 {similarProperties.length > 0 ? (
                   <div className="border-t border-teal/10 pt-8 mt-8">
-                    <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" />
+                    <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" onOpenOverlay={handleOpenRelated} />
                   </div>
                 ) : (
                   <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
