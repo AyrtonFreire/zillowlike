@@ -500,7 +500,7 @@ export default async function PropertyPage({ params }: PageProps) {
                 <h3 className="font-semibold text-gray-900">Localização</h3>
               </div>
               <div className="h-80">
-                <MapClient items={items} hideRefitButton />
+                <MapClient items={items} hideRefitButton centeredPriceMarkers />
               </div>
             </div>
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">

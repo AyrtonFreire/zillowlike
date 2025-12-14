@@ -33,6 +33,26 @@ function useIconCache() {
     priceCache.current.set(key, icon);
     return icon;
   };
+  const getCenteredPriceIcon = (id: string, label: string, highlight?: boolean) => {
+    const key = `centered-${id}-${label}-${highlight ? 1 : 0}`;
+    const cached = priceCache.current.get(key);
+    if (cached) return cached;
+    const bg = highlight ? "#0ea5e9" : "#1d4ed8";
+    const icon = L.divIcon({
+      className: "price-marker",
+      html: `
+        <div style="position:relative;display:inline-block;transform:translate(-50%,-100%);padding-bottom:8px;">
+          <div style="position:relative;display:inline-block;background:${bg};color:#ffffff;padding:5px 9px;border-radius:12px;font-weight:800;font-size:11px;letter-spacing:.1px;box-shadow:0 8px 24px rgba(0,0,0,.25);white-space:nowrap;transform:${highlight ? 'scale(1.04)' : 'scale(1)'};transition:transform .15s ease">
+            ${label}
+            <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:-8px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid ${bg}"></div>
+          </div>
+        </div>`,
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
+    });
+    priceCache.current.set(key, icon);
+    return icon;
+  };
   const getClusterIcon = (count: number) => {
     const cached = clusterCache.current.get(count);
     if (cached) return cached;
@@ -45,7 +65,7 @@ function useIconCache() {
     clusterCache.current.set(count, icon);
     return icon;
   };
-  return { getPriceIcon, getClusterIcon };
+  return { getPriceIcon, getCenteredPriceIcon, getClusterIcon };
 }
 
 type Poi = { lat: number; lng: number; label: string; emoji?: string };
@@ -53,7 +73,7 @@ type PoisProp =
   | { mode: 'list'; items: Poi[] }
   | { mode: 'auto'; center: [number, number]; radius?: number };
 
-export default function Map({ items, centerZoom, onViewChange, highlightId, onHoverChange, autoFit, hideRefitButton, isLoading, pois, simplePin, limitInteraction }: { items: Item[]; centerZoom?: { center: [number, number]; zoom: number }; onViewChange?: (v: { center: [number, number]; zoom: number; bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number } }) => void; highlightId?: string; onHoverChange?: (id: string | null) => void; autoFit?: boolean; hideRefitButton?: boolean; isLoading?: boolean; pois?: PoisProp; simplePin?: boolean; limitInteraction?: { minZoom: number; maxZoom: number; radiusMeters: number } }) {
+export default function Map({ items, centerZoom, onViewChange, highlightId, onHoverChange, autoFit, hideRefitButton, isLoading, pois, simplePin, centeredPriceMarkers, limitInteraction }: { items: Item[]; centerZoom?: { center: [number, number]; zoom: number }; onViewChange?: (v: { center: [number, number]; zoom: number; bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number } }) => void; highlightId?: string; onHoverChange?: (id: string | null) => void; autoFit?: boolean; hideRefitButton?: boolean; isLoading?: boolean; pois?: PoisProp; simplePin?: boolean; centeredPriceMarkers?: boolean; limitInteraction?: { minZoom: number; maxZoom: number; radiusMeters: number } }) {
   const center = useMemo(() => {
     if (items.length > 0) return [items[0].latitude, items[0].longitude] as [number, number];
     // Default to Petrolina/Juazeiro midpoint
@@ -296,7 +316,7 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
   // Cluster markers by grid in pixel space for current zoom
   function ClusterMarkers({ points }: { points: Item[] }) {
     const map = useMap();
-    const { getPriceIcon, getClusterIcon } = useIconCache();
+    const { getPriceIcon, getCenteredPriceIcon, getClusterIcon } = useIconCache();
     const zoom = map.getZoom();
     const grid = zoom < 12 ? 80 : zoom < 15 ? 60 : 40; // pixels por zoom
     // group by pixel grid (memoized for current points+zoom)
@@ -344,7 +364,7 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
               <Marker
                 key={p.id}
                 position={[p.latitude, p.longitude]}
-                icon={getPriceIcon(p.id, `R$ ${(p.price / 100).toLocaleString('pt-BR')}`, p.id === highlightId)}
+                icon={centeredPriceMarkers ? getCenteredPriceIcon(p.id, `R$ ${(p.price / 100).toLocaleString('pt-BR')}`, p.id === highlightId) : getPriceIcon(p.id, `R$ ${(p.price / 100).toLocaleString('pt-BR')}`, p.id === highlightId)}
                 zIndexOffset={1400}
                 eventHandlers={{
                   mouseover: () => onHoverChange?.(p.id),
