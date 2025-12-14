@@ -344,8 +344,8 @@ export default function Map({ items, centerZoom, onViewChange, highlightId, onHo
               const pin = L.divIcon({
                 className: 'pin-marker',
                 html: `<div style="width:14px;height:14px;border-radius:9999px;background:#2563eb;border:2px solid white;box-shadow:0 4px 10px rgba(0,0,0,.25)"></div>`,
-                iconSize: [0, 0],
-                iconAnchor: [0, 9],
+                iconSize: [14, 14],
+                iconAnchor: [7, 7],
               });
               return (
                 <Marker

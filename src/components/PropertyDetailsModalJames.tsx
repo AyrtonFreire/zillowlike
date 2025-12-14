@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { X, Share2, Heart, MapPin, ChevronLeft, ChevronRight, Car, Home, Wind, Waves, Building2, Dumbbell, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Sun, Video, Zap, Eye, ArrowUp, ArrowDown, Accessibility, DoorOpen, Lightbulb, Droplets, Archive, Gem, Compass, Dog, ChevronDown, School, Pill, ShoppingCart, Landmark, Fuel, Trees, Hospital, Stethoscope, Building } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import Button from "./ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -16,7 +17,11 @@ const PropertyContactCard = dynamic(() => import("@/components/PropertyContactCa
 type PropertyDetailsModalProps = {
   propertyId: string | null;
   open: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  variant?: "overlay" | "page";
+  mode?: "public" | "internal";
+  backHref?: string;
+  backLabel?: string;
 };
 
 type PropertyDetails = {
@@ -64,6 +69,8 @@ const FEATURES_ICONS = {
 };
 
 export default function PropertyDetailsModalJames({ propertyId, open, onClose }: PropertyDetailsModalProps) {
+  const { variant = "overlay", mode = "public", backHref, backLabel } = arguments[0] as PropertyDetailsModalProps;
+  const isOpen = variant === "page" ? true : open;
   const [property, setProperty] = useState<PropertyDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +80,9 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [isFavorite, setIsFavorite] = useState(false);
   const [photoViewMode, setPhotoViewMode] = useState<"feed" | "fullscreen" | null>(null);
   const [showThumbGrid, setShowThumbGrid] = useState(false);
+  const handleClose = useCallback(() => {
+    onClose?.();
+  }, [onClose]);
   // Zoom/Pan state for lightbox
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -161,7 +171,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
   // Fetch property data
   useEffect(() => {
-    if (!open || !propertyId) return;
+    if (!isOpen || !propertyId) return;
 
     setLoading(true);
     setError(null);
@@ -216,13 +226,13 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         setError('Não conseguimos carregar os detalhes deste imóvel agora. Se quiser, volte à lista e tente novamente em instantes.');
       })
       .finally(() => setLoading(false));
-  }, [propertyId, open]);
+  }, [propertyId, isOpen]);
 
   // Load nearby places (Overpass API) com mirrors/retries/cache
   useEffect(() => {
     const lat = (property as any)?.latitude;
     const lng = (property as any)?.longitude;
-    if (!open || !lat || !lng) return;
+    if (!isOpen || !lat || !lng) return;
     let ignore = false;
     (async () => {
       try {
@@ -240,11 +250,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       }
     })();
     return () => { ignore = true; };
-  }, [open, property]);
+  }, [isOpen, property]);
 
   // Reset on close
   useEffect(() => {
-    if (!open) {
+    if (!isOpen) {
       setProperty(null);
       setCurrentImageIndex(0);
       setPhotoViewMode(null);
@@ -254,7 +264,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setContactOverlayOpen(false);
       setShowThumbGrid(false);
     }
-  }, [open]);
+  }, [isOpen]);
 
   // Close on ESC (respeitando overlay de fotos/contato)
   useEffect(() => {
@@ -271,15 +281,15 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         return;
       }
       // Caso contrário, fecha o modal
-      onClose();
+      handleClose();
     };
-    if (open) window.addEventListener("keydown", handleEsc);
+    if (variant === "overlay" && isOpen) window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [open, onClose, photoViewMode, contactOverlayOpen]);
+  }, [variant, isOpen, handleClose, photoViewMode, contactOverlayOpen]);
 
   // Keyboard navigation only when in fullscreen gallery
   useEffect(() => {
-    if (photoViewMode !== "fullscreen" || !open) return;
+    if (photoViewMode !== "fullscreen" || !isOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
         if (!property) return;
@@ -292,28 +302,28 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [photoViewMode, open, property]);
+  }, [photoViewMode, isOpen, property]);
 
   // Prefetch próximas imagens (usa window.Image para não conflitar com Next/Image)
   useEffect(() => {
-    if (photoViewMode !== "fullscreen" || !property || !open) return;
+    if (photoViewMode !== "fullscreen" || !property || !isOpen) return;
     const total = property.images.length;
     const urls = [1, 2, 3]
       .map((d) => property.images[(currentImageIndex + d) % total]?.url)
       .filter(Boolean) as string[];
     urls.forEach((src) => { try { const img = new (window as any).Image(); img.src = src; } catch {} });
-  }, [photoViewMode, property, currentImageIndex, open]);
+  }, [photoViewMode, property, currentImageIndex, isOpen]);
 
   // Reset zoom/pan whenever foto muda ou lightbox fecha
   useEffect(() => { 
-    if (!open) return;
+    if (!isOpen) return;
     setZoom(1); 
     setOffset({ x: 0, y: 0 }); 
-  }, [currentImageIndex, photoViewMode, open]);
+  }, [currentImageIndex, photoViewMode, isOpen]);
 
   // Definir quantidade de miniaturas por página (responsivo)
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     const calc = () => {
       const w = window.innerWidth;
       const n = w < 480 ? 5 : w < 768 ? 7 : w < 1280 ? 9 : 11;
@@ -322,7 +332,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     calc();
     window.addEventListener('resize', calc);
     return () => window.removeEventListener('resize', calc);
-  }, [open]);
+  }, [isOpen]);
 
   // Helper functions
   const prevImage = () => {
@@ -356,30 +366,41 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     } catch {}
   };
 
-  if (!open) return null;
+  if (!isOpen) return null;
 
   if (loading) {
-    return (
+    return variant === "overlay" ? (
       <div className="fixed inset-0 bg-black/50 z-[12000] flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin" />
+      </div>
+    ) : (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-gray-300 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (error && !property) {
-    return (
+    return variant === "overlay" ? (
       <div className="fixed inset-0 bg-black/50 z-[12000] flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Não foi possível abrir este imóvel</h2>
           <p className="text-sm text-gray-600 mb-4">{error}</p>
           <div className="flex justify-end">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
             >
               Fechar
             </button>
           </div>
+        </div>
+      </div>
+    ) : (
+      <div className="max-w-3xl mx-auto px-4 py-10">
+        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Não foi possível abrir este imóvel</h2>
+          <p className="text-sm text-gray-600">{error}</p>
         </div>
       </div>
     );
@@ -394,27 +415,55 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
   return (
     <AnimatePresence>
-      {open && <div className="fixed inset-0 bg-black/50 z-[12000]" onClick={onClose} />}
-      <div className="fixed inset-0 z-[12001] flex items-start justify-center pointer-events-none">
+      {variant === "overlay" && open && <div className="fixed inset-0 bg-black/50 z-[12000]" onClick={handleClose} />}
+      <div
+        className={
+          variant === "overlay"
+            ? "fixed inset-0 z-[12001] flex items-start justify-center pointer-events-none"
+            : "relative w-full flex items-start justify-center"
+        }
+      >
         <motion.div
           initial={{ opacity: 0, y: 16, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.98 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="pointer-events-auto w-full md:w-[92vw] lg:w-[85vw] xl:w-[75vw] max-w-[1400px] h-full bg-white md:rounded-2xl shadow-2xl overflow-y-auto"
+          className={
+            variant === "overlay"
+              ? "pointer-events-auto w-full md:w-[92vw] lg:w-[85vw] xl:w-[75vw] max-w-[1400px] h-full bg-white md:rounded-2xl shadow-2xl overflow-y-auto"
+              : "w-full max-w-[1400px] bg-white md:rounded-2xl shadow-2xl overflow-y-auto"
+          }
         >
         {/* Header principal do modal (desktop/tablet). No mobile usamos controles sobre a foto. */}
         <div className="sticky top-0 z-20 bg-white border-b border-teal/10 hidden sm:block">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <button
-              onClick={photoViewMode === "feed" ? () => setPhotoViewMode(null) : onClose}
-              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="hidden sm:inline">
-                {photoViewMode === "feed" ? "Voltar ao anúncio" : "Voltar à busca"}
-              </span>
-            </button>
+            {photoViewMode === "feed" ? (
+              <button
+                onClick={() => setPhotoViewMode(null)}
+                className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                <span className="hidden sm:inline">Voltar ao anúncio</span>
+              </button>
+            ) : variant === "page" ? (
+              <Link
+                href={backHref || (mode === "internal" ? "/broker/properties" : "/")}
+                className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                <span className="hidden sm:inline">
+                  {backLabel || (mode === "internal" ? "Voltar aos imóveis" : "Voltar à busca")}
+                </span>
+              </Link>
+            ) : (
+              <button
+                onClick={handleClose}
+                className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                <span className="hidden sm:inline">Voltar à busca</span>
+              </button>
+            )}
             {/* Ações só aparecem em sm+; no mobile usamos os botões sobre a foto */}
             <div className="hidden sm:flex items-center gap-3">
               <button
@@ -560,12 +609,21 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             </motion.div>
 
             {/* Botão voltar no canto superior esquerdo - estilo Zillow */}
-            <button
-              onClick={onClose}
-              className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center"
-            >
-              <ChevronLeft className="w-5 h-5 text-gray-800" />
-            </button>
+            {variant === "page" ? (
+              <Link
+                href={backHref || (mode === "internal" ? "/broker/properties" : "/")}
+                className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-800" />
+              </Link>
+            ) : (
+              <button
+                onClick={handleClose}
+                className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-800" />
+              </button>
+            )}
             
             {/* Ações no canto superior direito */}
             <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-white rounded-full px-1 py-1 shadow-lg">
@@ -804,6 +862,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                         radius: 1000
                       }}
                       hideRefitButton
+                      centeredPriceMarkers
                       simplePin
                       limitInteraction={{ minZoom: 13, maxZoom: 16, radiusMeters: 2000 }}
                     />
