@@ -8,6 +8,7 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [index, setIndex] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
+  const isProgrammaticScrollRef = useRef(false);
   // Fullscreen swipe state - IGUAL AO CARD
   const fsContainerRef = useRef<HTMLDivElement>(null);
   const [fsContainerW, setFsContainerW] = useState(0);
@@ -42,7 +43,12 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
     const node = viewportRef.current;
     if (!node) return;
     const width = node.clientWidth || 1;
+    isProgrammaticScrollRef.current = true;
     node.scrollTo({ left: index * width, behavior: "smooth" });
+    const t = window.setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 350);
+    return () => window.clearTimeout(t);
   }, [index]);
 
   // Keyboard nav in fullscreen
@@ -69,6 +75,7 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
   }, [fullscreen]);
 
   const handleScroll = () => {
+    if (isProgrammaticScrollRef.current) return;
     const node = viewportRef.current;
     if (!node) return;
     const width = node.clientWidth || 1;
@@ -83,13 +90,13 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
   return (
     <div className="relative">
       {/* Viewport */}
-      <div ref={viewportRef} onScroll={handleScroll} className="relative w-full h-[320px] md:h-[440px] overflow-x-auto flex snap-x snap-mandatory scroll-pl-0 gap-0 scrollbar-hide">
+      <div ref={viewportRef} onScroll={handleScroll} className="relative w-full h-[320px] md:h-[440px] overflow-x-auto overflow-y-hidden flex flex-nowrap snap-x snap-mandatory scroll-pl-0 gap-0 scrollbar-hide">
         {images.map((img, i) => (
           <button
             key={i}
             type="button"
             aria-label={`Abrir imagem ${i + 1} em tela cheia`}
-            className="relative w-full h-full flex-shrink-0 snap-start p-0 border-0 bg-transparent"
+            className="relative w-full min-w-full h-full flex-shrink-0 snap-start p-0 border-0 bg-transparent"
             onClick={() => {
               setIndex(i);
               setFullscreen(true);
@@ -163,25 +170,36 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
 
       {/* Fullscreen viewer - swipeable IGUAL AO CARD */}
       {fullscreen && (
-        <div className="fixed inset-0 z-50">
-          <button aria-label="Fechar" className="absolute inset-0 bg-black/80" onClick={() => setFullscreen(false)} />
-          <button
-            aria-label="Fechar"
-            className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/70 text-white hover:bg-black/80"
-            onClick={() => setFullscreen(false)}
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          <div className="absolute inset-0 flex items-center justify-center">
+        <>
+          <div className="fixed inset-0 bg-[#1a1a1a] z-[30000]" />
+          <div className="fixed inset-0 z-[30001] flex flex-col select-none">
+            <div className="bg-[#2b2b2b] h-14 flex items-center justify-between px-4 shrink-0 relative">
+              <button
+                type="button"
+                onClick={() => setFullscreen(false)}
+                className="inline-flex items-center gap-2 text-white hover:text-white/80 text-sm"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="hidden sm:inline">Voltar ao anúncio</span>
+              </button>
+
+              <div className="flex flex-col items-center">
+                <span className="text-white font-medium">Fotos</span>
+                <div className="w-12 h-0.5 bg-white/60 mt-1 rounded-full" />
+              </div>
+
+              <div className="w-10" />
+            </div>
+
             <div
               ref={fsContainerRef}
-              className="relative w-[92vw] h-[82vh] overflow-hidden"
+              className="flex-1 relative overflow-hidden"
               style={{ touchAction: 'pan-y' }}
               onTouchStart={(e) => {
                 if (e.touches.length !== 1) return;
-                setFsContainerW(fsContainerRef.current?.clientWidth || window.innerWidth * 0.92);
+                setFsContainerW(fsContainerRef.current?.clientWidth || window.innerWidth);
                 const t = e.touches[0];
                 const now = performance.now();
                 fsStartX.current = t.clientX;
@@ -215,7 +233,6 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
 
                 if (fsLock.current === "v") return;
 
-                // Rubber-band nas bordas
                 let dx = dxTotal;
                 const atFirst = index === 0;
                 const atLast = index === images.length - 1;
@@ -256,7 +273,25 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                 setFsDragX(0);
               }}
             >
-              {/* Todas as imagens lado a lado - segue o dedo */}
+              <button
+                aria-label="Anterior"
+                onClick={() => setIndex((i) => Math.max(0, i - 1))}
+                className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-lg text-gray-800 flex items-center justify-center hover:bg-gray-100 z-10"
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                aria-label="Próxima"
+                onClick={() => setIndex((i) => Math.min(images.length - 1, i + 1))}
+                className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-lg text-gray-800 flex items-center justify-center hover:bg-gray-100 z-10"
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+
               <motion.div
                 animate={{ x: fsIsDragging ? -index * fsContainerW + fsDragX : -index * fsContainerW }}
                 transition={fsIsDragging ? { type: 'tween', duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
@@ -275,21 +310,16 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                 ))}
               </motion.div>
 
-              {/* Setas de navegação */}
-              <button aria-label="Anterior" className="absolute left-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/90 hover:bg-white shadow z-10" onClick={(e)=>{e.stopPropagation(); setIndex((i) => Math.max(0, i - 1));}}>
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
-              </button>
-              <button aria-label="Próxima" className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/90 hover:bg-white shadow z-10" onClick={(e)=>{e.stopPropagation(); setIndex((i) => Math.min(images.length - 1, i + 1));}}>
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
-              </button>
-              <div className="absolute bottom-4 inset-x-0 flex justify-center z-10">
-                <span className="px-3 py-1 rounded-full bg-black/60 text-xs text-white font-medium">
-                  {index + 1} / {images.length}
-                </span>
+              <div className="absolute top-4 right-4 bg-black/70 text-white text-sm font-medium px-3 py-1.5 rounded-lg z-10">
+                {index + 1} de {images.length}
               </div>
             </div>
+
+            <div className="bg-[#2b2b2b] py-3 px-4 text-center shrink-0">
+              <p className="text-white/90 text-sm">{title}</p>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
