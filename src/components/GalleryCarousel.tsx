@@ -1,7 +1,6 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
 type Img = { url: string; alt?: string; blurDataURL?: string };
@@ -68,25 +67,19 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
     setIndex((prev) => (prev === nextIndex ? prev : nextIndex));
   };
 
-  const sizes = useMemo(() => "(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1200px", []);
-
   if (!hasImages) return null;
 
   return (
     <div className="relative">
       {/* Viewport */}
-      <div ref={viewportRef} onScroll={handleScroll} className="relative w-full h-[320px] md:h-[440px] overflow-hidden flex snap-x snap-mandatory scroll-pl-0 gap-0">
+      <div ref={viewportRef} onScroll={handleScroll} className="relative w-full h-[320px] md:h-[440px] overflow-x-auto flex snap-x snap-mandatory scroll-pl-0 gap-0 scrollbar-hide">
         {images.map((img, i) => (
           <div key={i} className="relative w-full h-full flex-shrink-0 snap-start">
-            <Image
+            <img
               src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_1600,h_1200,c_fit,g_auto")}
               alt={img.alt || title}
-              fill
-              sizes={sizes}
-              priority={i === 0}
-              placeholder="blur"
-              blurDataURL={img.blurDataURL || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPScxMDAlJyBoZWlnaHQ9JzEwMCUnIGZpbGw9JyNlZWVmZmYnIC8+PC9zdmc+"}
-              className="object-cover"
+              loading={i === 0 ? "eager" : "lazy"}
+              className="w-full h-full object-cover"
             />
           </div>
         ))}
@@ -124,7 +117,12 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                 onClick={() => setIndex(i)} 
                 className={`relative h-12 w-16 md:h-16 md:w-28 rounded-md overflow-hidden ring-2 flex-shrink-0 ${index===i? 'ring-white' : 'ring-white/50'}`}
               >
-                <Image src={transformCloudinary(im.url, "f_auto,q_auto:eco,dpr_auto,w_320,h_180,c_fill,g_auto")} alt={(im.alt || title)+" thumb"} fill className="object-cover" loading="lazy" placeholder="blur" blurDataURL={im.blurDataURL || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMTYwJyBoZWlnaHQ9JzkwJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxyZWN0IHdpZHRoPScxNjAnIGhlaWdodD0nOTAnIGZpbGw9JyNlZWVmZmYnIC8+PC9zdmc+"} />
+                <img 
+                  src={transformCloudinary(im.url, "f_auto,q_auto:eco,dpr_auto,w_320,h_180,c_fill,g_auto")} 
+                  alt={(im.alt || title)+" thumb"} 
+                  className="w-full h-full object-cover" 
+                  loading="lazy" 
+                />
               </button>
             ))}
           </div>
@@ -235,13 +233,11 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
               >
                 {images.map((img, i) => (
                   <div key={i} className="relative h-full flex items-center justify-center" style={{ width: `${100 / images.length}%` }}>
-                    <Image
+                    <img
                       src={img.url}
                       alt={img.alt || title}
-                      fill
-                      sizes="100vw"
-                      className="object-contain"
-                      priority={i === index}
+                      className="max-w-full max-h-full object-contain"
+                      loading={i === index ? "eager" : "lazy"}
                     />
                   </div>
                 ))}
