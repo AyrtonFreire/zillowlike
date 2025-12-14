@@ -291,7 +291,7 @@ export default async function PropertyPage({ params }: PageProps) {
               {property.images.length > 0 && (
                 <div className="relative">
                   <GalleryCarousel images={property.images.map((i: any) => ({ url: i.url, alt: i.alt || property.title, blurDataURL: (i as any).blurDataURL }))} title={property.title} />
-                  <div className="absolute top-3 right-3 flex gap-2">
+                  <div className="absolute top-3 right-14 flex gap-2">
                     <FavoriteButton propertyId={property.id} />
                   </div>
                 </div>

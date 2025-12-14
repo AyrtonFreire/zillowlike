@@ -41,8 +41,8 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
   useEffect(() => {
     const node = viewportRef.current;
     if (!node) return;
-    const child = node.children[index] as HTMLElement | undefined;
-    if (child) child.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    const width = node.clientWidth || 1;
+    node.scrollTo({ left: index * width, behavior: "smooth" });
   }, [index]);
 
   // Keyboard nav in fullscreen
@@ -56,6 +56,17 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen, images.length]);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const measure = () => {
+      const w = fsContainerRef.current?.clientWidth;
+      setFsContainerW(w || window.innerWidth * 0.92);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [fullscreen]);
 
   const handleScroll = () => {
     const node = viewportRef.current;
@@ -74,14 +85,29 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
       {/* Viewport */}
       <div ref={viewportRef} onScroll={handleScroll} className="relative w-full h-[320px] md:h-[440px] overflow-x-auto flex snap-x snap-mandatory scroll-pl-0 gap-0 scrollbar-hide">
         {images.map((img, i) => (
-          <div key={i} className="relative w-full h-full flex-shrink-0 snap-start">
+          <button
+            key={i}
+            type="button"
+            aria-label={`Abrir imagem ${i + 1} em tela cheia`}
+            className="relative w-full h-full flex-shrink-0 snap-start p-0 border-0 bg-transparent"
+            onClick={() => {
+              setIndex(i);
+              setFullscreen(true);
+            }}
+          >
             <img
-              src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_1600,h_1200,c_fit,g_auto")}
+              src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_1600,h_1200,c_fill,g_auto")}
               alt={img.alt || title}
               loading={i === 0 ? "eager" : "lazy"}
+              onError={(e) => {
+                const el = e.currentTarget;
+                if (el.dataset.fallback === "1") return;
+                el.dataset.fallback = "1";
+                el.src = img.url;
+              }}
               className="w-full h-full object-cover"
             />
-          </div>
+          </button>
         ))}
       </div>
 
@@ -92,16 +118,16 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
       )}
 
       {/* Controls */}
-      <button aria-label="Imagem anterior" className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white shadow" onClick={() => setIndex((i) => Math.max(0, i - 1))}>
+      <button type="button" aria-label="Imagem anterior" className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white shadow z-10" onClick={() => setIndex((i) => Math.max(0, i - 1))}>
         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
       </button>
-      <button aria-label="Próxima imagem" className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white shadow" onClick={() => setIndex((i) => Math.min(images.length - 1, i + 1))}>
+      <button type="button" aria-label="Próxima imagem" className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white shadow z-10" onClick={() => setIndex((i) => Math.min(images.length - 1, i + 1))}>
         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
       </button>
 
       {/* Overlay actions */}
-      <div className="absolute top-3 right-3 flex gap-2">
-        <button aria-label="Abrir em tela cheia" title="Tela cheia" onClick={() => setFullscreen(true)} className="p-2 rounded-full bg-white/90 hover:bg-white shadow">
+      <div className="absolute top-3 right-3 flex gap-2 z-10">
+        <button type="button" aria-label="Abrir em tela cheia" title="Tela cheia" onClick={() => setFullscreen(true)} className="p-2 rounded-full bg-white/90 hover:bg-white shadow">
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 3H5a2 2 0 00-2 2v3m0 6v3a2 2 0 002 2h3m6-16h3a2 2 0 012 2v3m0 6v3a2 2 0 01-2 2h-3"/></svg>
         </button>
       </div>
@@ -122,6 +148,12 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                   alt={(im.alt || title)+" thumb"} 
                   className="w-full h-full object-cover" 
                   loading="lazy" 
+                  onError={(e) => {
+                    const el = e.currentTarget;
+                    if (el.dataset.fallback === "1") return;
+                    el.dataset.fallback = "1";
+                    el.src = im.url;
+                  }}
                 />
               </button>
             ))}
