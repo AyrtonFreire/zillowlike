@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { X, Share2, Heart, MapPin, ChevronLeft, ChevronRight, Car, Home, Wind, Waves, Building2, Dumbbell, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Sun, Video, Zap, Eye, ArrowUp, ArrowDown, Accessibility, DoorOpen, Lightbulb, Droplets, Archive, Gem, Compass, Dog, ChevronDown, School, Pill, ShoppingCart, Landmark, Fuel, Trees, Hospital, Stethoscope, Building } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import Button from "./ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -72,6 +73,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const { variant = "overlay", mode = "public", backHref, backLabel } = arguments[0] as PropertyDetailsModalProps;
   const isOpen = variant === "page" ? true : open;
   const [activePropertyId, setActivePropertyId] = useState<string | null>(propertyId);
+  const searchParams = useSearchParams();
+  const poiPreview = searchParams?.get('poiPreview') === '1';
   const [property, setProperty] = useState<PropertyDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -909,79 +912,272 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   </div>
                 )}
 
-                {/* Locais próximos - Minimal items grid like 'Características' */}
-                {(nearbyPlaces.schools.length > 0 || nearbyPlaces.markets.length > 0 || nearbyPlaces.pharmacies.length > 0 || nearbyPlaces.restaurants.length > 0 || nearbyPlaces.hospitals.length > 0 || nearbyPlaces.parks.length > 0 || nearbyPlaces.gyms.length > 0 || nearbyPlaces.fuel.length > 0 || nearbyPlaces.bakeries.length > 0 || nearbyPlaces.banks.length > 0 || nearbyPlaces.malls.length > 0) ? (
-                  <div className="mb-6">
+                {!poiPreview ? (
+                  (nearbyPlaces.schools.length > 0 || nearbyPlaces.markets.length > 0 || nearbyPlaces.pharmacies.length > 0 || nearbyPlaces.restaurants.length > 0 || nearbyPlaces.hospitals.length > 0 || nearbyPlaces.parks.length > 0 || nearbyPlaces.gyms.length > 0 || nearbyPlaces.fuel.length > 0 || nearbyPlaces.bakeries.length > 0 || nearbyPlaces.banks.length > 0 || nearbyPlaces.malls.length > 0) ? (
+                    <div className="mb-6">
+                      {(() => {
+                        const available = poiCategories.filter(c => (c.items as any[]) && (c.items as any[]).length>0);
+                        const chunks: typeof available[] = [] as any;
+                        for (let i=0; i<available.length; i+=3) chunks.push(available.slice(i, i+3));
+                        const total = chunks.length || 1;
+                        const page = Math.min(poiPage, total-1);
+                        const current = chunks[page] || [];
+                        return (
+                          <>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="text-sm text-gray-500">Categorias {page+1}/{total}</div>
+                              <div className="hidden sm:flex items-center gap-2">
+                                <button aria-label="Anterior" onClick={()=>setPoiPage(Math.max(0, page-1))} className="w-8 h-8 rounded-full border bg-white hover:bg-gray-50 shadow flex items-center justify-center">‹</button>
+                                <button aria-label="Próximo" onClick={()=>setPoiPage(Math.min(total-1, page+1))} className="w-8 h-8 rounded-full border bg-white hover:bg-gray-50 shadow flex items-center justify-center">›</button>
+                              </div>
+                            </div>
+                            <div className="sm:hidden flex items-center justify-center gap-3 mb-2">
+                              <button aria-label="Anterior" onClick={()=>setPoiPage(Math.max(0, page-1))} className="w-9 h-9 rounded-full border bg-white/95 shadow flex items-center justify-center">‹</button>
+                              <button aria-label="Próximo" onClick={()=>setPoiPage(Math.min(total-1, page+1))} className="w-9 h-9 rounded-full border bg-white/95 shadow flex items-center justify-center">›</button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {current.map(({ key, label, Icon, items }) => {
+                                const lat = (property as any).latitude;
+                                const lng = (property as any).longitude;
+                                const hasCoords = typeof lat === 'number' && typeof lng === 'number';
+                                const base = ((items as any[]) || []).slice();
+                                base.sort((a: any, b: any) => {
+                                  if (hasCoords) {
+                                    const d1 = (a.lat - lat) * (a.lat - lat) + (a.lng - lng) * (a.lng - lng);
+                                    const d2 = (b.lat - lat) * (b.lat - lat) + (b.lng - lng) * (b.lng - lng);
+                                    return d1 - d2;
+                                  }
+                                  return String(a.name).localeCompare(String(b.name));
+                                });
+                                const list = base.slice(0, 4);
+                                if (list.length === 0) return null;
+                                return (
+                                  <div key={`col-${key}`}>
+                                    <div className="flex items-center gap-3 mb-2">
+                                      {(() => { const I = Icon as any; return <I className="w-5 h-5 text-gray-700" />; })()}
+                                      <span className="text-gray-900 font-medium">{label as string}</span>
+                                    </div>
+                                    <ul className="text-sm text-gray-600 space-y-1 ml-1">
+                                      {list.map((p, i) => {
+                                        const hasItemCoords = hasCoords && typeof (p as any).lat === 'number' && typeof (p as any).lng === 'number';
+                                        const dist = hasItemCoords ? formatDistance(haversine(lat, lng, (p as any).lat, (p as any).lng)) : null;
+                                        return (
+                                          <li key={`${key}-${i}`} className="flex items-start gap-2">
+                                            <span className="text-teal/60 mt-0.5">•</span>
+                                            <span className="flex-1 leading-relaxed">
+                                              {(p as any).name}
+                                              {dist && <span className="text-gray-500 ml-1">• {dist}</span>}
+                                            </span>
+                                          </li>
+                                        );
+                                      })}
+                                    </ul>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
+                      <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
+                      <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
+                    </div>
+                  )
+                ) : (
+                  <div className="mb-8 space-y-6">
                     {(() => {
-                      const available = poiCategories.filter(c => (c.items as any[]) && (c.items as any[]).length>0);
-                      const chunks: typeof available[] = [] as any;
-                      for (let i=0; i<available.length; i+=3) chunks.push(available.slice(i, i+3));
-                      const total = chunks.length || 1;
-                      const page = Math.min(poiPage, total-1);
-                      const current = chunks[page] || [];
+                      const lat = (property as any).latitude;
+                      const lng = (property as any).longitude;
+                      const hasCoords = typeof lat === 'number' && typeof lng === 'number';
+                      const available = poiCategories
+                        .filter(c => Array.isArray(c.items) && (c.items as any[]).length > 0)
+                        .map((c) => {
+                          const base = ((c.items as any[]) || []).slice();
+                          base.sort((a: any, b: any) => {
+                            if (hasCoords) {
+                              const d1 = (a.lat - lat) * (a.lat - lat) + (a.lng - lng) * (a.lng - lng);
+                              const d2 = (b.lat - lat) * (b.lat - lat) + (b.lng - lng) * (b.lng - lng);
+                              return d1 - d2;
+                            }
+                            return String(a.name).localeCompare(String(b.name));
+                          });
+                          return { ...c, sorted: base };
+                        });
+
+                      if (available.length === 0) {
+                        return (
+                          <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 text-center">
+                            <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
+                            <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
+                          </div>
+                        );
+                      }
+
+                      const selected = available.find((c: any) => c.key === activePOITab) || available[0];
+                      const selectedList = (selected as any).sorted || [];
+
                       return (
                         <>
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="text-sm text-gray-500">Categorias {page+1}/{total}</div>
-                            <div className="hidden sm:flex items-center gap-2">
-                              <button aria-label="Anterior" onClick={()=>setPoiPage(Math.max(0, page-1))} className="w-8 h-8 rounded-full border bg-white hover:bg-gray-50 shadow flex items-center justify-center">‹</button>
-                              <button aria-label="Próximo" onClick={()=>setPoiPage(Math.min(total-1, page+1))} className="w-8 h-8 rounded-full border bg-white hover:bg-gray-50 shadow flex items-center justify-center">›</button>
+                          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">Prévia — Opção 1</div>
+                                <div className="text-xs text-gray-500">Cards por categoria (premium + escaneável)</div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {available.slice(0, 6).map((c: any) => {
+                                const list = ((c.sorted as any[]) || []).slice(0, 3);
+                                const count = ((c.items as any[]) || []).length;
+                                return (
+                                  <div key={`p1-${c.key}`} className="rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow p-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="flex items-center gap-2">
+                                        {(() => { const I = c.Icon as any; return <I className="w-4 h-4 text-gray-700" />; })()}
+                                        <div className="font-medium text-gray-900">{c.label}</div>
+                                      </div>
+                                      <span className="text-xs font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">{count}</span>
+                                    </div>
+                                    <div className="space-y-1">
+                                      {list.map((p: any, idx: number) => {
+                                        const dist = hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number' ? formatDistance(haversine(lat, lng, p.lat, p.lng)) : null;
+                                        return (
+                                          <div key={`p1-${c.key}-${idx}`} className="flex items-start justify-between gap-2 text-sm">
+                                            <div className="text-gray-700 line-clamp-1">{p.name}</div>
+                                            {dist && (
+                                              <span className="shrink-0 text-[11px] font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
+                                                {dist}
+                                              </span>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
-                          {/* Mobile arrows - below grid */}
-                          <div className="sm:hidden flex items-center justify-center gap-3 mb-2">
-                            <button aria-label="Anterior" onClick={()=>setPoiPage(Math.max(0, page-1))} className="w-9 h-9 rounded-full border bg-white/95 shadow flex items-center justify-center">‹</button>
-                            <button aria-label="Próximo" onClick={()=>setPoiPage(Math.min(total-1, page+1))} className="w-9 h-9 rounded-full border bg-white/95 shadow flex items-center justify-center">›</button>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {current.map(({ key, label, Icon, items }) => {
-                              const lat = (property as any).latitude;
-                              const lng = (property as any).longitude;
-                              const hasCoords = typeof lat === 'number' && typeof lng === 'number';
-                              const base = ((items as any[]) || []).slice();
-                              base.sort((a: any, b: any) => {
-                                if (hasCoords) {
-                                  const d1 = (a.lat - lat) * (a.lat - lat) + (a.lng - lng) * (a.lng - lng);
-                                  const d2 = (b.lat - lat) * (b.lat - lat) + (b.lng - lng) * (b.lng - lng);
-                                  return d1 - d2;
-                                }
-                                return String(a.name).localeCompare(String(b.name));
-                              });
-                              const list = base.slice(0, 4);
-                              if (list.length === 0) return null;
-                              return (
-                                <div key={`col-${key}`}>
-                                  <div className="flex items-center gap-3 mb-2">
-                                    {(() => { const I = Icon as any; return <I className="w-5 h-5 text-gray-700" />; })()}
-                                    <span className="text-gray-900 font-medium">{label as string}</span>
+
+                          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">Prévia — Opção 2</div>
+                                <div className="text-xs text-gray-500">Tabs por categoria + lista refinada (compacto)</div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                              {available.map((c: any) => (
+                                <button
+                                  key={`p2-tab-${c.key}`}
+                                  type="button"
+                                  onClick={() => setActivePOITab(c.key)}
+                                  className={`shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+                                    c.key === (selected as any).key
+                                      ? "border-teal-500 bg-teal-50 text-teal-800"
+                                      : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                  }`}
+                                >
+                                  {(() => { const I = c.Icon as any; return <I className="w-3.5 h-3.5" />; })()}
+                                  <span>{c.label}</span>
+                                  <span className="text-[11px] font-semibold text-gray-500">{((c.items as any[]) || []).length}</span>
+                                </button>
+                              ))}
+                            </div>
+                            <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+                              {selectedList.slice(0, 8).map((p: any, idx: number) => {
+                                const dist = hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number' ? formatDistance(haversine(lat, lng, p.lat, p.lng)) : null;
+                                return (
+                                  <div key={`p2-${idx}`} className="flex items-center justify-between gap-3 px-4 py-3 bg-white">
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-medium text-gray-900 truncate">{p.name}</div>
+                                      <div className="text-xs text-gray-500">{(selected as any).label}</div>
+                                    </div>
+                                    {dist && (
+                                      <span className="shrink-0 text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
+                                        {dist}
+                                      </span>
+                                    )}
                                   </div>
-                                  <ul className="text-sm text-gray-600 space-y-1 ml-1">
-                                    {list.map((p, i) => {
-                                      const hasItemCoords = hasCoords && typeof (p as any).lat === 'number' && typeof (p as any).lng === 'number';
-                                      const dist = hasItemCoords ? formatDistance(haversine(lat, lng, (p as any).lat, (p as any).lng)) : null;
-                                      return (
-                                        <li key={`${key}-${i}`} className="flex items-start gap-2">
-                                          <span className="text-teal/60 mt-0.5">•</span>
-                                          <span className="flex-1 leading-relaxed">
-                                            {(p as any).name}
-                                            {dist && <span className="text-gray-500 ml-1">• {dist}</span>}
-                                          </span>
-                                        </li>
-                                      );
-                                    })}
-                                  </ul>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">Prévia — Opção 3</div>
+                                <div className="text-xs text-gray-500">Mapa + lista lateral (mini explorer)</div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                              <div className="lg:col-span-3 h-[260px] rounded-xl overflow-hidden border border-gray-100">
+                                {(property as any).latitude && (property as any).longitude && (
+                                  <Map
+                                    items={[{
+                                      id: property.id,
+                                      price: property.price,
+                                      latitude: (property as any).latitude,
+                                      longitude: (property as any).longitude
+                                    }]}
+                                    pois={{
+                                      mode: 'auto' as const,
+                                      center: [(property as any).latitude, (property as any).longitude],
+                                      radius: 1000
+                                    }}
+                                    hideRefitButton
+                                    centeredPriceMarkers
+                                    simplePin
+                                    limitInteraction={{ minZoom: 13, maxZoom: 16, radiusMeters: 2000 }}
+                                  />
+                                )}
+                              </div>
+                              <div className="lg:col-span-2">
+                                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                                  {available.slice(0, 6).map((c: any) => (
+                                    <button
+                                      key={`p3-tab-${c.key}`}
+                                      type="button"
+                                      onClick={() => setActivePOITab(c.key)}
+                                      className={`shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+                                        c.key === (selected as any).key
+                                          ? "border-teal-500 bg-teal-50 text-teal-800"
+                                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                      }`}
+                                    >
+                                      {(() => { const I = c.Icon as any; return <I className="w-3.5 h-3.5" />; })()}
+                                      <span>{c.label}</span>
+                                    </button>
+                                  ))}
                                 </div>
-                              );
-                            })}
+                                <div className="mt-3 rounded-xl border border-gray-100 overflow-hidden">
+                                  {selectedList.slice(0, 6).map((p: any, idx: number) => {
+                                    const dist = hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number' ? formatDistance(haversine(lat, lng, p.lat, p.lng)) : null;
+                                    return (
+                                      <div key={`p3-${idx}`} className="flex items-center justify-between gap-3 px-4 py-3 bg-white border-b border-gray-100 last:border-b-0">
+                                        <div className="min-w-0">
+                                          <div className="text-sm font-medium text-gray-900 truncate">{p.name}</div>
+                                          <div className="text-xs text-gray-500 truncate">{(selected as any).label}</div>
+                                        </div>
+                                        {dist && (
+                                          <span className="shrink-0 text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
+                                            {dist}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </>
                       );
                     })()}
-                  </div>
-                ) : (
-                  <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
-                    <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
-                    <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
                   </div>
                 )}
                 
