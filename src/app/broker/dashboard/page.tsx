@@ -423,6 +423,80 @@ export default function BrokerDashboard() {
           <LeadSearchBar className="max-w-md" />
         </div>
 
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Link
+            href="/broker/properties"
+            className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors">
+                <Eye className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Ver Imóveis</h3>
+                <p className="text-sm text-gray-600">Gerenciar anúncios</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/broker/leads"
+            className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-50 rounded-xl group-hover:bg-green-100 transition-colors">
+                <Activity className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Minha lista de leads</h3>
+                <p className="text-sm text-gray-600">Ver e acompanhar todos os seus leads</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/broker/chats"
+            className="relative p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
+          >
+            {unreadMessages > 0 && (
+              <div className="absolute -top-2 -right-2 min-w-[24px] h-6 px-2 bg-red-500 rounded-full flex items-center justify-center shadow-sm">
+                <span className="text-xs font-bold text-white">
+                  {unreadMessages > 99 ? "99+" : unreadMessages}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center gap-4">
+              <div className="relative p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors">
+                <MessageSquare className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Conversas</h3>
+                <p className="text-sm text-gray-600">
+                  {unreadMessages > 0
+                    ? `${unreadMessages} mensagem${unreadMessages > 1 ? "s" : ""} não lida${unreadMessages > 1 ? "s" : ""}`
+                    : "Responda clientes pelo chat"}
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/broker/agenda"
+            className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-orange-50 rounded-xl group-hover:bg-orange-100 transition-colors">
+                <Clock className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Agenda de visitas</h3>
+                <p className="text-sm text-gray-600">Ver horários combinados</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+
         {/* Metrics Grid - 2 cols on mobile */}
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8">
           <MetricCard
@@ -896,84 +970,11 @@ export default function BrokerDashboard() {
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Link
-            href="/broker/properties"
-            className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors">
-                <Eye className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Ver Imóveis</h3>
-                <p className="text-sm text-gray-600">Gerenciar anúncios</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href="/broker/leads"
-            className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-50 rounded-xl group-hover:bg-green-100 transition-colors">
-                <Activity className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Minha lista de leads</h3>
-                <p className="text-sm text-gray-600">Ver e acompanhar todos os seus leads</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href="/broker/chats"
-            className="relative p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
-          >
-            {unreadMessages > 0 && (
-              <div className="absolute -top-2 -right-2 min-w-[24px] h-6 px-2 bg-red-500 rounded-full flex items-center justify-center shadow-sm">
-                <span className="text-xs font-bold text-white">
-                  {unreadMessages > 99 ? "99+" : unreadMessages}
-                </span>
-              </div>
-            )}
-            <div className="flex items-center gap-4">
-              <div className="relative p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors">
-                <MessageSquare className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Conversas</h3>
-                <p className="text-sm text-gray-600">
-                  {unreadMessages > 0 
-                    ? `${unreadMessages} mensagem${unreadMessages > 1 ? "s" : ""} não lida${unreadMessages > 1 ? "s" : ""}`
-                    : "Responda clientes pelo chat"
-                  }
-                </p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href="/broker/agenda"
-            className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-orange-50 rounded-xl group-hover:bg-orange-100 transition-colors">
-                <Clock className="w-6 h-6 text-orange-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Agenda de visitas</h3>
-                <p className="text-sm text-gray-600">Ver horários combinados</p>
-              </div>
-            </div>
-          </Link>
-
-          {teamSummary && (
+        {teamSummary && (
+          <div className="mt-8">
             <Link
               href={`/broker/teams/${teamSummary.id}/crm`}
-              className="p-6 bg-white rounded-2xl border border-teal-200 hover:border-teal-300 hover:shadow-md transition-all duration-300 group"
+              className="p-6 bg-white rounded-2xl border border-teal-200 hover:border-teal-300 hover:shadow-md transition-all duration-300 group block"
             >
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-teal-50 rounded-xl group-hover:bg-teal-100 transition-colors">
@@ -991,8 +992,8 @@ export default function BrokerDashboard() {
                 </div>
               </div>
             </Link>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Botão para ver tutorial novamente */}
         <div className="mt-8 text-center">
