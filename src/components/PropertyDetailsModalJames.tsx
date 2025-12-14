@@ -997,45 +997,67 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             {/* Sidebar */}
             <div className="lg:col-span-1">
               <div className="sticky top-24 space-y-6">
-                {/* Financing card will appear below the contact form */}
+                {mode === "public" ? (
+                  <>
+                    {/* Financing card will appear below the contact form */}
 
-                {/* Contact Card - Dynamic based on owner type and lead board setting */}
-                <PropertyContactCard
-                  propertyId={property.id}
-                  propertyTitle={property.title}
-                  propertyPurpose={property.purpose}
-                  ownerRole={property.owner?.role || "USER"}
-                  ownerName={property.owner?.name || undefined}
-                  ownerImage={property.owner?.image || undefined}
-                  ownerPhone={property.owner?.phone || undefined}
-                  ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
-                  ownerPublicSlug={property.owner?.publicSlug || null}
-                  allowRealtorBoard={property.allowRealtorBoard || false}
-                />
+                    {/* Contact Card - Dynamic based on owner type and lead board setting */}
+                    <PropertyContactCard
+                      propertyId={property.id}
+                      propertyTitle={property.title}
+                      propertyPurpose={property.purpose}
+                      ownerRole={property.owner?.role || "USER"}
+                      ownerName={property.owner?.name || undefined}
+                      ownerImage={property.owner?.image || undefined}
+                      ownerPhone={property.owner?.phone || undefined}
+                      ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
+                      ownerPublicSlug={property.owner?.publicSlug || null}
+                      allowRealtorBoard={property.allowRealtorBoard || false}
+                    />
 
-                {/* Financing Calculator - Only for SALE properties (single card below contact form) */}
-                {property.purpose === 'SALE' && property.price && property.price > 0 && (() => {
-                  const priceBRL = property.price / 100;
-                  const { calculation } = getLowestFinancing(priceBRL);
-                  const fmt = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
-                  return (
-                    <div className="rounded-xl border border-teal/10 p-6 bg-gradient-to-br from-teal/5 to-teal/10 shadow-sm">
-                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">💰 Financiamento</h4>
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-sm text-gray-600 mb-1">Entrada (20%)</p>
-                          <p className="text-lg font-bold text-gray-900">{fmt(calculation.downPayment)}</p>
+                    {/* Financing Calculator - Only for SALE properties (single card below contact form) */}
+                    {property.purpose === 'SALE' && property.price && property.price > 0 && (() => {
+                      const priceBRL = property.price / 100;
+                      const { calculation } = getLowestFinancing(priceBRL);
+                      const fmt = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+                      return (
+                        <div className="rounded-xl border border-teal/10 p-6 bg-gradient-to-br from-teal/5 to-teal/10 shadow-sm">
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">💰 Financiamento</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-sm text-gray-600 mb-1">Entrada (20%)</p>
+                              <p className="text-lg font-bold text-gray-900">{fmt(calculation.downPayment)}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-600 mb-1">Parcela estimada (360x)</p>
+                              <p className="text-2xl font-bold text-teal">{fmt(calculation.monthlyPayment)}<span className="text-sm text-gray-600 font-normal">/mês</span></p>
+                            </div>
+                            <a href={`/financing/${property.id}`} target="_blank" rel="noopener noreferrer" className="block w-full text-center px-4 py-2 glass-teal text-white rounded-lg font-medium hover:opacity-90 transition-opacity">Ver opções de bancos →</a>
+                            <p className="text-xs text-gray-500 text-center">*Simulação aproximada. Consulte seu banco.</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-600 mb-1">Parcela estimada (360x)</p>
-                          <p className="text-2xl font-bold text-teal">{fmt(calculation.monthlyPayment)}<span className="text-sm text-gray-600 font-normal">/mês</span></p>
-                        </div>
-                        <a href={`/financing/${property.id}`} target="_blank" rel="noopener noreferrer" className="block w-full text-center px-4 py-2 glass-teal text-white rounded-lg font-medium hover:opacity-90 transition-opacity">Ver opções de bancos →</a>
-                        <p className="text-xs text-gray-500 text-center">*Simulação aproximada. Consulte seu banco.</p>
-                      </div>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
+                    <h4 className="font-semibold text-gray-900 mb-3">Ferramentas internas</h4>
+                    <div className="flex flex-col gap-2">
+                      <Link
+                        href={`/broker/properties/${property.id}`}
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                      >
+                        Leads & negociação
+                      </Link>
+                      <Link
+                        href={`/owner/properties/edit/${property.id}`}
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                      >
+                        Editar anúncio
+                      </Link>
                     </div>
-                  );
-                })()}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1182,14 +1204,15 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   </div>
                 </div>
 
-                {/* Botão de contato principal */}
-                <button
-                  type="button"
-                  onClick={() => setContactOverlayOpen(true)}
-                  className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl glass-teal text-white text-sm font-semibold shadow-md hover:shadow-lg transition-shadow"
-                >
-                  Entrar em contato
-                </button>
+                {mode === "public" && (
+                  <button
+                    type="button"
+                    onClick={() => setContactOverlayOpen(true)}
+                    className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl glass-teal text-white text-sm font-semibold shadow-md hover:shadow-lg transition-shadow"
+                  >
+                    Entrar em contato
+                  </button>
+                )}
 
                 {/* Botões secundários */}
                 <div className="flex gap-2">
@@ -1221,15 +1244,17 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               </div>
 
               {/* Botão de contato mobile (fixo no bottom) */}
-              <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-10">
-                <button
-                  type="button"
-                  onClick={() => setContactOverlayOpen(true)}
-                  className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl glass-teal text-white text-sm font-semibold"
-                >
-                  Entrar em contato
-                </button>
-              </div>
+              {mode === "public" && (
+                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-10">
+                  <button
+                    type="button"
+                    onClick={() => setContactOverlayOpen(true)}
+                    className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl glass-teal text-white text-sm font-semibold"
+                  >
+                    Entrar em contato
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1261,13 +1286,15 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
               {/* Ações à direita */}
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setContactOverlayOpen(true)}
-                  className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg glass-teal text-white text-sm font-semibold"
-                >
-                  Entrar em contato
-                </button>
+                {mode === "public" && (
+                  <button
+                    type="button"
+                    onClick={() => setContactOverlayOpen(true)}
+                    className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg glass-teal text-white text-sm font-semibold"
+                  >
+                    Entrar em contato
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleFavorite}
@@ -1454,7 +1481,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         </>
       )}
       {/* Overlay dedicado de contato (abre a partir das fotos) */}
-      {contactOverlayOpen && property && (
+      {mode === "public" && contactOverlayOpen && property && (
         <div className="fixed inset-0 z-[32000] bg-black/60 flex items-center justify-center px-4" onClick={() => setContactOverlayOpen(false)}>
           <div className="relative w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <button
