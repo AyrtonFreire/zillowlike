@@ -129,20 +129,16 @@ function DraggableCard({ lead, formatPrice }: { lead: Lead; formatPrice: (n: num
     <div
       ref={setNodeRef}
       style={style}
+      {...listeners}
+      {...attributes}
       className={`group bg-white rounded-lg border border-gray-200 px-3 py-2 transition-shadow ${
         isDragging ? "opacity-60 shadow-lg" : "hover:shadow-md"
       }`}
     >
       <div className="flex gap-2">
-        <button
-          type="button"
-          {...listeners}
-          {...attributes}
-          className="mt-0.5 -ml-1 p-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-          aria-label="Arrastar lead"
-        >
+        <div className="mt-0.5 -ml-1 p-1 text-gray-300 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <GripVertical className="w-4 h-4" />
-        </button>
+        </div>
         {/* Mini thumbnail */}
         <div className="relative w-10 h-10 rounded bg-gray-100 overflow-hidden flex-shrink-0">
           {lead.property.images[0]?.url ? (

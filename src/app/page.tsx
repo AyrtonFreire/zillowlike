@@ -1087,7 +1087,7 @@ export default function Home() {
                       Quero vender ou alugar meu imóvel
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Anuncie seu imóvel com enorme visibilidade para toda região, caso queira praticidade, unimos o interessado no seu imóvel a um corretor responsável pela intermediação da venda.
+                      Anuncie seu imóvel com enorme visibilidade para toda região, caso queira praticidade, unimos interessados no seu imóvel corretores parceiros que ficarão resposáveis pela intermediação da venda.
                     </p>
                     <Link
                       href="/owner"
