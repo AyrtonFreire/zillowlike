@@ -100,7 +100,15 @@ interface LeadNote {
 }
 
 // Componente de coluna droppable para o pipeline
-function DroppableColumn({ stageId, children }: { stageId: PipelineStage; children: React.ReactNode }) {
+function DroppableColumn({
+  stageId,
+  children,
+  className,
+}: {
+  stageId: PipelineStage;
+  children: React.ReactNode;
+  className?: string;
+}) {
   const { isOver, setNodeRef } = useDroppable({ id: stageId });
   
   return (
@@ -110,10 +118,73 @@ function DroppableColumn({ stageId, children }: { stageId: PipelineStage; childr
         isOver
           ? "border-teal-400 bg-teal-50/40 ring-2 ring-teal-200"
           : "border-gray-200 bg-gray-50"
-      }`}
+      } ${className || ""}`}
     >
       {children}
     </div>
+  );
+}
+
+function StageChip({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+        active
+          ? "bg-teal-600 text-white shadow-sm"
+          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+      }`}
+    >
+      {label}
+      <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${active ? "bg-white/20" : "bg-gray-200"}`}>
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function DroppableStageChip({
+  stageId,
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  stageId: PipelineStage;
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id: stageId });
+
+  return (
+    <button
+      ref={setNodeRef}
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+        active
+          ? "bg-teal-600 text-white shadow-sm"
+          : isOver
+            ? "bg-teal-50 text-teal-800 ring-2 ring-teal-200"
+            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+      }`}
+    >
+      {label}
+      <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${active ? "bg-white/20" : "bg-gray-200"}`}>
+        {count}
+      </span>
+    </button>
   );
 }
 
@@ -189,6 +260,7 @@ export default function MyLeadsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pipelineFilter, setPipelineFilter] = useState<"all" | PipelineStage>("all");
+  const [mobileActiveStage, setMobileActiveStage] = useState<PipelineStage>("NEW");
   const [cityFilter, setCityFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "last7">("all");
@@ -228,6 +300,12 @@ export default function MyLeadsPage() {
     const interval = setInterval(() => fetchLeads({ isBackground: true }), 30000);
     return () => clearInterval(interval);
   }, [realtorId]);
+
+  useEffect(() => {
+    if (pipelineFilter !== "all") {
+      setMobileActiveStage(pipelineFilter);
+    }
+  }, [pipelineFilter]);
 
   const fetchLeads = async (options?: { isBackground?: boolean }) => {
     try {
@@ -799,22 +877,32 @@ export default function MyLeadsPage() {
                       { key: "NEGOTIATION" as const, label: "Negociação", count: counts.NEGOTIATION },
                       { key: "CLOSED" as const, label: "Fechado", count: counts.CLOSED },
                     ].map((item) => (
-                      <button
-                        key={item.key}
-                        onClick={() => setPipelineFilter(item.key)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                          pipelineFilter === item.key
-                            ? "bg-teal-600 text-white shadow-sm"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        }`}
-                      >
-                        {item.label}
-                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                          pipelineFilter === item.key ? "bg-white/20" : "bg-gray-200"
-                        }`}>
-                          {item.count}
-                        </span>
-                      </button>
+                      item.key === "all" ? (
+                        <button
+                          key={item.key}
+                          onClick={() => setPipelineFilter(item.key)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                            pipelineFilter === item.key
+                              ? "bg-teal-600 text-white shadow-sm"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          }`}
+                        >
+                          {item.label}
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                            pipelineFilter === item.key ? "bg-white/20" : "bg-gray-200"
+                          }`}>
+                            {item.count}
+                          </span>
+                        </button>
+                      ) : (
+                        <StageChip
+                          key={item.key}
+                          label={item.label}
+                          count={item.count}
+                          active={pipelineFilter === item.key}
+                          onClick={() => setPipelineFilter(item.key)}
+                        />
+                      )
                     ))}
                   </div>
                 </div>
@@ -948,7 +1036,77 @@ export default function MyLeadsPage() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <div className="-mx-4 px-4 overflow-x-auto pb-2">
+            {/* Mobile: uma coluna por vez */}
+            <div className="md:hidden">
+              {(() => {
+                const activeStage = PIPELINE_STAGES.find((s) => s.id === mobileActiveStage) || PIPELINE_STAGES[0];
+                const Icon = activeStage.icon;
+                const stageLeads = filteredLeadsByPipelineStage[activeStage.id];
+
+                return (
+                  <div className="space-y-3">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
+                      <div className="flex gap-2 min-w-max">
+                        {(
+                          [
+                            { key: "NEW" as const, label: "Novos", count: counts.NEW },
+                            { key: "CONTACT" as const, label: "Contato", count: counts.CONTACT },
+                            { key: "NEGOTIATION" as const, label: "Negociação", count: counts.NEGOTIATION },
+                            { key: "CLOSED" as const, label: "Fechado", count: counts.CLOSED },
+                          ]
+                        ).map((item) => (
+                          <DroppableStageChip
+                            key={item.key}
+                            stageId={item.key}
+                            label={item.label}
+                            count={item.count}
+                            active={mobileActiveStage === item.key}
+                            onClick={() => {
+                              setMobileActiveStage(item.key);
+                              if (pipelineFilter !== "all") {
+                                setPipelineFilter("all");
+                              }
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <DroppableColumn stageId={activeStage.id} className="w-full md:w-[320px] max-h-[65vh]">
+                      <div className="px-3 pt-3">
+                        <div className="h-1 rounded-full bg-gradient-to-r from-teal-500/70 to-teal-400/30" />
+                      </div>
+                      <div className="px-3 py-2 flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-lg ${activeStage.bgColor} flex items-center justify-center border border-gray-200`}>
+                          <Icon className={`w-4 h-4 ${activeStage.color}`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-semibold text-gray-900 truncate">{activeStage.label}</div>
+                          <div className="text-[11px] text-gray-500 truncate">Arraste e solte nas abas para mover</div>
+                        </div>
+                        <span className="text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 rounded-full px-2 py-0.5">
+                          {stageLeads.length}
+                        </span>
+                      </div>
+                      <div className="px-3 pb-3 space-y-2 min-h-[240px] overflow-y-auto">
+                        {stageLeads.length === 0 ? (
+                          <div className="py-10 text-center">
+                            <p className="text-sm text-gray-500">Nenhum lead</p>
+                            <p className="text-[11px] text-gray-400 mt-1">Mova um lead de outra etapa para cá</p>
+                          </div>
+                        ) : (
+                          stageLeads.map((lead) => (
+                            <DraggableCard key={lead.id} lead={lead} formatPrice={formatPrice} />
+                          ))
+                        )}
+                      </div>
+                    </DroppableColumn>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Desktop: board completo */}
+            <div className="hidden md:block -mx-4 px-4 overflow-x-auto pb-2">
               <div className="flex gap-4 min-w-max">
                 {PIPELINE_STAGES.map((stage) => {
                   const stageLeads = filteredLeadsByPipelineStage[stage.id];
