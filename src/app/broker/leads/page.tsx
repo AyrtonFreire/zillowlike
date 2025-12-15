@@ -834,6 +834,14 @@ export default function MyLeadsPage() {
     document.body.style.overflow = "hidden";
     (document.body.style as any).overscrollBehavior = "none";
 
+    const getStageFromPoint = (x: number, y: number): PipelineStage | null => {
+      const el = document.elementFromPoint(x, y) as HTMLElement | null;
+      const btn = el?.closest?.("button[data-qm-stage]") as HTMLButtonElement | null;
+      const id = btn?.dataset?.qmStage;
+      if (id === "NEW" || id === "CONTACT" || id === "NEGOTIATION" || id === "CLOSED") return id;
+      return null;
+    };
+
     const handleMove = (e: PointerEvent) => {
       if (e.pointerType !== "touch" && e.pointerType !== "mouse") return;
       e.preventDefault();
@@ -843,17 +851,11 @@ export default function MyLeadsPage() {
       const x = e.clientX;
       const y = e.clientY;
 
-      let hover: PipelineStage | null = null;
-      (Object.keys(quickMoveItemRefs.current) as PipelineStage[]).forEach((k) => {
-        const el = quickMoveItemRefs.current[k];
-        if (!el) return;
-        const r = el.getBoundingClientRect();
-        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
-          hover = k;
-        }
-      });
+      const hover = getStageFromPoint(x, y);
 
-      setQuickMove((prev) => (prev ? { ...prev, cursorX: x, cursorY: y, hoverStage: hover } : prev));
+      const next = { ...current, cursorX: x, cursorY: y, hoverStage: hover };
+      quickMoveRef.current = next;
+      setQuickMove(next);
     };
 
     const handleUp = (e: PointerEvent) => {
@@ -862,18 +864,21 @@ export default function MyLeadsPage() {
       const current = quickMoveRef.current;
       if (!current) return;
       if (e.pointerId !== current.pointerId) return;
-      const chosen = current.hoverStage;
+      const chosen = getStageFromPoint(e.clientX, e.clientY) || current.hoverStage;
       const leadId = current.leadId;
       if (chosen) {
         void (async () => {
           const fn = moveLeadToStageRef.current;
           if (!fn) return;
+          quickMoveRef.current = null;
           setQuickMove(null);
           await fn(leadId, chosen);
           setMobileActiveStage(chosen);
         })();
       } else {
-        setQuickMove((prev) => (prev ? { ...prev, hoverStage: null } : prev));
+        const next = { ...current, hoverStage: null };
+        quickMoveRef.current = next;
+        setQuickMove(next);
       }
     };
 
@@ -1485,7 +1490,10 @@ export default function MyLeadsPage() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className="fixed inset-0 z-[72] md:hidden touch-none"
-                    onPointerDown={() => setQuickMove(null)}
+                    onPointerDown={() => {
+                      quickMoveRef.current = null;
+                      setQuickMove(null);
+                    }}
                   />
 
                   {quickMoveGhostPos && (
@@ -1533,6 +1541,7 @@ export default function MyLeadsPage() {
                             ref={(el) => {
                               quickMoveItemRefs.current[stage.id] = el;
                             }}
+                            data-qm-stage={stage.id}
                             type="button"
                             onClick={async () => {
                               const current = quickMoveRef.current;
@@ -1541,6 +1550,7 @@ export default function MyLeadsPage() {
                               const fn = moveLeadToStageRef.current;
                               if (!fn) return;
                               const leadId = current.leadId;
+                              quickMoveRef.current = null;
                               setQuickMove(null);
                               await fn(leadId, stage.id);
                               setMobileActiveStage(stage.id);
