@@ -195,12 +195,14 @@ function DraggableCard({
   onOpenMoveSheet,
   onStartQuickMove,
   isQuickMoveActive,
+  enableDrag,
 }: {
   lead: Lead;
   formatPrice: (n: number) => string;
   onOpenMoveSheet?: (leadId: string) => void;
-  onStartQuickMove?: (leadId: string, x: number, y: number) => void;
+  onStartQuickMove?: (leadId: string, x: number, y: number, pointerId: number) => void;
   isQuickMoveActive?: boolean;
+  enableDrag?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
   const longPressTimerRef = useRef<number | null>(null);
@@ -219,13 +221,18 @@ function DraggableCard({
 
   const handlePointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
     if (!onStartQuickMove) return;
-    if (e.pointerType !== "touch") return;
+    if (e.pointerType !== "touch" && e.pointerType !== "mouse") return;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
     touchStartRef.current = { x: e.clientX, y: e.clientY };
     clearLongPress();
     longPressTimerRef.current = window.setTimeout(() => {
       const pt = touchStartRef.current;
       if (!pt) return;
-      onStartQuickMove(lead.id, pt.x, pt.y);
+      onStartQuickMove(lead.id, pt.x, pt.y, e.pointerId);
     }, 420);
   };
 
@@ -256,8 +263,8 @@ function DraggableCard({
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
+      {...(enableDrag === false ? {} : listeners)}
+      {...(enableDrag === false ? {} : attributes)}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
@@ -341,6 +348,7 @@ export default function MyLeadsPage() {
   const [moveSheetLeadId, setMoveSheetLeadId] = useState<string | null>(null);
   const [quickMove, setQuickMove] = useState<{
     leadId: string;
+    pointerId: number;
     startX: number;
     startY: number;
     cursorX: number;
@@ -349,6 +357,7 @@ export default function MyLeadsPage() {
   } | null>(null);
   const quickMoveRef = useRef<{
     leadId: string;
+    pointerId: number;
     startX: number;
     startY: number;
     cursorX: number;
@@ -813,8 +822,11 @@ export default function MyLeadsPage() {
     (document.body.style as any).overscrollBehavior = "none";
 
     const handleMove = (e: PointerEvent) => {
-      if (e.pointerType !== "touch") return;
+      if (e.pointerType !== "touch" && e.pointerType !== "mouse") return;
       e.preventDefault();
+      const current = quickMoveRef.current;
+      if (!current) return;
+      if (e.pointerId !== current.pointerId) return;
       const x = e.clientX;
       const y = e.clientY;
 
@@ -832,10 +844,11 @@ export default function MyLeadsPage() {
     };
 
     const handleUp = (e: PointerEvent) => {
-      if (e.pointerType !== "touch") return;
+      if (e.pointerType !== "touch" && e.pointerType !== "mouse") return;
       e.preventDefault();
       const current = quickMoveRef.current;
       if (!current) return;
+      if (e.pointerId !== current.pointerId) return;
       const chosen = current.hoverStage;
       const leadId = current.leadId;
       setQuickMove(null);
@@ -1296,10 +1309,19 @@ export default function MyLeadsPage() {
                               lead={lead}
                               formatPrice={formatPrice}
                               onOpenMoveSheet={(leadId) => setMoveSheetLeadId(leadId)}
-                              onStartQuickMove={(leadId, x, y) => {
-                                setQuickMove({ leadId, startX: x, startY: y, cursorX: x, cursorY: y, hoverStage: null });
+                              onStartQuickMove={(leadId, x, y, pointerId) => {
+                                setQuickMove({
+                                  leadId,
+                                  pointerId,
+                                  startX: x,
+                                  startY: y,
+                                  cursorX: x,
+                                  cursorY: y,
+                                  hoverStage: null,
+                                });
                               }}
                               isQuickMoveActive={quickMove?.leadId === lead.id}
+                              enableDrag={false}
                             />
                           ))
                         )}
