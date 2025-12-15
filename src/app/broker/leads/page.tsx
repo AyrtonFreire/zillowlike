@@ -264,7 +264,7 @@ function DraggableCard({
       onPointerMove={handlePointerMove}
       className={`group bg-white rounded-lg border border-gray-200 px-3 py-2 transition-all ${
         isDragging ? "opacity-60 shadow-lg" : "hover:shadow-md"
-      } ${isQuickMoveActive ? "opacity-25 scale-[0.94]" : ""}`}
+      } ${isQuickMoveActive ? "opacity-25 scale-[0.94] touch-none" : ""}`}
     >
       <div className="flex gap-2">
         <div className="mt-0.5 -ml-1 p-1 text-gray-300 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
@@ -807,6 +807,11 @@ export default function MyLeadsPage() {
   useEffect(() => {
     if (!quickMoveActive) return;
 
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = (document.body.style as any).overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    (document.body.style as any).overscrollBehavior = "none";
+
     const handleMove = (e: PointerEvent) => {
       if (e.pointerType !== "touch") return;
       e.preventDefault();
@@ -853,6 +858,8 @@ export default function MyLeadsPage() {
     window.addEventListener("pointercancel", handleCancel);
 
     return () => {
+      document.body.style.overflow = prevOverflow;
+      (document.body.style as any).overscrollBehavior = prevOverscroll;
       window.removeEventListener("pointermove", handleMove as any);
       window.removeEventListener("pointerup", handleUp as any);
       window.removeEventListener("pointercancel", handleCancel);
@@ -1442,7 +1449,7 @@ export default function MyLeadsPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[72] md:hidden"
+                    className="fixed inset-0 z-[72] md:hidden touch-none"
                     onClick={() => setQuickMove(null)}
                   />
 
