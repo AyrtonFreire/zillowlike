@@ -678,28 +678,15 @@ export default function MyLeadsPage() {
     );
   }
 
-  // Função para obter badge de status
-  const getStatusBadge = (status: "RESERVED" | "ACCEPTED" | "COMPLETED") => {
-    if (status === "RESERVED") {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-          <Clock className="w-3 h-3" />
-          Novo
-        </span>
-      );
-    }
-    if (status === "COMPLETED") {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-          <CheckCircle className="w-3 h-3" />
-          Encerrado
-        </span>
-      );
-    }
+  const getPipelineStageBadge = (stageId: PipelineStage) => {
+    const stage = PIPELINE_STAGES.find((s) => s.id === stageId);
+    if (!stage) return null;
+    const Icon = stage.icon;
+
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-        <CheckCircle className="w-3 h-3" />
-        Em atendimento
+      <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border border-gray-200 ${stage.bgColor} ${stage.color}`}>
+        <Icon className="w-3 h-3" />
+        {stage.label}
       </span>
     );
   };
@@ -1067,7 +1054,7 @@ export default function MyLeadsPage() {
                               </p>
                             )}
                           </div>
-                          {getStatusBadge(lead.status)}
+                          {getPipelineStageBadge(getLeadPipelineStage(lead))}
                         </div>
                         
                         {/* Linha de info rápida */}
