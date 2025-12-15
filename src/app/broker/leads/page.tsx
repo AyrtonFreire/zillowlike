@@ -188,7 +188,7 @@ export default function MyLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "reserved" | "accepted" | "taskToday">("all");
+  const [pipelineFilter, setPipelineFilter] = useState<"all" | PipelineStage>("all");
   const [cityFilter, setCityFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "last7">("all");
@@ -520,23 +520,6 @@ export default function MyLeadsPage() {
     };
   }, [activeLeads, leadsWithTaskToday, now]);
 
-  // Leads agrupados por etapa do pipeline (4 colunas visuais)
-  const leadsByPipelineStage = useMemo(() => {
-    const grouped: Record<PipelineStage, Lead[]> = {
-      NEW: [],
-      CONTACT: [],
-      NEGOTIATION: [],
-      CLOSED: [],
-    };
-    
-    leads.forEach(lead => {
-      const stage = getLeadPipelineStage(lead);
-      grouped[stage].push(lead);
-    });
-    
-    return grouped;
-  }, [leads]);
-
   // Função para mover lead de etapa no pipeline
   const moveLeadToStage = async (leadId: string, newStage: PipelineStage) => {
     const lead = leads.find((l) => l.id === leadId);
@@ -609,14 +592,12 @@ export default function MyLeadsPage() {
 
   const activeLead = activeDragId ? leads.find(l => l.id === activeDragId) : null;
 
-  const filteredLeads = activeLeads.filter((lead) => {
-    // Status filter
-    if (filter === "reserved" && lead.status !== "RESERVED") return false;
-    if (filter === "accepted" && lead.status !== "ACCEPTED") return false;
-    if (filter === "taskToday") {
-      if (!lead.nextActionDate) return false;
-      const d = new Date(lead.nextActionDate);
-      if (!(isSameDay(d, now) || d < now)) return false;
+  const leadsBaseForView = viewMode === "pipeline" ? leads : activeLeads;
+
+  const filteredLeads = leadsBaseForView.filter((lead) => {
+    if (pipelineFilter !== "all") {
+      const stage = getLeadPipelineStage(lead);
+      if (stage !== pipelineFilter) return false;
     }
 
     // City filter
@@ -643,6 +624,22 @@ export default function MyLeadsPage() {
 
     return true;
   });
+
+  const filteredLeadsByPipelineStage = useMemo(() => {
+    const grouped: Record<PipelineStage, Lead[]> = {
+      NEW: [],
+      CONTACT: [],
+      NEGOTIATION: [],
+      CLOSED: [],
+    };
+
+    filteredLeads.forEach((lead) => {
+      const stage = getLeadPipelineStage(lead);
+      grouped[stage].push(lead);
+    });
+
+    return grouped;
+  }, [filteredLeads]);
 
   if (loading) {
     return (
@@ -686,13 +683,26 @@ export default function MyLeadsPage() {
     );
   };
 
-  // Contadores para os filtros
-  const counts = {
-    all: activeLeads.length,
-    reserved: activeLeads.filter((l) => l.status === "RESERVED").length,
-    accepted: activeLeads.filter((l) => l.status === "ACCEPTED").length,
-    taskToday: leadsWithTaskToday.length,
-  };
+  const counts = useMemo(() => {
+    const base = leadsBaseForView;
+
+    const grouped: Record<PipelineStage, number> = {
+      NEW: 0,
+      CONTACT: 0,
+      NEGOTIATION: 0,
+      CLOSED: 0,
+    };
+
+    base.forEach((lead) => {
+      const stage = getLeadPipelineStage(lead);
+      grouped[stage] += 1;
+    });
+
+    return {
+      all: base.length,
+      ...grouped,
+    };
+  }, [leadsBaseForView]);
 
   return (
     <DashboardLayout
@@ -796,22 +806,24 @@ export default function MyLeadsPage() {
                 <div className="flex-1 overflow-x-auto scrollbar-hide">
                   <div className="flex gap-2 min-w-max">
                     {[
-                      { key: "all" as const, label: "Todos", count: counts.all, color: "teal" },
-                      { key: "reserved" as const, label: "Novos", count: counts.reserved, color: "amber" },
-                      { key: "accepted" as const, label: "Em atendimento", count: counts.accepted, color: "emerald" },
+                      { key: "all" as const, label: "Todos", count: counts.all },
+                      { key: "NEW" as const, label: "Novos", count: counts.NEW },
+                      { key: "CONTACT" as const, label: "Contato", count: counts.CONTACT },
+                      { key: "NEGOTIATION" as const, label: "Negociação", count: counts.NEGOTIATION },
+                      { key: "CLOSED" as const, label: "Fechado", count: counts.CLOSED },
                     ].map((item) => (
                       <button
                         key={item.key}
-                        onClick={() => setFilter(item.key)}
+                        onClick={() => setPipelineFilter(item.key)}
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                          filter === item.key
+                          pipelineFilter === item.key
                             ? "bg-teal-600 text-white shadow-sm"
                             : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                         }`}
                       >
                         {item.label}
                         <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                          filter === item.key ? "bg-white/20" : "bg-gray-200"
+                          pipelineFilter === item.key ? "bg-white/20" : "bg-gray-200"
                         }`}>
                           {item.count}
                         </span>
@@ -952,7 +964,7 @@ export default function MyLeadsPage() {
             <div className="-mx-4 px-4 overflow-x-auto pb-2">
               <div className="flex gap-4 min-w-max">
                 {PIPELINE_STAGES.map((stage) => {
-                  const stageLeads = leadsByPipelineStage[stage.id];
+                  const stageLeads = filteredLeadsByPipelineStage[stage.id];
                   const Icon = stage.icon;
                   
                   return (
