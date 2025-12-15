@@ -641,6 +641,27 @@ export default function MyLeadsPage() {
     return grouped;
   }, [filteredLeads]);
 
+  const counts = useMemo(() => {
+    const base = leadsBaseForView;
+
+    const grouped: Record<PipelineStage, number> = {
+      NEW: 0,
+      CONTACT: 0,
+      NEGOTIATION: 0,
+      CLOSED: 0,
+    };
+
+    base.forEach((lead) => {
+      const stage = getLeadPipelineStage(lead);
+      grouped[stage] += 1;
+    });
+
+    return {
+      all: base.length,
+      ...grouped,
+    };
+  }, [leadsBaseForView]);
+
   if (loading) {
     return (
       <DashboardLayout
@@ -682,27 +703,6 @@ export default function MyLeadsPage() {
       </span>
     );
   };
-
-  const counts = useMemo(() => {
-    const base = leadsBaseForView;
-
-    const grouped: Record<PipelineStage, number> = {
-      NEW: 0,
-      CONTACT: 0,
-      NEGOTIATION: 0,
-      CLOSED: 0,
-    };
-
-    base.forEach((lead) => {
-      const stage = getLeadPipelineStage(lead);
-      grouped[stage] += 1;
-    });
-
-    return {
-      all: base.length,
-      ...grouped,
-    };
-  }, [leadsBaseForView]);
 
   return (
     <DashboardLayout
