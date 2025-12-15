@@ -106,8 +106,10 @@ function DroppableColumn({ stageId, children }: { stageId: PipelineStage; childr
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg border transition-colors ${
-        isOver ? "border-teal-400 bg-teal-50/50" : "border-gray-200 bg-white"
+      className={`flex flex-col rounded-xl border transition-colors w-[280px] md:w-[320px] max-h-[70vh] ${
+        isOver
+          ? "border-teal-400 bg-teal-50/40 ring-2 ring-teal-200"
+          : "border-gray-200 bg-gray-50"
       }`}
     >
       {children}
@@ -127,13 +129,20 @@ function DraggableCard({ lead, formatPrice }: { lead: Lead; formatPrice: (n: num
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
-      className={`bg-white rounded-lg border border-gray-200 p-2 cursor-grab active:cursor-grabbing transition-shadow ${
-        isDragging ? "opacity-50 shadow-lg" : "hover:shadow-sm"
+      className={`group bg-white rounded-lg border border-gray-200 px-3 py-2 transition-shadow ${
+        isDragging ? "opacity-60 shadow-lg" : "hover:shadow-md"
       }`}
     >
       <div className="flex gap-2">
+        <button
+          type="button"
+          {...listeners}
+          {...attributes}
+          className="mt-0.5 -ml-1 p-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+          aria-label="Arrastar lead"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
         {/* Mini thumbnail */}
         <div className="relative w-10 h-10 rounded bg-gray-100 overflow-hidden flex-shrink-0">
           {lead.property.images[0]?.url ? (
@@ -147,19 +156,21 @@ function DraggableCard({ lead, formatPrice }: { lead: Lead; formatPrice: (n: num
         
         {/* Info compacta */}
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold text-gray-900 truncate leading-tight">
+          <p className="text-[12px] font-semibold text-gray-900 line-clamp-2 leading-snug">
             {lead.property.title}
           </p>
-          <p className="text-[10px] text-teal-600 font-bold">
+          <p className="text-[10px] text-teal-700 font-semibold">
             {formatPrice(lead.property.price)}
           </p>
-          <p className="text-[9px] text-gray-500 truncate">
-            {lead.contact?.name || "Sem contato"}
-          </p>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <p className="text-[10px] text-gray-500 truncate">
+              {lead.contact?.name || "Sem contato"}
+            </p>
+            <p className="text-[10px] text-gray-400 truncate">
+              {lead.property.city}-{lead.property.state}
+            </p>
+          </div>
         </div>
-        
-        {/* Indicador de drag */}
-        <GripVertical className="w-3 h-3 text-gray-300 flex-shrink-0" />
       </div>
       
       {/* Indicadores de alerta */}
@@ -942,41 +953,54 @@ export default function MyLeadsPage() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {PIPELINE_STAGES.map((stage) => {
-                const stageLeads = leadsByPipelineStage[stage.id];
-                const Icon = stage.icon;
-                
-                return (
-                  <DroppableColumn key={stage.id} stageId={stage.id}>
-                    {/* Header da coluna */}
-                    <div className={`flex items-center gap-2 p-2 ${stage.bgColor} rounded-t-lg border-b border-gray-200`}>
-                      <Icon className={`w-4 h-4 ${stage.color}`} />
-                      <span className={`text-xs font-semibold ${stage.color}`}>{stage.label}</span>
-                      <span className="ml-auto text-xs font-bold text-gray-600">{stageLeads.length}</span>
-                    </div>
-                    
-                    {/* Cards da coluna */}
-                    <div className="p-2 space-y-2 min-h-[150px] bg-gray-50/50">
-                      {stageLeads.length === 0 ? (
-                        <p className="text-[10px] text-gray-400 text-center py-4">Nenhum lead</p>
-                      ) : (
-                        stageLeads.map((lead) => (
-                          <DraggableCard key={lead.id} lead={lead} formatPrice={formatPrice} />
-                        ))
-                      )}
-                    </div>
-                  </DroppableColumn>
-                );
-              })}
+            <div className="-mx-4 px-4 overflow-x-auto pb-2">
+              <div className="flex gap-4 min-w-max">
+                {PIPELINE_STAGES.map((stage) => {
+                  const stageLeads = leadsByPipelineStage[stage.id];
+                  const Icon = stage.icon;
+                  
+                  return (
+                    <DroppableColumn key={stage.id} stageId={stage.id}>
+                      <div className="px-3 pt-3">
+                        <div className="h-1 rounded-full bg-gradient-to-r from-teal-500/70 to-teal-400/30" />
+                      </div>
+                      {/* Header da coluna */}
+                      <div className="px-3 py-2 flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-lg ${stage.bgColor} flex items-center justify-center border border-gray-200`}>
+                          <Icon className={`w-4 h-4 ${stage.color}`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[12px] font-semibold text-gray-900 truncate">{stage.label}</div>
+                        </div>
+                        <span className="text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 rounded-full px-2 py-0.5">
+                          {stageLeads.length}
+                        </span>
+                      </div>
+                      
+                      {/* Cards da coluna */}
+                      <div className="px-3 pb-3 space-y-2 min-h-[160px] overflow-y-auto">
+                        {stageLeads.length === 0 ? (
+                          <p className="text-[11px] text-gray-400 text-center py-6">Nenhum lead</p>
+                        ) : (
+                          stageLeads.map((lead) => (
+                            <DraggableCard key={lead.id} lead={lead} formatPrice={formatPrice} />
+                          ))
+                        )}
+                      </div>
+                    </DroppableColumn>
+                  );
+                })}
+              </div>
             </div>
             
             {/* Drag Overlay */}
             <DragOverlay>
               {activeLead ? (
-                <div className="bg-white rounded-lg border-2 border-teal-400 p-2 shadow-xl text-xs rotate-2 scale-105">
-                  <p className="font-semibold truncate">{activeLead.property.title}</p>
-                  <p className="text-gray-500 text-[10px]">{activeLead.property.city}</p>
+                <div className="bg-white rounded-lg border-2 border-teal-400 px-3 py-2 shadow-xl text-xs rotate-2 scale-105">
+                  <p className="font-semibold line-clamp-2">{activeLead.property.title}</p>
+                  <p className="text-gray-500 text-[10px]">
+                    {activeLead.property.city}-{activeLead.property.state}
+                  </p>
                 </div>
               ) : null}
             </DragOverlay>
