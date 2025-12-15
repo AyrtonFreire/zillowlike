@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { 
   Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock, RefreshCw, 
   MessageCircle, AlertCircle, ChevronDown, ChevronRight, Filter, User,
   ExternalLink, LayoutList, Columns3, Users, Handshake, Trophy, X,
-  Bell, PhoneOff, CalendarClock, Sparkles, GripVertical
+  Bell, PhoneOff, CalendarClock, Sparkles, GripVertical, MoreVertical
 } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 import Image from "next/image";
@@ -189,12 +189,51 @@ function DroppableStageChip({
 }
 
 // Componente de card draggable para o pipeline (ultra-compacto)
-function DraggableCard({ lead, formatPrice }: { lead: Lead; formatPrice: (n: number) => string }) {
+function DraggableCard({
+  lead,
+  formatPrice,
+  onOpenMoveSheet,
+}: {
+  lead: Lead;
+  formatPrice: (n: number) => string;
+  onOpenMoveSheet?: (leadId: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
+  const longPressTimerRef = useRef<number | null>(null);
   
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
   } : undefined;
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handlePointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    if (!onOpenMoveSheet) return;
+    if (e.pointerType !== "touch") return;
+    clearLongPress();
+    longPressTimerRef.current = window.setTimeout(() => {
+      onOpenMoveSheet(lead.id);
+    }, 450);
+  };
+
+  const handlePointerUp: React.PointerEventHandler<HTMLDivElement> = () => {
+    clearLongPress();
+  };
+
+  const handlePointerCancel: React.PointerEventHandler<HTMLDivElement> = () => {
+    clearLongPress();
+  };
+
+  const handlePointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    if (!onOpenMoveSheet) return;
+    if (e.pointerType !== "touch") return;
+    clearLongPress();
+  };
 
   return (
     <div
@@ -202,6 +241,10 @@ function DraggableCard({ lead, formatPrice }: { lead: Lead; formatPrice: (n: num
       style={style}
       {...listeners}
       {...attributes}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerMove={handlePointerMove}
       className={`group bg-white rounded-lg border border-gray-200 px-3 py-2 transition-shadow ${
         isDragging ? "opacity-60 shadow-lg" : "hover:shadow-md"
       }`}
@@ -238,6 +281,23 @@ function DraggableCard({ lead, formatPrice }: { lead: Lead; formatPrice: (n: num
             </p>
           </div>
         </div>
+
+        {onOpenMoveSheet && (
+          <button
+            type="button"
+            className="md:hidden -mr-1 ml-1 p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenMoveSheet(lead.id);
+            }}
+            aria-label="Mover lead"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+        )}
       </div>
       
       {/* Indicadores de alerta */}
@@ -261,6 +321,7 @@ export default function MyLeadsPage() {
   const [error, setError] = useState<string | null>(null);
   const [pipelineFilter, setPipelineFilter] = useState<"all" | PipelineStage>("all");
   const [mobileActiveStage, setMobileActiveStage] = useState<PipelineStage>("NEW");
+  const [moveSheetLeadId, setMoveSheetLeadId] = useState<string | null>(null);
   const [cityFilter, setCityFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "last7">("all");
@@ -669,6 +730,7 @@ export default function MyLeadsPage() {
   };
 
   const activeLead = activeDragId ? leads.find(l => l.id === activeDragId) : null;
+  const moveSheetLead = moveSheetLeadId ? leads.find((l) => l.id === moveSheetLeadId) : null;
 
   const leadsBaseForView = viewMode === "pipeline" ? leads : activeLeads;
 
@@ -1095,7 +1157,12 @@ export default function MyLeadsPage() {
                           </div>
                         ) : (
                           stageLeads.map((lead) => (
-                            <DraggableCard key={lead.id} lead={lead} formatPrice={formatPrice} />
+                            <DraggableCard
+                              key={lead.id}
+                              lead={lead}
+                              formatPrice={formatPrice}
+                              onOpenMoveSheet={(leadId) => setMoveSheetLeadId(leadId)}
+                            />
                           ))
                         )}
                       </div>
@@ -1157,6 +1224,85 @@ export default function MyLeadsPage() {
                 </div>
               ) : null}
             </DragOverlay>
+
+            <AnimatePresence>
+              {moveSheetLeadId && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/40 z-[70]"
+                    onClick={() => setMoveSheetLeadId(null)}
+                  />
+                  <motion.div
+                    initial={{ y: 24, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 24, opacity: 0 }}
+                    transition={{ type: "spring", damping: 26, stiffness: 260 }}
+                    className="fixed left-0 right-0 bottom-0 z-[71] md:hidden bg-white rounded-t-2xl border-t border-gray-200 shadow-2xl"
+                    role="dialog"
+                    aria-modal="true"
+                  >
+                    <div className="px-4 pt-3 pb-4">
+                      <div className="w-10 h-1.5 bg-gray-200 rounded-full mx-auto" />
+
+                      <div className="mt-3 flex items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-gray-900 line-clamp-2">
+                            {moveSheetLead?.property.title || "Mover lead"}
+                          </div>
+                          <div className="text-[12px] text-gray-500 mt-0.5">
+                            {moveSheetLead
+                              ? `Etapa atual: ${PIPELINE_STAGES.find((s) => s.id === getLeadPipelineStage(moveSheetLead))?.label || "-"}`
+                              : ""}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="p-2 -mr-2 text-gray-500"
+                          onClick={() => setMoveSheetLeadId(null)}
+                          aria-label="Fechar"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        {PIPELINE_STAGES.map((stage) => {
+                          const isCurrent = moveSheetLead ? getLeadPipelineStage(moveSheetLead) === stage.id : false;
+                          const Icon = stage.icon;
+
+                          return (
+                            <button
+                              key={stage.id}
+                              type="button"
+                              disabled={!moveSheetLeadId || isCurrent}
+                              onClick={async () => {
+                                if (!moveSheetLeadId) return;
+                                await moveLeadToStage(moveSheetLeadId, stage.id);
+                                setMoveSheetLeadId(null);
+                                setMobileActiveStage(stage.id);
+                              }}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${
+                                isCurrent
+                                  ? "bg-gray-100 border-gray-200 text-gray-400"
+                                  : "bg-white border-gray-200 hover:bg-gray-50 text-gray-800"
+                              }`}
+                            >
+                              <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${stage.bgColor} border border-gray-200`}>
+                                <Icon className={`w-4 h-4 ${stage.color}`} />
+                              </span>
+                              <span className="truncate">{stage.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </DndContext>
         ) : filteredLeads.length === 0 ? (
           <EmptyState
