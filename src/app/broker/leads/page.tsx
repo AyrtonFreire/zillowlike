@@ -193,13 +193,16 @@ function DraggableCard({
   lead,
   formatPrice,
   onOpenMoveSheet,
+  onStartQuickMove,
 }: {
   lead: Lead;
   formatPrice: (n: number) => string;
   onOpenMoveSheet?: (leadId: string) => void;
+  onStartQuickMove?: (leadId: string, x: number, y: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
   const longPressTimerRef = useRef<number | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
@@ -213,12 +216,15 @@ function DraggableCard({
   };
 
   const handlePointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
-    if (!onOpenMoveSheet) return;
+    if (!onStartQuickMove) return;
     if (e.pointerType !== "touch") return;
+    touchStartRef.current = { x: e.clientX, y: e.clientY };
     clearLongPress();
     longPressTimerRef.current = window.setTimeout(() => {
-      onOpenMoveSheet(lead.id);
-    }, 450);
+      const pt = touchStartRef.current;
+      if (!pt) return;
+      onStartQuickMove(lead.id, pt.x, pt.y);
+    }, 420);
   };
 
   const handlePointerUp: React.PointerEventHandler<HTMLDivElement> = () => {
@@ -230,9 +236,18 @@ function DraggableCard({
   };
 
   const handlePointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
-    if (!onOpenMoveSheet) return;
+    if (!onStartQuickMove) return;
     if (e.pointerType !== "touch") return;
-    clearLongPress();
+    const pt = touchStartRef.current;
+    if (!pt) {
+      clearLongPress();
+      return;
+    }
+    const dx = e.clientX - pt.x;
+    const dy = e.clientY - pt.y;
+    if (dx * dx + dy * dy > 36) {
+      clearLongPress();
+    }
   };
 
   return (
@@ -322,6 +337,18 @@ export default function MyLeadsPage() {
   const [pipelineFilter, setPipelineFilter] = useState<"all" | PipelineStage>("all");
   const [mobileActiveStage, setMobileActiveStage] = useState<PipelineStage>("NEW");
   const [moveSheetLeadId, setMoveSheetLeadId] = useState<string | null>(null);
+  const [quickMove, setQuickMove] = useState<{
+    leadId: string;
+    x: number;
+    y: number;
+    hoverStage: PipelineStage | null;
+  } | null>(null);
+  const quickMoveItemRefs = useRef<Record<PipelineStage, HTMLButtonElement | null>>({
+    NEW: null,
+    CONTACT: null,
+    NEGOTIATION: null,
+    CLOSED: null,
+  });
   const [cityFilter, setCityFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "last7">("all");
@@ -347,7 +374,7 @@ export default function MyLeadsPage() {
   // Sensors para drag-and-drop
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+    useSensor(TouchSensor, { activationConstraint: { delay: 700, tolerance: 5 } })
   );
 
   const { data: session } = useSession();
@@ -731,6 +758,18 @@ export default function MyLeadsPage() {
 
   const activeLead = activeDragId ? leads.find(l => l.id === activeDragId) : null;
   const moveSheetLead = moveSheetLeadId ? leads.find((l) => l.id === moveSheetLeadId) : null;
+  const quickMoveLead = quickMove ? leads.find((l) => l.id === quickMove.leadId) : null;
+
+  const quickMovePos = useMemo(() => {
+    if (!quickMove) return null;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 0;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 0;
+    const menuW = 220;
+    const menuH = 220;
+    const left = vw ? Math.min(vw - menuW - 8, Math.max(8, quickMove.x + 12)) : quickMove.x + 12;
+    const top = vh ? Math.min(vh - menuH - 8, Math.max(8, quickMove.y - menuH / 2)) : quickMove.y;
+    return { left, top };
+  }, [quickMove]);
 
   const leadsBaseForView = viewMode === "pipeline" ? leads : activeLeads;
 
@@ -1162,6 +1201,9 @@ export default function MyLeadsPage() {
                               lead={lead}
                               formatPrice={formatPrice}
                               onOpenMoveSheet={(leadId) => setMoveSheetLeadId(leadId)}
+                              onStartQuickMove={(leadId, x, y) => {
+                                setQuickMove({ leadId, x, y, hoverStage: null });
+                              }}
                             />
                           ))
                         )}
@@ -1298,6 +1340,92 @@ export default function MyLeadsPage() {
                           );
                         })}
                       </div>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {quickMove && quickMovePos && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[72] md:hidden"
+                    onPointerMove={(e) => {
+                      if (e.pointerType !== "touch") return;
+                      const x = e.clientX;
+                      const y = e.clientY;
+                      let hover: PipelineStage | null = null;
+                      (Object.keys(quickMoveItemRefs.current) as PipelineStage[]).forEach((k) => {
+                        const el = quickMoveItemRefs.current[k];
+                        if (!el) return;
+                        const r = el.getBoundingClientRect();
+                        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+                          hover = k;
+                        }
+                      });
+                      setQuickMove((prev) => (prev ? { ...prev, hoverStage: hover } : prev));
+                    }}
+                    onPointerUp={async (e) => {
+                      if (e.pointerType !== "touch") return;
+                      const chosen = quickMove.hoverStage;
+                      const leadId = quickMove.leadId;
+                      setQuickMove(null);
+                      if (chosen) {
+                        await moveLeadToStage(leadId, chosen);
+                        setMobileActiveStage(chosen);
+                      }
+                    }}
+                    onPointerCancel={() => setQuickMove(null)}
+                    onClick={() => setQuickMove(null)}
+                  />
+                  <motion.div
+                    initial={{ scale: 0.98, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.98, opacity: 0 }}
+                    transition={{ type: "spring", damping: 26, stiffness: 260 }}
+                    className="fixed z-[73] md:hidden bg-white rounded-2xl border border-gray-200 shadow-2xl p-2 w-[220px]"
+                    style={{ left: quickMovePos.left, top: quickMovePos.top }}
+                  >
+                    <div className="px-2 py-1.5">
+                      <div className="text-[11px] font-semibold text-gray-700">Mover para</div>
+                      <div className="text-[10px] text-gray-500 line-clamp-1">
+                        {quickMoveLead?.property.title || ""}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-1">
+                      {PIPELINE_STAGES.map((stage) => {
+                        const Icon = stage.icon;
+                        const isHover = quickMove.hoverStage === stage.id;
+                        const isCurrent = quickMoveLead ? getLeadPipelineStage(quickMoveLead) === stage.id : false;
+                        return (
+                          <button
+                            key={stage.id}
+                            ref={(el) => {
+                              quickMoveItemRefs.current[stage.id] = el;
+                            }}
+                            type="button"
+                            className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border text-sm font-medium transition-colors ${
+                              isCurrent
+                                ? "bg-gray-100 border-gray-200 text-gray-400"
+                                : isHover
+                                  ? "bg-teal-50 border-teal-200 text-teal-900"
+                                  : "bg-white border-gray-200 text-gray-800"
+                            }`}
+                          >
+                            <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${stage.bgColor} border border-gray-200`}>
+                              <Icon className={`w-4 h-4 ${stage.color}`} />
+                            </span>
+                            <span className="truncate">{stage.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="px-2 pt-2 pb-1 text-[10px] text-gray-500">
+                      Deslize até a etapa e solte
                     </div>
                   </motion.div>
                 </>
