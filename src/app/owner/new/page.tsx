@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, ChevronDown, ArrowLeft } from "lucide-react";
+import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -216,6 +216,7 @@ export default function NewPropertyPage() {
   const [showWatermark, setShowWatermark] = useState<boolean>(false);
   const [contactMode, setContactMode] = useState<'DIRECT' | 'BROKER'>('DIRECT');
   const [contactPrefs, setContactPrefs] = useState<{ preferredHours?: string; chatFirst?: boolean; noCall?: boolean }>({ chatFirst: true });
+  const [contactChannel, setContactChannel] = useState<"phone" | "email">("phone");
   const [profilePhone, setProfilePhone] = useState<string | null>(null);
   const [profilePhoneVerified, setProfilePhoneVerified] = useState<boolean>(false);
   const [phoneConfirmedForListing, setPhoneConfirmedForListing] = useState(false);
@@ -223,6 +224,13 @@ export default function NewPropertyPage() {
   const [phoneMode, setPhoneMode] = useState<"existing" | "new">("existing");
   const [newPhoneInput, setNewPhoneInput] = useState("");
   const [savingNewPhone, setSavingNewPhone] = useState(false);
+
+  const [profileEmail, setProfileEmail] = useState<string | null>(null);
+  const [profileEmailVerified, setProfileEmailVerified] = useState<boolean>(false);
+  const [emailMode, setEmailMode] = useState<"existing" | "new">("existing");
+  const [newEmailInput, setNewEmailInput] = useState("");
+  const [savingNewEmail, setSavingNewEmail] = useState(false);
+  const [emailConfirmedForListing, setEmailConfirmedForListing] = useState(false);
   
   // Dados privados do proprietário (não visíveis no anúncio)
   const [privateOwnerName, setPrivateOwnerName] = useState("");
@@ -320,6 +328,9 @@ export default function NewPropertyPage() {
         if (!data?.success || !data.user || cancelled) return;
         setProfilePhone(data.user.phone || "");
         setProfilePhoneVerified(!!data.user.phoneVerifiedAt);
+        setProfileEmail(data.user.email || "");
+        setProfileEmailVerified(!!data.user.emailVerified);
+        setNewEmailInput(data.user.email || "");
       } catch {
         // Silencia falhas de rede; mantemos estado padrão
       }
@@ -328,6 +339,13 @@ export default function NewPropertyPage() {
       cancelled = true;
     };
   }, []);
+
+  const canPublish = useMemo(() => {
+    if (contactChannel === "phone") {
+      return Boolean(profilePhoneVerified && phoneConfirmedForListing);
+    }
+    return Boolean(profileEmailVerified && emailConfirmedForListing);
+  }, [contactChannel, profilePhoneVerified, phoneConfirmedForListing, profileEmailVerified, emailConfirmedForListing]);
 
   // Persist tips preference
   useEffect(() => {
@@ -916,7 +934,7 @@ export default function NewPropertyPage() {
         const res = await fetch(`/api/cep/${cepDigits}`, { cache: 'no-store' });
         const data = await res.json();
         if (data?.erro) {
-          setToast({ message: "CEP não encontrado", type: "error" });
+          setFieldErrors((prev) => ({ ...prev, postalCode: "CEP não encontrado." }));
           setCepValid(false);
           return;
         }
@@ -930,11 +948,11 @@ export default function NewPropertyPage() {
       } catch {
         // Se a consulta externa falhar (offline, tempo excedido, etc.),
         // não vamos travar o fluxo: o usuário pode preencher endereço manualmente.
-        setToast({
-          message:
-            "O preenchimento automático pelo CEP está temporariamente indisponível. Preencha o endereço manualmente e você poderá validar o CEP depois.",
-          type: "error",
-        });
+        setFieldErrors((prev) => ({
+          ...prev,
+          postalCode:
+            "Não foi possível consultar o CEP agora. Preencha o endereço manualmente e tente novamente depois.",
+        }));
       }
     }, 400);
     return () => clearTimeout(id);
@@ -1095,15 +1113,24 @@ export default function NewPropertyPage() {
       return;
     }
 
-    // Se tem telefone mas não está verificado, abrir modal de verificação
-    if (!profilePhoneVerified) {
-      setShowPhoneVerificationModal(true);
-      return;
-    }
-
-    if (!phoneConfirmedForListing) {
-      applyErrorsAndFocus(6, { phoneConfirmedForListing: "Confirme que este é o telefone correto para contato neste anúncio." });
-      return;
+    if (contactChannel === "phone") {
+      if (!profilePhoneVerified) {
+        setShowPhoneVerificationModal(true);
+        return;
+      }
+      if (!phoneConfirmedForListing) {
+        applyErrorsAndFocus(6, { phoneConfirmedForListing: "Confirme que este é o telefone correto para contato neste anúncio." });
+        return;
+      }
+    } else {
+      if (!profileEmailVerified) {
+        applyErrorsAndFocus(6, { email: "Confirme seu e-mail para publicar (verifique sua caixa de entrada)." });
+        return;
+      }
+      if (!emailConfirmedForListing) {
+        applyErrorsAndFocus(6, { emailConfirmedForListing: "Confirme que este é o e-mail correto para contato neste anúncio." });
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -1610,8 +1637,8 @@ export default function NewPropertyPage() {
         <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
           <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
           <p>
-            Certifique-se de que seu telefone esteja preenchido em <Link href="/profile" className="font-semibold text-teal hover:text-teal-dark underline-offset-2 hover:underline">Meu Perfil</Link>.
-            {' '}Usamos esse número para contatos sobre seus anúncios.
+            Para publicar, você precisa ter pelo menos um canal verificado (telefone ou e-mail). Você pode ajustar isso em{' '}
+            <Link href="/profile" className="font-semibold text-teal hover:text-teal-dark underline-offset-2 hover:underline">Meu Perfil</Link>.
           </p>
         </div>
 
@@ -1632,9 +1659,9 @@ export default function NewPropertyPage() {
               </span>
             </div>
             <div className="bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40 px-2 py-3 rounded-xl ring-1 ring-black/5 overflow-x-auto">
-            <div className="flex items-center w-max gap-4">
-              {steps.map((step, index) => (
-                <div key={step.id} className="flex items-center">
+              <div className="flex items-center w-max gap-4">
+                {steps.map((step, index) => (
+                  <div key={step.id} className="flex items-center">
                   <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
                     currentStep >= step.id 
                       ? 'glass-teal border-emerald-500 text-white' 
@@ -1655,10 +1682,10 @@ export default function NewPropertyPage() {
                       currentStep > step.id ? 'glass-teal' : 'bg-gray-300'
                     }`} />
                   )}
-                </div>
-              ))}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
             {/* Mobile sticky nav */}
             <div className="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/90 backdrop-blur border-t p-2">
@@ -1683,7 +1710,7 @@ export default function NewPropertyPage() {
                   <button
                     type="submit"
                     onClick={() => setSubmitIntent(true)}
-                    disabled={isSubmitting || images.some((i) => i.pending)}
+                    disabled={isSubmitting || images.some((i) => i.pending) || !canPublish}
                     className="flex-1 px-3 py-2 glass-teal text-sm text-white rounded-lg disabled:opacity-70"
                   >
                     {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando" : "Publicar"}
@@ -2486,97 +2513,207 @@ export default function NewPropertyPage() {
                     </div>
                   </div>
 
-                  {/* Seção de telefone melhorada */}
                   <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Phone className="w-5 h-5 text-teal-600" />
-                      <p className="font-semibold text-gray-900">Telefone para contato</p>
+                    <p className="font-semibold text-gray-900 mb-3">Escolha de contato para o anúncio</p>
+
+                    <div className="space-y-3">
+                      <label
+                        className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          contactChannel === "phone" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="contactChannel"
+                          checked={contactChannel === "phone"}
+                          onChange={() => {
+                            setContactChannel("phone");
+                            clearFieldError("email");
+                            clearFieldError("emailConfirmedForListing");
+                          }}
+                          className="mt-1 w-4 h-4 text-teal-600"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-teal-700" />
+                            <p className="font-medium text-gray-900">Telefone (recomendado)</p>
+                          </div>
+                          <p className="text-sm text-gray-500">Mais rápido para interessados entrarem em contato</p>
+                        </div>
+                      </label>
+
+                      <label
+                        className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          contactChannel === "email" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="contactChannel"
+                          checked={contactChannel === "email"}
+                          onChange={() => {
+                            setContactChannel("email");
+                            clearFieldError("phoneConfirmedForListing");
+                          }}
+                          className="mt-1 w-4 h-4 text-teal-600"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-teal-700" />
+                            <p className="font-medium text-gray-900">E-mail (alternativa)</p>
+                          </div>
+                          <p className="text-sm text-gray-500">Útil se você estiver sem acesso ao celular</p>
+                        </div>
+                  </label>
                     </div>
 
-                    {/* Opções de telefone */}
-                    {profilePhone ? (
-                      <div className="space-y-3">
-                        {/* Opção: usar telefone existente */}
-                        <label 
-                          className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                            phoneMode === "existing" 
-                              ? "border-teal-500 bg-teal-50" 
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="phoneMode"
-                            checked={phoneMode === "existing"}
-                            onChange={() => setPhoneMode("existing")}
-                            className="mt-1 w-4 h-4 text-teal-600"
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">
-                              Usar meu telefone cadastrado
-                            </p>
-                            <p className="text-sm text-gray-600 mt-0.5">
-                              {profilePhone}
-                              {profilePhoneVerified ? (
-                                <span className="ml-2 inline-flex items-center gap-1 text-green-600">
-                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                  </svg>
-                                  Verificado
-                                </span>
-                              ) : (
-                                <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
-                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                  </svg>
-                                  Não verificado
-                                </span>
-                              )}
-                            </p>
-                            {!profilePhoneVerified && phoneMode === "existing" && (
-                              <button
-                                type="button"
-                                onClick={() => setShowPhoneVerificationModal(true)}
-                                className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
-                              >
-                                Verificar agora →
-                              </button>
+                    {contactChannel === "phone" && (
+                      <div className="space-y-3 mt-4">
+                        {/* Opções de telefone */}
+                        {profilePhone ? (
+                          <div className="space-y-3">
+                            {/* Opção: usar telefone existente */}
+                            <label
+                              className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                phoneMode === "existing" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="phoneMode"
+                                checked={phoneMode === "existing"}
+                                onChange={() => setPhoneMode("existing")}
+                                className="mt-1 w-4 h-4 text-teal-600"
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">Usar meu telefone cadastrado</p>
+                                <p className="text-sm text-gray-600 mt-0.5">
+                                  {profilePhone}
+                                  {profilePhoneVerified ? (
+                                    <span className="ml-2 inline-flex items-center gap-1 text-green-600">
+                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                      </svg>
+                                      Verificado
+                                    </span>
+                                  ) : (
+                                    <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
+                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                      </svg>
+                                      Não verificado
+                                    </span>
+                                  )}
+                                </p>
+                                {!profilePhoneVerified && phoneMode === "existing" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowPhoneVerificationModal(true)}
+                                    className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
+                                  >
+                                    Verificar agora →
+                                  </button>
+                                )}
+                              </div>
+                            </label>
+
+                            {/* Opção: usar outro número */}
+                            <label
+                              className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                phoneMode === "new" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="phoneMode"
+                                checked={phoneMode === "new"}
+                                onChange={() => setPhoneMode("new")}
+                                className="mt-1 w-4 h-4 text-teal-600"
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">Usar outro número</p>
+                                <p className="text-sm text-gray-500">Cadastrar e verificar um novo telefone</p>
+                              </div>
+                            </label>
+
+                            {/* Input para novo telefone */}
+                            {phoneMode === "new" && (
+                              <div className="mt-3 pl-7 space-y-3">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Novo telefone (com DDD)</label>
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="tel"
+                                      value={newPhoneInput}
+                                      onChange={(e) => setNewPhoneInput(e.target.value.replace(/\D/g, ""))}
+                                      placeholder="11999999999"
+                                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                    />
+                                    <button
+                                      type="button"
+                                      disabled={!newPhoneInput.trim() || savingNewPhone}
+                                      onClick={async () => {
+                                        if (!newPhoneInput.trim()) return;
+                                        setSavingNewPhone(true);
+                                        try {
+                                          const res = await fetch("/api/user/profile", {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ phone: newPhoneInput }),
+                                          });
+                                          if (res.ok) {
+                                            setProfilePhone(newPhoneInput);
+                                            setProfilePhoneVerified(false);
+                                            setShowPhoneVerificationModal(true);
+                                          } else {
+                                            setToast({ message: "Erro ao salvar telefone", type: "error" });
+                                          }
+                                        } catch {
+                                          setToast({ message: "Erro ao salvar telefone", type: "error" });
+                                        } finally {
+                                          setSavingNewPhone(false);
+                                        }
+                                      }}
+                                      className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                      {savingNewPhone ? (
+                                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                      ) : (
+                                        "Salvar e verificar"
+                                      )}
+                                    </button>
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-1">Digite apenas números (DDD + número)</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Confirmação */}
+                            {phoneMode === "existing" && profilePhoneVerified && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <Checkbox
+                                  id="phoneConfirmedForListing"
+                                  checked={phoneConfirmedForListing}
+                                  onChange={(e) => {
+                                    setPhoneConfirmedForListing(e.target.checked);
+                                    clearFieldError("phoneConfirmedForListing");
+                                  }}
+                                  label={`Confirmo que ${profilePhone} é o telefone correto para este anúncio.`}
+                                />
+                                {fieldErrors.phoneConfirmedForListing && (
+                                  <div className="mt-1 text-xs text-danger">{fieldErrors.phoneConfirmedForListing}</div>
+                                )}
+                              </div>
                             )}
                           </div>
-                        </label>
-
-                        {/* Opção: usar outro número */}
-                        <label 
-                          className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                            phoneMode === "new" 
-                              ? "border-teal-500 bg-teal-50" 
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="phoneMode"
-                            checked={phoneMode === "new"}
-                            onChange={() => setPhoneMode("new")}
-                            className="mt-1 w-4 h-4 text-teal-600"
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">
-                              Usar outro número
+                        ) : (
+                          /* Sem telefone cadastrado */
+                          <div className="space-y-3">
+                            <p className="text-sm text-gray-600">
+                              Você ainda não tem um telefone cadastrado. Adicione um para que interessados possam entrar em contato.
                             </p>
-                            <p className="text-sm text-gray-500">
-                              Cadastrar e verificar um novo telefone
-                            </p>
-                          </div>
-                        </label>
-
-                        {/* Input para novo telefone */}
-                        {phoneMode === "new" && (
-                          <div className="mt-3 pl-7 space-y-3">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Novo telefone (com DDD)
-                              </label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Telefone (com DDD)</label>
                               <div className="flex gap-2">
                                 <input
                                   type="tel"
@@ -2619,89 +2756,169 @@ export default function NewPropertyPage() {
                                   )}
                                 </button>
                               </div>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Digite apenas números (DDD + número)
-                              </p>
+                              <p className="text-xs text-gray-500 mt-1">Digite apenas números (DDD + número)</p>
                             </div>
                           </div>
                         )}
+                      </div>
+                    )}
 
-                        {/* Confirmação */}
-                        {phoneMode === "existing" && profilePhoneVerified && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <Checkbox
-                              id="phoneConfirmedForListing"
-                              checked={phoneConfirmedForListing}
-                              onChange={(e) => {
-                                setPhoneConfirmedForListing(e.target.checked);
-                                clearFieldError("phoneConfirmedForListing");
-                              }}
-                              label={`Confirmo que ${profilePhone} é o telefone correto para este anúncio.`}
-                            />
-                            {fieldErrors.phoneConfirmedForListing && (
-                              <div className="mt-1 text-xs text-danger">
-                                {fieldErrors.phoneConfirmedForListing}
+                    {contactChannel === "email" && (
+                      <div className="space-y-3 mt-4">
+                        {fieldErrors.email && <div id="email" className="text-xs text-danger">{fieldErrors.email}</div>}
+
+                        {profileEmail ? (
+                          <div className="space-y-3">
+                            <label
+                              className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                emailMode === "existing" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="emailMode"
+                                checked={emailMode === "existing"}
+                                onChange={() => setEmailMode("existing")}
+                                className="mt-1 w-4 h-4 text-teal-600"
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">Usar meu e-mail cadastrado</p>
+                                <p className="text-sm text-gray-600 mt-0.5">
+                                  {profileEmail}
+                                  {profileEmailVerified ? (
+                                    <span className="ml-2 inline-flex items-center gap-1 text-green-600">
+                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                      </svg>
+                                      Verificado
+                                    </span>
+                                  ) : (
+                                    <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
+                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                      </svg>
+                                      Não verificado
+                                    </span>
+                                  )}
+                                </p>
+                                {!profileEmailVerified && emailMode === "existing" && (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      try {
+                                        const r = await fetch("/api/auth/resend-verification", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ email: profileEmail }),
+                                        });
+                                        if (r.ok) {
+                                          setToast({ message: "Enviamos um link de verificação para seu e-mail.", type: "success" });
+                                        } else {
+                                          setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
+                                        }
+                                      } catch {
+                                        setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
+                                      }
+                                    }}
+                                    className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
+                                  >
+                                    Reenviar verificação →
+                                  </button>
+                                )}
+                              </div>
+                            </label>
+
+                            <label
+                              className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                emailMode === "new" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="emailMode"
+                                checked={emailMode === "new"}
+                                onChange={() => setEmailMode("new")}
+                                className="mt-1 w-4 h-4 text-teal-600"
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">Usar outro e-mail</p>
+                                <p className="text-sm text-gray-500">Cadastrar e verificar um novo e-mail</p>
+                              </div>
+                            </label>
+
+                            {emailMode === "new" && (
+                              <div className="mt-1 pl-7 space-y-2">
+                                <div className="flex gap-2">
+                                  <input
+                                    type="email"
+                                    value={newEmailInput}
+                                    onChange={(e) => setNewEmailInput(e.target.value)}
+                                    placeholder="seuemail@exemplo.com"
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={!newEmailInput.trim() || savingNewEmail}
+                                    onClick={async () => {
+                                      if (!newEmailInput.trim()) return;
+                                      setSavingNewEmail(true);
+                                      try {
+                                        const res = await fetch("/api/user/profile", {
+                                          method: "PATCH",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ email: newEmailInput.trim() }),
+                                        });
+                                        const j = await res.json().catch(() => null);
+                                        if (res.ok && j?.success && j.user) {
+                                          setProfileEmail(j.user.email || newEmailInput.trim());
+                                          setProfileEmailVerified(!!j.user.emailVerified);
+                                          setEmailConfirmedForListing(false);
+                                          setEmailMode("existing");
+                                          setToast({ message: "Enviamos um link de verificação para o novo e-mail.", type: "success" });
+                                        } else {
+                                          setToast({ message: j?.error || "Erro ao salvar e-mail", type: "error" });
+                                        }
+                                      } catch {
+                                        setToast({ message: "Erro ao salvar e-mail", type: "error" });
+                                      } finally {
+                                        setSavingNewEmail(false);
+                                      }
+                                    }}
+                                    className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {savingNewEmail ? "Salvando..." : "Salvar"}
+                                  </button>
+                                </div>
+                                <p className="text-xs text-gray-500">Você precisará clicar no link enviado para confirmar.</p>
+                              </div>
+                            )}
+
+                            {emailMode === "existing" && profileEmailVerified && (
+                              <div className="mt-2 pt-3 border-t border-gray-200">
+                                <Checkbox
+                                  id="emailConfirmedForListing"
+                                  checked={emailConfirmedForListing}
+                                  onChange={(e) => {
+                                    setEmailConfirmedForListing(e.target.checked);
+                                    clearFieldError("emailConfirmedForListing");
+                                  }}
+                                  label={`Confirmo que ${profileEmail} é o e-mail correto para este anúncio.`}
+                                />
+                                {fieldErrors.emailConfirmedForListing && (
+                                  <div className="mt-1 text-xs text-danger">{fieldErrors.emailConfirmedForListing}</div>
+                                )}
                               </div>
                             )}
                           </div>
+                        ) : (
+                          <div className="text-sm text-gray-600">Você não tem e-mail cadastrado.</div>
                         )}
                       </div>
-                    ) : (
-                      /* Sem telefone cadastrado */
-                      <div className="space-y-3">
-                        <p className="text-sm text-gray-600">
-                          Você ainda não tem um telefone cadastrado. Adicione um para que interessados possam entrar em contato.
-                        </p>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Telefone (com DDD)
-                          </label>
-                          <div className="flex gap-2">
-                            <input
-                              type="tel"
-                              value={newPhoneInput}
-                              onChange={(e) => setNewPhoneInput(e.target.value.replace(/\D/g, ""))}
-                              placeholder="11999999999"
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                            />
-                            <button
-                              type="button"
-                              disabled={!newPhoneInput.trim() || savingNewPhone}
-                              onClick={async () => {
-                                if (!newPhoneInput.trim()) return;
-                                setSavingNewPhone(true);
-                                try {
-                                  const res = await fetch("/api/user/profile", {
-                                    method: "PATCH",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ phone: newPhoneInput }),
-                                  });
-                                  if (res.ok) {
-                                    setProfilePhone(newPhoneInput);
-                                    setProfilePhoneVerified(false);
-                                    setShowPhoneVerificationModal(true);
-                                  } else {
-                                    setToast({ message: "Erro ao salvar telefone", type: "error" });
-                                  }
-                                } catch {
-                                  setToast({ message: "Erro ao salvar telefone", type: "error" });
-                                } finally {
-                                  setSavingNewPhone(false);
-                                }
-                              }}
-                              className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                              {savingNewPhone ? (
-                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                "Salvar e verificar"
-                              )}
-                            </button>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Digite apenas números (DDD + número)
-                          </p>
-                        </div>
+                    )}
+
+                    {!canPublish && (
+                      <div className="mt-3 text-xs text-gray-600">
+                        Para publicar, você precisa confirmar e verificar o canal de contato escolhido.
                       </div>
                     )}
                   </div>
@@ -2722,7 +2939,7 @@ export default function NewPropertyPage() {
                   <button
                     type="submit"
                     onClick={() => setSubmitIntent(true)}
-                    disabled={isSubmitting || images.some((i) => i.pending)}
+                    disabled={isSubmitting || images.some((i) => i.pending) || !canPublish}
                     className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow disabled:opacity-70"
                   >
                     {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando imagens" : "Publicar anúncio"}

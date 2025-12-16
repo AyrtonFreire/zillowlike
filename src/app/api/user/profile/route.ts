@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { randomBytes } from "crypto";
+import { getAuthResendVerificationEmail, sendEmail } from "@/lib/email";
 
 /**
  * GET /api/user/profile
@@ -102,13 +104,27 @@ export async function PATCH(req: NextRequest) {
 
     const existing = await (prisma as any).user.findUnique({
       where: { id: userId },
-      select: { phone: true, role: true, publicSlug: true, name: true },
+      select: { phone: true, role: true, publicSlug: true, name: true, email: true },
     });
 
     // Only allow updating certain fields
     const updateData: any = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.image !== undefined) updateData.image = body.image;
+    if (body.email !== undefined) {
+      const normalizedEmail = String(body.email || "").toLowerCase().trim();
+      if (!normalizedEmail) {
+        return NextResponse.json({ error: "Invalid email" }, { status: 400 });
+      }
+      if ((existing as any)?.email !== normalizedEmail) {
+        const conflict = await (prisma as any).user.findUnique({ where: { email: normalizedEmail }, select: { id: true } });
+        if (conflict && conflict.id !== userId) {
+          return NextResponse.json({ error: "Email already in use" }, { status: 400 });
+        }
+        updateData.email = normalizedEmail;
+        updateData.emailVerified = null;
+      }
+    }
     if (body.phone !== undefined) {
       updateData.phone = body.phone;
       if (existing && existing.phone !== body.phone) {
@@ -166,6 +182,7 @@ export async function PATCH(req: NextRequest) {
         id: true,
         name: true,
         email: true,
+        emailVerified: true,
         image: true,
         role: true,
         phone: true,
@@ -182,6 +199,27 @@ export async function PATCH(req: NextRequest) {
         realtorType: true,
       },
     });
+
+    if (body.email !== undefined && (updateData.email || updateData.emailVerified === null)) {
+      try {
+        const token = randomBytes(32).toString("hex");
+        const expires = new Date(Date.now() + 1000 * 60 * 60 * 24);
+
+        await prisma.verificationToken.create({
+          data: {
+            identifier: String(updated.email).toLowerCase(),
+            token,
+            expires,
+          },
+        });
+
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
+        const verifyUrl = `${baseUrl}/auth/verify-email?token=${token}`;
+        const emailData = getAuthResendVerificationEmail({ verifyUrl });
+        await sendEmail({ to: String(updated.email), subject: emailData.subject, html: emailData.html });
+      } catch {
+      }
+    }
 
     return NextResponse.json({
       success: true,
