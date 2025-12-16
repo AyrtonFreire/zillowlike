@@ -158,7 +158,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <ChevronRight className="w-4 h-4 text-gray-400" />
                       </Link>
                       <Link
-                        href="/?purpose=SALE&type=HOUSE"
+                        href="/explore/buy?type=HOUSE"
                         onClick={() => setIsLeftMenuOpen(false)}
                         className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -166,7 +166,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <ChevronRight className="w-4 h-4 text-gray-400" />
                       </Link>
                       <Link
-                        href="/?purpose=SALE&type=APARTMENT"
+                        href="/explore/buy?type=APARTMENT"
                         onClick={() => setIsLeftMenuOpen(false)}
                         className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -174,7 +174,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <ChevronRight className="w-4 h-4 text-gray-400" />
                       </Link>
                       <Link
-                        href="/?purpose=SALE&type=CONDO"
+                        href="/explore/buy?type=CONDO"
                         onClick={() => setIsLeftMenuOpen(false)}
                         className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -182,7 +182,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <ChevronRight className="w-4 h-4 text-gray-400" />
                       </Link>
                       <Link
-                        href="/?purpose=SALE&type=LAND"
+                        href="/explore/buy?type=LAND"
                         onClick={() => setIsLeftMenuOpen(false)}
                         className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -223,7 +223,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <ChevronRight className="w-4 h-4 text-gray-400" />
                       </Link>
                       <Link
-                        href="/?purpose=RENT&type=HOUSE"
+                        href="/explore/rent?type=HOUSE"
                         onClick={() => setIsLeftMenuOpen(false)}
                         className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -231,7 +231,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <ChevronRight className="w-4 h-4 text-gray-400" />
                       </Link>
                       <Link
-                        href="/?purpose=RENT&type=APARTMENT"
+                        href="/explore/rent?type=APARTMENT"
                         onClick={() => setIsLeftMenuOpen(false)}
                         className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >

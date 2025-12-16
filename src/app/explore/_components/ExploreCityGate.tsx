@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { MapPin, LocateFixed, ArrowRight, XCircle, Search } from "lucide-react";
-import { buildSearchParams } from "@/lib/url";
+import { MapPin, ArrowRight, XCircle, Search } from "lucide-react";
 
 type Mode = "buy" | "rent";
 
@@ -18,16 +17,12 @@ type LocationSuggestion = {
 
 export default function ExploreCityGate({ mode }: { mode: Mode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const purpose = mode === "buy" ? "SALE" : "RENT";
 
-  const [guessLoading, setGuessLoading] = useState(true);
-  const [gpsLoading, setGpsLoading] = useState(false);
-  const [gpsDenied, setGpsDenied] = useState(false);
-
   const [inferredCity, setInferredCity] = useState<string>("");
   const [inferredState, setInferredState] = useState<string>("");
-  const [inferredSource, setInferredSource] = useState<string>("");
 
   const [query, setQuery] = useState<string>("");
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
@@ -44,33 +39,39 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
 
   const title = mode === "buy" ? "Comprar" : "Alugar";
 
+  const passthroughParams = useMemo(() => {
+    const sp = new URLSearchParams(searchParams?.toString() || "");
+    sp.delete("city");
+    sp.delete("state");
+    sp.delete("purpose");
+    sp.delete("page");
+    return sp;
+  }, [searchParams]);
+
   const inferredReady = Boolean(inferredCity && inferredState);
   const inferredHref = useMemo(() => {
-    const params = buildSearchParams({
-      city: inferredCity || undefined,
-      state: inferredState || undefined,
-      purpose,
-      page: 1,
-    });
-    return `/?${params}`;
-  }, [inferredCity, inferredState, purpose]);
+    const base = new URLSearchParams(passthroughParams);
+    base.set("purpose", purpose);
+    if (inferredCity) base.set("city", inferredCity);
+    if (inferredState) base.set("state", inferredState);
+    base.set("page", "1");
+    return `/?${base.toString()}`;
+  }, [inferredCity, inferredState, passthroughParams, purpose]);
 
   const manualReady = Boolean(selectedCity && selectedState);
   const manualHref = useMemo(() => {
-    const params = buildSearchParams({
-      city: selectedCity || undefined,
-      state: selectedState || undefined,
-      purpose,
-      page: 1,
-    });
-    return `/?${params}`;
-  }, [selectedCity, selectedState, purpose]);
+    const base = new URLSearchParams(passthroughParams);
+    base.set("purpose", purpose);
+    if (selectedCity) base.set("city", selectedCity);
+    if (selectedState) base.set("state", selectedState);
+    base.set("page", "1");
+    return `/?${base.toString()}`;
+  }, [selectedCity, selectedState, passthroughParams, purpose]);
 
   useEffect(() => {
     let cancelled = false;
 
     const loadGuess = async () => {
-      setGuessLoading(true);
       try {
         const r = await fetch("/api/geo/guess", { cache: "no-store" });
         const d = await r.json().catch(() => null);
@@ -78,11 +79,8 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
         if (d?.success && d?.city && d?.state) {
           setInferredCity(String(d.city));
           setInferredState(String(d.state));
-          setInferredSource(String(d.source || "guess"));
         }
       } catch {
-      } finally {
-        if (!cancelled) setGuessLoading(false);
       }
     };
 
@@ -164,50 +162,6 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
     setShowDropdown(false);
   };
 
-  const useGps = async () => {
-    setGpsDenied(false);
-
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setGpsDenied(true);
-      return;
-    }
-
-    setGpsLoading(true);
-
-    const getPos = () =>
-      new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: false,
-          timeout: 10_000,
-          maximumAge: 60_000,
-        });
-      });
-
-    try {
-      const pos = await getPos();
-      const { latitude, longitude } = pos.coords;
-      const r = await fetch(`/api/geo/reverse?lat=${encodeURIComponent(String(latitude))}&lng=${encodeURIComponent(String(longitude))}`, {
-        cache: "no-store",
-      });
-      const d = await r.json().catch(() => null);
-
-      if (d?.success && d?.city && d?.state) {
-        setInferredCity(String(d.city));
-        setInferredState(String(d.state));
-        setInferredSource(String(d.source || "gps"));
-        setSelectedCity("");
-        setSelectedState("");
-        setShowManual(false);
-      } else {
-        setGpsDenied(true);
-      }
-    } catch {
-      setGpsDenied(true);
-    } finally {
-      setGpsLoading(false);
-    }
-  };
-
   const clearManual = () => {
     setSelectedCity("");
     setSelectedState("");
@@ -228,14 +182,6 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
             Está procurando imóveis para <span className="text-teal-700">{title.toLowerCase()}</span> em{" "}
             <span className="text-slate-900">{inferredReady ? `${inferredCity}/${inferredState}` : "sua cidade"}</span>?
           </h1>
-
-          <div className="mt-3 text-sm text-slate-600">
-            {guessLoading
-              ? "Carregando sugestão automática..."
-              : inferredReady
-              ? `Sugestão automática: ${inferredCity}/${inferredState}${inferredSource ? ` (${inferredSource})` : ""}`
-              : "Não conseguimos inferir sua cidade agora. Você pode escolher manualmente."}
-          </div>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <button
@@ -319,16 +265,6 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
               </div>
             )}
 
-            {gpsDenied && (
-              <div className="mt-6 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-                <XCircle className="w-5 h-5 mt-0.5" />
-                <div className="text-sm">
-                  <div className="font-semibold">Não foi possível obter sua localização.</div>
-                  <div className="opacity-90">Você pode permitir o GPS ou escolher a cidade manualmente.</div>
-                </div>
-              </div>
-            )}
-
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
@@ -338,16 +274,6 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
               >
                 Continuar pesquisa
                 <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={useGps}
-                disabled={gpsLoading}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white font-semibold text-sm hover:bg-slate-800 transition-colors disabled:opacity-60"
-              >
-                <LocateFixed className="w-4 h-4" />
-                {gpsLoading ? "Obtendo localização..." : "Usar GPS"}
               </button>
 
               {(selectedCity || selectedState || query) && (

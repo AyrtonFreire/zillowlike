@@ -256,12 +256,12 @@ export default function TopNavMega() {
                       </svg>
                     }>
                       <Item href="/explore/buy">Escolher cidade</Item>
-                      <Item href="/?purpose=SALE&type=HOUSE">Casas à venda</Item>
-                      <Item href="/?purpose=SALE&type=APARTMENT">Apartamentos à venda</Item>
-                      <Item href="/?purpose=SALE&type=CONDO">Condomínios</Item>
-                      <Item href="/?purpose=SALE&type=LAND">Terrenos</Item>
-                      <Item href="/?purpose=SALE&type=COMMERCIAL">Comercial</Item>
-                      <Item href="/?purpose=SALE">Todos os imóveis</Item>
+                      <Item href="/explore/buy?type=HOUSE">Casas à venda</Item>
+                      <Item href="/explore/buy?type=APARTMENT">Apartamentos à venda</Item>
+                      <Item href="/explore/buy?type=CONDO">Condomínios</Item>
+                      <Item href="/explore/buy?type=LAND">Terrenos</Item>
+                      <Item href="/explore/buy?type=COMMERCIAL">Comercial</Item>
+                      <Item href="/explore/buy">Todos os imóveis</Item>
                     </Section>
                     <Divider />
                     <Section title="Recursos" icon={
@@ -269,8 +269,8 @@ export default function TopNavMega() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                     }>
-                      <Item href="/?purpose=SALE&sort=recent">Novos imóveis</Item>
-                      <Item href="/?purpose=SALE&sort=price_asc">Menor preço</Item>
+                      <Item href="/explore/buy?sort=recent">Novos imóveis</Item>
+                      <Item href="/explore/buy?sort=price_asc">Menor preço</Item>
                       <Item href="/financing">Financiamento</Item>
                       <Item href="/guia/compra">Guia do comprador</Item>
                     </Section>
@@ -293,11 +293,12 @@ export default function TopNavMega() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                       </svg>
                     }>
-                      <Item href="/?purpose=RENT&type=HOUSE">Casas para alugar</Item>
-                      <Item href="/?purpose=RENT&type=APARTMENT">Apartamentos para alugar</Item>
-                      <Item href="/?purpose=RENT&type=CONDO">Condomínios</Item>
-                      <Item href="/?purpose=RENT&type=STUDIO">Studios</Item>
-                      <Item href="/?purpose=RENT">Todos para alugar</Item>
+                      <Item href="/explore/rent">Escolher cidade</Item>
+                      <Item href="/explore/rent?type=HOUSE">Casas para alugar</Item>
+                      <Item href="/explore/rent?type=APARTMENT">Apartamentos para alugar</Item>
+                      <Item href="/explore/rent?type=CONDO">Condomínios</Item>
+                      <Item href="/explore/rent?type=STUDIO">Studios</Item>
+                      <Item href="/explore/rent">Todos para alugar</Item>
                     </Section>
                     <Divider />
                     <Section title="Recursos" icon={
@@ -305,8 +306,8 @@ export default function TopNavMega() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     }>
-                      <Item href="/?purpose=RENT&sort=recent">Novos anúncios</Item>
-                      <Item href="/?purpose=RENT&sort=price_asc">Menor aluguel</Item>
+                      <Item href="/explore/rent?sort=recent">Novos anúncios</Item>
+                      <Item href="/explore/rent?sort=price_asc">Menor aluguel</Item>
                       <Item href="/guia/locacao">Guia do inquilino</Item>
                     </Section>
                     <Divider />
