@@ -890,7 +890,7 @@ export default function NewPropertyPage() {
     }
     const id = setTimeout(async () => {
       try {
-        const res = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`, { cache: 'no-store' });
+        const res = await fetch(`/api/cep/${cepDigits}`, { cache: 'no-store' });
         const data = await res.json();
         if (data?.erro) {
           setToast({ message: "CEP não encontrado", type: "error" });
@@ -926,37 +926,7 @@ export default function NewPropertyPage() {
     [street, addressNumber, neighborhood, city, state, postalCode]
   );
 
-  // Título gerado automaticamente em tempo real (usado como sugestão)
-  const generatedTitle = useMemo(() => {
-    const typeLabels: Record<string, string> = {
-      HOUSE: 'Casa',
-      APARTMENT: 'Apartamento',
-      CONDO: 'Condomínio',
-      LAND: 'Terreno',
-      COMMERCIAL: 'Comercial',
-      STUDIO: 'Studio',
-    };
-    const typeLabel = typeLabels[type] || 'Imóvel';
-    
-    const parts: string[] = [typeLabel];
-    
-    // Adicionar quartos se preenchido
-    if (bedrooms && Number(bedrooms) > 0) {
-      parts.push(`${bedrooms} quarto${Number(bedrooms) > 1 ? 's' : ''}`);
-    }
-    
-    // Adicionar bairro ou cidade
-    if (neighborhood) {
-      parts.push(`no ${neighborhood}`);
-    } else if (city) {
-      parts.push(`em ${city}`);
-    }
-    
-    return parts.join(' ');
-  }, [type, bedrooms, neighborhood, city]);
-
-  // Título final: usa customTitle se preenchido, senão usa o gerado
-  const finalTitle = customTitle.trim() || generatedTitle;
+  const finalTitle = customTitle.trim();
 
   // Score de qualidade do anúncio
   const adQualityScore = useMemo(() => {
@@ -1094,21 +1064,10 @@ export default function NewPropertyPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!submitIntent) {
-      // Evita submits involuntários causados por Enter ou interações não intencionais
-      return;
-    }
-    setSubmitIntent(false);
 
-    // Confirmação e verificação do telefone antes de publicar
-    // Se está no modo "new" e o usuário digitou um novo telefone, verificar se salvou
-    if (phoneMode === "new" && newPhoneInput.trim() && newPhoneInput !== profilePhone) {
-      setToast({ message: "Salve e verifique o novo telefone antes de publicar.", type: "error" });
-      return;
-    }
-
-    if (!profilePhone || !profilePhone.trim()) {
-      setToast({ message: "Cadastre um telefone para continuar.", type: "error" });
+    if (finalTitle.length < 3) {
+      setToast({ message: "Informe um título para o anúncio.", type: "error" });
+      setCurrentStep(1);
       return;
     }
 
@@ -1308,6 +1267,10 @@ export default function NewPropertyPage() {
     if (currentStep === 1) {
       if (!purpose) {
         setToast({ message: "Selecione a finalidade (Venda/Aluguel).", type: "error" });
+        return;
+      }
+      if (finalTitle.length < 3) {
+        setToast({ message: "Informe um título para o anúncio.", type: "error" });
         return;
       }
       const price = parseBRLToNumber(priceBRL);
@@ -1738,33 +1701,15 @@ export default function NewPropertyPage() {
                   <div className="pt-4 border-t border-gray-100">
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
                       Título do anúncio
-                      <span className="ml-1 text-xs font-normal text-gray-500">(opcional)</span>
                     </label>
                     <input
                       type="text"
                       value={customTitle}
                       onChange={(e) => setCustomTitle(e.target.value)}
-                      placeholder={generatedTitle}
+                      placeholder="Ex: Casa em Petrolina"
                       className="w-full px-4 py-2.5 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-accent focus:border-transparent text-sm"
                       maxLength={100}
                     />
-                    <div className="mt-2 flex items-center justify-between">
-                      <p className="text-xs text-gray-500">
-                        {customTitle.trim() 
-                          ? 'Título personalizado' 
-                          : `Sugestão automática: "${generatedTitle}"`
-                        }
-                      </p>
-                      {customTitle.trim() && (
-                        <button
-                          type="button"
-                          onClick={() => setCustomTitle('')}
-                          className="text-xs text-teal-600 hover:text-teal-700 font-medium"
-                        >
-                          Usar sugestão
-                        </button>
-                      )}
-                    </div>
                   </div>
                 </div>
               )}

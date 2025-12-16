@@ -270,21 +270,6 @@ export default function SearchFiltersBarZillow({
             </div>
           </div>
 
-          {/* Quick Filters Section */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Filtros Rápidos</h3>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={() => { updateFilter('minPrice', ''); updateFilter('maxPrice', '500000'); }} className="px-3 py-2 text-sm font-medium bg-white border border-gray-200 rounded-full hover:border-teal-dark hover:text-teal-dark transition-colors">
-                Até R$ 500k
-              </button>
-              <button onClick={() => updateFilter('bedrooms', '2')} className="px-3 py-2 text-sm font-medium bg-white border border-gray-200 rounded-full hover:border-teal-dark hover:text-teal-dark transition-colors">
-                2+ quartos
-              </button>
-              <button onClick={() => updateFilter('furnished', true)} className="px-3 py-2 text-sm font-medium bg-white border border-gray-200 rounded-full hover:border-teal-dark hover:text-teal-dark transition-colors">
-                Mobiliado
-              </button>
-            </div>
-          </div>
           {/* Divider (apenas mobile) */}
           <div className="border-t border-gray-200 md:hidden" />
 

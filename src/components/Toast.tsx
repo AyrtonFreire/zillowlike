@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 export type ToastProps = {
   message: string;
@@ -10,18 +10,14 @@ export type ToastProps = {
 };
 
 export default function Toast({ message, type = "info", onClose, autoCloseMs = 4000 }: ToastProps) {
-  const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    ref.current?.focus();
     const t = setTimeout(onClose, autoCloseMs);
     return () => clearTimeout(t);
   }, [onClose, autoCloseMs]);
   const base = type === "error" ? "bg-red-50 border-red-200 text-red-700" : type === "success" ? "bg-green-50 border-green-200 text-green-700" : "bg-blue-50 border-blue-200 text-blue-700";
   return (
     <div
-      ref={ref}
       role="status"
-      tabIndex={-1}
       className={`fixed top-4 right-4 z-50 border rounded-lg px-4 py-3 shadow ${base}`}
       aria-live="polite"
     >
