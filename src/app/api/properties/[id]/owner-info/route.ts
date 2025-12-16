@@ -21,10 +21,9 @@ export async function GET(
           select: {
             id: true,
             name: true,
-            email: true,
-            phone: true,
             image: true,
             role: true,
+            publicSlug: true,
           },
         },
       },
@@ -37,7 +36,7 @@ export async function GET(
       );
     }
 
-    const isRealtorProperty = property.owner?.role === "REALTOR";
+    const isRealtorProperty = property.owner?.role === "REALTOR" || property.owner?.role === "AGENCY";
 
     return NextResponse.json({
       propertyId: property.id,
@@ -46,9 +45,8 @@ export async function GET(
         ? {
             id: property.owner.id,
             name: property.owner.name,
-            email: property.owner.email,
-            phone: property.owner.phone,
             image: property.owner.image,
+            publicSlug: (property.owner as any).publicSlug ?? null,
           }
         : null, // Não expõe dados do owner se não for corretor
     });

@@ -90,7 +90,7 @@ describe("GET /api/properties", () => {
       return;
     }
 
-    const response = await fetch(`http://localhost:3001/api/properties?id=${propertyId}`);
+    const response = await fetch(`http://localhost:3001/api/public/properties/${propertyId}`);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -99,7 +99,7 @@ describe("GET /api/properties", () => {
   });
 
   it("should return 404 for non-existent property", async () => {
-    const response = await fetch("http://localhost:3001/api/properties?id=non-existent-id");
+    const response = await fetch("http://localhost:3001/api/public/properties/non-existent-id");
     
     expect(response.status).toBe(404);
   });

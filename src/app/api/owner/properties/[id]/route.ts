@@ -19,11 +19,33 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = (session as any)?.userId || (session as any)?.user?.id;
+    const sessionUser = (session as any)?.user as any;
+    const userId = (session as any)?.userId || sessionUser?.id;
+    const role = sessionUser?.role as string | undefined;
     const { id } = await context.params;
 
-    const property = await prisma.property.findUnique({
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const isAdmin = role === "ADMIN";
+
+    const property = isAdmin
+      ? await prisma.property.findUnique({
       where: { id },
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        _count: {
+          select: {
+            favorites: true,
+            leads: true,
+            views: true,
+          },
+        },
+      },
+    })
+      : await prisma.property.findFirst({
+      where: { id, ownerId: userId },
       include: {
         images: { orderBy: { sortOrder: "asc" } },
         _count: {
@@ -38,11 +60,6 @@ export async function GET(req: NextRequest, context: RouteContext) {
 
     if (!property) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
-    }
-
-    // Verify ownership
-    if (property.ownerId !== userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     return NextResponse.json({ success: true, property });
@@ -67,22 +84,31 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = (session as any)?.userId || (session as any)?.user?.id;
+    const sessionUser = (session as any)?.user as any;
+    const userId = (session as any)?.userId || sessionUser?.id;
+    const role = sessionUser?.role as string | undefined;
     const { id } = await context.params;
     const body = await req.json();
 
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const isAdmin = role === "ADMIN";
+
     // Verify ownership first
-    const existing = await prisma.property.findUnique({
-      where: { id },
-      select: { ownerId: true },
-    });
+    const existing = isAdmin
+      ? await prisma.property.findUnique({
+          where: { id },
+          select: { ownerId: true },
+        })
+      : await prisma.property.findFirst({
+          where: { id, ownerId: userId },
+          select: { ownerId: true },
+        });
 
     if (!existing) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
-    }
-
-    if (existing.ownerId !== userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Update allowed fields
@@ -243,21 +269,30 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = (session as any)?.userId || (session as any)?.user?.id;
+    const sessionUser = (session as any)?.user as any;
+    const userId = (session as any)?.userId || sessionUser?.id;
+    const role = sessionUser?.role as string | undefined;
     const { id } = await context.params;
 
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const isAdmin = role === "ADMIN";
+
     // Verify ownership
-    const existing = await prisma.property.findUnique({
-      where: { id },
-      select: { ownerId: true },
-    });
+    const existing = isAdmin
+      ? await prisma.property.findUnique({
+          where: { id },
+          select: { ownerId: true },
+        })
+      : await prisma.property.findFirst({
+          where: { id, ownerId: userId },
+          select: { ownerId: true },
+        });
 
     if (!existing) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
-    }
-
-    if (existing.ownerId !== userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Soft delete - just set status to DELETED or actually delete?

@@ -895,7 +895,7 @@ export default function Home() {
     setOverlayLoading(true);
 
     try {
-      const res = await fetch(`/api/properties?id=${propertyId}`);
+      const res = await fetch(`/api/public/properties/${propertyId}`);
       const data = await res.json();
       
       if (data.item) {

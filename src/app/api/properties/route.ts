@@ -30,97 +30,10 @@ function checkRateLimit(req: NextRequest): boolean {
 export async function GET(req: NextRequest) {
   try {
     const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const session = await getServerSession(authOptions).catch(() => null);
+    const sessionUser = (session as any)?.user as any;
+    const viewerRole = sessionUser?.role as string | undefined;
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-    if (id) {
-      const item = await prisma.property.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          price: true,
-          type: true,
-          purpose: true,
-          status: true,
-          ownerId: true,
-          street: true,
-          neighborhood: true,
-          city: true,
-          state: true,
-          postalCode: true,
-          latitude: true,
-          longitude: true,
-          bedrooms: true,
-          bathrooms: true,
-          areaM2: true,
-          suites: true,
-          parkingSpots: true,
-          floor: true,
-          furnished: true,
-          petFriendly: true,
-          condoFee: true,
-          yearBuilt: true,
-          allowRealtorBoard: true,
-          // extras
-          hasBalcony: true,
-          hasElevator: true,
-          hasPool: true,
-          hasGym: true,
-          hasPlayground: true,
-          hasPartyRoom: true,
-          hasGourmet: true,
-          hasConcierge24h: true,
-          accRamps: true,
-          accWideDoors: true,
-          accAccessibleElevator: true,
-          accTactile: true,
-          comfortAC: true,
-          comfortHeating: true,
-          comfortSolar: true,
-          comfortNoiseWindows: true,
-          comfortLED: true,
-          comfortWaterReuse: true,
-          finishFloor: true,
-          finishCabinets: true,
-          finishCounterGranite: true,
-          finishCounterQuartz: true,
-          viewSea: true,
-          viewCity: true,
-          positionFront: true,
-          positionBack: true,
-          sunByRoomNote: true,
-          petsSmall: true,
-          petsLarge: true,
-          condoRules: true,
-          sunOrientation: true,
-          yearRenovated: true,
-          totalFloors: true,
-          conditionTags: true,
-          createdAt: true,
-          updatedAt: true,
-          images: { select: { id: true, url: true, alt: true, sortOrder: true, blurDataURL: true }, orderBy: { sortOrder: 'asc' } },
-          owner: {
-            // Cast para any pois os tipos gerados podem não conhecer ainda os campos de perfil público
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              role: true,
-              phone: true,
-              publicProfileEnabled: true,
-              publicSlug: true,
-            } as any,
-          },
-        },
-      });
-      if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
-      const res = NextResponse.json({ item });
-      res.headers.set("x-request-id", requestId);
-      res.headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
-      return res;
-    }
     const qp = Object.fromEntries(searchParams.entries());
     const parsed = PropertyQuerySchema.safeParse(qp);
     if (!parsed.success) {
@@ -146,7 +59,8 @@ export async function GET(req: NextRequest) {
     const where: any = {};
     // Public API: por padrão, NÃO filtra por status para garantir visibilidade de registros de teste/legados.
     // Permitir override via query ?status=ACTIVE/PAUSED/DRAFT/SOLD/RENTED ou ?status=ANY
-    const statusParam = (searchParams.get("status") || "ANY").toUpperCase();
+    const rawStatusParam = (searchParams.get("status") || "ANY").toUpperCase();
+    const statusParam = viewerRole === "ADMIN" ? rawStatusParam : "ACTIVE";
     if (statusParam !== "ANY") {
       const allowedStatuses = new Set(["ACTIVE","PAUSED","DRAFT","SOLD","RENTED"]);
       const effective = allowedStatuses.has(statusParam) ? statusParam : "ACTIVE";
@@ -474,10 +388,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Require phone before allowing property creation
+    // Require at least one verified contact channel before allowing property creation
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true, phone: true, phoneVerifiedAt: true },
+      select: { role: true, phone: true, phoneVerifiedAt: true, emailVerified: true },
     });
 
     if (!user) {
@@ -485,9 +399,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!user.phone || !user.phone.trim() || !user.phoneVerifiedAt) {
+    const hasVerifiedPhone = !!(user.phone && user.phone.trim() && user.phoneVerifiedAt);
+    const hasVerifiedEmail = !!user.emailVerified;
+
+    if (!hasVerifiedPhone && !hasVerifiedEmail) {
       const res = NextResponse.json(
-        { error: "Para publicar um imóvel, verifique seu telefone via SMS em Meu Perfil." },
+        { error: "Para publicar um imóvel, verifique seu telefone ou e-mail em Meu Perfil." },
         { status: 400 }
       );
       res.headers.set("x-request-id", requestId);

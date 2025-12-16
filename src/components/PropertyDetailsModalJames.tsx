@@ -44,6 +44,19 @@ type PropertyDetails = {
   petFriendly: boolean;
   images: { url: string }[];
   allowRealtorBoard?: boolean;
+  privateOwnerName?: string | null;
+  privateOwnerPhone?: string | null;
+  privateOwnerEmail?: string | null;
+  privateOwnerAddress?: string | null;
+  privateOwnerPrice?: number | null;
+  privateBrokerFeePercent?: number | null;
+  privateBrokerFeeFixed?: number | null;
+  privateExclusive?: boolean | null;
+  privateExclusiveUntil?: string | null;
+  privateOccupied?: boolean | null;
+  privateOccupantInfo?: string | null;
+  privateKeyLocation?: string | null;
+  privateNotes?: string | null;
   owner?: {
     id: string;
     name: string | null;
@@ -187,7 +200,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     if (!activePropertyId) return;
     setLoading(true);
     setError(null);
-    fetch(`/api/properties?id=${activePropertyId}`)
+    const endpoint = mode === "internal" ? `/api/owner/properties/${activePropertyId}` : `/api/public/properties/${activePropertyId}`;
+    fetch(endpoint)
       .then(async (res) => {
         if (!res.ok) {
           const text = await res.text().catch(() => "");
@@ -196,11 +210,22 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         return res.json();
       })
       .then((data) => {
-        setProperty(data.item);
+        if (mode === "internal") {
+          if (!data?.success || !data?.property) throw new Error(data?.error || "Erro ao carregar imóvel");
+          const p = data.property;
+          setProperty({
+            ...p,
+            description: p.description || "",
+            images: Array.isArray(p.images) ? p.images.map((img: any) => ({ url: img.url })) : [],
+          });
+        } else {
+          setProperty(data.item);
+        }
         // Buscar imóveis próximos e similares usando endpoints dedicados
-        if (data.item.id) {
-          console.log('[PropertyModal] Buscando nearby properties (endpoint /api/properties/nearby)...', { id: data.item.id });
-          fetch(`/api/properties/nearby?id=${data.item.id}&radius=3&limit=8`)
+        const id = mode === "internal" ? data?.property?.id : data?.item?.id;
+        if (id) {
+          console.log('[PropertyModal] Buscando nearby properties (endpoint /api/properties/nearby)...', { id });
+          fetch(`/api/properties/nearby?id=${id}&radius=3&limit=8`)
             .then(r => r.json())
             .then(d => {
               const arr = d?.properties || d?.items || [];
@@ -208,9 +233,9 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             })
             .catch(() => setNearbyProperties([]));
         }
-        if (data.item.id) {
-          console.log('[PropertyModal] Buscando similar properties (endpoint /api/properties/similar)...', { id: data.item.id });
-          fetch(`/api/properties/similar?id=${data.item.id}&limit=8`)
+        if (id) {
+          console.log('[PropertyModal] Buscando similar properties (endpoint /api/properties/similar)...', { id });
+          fetch(`/api/properties/similar?id=${id}&limit=8`)
             .then(r => r.json())
             .then(d => {
               const arr = d?.properties || d?.items || [];
@@ -1129,6 +1154,26 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                       >
                         Editar anúncio
                       </Link>
+                    </div>
+                  </div>
+                )}
+
+                {mode === "internal" && (property.privateOwnerName || property.privateOwnerPhone || property.privateOwnerEmail || property.privateOwnerAddress || property.privateOwnerPrice || property.privateBrokerFeePercent || property.privateBrokerFeeFixed || property.privateKeyLocation || property.privateNotes) && (
+                  <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
+                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-teal" />
+                      Dados privados
+                    </h4>
+                    <div className="space-y-2 text-sm text-gray-700">
+                      {property.privateOwnerName && <div><span className="text-gray-500">Proprietário:</span> {property.privateOwnerName}</div>}
+                      {property.privateOwnerPhone && <div><span className="text-gray-500">Telefone:</span> {property.privateOwnerPhone}</div>}
+                      {property.privateOwnerEmail && <div><span className="text-gray-500">E-mail:</span> {property.privateOwnerEmail}</div>}
+                      {property.privateOwnerAddress && <div><span className="text-gray-500">Endereço:</span> {property.privateOwnerAddress}</div>}
+                      {typeof property.privateOwnerPrice === "number" && <div><span className="text-gray-500">Valor desejado:</span> {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(property.privateOwnerPrice / 100)}</div>}
+                      {typeof property.privateBrokerFeePercent === "number" && <div><span className="text-gray-500">Taxa (%):</span> {property.privateBrokerFeePercent}%</div>}
+                      {typeof property.privateBrokerFeeFixed === "number" && <div><span className="text-gray-500">Taxa fixa:</span> {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(property.privateBrokerFeeFixed / 100)}</div>}
+                      {property.privateKeyLocation && <div><span className="text-gray-500">Chave:</span> {property.privateKeyLocation}</div>}
+                      {property.privateNotes && <div className="pt-2 border-t border-gray-100"><span className="text-gray-500">Notas:</span> <span className="block text-gray-700 whitespace-pre-wrap">{property.privateNotes}</span></div>}
                     </div>
                   </div>
                 )}

@@ -29,10 +29,10 @@ export default function EditPropertyPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/properties?id=${id}`);
+        const res = await fetch(`/api/owner/properties/${id}`);
         if (!res.ok) throw new Error("Falha ao carregar imóvel");
         const data = await res.json();
-        const p = data.item;
+        const p = data.property;
         setTitle(p.title);
         setDescription(p.description);
         setPriceBRL(String(Math.round(p.price / 100)));

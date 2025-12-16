@@ -22,7 +22,7 @@ export default function FinancingPage() {
       if (!propertyId) return;
       
       try {
-        const res = await fetch(`/api/properties?id=${propertyId}`);
+        const res = await fetch(`/api/public/properties/${propertyId}`);
         if (!res.ok) {
           setError("Imóvel não encontrado");
           return;

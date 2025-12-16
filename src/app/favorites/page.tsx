@@ -37,7 +37,7 @@ export default function FavoritesPage() {
         const results: ApiProperty[] = [];
         await Promise.all(
           list.map(async (id: string) => {
-            const r = await fetch(`/api/properties?id=${id}`);
+            const r = await fetch(`/api/public/properties/${id}`);
             if (r.ok) {
               const d = await r.json();
               if (d.item) results.push(d.item);

@@ -36,7 +36,7 @@ export default function ComparePage() {
   const fetchProperties = async (ids: string[]) => {
     try {
       const promises = ids.map(id =>
-        fetch(`/api/properties?id=${id}`).then(r => r.json())
+        fetch(`/api/public/properties/${id}`).then(r => r.json())
       );
       const results = await Promise.all(promises);
       const props = results.map(r => r.item).filter(Boolean);

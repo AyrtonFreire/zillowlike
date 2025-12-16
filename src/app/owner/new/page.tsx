@@ -340,12 +340,13 @@ export default function NewPropertyPage() {
     };
   }, []);
 
+  const hasAnyVerifiedContact = useMemo(() => {
+    return Boolean(profilePhoneVerified || profileEmailVerified);
+  }, [profilePhoneVerified, profileEmailVerified]);
+
   const canPublish = useMemo(() => {
-    if (contactChannel === "phone") {
-      return Boolean(profilePhoneVerified && phoneConfirmedForListing);
-    }
-    return Boolean(profileEmailVerified && emailConfirmedForListing);
-  }, [contactChannel, profilePhoneVerified, phoneConfirmedForListing, profileEmailVerified, emailConfirmedForListing]);
+    return hasAnyVerifiedContact;
+  }, [hasAnyVerifiedContact]);
 
   // Persist tips preference
   useEffect(() => {
@@ -1113,24 +1114,9 @@ export default function NewPropertyPage() {
       return;
     }
 
-    if (contactChannel === "phone") {
-      if (!profilePhoneVerified) {
-        setShowPhoneVerificationModal(true);
-        return;
-      }
-      if (!phoneConfirmedForListing) {
-        applyErrorsAndFocus(6, { phoneConfirmedForListing: "Confirme que este é o telefone correto para contato neste anúncio." });
-        return;
-      }
-    } else {
-      if (!profileEmailVerified) {
-        applyErrorsAndFocus(6, { email: "Confirme seu e-mail para publicar (verifique sua caixa de entrada)." });
-        return;
-      }
-      if (!emailConfirmedForListing) {
-        applyErrorsAndFocus(6, { emailConfirmedForListing: "Confirme que este é o e-mail correto para contato neste anúncio." });
-        return;
-      }
+    if (!hasAnyVerifiedContact) {
+      applyErrorsAndFocus(6, { contactVerification: "Para publicar, verifique seu telefone ou e-mail em Meu Perfil." });
+      return;
     }
 
     setIsSubmitting(true);
@@ -1735,7 +1721,7 @@ export default function NewPropertyPage() {
                     <div>
                       <Select
                         id="purpose"
-                        label="Finalidade"
+                        label="Finalidade *"
                         value={purpose}
                         error={fieldErrors.purpose}
                         onChange={(e) => {
@@ -1751,7 +1737,7 @@ export default function NewPropertyPage() {
                     <div>
                       <Input
                         id="priceBRL"
-                        label="Preço (R$)"
+                        label="Preço (R$) *"
                         value={priceBRL}
                         error={fieldErrors.priceBRL}
                         onChange={(e) => {
@@ -1765,7 +1751,7 @@ export default function NewPropertyPage() {
                     <div>
                       <Select
                         id="type"
-                        label="Tipo de imóvel"
+                        label="Tipo de imóvel *"
                         value={type}
                         error={fieldErrors.type}
                         onChange={(e) => {
@@ -1797,7 +1783,7 @@ export default function NewPropertyPage() {
                   {/* Título do anúncio */}
                   <div className="pt-4 border-t border-gray-100">
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Título do anúncio
+                      Título do anúncio *
                     </label>
                     <input
                       id="title"
@@ -1827,7 +1813,7 @@ export default function NewPropertyPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <Input
                       id="postalCode"
-                      label="CEP"
+                      label="CEP *"
                       value={postalCode}
                       error={fieldErrors.postalCode}
                       onChange={(e) => {
@@ -1839,7 +1825,7 @@ export default function NewPropertyPage() {
                     />
                     <Input
                       id="street"
-                      label="Rua"
+                      label="Rua *"
                       value={street}
                       error={fieldErrors.street}
                       onChange={(e) => {
@@ -1864,7 +1850,7 @@ export default function NewPropertyPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <Input
                       id="neighborhood"
-                      label="Bairro"
+                      label="Bairro *"
                       value={neighborhood}
                       error={fieldErrors.neighborhood}
                       onChange={(e) => {
@@ -1874,7 +1860,7 @@ export default function NewPropertyPage() {
                     />
                     <Input
                       id="city"
-                      label="Cidade"
+                      label="Cidade *"
                       value={city}
                       error={fieldErrors.city}
                       onChange={(e) => {
@@ -1884,7 +1870,7 @@ export default function NewPropertyPage() {
                     />
                     <Input
                       id="state"
-                      label="Estado (UF)"
+                      label="Estado (UF) *"
                       value={state}
                       error={fieldErrors.state}
                       onChange={(e) => {
@@ -1905,9 +1891,9 @@ export default function NewPropertyPage() {
                       type="button"
                       onClick={handleGeocode}
                       disabled={isGeocoding}
-                      className="inline-flex items-center px-3 py-2 rounded-lg text-xs font-semibold bg-neutral-900 text-white disabled:opacity-60"
+                      className="w-full px-4 py-3 rounded-lg glass-teal text-white text-sm font-semibold disabled:opacity-60"
                     >
-                      {isGeocoding ? "Validando endereço..." : "Validar endereço no mapa"}
+                      {isGeocoding ? "Validando endereço..." : "Validar endereço no mapa *"}
                     </button>
                     {geoPreview && (
                       <p className="mt-2 text-xs text-gray-500 truncate">Ponto aproximado: {geoPreview}</p>
@@ -2101,7 +2087,7 @@ export default function NewPropertyPage() {
               {currentStep === 4 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Fotos do imóvel</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Fotos do imóvel *</h2>
                     <p className="text-sm text-gray-600 mt-1">
                       Adicione ao menos uma foto. Arraste para reordenar — a primeira será a capa do anúncio.
                     </p>
@@ -2514,134 +2500,76 @@ export default function NewPropertyPage() {
                   </div>
 
                   <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <p className="font-semibold text-gray-900 mb-3">Escolha de contato para o anúncio</p>
+                    <p className="font-semibold text-gray-900 mb-3">Contato para publicação</p>
 
-                    <div className="space-y-3">
-                      <label
-                        className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                          contactChannel === "phone" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="contactChannel"
-                          checked={contactChannel === "phone"}
-                          onChange={() => {
-                            setContactChannel("phone");
-                            clearFieldError("email");
-                            clearFieldError("emailConfirmedForListing");
-                          }}
-                          className="mt-1 w-4 h-4 text-teal-600"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-teal-700" />
-                            <p className="font-medium text-gray-900">Telefone (recomendado)</p>
+                    {fieldErrors.contactVerification && (
+                      <div id="contactVerification" className="mb-2 text-xs text-danger">
+                        {fieldErrors.contactVerification}
+                      </div>
+                    )}
+
+                    {hasAnyVerifiedContact ? (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          Você já tem pelo menos um contato verificado. Você pode publicar seu anúncio.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="p-3 bg-white rounded-lg border border-gray-200">
+                            <div className="flex items-center gap-2">
+                              <Phone className="w-4 h-4 text-teal-700" />
+                              <p className="font-medium text-gray-900">Telefone</p>
+                            </div>
+                            <p className="text-sm text-gray-700 mt-1">{profilePhone || "Não cadastrado"}</p>
+                            <p className={`text-xs mt-1 ${profilePhoneVerified ? "text-green-600" : "text-amber-600"}`}>
+                              {profilePhoneVerified ? "Verificado" : "Não verificado"}
+                            </p>
                           </div>
-                          <p className="text-sm text-gray-500">Mais rápido para interessados entrarem em contato</p>
-                        </div>
-                      </label>
-
-                      <label
-                        className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                          contactChannel === "email" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="contactChannel"
-                          checked={contactChannel === "email"}
-                          onChange={() => {
-                            setContactChannel("email");
-                            clearFieldError("phoneConfirmedForListing");
-                          }}
-                          className="mt-1 w-4 h-4 text-teal-600"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-teal-700" />
-                            <p className="font-medium text-gray-900">E-mail (alternativa)</p>
+                          <div className="p-3 bg-white rounded-lg border border-gray-200">
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-4 h-4 text-teal-700" />
+                              <p className="font-medium text-gray-900">E-mail</p>
+                            </div>
+                            <p className="text-sm text-gray-700 mt-1">{profileEmail || "Não cadastrado"}</p>
+                            <p className={`text-xs mt-1 ${profileEmailVerified ? "text-green-600" : "text-amber-600"}`}>
+                              {profileEmailVerified ? "Verificado" : "Não verificado"}
+                            </p>
                           </div>
-                          <p className="text-sm text-gray-500">Útil se você estiver sem acesso ao celular</p>
                         </div>
-                  </label>
-                    </div>
+                        <p className="text-xs text-gray-500">
+                          Se quiser alterar ou verificar outros contatos, vá em <Link href="/profile" className="text-teal-700 hover:underline">Meu Perfil</Link>.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
 
-                    {contactChannel === "phone" && (
-                      <div className="space-y-3 mt-4">
-                        {/* Opções de telefone */}
-                        {profilePhone ? (
-                          <div className="space-y-3">
-                            {/* Opção: usar telefone existente */}
-                            <label
-                              className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                                phoneMode === "existing" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name="phoneMode"
-                                checked={phoneMode === "existing"}
-                                onChange={() => setPhoneMode("existing")}
-                                className="mt-1 w-4 h-4 text-teal-600"
-                              />
-                              <div className="flex-1">
-                                <p className="font-medium text-gray-900">Usar meu telefone cadastrado</p>
-                                <p className="text-sm text-gray-600 mt-0.5">
-                                  {profilePhone}
-                                  {profilePhoneVerified ? (
-                                    <span className="ml-2 inline-flex items-center gap-1 text-green-600">
-                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                      </svg>
-                                      Verificado
-                                    </span>
-                                  ) : (
-                                    <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
-                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                      </svg>
-                                      Não verificado
-                                    </span>
-                                  )}
-                                </p>
-                                {!profilePhoneVerified && phoneMode === "existing" && (
+                        <div className="space-y-3">
+                          <p className="text-sm text-gray-600">
+                            Para publicar, verifique pelo menos um canal de contato (telefone ou e-mail).
+                          </p>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="p-3 bg-white rounded-lg border border-gray-200">
+                              <div className="flex items-center gap-2">
+                                <Phone className="w-4 h-4 text-teal-700" />
+                                <p className="font-medium text-gray-900">Telefone</p>
+                              </div>
+
+                              {profilePhone ? (
+                                <div className="mt-2">
+                                  <p className="text-sm text-gray-700">{profilePhone}</p>
+                                  <p className="text-xs text-amber-600 mt-1">Não verificado</p>
                                   <button
                                     type="button"
                                     onClick={() => setShowPhoneVerificationModal(true)}
                                     className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
                                   >
-                                    Verificar agora →
+                                    Verificar por SMS →
                                   </button>
-                                )}
-                              </div>
-                            </label>
-
-                            {/* Opção: usar outro número */}
-                            <label
-                              className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                                phoneMode === "new" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name="phoneMode"
-                                checked={phoneMode === "new"}
-                                onChange={() => setPhoneMode("new")}
-                                className="mt-1 w-4 h-4 text-teal-600"
-                              />
-                              <div className="flex-1">
-                                <p className="font-medium text-gray-900">Usar outro número</p>
-                                <p className="text-sm text-gray-500">Cadastrar e verificar um novo telefone</p>
-                              </div>
-                            </label>
-
-                            {/* Input para novo telefone */}
-                            {phoneMode === "new" && (
-                              <div className="mt-3 pl-7 space-y-3">
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">Novo telefone (com DDD)</label>
-                                  <div className="flex gap-2">
+                                </div>
+                              ) : (
+                                <div className="mt-2">
+                                  <p className="text-sm text-gray-500">Você não tem telefone cadastrado.</p>
+                                  <div className="mt-2 flex gap-2">
                                     <input
                                       type="tel"
                                       value={newPhoneInput}
@@ -2674,134 +2602,26 @@ export default function NewPropertyPage() {
                                           setSavingNewPhone(false);
                                         }
                                       }}
-                                      className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                      className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                      {savingNewPhone ? (
-                                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                      ) : (
-                                        "Salvar e verificar"
-                                      )}
+                                      {savingNewPhone ? "Salvando..." : "Salvar"}
                                     </button>
                                   </div>
                                   <p className="text-xs text-gray-500 mt-1">Digite apenas números (DDD + número)</p>
                                 </div>
-                              </div>
-                            )}
-
-                            {/* Confirmação */}
-                            {phoneMode === "existing" && profilePhoneVerified && (
-                              <div className="mt-3 pt-3 border-t border-gray-200">
-                                <Checkbox
-                                  id="phoneConfirmedForListing"
-                                  checked={phoneConfirmedForListing}
-                                  onChange={(e) => {
-                                    setPhoneConfirmedForListing(e.target.checked);
-                                    clearFieldError("phoneConfirmedForListing");
-                                  }}
-                                  label={`Confirmo que ${profilePhone} é o telefone correto para este anúncio.`}
-                                />
-                                {fieldErrors.phoneConfirmedForListing && (
-                                  <div className="mt-1 text-xs text-danger">{fieldErrors.phoneConfirmedForListing}</div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          /* Sem telefone cadastrado */
-                          <div className="space-y-3">
-                            <p className="text-sm text-gray-600">
-                              Você ainda não tem um telefone cadastrado. Adicione um para que interessados possam entrar em contato.
-                            </p>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Telefone (com DDD)</label>
-                              <div className="flex gap-2">
-                                <input
-                                  type="tel"
-                                  value={newPhoneInput}
-                                  onChange={(e) => setNewPhoneInput(e.target.value.replace(/\D/g, ""))}
-                                  placeholder="11999999999"
-                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                                />
-                                <button
-                                  type="button"
-                                  disabled={!newPhoneInput.trim() || savingNewPhone}
-                                  onClick={async () => {
-                                    if (!newPhoneInput.trim()) return;
-                                    setSavingNewPhone(true);
-                                    try {
-                                      const res = await fetch("/api/user/profile", {
-                                        method: "PATCH",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ phone: newPhoneInput }),
-                                      });
-                                      if (res.ok) {
-                                        setProfilePhone(newPhoneInput);
-                                        setProfilePhoneVerified(false);
-                                        setShowPhoneVerificationModal(true);
-                                      } else {
-                                        setToast({ message: "Erro ao salvar telefone", type: "error" });
-                                      }
-                                    } catch {
-                                      setToast({ message: "Erro ao salvar telefone", type: "error" });
-                                    } finally {
-                                      setSavingNewPhone(false);
-                                    }
-                                  }}
-                                  className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                >
-                                  {savingNewPhone ? (
-                                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                  ) : (
-                                    "Salvar e verificar"
-                                  )}
-                                </button>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1">Digite apenas números (DDD + número)</p>
+                              )}
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
 
-                    {contactChannel === "email" && (
-                      <div className="space-y-3 mt-4">
-                        {fieldErrors.email && <div id="email" className="text-xs text-danger">{fieldErrors.email}</div>}
+                            <div className="p-3 bg-white rounded-lg border border-gray-200">
+                              <div className="flex items-center gap-2">
+                                <Mail className="w-4 h-4 text-teal-700" />
+                                <p className="font-medium text-gray-900">E-mail</p>
+                              </div>
 
-                        {profileEmail ? (
-                          <div className="space-y-3">
-                            <label
-                              className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                                emailMode === "existing" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name="emailMode"
-                                checked={emailMode === "existing"}
-                                onChange={() => setEmailMode("existing")}
-                                className="mt-1 w-4 h-4 text-teal-600"
-                              />
-                              <div className="flex-1">
-                                <p className="font-medium text-gray-900">Usar meu e-mail cadastrado</p>
-                                <p className="text-sm text-gray-600 mt-0.5">
-                                  {profileEmail}
-                                  {profileEmailVerified ? (
-                                    <span className="ml-2 inline-flex items-center gap-1 text-green-600">
-                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                      </svg>
-                                      Verificado
-                                    </span>
-                                  ) : (
-                                    <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
-                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                      </svg>
-                                      Não verificado
-                                    </span>
-                                  )}
-                                </p>
-                                {!profileEmailVerified && emailMode === "existing" && (
+                              {profileEmail ? (
+                                <div className="mt-2">
+                                  <p className="text-sm text-gray-700">{profileEmail}</p>
+                                  <p className="text-xs text-amber-600 mt-1">Não verificado</p>
                                   <button
                                     type="button"
                                     onClick={async () => {
@@ -2824,102 +2644,62 @@ export default function NewPropertyPage() {
                                   >
                                     Reenviar verificação →
                                   </button>
-                                )}
-                              </div>
-                            </label>
-
-                            <label
-                              className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                                emailMode === "new" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name="emailMode"
-                                checked={emailMode === "new"}
-                                onChange={() => setEmailMode("new")}
-                                className="mt-1 w-4 h-4 text-teal-600"
-                              />
-                              <div className="flex-1">
-                                <p className="font-medium text-gray-900">Usar outro e-mail</p>
-                                <p className="text-sm text-gray-500">Cadastrar e verificar um novo e-mail</p>
-                              </div>
-                            </label>
-
-                            {emailMode === "new" && (
-                              <div className="mt-1 pl-7 space-y-2">
-                                <div className="flex gap-2">
-                                  <input
-                                    type="email"
-                                    value={newEmailInput}
-                                    onChange={(e) => setNewEmailInput(e.target.value)}
-                                    placeholder="seuemail@exemplo.com"
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                                  />
-                                  <button
-                                    type="button"
-                                    disabled={!newEmailInput.trim() || savingNewEmail}
-                                    onClick={async () => {
-                                      if (!newEmailInput.trim()) return;
-                                      setSavingNewEmail(true);
-                                      try {
-                                        const res = await fetch("/api/user/profile", {
-                                          method: "PATCH",
-                                          headers: { "Content-Type": "application/json" },
-                                          body: JSON.stringify({ email: newEmailInput.trim() }),
-                                        });
-                                        const j = await res.json().catch(() => null);
-                                        if (res.ok && j?.success && j.user) {
-                                          setProfileEmail(j.user.email || newEmailInput.trim());
-                                          setProfileEmailVerified(!!j.user.emailVerified);
-                                          setEmailConfirmedForListing(false);
-                                          setEmailMode("existing");
-                                          setToast({ message: "Enviamos um link de verificação para o novo e-mail.", type: "success" });
-                                        } else {
-                                          setToast({ message: j?.error || "Erro ao salvar e-mail", type: "error" });
-                                        }
-                                      } catch {
-                                        setToast({ message: "Erro ao salvar e-mail", type: "error" });
-                                      } finally {
-                                        setSavingNewEmail(false);
-                                      }
-                                    }}
-                                    className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    {savingNewEmail ? "Salvando..." : "Salvar"}
-                                  </button>
                                 </div>
-                                <p className="text-xs text-gray-500">Você precisará clicar no link enviado para confirmar.</p>
-                              </div>
-                            )}
-
-                            {emailMode === "existing" && profileEmailVerified && (
-                              <div className="mt-2 pt-3 border-t border-gray-200">
-                                <Checkbox
-                                  id="emailConfirmedForListing"
-                                  checked={emailConfirmedForListing}
-                                  onChange={(e) => {
-                                    setEmailConfirmedForListing(e.target.checked);
-                                    clearFieldError("emailConfirmedForListing");
-                                  }}
-                                  label={`Confirmo que ${profileEmail} é o e-mail correto para este anúncio.`}
-                                />
-                                {fieldErrors.emailConfirmedForListing && (
-                                  <div className="mt-1 text-xs text-danger">{fieldErrors.emailConfirmedForListing}</div>
-                                )}
-                              </div>
-                            )}
+                              ) : (
+                                <div className="mt-2">
+                                  <p className="text-sm text-gray-500">Você não tem e-mail cadastrado.</p>
+                                  <div className="mt-2 flex gap-2">
+                                    <input
+                                      type="email"
+                                      value={newEmailInput}
+                                      onChange={(e) => setNewEmailInput(e.target.value)}
+                                      placeholder="seuemail@exemplo.com"
+                                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                    />
+                                    <button
+                                      type="button"
+                                      disabled={!newEmailInput.trim() || savingNewEmail}
+                                      onClick={async () => {
+                                        if (!newEmailInput.trim()) return;
+                                        setSavingNewEmail(true);
+                                        try {
+                                          const res = await fetch("/api/user/profile", {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ email: newEmailInput.trim() }),
+                                          });
+                                          const j = await res.json().catch(() => null);
+                                          if (res.ok && j?.success && j.user) {
+                                            setProfileEmail(j.user.email || newEmailInput.trim());
+                                            setProfileEmailVerified(!!j.user.emailVerified);
+                                            setEmailConfirmedForListing(false);
+                                            setEmailMode("existing");
+                                            setToast({ message: "Enviamos um link de verificação para o seu e-mail.", type: "success" });
+                                          } else {
+                                            setToast({ message: j?.error || "Erro ao salvar e-mail", type: "error" });
+                                          }
+                                        } catch {
+                                          setToast({ message: "Erro ao salvar e-mail", type: "error" });
+                                        } finally {
+                                          setSavingNewEmail(false);
+                                        }
+                                      }}
+                                      className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {savingNewEmail ? "Salvando..." : "Salvar"}
+                                    </button>
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-1">Você precisará clicar no link enviado para confirmar.</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        ) : (
-                          <div className="text-sm text-gray-600">Você não tem e-mail cadastrado.</div>
-                        )}
-                      </div>
-                    )}
 
-                    {!canPublish && (
-                      <div className="mt-3 text-xs text-gray-600">
-                        Para publicar, você precisa confirmar e verificar o canal de contato escolhido.
-                      </div>
+                          <p className="text-xs text-gray-500">
+                            Depois de verificar, volte aqui e atualize a página (ou aguarde alguns segundos) para liberar a publicação.
+                          </p>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
