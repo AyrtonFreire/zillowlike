@@ -7,7 +7,7 @@ import {
   Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock, RefreshCw, 
   MessageCircle, AlertCircle, ChevronDown, ChevronRight, Filter, User,
   ExternalLink, LayoutList, Columns3, Users, Handshake, Trophy, X,
-  Bell, PhoneOff, CalendarClock, Sparkles, GripVertical, MoreVertical
+  Bell, PhoneOff, CalendarClock, Sparkles, GripVertical
 } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 import Image from "next/image";
@@ -193,72 +193,22 @@ function DraggableCard({
   lead,
   formatPrice,
   onOpenMoveSheet,
-  onStartQuickMove,
-  isQuickMoveActive,
   enableDrag,
 }: {
   lead: Lead;
   formatPrice: (n: number) => string;
   onOpenMoveSheet?: (leadId: string) => void;
-  onStartQuickMove?: (leadId: string, x: number, y: number, pointerId: number) => void;
-  isQuickMoveActive?: boolean;
   enableDrag?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
-  const longPressTimerRef = useRef<number | null>(null);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined;
 
-  const clearLongPress = () => {
-    if (longPressTimerRef.current) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  };
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      }
+    : undefined;
 
-  const handlePointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
-    if (!onStartQuickMove) return;
-    if (e.pointerType !== "touch" && e.pointerType !== "mouse") return;
-    e.preventDefault();
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
-    touchStartRef.current = { x: e.clientX, y: e.clientY };
-    clearLongPress();
-    longPressTimerRef.current = window.setTimeout(() => {
-      const pt = touchStartRef.current;
-      if (!pt) return;
-      onStartQuickMove(lead.id, pt.x, pt.y, e.pointerId);
-    }, 420);
-  };
-
-  const handlePointerUp: React.PointerEventHandler<HTMLDivElement> = () => {
-    clearLongPress();
-  };
-
-  const handlePointerCancel: React.PointerEventHandler<HTMLDivElement> = () => {
-    clearLongPress();
-  };
-
-  const handlePointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
-    if (!onStartQuickMove) return;
-    if (e.pointerType !== "touch") return;
-    const pt = touchStartRef.current;
-    if (!pt) {
-      clearLongPress();
-      return;
-    }
-    const dx = e.clientX - pt.x;
-    const dy = e.clientY - pt.y;
-    if (dx * dx + dy * dy > 36) {
-      clearLongPress();
-    }
-  };
+  const isClickable = enableDrag === false && !!onOpenMoveSheet;
 
   return (
     <div
@@ -266,17 +216,13 @@ function DraggableCard({
       style={style}
       {...(enableDrag === false ? {} : listeners)}
       {...(enableDrag === false ? {} : attributes)}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
-      onPointerMove={handlePointerMove}
-      onContextMenu={(e) => {
-        if (!onStartQuickMove) return;
-        e.preventDefault();
+      onClick={() => {
+        if (!isClickable) return;
+        onOpenMoveSheet?.(lead.id);
       }}
       className={`group bg-white rounded-lg border border-gray-200 px-3 py-2 transition-all ${
         isDragging ? "opacity-60 shadow-lg" : "hover:shadow-md"
-      } ${isQuickMoveActive ? "opacity-25 scale-[0.94] touch-none" : ""} select-none`}
+      } ${isClickable ? "cursor-pointer" : ""} select-none`}
     >
       <div className="flex gap-2">
         <div className="mt-0.5 -ml-1 p-1 text-gray-300 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
@@ -316,23 +262,6 @@ function DraggableCard({
             </p>
           </div>
         </div>
-
-        {onOpenMoveSheet && (
-          <button
-            type="button"
-            className="md:hidden -mr-1 ml-1 p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenMoveSheet(lead.id);
-            }}
-            aria-label="Mover lead"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
-        )}
       </div>
       
       {/* Indicadores de alerta */}
@@ -357,32 +286,6 @@ export default function MyLeadsPage() {
   const [pipelineFilter, setPipelineFilter] = useState<"all" | PipelineStage>("all");
   const [mobileActiveStage, setMobileActiveStage] = useState<PipelineStage>("NEW");
   const [moveSheetLeadId, setMoveSheetLeadId] = useState<string | null>(null);
-  const [quickMove, setQuickMove] = useState<{
-    leadId: string;
-    pointerId: number;
-    startX: number;
-    startY: number;
-    cursorX: number;
-    cursorY: number;
-    hoverStage: PipelineStage | null;
-  } | null>(null);
-  const quickMoveRef = useRef<{
-    leadId: string;
-    pointerId: number;
-    startX: number;
-    startY: number;
-    cursorX: number;
-    cursorY: number;
-    hoverStage: PipelineStage | null;
-  } | null>(null);
-  const quickMoveItemRefs = useRef<Record<PipelineStage, HTMLButtonElement | null>>({
-    NEW: null,
-    CONTACT: null,
-    NEGOTIATION: null,
-    CLOSED: null,
-  });
-
-  const quickMoveActive = !!quickMove;
   const moveLeadToStageRef = useRef<
     ((leadId: string, newStage: PipelineStage) => Promise<void>) | null
   >(null);
@@ -794,108 +697,10 @@ export default function MyLeadsPage() {
 
   const activeLead = activeDragId ? leads.find(l => l.id === activeDragId) : null;
   const moveSheetLead = moveSheetLeadId ? leads.find((l) => l.id === moveSheetLeadId) : null;
-  const quickMoveLead = quickMove ? leads.find((l) => l.id === quickMove.leadId) : null;
-
-  const quickMovePos = useMemo(() => {
-    if (!quickMove) return null;
-    const vw = typeof window !== "undefined" ? window.innerWidth : 0;
-    const vh = typeof window !== "undefined" ? window.innerHeight : 0;
-    const menuW = 220;
-    const menuH = 220;
-    const left = vw ? Math.min(vw - menuW - 8, Math.max(8, quickMove.startX + 12)) : quickMove.startX + 12;
-    const top = vh ? Math.min(vh - menuH - 8, Math.max(8, quickMove.startY - menuH - 16)) : quickMove.startY;
-    return { left, top };
-  }, [quickMove]);
-
-  const quickMoveGhostPos = useMemo(() => {
-    if (!quickMove) return null;
-    const vw = typeof window !== "undefined" ? window.innerWidth : 0;
-    const vh = typeof window !== "undefined" ? window.innerHeight : 0;
-    const ghostW = 180;
-    const ghostH = 52;
-    const left = vw ? Math.min(vw - ghostW - 8, Math.max(8, quickMove.cursorX - ghostW / 2)) : quickMove.cursorX;
-    const top = vh ? Math.min(vh - ghostH - 8, Math.max(8, quickMove.cursorY - ghostH - 14)) : quickMove.cursorY;
-    return { left, top };
-  }, [quickMove]);
-
-  useEffect(() => {
-    quickMoveRef.current = quickMove;
-  }, [quickMove]);
 
   useEffect(() => {
     moveLeadToStageRef.current = moveLeadToStage;
   }, [moveLeadToStage]);
-
-  useEffect(() => {
-    if (!quickMoveActive) return;
-
-    const prevOverflow = document.body.style.overflow;
-    const prevOverscroll = (document.body.style as any).overscrollBehavior;
-    document.body.style.overflow = "hidden";
-    (document.body.style as any).overscrollBehavior = "none";
-
-    const getStageFromPoint = (x: number, y: number): PipelineStage | null => {
-      const el = document.elementFromPoint(x, y) as HTMLElement | null;
-      const btn = el?.closest?.("button[data-qm-stage]") as HTMLButtonElement | null;
-      const id = btn?.dataset?.qmStage;
-      if (id === "NEW" || id === "CONTACT" || id === "NEGOTIATION" || id === "CLOSED") return id;
-      return null;
-    };
-
-    const handleMove = (e: PointerEvent) => {
-      if (e.pointerType !== "touch" && e.pointerType !== "mouse") return;
-      e.preventDefault();
-      const current = quickMoveRef.current;
-      if (!current) return;
-      if (e.pointerId !== current.pointerId) return;
-      const x = e.clientX;
-      const y = e.clientY;
-
-      const hover = getStageFromPoint(x, y);
-
-      const next = { ...current, cursorX: x, cursorY: y, hoverStage: hover };
-      quickMoveRef.current = next;
-      setQuickMove(next);
-    };
-
-    const handleUp = (e: PointerEvent) => {
-      if (e.pointerType !== "touch" && e.pointerType !== "mouse") return;
-      e.preventDefault();
-      const current = quickMoveRef.current;
-      if (!current) return;
-      if (e.pointerId !== current.pointerId) return;
-      const chosen = getStageFromPoint(e.clientX, e.clientY) || current.hoverStage;
-      const leadId = current.leadId;
-      if (chosen) {
-        void (async () => {
-          const fn = moveLeadToStageRef.current;
-          if (!fn) return;
-          quickMoveRef.current = null;
-          setQuickMove(null);
-          await fn(leadId, chosen);
-          setMobileActiveStage(chosen);
-        })();
-      } else {
-        const next = { ...current, hoverStage: null };
-        quickMoveRef.current = next;
-        setQuickMove(next);
-      }
-    };
-
-    const handleCancel = () => {};
-
-    window.addEventListener("pointermove", handleMove, { passive: false });
-    window.addEventListener("pointerup", handleUp, { passive: false });
-    window.addEventListener("pointercancel", handleCancel);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      (document.body.style as any).overscrollBehavior = prevOverscroll;
-      window.removeEventListener("pointermove", handleMove as any);
-      window.removeEventListener("pointerup", handleUp as any);
-      window.removeEventListener("pointercancel", handleCancel);
-    };
-  }, [quickMoveActive]);
 
   const leadsBaseForView = viewMode === "pipeline" ? leads : activeLeads;
 
@@ -1308,7 +1113,7 @@ export default function MyLeadsPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-semibold text-gray-900 truncate">{activeStage.label}</div>
-                          <div className="text-[11px] text-gray-500 truncate">Arraste e solte nas abas para mover</div>
+                          <div className="text-[11px] text-gray-500 truncate">Toque no card para mover</div>
                         </div>
                         <span className="text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 rounded-full px-2 py-0.5">
                           {stageLeads.length}
@@ -1327,18 +1132,6 @@ export default function MyLeadsPage() {
                               lead={lead}
                               formatPrice={formatPrice}
                               onOpenMoveSheet={(leadId) => setMoveSheetLeadId(leadId)}
-                              onStartQuickMove={(leadId, x, y, pointerId) => {
-                                setQuickMove({
-                                  leadId,
-                                  pointerId,
-                                  startX: x,
-                                  startY: y,
-                                  cursorX: x,
-                                  cursorY: y,
-                                  hoverStage: null,
-                                });
-                              }}
-                              isQuickMoveActive={quickMove?.leadId === lead.id}
                               enableDrag={false}
                             />
                           ))
@@ -1476,103 +1269,6 @@ export default function MyLeadsPage() {
                           );
                         })}
                       </div>
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-              {quickMove && quickMovePos && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[72] md:hidden touch-none"
-                    onPointerDown={() => {
-                      quickMoveRef.current = null;
-                      setQuickMove(null);
-                    }}
-                  />
-
-                  {quickMoveGhostPos && (
-                    <motion.div
-                      initial={{ scale: 0.98, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.98, opacity: 0 }}
-                      transition={{ type: "spring", damping: 26, stiffness: 260 }}
-                      className="fixed z-[74] md:hidden pointer-events-none"
-                      style={{ left: quickMoveGhostPos.left, top: quickMoveGhostPos.top }}
-                    >
-                      <div className="w-[180px] bg-white border border-teal-200 shadow-xl rounded-2xl px-3 py-2">
-                        <div className="text-[11px] font-semibold text-gray-900 line-clamp-1">
-                          {quickMoveLead?.property.title || "Mover"}
-                        </div>
-                        <div className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">
-                          Arraste e solte no status
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  <motion.div
-                    initial={{ scale: 0.98, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.98, opacity: 0 }}
-                    transition={{ type: "spring", damping: 26, stiffness: 260 }}
-                    className="fixed z-[73] md:hidden bg-white rounded-2xl border border-gray-200 shadow-2xl p-2 w-[220px]"
-                    style={{ left: quickMovePos.left, top: quickMovePos.top }}
-                  >
-                    <div className="px-2 py-1.5">
-                      <div className="text-[11px] font-semibold text-gray-700">Mover para</div>
-                      <div className="text-[10px] text-gray-500 line-clamp-1">
-                        {quickMoveLead?.property.title || ""}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 gap-1">
-                      {PIPELINE_STAGES.map((stage) => {
-                        const Icon = stage.icon;
-                        const isHover = quickMove.hoverStage === stage.id;
-                        const isCurrent = quickMoveLead ? getLeadPipelineStage(quickMoveLead) === stage.id : false;
-                        return (
-                          <button
-                            key={stage.id}
-                            ref={(el) => {
-                              quickMoveItemRefs.current[stage.id] = el;
-                            }}
-                            data-qm-stage={stage.id}
-                            type="button"
-                            onClick={async () => {
-                              const current = quickMoveRef.current;
-                              if (!current) return;
-                              if (isCurrent) return;
-                              const fn = moveLeadToStageRef.current;
-                              if (!fn) return;
-                              const leadId = current.leadId;
-                              quickMoveRef.current = null;
-                              setQuickMove(null);
-                              await fn(leadId, stage.id);
-                              setMobileActiveStage(stage.id);
-                            }}
-                            className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border text-sm font-medium transition-colors ${
-                              isCurrent
-                                ? "bg-gray-100 border-gray-200 text-gray-400"
-                                : isHover
-                                  ? "bg-teal-50 border-teal-200 text-teal-900"
-                                  : "bg-white border-gray-200 text-gray-800"
-                            }`}
-                          >
-                            <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${stage.bgColor} border border-gray-200`}>
-                              <Icon className={`w-4 h-4 ${stage.color}`} />
-                            </span>
-                            <span className="truncate">{stage.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="px-2 pt-2 pb-1 text-[10px] text-gray-500">
-                      Deslize até a etapa e solte
                     </div>
                   </motion.div>
                 </>
