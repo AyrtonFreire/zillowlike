@@ -18,7 +18,7 @@ export default function Toast({ message, type = "info", onClose, autoCloseMs = 4
   return (
     <div
       role="status"
-      className={`fixed top-4 right-4 z-50 border rounded-lg px-4 py-3 shadow ${base}`}
+      className={`fixed top-4 right-4 z-[60000] border rounded-lg px-4 py-3 shadow ${base}`}
       aria-live="polite"
     >
       <div className="flex items-start gap-3">

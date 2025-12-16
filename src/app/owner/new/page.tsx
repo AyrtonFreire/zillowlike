@@ -23,6 +23,7 @@ export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type?: "success"|"error"|"info" } | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitIntent, setSubmitIntent] = useState(false);
   const [publishedProperty, setPublishedProperty] = useState<{ id: string; title: string; url: string } | null>(null);
   
@@ -80,6 +81,28 @@ export default function NewPropertyPage() {
   const [secElectricFence, setSecElectricFence] = useState(false);
   // Accordion visibility
   const [openAcc, setOpenAcc] = useState<{[k:string]:boolean}>({});
+
+  const clearFieldError = (key: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const applyErrorsAndFocus = (step: number, errors: Record<string, string>) => {
+    setFieldErrors(errors);
+    setCurrentStep(step);
+    const firstKey = Object.keys(errors)[0];
+    if (!firstKey) return;
+    window.setTimeout(() => {
+      const el = document.getElementById(firstKey) as HTMLElement | null;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      (el as any).focus?.();
+    }, 50);
+  };
 
   // Contadores para grupos de detalhes (usados nos headers dos accordions)
   const accAccessibilityCount = (accRamps ? 1 : 0) + (accWideDoors ? 1 : 0) + (accAccessibleElevator ? 1 : 0) + (accTactile ? 1 : 0);
@@ -1065,9 +1088,10 @@ export default function NewPropertyPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    setFieldErrors({});
+
     if (finalTitle.length < 3) {
-      setToast({ message: "Informe um título para o anúncio.", type: "error" });
-      setCurrentStep(1);
+      applyErrorsAndFocus(1, { title: "Informe um título para o anúncio." });
       return;
     }
 
@@ -1078,7 +1102,7 @@ export default function NewPropertyPage() {
     }
 
     if (!phoneConfirmedForListing) {
-      setToast({ message: "Confirme que este é o telefone correto para contato neste anúncio.", type: "error" });
+      applyErrorsAndFocus(6, { phoneConfirmedForListing: "Confirme que este é o telefone correto para contato neste anúncio." });
       return;
     }
 
@@ -1086,29 +1110,25 @@ export default function NewPropertyPage() {
     try {
       // Impede publicar enquanto houver uploads pendentes
       if (images.some((img) => img.pending)) {
-        setToast({ message: "Aguarde terminar o envio das imagens antes de publicar.", type: "error" });
-        setCurrentStep(4);
+        applyErrorsAndFocus(4, { images: "Aguarde terminar o envio das imagens antes de publicar." });
         return;
       }
       // Exige ao menos uma imagem válida
       const hasAtLeastOneImage = images.some((img) => img.url && img.url.trim().length > 0);
       if (!hasAtLeastOneImage) {
-        setToast({ message: "Adicione pelo menos uma foto do imóvel.", type: "error" });
-        setCurrentStep(4);
+        applyErrorsAndFocus(4, { images: "Adicione pelo menos uma foto do imóvel." });
         return;
       }
 
       // Não valida endereço no Step 4: apenas impede e volta para Step 2 se faltou geocodificar
       if (!geo) {
-        setToast({ message: "Valide o endereço no passo de Localização antes de publicar.", type: "error" });
-        setCurrentStep(2);
+        applyErrorsAndFocus(2, { geo: "Valide o endereço no passo de Localização antes de publicar." });
         return;
       }
 
       // Validar finalidade
       if (!purpose) {
-        setToast({ message: "Selecione se é Venda ou Aluguel.", type: "error" });
-        setCurrentStep(1);
+        applyErrorsAndFocus(1, { purpose: "Selecione se é Venda ou Aluguel." });
         return;
       }
 
@@ -1219,8 +1239,27 @@ export default function NewPropertyPage() {
 
       const parsed = PropertyCreateSchema.safeParse(payload);
       if (!parsed.success) {
-        const first = parsed.error.issues[0];
-        setToast({ message: `Dados inválidos: ${first.path.join('.')}: ${first.message}`, type: "error" });
+        const next: Record<string, string> = {};
+        for (const issue of parsed.error.issues) {
+          const p = issue.path.join(".");
+          if (p === "title") next.title = "Informe um título válido.";
+          else if (p === "priceBRL") next.priceBRL = "Informe um preço válido.";
+          else if (p === "type") next.type = "Selecione o tipo de imóvel.";
+          else if (p === "address.postalCode") next.postalCode = "Informe um CEP válido.";
+          else if (p === "address.street") next.street = "Informe a rua.";
+          else if (p === "address.neighborhood") next.neighborhood = "Informe o bairro.";
+          else if (p === "address.city") next.city = "Informe a cidade.";
+          else if (p === "address.state") next.state = "Informe o estado (UF).";
+          else if (p.startsWith("images")) next.images = "Adicione ao menos uma foto válida.";
+        }
+
+        if (Object.keys(next).length) {
+          const step = next.images ? 4 : (next.postalCode || next.street || next.city || next.state || next.neighborhood) ? 2 : 1;
+          applyErrorsAndFocus(step, next);
+        } else {
+          const first = parsed.error.issues[0];
+          setToast({ message: `Dados inválidos: ${first.path.join('.')}: ${first.message}`, type: "error" });
+        }
         return;
       }
 
@@ -1263,23 +1302,24 @@ export default function NewPropertyPage() {
   }
 
   const nextStep = async () => {
+    setFieldErrors({});
     // Step 1: validações básicas
     if (currentStep === 1) {
       if (!purpose) {
-        setToast({ message: "Selecione a finalidade (Venda/Aluguel).", type: "error" });
+        applyErrorsAndFocus(1, { purpose: "Selecione a finalidade (Venda/Aluguel)." });
         return;
       }
       if (finalTitle.length < 3) {
-        setToast({ message: "Informe um título para o anúncio.", type: "error" });
+        applyErrorsAndFocus(1, { title: "Informe um título para o anúncio." });
         return;
       }
       const price = parseBRLToNumber(priceBRL);
       if (!price || price <= 0) {
-        setToast({ message: "Informe um preço válido (maior que zero).", type: "error" });
+        applyErrorsAndFocus(1, { priceBRL: "Informe um preço válido (maior que zero)." });
         return;
       }
       if (!type) {
-        setToast({ message: "Selecione o tipo de imóvel.", type: "error" });
+        applyErrorsAndFocus(1, { type: "Selecione o tipo de imóvel." });
         return;
       }
     }
@@ -1288,11 +1328,16 @@ export default function NewPropertyPage() {
       // Campos obrigatórios: CEP com 8 dígitos, rua, bairro, cidade, estado
       const cepDigits = postalCode.replace(/\D+/g, "");
       if (!postalCode || cepDigits.length !== 8) {
-        setToast({ message: "Informe um CEP válido (8 dígitos).", type: "error" });
+        applyErrorsAndFocus(2, { postalCode: "Informe um CEP válido (8 dígitos)." });
         return;
       }
       if (!street || !neighborhood || !city || !state) {
-        setToast({ message: "Preencha rua, bairro, cidade e estado.", type: "error" });
+        const errs: Record<string, string> = {};
+        if (!street) errs.street = "Informe a rua.";
+        if (!neighborhood) errs.neighborhood = "Informe o bairro.";
+        if (!city) errs.city = "Informe a cidade.";
+        if (!state) errs.state = "Informe o estado (UF).";
+        applyErrorsAndFocus(2, errs);
         return;
       }
       setIsGeocoding(true);
@@ -1306,7 +1351,7 @@ export default function NewPropertyPage() {
       });
       setIsGeocoding(false);
       if (!res) {
-        setToast({ message: "Endereço não encontrado. Ajuste os dados ou tente um CEP diferente.", type: "error" });
+        applyErrorsAndFocus(2, { geo: "Endereço não encontrado. Ajuste os dados ou tente um CEP diferente." });
         return;
       }
       setGeo({ lat: res.lat, lng: res.lng });
@@ -1314,13 +1359,23 @@ export default function NewPropertyPage() {
     }
     // Step 3: sanidade dos números (quando fornecidos)
     if (currentStep === 3) {
-      const invalidNum = (v: any) => typeof v === 'number' && (isNaN(v) || v < 0);
-      if (invalidNum(bedrooms) || invalidNum(bathrooms) || invalidNum(areaM2)) {
-        setToast({ message: "Valores de quartos, banheiros e área devem ser não negativos.", type: "error" });
-        return;
+      const errs: Record<string, string> = {};
+      const checkNonNeg = (key: string, label: string, v: any) => {
+        if (v === "" || v === null || v === undefined) return;
+        const n = Number(v);
+        if (!Number.isFinite(n) || n < 0) errs[key] = `${label} deve ser 0 ou maior.`;
+      };
+      checkNonNeg("bedrooms", "Quartos", bedrooms);
+      checkNonNeg("bathrooms", "Banheiros", bathrooms);
+      checkNonNeg("areaM2", "Área", areaM2);
+
+      if (areaM2 !== "" && areaM2 !== null && areaM2 !== undefined) {
+        const n = Number(areaM2);
+        if (Number.isFinite(n) && n > 20000) errs.areaM2 = "Área muito grande. Verifique o valor informado.";
       }
-      if (typeof areaM2 === 'number' && areaM2 > 20000) {
-        setToast({ message: "Área muito grande. Verifique o valor informado.", type: "error" });
+
+      if (Object.keys(errs).length) {
+        applyErrorsAndFocus(3, errs);
         return;
       }
     }
@@ -1328,7 +1383,7 @@ export default function NewPropertyPage() {
     if (currentStep === 4) {
       const hasImage = images.some((it) => it.url && it.url.trim().length > 0);
       if (!hasImage) {
-        setToast({ message: "Adicione ao menos uma foto do imóvel.", type: "error" });
+        applyErrorsAndFocus(4, { images: "Adicione ao menos uma foto do imóvel." });
         return;
       }
     }
@@ -1652,9 +1707,14 @@ export default function NewPropertyPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Select
+                        id="purpose"
                         label="Finalidade"
                         value={purpose}
-                        onChange={(e) => setPurpose(e.target.value as any)}
+                        error={fieldErrors.purpose}
+                        onChange={(e) => {
+                          setPurpose(e.target.value as any);
+                          clearFieldError("purpose");
+                        }}
                       >
                         <option value="">Selecione</option>
                         <option value="SALE">Venda</option>
@@ -1663,18 +1723,28 @@ export default function NewPropertyPage() {
                     </div>
                     <div>
                       <Input
+                        id="priceBRL"
                         label="Preço (R$)"
                         value={priceBRL}
-                        onChange={(e) => setPriceBRL(formatBRLInput(e.target.value))}
+                        error={fieldErrors.priceBRL}
+                        onChange={(e) => {
+                          setPriceBRL(formatBRLInput(e.target.value));
+                          clearFieldError("priceBRL");
+                        }}
                         placeholder="Ex: 450.000"
                         inputMode="numeric"
                       />
                     </div>
                     <div>
                       <Select
+                        id="type"
                         label="Tipo de imóvel"
                         value={type}
-                        onChange={(e) => setType(e.target.value)}
+                        error={fieldErrors.type}
+                        onChange={(e) => {
+                          setType(e.target.value);
+                          clearFieldError("type");
+                        }}
                       >
                         <option value="HOUSE">Casa</option>
                         <option value="APARTMENT">Apartamento</option>
@@ -1703,13 +1773,18 @@ export default function NewPropertyPage() {
                       Título do anúncio
                     </label>
                     <input
+                      id="title"
                       type="text"
                       value={customTitle}
-                      onChange={(e) => setCustomTitle(e.target.value)}
+                      onChange={(e) => {
+                        setCustomTitle(e.target.value);
+                        clearFieldError("title");
+                      }}
                       placeholder="Ex: Casa em Petrolina"
-                      className="w-full px-4 py-2.5 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-accent focus:border-transparent text-sm"
+                      className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.title ? "border-danger" : "border-neutral-300"}`}
                       maxLength={100}
                     />
+                    {fieldErrors.title && <span className="mt-1 block text-xs text-danger">{fieldErrors.title}</span>}
                   </div>
                 </div>
               )}
@@ -1724,22 +1799,33 @@ export default function NewPropertyPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <Input
+                      id="postalCode"
                       label="CEP"
                       value={postalCode}
-                      onChange={(e) => setPostalCode(formatCEP(e.target.value))}
+                      error={fieldErrors.postalCode}
+                      onChange={(e) => {
+                        setPostalCode(formatCEP(e.target.value));
+                        clearFieldError("postalCode");
+                      }}
                       placeholder="Ex: 56300-000"
                       inputMode="numeric"
                     />
                     <Input
+                      id="street"
                       label="Rua"
                       value={street}
-                      onChange={(e) => setStreet(e.target.value)}
+                      error={fieldErrors.street}
+                      onChange={(e) => {
+                        setStreet(e.target.value);
+                        clearFieldError("street");
+                      }}
                     />
                     <label className="block">
                       <span className="block mb-1">
                         <span className="text-sm font-medium text-neutral-700">Número</span>
                       </span>
                       <input
+                        id="addressNumber"
                         ref={numberInputRef}
                         value={addressNumber}
                         onChange={(e) => setAddressNumber(e.target.value)}
@@ -1750,19 +1836,34 @@ export default function NewPropertyPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <Input
+                      id="neighborhood"
                       label="Bairro"
                       value={neighborhood}
-                      onChange={(e) => setNeighborhood(e.target.value)}
+                      error={fieldErrors.neighborhood}
+                      onChange={(e) => {
+                        setNeighborhood(e.target.value);
+                        clearFieldError("neighborhood");
+                      }}
                     />
                     <Input
+                      id="city"
                       label="Cidade"
                       value={city}
-                      onChange={(e) => setCity(e.target.value)}
+                      error={fieldErrors.city}
+                      onChange={(e) => {
+                        setCity(e.target.value);
+                        clearFieldError("city");
+                      }}
                     />
                     <Input
+                      id="state"
                       label="Estado (UF)"
                       value={state}
-                      onChange={(e) => setState(e.target.value.toUpperCase())}
+                      error={fieldErrors.state}
+                      onChange={(e) => {
+                        setState(e.target.value.toUpperCase());
+                        clearFieldError("state");
+                      }}
                       maxLength={2}
                     />
                   </div>
@@ -1772,6 +1873,7 @@ export default function NewPropertyPage() {
                   )}
 
                   <div className="mt-4">
+                    {fieldErrors.geo && <div id="geo" className="mb-2 text-xs text-danger">{fieldErrors.geo}</div>}
                     <button
                       type="button"
                       onClick={handleGeocode}
@@ -1802,9 +1904,9 @@ export default function NewPropertyPage() {
 
                   {/* Números principais */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <Input label="Quartos" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} inputMode="numeric" />
-                    <Input label="Banheiros" value={bathrooms} onChange={(e) => setBathrooms(e.target.value)} inputMode="numeric" />
-                    <Input label="Área (m²)" value={areaM2} onChange={(e) => setAreaM2(e.target.value)} inputMode="numeric" />
+                    <Input id="bedrooms" label="Quartos" value={bedrooms} error={fieldErrors.bedrooms} onChange={(e) => { setBedrooms(e.target.value); clearFieldError("bedrooms"); }} inputMode="numeric" />
+                    <Input id="bathrooms" label="Banheiros" value={bathrooms} error={fieldErrors.bathrooms} onChange={(e) => { setBathrooms(e.target.value); clearFieldError("bathrooms"); }} inputMode="numeric" />
+                    <Input id="areaM2" label="Área (m²)" value={areaM2} error={fieldErrors.areaM2} onChange={(e) => { setAreaM2(e.target.value); clearFieldError("areaM2"); }} inputMode="numeric" />
                     <Input label="Suítes" value={suites as any} onChange={(e) => setSuites(e.target.value)} inputMode="numeric" optional />
                     <Input label="Vagas" value={parkingSpots as any} onChange={(e) => setParkingSpots(e.target.value)} inputMode="numeric" optional />
                     <Input label="Andar" value={floor as any} onChange={(e) => setFloor(e.target.value)} inputMode="numeric" optional />
@@ -1978,6 +2080,12 @@ export default function NewPropertyPage() {
                     </p>
                   </div>
 
+                  {fieldErrors.images && (
+                    <div id="images" className="text-xs text-danger">
+                      {fieldErrors.images}
+                    </div>
+                  )}
+
                   {/* Área de upload */}
                   <div
                     className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
@@ -1990,6 +2098,7 @@ export default function NewPropertyPage() {
                     onDrop={async (e) => {
                       e.preventDefault();
                       setIsFileDragOver(false);
+                      clearFieldError("images");
                       if (e.dataTransfer?.files?.length) await handleDroppedFiles(e.dataTransfer.files);
                     }}
                     onClick={() => dropInputRef.current?.click()}
@@ -2010,6 +2119,7 @@ export default function NewPropertyPage() {
                       className="hidden"
                       onChange={async (e) => {
                         if (e.target.files?.length) {
+                          clearFieldError("images");
                           await handleDroppedFiles(e.target.files);
                           e.target.value = "";
                         }
@@ -2520,10 +2630,19 @@ export default function NewPropertyPage() {
                         {phoneMode === "existing" && profilePhoneVerified && (
                           <div className="mt-3 pt-3 border-t border-gray-200">
                             <Checkbox
+                              id="phoneConfirmedForListing"
                               checked={phoneConfirmedForListing}
-                              onChange={(e) => setPhoneConfirmedForListing(e.target.checked)}
+                              onChange={(e) => {
+                                setPhoneConfirmedForListing(e.target.checked);
+                                clearFieldError("phoneConfirmedForListing");
+                              }}
                               label={`Confirmo que ${profilePhone} é o telefone correto para este anúncio.`}
                             />
+                            {fieldErrors.phoneConfirmedForListing && (
+                              <div className="mt-1 text-xs text-danger">
+                                {fieldErrors.phoneConfirmedForListing}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
