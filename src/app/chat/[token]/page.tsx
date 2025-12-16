@@ -118,9 +118,49 @@ export default function ClientChatPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickMessages, setShowQuickMessages] = useState(true);
   const [showPropertyCard, setShowPropertyCard] = useState(true);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [composerHeight, setComposerHeight] = useState(0);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardOffset(inset);
+    };
+
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const measure = () => {
+      const h = composerRef.current?.getBoundingClientRect().height || 0;
+      setComposerHeight(h);
+    };
+
+    measure();
+    const t = window.setTimeout(measure, 0);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
 
   // Carregar chat inicial
   useEffect(() => {
@@ -477,7 +517,10 @@ export default function ClientChatPage() {
       {/* Messages */}
       <main className="flex-1 overflow-hidden">
         <div className="max-w-3xl mx-auto px-4 py-4 h-full flex flex-col">
-          <div className="flex-1 overflow-y-auto rounded-2xl bg-white border border-gray-200 p-4 flex flex-col">
+          <div
+            className="flex-1 overflow-y-auto rounded-2xl bg-white border border-gray-200 p-4 flex flex-col"
+            style={{ paddingBottom: Math.max(0, composerHeight + keyboardOffset + 12) }}
+          >
             {messages.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center text-sm text-gray-500 px-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-teal-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -574,7 +617,11 @@ export default function ClientChatPage() {
       </main>
 
       {/* Input */}
-      <footer className="bg-white border-t border-gray-200 sticky bottom-0 safe-area-pb">
+      <footer
+        ref={composerRef as any}
+        className="bg-white border-t border-gray-200 fixed left-0 right-0 safe-area-pb z-20"
+        style={{ bottom: keyboardOffset }}
+      >
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-end gap-2">
           <textarea
             value={draft}
