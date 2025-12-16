@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { MapPin, LocateFixed, ArrowRight, CheckCircle2, XCircle, Search } from "lucide-react";
+import { MapPin, LocateFixed, ArrowRight, XCircle, Search } from "lucide-react";
 import { buildSearchParams } from "@/lib/url";
 
 type Mode = "buy" | "rent";
@@ -37,24 +37,34 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
   const [selectedCity, setSelectedCity] = useState<string>("");
   const [selectedState, setSelectedState] = useState<string>("");
 
+  const [showManual, setShowManual] = useState(false);
+
   const queryRef = useRef<HTMLDivElement | null>(null);
+  const manualRef = useRef<HTMLDivElement | null>(null);
 
   const title = mode === "buy" ? "Comprar" : "Alugar";
 
-  const effectiveCity = selectedCity || inferredCity;
-  const effectiveState = selectedState || inferredState;
-
-  const canConfirm = Boolean(effectiveCity && effectiveState);
-
-  const confirmHref = useMemo(() => {
+  const inferredReady = Boolean(inferredCity && inferredState);
+  const inferredHref = useMemo(() => {
     const params = buildSearchParams({
-      city: effectiveCity || undefined,
-      state: effectiveState || undefined,
+      city: inferredCity || undefined,
+      state: inferredState || undefined,
       purpose,
       page: 1,
     });
     return `/?${params}`;
-  }, [effectiveCity, effectiveState, purpose]);
+  }, [inferredCity, inferredState, purpose]);
+
+  const manualReady = Boolean(selectedCity && selectedState);
+  const manualHref = useMemo(() => {
+    const params = buildSearchParams({
+      city: selectedCity || undefined,
+      state: selectedState || undefined,
+      purpose,
+      page: 1,
+    });
+    return `/?${params}`;
+  }, [selectedCity, selectedState, purpose]);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +105,14 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!showManual) return;
+    const t = window.setTimeout(() => {
+      manualRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [showManual]);
 
   useEffect(() => {
     const onDoc = (e: Event) => {
@@ -179,6 +197,7 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
         setInferredSource(String(d.source || "gps"));
         setSelectedCity("");
         setSelectedState("");
+        setShowManual(false);
       } else {
         setGpsDenied(true);
       }
@@ -197,101 +216,55 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <div className="space-y-5">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur px-3 py-1.5 border border-white/60">
-            <MapPin className="w-4 h-4 text-teal-700" />
-            <span className="text-xs font-semibold tracking-wide text-slate-700">Localização</span>
-          </div>
+    <div className="mx-auto max-w-4xl px-4 py-10">
+      <div className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur px-3 py-1.5 border border-white/60">
+        <MapPin className="w-4 h-4 text-teal-700" />
+        <span className="text-xs font-semibold tracking-wide text-slate-700">Localização</span>
+      </div>
 
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">
-            Está procurando imóveis para <span className="text-teal-700">{title.toLowerCase()}</span> em
-            {" "}
-            <span className="text-slate-900">{effectiveCity ? `${effectiveCity}/${effectiveState}` : "qual cidade?"}</span>
+      <div className="mt-5 rounded-3xl bg-white/85 backdrop-blur border border-white/60 shadow-[0_20px_60px_rgba(15,23,42,0.12)] overflow-hidden">
+        <div className="p-6 md:p-7">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
+            Está procurando imóveis para <span className="text-teal-700">{title.toLowerCase()}</span> em{" "}
+            <span className="text-slate-900">{inferredReady ? `${inferredCity}/${inferredState}` : "sua cidade"}</span>?
           </h1>
 
-          <p className="text-slate-600 leading-relaxed">
-            A gente pode sugerir uma cidade automaticamente (GPS/IP) para você começar mais rápido. Se preferir, escolha
-            manualmente.
-          </p>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={useGps}
-              disabled={gpsLoading}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-semibold text-sm hover:bg-slate-800 transition-colors disabled:opacity-60"
-            >
-              <LocateFixed className="w-4 h-4" />
-              {gpsLoading ? "Obtendo localização..." : "Usar GPS"}
-            </button>
-
-            {canConfirm ? (
-              <Link
-                href={confirmHref}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-teal text-white font-semibold text-sm hover:opacity-95 transition-opacity"
-              >
-                Confirmar e pesquisar
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            ) : (
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-200 text-teal-900 font-semibold text-sm opacity-70 cursor-not-allowed"
-              >
-                Confirmar e pesquisar
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
-
-            {(selectedCity || selectedState || query) && (
-              <button
-                type="button"
-                onClick={clearManual}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/70 border border-white/60 text-slate-700 font-semibold text-sm hover:bg-white transition-colors"
-              >
-                Limpar
-                <XCircle className="w-4 h-4" />
-              </button>
-            )}
+          <div className="mt-3 text-sm text-slate-600">
+            {guessLoading
+              ? "Carregando sugestão automática..."
+              : inferredReady
+              ? `Sugestão automática: ${inferredCity}/${inferredState}${inferredSource ? ` (${inferredSource})` : ""}`
+              : "Não conseguimos inferir sua cidade agora. Você pode escolher manualmente."}
           </div>
 
-          {gpsDenied && (
-            <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-              <XCircle className="w-5 h-5 mt-0.5" />
-              <div className="text-sm">
-                <div className="font-semibold">Não foi possível obter sua localização.</div>
-                <div className="opacity-90">Você pode permitir o GPS ou escolher a cidade manualmente.</div>
-              </div>
-            </div>
-          )}
+          <div className="mt-6 flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={() => router.push(inferredHref)}
+              disabled={!inferredReady}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-teal text-white font-semibold text-sm hover:opacity-95 transition-opacity disabled:opacity-60"
+            >
+              Sim, continuar pesquisa
+              <ArrowRight className="w-4 h-4" />
+            </button>
 
-          {(guessLoading || inferredCity) && (
-            <div className="rounded-2xl border border-white/60 bg-white/70 backdrop-blur px-5 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">Sugestão automática</div>
-                  <div className="text-sm text-slate-600">
-                    {guessLoading
-                      ? "Carregando..."
-                      : inferredCity
-                      ? `${inferredCity}/${inferredState} (${inferredSource})`
-                      : "Não disponível no momento"}
-                  </div>
-                </div>
-                {inferredCity ? <CheckCircle2 className="w-6 h-6 text-teal-700" /> : null}
-              </div>
-            </div>
-          )}
+            <button
+              type="button"
+              onClick={() => setShowManual(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 font-semibold text-sm hover:bg-slate-50"
+            >
+              Não, quero procurar em outra cidade
+            </button>
+          </div>
         </div>
+      </div>
 
-        <div className="rounded-3xl bg-white/85 backdrop-blur border border-white/60 shadow-[0_20px_60px_rgba(15,23,42,0.12)] overflow-hidden">
+      {showManual && (
+        <div ref={manualRef} className="mt-6 rounded-3xl bg-white/85 backdrop-blur border border-white/60 shadow-[0_20px_60px_rgba(15,23,42,0.12)] overflow-hidden">
           <div className="p-6 md:p-7">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
               <Search className="w-4 h-4" />
-              Escolher cidade
+              Escolher outra cidade
             </div>
 
             <div ref={queryRef} className="relative mt-4">
@@ -319,7 +292,9 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
                       className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0"
                     >
                       <div className="text-sm font-semibold text-slate-900">{s.label}</div>
-                      <div className="text-xs text-slate-500">{s.city}, {s.state}</div>
+                      <div className="text-xs text-slate-500">
+                        {s.city}, {s.state}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -344,39 +319,58 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
               </div>
             )}
 
-            <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-              <div className="text-sm font-semibold text-slate-900">Destino</div>
-              <div className="text-sm text-slate-600 mt-1">
-                {canConfirm ? `${effectiveCity}/${effectiveState}` : "Escolha uma cidade para continuar."}
+            {gpsDenied && (
+              <div className="mt-6 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+                <XCircle className="w-5 h-5 mt-0.5" />
+                <div className="text-sm">
+                  <div className="font-semibold">Não foi possível obter sua localização.</div>
+                  <div className="opacity-90">Você pode permitir o GPS ou escolher a cidade manualmente.</div>
+                </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {canConfirm ? (
-                  <button
-                    type="button"
-                    onClick={() => router.push(confirmHref)}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-teal text-white font-semibold text-sm hover:opacity-95 transition-opacity"
-                  >
-                    Ver resultados
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-300 text-slate-700 font-semibold text-sm opacity-70 cursor-not-allowed"
-                  >
-                    Ver resultados
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                )}
-                <Link href="/" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-semibold text-sm hover:bg-slate-50">
-                  Voltar para a home
-                </Link>
-              </div>
+            )}
+
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => router.push(manualHref)}
+                disabled={!manualReady}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-teal text-white font-semibold text-sm hover:opacity-95 transition-opacity disabled:opacity-60"
+              >
+                Continuar pesquisa
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={useGps}
+                disabled={gpsLoading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white font-semibold text-sm hover:bg-slate-800 transition-colors disabled:opacity-60"
+              >
+                <LocateFixed className="w-4 h-4" />
+                {gpsLoading ? "Obtendo localização..." : "Usar GPS"}
+              </button>
+
+              {(selectedCity || selectedState || query) && (
+                <button
+                  type="button"
+                  onClick={clearManual}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 font-semibold text-sm hover:bg-slate-50"
+                >
+                  Limpar
+                  <XCircle className="w-4 h-4" />
+                </button>
+              )}
+
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 font-semibold text-sm hover:bg-slate-50"
+              >
+                Voltar para a home
+              </Link>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
