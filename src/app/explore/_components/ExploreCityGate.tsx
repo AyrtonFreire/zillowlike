@@ -39,6 +39,20 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
 
   const title = mode === "buy" ? "Comprar" : "Alugar";
 
+  const propertyLabel = useMemo(() => {
+    const t = (searchParams?.get("type") || "").toUpperCase();
+    if (!t) return "imóveis";
+    const map: Record<string, string> = {
+      HOUSE: "casas",
+      APARTMENT: "apartamentos",
+      CONDO: "condomínios",
+      LAND: "terrenos",
+      COMMERCIAL: "imóveis comerciais",
+      STUDIO: "studios",
+    };
+    return map[t] || "imóveis";
+  }, [searchParams]);
+
   const passthroughParams = useMemo(() => {
     const sp = new URLSearchParams(searchParams?.toString() || "");
     sp.delete("city");
@@ -179,7 +193,7 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
       <div className="mt-5 rounded-3xl bg-white/85 backdrop-blur border border-white/60 shadow-[0_20px_60px_rgba(15,23,42,0.12)] overflow-hidden">
         <div className="p-6 md:p-7">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
-            Está procurando imóveis para <span className="text-teal-700">{title.toLowerCase()}</span> em{" "}
+            Está procurando {propertyLabel} para <span className="text-teal-700">{title.toLowerCase()}</span> em{" "}
             <span className="text-slate-900">{inferredReady ? `${inferredCity}/${inferredState}` : "sua cidade"}</span>?
           </h1>
 
