@@ -184,7 +184,7 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-10 pb-10 lg:pt-40 lg:pb-16">
+    <div className="mx-auto max-w-4xl px-4 pt-10 pb-10 lg:pt-96 lg:pb-24">
       <div className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur px-3 py-1.5 border border-white/60">
         <MapPin className="w-4 h-4 text-teal-700" />
         <span className="text-xs font-semibold tracking-wide text-slate-700">Localização</span>
