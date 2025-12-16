@@ -41,6 +41,17 @@ const STATE_UF_BY_NAME: Record<string, string> = {
   tocantins: "TO",
 };
 
+function normalizeCityName(input?: string | null): string | null {
+  const raw = (input || "").trim();
+  if (!raw) return null;
+  const maybeEncoded = raw.replace(/\+/g, " ");
+  try {
+    return decodeURIComponent(maybeEncoded);
+  } catch {
+    return raw;
+  }
+}
+
 function normalizeStateToUF(input?: string | null): string | null {
   const raw = (input || "").trim();
   if (!raw) return null;
@@ -61,7 +72,7 @@ export async function GET(req: NextRequest) {
   const cfRegion = h.get("cf-region") || h.get("cf-region-code");
   const cfCountry = (h.get("cf-ipcountry") || "").toUpperCase();
 
-  const city = (vercelCity || cfCity || "").trim() || null;
+  const city = normalizeCityName(vercelCity || cfCity) || null;
   const state = normalizeStateToUF(vercelRegion || cfRegion) || null;
 
   const source = city

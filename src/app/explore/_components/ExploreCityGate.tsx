@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { MapPin, ArrowRight, XCircle, Search } from "lucide-react";
+import { MapPin, ArrowRight, XCircle, Search, LocateFixed } from "lucide-react";
 
 type Mode = "buy" | "rent";
 
@@ -19,10 +19,15 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const savedLocationRef = useRef(false);
+
   const purpose = mode === "buy" ? "SALE" : "RENT";
 
   const [inferredCity, setInferredCity] = useState<string>("");
   const [inferredState, setInferredState] = useState<string>("");
+
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState<string>("");
 
   const [query, setQuery] = useState<string>("");
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
@@ -35,6 +40,60 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
   const queryRef = useRef<HTMLDivElement | null>(null);
 
   const title = mode === "buy" ? "Comprar" : "Alugar";
+
+  const persistLocation = (city: string, state: string) => {
+    try {
+      if (!city || !state) return;
+      localStorage.setItem(
+        "explore:lastLocation",
+        JSON.stringify({ city: String(city), state: String(state), t: Date.now() })
+      );
+    } catch {
+    }
+  };
+
+  const requestPreciseLocation = async () => {
+    setGeoError("");
+
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      setGeoError("Seu navegador não suporta localização.");
+      return;
+    }
+
+    setGeoLoading(true);
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 10_000,
+          maximumAge: 60_000,
+        });
+      });
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const r = await fetch(`/api/geo/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+        { cache: "no-store" }
+      );
+      const d = await r.json().catch(() => null);
+      if (d?.success && d?.city && d?.state) {
+        setInferredCity(String(d.city));
+        setInferredState(String(d.state));
+        savedLocationRef.current = true;
+        persistLocation(String(d.city), String(d.state));
+      } else {
+        setGeoError("Não consegui identificar sua cidade automaticamente.");
+      }
+    } catch (e: any) {
+      const code = typeof e?.code === "number" ? e.code : null;
+      if (code === 1) setGeoError("Permissão de localização negada.");
+      else if (code === 2) setGeoError("Não foi possível obter sua localização.");
+      else if (code === 3) setGeoError("Tempo esgotado ao obter sua localização.");
+      else setGeoError("Erro ao obter sua localização.");
+    } finally {
+      setGeoLoading(false);
+    }
+  };
 
   const propertyLabel = useMemo(() => {
     const t = (searchParams?.get("type") || "").toUpperCase();
@@ -82,13 +141,36 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
   useEffect(() => {
     let cancelled = false;
 
+    try {
+      const raw = localStorage.getItem("explore:lastLocation");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const city = typeof parsed?.city === "string" ? parsed.city.trim() : "";
+        const state = typeof parsed?.state === "string" ? parsed.state.trim() : "";
+        if (city && state) {
+          setInferredCity(city);
+          setInferredState(state);
+          savedLocationRef.current = true;
+        }
+      }
+    } catch {
+    }
+
     const loadGuess = async () => {
       try {
         const r = await fetch("/api/geo/guess", { cache: "no-store" });
         const d = await r.json().catch(() => null);
         if (cancelled) return;
+        if (savedLocationRef.current) return;
         if (d?.success && d?.city && d?.state) {
-          setInferredCity(String(d.city));
+          const rawCity = String(d.city);
+          let decodedCity = rawCity;
+          try {
+            decodedCity = decodeURIComponent(rawCity.replace(/\+/g, " "));
+          } catch {
+            decodedCity = rawCity;
+          }
+          setInferredCity(decodedCity);
           setInferredState(String(d.state));
         }
       } catch {
@@ -189,14 +271,29 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <button
               type="button"
-              onClick={() => router.push(inferredHref)}
+              onClick={() => {
+                if (inferredReady) persistLocation(inferredCity, inferredState);
+                router.push(inferredHref);
+              }}
               disabled={!inferredReady}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-teal text-white font-semibold text-sm hover:opacity-95 transition-opacity disabled:opacity-60"
             >
               Sim, continuar pesquisa
               <ArrowRight className="w-4 h-4" />
             </button>
+
+            <button
+              type="button"
+              onClick={requestPreciseLocation}
+              disabled={geoLoading}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 font-semibold text-sm hover:bg-slate-50 disabled:opacity-60"
+            >
+              {geoLoading ? "Localizando..." : "Usar minha localização"}
+              <LocateFixed className="w-4 h-4" />
+            </button>
           </div>
+
+          {geoError && <div className="mt-3 text-sm text-rose-700">{geoError}</div>}
         </div>
       </div>
 
@@ -266,7 +363,10 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <button
               type="button"
-              onClick={() => router.push(manualHref)}
+              onClick={() => {
+                if (manualReady) persistLocation(selectedCity, selectedState);
+                router.push(manualHref);
+              }}
               disabled={!manualReady}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-teal text-white font-semibold text-sm hover:opacity-95 transition-opacity disabled:opacity-60"
             >
