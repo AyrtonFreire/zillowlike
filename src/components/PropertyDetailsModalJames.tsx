@@ -467,6 +467,49 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               : "w-full max-w-[1400px] bg-white md:rounded-2xl shadow-2xl overflow-y-auto"
           }
         >
+        {variant === "overlay" && photoViewMode !== "feed" && (
+          <div className="md:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-gray-100/80 shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
+            <div className="flex items-center justify-between px-4 h-16 max-w-5xl mx-auto">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="p-2 rounded-full hover:bg-gray-100"
+                aria-label="Voltar"
+              >
+                <ChevronLeft className="w-6 h-6 text-gray-800" />
+              </button>
+
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-full bg-brand-teal flex items-center justify-center shadow-sm">
+                  <span className="text-white font-bold text-base">Z</span>
+                </div>
+                <span className="text-lg font-semibold tracking-tight text-slate-900">
+                  ZillowLike
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleFavorite}
+                  className="p-2 rounded-full hover:bg-gray-100"
+                  aria-label="Salvar"
+                >
+                  <Heart className={`w-6 h-6 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-800"}`} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="p-2 rounded-full hover:bg-gray-100"
+                  aria-label="Compartilhar"
+                >
+                  <Share2 className="w-6 h-6 text-gray-800" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header principal do modal (desktop/tablet). No mobile usamos controles sobre a foto. */}
         <div className="sticky top-0 z-20 bg-white border-b border-teal/10 hidden sm:block">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -641,32 +684,27 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               ))}
             </motion.div>
 
-            {/* Botão voltar no canto superior esquerdo - estilo Zillow */}
-            {variant === "page" ? (
-              <Link
-                href={backHref || (mode === "internal" ? "/broker/properties" : "/")}
-                className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center"
-              >
-                <ChevronLeft className="w-5 h-5 text-gray-800" />
-              </Link>
-            ) : (
-              <button
-                onClick={handleClose}
-                className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center"
-              >
-                <ChevronLeft className="w-5 h-5 text-gray-800" />
-              </button>
+            {variant === "page" && (
+              <>
+                {/* Botão voltar no canto superior esquerdo - estilo Zillow */}
+                <Link
+                  href={backHref || (mode === "internal" ? "/broker/properties" : "/")}
+                  className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center"
+                >
+                  <ChevronLeft className="w-5 h-5 text-gray-800" />
+                </Link>
+
+                {/* Ações no canto superior direito */}
+                <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-white rounded-full px-1 py-1 shadow-lg">
+                  <button onClick={handleFavorite} className="w-8 h-8 flex items-center justify-center">
+                    <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-700"}`} />
+                  </button>
+                  <button onClick={handleShare} className="w-8 h-8 flex items-center justify-center">
+                    <Share2 className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+              </>
             )}
-            
-            {/* Ações no canto superior direito */}
-            <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-white rounded-full px-1 py-1 shadow-lg">
-              <button onClick={handleFavorite} className="w-8 h-8 flex items-center justify-center">
-                <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-700"}`} />
-              </button>
-              <button onClick={handleShare} className="w-8 h-8 flex items-center justify-center">
-                <Share2 className="w-5 h-5 text-gray-700" />
-              </button>
-            </div>
 
             {/* Contador no canto inferior direito */}
             <div className="absolute bottom-4 right-4 bg-black/70 text-white text-sm font-medium px-3 py-1.5 rounded-lg">
