@@ -4,10 +4,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function TopNavMega() {
   const [open, setOpen] = useState<null | "comprar" | "alugar" | "vender">(null);
   const { data: session, status, update } = useSession();
+  const router = useRouter();
   const user = (session as any)?.user || null;
   // CRITICAL: Read role from session.user.role (set by session callback)
   const role = (session as any)?.user?.role || "USER";
@@ -96,7 +98,7 @@ export default function TopNavMega() {
               type="button"
               onMouseEnter={()=>{clearTimeout(closeTimer.current!); setOpen("comprar");}} 
               onFocus={()=>setOpen("comprar")}
-              onClick={()=>setOpen(open === "comprar" ? null : "comprar")}
+              onClick={()=>{ setOpen(null); router.push('/explore/buy'); }}
               className={`btn btn-ghost px-4 py-2 text-sm font-medium transition-all focus-ring rounded-lg ${
                 open === "comprar" ? "text-primary-600 bg-primary-50" : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
               }`}
@@ -107,7 +109,7 @@ export default function TopNavMega() {
               type="button"
               onMouseEnter={()=>{clearTimeout(closeTimer.current!); setOpen("alugar");}} 
               onFocus={()=>setOpen("alugar")}
-              onClick={()=>setOpen(open === "alugar" ? null : "alugar")}
+              onClick={()=>{ setOpen(null); router.push('/explore/rent'); }}
               className={`btn btn-ghost px-4 py-2 text-sm font-medium transition-all focus-ring rounded-lg ${
                 open === "alugar" ? "text-primary-600 bg-primary-50" : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
               }`}
@@ -253,12 +255,13 @@ export default function TopNavMega() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                       </svg>
                     }>
-                      <Item href="/?type=HOUSE">Casas à venda</Item>
-                      <Item href="/?type=APARTMENT">Apartamentos à venda</Item>
-                      <Item href="/?type=CONDO">Condomínios</Item>
-                      <Item href="/?type=LAND">Terrenos</Item>
-                      <Item href="/?type=COMMERCIAL">Comercial</Item>
-                      <Item href="/">Todos os imóveis</Item>
+                      <Item href="/explore/buy">Escolher cidade</Item>
+                      <Item href="/?purpose=SALE&type=HOUSE">Casas à venda</Item>
+                      <Item href="/?purpose=SALE&type=APARTMENT">Apartamentos à venda</Item>
+                      <Item href="/?purpose=SALE&type=CONDO">Condomínios</Item>
+                      <Item href="/?purpose=SALE&type=LAND">Terrenos</Item>
+                      <Item href="/?purpose=SALE&type=COMMERCIAL">Comercial</Item>
+                      <Item href="/?purpose=SALE">Todos os imóveis</Item>
                     </Section>
                     <Divider />
                     <Section title="Recursos" icon={
@@ -266,8 +269,8 @@ export default function TopNavMega() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                     }>
-                      <Item href="/?sort=recent">Novos imóveis</Item>
-                      <Item href="/?sort=price_asc">Menor preço</Item>
+                      <Item href="/?purpose=SALE&sort=recent">Novos imóveis</Item>
+                      <Item href="/?purpose=SALE&sort=price_asc">Menor preço</Item>
                       <Item href="/financing">Financiamento</Item>
                       <Item href="/guia/compra">Guia do comprador</Item>
                     </Section>
@@ -290,11 +293,11 @@ export default function TopNavMega() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                       </svg>
                     }>
-                      <Item href="/?status=RENT&type=HOUSE">Casas para alugar</Item>
-                      <Item href="/?status=RENT&type=APARTMENT">Apartamentos para alugar</Item>
-                      <Item href="/?status=RENT&type=CONDO">Condomínios</Item>
-                      <Item href="/?status=RENT&type=STUDIO">Studios</Item>
-                      <Item href="/?status=RENT">Todos para alugar</Item>
+                      <Item href="/?purpose=RENT&type=HOUSE">Casas para alugar</Item>
+                      <Item href="/?purpose=RENT&type=APARTMENT">Apartamentos para alugar</Item>
+                      <Item href="/?purpose=RENT&type=CONDO">Condomínios</Item>
+                      <Item href="/?purpose=RENT&type=STUDIO">Studios</Item>
+                      <Item href="/?purpose=RENT">Todos para alugar</Item>
                     </Section>
                     <Divider />
                     <Section title="Recursos" icon={
@@ -302,8 +305,8 @@ export default function TopNavMega() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     }>
-                      <Item href="/?status=RENT&sort=recent">Novos anúncios</Item>
-                      <Item href="/?status=RENT&sort=price_asc">Menor aluguel</Item>
+                      <Item href="/?purpose=RENT&sort=recent">Novos anúncios</Item>
+                      <Item href="/?purpose=RENT&sort=price_asc">Menor aluguel</Item>
                       <Item href="/guia/locacao">Guia do inquilino</Item>
                     </Section>
                     <Divider />

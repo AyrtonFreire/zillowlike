@@ -120,37 +120,36 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       clearInterval(interval);
     };
   }, [session, role]);
-
   // Mega menu Comprar - inspirado em Zillow/Daft/James Edition
   const buyMenuSections = [
     {
       title: "Por tipo de imóvel",
       items: [
-        { label: "Casas", href: "/?type=HOUSE", description: "Casas unifamiliares" },
-        { label: "Apartamentos", href: "/?type=APARTMENT", description: "Apartamentos e flats" },
-        { label: "Condomínios", href: "/?type=CONDO", description: "Condomínios fechados" },
-        { label: "Terrenos", href: "/?type=LAND", description: "Lotes e terrenos" },
-        { label: "Comercial", href: "/?type=COMMERCIAL", description: "Imóveis comerciais" },
+        { label: "Casas", href: "/?purpose=SALE&type=HOUSE", description: "Casas unifamiliares" },
+        { label: "Apartamentos", href: "/?purpose=SALE&type=APARTMENT", description: "Apartamentos e flats" },
+        { label: "Condomínios", href: "/?purpose=SALE&type=CONDO", description: "Condomínios fechados" },
+        { label: "Terrenos", href: "/?purpose=SALE&type=LAND", description: "Lotes e terrenos" },
+        { label: "Comercial", href: "/?purpose=SALE&type=COMMERCIAL", description: "Imóveis comerciais" },
       ],
     },
     {
       title: "Por faixa de preço",
       items: [
-        { label: "Até R$ 300 mil", href: "/?maxPrice=300000" },
-        { label: "R$ 300k - R$ 500k", href: "/?minPrice=300000&maxPrice=500000" },
-        { label: "R$ 500k - R$ 1M", href: "/?minPrice=500000&maxPrice=1000000" },
-        { label: "Acima de R$ 1M", href: "/?minPrice=1000000" },
-        { label: "Imóveis de luxo", href: "/?minPrice=1500000&sort=price_desc" },
+        { label: "Até R$ 300 mil", href: "/?purpose=SALE&maxPrice=300000" },
+        { label: "R$ 300k - R$ 500k", href: "/?purpose=SALE&minPrice=300000&maxPrice=500000" },
+        { label: "R$ 500k - R$ 1M", href: "/?purpose=SALE&minPrice=500000&maxPrice=1000000" },
+        { label: "Acima de R$ 1M", href: "/?purpose=SALE&minPrice=1000000" },
+        { label: "Imóveis de luxo", href: "/?purpose=SALE&minPrice=1500000&sort=price_desc" },
       ],
     },
     {
       title: "Buscar por",
       items: [
-        { label: "Novos no mercado", href: "/?sort=recent" },
-        { label: "Menor preço", href: "/?sort=price_asc" },
-        { label: "Maior área", href: "/?sort=area_desc" },
-        { label: "Imóveis mobiliados", href: "/?furnished=true" },
-        { label: "Aceita pets", href: "/?petFriendly=true" },
+        { label: "Novos no mercado", href: "/?purpose=SALE&sort=recent" },
+        { label: "Menor preço", href: "/?purpose=SALE&sort=price_asc" },
+        { label: "Maior área", href: "/?purpose=SALE&sort=area_desc" },
+        { label: "Imóveis mobiliados", href: "/?purpose=SALE&furnished=true" },
+        { label: "Aceita pets", href: "/?purpose=SALE&petFriendly=true" },
       ],
     },
   ];
@@ -160,29 +159,29 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     {
       title: "Por tipo de imóvel",
       items: [
-        { label: "Casas", href: "/?status=RENT&type=HOUSE", description: "Casas para locação" },
-        { label: "Apartamentos", href: "/?status=RENT&type=APARTMENT", description: "Apartamentos para alugar" },
-        { label: "Studios", href: "/?status=RENT&type=STUDIO", description: "Studios e quitinetes" },
-        { label: "Condomínios", href: "/?status=RENT&type=CONDO", description: "Condomínios fechados" },
+        { label: "Casas", href: "/?purpose=RENT&type=HOUSE", description: "Casas para locação" },
+        { label: "Apartamentos", href: "/?purpose=RENT&type=APARTMENT", description: "Apartamentos para alugar" },
+        { label: "Studios", href: "/?purpose=RENT&type=STUDIO", description: "Studios e quitinetes" },
+        { label: "Condomínios", href: "/?purpose=RENT&type=CONDO", description: "Condomínios fechados" },
       ],
     },
     {
       title: "Por valor mensal",
       items: [
-        { label: "Até R$ 1.500", href: "/?status=RENT&maxPrice=1500" },
-        { label: "R$ 1.500 - R$ 3.000", href: "/?status=RENT&minPrice=1500&maxPrice=3000" },
-        { label: "R$ 3.000 - R$ 5.000", href: "/?status=RENT&minPrice=3000&maxPrice=5000" },
-        { label: "Acima de R$ 5.000", href: "/?status=RENT&minPrice=5000" },
+        { label: "Até R$ 1.500", href: "/?purpose=RENT&maxPrice=1500" },
+        { label: "R$ 1.500 - R$ 3.000", href: "/?purpose=RENT&minPrice=1500&maxPrice=3000" },
+        { label: "R$ 3.000 - R$ 5.000", href: "/?purpose=RENT&minPrice=3000&maxPrice=5000" },
+        { label: "Acima de R$ 5.000", href: "/?purpose=RENT&minPrice=5000" },
       ],
     },
     {
       title: "Buscar por",
       items: [
-        { label: "Novos anúncios", href: "/?status=RENT&sort=recent" },
-        { label: "Menor aluguel", href: "/?status=RENT&sort=price_asc" },
-        { label: "Mobiliados", href: "/?status=RENT&furnished=true" },
-        { label: "Aceita pets", href: "/?status=RENT&petFriendly=true" },
-        { label: "Com academia", href: "/?status=RENT&hasGym=true" },
+        { label: "Novos anúncios", href: "/?purpose=RENT&sort=recent" },
+        { label: "Menor aluguel", href: "/?purpose=RENT&sort=price_asc" },
+        { label: "Mobiliados", href: "/?purpose=RENT&furnished=true" },
+        { label: "Aceita pets", href: "/?purpose=RENT&petFriendly=true" },
+        { label: "Com academia", href: "/?purpose=RENT&hasGym=true" },
       ],
     },
   ];
@@ -263,7 +262,11 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               >
                 <button
                   type="button"
-                  onClick={() => setOpenMenu("comprar")}
+                  onClick={() => {
+                    setOpenMenu(null);
+                    setPrimary('comprar');
+                    router.push('/explore/buy');
+                  }}
                   className={`flex items-center gap-1 font-semibold text-[15px] transition-colors relative group ${
                     forceLight
                       ? (primary === 'comprar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
@@ -327,7 +330,11 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               >
                 <button
                   type="button"
-                  onClick={() => setOpenMenu("alugar")}
+                  onClick={() => {
+                    setOpenMenu(null);
+                    setPrimary('alugar');
+                    router.push('/explore/rent');
+                  }}
                   className={`flex items-center gap-1 font-semibold text-[15px] transition-colors relative group ${
                     forceLight
                       ? (primary === 'alugar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')

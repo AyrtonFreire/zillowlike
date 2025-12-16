@@ -150,7 +150,15 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                   {expandedSection === "buy" && (
                     <div className="bg-gray-50 pt-1 pb-3 space-y-1">
                       <Link
-                        href="/?type=HOUSE"
+                        href="/explore/buy"
+                        onClick={() => setIsLeftMenuOpen(false)}
+                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <span>Escolher cidade</span>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                      </Link>
+                      <Link
+                        href="/?purpose=SALE&type=HOUSE"
                         onClick={() => setIsLeftMenuOpen(false)}
                         className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -158,7 +166,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <ChevronRight className="w-4 h-4 text-gray-400" />
                       </Link>
                       <Link
-                        href="/?type=APARTMENT"
+                        href="/?purpose=SALE&type=APARTMENT"
                         onClick={() => setIsLeftMenuOpen(false)}
                         className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -166,7 +174,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <ChevronRight className="w-4 h-4 text-gray-400" />
                       </Link>
                       <Link
-                        href="/?type=CONDO"
+                        href="/?purpose=SALE&type=CONDO"
                         onClick={() => setIsLeftMenuOpen(false)}
                         className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -174,7 +182,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <ChevronRight className="w-4 h-4 text-gray-400" />
                       </Link>
                       <Link
-                        href="/?type=LAND"
+                        href="/?purpose=SALE&type=LAND"
                         onClick={() => setIsLeftMenuOpen(false)}
                         className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
@@ -206,6 +214,14 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                   </button>
                   {expandedSection === "rent" && (
                     <div className="bg-gray-50 pt-1 pb-3 space-y-1">
+                      <Link
+                        href="/explore/rent"
+                        onClick={() => setIsLeftMenuOpen(false)}
+                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <span>Escolher cidade</span>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                      </Link>
                       <Link
                         href="/?purpose=RENT&type=HOUSE"
                         onClick={() => setIsLeftMenuOpen(false)}
