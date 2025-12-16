@@ -130,8 +130,12 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
               <div className="flex-1 overflow-y-auto py-3">
                 {/* Buy Section */}
                 <div className="border-b border-gray-100">
-                  <button
-                    onClick={() => toggleSection("buy")}
+                  <Link
+                    href="/explore/buy"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setExpandedSection(null);
+                    }}
                     className="w-full flex items-center justify-between px-5 py-3.5 text-left"
                   >
                     <div className="flex items-center gap-3">
@@ -141,62 +145,18 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <span className="block text-xs text-gray-500">Casas, apartamentos, terrenos</span>
                       </div>
                     </div>
-                    <ChevronDown
-                      className={`w-5 h-5 text-gray-500 transition-transform ${
-                        expandedSection === "buy" ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  {expandedSection === "buy" && (
-                    <div className="bg-gray-50 pt-1 pb-3 space-y-1">
-                      <Link
-                        href="/explore/buy"
-                        onClick={() => setIsLeftMenuOpen(false)}
-                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <span>Escolher cidade</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </Link>
-                      <Link
-                        href="/explore/buy?type=HOUSE"
-                        onClick={() => setIsLeftMenuOpen(false)}
-                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <span>Casas</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </Link>
-                      <Link
-                        href="/explore/buy?type=APARTMENT"
-                        onClick={() => setIsLeftMenuOpen(false)}
-                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <span>Apartamentos</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </Link>
-                      <Link
-                        href="/explore/buy?type=CONDO"
-                        onClick={() => setIsLeftMenuOpen(false)}
-                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <span>Condomínios</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </Link>
-                      <Link
-                        href="/explore/buy?type=LAND"
-                        onClick={() => setIsLeftMenuOpen(false)}
-                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <span>Terrenos</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </Link>
-                    </div>
-                  )}
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </Link>
                 </div>
 
                 {/* Rent Section */}
                 <div className="border-b border-gray-100">
-                  <button
-                    onClick={() => toggleSection("rent")}
+                  <Link
+                    href="/explore/rent"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setExpandedSection(null);
+                    }}
                     className="w-full flex items-center justify-between px-5 py-3.5 text-left"
                   >
                     <div className="flex items-center gap-3">
@@ -206,101 +166,29 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <span className="block text-xs text-gray-500">Casas e apartamentos para locação</span>
                       </div>
                     </div>
-                    <ChevronDown
-                      className={`w-5 h-5 text-gray-500 transition-transform ${
-                        expandedSection === "rent" ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  {expandedSection === "rent" && (
-                    <div className="bg-gray-50 pt-1 pb-3 space-y-1">
-                      <Link
-                        href="/explore/rent"
-                        onClick={() => setIsLeftMenuOpen(false)}
-                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <span>Escolher cidade</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </Link>
-                      <Link
-                        href="/explore/rent?type=HOUSE"
-                        onClick={() => setIsLeftMenuOpen(false)}
-                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <span>Casas para alugar</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </Link>
-                      <Link
-                        href="/explore/rent?type=APARTMENT"
-                        onClick={() => setIsLeftMenuOpen(false)}
-                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <span>Apartamentos</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </Link>
-                      <Link
-                        href="/calculadora-aluguel"
-                        onClick={() => setIsLeftMenuOpen(false)}
-                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <span>Calculadora de aluguel</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </Link>
-                    </div>
-                  )}
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </Link>
                 </div>
 
                 {/* Sell Section */}
                 <div className="border-b border-gray-100">
-                  <button
-                    onClick={() => toggleSection("sell")}
+                  <Link
+                    href="/start"
+                    onClick={() => {
+                      setIsLeftMenuOpen(false);
+                      setExpandedSection(null);
+                    }}
                     className="w-full flex items-center justify-between px-5 py-3.5 text-left"
                   >
                     <div className="flex items-center gap-3">
                       <Megaphone className="w-5 h-5 text-brand-teal" />
                       <div>
-                        <span className="block text-sm font-semibold text-gray-900">Vender</span>
+                        <span className="block text-sm font-semibold text-gray-900">Anunciar</span>
                         <span className="block text-xs text-gray-500">Anunciar como pessoa física ou corretor</span>
                       </div>
                     </div>
-                    <ChevronDown
-                      className={`w-5 h-5 text-gray-500 transition-transform ${
-                        expandedSection === "sell" ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  {expandedSection === "sell" && (
-                    <div className="bg-gray-50 pt-1 pb-3 space-y-1">
-                      <Link
-                        href="/start"
-                        onClick={() => setIsLeftMenuOpen(false)}
-                        className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <span>Anunciar imóvel</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </Link>
-                      {role === "OWNER" && (
-                        <>
-                          <Link
-                            href="/owner/properties"
-                            onClick={() => setIsLeftMenuOpen(false)}
-                            className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            <span>Meus anúncios</span>
-                            <ChevronRight className="w-4 h-4 text-gray-400" />
-                          </Link>
-                          <Link
-                            href="/owner/leads"
-                            onClick={() => setIsLeftMenuOpen(false)}
-                            className="flex items-center justify-between px-11 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            <span>Meus leads</span>
-                            <ChevronRight className="w-4 h-4 text-gray-400" />
-                          </Link>
-                        </>
-                      )}
-                    </div>
-                  )}
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </Link>
                 </div>
 
                 {/* Resources */}
