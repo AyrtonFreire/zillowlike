@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ClipboardList, Minus, X } from "lucide-react";
@@ -31,38 +31,38 @@ export default function RealtorAssistantWidget() {
     return m[1];
   }, [pathname]);
 
+  const updateCount = useCallback(async () => {
+    if (!canRender) return;
+    try {
+      const response = await fetch(
+        "/api/assistant/count",
+        etagRef.current ? { headers: { "if-none-match": etagRef.current } } : undefined
+      );
+
+      if (response.status === 304) return;
+
+      const nextEtag = response.headers.get("etag");
+      if (nextEtag) etagRef.current = nextEtag;
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success || typeof data.activeCount !== "number") {
+        setActiveCount(0);
+        return;
+      }
+      setActiveCount(data.activeCount);
+    } catch {
+      setActiveCount(0);
+    }
+  }, [canRender]);
+
   useEffect(() => {
     if (!canRender) return;
 
     let cancelled = false;
     let interval: any;
 
-    const updateCount = async () => {
-      try {
-        const response = await fetch("/api/assistant/count",
-          etagRef.current
-            ? { headers: { "if-none-match": etagRef.current } }
-            : undefined
-        );
-
-        if (response.status === 304) return;
-
-        const nextEtag = response.headers.get("etag");
-        if (nextEtag) etagRef.current = nextEtag;
-
-        const data = await response.json().catch(() => null);
-        if (!response.ok || !data?.success || typeof data.activeCount !== "number") {
-          if (!cancelled) setActiveCount(0);
-          return;
-        }
-        if (!cancelled) setActiveCount(data.activeCount);
-      } catch {
-        if (!cancelled) setActiveCount(0);
-      }
-    };
-
     updateCount();
-    interval = setInterval(updateCount, 180000);
+    interval = setInterval(() => updateCount(), 180000);
 
     try {
       const pusher = getPusherClient();
@@ -92,7 +92,7 @@ export default function RealtorAssistantWidget() {
         clearInterval(interval);
       };
     }
-  }, [canRender, realtorId]);
+  }, [canRender, realtorId, updateCount]);
 
   useEffect(() => {
     if (!canRender) return;
@@ -172,7 +172,15 @@ export default function RealtorAssistantWidget() {
 
         <div className="max-h-[60vh] overflow-auto">
           <div className="p-3">
-            <RealtorAssistantFeed realtorId={realtorId} leadId={leadIdFromPath} embedded />
+            <RealtorAssistantFeed
+              realtorId={realtorId}
+              leadId={leadIdFromPath}
+              embedded
+              onDidMutate={() => {
+                etagRef.current = null;
+                updateCount();
+              }}
+            />
           </div>
         </div>
       </div>

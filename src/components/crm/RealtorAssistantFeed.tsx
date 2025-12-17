@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Clock, ExternalLink, Eye, MessageCircle, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, ExternalLink, Eye, MessageCircle } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
 
 type AssistantAction = {
@@ -53,16 +53,14 @@ function getPriorityClasses(priority: AssistantItem["priority"]) {
 }
 
 function getActionLabel(action: AssistantAction) {
-  if (action.type === "OPEN_CHAT") return "Responder";
+  if (action.type === "OPEN_CHAT") return "Abrir conversa";
   if (action.type === "OPEN_LEAD") return "Abrir lead";
-  if (action.type === "SET_REMINDER") return "Definir próximo passo";
   return "Abrir";
 }
 
 function getActionIcon(action: AssistantAction) {
   if (action.type === "OPEN_CHAT") return MessageCircle;
   if (action.type === "OPEN_LEAD") return Eye;
-  if (action.type === "SET_REMINDER") return Clock;
   return ExternalLink;
 }
 
@@ -71,6 +69,7 @@ export default function RealtorAssistantFeed(props: {
   leadId?: string;
   compact?: boolean;
   embedded?: boolean;
+  onDidMutate?: () => void;
 }) {
   const router = useRouter();
   const [items, setItems] = useState<AssistantItem[]>([]);
@@ -78,6 +77,7 @@ export default function RealtorAssistantFeed(props: {
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const etagRef = useRef<string | null>(null);
+  const [snoozeMenuFor, setSnoozeMenuFor] = useState<string | null>(null);
 
   const realtorId = props.realtorId;
   const leadId = props.leadId;
@@ -129,6 +129,20 @@ export default function RealtorAssistantFeed(props: {
   }, [fetchItems]);
 
   useEffect(() => {
+    if (!snoozeMenuFor) return;
+    const onDown = (ev: MouseEvent) => {
+      const target = ev.target as Element | null;
+      if (!target) return;
+      if (target.closest('[data-snooze-root="true"]')) return;
+      setSnoozeMenuFor(null);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [snoozeMenuFor]);
+
+  useEffect(() => {
     if (!realtorId) return;
 
     let cancelled = false;
@@ -160,6 +174,7 @@ export default function RealtorAssistantFeed(props: {
 
   const performAction = async (itemId: string, payload: any) => {
     try {
+      setSnoozeMenuFor(null);
       setActingId(itemId);
       const response = await fetch(`/api/assistant/items/${itemId}`, {
         method: "PATCH",
@@ -170,6 +185,7 @@ export default function RealtorAssistantFeed(props: {
       if (!response.ok || !data?.success) {
         throw new Error(data?.error || "Não conseguimos atualizar este item agora.");
       }
+      props.onDidMutate?.();
       await fetchItems();
     } catch {
       await fetchItems();
@@ -190,7 +206,7 @@ export default function RealtorAssistantFeed(props: {
       return;
     }
 
-    if (action.type === "OPEN_LEAD" || action.type === "SET_REMINDER") {
+    if (action.type === "OPEN_LEAD") {
       if (targetLeadId) {
         router.push(`/broker/leads/${targetLeadId}`);
         return;
@@ -206,10 +222,21 @@ export default function RealtorAssistantFeed(props: {
   };
 
   const defaultPrimaryAction = (item: AssistantItem): AssistantAction | null => {
-    if (item.primaryAction) return item.primaryAction;
-    if (item.leadId) return { type: "OPEN_LEAD", leadId: item.leadId };
-    return null;
+    if (!item.leadId) return null;
+    if (item.type === "UNANSWERED_CLIENT_MESSAGE") {
+      return { type: "OPEN_CHAT", leadId: item.leadId };
+    }
+    return { type: "OPEN_LEAD", leadId: item.leadId };
   };
+
+  const snoozeOptions = useMemo(() => {
+    return [
+      { label: "1h", minutes: 60 },
+      { label: "6h", minutes: 360 },
+      { label: "12h", minutes: 720 },
+      { label: "24h", minutes: 1440 },
+    ];
+  }, []);
 
   const content = (
     <>
@@ -239,10 +266,8 @@ export default function RealtorAssistantFeed(props: {
             const dueLabel = formatShortDateTime(item.dueAt || null);
             const snoozeLabel = item.status === "SNOOZED" ? formatShortDateTime(item.snoozedUntil || null) : null;
             const primary = defaultPrimaryAction(item);
-            const secondary = item.secondaryAction || null;
 
             const PrimaryIcon = primary ? getActionIcon(primary) : null;
-            const SecondaryIcon = secondary ? getActionIcon(secondary) : null;
 
             return (
               <div
@@ -287,18 +312,40 @@ export default function RealtorAssistantFeed(props: {
                       title="Marcar como resolvido"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      OK
+                      Resolver
                     </button>
-                    <button
-                      type="button"
-                      disabled={actingId === item.id}
-                      onClick={() => performAction(item.id, { action: "dismiss" })}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                      title="Dispensar"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      Tirar
-                    </button>
+
+                    <div className="relative" data-snooze-root="true">
+                      <button
+                        type="button"
+                        disabled={actingId === item.id}
+                        onClick={() => setSnoozeMenuFor((prev) => (prev === item.id ? null : item.id))}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                        title="Lembrar depois"
+                      >
+                        Lembrar depois
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+
+                      {snoozeMenuFor === item.id && (
+                        <div className="absolute right-0 mt-2 w-36 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
+                          {snoozeOptions.map((opt) => (
+                            <button
+                              key={opt.minutes}
+                              type="button"
+                              disabled={actingId === item.id}
+                              onClick={async () => {
+                                setSnoozeMenuFor(null);
+                                await performAction(item.id, { action: "snooze", minutes: opt.minutes });
+                              }}
+                              className="w-full text-left px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -314,43 +361,6 @@ export default function RealtorAssistantFeed(props: {
                         {getActionLabel(primary)}
                       </button>
                     )}
-                    {secondary && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenAction(secondary, item)}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
-                      >
-                        {SecondaryIcon && <SecondaryIcon className="w-3.5 h-3.5" />}
-                        {getActionLabel(secondary)}
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={actingId === item.id}
-                      onClick={() => performAction(item.id, { action: "snooze", minutes: 60 })}
-                      className="text-[11px] font-semibold text-gray-600 hover:text-gray-800 disabled:opacity-60"
-                    >
-                      Sonecar 1h
-                    </button>
-                    <button
-                      type="button"
-                      disabled={actingId === item.id}
-                      onClick={() => performAction(item.id, { action: "snooze", minutes: 240 })}
-                      className="text-[11px] font-semibold text-gray-600 hover:text-gray-800 disabled:opacity-60"
-                    >
-                      4h
-                    </button>
-                    <button
-                      type="button"
-                      disabled={actingId === item.id}
-                      onClick={() => performAction(item.id, { action: "snooze", minutes: 1440 })}
-                      className="text-[11px] font-semibold text-gray-600 hover:text-gray-800 disabled:opacity-60"
-                    >
-                      Amanhã
-                    </button>
                   </div>
                 </div>
               </div>

@@ -147,44 +147,92 @@ export class RealtorAssistantService {
     secondaryAction?: AssistantAction | null;
     metadata?: Record<string, any> | null;
   }) {
-    const created = await (prisma as any).realtorAssistantItem.upsert({
+    const now = new Date();
+
+    const fingerprint = JSON.stringify({
+      type: params.type,
+      dueAt: params.dueAt ? params.dueAt.toISOString() : null,
+      title: params.title,
+      message: params.message,
+      primaryAction: (params.primaryAction as any) ?? null,
+      secondaryAction: (params.secondaryAction as any) ?? null,
+      metadata: (params.metadata as any) ?? null,
+    });
+
+    const nextMetadata: any = {
+      ...((params.metadata as any) ?? null),
+      _fingerprint: fingerprint,
+    };
+
+    const existing = await (prisma as any).realtorAssistantItem.findUnique({
       where: {
         realtorId_dedupeKey: {
           realtorId: params.realtorId,
           dedupeKey: params.dedupeKey,
         },
       },
-      create: {
-        realtorId: params.realtorId,
-        leadId: params.leadId ?? null,
-        type: params.type,
-        priority: params.priority,
-        status: "ACTIVE",
-        source: "RULE",
-        title: params.title,
-        message: params.message,
-        dueAt: params.dueAt ?? null,
-        primaryAction: (params.primaryAction as any) ?? null,
-        secondaryAction: (params.secondaryAction as any) ?? null,
-        metadata: (params.metadata as any) ?? null,
-        dedupeKey: params.dedupeKey,
-      },
-      update: {
-        leadId: params.leadId ?? null,
-        priority: params.priority,
-        title: params.title,
-        message: params.message,
-        dueAt: params.dueAt ?? null,
-        primaryAction: (params.primaryAction as any) ?? null,
-        secondaryAction: (params.secondaryAction as any) ?? null,
-        metadata: (params.metadata as any) ?? null,
-        // if it was resolved but the problem came back, it should reactivate
-        status: "ACTIVE",
-        resolvedAt: null,
+      select: {
+        id: true,
+        status: true,
+        snoozedUntil: true,
+        metadata: true,
       },
     });
 
-    return created;
+    if (!existing) {
+      return await (prisma as any).realtorAssistantItem.create({
+        data: {
+          realtorId: params.realtorId,
+          leadId: params.leadId ?? null,
+          type: params.type,
+          priority: params.priority,
+          status: "ACTIVE",
+          source: "RULE",
+          title: params.title,
+          message: params.message,
+          dueAt: params.dueAt ?? null,
+          primaryAction: (params.primaryAction as any) ?? null,
+          secondaryAction: (params.secondaryAction as any) ?? null,
+          metadata: nextMetadata,
+          dedupeKey: params.dedupeKey,
+        },
+      });
+    }
+
+    const prevFingerprint = (existing as any)?.metadata?._fingerprint;
+    const isNewTrigger = prevFingerprint !== fingerprint;
+
+    const snoozedUntil = existing.snoozedUntil ? new Date(existing.snoozedUntil) : null;
+    const isSnoozedInFuture = !!(snoozedUntil && !Number.isNaN(snoozedUntil.getTime()) && snoozedUntil.getTime() > now.getTime());
+
+    const shouldKeepSnoozed = existing.status === "SNOOZED" && isSnoozedInFuture && !isNewTrigger;
+    const shouldKeepClosed = (existing.status === "RESOLVED" || existing.status === "DISMISSED") && !isNewTrigger;
+
+    const statusUpdate: any = {};
+    if (!shouldKeepSnoozed && !shouldKeepClosed) {
+      statusUpdate.status = "ACTIVE";
+      statusUpdate.resolvedAt = null;
+      statusUpdate.dismissedAt = null;
+      statusUpdate.snoozedUntil = null;
+    }
+
+    const updated = await (prisma as any).realtorAssistantItem.update({
+      where: { id: existing.id },
+      data: {
+        leadId: params.leadId ?? null,
+        type: params.type,
+        priority: params.priority,
+        title: params.title,
+        message: params.message,
+        dueAt: params.dueAt ?? null,
+        primaryAction: (params.primaryAction as any) ?? null,
+        secondaryAction: (params.secondaryAction as any) ?? null,
+        metadata: nextMetadata,
+        ...statusUpdate,
+      },
+    });
+
+    return updated;
   }
 
   static async recalculateForRealtor(realtorId: string) {
