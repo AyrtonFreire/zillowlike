@@ -1141,10 +1141,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* SearchHeaderJE removido - usando apenas barra Zillow abaixo */}
-
-      
-
       {/* Continue Searching removido */}
 
 
@@ -1152,7 +1148,7 @@ export default function Home() {
       {hasSearched && (
         <>
           {/* Zillow-style Search Bar - Full Width Above Everything */}
-          <div className="bg-white border-b border-gray-200 sticky top-0 md:top-16 z-40">
+          <div className="bg-white border-b border-gray-200 sticky top-0 z-40 md:fixed md:top-16 md:left-0 md:right-0 md:z-50">
               <div className="px-4 py-3 bg-white">
                 {/* Desktop: Search bar + Inline Filters in one row */}
                 <div className="hidden md:flex items-center gap-3">
@@ -1826,6 +1822,8 @@ export default function Home() {
                 </div>
               </div>
           </div>
+
+          <div className="hidden md:block h-[72px]" />
 
           {/* Split Screen Container */}
           <div className={viewMode === 'split' ? 'lg:flex lg:h-[calc(100vh-140px)]' : 'lg:h-[calc(100vh-140px)]'}>

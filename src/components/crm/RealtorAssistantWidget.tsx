@@ -24,6 +24,8 @@ export default function RealtorAssistantWidget() {
     !!realtorId &&
     (role === "REALTOR" || role === "AGENCY" || role === "ADMIN");
 
+  const bottomOffsetClass = pathname?.startsWith("/broker/chats") ? "bottom-24" : "bottom-5";
+
   const leadIdFromPath = useMemo(() => {
     if (!pathname) return undefined;
     const m = pathname.match(/^\/broker\/leads\/([^/]+)$/);
@@ -122,7 +124,7 @@ export default function RealtorAssistantWidget() {
       <button
         type="button"
         onClick={() => setOpenPersisted(true)}
-        className="fixed bottom-5 right-5 z-[9999] flex items-center gap-2 rounded-full bg-white border border-gray-200 shadow-lg px-4 py-3 hover:shadow-xl transition-shadow"
+        className={`fixed ${bottomOffsetClass} right-5 z-[9999] flex items-center gap-2 rounded-full bg-white border border-gray-200 shadow-lg px-4 py-3 hover:shadow-xl transition-shadow`}
       >
         <span className="relative">
           <ClipboardList className="w-5 h-5 text-gray-800" />
@@ -138,7 +140,7 @@ export default function RealtorAssistantWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-[9999] w-[380px] max-w-[calc(100vw-40px)]">
+    <div className={`fixed ${bottomOffsetClass} right-5 z-[9999] w-[380px] max-w-[calc(100vw-40px)]`}>
       <div className="rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <div className="flex items-center gap-2">
