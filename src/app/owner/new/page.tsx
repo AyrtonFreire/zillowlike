@@ -260,6 +260,7 @@ export default function NewPropertyPage() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const leafletMap = useRef<any>(null);
   const leafletMarker = useRef<any>(null);
+  const leafletResizeHandler = useRef<(() => void) | null>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   const openLightbox = (i: number) => setLightbox({ open: true, index: i });
@@ -375,25 +376,42 @@ export default function NewPropertyPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (currentStep === 2) return;
+    if (typeof window !== 'undefined' && leafletResizeHandler.current) {
+      try { window.removeEventListener('resize', leafletResizeHandler.current); } catch {}
+      leafletResizeHandler.current = null;
+    }
+    if (leafletMap.current) {
+      try { leafletMap.current.remove(); } catch {}
+      leafletMap.current = null;
+    }
+    leafletMarker.current = null;
+  }, [currentStep]);
+
   // Initialize/Update Leaflet map when on Step 2 and geo available
   useEffect(() => {
     if (!leafletLoaded || currentStep !== 2) return;
     const L = (window as any).L;
     if (!L || !mapContainerRef.current) return;
+    const container = mapContainerRef.current;
+    const existingContainer = leafletMap.current?.getContainer?.() || leafletMap.current?._container;
+    if (leafletMap.current && existingContainer && existingContainer !== container) {
+      try { leafletMap.current.remove(); } catch {}
+      leafletMap.current = null;
+      leafletMarker.current = null;
+    }
     // Create map once
     if (!leafletMap.current) {
       const center = geo ? [geo.lat, geo.lng] : [-9.3986, -40.5017]; // Petrolina as default
-      leafletMap.current = L.map(mapContainerRef.current).setView(center, 14);
+      leafletMap.current = L.map(container).setView(center, 14);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' }).addTo(leafletMap.current);
       // Ensure correct sizing after render
       setTimeout(() => { try { leafletMap.current.invalidateSize(); } catch {} }, 0);
       // Invalidate on resize
-      const onResize = () => { try { leafletMap.current.invalidateSize(); } catch {} };
+      const onResize = () => { try { leafletMap.current?.invalidateSize(); } catch {} };
+      leafletResizeHandler.current = onResize;
       window.addEventListener('resize', onResize);
-      // Cleanup
-      try {
-        return () => { window.removeEventListener('resize', onResize); };
-      } catch {}
     }
     // Create/update marker when geo exists
     if (geo && leafletMap.current) {
