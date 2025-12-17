@@ -205,9 +205,9 @@ export default function PropertyContactCard({
     (!isRealtorOrAgency && !!ownerPublicProfileEnabled && !!ownerPublicSlug);
 
   const canShowWhatsApp = useMemo(() => {
-    if (hideOwnerContact) return false;
     // Para corretores/imobiliárias: se houver opt-in no perfil, respeita; caso contrário, esconde.
     if (isRealtorOrAgency) return !!ownerPublicPhoneOptIn;
+    if (hideOwnerContact) return false;
     // Para pessoa física: o controle é por imóvel (hideOwnerContact).
     return true;
   }, [hideOwnerContact, isRealtorOrAgency, ownerPublicPhoneOptIn]);

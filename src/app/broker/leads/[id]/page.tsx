@@ -91,27 +91,6 @@ interface SimilarPropertyItem {
   matchReasons: string[];
 }
 
-const MESSAGE_TEMPLATES = [
-  {
-    id: "first-contact",
-    label: "Primeiro contato",
-    text:
-      "Oi, tudo bem? Aqui é o(a) corretor(a) deste imóvel. Vi seu interesse e posso te ajudar com mais detalhes e condições. Podemos falar por aqui ou por WhatsApp?",
-  },
-  {
-    id: "visit-confirmation",
-    label: "Confirmação de visita",
-    text:
-      "Só passando para confirmar nossa visita ao imóvel. Se precisar alterar horário ou tiver alguma dúvida, é só me avisar por aqui.",
-  },
-  {
-    id: "docs-request",
-    label: "Pedido de documentos",
-    text:
-      "Para avançarmos com a proposta, vou precisar de alguns documentos básicos (RG, CPF e comprovante de renda). Assim que puder, me envie por aqui ou pelo WhatsApp.",
-  },
-];
-
 export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -127,12 +106,6 @@ export default function LeadDetailPage() {
   const [notesError, setNotesError] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<LeadMessage[]>([]);
-  const [messageDraft, setMessageDraft] = useState("");
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [messagesError, setMessagesError] = useState<string | null>(null);
-  const [sendingMessage, setSendingMessage] = useState(false);
-  const [hasNewMessages, setHasNewMessages] = useState(false);
-  const [lastMessageId, setLastMessageId] = useState<string | null>(null);
 
   const [showLeadHelp, setShowLeadHelp] = useState(false);
 
@@ -185,8 +158,6 @@ export default function LeadDetailPage() {
           }
           return [...prev, data.message];
         });
-
-        setLastMessageId((prev) => data.message.id || prev);
       };
 
       channel.bind("lead-message", handler as any);
@@ -300,49 +271,8 @@ export default function LeadDetailPage() {
     }
   }, [leadId]);
 
-  const handleSendMessage = async () => {
-    const content = messageDraft.trim();
-    if (!content) {
-      toast.warning("Campo vazio", "Escreva uma mensagem antes de enviar.");
-      return;
-    }
-
+  const fetchMessages = useCallback(async () => {
     try {
-      setSendingMessage(true);
-      setMessagesError(null);
-
-      const response = await fetch(`/api/leads/${leadId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || "Não conseguimos enviar esta mensagem agora.");
-      }
-
-      setMessages((prev) => [...prev, data.message]);
-      setMessageDraft("");
-      setLastMessageId(data.message.id);
-      setHasNewMessages(false);
-    } catch (err: any) {
-      console.error("Error sending lead message:", err);
-      setMessagesError(err?.message || "Não conseguimos enviar esta mensagem agora.");
-    } finally {
-      setSendingMessage(false);
-    }
-  };
-
-  const fetchMessages = useCallback(async (options?: { isBackground?: boolean }) => {
-    try {
-      setMessagesError(null);
-      if (!options?.isBackground) {
-        setMessagesLoading(true);
-        setHasNewMessages(false);
-      }
-
       const response = await fetch(`/api/leads/${leadId}/messages`);
       const data = await response.json();
 
@@ -351,23 +281,13 @@ export default function LeadDetailPage() {
       }
 
       const newMessages: LeadMessage[] = data.messages || [];
-      const newLastId = newMessages.length ? newMessages[newMessages.length - 1].id : null;
-
-      if (options?.isBackground && lastMessageId && newLastId && newLastId !== lastMessageId) {
-        setHasNewMessages(true);
-      }
-
-      setLastMessageId(newLastId);
       setMessages(newMessages);
     } catch (err: any) {
       console.error("Error fetching lead messages:", err);
-      setMessagesError(err?.message || "Não foi possível carregar as mensagens deste lead.");
     } finally {
-      if (!options?.isBackground) {
-        setMessagesLoading(false);
-      }
+      // no-op
     }
-  }, [leadId, lastMessageId]);
+  }, [leadId]);
 
   useEffect(() => {
     if (!realtorId || !leadId) return;
@@ -376,14 +296,6 @@ export default function LeadDetailPage() {
     fetchMessages();
     fetchSimilar();
   }, [realtorId, leadId, fetchLead, fetchLeadNotes, fetchMessages, fetchSimilar]);
-
-  useEffect(() => {
-    if (!leadId) return;
-    const interval = setInterval(() => {
-      fetchMessages({ isBackground: true });
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [leadId, fetchMessages]);
 
   const handleSaveReminder = async () => {
     try {
@@ -906,85 +818,6 @@ export default function LeadDetailPage() {
                 notes={notes}
                 messages={messages}
               />
-
-              {/* Mensagens internas */}
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <h2 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  Mensagens internas
-                  {messagesLoading && (
-                    <span className="ml-2 text-[10px] font-medium text-gray-500">Atualizando...</span>
-                  )}
-                  {hasNewMessages && (
-                    <span className="ml-1 px-2 py-0.5 rounded-full bg-red-100 text-[10px] font-semibold text-red-700">
-                      Novas mensagens
-                    </span>
-                  )}
-                </h2>
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-gray-500">
-                    Use este espaço para registrar, em forma de conversa, os pontos combinados sobre este lead. As mensagens que
-                    você enviar aqui ficam registradas no histórico de atividades acima.
-                  </p>
-                </div>
-
-                {messages.length === 0 && (
-                  <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-700">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span>Nenhuma mensagem registrada ainda. Use um atalho para registrar o primeiro contato.</span>
-                      <button
-                        type="button"
-                        onClick={() => setMessageDraft((prev) => (prev ? `${prev}\n\n${MESSAGE_TEMPLATES[0].text}` : MESSAGE_TEMPLATES[0].text))}
-                        className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
-                      >
-                        Registrar primeiro contato
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {messagesError && <p className="text-xs text-red-600 mb-2">{messagesError}</p>}
-
-                <div className="space-y-2">
-                  <div className="flex flex-wrap gap-2 justify-between items-center">
-                    <p className="text-[11px] text-gray-500">
-                      Use os atalhos abaixo para preencher rapidamente uma mensagem comum e depois ajuste com seus detalhes.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {MESSAGE_TEMPLATES.map((template) => (
-                        <button
-                          key={template.id}
-                          type="button"
-                          onClick={() =>
-                            setMessageDraft((prev) => (prev ? `${prev}\n\n${template.text}` : template.text))
-                          }
-                          className="text-[11px] text-blue-700 hover:text-blue-800 font-medium"
-                        >
-                          {template.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <textarea
-                    value={messageDraft}
-                    onChange={(e) => setMessageDraft(e.target.value)}
-                    onFocus={() => setHasNewMessages(false)}
-                    rows={2}
-                    placeholder="Escreva aqui uma mensagem sobre este atendimento (ex: resumo da proposta enviada, pendências, próximos passos)."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleSendMessage}
-                      disabled={sendingMessage}
-                      className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-900 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {sendingMessage ? "Enviando..." : "Enviar mensagem"}
-                    </button>
-                  </div>
-                </div>
-              </div>
 
               {/* Notas rápidas */}
               <div className="bg-white rounded-xl border border-gray-200">

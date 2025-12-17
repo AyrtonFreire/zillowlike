@@ -592,7 +592,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             {(role === 'REALTOR' || role === 'AGENCY' || role === 'ADMIN') && (
               <Link
                 href="/broker/messages"
-                className={`relative p-2 rounded-lg transition-colors ${
+                className={`hidden relative p-2 rounded-lg transition-colors ${
                   forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'
                 }`}
               >

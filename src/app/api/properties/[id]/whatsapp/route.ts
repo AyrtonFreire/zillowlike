@@ -50,8 +50,10 @@ export async function GET(req: NextRequest, { params }: Ctx) {
         owner: {
           select: {
             id: true,
+            role: true,
             phone: true,
             phoneVerifiedAt: true,
+            publicPhoneOptIn: true,
           } as any,
         },
       },
@@ -67,13 +69,21 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // If advertiser opted to hide contact, do not expose
-    if ((property as any)?.hideOwnerContact) {
+    const owner = (property as any)?.owner as any;
+    if (!owner) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const owner = (property as any)?.owner as any;
-    if (!owner) {
+    const ownerRole = String(owner?.role || "").toUpperCase();
+    const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
+
+    // If advertiser opted to hide contact, do not expose (only for direct owners)
+    if ((property as any)?.hideOwnerContact && !isRealtorOrAgency) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // For realtor/agency, respect profile opt-in to publish phone/WhatsApp
+    if (isRealtorOrAgency && !owner?.publicPhoneOptIn) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
