@@ -847,7 +847,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">
                   Sobre o Imóvel
                 </h3>
-                <div className="text-gray-700 leading-relaxed">
+                <div className="text-gray-700 leading-relaxed whitespace-pre-line">
                   <p>{showMore ? property.description : truncatedDescription}</p>
                   {property.description.length > 400 && (
                     <button

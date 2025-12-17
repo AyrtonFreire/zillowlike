@@ -8,6 +8,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import ClientProviders from "./ClientProviders";
 import LinkToOverlayInterceptor from "@/components/LinkToOverlayInterceptor";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -69,6 +70,7 @@ export default async function RootLayout({
           <main id="content" role="main">{children}</main>
         </ClientProviders>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

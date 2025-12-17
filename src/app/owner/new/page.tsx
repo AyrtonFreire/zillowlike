@@ -255,7 +255,6 @@ export default function NewPropertyPage() {
   const [hideOwnerContact, setHideOwnerContact] = useState(false);
   const [hideCondoFee, setHideCondoFee] = useState(false);
   const [hideIPTU, setHideIPTU] = useState(false);
-  const [iptuYearlyBRL, setIptuYearlyBRL] = useState("");
   
   // Leaflet
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -697,7 +696,6 @@ export default function NewPropertyPage() {
     setHideOwnerContact(false);
     setHideCondoFee(false);
     setHideIPTU(false);
-    setIptuYearlyBRL("");
   };
 
   const clearDraft = () => {
@@ -809,7 +807,8 @@ export default function NewPropertyPage() {
       if (typeof d.hideOwnerContact === 'boolean') setHideOwnerContact(d.hideOwnerContact);
       if (typeof d.hideCondoFee === 'boolean') setHideCondoFee(d.hideCondoFee);
       if (typeof d.hideIPTU === 'boolean') setHideIPTU(d.hideIPTU);
-      if (d.iptuYearlyBRL) setIptuYearlyBRL(d.iptuYearlyBRL);
+      if (d.iptuYearBRL) setIptuYearBRL(d.iptuYearBRL);
+      else if (d.iptuYearlyBRL) setIptuYearBRL(d.iptuYearlyBRL);
     } catch {}
   }, []);
 
@@ -869,7 +868,8 @@ export default function NewPropertyPage() {
         if (typeof d.hideOwnerContact === 'boolean') setHideOwnerContact(d.hideOwnerContact);
         if (typeof d.hideCondoFee === 'boolean') setHideCondoFee(d.hideCondoFee);
         if (typeof d.hideIPTU === 'boolean') setHideIPTU(d.hideIPTU);
-        if (d.iptuYearlyBRL) setIptuYearlyBRL(d.iptuYearlyBRL);
+        if (d.iptuYearBRL) setIptuYearBRL(d.iptuYearBRL);
+        else if (d.iptuYearlyBRL) setIptuYearBRL(d.iptuYearlyBRL);
 
         try { window.localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch {}
       } catch {}
@@ -901,6 +901,7 @@ export default function NewPropertyPage() {
           addressNumber,
           conditionTags,
           currentStep,
+          iptuYearBRL,
           // Dados privados do proprietário
           privateOwnerName,
           privateOwnerPhone,
@@ -921,7 +922,6 @@ export default function NewPropertyPage() {
           hideOwnerContact,
           hideCondoFee,
           hideIPTU,
-          iptuYearlyBRL,
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
 
@@ -934,7 +934,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images, conditionTags, currentStep, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, iptuYearlyBRL]);
+  }, [description, aiDescriptionGenerations, customTitle, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images, conditionTags, currentStep, iptuYearBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1264,7 +1264,7 @@ export default function NewPropertyPage() {
           hideOwnerContact,
           hideCondoFee,
           hideIPTU,
-          iptuYearly: iptuYearlyBRL ? parseBRLToNumber(iptuYearlyBRL) * 100 : null,
+          iptuYearly: iptuYearBRL ? parseBRLToNumber(iptuYearBRL) * 100 : null,
         },
         conditionTags: mergedTags,
         images: images
@@ -2603,22 +2603,13 @@ export default function NewPropertyPage() {
                           checked={hideIPTU}
                           onChange={(e) => setHideIPTU(e.target.checked)}
                         />
+                        <p className="text-xs text-gray-500 mt-1">
+                          O valor do IPTU é informado na etapa de características do imóvel.
+                        </p>
                       </div>
                     </div>
 
                     {/* Campo de IPTU */}
-                    <div className="mt-4">
-                      <Input
-                        label="IPTU anual (R$)"
-                        value={iptuYearlyBRL}
-                        onChange={(e) => setIptuYearlyBRL(formatBRLInput(e.target.value))}
-                        placeholder="Valor anual do IPTU"
-                        inputMode="numeric"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        {hideIPTU ? "Este valor não será exibido no anúncio" : "Este valor será exibido no anúncio"}
-                      </p>
-                    </div>
                   </div>
 
                   <p className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
