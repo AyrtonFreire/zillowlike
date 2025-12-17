@@ -57,27 +57,15 @@ export async function GET(req: NextRequest) {
     const areaMin = Number(searchParams.get("areaMin") || 0);
 
     const where: any = {};
-    // Public API: por padrão, NÃO filtra por status para garantir visibilidade de registros de teste/legados.
-    // Permitir override via query ?status=ACTIVE/PAUSED/DRAFT/SOLD/RENTED ou ?status=ANY
+    // Status filtering
+    // - Visitante (não-admin): sempre apenas ACTIVE
+    // - Admin: pode filtrar via ?status=ACTIVE|PAUSED|DRAFT ou usar ?status=ANY
     const rawStatusParam = (searchParams.get("status") || "ANY").toUpperCase();
+    const allowedStatuses = new Set(["ACTIVE", "PAUSED", "DRAFT"]);
     const statusParam = viewerRole === "ADMIN" ? rawStatusParam : "ACTIVE";
     if (statusParam !== "ANY") {
-      const allowedStatuses = new Set(["ACTIVE","PAUSED","DRAFT","SOLD","RENTED"]);
       const effective = allowedStatuses.has(statusParam) ? statusParam : "ACTIVE";
-      if (effective === "ACTIVE") {
-        // Show anything that is not sold/rented/draft/paused and also legacy null/empty
-        (where.AND ||= [] as any[]).push({
-          OR: [
-            { status: "ACTIVE" },
-            { status: null as any },
-            { status: undefined as any },
-            // Fallback for legacy empty-string stored incorrectly
-            { status: { equals: "" as any } },
-          ],
-        });
-      } else {
-        where.status = effective;
-      }
+      where.status = effective;
     }
     if (city) where.city = { equals: city, mode: 'insensitive' as Prisma.QueryMode };
     if (state) where.state = { equals: state, mode: 'insensitive' as Prisma.QueryMode };
@@ -318,13 +306,16 @@ export async function GET(req: NextRequest) {
       }),
       prisma.property.count({ where }),
     ]);
-    console.log("api/properties GET", { filters: { city, state, type, purpose, q, bedroomsMin, bathroomsMin, areaMin, status: (where as any).status || "ACTIVE|null" }, total });
-    const res = NextResponse.json({ 
+    console.log("api/properties GET", { filters: { city, state, type, purpose, q, bedroomsMin, bathroomsMin, areaMin, status: (where as any).status || "ANY" }, total });
+    const res = NextResponse.json({
+      // compat antigo
       success: true,
-      properties: items, 
-      total, 
-      page, 
-      pageSize 
+      properties: items,
+      // compat novo (HomeClient/types/api.ts)
+      items,
+      total,
+      page,
+      pageSize,
     });
     res.headers.set("x-request-id", requestId);
     res.headers.set("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
