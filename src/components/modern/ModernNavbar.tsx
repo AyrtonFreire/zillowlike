@@ -464,6 +464,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                               <li key={item.href}>
                                 <Link
                                   href={item.href}
+                                  prefetch={false}
                                   className="flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-gray-800 hover:bg-teal-50 group"
                                   onClick={() => setOpenMenu(null)}
                                 >

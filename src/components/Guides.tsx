@@ -15,11 +15,11 @@ export default function Guides() {
     <section className="mx-auto max-w-7xl px-4 py-10">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Guias</h2>
-        <Link href="#" className="text-blue-600 hover:text-blue-800 text-sm">Ver todos</Link>
+        <Link href="#" prefetch={false} className="text-blue-600 hover:text-blue-800 text-sm">Ver todos</Link>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {GUIDES.map(g => (
-          <Link key={g.slug} href={`/guides/${g.slug}`} className="group block rounded-xl overflow-hidden bg-white border border-gray-200 hover:shadow-xl transition-shadow">
+          <Link key={g.slug} href={`/guides/${g.slug}`} prefetch={false} className="group block rounded-xl overflow-hidden bg-white border border-gray-200 hover:shadow-xl transition-shadow">
             <div className="relative h-36 w-full overflow-hidden">
               <Image src={g.img} alt={g.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />

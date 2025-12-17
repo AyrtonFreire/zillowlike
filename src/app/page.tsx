@@ -152,7 +152,9 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       try { window.localStorage.removeItem('owner_new_draft'); } catch {}
       try {
-        fetch('/api/properties/draft', { method: 'DELETE' }).catch(() => {});
+        if (session) {
+          fetch('/api/properties/draft', { method: 'DELETE' }).catch(() => {});
+        }
       } catch {}
     }
     setOwnerDraft(null);
@@ -162,6 +164,7 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     const loadDraftFromApi = async () => {
+      if (!session) return;
       try {
         const res = await fetch('/api/properties/draft');
         if (!res.ok) return;
@@ -187,7 +190,7 @@ export default function Home() {
     }
 
     return () => { cancelled = true; };
-  }, []);
+  }, [session]);
 
   // Estados do overlay
   const [overlayId, setOverlayId] = useState<string | null>(null);

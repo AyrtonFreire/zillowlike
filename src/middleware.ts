@@ -18,17 +18,10 @@ const roleBasedPaths: Record<string, string[]> = {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Páginas públicas principais (não exigem sessão)
-  if (pathname === "/" || pathname === "/auth/signin") {
-    return NextResponse.next();
-  }
-
-  // Checa se é uma rota protegida
+  // Este middleware deve rodar apenas nas rotas protegidas (ver matcher abaixo)
+  // Mantemos uma verificação defensiva para evitar custos inesperados.
   const isProtected = protectedPaths.some((path) => pathname.startsWith(path));
-
-  if (!isProtected) {
-    return NextResponse.next();
-  }
+  if (!isProtected) return NextResponse.next();
 
   // Obtém token JWT do NextAuth
   const token = await getToken({
@@ -76,14 +69,10 @@ export async function middleware(request: NextRequest) {
 // Configuração de quais paths o middleware deve rodar
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (auth endpoints)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public (public files)
-     */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|public).*)",
+    "/admin/:path*",
+    "/broker/:path*",
+    "/realtor/:path*",
+    "/owner/:path*",
+    "/dashboard/:path*",
   ],
 };

@@ -102,15 +102,12 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const status = (item as any)?.status;
-    const isActiveLike = status === "ACTIVE" || status === null || status === "" || typeof status === "undefined";
-
-    if (!isActiveLike) {
+    if ((item as any)?.status !== "ACTIVE") {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const res = NextResponse.json({ item });
-    res.headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
+    res.headers.set("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
     return res;
   } catch (e) {
     console.error("/api/public/properties/[id] GET error", e);

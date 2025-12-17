@@ -31,17 +31,17 @@ export default function SiteFooter() {
             <ul className="space-y-2 text-sm">
               <li><Link href="/?purpose=RENT&type=HOUSE" className="hover:text-white transition">Casas para alugar</Link></li>
               <li><Link href="/?purpose=RENT&type=APARTMENT" className="hover:text-white transition">Apartamentos</Link></li>
-              <li><Link href="/calculadora-aluguel" className="hover:text-white transition">Calculadora</Link></li>
+              <li><Link href="/calculadora-aluguel" prefetch={false} className="hover:text-white transition">Calculadora</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="text-white font-semibold mb-3 font-display">Empresa</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/sobre" className="hover:text-white transition">Sobre</Link></li>
-              <li><Link href="/contato" className="hover:text-white transition">Contato</Link></li>
-              <li><Link href="/blog" className="hover:text-white transition">Blog</Link></li>
-              <li><Link href="/privacidade" className="hover:text-white transition">Privacidade</Link></li>
-              <li><Link href="/termos" className="hover:text-white transition">Termos</Link></li>
+              <li><Link href="/sobre" prefetch={false} className="hover:text-white transition">Sobre</Link></li>
+              <li><Link href="/contato" prefetch={false} className="hover:text-white transition">Contato</Link></li>
+              <li><Link href="/blog" prefetch={false} className="hover:text-white transition">Blog</Link></li>
+              <li><Link href="/privacidade" prefetch={false} className="hover:text-white transition">Privacidade</Link></li>
+              <li><Link href="/termos" prefetch={false} className="hover:text-white transition">Termos</Link></li>
             </ul>
           </div>
         </div>

@@ -30,7 +30,13 @@ function checkRateLimit(req: NextRequest): boolean {
 export async function GET(req: NextRequest) {
   try {
     const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    const session = await getServerSession(authOptions).catch(() => null);
+    const cookie = req.headers.get("cookie") || "";
+    const hasSessionCookie =
+      cookie.includes("next-auth.session-token=") ||
+      cookie.includes("__Secure-next-auth.session-token=");
+    const session = hasSessionCookie
+      ? await getServerSession(authOptions).catch(() => null)
+      : null;
     const sessionUser = (session as any)?.user as any;
     const viewerRole = sessionUser?.role as string | undefined;
     const { searchParams } = new URL(req.url);
@@ -306,7 +312,13 @@ export async function GET(req: NextRequest) {
       }),
       prisma.property.count({ where }),
     ]);
-    console.log("api/properties GET", { filters: { city, state, type, purpose, q, bedroomsMin, bathroomsMin, areaMin, status: (where as any).status || "ANY" }, total });
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log("api/properties GET", {
+        filters: { city, state, type, purpose, q, bedroomsMin, bathroomsMin, areaMin, status: (where as any).status || "ANY" },
+        total,
+      });
+    }
     const res = NextResponse.json({
       // compat antigo
       success: true,
@@ -318,7 +330,14 @@ export async function GET(req: NextRequest) {
       pageSize,
     });
     res.headers.set("x-request-id", requestId);
-    res.headers.set("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
+
+    // Cache apenas para visitantes (sem cookie). Evita cachear respostas potencialmente diferentes
+    // para usuários logados (admin, etc) e reduz invocações repetidas.
+    if (!hasSessionCookie) {
+      res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    } else {
+      res.headers.set("Cache-Control", "private, no-store");
+    }
     return res;
   } catch (e: any) {
     console.error("/api/properties GET error:", e?.message || e);
