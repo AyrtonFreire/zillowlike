@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import MobileHeaderZillow from "./MobileHeaderZillow";
 import HowItWorksModal from "./HowItWorksModal";
+import { getPusherClient } from "@/lib/pusher-client";
 
 interface ModernNavbarProps {
   forceLight?: boolean;
@@ -27,6 +28,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   
   const role = (session as any)?.user?.role || "USER";
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [assistantActiveCount, setAssistantActiveCount] = useState(0);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   
@@ -128,6 +130,66 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       cancelled = true;
       clearInterval(interval);
     };
+  }, [session, role]);
+
+  useEffect(() => {
+    if (!session) return;
+    if (role !== 'REALTOR' && role !== 'AGENCY' && role !== 'ADMIN') return;
+
+    const userId = (session as any)?.user?.id || (session as any)?.userId;
+    if (!userId) return;
+
+    let cancelled = false;
+    let interval: any;
+
+    const updateAssistantCount = async () => {
+      try {
+        const response = await fetch('/api/assistant/items');
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.success || !Array.isArray(data.items)) {
+          if (!cancelled) setAssistantActiveCount(0);
+          return;
+        }
+
+        const count = (data.items as any[]).filter((i) => i?.status === 'ACTIVE').length;
+        if (!cancelled) setAssistantActiveCount(count);
+      } catch {
+        if (!cancelled) setAssistantActiveCount(0);
+      }
+    };
+
+    updateAssistantCount();
+    interval = setInterval(updateAssistantCount, 60000);
+
+    try {
+      const pusher = getPusherClient();
+      const channelName = `private-realtor-${userId}`;
+      const channel = pusher.subscribe(channelName);
+
+      const handler = () => {
+        if (cancelled) return;
+        updateAssistantCount();
+      };
+
+      channel.bind('assistant-updated', handler as any);
+
+      return () => {
+        cancelled = true;
+        clearInterval(interval);
+        try {
+          channel.unbind('assistant-updated', handler as any);
+          pusher.unsubscribe(channelName);
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      return () => {
+        cancelled = true;
+        clearInterval(interval);
+      };
+    }
   }, [session, role]);
   // Mega menu Comprar - inspirado em Zillow/Daft/James Edition
   const buyMenuSections = [
@@ -498,6 +560,21 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             >
               <Heart className="w-5 h-5" />
             </Link>
+            {(role === 'REALTOR' || role === 'AGENCY' || role === 'ADMIN') && (
+              <Link
+                href="/broker/dashboard"
+                className={`relative p-2 rounded-lg transition-colors ${
+                  forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'
+                }`}
+              >
+                <ClipboardList className="w-5 h-5" />
+                {assistantActiveCount > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border border-white">
+                    {assistantActiveCount > 99 ? '99+' : assistantActiveCount}
+                  </span>
+                )}
+              </Link>
+            )}
             {(role === 'REALTOR' || role === 'AGENCY' || role === 'ADMIN') && (
               <Link
                 href="/broker/messages"

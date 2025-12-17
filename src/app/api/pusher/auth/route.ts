@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPusherServer } from "@/lib/pusher-server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,12 +18,72 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Verificar autenticação do usuário aqui
-    // const session = await getServerSession();
-    // if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session: any = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = session.userId || session.user?.id || null;
+    const role = session.role || session.user?.role || null;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const isAdmin = role === "ADMIN";
+
+    if (channel.startsWith("private-realtor-")) {
+      const channelRealtorId = channel.replace("private-realtor-", "");
+      if (!isAdmin && channelRealtorId !== userId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } else if (channel.startsWith("private-lead-") || channel.startsWith("presence-chat-")) {
+      const leadId = channel.startsWith("private-lead-")
+        ? channel.replace("private-lead-", "")
+        : channel.replace("presence-chat-", "");
+
+      const lead: any = await (prisma as any).lead.findUnique({
+        where: { id: leadId },
+        select: {
+          id: true,
+          realtorId: true,
+          userId: true,
+          property: { select: { ownerId: true } },
+          team: { select: { ownerId: true } },
+        },
+      });
+
+      if (!lead) {
+        return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+      }
+
+      const canAccessLead =
+        isAdmin ||
+        (lead.realtorId && lead.realtorId === userId) ||
+        (lead.userId && lead.userId === userId) ||
+        (lead.property?.ownerId && lead.property.ownerId === userId) ||
+        (lead.team?.ownerId && lead.team.ownerId === userId);
+
+      if (!canAccessLead) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } else {
+      // Deny any other private/presence channels by default
+      if (channel.startsWith("private-") || channel.startsWith("presence-")) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
 
     const pusher = getPusherServer();
-    const auth = pusher.authorizeChannel(socketId, channel);
+
+    const auth = channel.startsWith("presence-")
+      ? pusher.authorizeChannel(socketId, channel, {
+          user_id: userId,
+          user_info: {
+            name: session?.user?.name || null,
+            role: role || null,
+          },
+        } as any)
+      : pusher.authorizeChannel(socketId, channel);
 
     return NextResponse.json(auth);
   } catch (error) {

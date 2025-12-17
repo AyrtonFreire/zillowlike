@@ -3,6 +3,7 @@ import { QueueService } from "./queue-service";
 import { getPusherServer, PUSHER_EVENTS, PUSHER_CHANNELS } from "./pusher-server";
 import { logger } from "./logger";
 import { LeadEventService } from "./lead-event-service";
+import { RealtorAssistantService } from "./realtor-assistant-service";
 
 const prisma = new PrismaClient();
 
@@ -52,6 +53,12 @@ export class LeadDistributionService {
         reservedUntil,
       },
     });
+
+    try {
+      await RealtorAssistantService.recalculateForRealtor(nextRealtor.realtorId);
+    } catch {
+      // ignore
+    }
 
     return nextRealtor;
   }
@@ -208,6 +215,12 @@ export class LeadDistributionService {
       );
     } catch (error) {
       console.error("Error sending pusher notification:", error);
+    }
+
+    try {
+      await RealtorAssistantService.recalculateForRealtor(realtorId);
+    } catch {
+      // ignore
     }
 
     return result;

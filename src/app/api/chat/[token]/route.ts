@@ -8,6 +8,7 @@ import { sendWhatsApp } from "@/lib/sms";
 import { getPusherServer, PUSHER_EVENTS, PUSHER_CHANNELS } from "@/lib/pusher-server";
 import { logger } from "@/lib/logger";
 import { LeadEventService } from "@/lib/lead-event-service";
+import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 
 const messageSchema = z.object({
   content: z
@@ -229,6 +230,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     } catch (pusherError) {
       console.error("Error sending Pusher notification:", pusherError);
       // Não bloqueia a resposta se Pusher falhar
+    }
+
+    if (lead.realtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(lead.realtorId);
+      } catch {
+        // ignore
+      }
     }
 
     // Enviar email e WhatsApp de notificação para o corretor quando cliente envia mensagem

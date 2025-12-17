@@ -21,6 +21,7 @@ import LeadListItem from "@/components/dashboard/LeadListItem";
 import DashboardLayout from "@/components/DashboardLayout";
 import BrokerOnboarding, { resetBrokerOnboarding } from "@/components/onboarding/BrokerOnboarding";
 import LeadSearchBar from "@/components/crm/LeadSearchBar";
+import RealtorAssistantFeed from "@/components/crm/RealtorAssistantFeed";
 
 interface Metrics {
   activeProperties: number;
@@ -588,6 +589,10 @@ export default function BrokerDashboard() {
               </div>
             )}
           </StatCard>
+        </div>
+
+        <div className="mb-8">
+          <RealtorAssistantFeed realtorId={userId} />
         </div>
 
         {/* Meu funil de leads */}

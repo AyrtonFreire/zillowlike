@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getPusherServer } from "@/lib/pusher-server";
 import { sendEmail, getRealtorReplyNotificationEmail } from "@/lib/email";
 import { LeadEventService } from "@/lib/lead-event-service";
+import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 
 const messageSchema = z.object({
   content: z.string().min(1, "Escreva uma mensagem antes de enviar.").max(2000, "A mensagem está muito longa."),
@@ -172,6 +173,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       });
     } catch (pusherError) {
       console.error("Error triggering pusher for client message:", pusherError);
+    }
+
+    if (lead.realtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(lead.realtorId);
+      } catch {
+        // ignore
+      }
     }
 
     // Enviar email para o cliente avisando da nova mensagem

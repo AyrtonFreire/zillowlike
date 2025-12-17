@@ -448,6 +448,7 @@ model User {
   systemSettings    SystemSetting[] @relation("UserSystemSettings")
 
   leadRecommendationLists LeadRecommendationList[]
+  realtorAssistantItems   RealtorAssistantItem[] @relation("RealtorAssistantItems")
 }
 
 model VerificationToken {
@@ -527,6 +528,7 @@ model Lead {
   events LeadEvent[]
 
   recommendationLists LeadRecommendationList[]
+  assistantItems       RealtorAssistantItem[]
 
   @@index([propertyId])
   @@index([userId])
@@ -541,6 +543,79 @@ model Lead {
   @@index([status, visitDate]) // Para dashboard de visitas
   @@index([teamId])
   @@map("leads")
+}
+
+enum RealtorAssistantItemType {
+  NEW_LEAD
+  UNANSWERED_CLIENT_MESSAGE
+  LEAD_NO_FIRST_CONTACT
+  LEAD_STUCK_STAGE
+  REMINDER_TODAY
+  REMINDER_OVERDUE
+  VISIT_TODAY
+  VISIT_TOMORROW
+  OWNER_APPROVAL_PENDING
+  SIMILAR_LIST_SHARED_FOLLOWUP
+  STALE_LEAD
+  PIPELINE_HYGIENE
+}
+
+enum RealtorAssistantItemPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RealtorAssistantItemStatus {
+  ACTIVE
+  SNOOZED
+  RESOLVED
+  DISMISSED
+}
+
+enum RealtorAssistantItemSource {
+  RULE
+  EVENT
+  AI
+}
+
+model RealtorAssistantItem {
+  id        String @id @default(cuid())
+
+  realtor   User   @relation("RealtorAssistantItems", fields: [realtorId], references: [id], onDelete: Cascade)
+  realtorId String
+
+  lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId String?
+
+  type     RealtorAssistantItemType
+  priority RealtorAssistantItemPriority @default(MEDIUM)
+  status   RealtorAssistantItemStatus   @default(ACTIVE)
+  source   RealtorAssistantItemSource   @default(RULE)
+
+  title   String
+  message String
+
+  dueAt        DateTime?
+  snoozedUntil DateTime?
+  resolvedAt   DateTime?
+  dismissedAt  DateTime?
+
+  primaryAction Json?
+  secondaryAction Json?
+  metadata Json?
+
+  dedupeKey String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([realtorId, dedupeKey])
+  @@index([realtorId, status, priority])
+  @@index([leadId, status])
+  @@index([dueAt])
+  @@index([snoozedUntil])
+  @@map("realtor_assistant_items")
 }
 
 model LeadNote {

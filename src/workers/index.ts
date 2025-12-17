@@ -1,6 +1,7 @@
 import { Worker } from "bullmq";
 import { QUEUE_NAMES, getRedisConnection } from "@/lib/queue/config";
 import { LeadDistributionService } from "@/lib/lead-distribution-service";
+import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { PrismaClient } from "@prisma/client";
 import { QueueService } from "@/lib/queue-service";
 
@@ -65,6 +66,44 @@ new Worker(
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     await prisma.scoreHistory.deleteMany({ where: { createdAt: { lt: thirtyDaysAgo } } });
     await prisma.lead.deleteMany({ where: { status: "EXPIRED", expiresAt: { lt: thirtyDaysAgo } } });
+  },
+  { connection, concurrency: 1 }
+);
+
+new Worker(
+  QUEUE_NAMES.ASSISTANT_RECALCULATION,
+  async () => {
+    const rows = await prisma.lead.findMany({
+      where: {
+        realtorId: { not: null },
+        OR: [
+          {
+            status: {
+              in: [
+                "WAITING_REALTOR_ACCEPT",
+                "WAITING_OWNER_APPROVAL",
+                "CONFIRMED",
+                "ACCEPTED",
+                "RESERVED",
+              ] as any,
+            },
+          },
+          { nextActionDate: { not: null } },
+        ],
+      },
+      select: { realtorId: true },
+      distinct: ["realtorId"],
+    });
+
+    for (const row of rows) {
+      const realtorId = row.realtorId;
+      if (!realtorId) continue;
+      try {
+        await RealtorAssistantService.recalculateForRealtor(realtorId);
+      } catch {
+        // ignore
+      }
+    }
   },
   { connection, concurrency: 1 }
 );

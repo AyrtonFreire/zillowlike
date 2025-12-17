@@ -23,6 +23,7 @@ export async function POST() {
         { name: "Distribute New Leads", interval: "2 minutes" },
         { name: "Expire Old Leads", interval: "5 minutes" },
         { name: "Recalculate Queue Positions", interval: "10 minutos" },
+        { name: "Recalculate Assistant Items", interval: "10 minutos" },
         { name: "Cleanup Old Data", interval: "1 hour" },
       ],
     });
@@ -43,6 +44,7 @@ export async function GET() {
       { name: "Distribute New Leads", interval: "2 minutes" },
       { name: "Expire Old Leads", interval: "5 minutes" },
       { name: "Recalculate Queue Positions", interval: "10 minutos" },
+      { name: "Recalculate Assistant Items", interval: "10 minutos" },
       { name: "Cleanup Old Data", interval: "1 hour" },
     ],
   });

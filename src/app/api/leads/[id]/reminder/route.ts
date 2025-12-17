@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
+import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -84,6 +85,14 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         nextActionDate: updated.nextActionDate,
       },
     });
+
+    if (lead.realtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(lead.realtorId);
+      } catch {
+        // ignore
+      }
+    }
 
     return NextResponse.json({ success: true, lead: updated });
   } catch (error) {

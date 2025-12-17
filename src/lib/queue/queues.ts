@@ -34,6 +34,11 @@ export const queueRecalculationQueue = maybeQueue(QUEUE_NAMES.QUEUE_RECALCULATIO
 export const cleanupQueue = maybeQueue(QUEUE_NAMES.CLEANUP);
 
 /**
+ * Queue para recalcular itens do Assistente do Corretor
+ */
+export const assistantRecalculationQueue = maybeQueue(QUEUE_NAMES.ASSISTANT_RECALCULATION);
+
+/**
  * Adicionar job para distribuir lead
  */
 export async function scheduleLeadDistribution(leadId: string) {
@@ -43,6 +48,23 @@ export async function scheduleLeadDistribution(leadId: string) {
     { leadId },
     {
       priority: 1, // Alta prioridade
+    }
+  );
+}
+
+/**
+ * Adicionar job recorrente para recalcular itens do Assistente
+ */
+export async function scheduleAssistantRecalculation() {
+  if (!assistantRecalculationQueue) return Promise.resolve();
+  return assistantRecalculationQueue.add(
+    "assistant-recalculate",
+    {},
+    {
+      repeat: {
+        every: 10 * 60 * 1000, // A cada 10 minutos
+      },
+      jobId: "assistant-recalculation",
     }
   );
 }
@@ -143,6 +165,7 @@ export async function initializeRecurringJobs() {
     scheduleQueueRecalculation(),
     scheduleCleanup(),
     schedulePendingDistribution(),
+    scheduleAssistantRecalculation(),
   ]);
 }
 
@@ -156,5 +179,6 @@ export function getQueues() {
     [QUEUE_NAMES.LEAD_EXPIRY]: leadExpiryQueue,
     [QUEUE_NAMES.QUEUE_RECALCULATION]: queueRecalculationQueue,
     [QUEUE_NAMES.CLEANUP]: cleanupQueue,
+    [QUEUE_NAMES.ASSISTANT_RECALCULATION]: assistantRecalculationQueue,
   };
 }
