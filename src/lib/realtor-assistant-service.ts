@@ -649,26 +649,6 @@ export class RealtorAssistantService {
           secondaryAction: { type: "SET_REMINDER", leadId: lead.id },
         });
       }
-
-      if (lead.status === "ACCEPTED" && (lead.pipelineStage === "CONTACT" || lead.pipelineStage === "VISIT" || lead.pipelineStage === "PROPOSAL" || lead.pipelineStage === "DOCUMENTS")) {
-        const noReminder = !lead.nextActionDate;
-        if (noReminder) {
-          const key = `PIPELINE_HYGIENE:${lead.id}:${lead.pipelineStage}`;
-          dedupeKeys.add(key);
-          await this.upsertFromRule({
-            realtorId,
-            leadId: lead.id,
-            type: "PIPELINE_HYGIENE",
-            priority: "LOW",
-            title: "Defina o próximo passo",
-            message: `Este lead está em ${lead.pipelineStage} e ainda não tem um lembrete de próximo passo.`,
-            dueAt: null,
-            dedupeKey: key,
-            primaryAction: { type: "SET_REMINDER", leadId: lead.id },
-            secondaryAction: { type: "OPEN_LEAD", leadId: lead.id },
-          });
-        }
-      }
     }
 
     // Auto-resolve items from RULE that are no longer applicable

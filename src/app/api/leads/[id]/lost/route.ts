@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { QueueService } from "@/lib/queue-service";
+import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 
 const ALLOWED_REASONS = [
   "CLIENT_DESISTIU",
@@ -72,6 +73,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         completedAt: new Date(),
         pipelineStage: "LOST",
         lostReason: reason,
+        nextActionDate: null,
+        nextActionNote: null,
       },
       select: {
         id: true,
@@ -103,6 +106,14 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       toStatus: updated.status,
       metadata: { reason },
     });
+
+    if (lead.realtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+      } catch {
+        // ignore
+      }
+    }
 
     return NextResponse.json({ success: true, lead: updated });
   } catch (error: any) {

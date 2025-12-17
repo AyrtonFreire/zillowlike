@@ -5,7 +5,21 @@ import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Phone, Mail, MapPin, Calendar, Clock, MessageCircle, Link as LinkIcon, ChevronDown, ChevronUp, Copy } from "lucide-react";
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  Clock,
+  MessageCircle,
+  Link as LinkIcon,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  CheckCircle2,
+  ClipboardCheck,
+  AlertTriangle,
+} from "lucide-react";
 import CountdownTimer from "@/components/queue/CountdownTimer";
 import StatusIndicator from "@/components/queue/StatusIndicator";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
@@ -97,6 +111,10 @@ export default function LeadDetailPage() {
   const { data: session } = useSession();
   const realtorId = (session?.user as any)?.id || "";
 
+  const advancedDetailsRef = useCallback((node: HTMLDivElement | null) => {
+    (advancedDetailsRef as any).current = node;
+  }, []);
+
   const [lead, setLead] = useState<Lead | null>(null);
   const [notes, setNotes] = useState<LeadNote[]>([]);
   const [noteDraft, setNoteDraft] = useState("");
@@ -136,6 +154,10 @@ export default function LeadDetailPage() {
   const [showSimilar, setShowSimilar] = useState(false);
 
   const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
+
+  const [completingLead, setCompletingLead] = useState(false);
+  const [clearingReminder, setClearingReminder] = useState(false);
+  const [archivingLead, setArchivingLead] = useState(false);
 
   const leadId = (params?.id as string) || "";
   const toast = useToast();
@@ -329,6 +351,45 @@ export default function LeadDetailPage() {
     }
   };
 
+  const handleClearReminder = async () => {
+    if (!leadId) return;
+    if (!hasReminderActive) return;
+
+    const confirmed = await toast.confirm({
+      title: "Marcar próximo passo como feito?",
+      message: "Isso vai remover o lembrete deste lead.",
+      confirmText: "Sim, concluído",
+      cancelText: "Cancelar",
+      variant: "info",
+    });
+
+    if (!confirmed) return;
+
+    try {
+      setClearingReminder(true);
+      const response = await fetch(`/api/leads/${leadId}/reminder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: null, note: null }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || "Não conseguimos atualizar este lead agora.");
+      }
+
+      setReminderDate("");
+      setReminderNote("");
+      toast.success("Próximo passo concluído", "O lembrete foi removido.");
+      await fetchLead();
+    } catch (err: any) {
+      console.error("Error clearing lead reminder:", err);
+      toast.error("Erro ao concluir próximo passo", err?.message || "Tente novamente.");
+    } finally {
+      setClearingReminder(false);
+    }
+  };
+
   const handleQuickReminder = (type: "CALL_TOMORROW" | "WAITING_RESPONSE" | "SCHEDULE_VISIT") => {
     const now = new Date();
 
@@ -384,6 +445,94 @@ export default function LeadDetailPage() {
       toast.error("Erro ao salvar resultado", err?.message || "Não conseguimos salvar este resultado agora.");
     } finally {
       setResultSaving(false);
+    }
+  };
+
+  const handleCompleteLead = async () => {
+    if (!leadId) return;
+    if (!realtorId) return;
+    if (lead?.status !== "ACCEPTED") {
+      toast.warning("Não disponível", "Você só pode concluir leads em atendimento (aceitos). ");
+      return;
+    }
+
+    const confirmed = await toast.confirm({
+      title: "Concluir atendimento?",
+      message: "Isso marca este lead como resolvido e move para Fechado (ganho).",
+      confirmText: "Sim, concluir",
+      cancelText: "Cancelar",
+      variant: "info",
+    });
+
+    if (!confirmed) return;
+
+    try {
+      setCompletingLead(true);
+      const response = await fetch(`/api/leads/${leadId}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ realtorId }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || data?.message || "Não conseguimos concluir este atendimento agora.");
+      }
+
+      toast.success("Atendimento concluído", "Lead marcado como resolvido.");
+      await fetchLead();
+    } catch (err: any) {
+      console.error("Error completing lead:", err);
+      toast.error("Erro ao concluir atendimento", err?.message || "Tente novamente.");
+    } finally {
+      setCompletingLead(false);
+    }
+  };
+
+  const handleOpenLostShortcut = () => {
+    setShowAdvancedDetails(true);
+    try {
+      const node = (advancedDetailsRef as any).current as HTMLDivElement | null;
+      if (node) {
+        node.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleArchiveLead = async () => {
+    if (!leadId) return;
+    const confirmed = await toast.confirm({
+      title: "Arquivar lead?",
+      message: "Isso vai mover este lead para Fechado como perdido e removê-lo da sua lista de ativos.",
+      confirmText: "Sim, arquivar",
+      cancelText: "Cancelar",
+      variant: "warning",
+    });
+
+    if (!confirmed) return;
+
+    try {
+      setArchivingLead(true);
+      const response = await fetch(`/api/leads/${leadId}/lost`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "OUTRO" }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || "Não conseguimos arquivar este lead agora.");
+      }
+
+      toast.info("Lead arquivado", "Movido para Fechado como perdido.");
+      await fetchLead();
+      router.push("/broker/leads");
+    } catch (err: any) {
+      console.error("Error archiving lead:", err);
+      toast.error("Erro ao arquivar lead", err?.message || "Tente novamente.");
+    } finally {
+      setArchivingLead(false);
     }
   };
 
@@ -707,6 +856,57 @@ export default function LeadDetailPage() {
                   </span>
                 </div>
               )}
+
+              <div className="mt-4">
+                <p className="text-[11px] text-gray-500 mb-1">Gestão do lead</p>
+                <div className="flex flex-wrap gap-2">
+                  {lead.status === "ACCEPTED" && (
+                    <button
+                      type="button"
+                      onClick={handleCompleteLead}
+                      disabled={completingLead}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs sm:text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                      title="Marcar como resolvido"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {completingLead ? "Concluindo..." : "Concluir atendimento"}
+                    </button>
+                  )}
+
+                  {hasReminderActive && (
+                    <button
+                      type="button"
+                      onClick={handleClearReminder}
+                      disabled={clearingReminder}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs sm:text-sm font-semibold hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                      title="Marcar próximo passo como feito"
+                    >
+                      <ClipboardCheck className="w-4 h-4" />
+                      {clearingReminder ? "Concluindo..." : "Próximo passo feito"}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleOpenLostShortcut}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 text-xs sm:text-sm font-semibold hover:bg-red-100"
+                    title="Marcar lead como perdido"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    Marcar como perdido
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleArchiveLead}
+                    disabled={archivingLead}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs sm:text-sm font-semibold hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                    title="Arquivar (remover da lista)"
+                  >
+                    {archivingLead ? "Arquivando..." : "Arquivar lead"}
+                  </button>
+                </div>
+              </div>
 
               {/* Ações rápidas */}
               <div className="mt-4">
@@ -1183,7 +1383,7 @@ export default function LeadDetailPage() {
               </div>
 
               {/* Seção avançada: mais detalhes da negociação */}
-              <div className="bg-white rounded-xl border border-gray-200">
+              <div ref={advancedDetailsRef} className="bg-white rounded-xl border border-gray-200">
                 <button
                   type="button"
                   onClick={() => setShowAdvancedDetails((prev) => !prev)}

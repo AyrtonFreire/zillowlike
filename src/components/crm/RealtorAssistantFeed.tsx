@@ -82,9 +82,11 @@ export default function RealtorAssistantFeed(props: {
   const realtorId = props.realtorId;
   const leadId = props.leadId;
 
-  const activeCount = useMemo(() => {
-    return items.filter((i) => i.status === "ACTIVE").length;
+  const visibleItems = useMemo(() => {
+    return items.filter((i) => i.status === "ACTIVE");
   }, [items]);
+
+  const activeCount = visibleItems.length;
 
   const fetchItems = useCallback(async () => {
     if (!realtorId) return;
@@ -176,6 +178,7 @@ export default function RealtorAssistantFeed(props: {
     try {
       setSnoozeMenuFor(null);
       setActingId(itemId);
+      setError(null);
       const response = await fetch(`/api/assistant/items/${itemId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -185,9 +188,17 @@ export default function RealtorAssistantFeed(props: {
       if (!response.ok || !data?.success) {
         throw new Error(data?.error || "Não conseguimos atualizar este item agora.");
       }
+
+      if (data?.item?.id) {
+        setItems((prev) => prev.map((it) => (it.id === data.item.id ? data.item : it)));
+      }
+
+      etagRef.current = null;
       props.onDidMutate?.();
       await fetchItems();
-    } catch {
+    } catch (err: any) {
+      setError(err?.message || "Não conseguimos atualizar este item agora.");
+      etagRef.current = null;
       await fetchItems();
     } finally {
       setActingId(null);
@@ -248,7 +259,7 @@ export default function RealtorAssistantFeed(props: {
         </p>
       )}
 
-      {!loading && items.length === 0 && !error && (
+      {!loading && visibleItems.length === 0 && !error && (
         <div
           className={
             props.embedded
@@ -260,9 +271,9 @@ export default function RealtorAssistantFeed(props: {
         </div>
       )}
 
-      {items.length > 0 && (
+      {visibleItems.length > 0 && (
         <div className={props.embedded ? "space-y-3" : "mt-4 space-y-3"}>
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const dueLabel = formatShortDateTime(item.dueAt || null);
             const snoozeLabel = item.status === "SNOOZED" ? formatShortDateTime(item.snoozedUntil || null) : null;
             const primary = defaultPrimaryAction(item);
