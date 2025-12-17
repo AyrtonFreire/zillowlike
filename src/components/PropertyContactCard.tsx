@@ -219,25 +219,9 @@ export default function PropertyContactCard({
         return;
       }
 
-      if (!isAuthenticated) {
-        const cb = typeof window !== "undefined" ? window.location.href : "/";
-        await signIn(undefined, { callbackUrl: cb });
-        return;
-      }
-
       const res = await fetch(`/api/properties/${propertyId}/whatsapp`, { method: "GET" });
       const data = await res.json().catch(() => ({} as any));
       if (!res.ok) {
-        if (res.status === 403 && data?.code === "EMAIL_NOT_VERIFIED") {
-          toast.warning("Para acessar o WhatsApp do anunciante, verifique seu e-mail em Meu Perfil.");
-          router.push("/profile");
-          return;
-        }
-        if (res.status === 401) {
-          const cb = typeof window !== "undefined" ? window.location.href : "/";
-          await signIn(undefined, { callbackUrl: cb });
-          return;
-        }
         toast.error("WhatsApp indisponível no momento.");
         return;
       }
@@ -430,12 +414,13 @@ export default function PropertyContactCard({
             <button
               type="button"
               onClick={handleWhatsAppClick}
-              className="mt-3 inline-flex items-center gap-2 text-sm text-emerald-700 hover:text-emerald-800 font-semibold"
+              className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white font-semibold px-4 py-3 shadow-sm hover:brightness-95 active:brightness-90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             >
-              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200">
-                <WhatsAppIcon className="w-4 h-4" />
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/15 border border-white/25">
+                <WhatsAppIcon className="w-5 h-5" />
               </span>
-              WhatsApp
+              Conversar no WhatsApp
+              <ExternalLink className="w-4 h-4 opacity-90" />
             </button>
           )}
         </div>

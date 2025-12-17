@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -15,30 +13,6 @@ function normalizePhoneDigits(raw: string) {
 
 export async function GET(req: NextRequest, { params }: Ctx) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const sessionUser = (session as any)?.user as any;
-    const viewerId = (session as any)?.userId || sessionUser?.id || sessionUser?.sub;
-    if (!viewerId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const viewer = await prisma.user.findUnique({
-      where: { id: viewerId },
-      select: { id: true, emailVerified: true },
-    });
-
-    if (!viewer) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!viewer.emailVerified) {
-      return NextResponse.json({ error: "Email not verified", code: "EMAIL_NOT_VERIFIED" }, { status: 403 });
-    }
-
     const { id } = await params;
 
     const property = await prisma.property.findUnique({
