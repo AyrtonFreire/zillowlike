@@ -55,7 +55,7 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
 
     const loadPopular = async () => {
       try {
-        const r = await fetch("/api/locations", { cache: "no-store" });
+        const r = await fetch("/api/locations");
         const d = await r.json().catch(() => null);
         if (cancelled) return;
         if (d?.success && Array.isArray(d.suggestions)) {
@@ -94,7 +94,7 @@ export default function ExploreCityGate({ mode }: { mode: Mode }) {
     let cancelled = false;
     const t = window.setTimeout(async () => {
       try {
-        const r = await fetch(`/api/locations?q=${encodeURIComponent(query.trim())}`, { cache: "no-store" });
+        const r = await fetch(`/api/locations?q=${encodeURIComponent(query.trim())}`);
         const d = await r.json().catch(() => null);
         if (cancelled) return;
         if (d?.success && Array.isArray(d.suggestions)) {

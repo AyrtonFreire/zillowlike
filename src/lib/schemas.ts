@@ -142,7 +142,7 @@ export const PropertyQuerySchema = z.object({
   maxPrice: z.string().regex(/^\d+$/).optional(), // em centavos
   page: z.string().regex(/^\d+$/).optional(),
   pageSize: z.string().regex(/^\d+$/).optional(),
-  sort: z.enum(["recent","price_asc","price_desc"]).optional(),
+  sort: z.enum(["recent","price_asc","price_desc","area_desc"]).optional(),
   bedroomsMin: z.string().regex(/^\d+$/).optional(),
   bathroomsMin: z.string().regex(/^(\d+)(\.\d+)?$/).optional(),
   areaMin: z.string().regex(/^\d+$/).optional(),

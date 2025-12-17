@@ -23,6 +23,20 @@ const nextConfig: NextConfig = {
       // { protocol: "https", hostname: "your-bucket.s3.amazonaws.com" },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/index",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/index.html",
+        destination: "/",
+        permanent: true,
+      },
+    ];
+  },
   // Silence Turbopack root warning by pinning project root
   turbopack: { root: __dirname },
 };

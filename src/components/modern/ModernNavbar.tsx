@@ -69,12 +69,21 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     if (role !== 'REALTOR' && role !== 'AGENCY' && role !== 'ADMIN') return;
 
     let cancelled = false;
+    let lastEtag: string | null = null;
 
     const STORAGE_PREFIX = 'zlw_inbox_last_read_';
 
     const updateUnread = async () => {
       try {
-        const response = await fetch('/api/broker/messages/inbox');
+        const response = await fetch('/api/broker/messages/inbox?mode=unread', {
+          headers: lastEtag ? { 'if-none-match': lastEtag } : undefined,
+        });
+
+        if (response.status === 304) {
+          return;
+        }
+
+        lastEtag = response.headers.get('etag') || lastEtag;
         const data = await response.json().catch(() => null);
 
         if (!response.ok || !data?.success || !Array.isArray(data.conversations)) {

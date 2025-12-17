@@ -54,7 +54,11 @@ export async function GET(req: NextRequest) {
     const pageRaw = Number(parsed.data.page ?? 1);
     const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
     const pageSizeRaw = Number(parsed.data.pageSize ?? 24);
-    const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw > 0 ? Math.min(pageSizeRaw, 500) : 24;
+    const maxPageSize = viewerRole === "ADMIN" ? 500 : 60;
+    const pageSize =
+      Number.isFinite(pageSizeRaw) && pageSizeRaw > 0
+        ? Math.min(pageSizeRaw, maxPageSize)
+        : 24;
     const sortRaw = (searchParams.get("sort") || "recent").toLowerCase();
     const allowedSort = new Set(["recent","price_asc","price_desc","area_desc"]);
     const sort = allowedSort.has(sortRaw) ? sortRaw : "recent";
