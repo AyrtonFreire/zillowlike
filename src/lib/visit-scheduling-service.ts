@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { logger } from "./logger";
 import { LeadEventService } from "./lead-event-service";
+import { RealtorAssistantService } from "./realtor-assistant-service";
 import { randomBytes } from "crypto";
 
 // Gera um token único para chat do cliente
@@ -124,6 +125,28 @@ export class VisitSchedulingService {
         contact: true,
       },
     });
+
+    if (clientNotes && String(clientNotes).trim().length > 0) {
+      try {
+        await (prisma as any).leadClientMessage.create({
+          data: {
+            leadId: lead.id,
+            fromClient: true,
+            content: String(clientNotes),
+          },
+        });
+      } catch {
+        // ignore
+      }
+    }
+
+    if ((lead as any).realtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(String((lead as any).realtorId));
+      } catch {
+        // ignore
+      }
+    }
 
     await LeadEventService.record({
       leadId: lead.id,

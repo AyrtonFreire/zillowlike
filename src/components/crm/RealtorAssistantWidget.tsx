@@ -1,0 +1,181 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { ClipboardList, Minus, X } from "lucide-react";
+import { getPusherClient } from "@/lib/pusher-client";
+import RealtorAssistantFeed from "@/components/crm/RealtorAssistantFeed";
+
+export default function RealtorAssistantWidget() {
+  const { data: session } = useSession();
+  const pathname = usePathname();
+
+  const role = (session as any)?.user?.role || (session as any)?.role;
+  const realtorId = (session as any)?.user?.id || (session as any)?.userId;
+
+  const [open, setOpen] = useState(false);
+  const [activeCount, setActiveCount] = useState(0);
+  const etagRef = useRef<string | null>(null);
+
+  const isBrokerContext = !!pathname?.startsWith("/broker");
+  const canRender =
+    isBrokerContext &&
+    !!realtorId &&
+    (role === "REALTOR" || role === "AGENCY" || role === "ADMIN");
+
+  const leadIdFromPath = useMemo(() => {
+    if (!pathname) return undefined;
+    const m = pathname.match(/^\/broker\/leads\/([^/]+)$/);
+    if (!m) return undefined;
+    return m[1];
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!canRender) return;
+
+    let cancelled = false;
+    let interval: any;
+
+    const updateCount = async () => {
+      try {
+        const response = await fetch("/api/assistant/count",
+          etagRef.current
+            ? { headers: { "if-none-match": etagRef.current } }
+            : undefined
+        );
+
+        if (response.status === 304) return;
+
+        const nextEtag = response.headers.get("etag");
+        if (nextEtag) etagRef.current = nextEtag;
+
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data?.success || typeof data.activeCount !== "number") {
+          if (!cancelled) setActiveCount(0);
+          return;
+        }
+        if (!cancelled) setActiveCount(data.activeCount);
+      } catch {
+        if (!cancelled) setActiveCount(0);
+      }
+    };
+
+    updateCount();
+    interval = setInterval(updateCount, 180000);
+
+    try {
+      const pusher = getPusherClient();
+      const channelName = `private-realtor-${realtorId}`;
+      const channel = pusher.subscribe(channelName);
+
+      const handler = () => {
+        if (cancelled) return;
+        updateCount();
+      };
+
+      channel.bind("assistant-updated", handler as any);
+
+      return () => {
+        cancelled = true;
+        clearInterval(interval);
+        try {
+          channel.unbind("assistant-updated", handler as any);
+          pusher.unsubscribe(channelName);
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      return () => {
+        cancelled = true;
+        clearInterval(interval);
+      };
+    }
+  }, [canRender, realtorId]);
+
+  useEffect(() => {
+    if (!canRender) return;
+    try {
+      const key = "zlw_realtor_assistant_widget_open";
+      const stored = window.localStorage.getItem(key);
+      if (stored === "1") setOpen(true);
+    } catch {
+      // ignore
+    }
+  }, [canRender]);
+
+  const setOpenPersisted = (value: boolean) => {
+    setOpen(value);
+    try {
+      const key = "zlw_realtor_assistant_widget_open";
+      window.localStorage.setItem(key, value ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  };
+
+  if (!canRender) return null;
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpenPersisted(true)}
+        className="fixed bottom-5 right-5 z-[9999] flex items-center gap-2 rounded-full bg-white border border-gray-200 shadow-lg px-4 py-3 hover:shadow-xl transition-shadow"
+      >
+        <span className="relative">
+          <ClipboardList className="w-5 h-5 text-gray-800" />
+          {activeCount > 0 && (
+            <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border border-white">
+              {activeCount > 99 ? "99+" : activeCount}
+            </span>
+          )}
+        </span>
+        <span className="text-sm font-semibold text-gray-900">Assistente</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed bottom-5 right-5 z-[9999] w-[380px] max-w-[calc(100vw-40px)]">
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="w-4.5 h-4.5 text-gray-800" />
+            <div className="text-sm font-semibold text-gray-900">Assistente do Corretor</div>
+            {activeCount > 0 && (
+              <div className="ml-1 text-[11px] font-bold text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
+                {activeCount}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setOpenPersisted(false)}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+              title="Minimizar"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpenPersisted(false)}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+              title="Fechar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="max-h-[60vh] overflow-auto">
+          <div className="p-3">
+            <RealtorAssistantFeed realtorId={realtorId} leadId={leadIdFromPath} embedded />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

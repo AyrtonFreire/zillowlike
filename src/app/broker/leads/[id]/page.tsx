@@ -14,7 +14,6 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { getPusherClient } from "@/lib/pusher-client";
 import { useToast } from "@/contexts/ToastContext";
 import LeadTimeline from "@/components/crm/LeadTimeline";
-import RealtorAssistantFeed from "@/components/crm/RealtorAssistantFeed";
 
 interface Lead {
   id: string;
@@ -1082,8 +1081,6 @@ export default function LeadDetailPage() {
 
             {/* Coluna direita: contexto e próximos passos */}
             <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
-              <RealtorAssistantFeed realtorId={realtorId} leadId={leadId} compact />
-
               {/* Lembrete de próximo passo */}
               <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/80">
                 <div className="flex items-center justify-between gap-2 mb-2">

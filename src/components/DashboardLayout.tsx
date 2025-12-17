@@ -4,6 +4,7 @@ import { ModernNavbar } from "./modern";
 import Link from "next/link";
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
+import RealtorAssistantWidget from "@/components/crm/RealtorAssistantWidget";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -96,6 +97,8 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <main>{children}</main>
+
+      <RealtorAssistantWidget />
     </div>
   );
 }

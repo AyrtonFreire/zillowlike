@@ -3,6 +3,7 @@ import { z } from "zod";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
+import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 
 // Gera um token único para chat do cliente
 function generateChatToken(): string {
@@ -161,6 +162,28 @@ export async function POST(req: NextRequest) {
       status: autoRealtorId ? "ACCEPTED" : "PENDING",
     },
   });
+
+  if (message && String(message).trim().length > 0) {
+    try {
+      await (prisma as any).leadClientMessage.create({
+        data: {
+          leadId: lead.id,
+          fromClient: true,
+          content: String(message),
+        },
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  if (lead.realtorId) {
+    try {
+      await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+    } catch {
+      // ignore
+    }
+  }
 
   await LeadEventService.record({
     leadId: lead.id,

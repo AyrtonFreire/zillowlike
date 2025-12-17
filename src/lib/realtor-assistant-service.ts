@@ -188,7 +188,15 @@ export class RealtorAssistantService {
     const leads = await prisma.lead.findMany({
       where: {
         realtorId,
-        status: { in: ["RESERVED", "ACCEPTED"] as any },
+        status: {
+          in: [
+            "RESERVED",
+            "ACCEPTED",
+            "WAITING_REALTOR_ACCEPT",
+            "WAITING_OWNER_APPROVAL",
+            "CONFIRMED",
+          ] as any,
+        },
       },
       select: {
         id: true,
@@ -381,6 +389,29 @@ export class RealtorAssistantService {
         lastContactCandidates.length > 0
           ? new Date(Math.max(...lastContactCandidates.map((x) => x.getTime())))
           : null;
+
+      if (lead.status === "ACCEPTED" && !lastContactAt) {
+        const createdAt = new Date(lead.createdAt);
+        const threshold = new Date(now);
+        threshold.setHours(threshold.getHours() - 24);
+        if (!Number.isNaN(createdAt.getTime()) && createdAt >= threshold) {
+          const key = `NEW_LEAD:${lead.id}`;
+          dedupeKeys.add(key);
+          await this.upsertFromRule({
+            realtorId,
+            leadId: lead.id,
+            type: "NEW_LEAD",
+            priority: "HIGH",
+            title: "Novo lead recebido",
+            message: `${clientName} pediu informações sobre ${propertyTitle}.`,
+            dueAt: null,
+            dedupeKey: key,
+            primaryAction: { type: "OPEN_LEAD", leadId: lead.id },
+            secondaryAction: { type: "OPEN_CHAT", leadId: lead.id },
+            metadata: { status: lead.status },
+          });
+        }
+      }
 
       if (lastClientChatAt) {
         const hasUnread = !lastContactAt ? true : lastClientChatAt > lastContactAt;

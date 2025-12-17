@@ -70,6 +70,7 @@ export default function RealtorAssistantFeed(props: {
   realtorId?: string;
   leadId?: string;
   compact?: boolean;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [items, setItems] = useState<AssistantItem[]>([]);
@@ -210,42 +211,30 @@ export default function RealtorAssistantFeed(props: {
     return null;
   };
 
-  return (
-    <div className={props.compact ? "bg-white rounded-xl border border-gray-200 p-4" : "bg-white rounded-2xl border border-gray-200 p-5"}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-900">Assistente do Corretor</h2>
-          <p className="text-xs text-gray-500 mt-1">
-            {activeCount > 0
-              ? `${activeCount} pendência${activeCount > 1 ? "s" : ""} para você agir agora.`
-              : "Sem pendências no momento."}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={fetchItems}
-          className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
-        >
-          Atualizar
-        </button>
-      </div>
-
-      {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+  const content = (
+    <>
+      {error && <p className={props.embedded ? "text-xs text-red-600" : "mt-3 text-xs text-red-600"}>{error}</p>}
 
       {loading && (
-        <p className="mt-3 text-xs text-gray-500">
+        <p className={props.embedded ? "text-xs text-gray-500" : "mt-3 text-xs text-gray-500"}>
           Carregando...
         </p>
       )}
 
       {!loading && items.length === 0 && !error && (
-        <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-700">
+        <div
+          className={
+            props.embedded
+              ? "rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-700"
+              : "mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-700"
+          }
+        >
           O Assistente vai te avisar sobre leads sem resposta, lembretes vencidos e próximos passos.
         </div>
       )}
 
       {items.length > 0 && (
-        <div className="mt-4 space-y-3">
+        <div className={props.embedded ? "space-y-3" : "mt-4 space-y-3"}>
           {items.map((item) => {
             const dueLabel = formatShortDateTime(item.dueAt || null);
             const snoozeLabel = item.status === "SNOOZED" ? formatShortDateTime(item.snoozedUntil || null) : null;
@@ -369,6 +358,36 @@ export default function RealtorAssistantFeed(props: {
           })}
         </div>
       )}
-    </div>
+    </>
+  );
+
+  return (
+    props.embedded ? (
+      <div>
+        {content}
+      </div>
+    ) : (
+      <div className={props.compact ? "bg-white rounded-xl border border-gray-200 p-4" : "bg-white rounded-2xl border border-gray-200 p-5"}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Assistente do Corretor</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              {activeCount > 0
+                ? `${activeCount} pendência${activeCount > 1 ? "s" : ""} para você agir agora.`
+                : "Sem pendências no momento."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={fetchItems}
+            className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
+          >
+            Atualizar
+          </button>
+        </div>
+
+        {content}
+      </div>
+    )
   );
 }
