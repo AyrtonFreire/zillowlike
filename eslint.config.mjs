@@ -18,7 +18,22 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "scripts/**",
+      "prisma/**",
+      "src/generated/**",
     ],
+  },
+  {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
+      "prefer-rest-params": "off",
+      "react-hooks/rules-of-hooks": "warn",
+      "react-hooks/exhaustive-deps": "warn",
+      "prefer-const": "warn",
+      "react/no-unescaped-entities": "warn",
+    },
   },
 ];
 

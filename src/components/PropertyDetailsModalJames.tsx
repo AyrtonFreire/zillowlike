@@ -371,6 +371,20 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     urls.forEach((src) => { try { const img = new (window as any).Image(); img.src = src; } catch {} });
   }, [photoViewMode, property, currentImageIndex, isOpen]);
 
+  useEffect(() => {
+    if (photoViewMode !== "fullscreen" || !isOpen) return;
+    const update = () => {
+      try {
+        const w = fsContainerRef.current?.clientWidth || window.innerWidth;
+        setFsContainerW(w);
+      } catch {
+      }
+    };
+    requestAnimationFrame(update);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [photoViewMode, isOpen]);
+
   // Reset zoom/pan whenever foto muda ou lightbox fecha
   useEffect(() => { 
     if (!isOpen) return;
