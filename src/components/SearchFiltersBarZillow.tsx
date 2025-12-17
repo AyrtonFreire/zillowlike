@@ -126,6 +126,7 @@ export default function SearchFiltersBarZillow({
     const fetchPreviewTotal = async () => {
       setIsLoadingPreview(true);
       try {
+        const effectivePurpose = localFilters.purpose === 'RENT' ? 'RENT' : 'SALE';
         const params = buildSearchParams({
           // Incluir parâmetros de localização
           q: search,
@@ -141,7 +142,7 @@ export default function SearchFiltersBarZillow({
           parkingSpots: localFilters.parkingSpots,
           yearBuiltMin: localFilters.yearBuiltMin,
           yearBuiltMax: localFilters.yearBuiltMax,
-          purpose: localFilters.purpose,
+          purpose: effectivePurpose,
           petFriendly: localFilters.petFriendly ? 'true' : '',
           furnished: localFilters.furnished ? 'true' : '',
           hasPool: localFilters.hasPool ? 'true' : '',

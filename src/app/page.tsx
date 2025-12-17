@@ -624,6 +624,7 @@ export default function Home() {
 
     setIsLoading(true);
     setSearchError(null);
+    const effectivePurpose = purpose === 'RENT' ? 'RENT' : 'SALE';
     const params = buildSearchParams({
       q: search,
       city,
@@ -637,7 +638,7 @@ export default function Home() {
       parkingSpots,
       yearBuiltMin,
       yearBuiltMax,
-      purpose,
+      purpose: effectivePurpose,
       petFriendly: petFriendly ? "true" : "",
       furnished: furnished ? "true" : "",
       hasPool: hasPool ? "true" : "",
@@ -784,6 +785,7 @@ export default function Home() {
     if (properties.length >= total) return;
     setIsLoadingMore(true);
     try {
+      const effectivePurpose = purpose === 'RENT' ? 'RENT' : 'SALE';
       const params = buildSearchParams({
         q: search,
         city,
@@ -797,7 +799,7 @@ export default function Home() {
         parkingSpots,
         yearBuiltMin,
         yearBuiltMax,
-        purpose,
+        purpose: effectivePurpose,
         petFriendly: petFriendly ? "true" : "",
         furnished: furnished ? "true" : "",
         hasPool: hasPool ? "true" : "",
@@ -834,7 +836,7 @@ export default function Home() {
         keywords,
         sort,
         page: nextPage,
-        pageSize: 12,
+        pageSize: 12
       });
       const res = await fetch(`/api/properties?${params}`);
       const data = await res.json();
