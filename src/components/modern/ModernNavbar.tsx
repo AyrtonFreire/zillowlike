@@ -29,6 +29,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const role = (session as any)?.user?.role || "USER";
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [assistantActiveCount, setAssistantActiveCount] = useState(0);
+  const assistantEtagRef = useRef<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   
@@ -144,23 +145,36 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
     const updateAssistantCount = async () => {
       try {
-        const response = await fetch('/api/assistant/items');
+        const response = await fetch('/api/assistant/count',
+          assistantEtagRef.current
+            ? {
+                headers: { 'if-none-match': assistantEtagRef.current },
+              }
+            : undefined
+        );
+
+        if (response.status === 304) {
+          return;
+        }
+
+        const nextEtag = response.headers.get('etag');
+        if (nextEtag) assistantEtagRef.current = nextEtag;
+
         const data = await response.json().catch(() => null);
 
-        if (!response.ok || !data?.success || !Array.isArray(data.items)) {
+        if (!response.ok || !data?.success || typeof data.activeCount !== 'number') {
           if (!cancelled) setAssistantActiveCount(0);
           return;
         }
 
-        const count = (data.items as any[]).filter((i) => i?.status === 'ACTIVE').length;
-        if (!cancelled) setAssistantActiveCount(count);
+        if (!cancelled) setAssistantActiveCount(data.activeCount);
       } catch {
         if (!cancelled) setAssistantActiveCount(0);
       }
     };
 
     updateAssistantCount();
-    interval = setInterval(updateAssistantCount, 60000);
+    interval = setInterval(updateAssistantCount, 180000);
 
     try {
       const pusher = getPusherClient();

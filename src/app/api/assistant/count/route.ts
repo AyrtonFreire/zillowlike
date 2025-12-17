@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
@@ -24,51 +23,36 @@ export async function GET(req: NextRequest) {
     }
 
     const url = new URL(req.url);
-    const leadId = url.searchParams.get("leadId");
+    const leadId = url.searchParams.get("leadId") || null;
 
     const now = new Date();
 
     const baseWhere: any = {
       realtorId: String(userId),
-      status: { in: ["ACTIVE", "SNOOZED"] },
       ...(leadId ? { leadId } : {}),
     };
 
-    const [agg, effectiveActiveCount, snoozedFutureAgg] = await Promise.all([
+    const activeWhere: any = {
+      ...baseWhere,
+      OR: [
+        { status: "ACTIVE" },
+        { status: "SNOOZED", snoozedUntil: { lte: now } },
+      ],
+    };
+
+    const [activeCount, agg] = await Promise.all([
+      (prisma as any).realtorAssistantItem.count({ where: activeWhere }),
       (prisma as any).realtorAssistantItem.aggregate({
         where: baseWhere,
-        _count: { _all: true },
         _max: { updatedAt: true },
-      }),
-      (prisma as any).realtorAssistantItem.count({
-        where: {
-          ...baseWhere,
-          OR: [
-            { status: "ACTIVE" },
-            { status: "SNOOZED", snoozedUntil: { lte: now } },
-          ],
-        },
-      }),
-      (prisma as any).realtorAssistantItem.aggregate({
-        where: {
-          ...baseWhere,
-          status: "SNOOZED",
-          snoozedUntil: { gt: now },
-        },
         _count: { _all: true },
-        _min: { snoozedUntil: true },
       }),
     ]);
 
-    const totalCount = Number(agg?._count?._all || 0);
-    const maxUpdatedAt = agg?._max?.updatedAt ? new Date(agg._max.updatedAt).getTime() : 0;
-    const snoozedFutureCount = Number(snoozedFutureAgg?._count?._all || 0);
-    const nextWakeAtMs = snoozedFutureAgg?._min?.snoozedUntil
-      ? new Date(snoozedFutureAgg._min.snoozedUntil).getTime()
-      : 0;
-
+    const newestMs = agg?._max?.updatedAt ? new Date(agg._max.updatedAt).getTime() : 0;
+    const total = Number(agg?._count?._all || 0);
     const key = `${String(userId)}:${leadId || "all"}`;
-    const etag = `W/\"assistant-items:${key}:${maxUpdatedAt}:${totalCount}:${effectiveActiveCount}:${snoozedFutureCount}:${nextWakeAtMs}\"`;
+    const etag = `W/\"assistant-count:${key}:${newestMs}:${total}:${activeCount}\"`;
 
     const ifNoneMatch = req.headers.get("if-none-match");
     if (ifNoneMatch && ifNoneMatch === etag) {
@@ -81,16 +65,12 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const items = await RealtorAssistantService.list(String(userId), {
-      leadId: leadId || undefined,
-    });
-
-    const res = NextResponse.json({ success: true, items });
+    const res = NextResponse.json({ success: true, activeCount });
     res.headers.set("ETag", etag);
     res.headers.set("Cache-Control", "private, max-age=0, must-revalidate");
     return res;
   } catch (error) {
-    console.error("Error fetching assistant items:", error);
+    console.error("Error fetching assistant count:", error);
     return NextResponse.json(
       { error: "Não conseguimos carregar o Assistente agora." },
       { status: 500 }

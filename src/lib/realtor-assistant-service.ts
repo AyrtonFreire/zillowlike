@@ -40,19 +40,6 @@ export class RealtorAssistantService {
   static async list(realtorId: string, options?: { leadId?: string | null }) {
     const now = new Date();
 
-    // Bring expired snoozes back to ACTIVE
-    await (prisma as any).realtorAssistantItem.updateMany({
-      where: {
-        realtorId,
-        status: "SNOOZED",
-        snoozedUntil: { lte: now },
-      },
-      data: {
-        status: "ACTIVE",
-        snoozedUntil: null,
-      },
-    });
-
     const where: any = {
       realtorId,
       status: { in: ["ACTIVE", "SNOOZED"] },
@@ -68,7 +55,15 @@ export class RealtorAssistantService {
       take: 100,
     });
 
-    return items;
+    return (items || []).map((item: any) => {
+      if (item?.status === "SNOOZED" && item?.snoozedUntil) {
+        const until = new Date(item.snoozedUntil);
+        if (!Number.isNaN(until.getTime()) && until.getTime() <= now.getTime()) {
+          return { ...item, status: "ACTIVE", snoozedUntil: null };
+        }
+      }
+      return item;
+    });
   }
 
   static async resolve(realtorId: string, itemId: string) {

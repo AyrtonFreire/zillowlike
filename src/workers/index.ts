@@ -73,6 +73,10 @@ new Worker(
 new Worker(
   QUEUE_NAMES.ASSISTANT_RECALCULATION,
   async () => {
+    const now = new Date();
+    const since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
     const rows = await prisma.lead.findMany({
       where: {
         realtorId: { not: null },
@@ -87,8 +91,9 @@ new Worker(
                 "RESERVED",
               ] as any,
             },
+            updatedAt: { gte: since },
           },
-          { nextActionDate: { not: null } },
+          { nextActionDate: { lte: next24h } },
         ],
       },
       select: { realtorId: true },

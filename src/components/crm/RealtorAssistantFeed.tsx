@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Clock, ExternalLink, Eye, MessageCircle, X } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
@@ -76,6 +76,7 @@ export default function RealtorAssistantFeed(props: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  const etagRef = useRef<string | null>(null);
 
   const realtorId = props.realtorId;
   const leadId = props.leadId;
@@ -90,7 +91,25 @@ export default function RealtorAssistantFeed(props: {
       setError(null);
       setLoading(true);
       const qs = leadId ? `?leadId=${encodeURIComponent(leadId)}` : "";
-      const response = await fetch(`/api/assistant/items${qs}`);
+      const response = await fetch(`/api/assistant/items${qs}`,
+        etagRef.current
+          ? {
+              headers: {
+                "if-none-match": etagRef.current,
+              },
+            }
+          : undefined
+      );
+
+      if (response.status === 304) {
+        return;
+      }
+
+      const nextEtag = response.headers.get("etag");
+      if (nextEtag) {
+        etagRef.current = nextEtag;
+      }
+
       const data = await response.json();
       if (!response.ok || !data?.success) {
         throw new Error(data?.error || "Não conseguimos carregar o Assistente agora.");
