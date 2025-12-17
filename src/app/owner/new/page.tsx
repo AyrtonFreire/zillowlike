@@ -250,6 +250,7 @@ export default function NewPropertyPage() {
   // Configurações de visibilidade pública
   const [hidePrice, setHidePrice] = useState(false);
   const [hideExactAddress, setHideExactAddress] = useState(false);
+  const [hideOwnerContact, setHideOwnerContact] = useState(false);
   const [hideCondoFee, setHideCondoFee] = useState(false);
   const [hideIPTU, setHideIPTU] = useState(false);
   const [iptuYearlyBRL, setIptuYearlyBRL] = useState("");
@@ -689,6 +690,7 @@ export default function NewPropertyPage() {
     // Configurações de visibilidade
     setHidePrice(false);
     setHideExactAddress(false);
+    setHideOwnerContact(false);
     setHideCondoFee(false);
     setHideIPTU(false);
     setIptuYearlyBRL("");
@@ -798,6 +800,7 @@ export default function NewPropertyPage() {
       // Configurações de visibilidade
       if (typeof d.hidePrice === 'boolean') setHidePrice(d.hidePrice);
       if (typeof d.hideExactAddress === 'boolean') setHideExactAddress(d.hideExactAddress);
+      if (typeof d.hideOwnerContact === 'boolean') setHideOwnerContact(d.hideOwnerContact);
       if (typeof d.hideCondoFee === 'boolean') setHideCondoFee(d.hideCondoFee);
       if (typeof d.hideIPTU === 'boolean') setHideIPTU(d.hideIPTU);
       if (d.iptuYearlyBRL) setIptuYearlyBRL(d.iptuYearlyBRL);
@@ -855,6 +858,7 @@ export default function NewPropertyPage() {
         // Configurações de visibilidade
         if (typeof d.hidePrice === 'boolean') setHidePrice(d.hidePrice);
         if (typeof d.hideExactAddress === 'boolean') setHideExactAddress(d.hideExactAddress);
+        if (typeof d.hideOwnerContact === 'boolean') setHideOwnerContact(d.hideOwnerContact);
         if (typeof d.hideCondoFee === 'boolean') setHideCondoFee(d.hideCondoFee);
         if (typeof d.hideIPTU === 'boolean') setHideIPTU(d.hideIPTU);
         if (d.iptuYearlyBRL) setIptuYearlyBRL(d.iptuYearlyBRL);
@@ -905,6 +909,7 @@ export default function NewPropertyPage() {
           // Configurações de visibilidade
           hidePrice,
           hideExactAddress,
+          hideOwnerContact,
           hideCondoFee,
           hideIPTU,
           iptuYearlyBRL,
@@ -1240,6 +1245,7 @@ export default function NewPropertyPage() {
         visibility: {
           hidePrice,
           hideExactAddress,
+          hideOwnerContact,
           hideCondoFee,
           hideIPTU,
           iptuYearly: iptuYearlyBRL ? parseBRLToNumber(iptuYearlyBRL) * 100 : null,
@@ -2440,6 +2446,16 @@ export default function NewPropertyPage() {
                           checked={hideExactAddress}
                           onChange={(e) => setHideExactAddress(e.target.checked)}
                         />
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <Checkbox
+                          label="Ocultar WhatsApp/telefone do anúncio (somente chat)"
+                          checked={hideOwnerContact}
+                          onChange={(e) => setHideOwnerContact(e.target.checked)}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Se desmarcado, o botão de WhatsApp ficará disponível apenas para usuários logados e com e-mail verificado.
+                        </p>
                       </div>
                       <div className="p-3 bg-gray-50 rounded-lg">
                         <Checkbox

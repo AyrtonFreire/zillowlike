@@ -113,6 +113,7 @@ export const PropertyCreateSchema = z.object({
   visibility: z.object({
     hidePrice: z.boolean().optional(),
     hideExactAddress: z.boolean().optional(),
+    hideOwnerContact: z.boolean().optional(),
     hideCondoFee: z.boolean().optional(),
     hideIPTU: z.boolean().optional(),
     iptuYearly: z.number().int().nullable().optional(), // em centavos

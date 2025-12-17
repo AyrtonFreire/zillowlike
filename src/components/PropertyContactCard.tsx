@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { User, Building2, Calendar, Clock, CheckCircle, MessageCircle, Mail, ArrowRight, ExternalLink } from "lucide-react";
+import { useMemo, useState } from "react";
+import { User, Building2, Calendar, Clock, CheckCircle, MessageCircle, Mail, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,6 +9,26 @@ import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Button from "./ui/Button";
 import { useToast } from "@/contexts/ToastContext";
+
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        fill="currentColor"
+        d="M19.11 17.29c-.28-.14-1.67-.82-1.93-.92-.26-.09-.45-.14-.64.14-.19.28-.74.92-.91 1.11-.17.19-.33.21-.61.07-.28-.14-1.18-.43-2.25-1.38-.83-.74-1.39-1.65-1.56-1.93-.16-.28-.02-.43.12-.57.13-.13.28-.33.42-.5.14-.17.19-.28.28-.47.09-.19.05-.36-.02-.5-.07-.14-.64-1.54-.88-2.11-.23-.55-.46-.48-.64-.49h-.55c-.19 0-.5.07-.76.36-.26.28-1 1-1 2.43 0 1.43 1.02 2.81 1.16 3 .14.19 2.01 3.07 4.87 4.31.68.29 1.2.46 1.61.59.68.21 1.29.18 1.78.11.54-.08 1.67-.68 1.9-1.34.24-.66.24-1.22.17-1.34-.07-.12-.26-.19-.54-.33z"
+      />
+      <path
+        fill="currentColor"
+        d="M16.02 3C9.39 3 4 8.39 4 15.02c0 2.1.55 4.16 1.6 5.98L4 29l8.2-1.55c1.76.96 3.75 1.47 5.82 1.47 6.63 0 12.02-5.39 12.02-12.02C30.04 8.39 22.65 3 16.02 3zm0 23.7c-1.88 0-3.71-.5-5.31-1.44l-.38-.22-4.87.92.92-4.75-.25-.4a10.64 10.64 0 0 1-1.63-5.79c0-5.88 4.78-10.66 10.66-10.66 5.88 0 10.66 4.78 10.66 10.66 0 5.88-4.78 10.68-10.66 10.68z"
+      />
+    </svg>
+  );
+}
 
 type ContactCardProps = {
   propertyId: string;
@@ -22,6 +42,8 @@ type ContactCardProps = {
   ownerPhone?: string;
   ownerPublicProfileEnabled?: boolean;
   ownerPublicSlug?: string | null;
+  ownerPublicPhoneOptIn?: boolean;
+  hideOwnerContact?: boolean;
   
   // Lead board control
   allowRealtorBoard: boolean; // true = vai para mural de leads, false = contato direto
@@ -144,9 +166,10 @@ export default function PropertyContactCard({
   ownerRole,
   ownerName,
   ownerImage,
-  ownerPhone,
   ownerPublicProfileEnabled,
   ownerPublicSlug,
+  ownerPublicPhoneOptIn,
+  hideOwnerContact,
   allowRealtorBoard,
 }: ContactCardProps) {
   const [formData, setFormData] = useState({
@@ -180,6 +203,55 @@ export default function PropertyContactCard({
   const hasPublicProfile =
     (isRealtorOrAgency && !!ownerPublicSlug) ||
     (!isRealtorOrAgency && !!ownerPublicProfileEnabled && !!ownerPublicSlug);
+
+  const canShowWhatsApp = useMemo(() => {
+    if (hideOwnerContact) return false;
+    // Para corretores/imobiliárias: se houver opt-in no perfil, respeita; caso contrário, esconde.
+    if (isRealtorOrAgency) return !!ownerPublicPhoneOptIn;
+    // Para pessoa física: o controle é por imóvel (hideOwnerContact).
+    return true;
+  }, [hideOwnerContact, isRealtorOrAgency, ownerPublicPhoneOptIn]);
+
+  const handleWhatsAppClick = async () => {
+    try {
+      if (!canShowWhatsApp) {
+        toast.info("Contato via WhatsApp não está disponível para este anúncio.");
+        return;
+      }
+
+      if (!isAuthenticated) {
+        const cb = typeof window !== "undefined" ? window.location.href : "/";
+        await signIn(undefined, { callbackUrl: cb });
+        return;
+      }
+
+      const res = await fetch(`/api/properties/${propertyId}/whatsapp`, { method: "GET" });
+      const data = await res.json().catch(() => ({} as any));
+      if (!res.ok) {
+        if (res.status === 403 && data?.code === "EMAIL_NOT_VERIFIED") {
+          toast.warning("Para acessar o WhatsApp do anunciante, verifique seu e-mail em Meu Perfil.");
+          router.push("/profile");
+          return;
+        }
+        if (res.status === 401) {
+          const cb = typeof window !== "undefined" ? window.location.href : "/";
+          await signIn(undefined, { callbackUrl: cb });
+          return;
+        }
+        toast.error("WhatsApp indisponível no momento.");
+        return;
+      }
+
+      const url = data?.whatsappUrl as string | undefined;
+      if (!url) {
+        toast.error("WhatsApp indisponível no momento.");
+        return;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      toast.error("WhatsApp indisponível no momento.");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -354,12 +426,16 @@ export default function PropertyContactCard({
             </div>
           )}
 
-          {ownerPhone && (
-            <button 
-              onClick={() => window.open(`tel:${ownerPhone}`)}
-              className="text-sm text-teal hover:text-teal-dark mt-3"
+          {canShowWhatsApp && (
+            <button
+              type="button"
+              onClick={handleWhatsAppClick}
+              className="mt-3 inline-flex items-center gap-2 text-sm text-emerald-700 hover:text-emerald-800 font-semibold"
             >
-              📞 Mostrar telefone
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200">
+                <WhatsAppIcon className="w-4 h-4" />
+              </span>
+              WhatsApp
             </button>
           )}
         </div>

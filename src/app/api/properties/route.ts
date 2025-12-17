@@ -510,6 +510,7 @@ export async function POST(req: NextRequest) {
       // Configurações de visibilidade
       hidePrice: (visibility as any)?.hidePrice ?? null,
       hideExactAddress: (visibility as any)?.hideExactAddress ?? null,
+      hideOwnerContact: (visibility as any)?.hideOwnerContact ?? null,
       hideCondoFee: (visibility as any)?.hideCondoFee ?? null,
       hideIPTU: (visibility as any)?.hideIPTU ?? null,
       iptuYearly: (visibility as any)?.iptuYearly ?? null,

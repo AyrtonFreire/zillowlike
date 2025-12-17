@@ -195,6 +195,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       // Configurações de visibilidade
       "hidePrice",
       "hideExactAddress",
+      "hideOwnerContact",
       "hideCondoFee",
       "hideIPTU",
       "iptuYearly",

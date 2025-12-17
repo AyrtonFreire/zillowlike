@@ -44,6 +44,7 @@ type PropertyDetails = {
   petFriendly: boolean;
   images: { url: string }[];
   allowRealtorBoard?: boolean;
+  hideOwnerContact?: boolean | null;
   privateOwnerName?: string | null;
   privateOwnerPhone?: string | null;
   privateOwnerEmail?: string | null;
@@ -60,12 +61,11 @@ type PropertyDetails = {
   owner?: {
     id: string;
     name: string | null;
-    email: string | null;
     image: string | null;
     role: "USER" | "OWNER" | "REALTOR" | "AGENCY" | "ADMIN";
-    phone: string | null;
     publicProfileEnabled?: boolean | null;
     publicSlug?: string | null;
+    publicPhoneOptIn?: boolean | null;
   };
 };
 
@@ -1108,9 +1108,10 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                       ownerRole={property.owner?.role || "USER"}
                       ownerName={property.owner?.name || undefined}
                       ownerImage={property.owner?.image || undefined}
-                      ownerPhone={property.owner?.phone || undefined}
                       ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
                       ownerPublicSlug={property.owner?.publicSlug || null}
+                      ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
+                      hideOwnerContact={!!(property as any)?.hideOwnerContact}
                       allowRealtorBoard={property.allowRealtorBoard || false}
                     />
 
@@ -1618,9 +1619,10 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               ownerRole={property.owner?.role || "USER"}
               ownerName={property.owner?.name || undefined}
               ownerImage={property.owner?.image || undefined}
-              ownerPhone={property.owner?.phone || undefined}
               ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
               ownerPublicSlug={property.owner?.publicSlug || null}
+              ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
+              hideOwnerContact={!!(property as any)?.hideOwnerContact}
               allowRealtorBoard={property.allowRealtorBoard || false}
             />
           </div>

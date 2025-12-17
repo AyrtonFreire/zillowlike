@@ -121,6 +121,7 @@ export default function EditPropertyPage() {
   const [privateNotes, setPrivateNotes] = useState("");
   const [hidePrice, setHidePrice] = useState(false);
   const [hideExactAddress, setHideExactAddress] = useState(false);
+  const [hideOwnerContact, setHideOwnerContact] = useState(false);
   const [hideCondoFee, setHideCondoFee] = useState(false);
   const [hideIPTU, setHideIPTU] = useState(false);
   const [images, setImages] = useState<ImageInput[]>([]);
@@ -216,6 +217,7 @@ export default function EditPropertyPage() {
         setPrivateNotes(p.privateNotes || "");
         setHidePrice(!!p.hidePrice);
         setHideExactAddress(!!p.hideExactAddress);
+        setHideOwnerContact(!!p.hideOwnerContact);
         setHideCondoFee(!!p.hideCondoFee);
         setHideIPTU(!!p.hideIPTU);
         setImages(p.images || []);
@@ -312,6 +314,7 @@ export default function EditPropertyPage() {
           privateNotes: privateNotes || null,
           hidePrice,
           hideExactAddress,
+          hideOwnerContact,
           hideCondoFee,
           hideIPTU,
           images,
@@ -1309,6 +1312,20 @@ export default function EditPropertyPage() {
                     />
                     <span>Ocultar endereço exato (mostrar só bairro)</span>
                   </label>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={hideOwnerContact}
+                      onChange={(e) => setHideOwnerContact(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Ocultar WhatsApp/telefone do anúncio (somente chat)</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Se desmarcado, o WhatsApp fica disponível apenas para usuários logados e com e-mail verificado.
+                  </p>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <label className="flex items-center gap-2 text-sm text-gray-700">
