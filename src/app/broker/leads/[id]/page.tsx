@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Phone, Mail, MapPin, Calendar, Clock, ArrowLeft, MessageCircle, Link as LinkIcon } from "lucide-react";
+import { Phone, Mail, MapPin, Calendar, Clock, MessageCircle, Link as LinkIcon, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import CountdownTimer from "@/components/queue/CountdownTimer";
 import StatusIndicator from "@/components/queue/StatusIndicator";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
@@ -157,26 +157,15 @@ export default function LeadDetailPage() {
   const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
   const [shareGenerating, setShareGenerating] = useState(false);
 
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  const [showNotes, setShowNotes] = useState(false);
+  const [showSimilar, setShowSimilar] = useState(false);
+
   const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
 
   const leadId = (params?.id as string) || "";
   const toast = useToast();
-
-  useEffect(() => {
-    if (!realtorId || !leadId) return;
-    fetchLead();
-    fetchLeadNotes();
-    fetchMessages();
-    fetchSimilar();
-  }, [realtorId, leadId]);
-
-  useEffect(() => {
-    if (!leadId) return;
-    const interval = setInterval(() => {
-      fetchMessages({ isBackground: true });
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [leadId]);
 
   useEffect(() => {
     if (!leadId) return;
@@ -229,7 +218,7 @@ export default function LeadDetailPage() {
     }
   }, []);
 
-  const fetchLead = async () => {
+  const fetchLead = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -242,6 +231,7 @@ export default function LeadDetailPage() {
       }
 
       setLead(data.lead);
+      setSelectedImageIndex(0);
       if (data.lead.nextActionDate) {
         const d = new Date(data.lead.nextActionDate);
         setReminderDate(d.toISOString().split("T")[0]);
@@ -259,9 +249,9 @@ export default function LeadDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [leadId]);
 
-  const fetchLeadNotes = async () => {
+  const fetchLeadNotes = useCallback(async () => {
     try {
       setNotesError(null);
       setNotesLoading(true);
@@ -280,9 +270,9 @@ export default function LeadDetailPage() {
     } finally {
       setNotesLoading(false);
     }
-  };
+  }, [leadId]);
 
-  const fetchSimilar = async () => {
+  const fetchSimilar = useCallback(async () => {
     try {
       setSimilarError(null);
       setSimilarLoading(true);
@@ -308,7 +298,7 @@ export default function LeadDetailPage() {
     } finally {
       setSimilarLoading(false);
     }
-  };
+  }, [leadId]);
 
   const handleSendMessage = async () => {
     const content = messageDraft.trim();
@@ -345,7 +335,7 @@ export default function LeadDetailPage() {
     }
   };
 
-  const fetchMessages = async (options?: { isBackground?: boolean }) => {
+  const fetchMessages = useCallback(async (options?: { isBackground?: boolean }) => {
     try {
       setMessagesError(null);
       if (!options?.isBackground) {
@@ -377,7 +367,23 @@ export default function LeadDetailPage() {
         setMessagesLoading(false);
       }
     }
-  };
+  }, [leadId, lastMessageId]);
+
+  useEffect(() => {
+    if (!realtorId || !leadId) return;
+    fetchLead();
+    fetchLeadNotes();
+    fetchMessages();
+    fetchSimilar();
+  }, [realtorId, leadId, fetchLead, fetchLeadNotes, fetchMessages, fetchSimilar]);
+
+  useEffect(() => {
+    if (!leadId) return;
+    const interval = setInterval(() => {
+      fetchMessages({ isBackground: true });
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [leadId, fetchMessages]);
 
   const handleSaveReminder = async () => {
     try {
@@ -565,6 +571,25 @@ export default function LeadDetailPage() {
     return `${diffDays}d atrás`;
   };
 
+  const formatPrice = (price?: number | null) => {
+    if (typeof price !== "number") return "Preço sob consulta";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 0,
+    }).format(price / 100);
+  };
+
+  const copyToClipboard = async (label: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success("Copiado!", `${label} copiado para a área de transferência.`);
+    } catch (err) {
+      console.error("Error copying to clipboard:", err);
+      toast.error("Não foi possível copiar", "Seu navegador bloqueou a cópia. Tente novamente.");
+    }
+  };
+
   const handleQuickNote = (type: "WHATSAPP" | "LIGACAO" | "EMAIL") => {
     const now = new Date();
     const timeLabel = now.toLocaleString("pt-BR", {
@@ -591,6 +616,8 @@ export default function LeadDetailPage() {
   };
 
   const hasReminderActive = Boolean(reminderDate || reminderNote);
+  const whatsappUrl = lead?.contact?.phone ? getWhatsAppUrl(lead.contact.phone) : "";
+  const hasWhatsApp = Boolean(whatsappUrl);
 
   if (loading) {
     return (
@@ -652,103 +679,46 @@ export default function LeadDetailPage() {
     >
       <div className="max-w-5xl mx-auto py-8">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-          <div className="flex flex-col lg:flex-row gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Imagem do imóvel */}
-            <div className="lg:w-1/3 flex flex-col gap-6">
+            <div className="lg:col-span-4 flex flex-col gap-3">
               <div className="relative w-full h-56 rounded-xl overflow-hidden bg-gray-100 shadow-sm">
                 <Image
-                  src={lead.property.images[0]?.url || "/placeholder.jpg"}
+                  src={lead.property.images[selectedImageIndex]?.url || lead.property.images[0]?.url || "/placeholder.jpg"}
                   alt={lead.property.title}
                   fill
                   className="object-cover"
                 />
               </div>
 
-              {/* Lembrete de próximo passo */}
-              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/80">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <h2 className="text-sm font-semibold text-gray-900">Lembrete de próximo passo</h2>
-                  <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                      hasReminderActive
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                        : "bg-gray-100 text-gray-500 border border-gray-200"
-                    }`}
-                  >
-                    {hasReminderActive ? "Próximo passo definido" : "Nenhum lembrete definido"}
-                  </span>
+              {lead.property.images.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {lead.property.images.slice(0, 8).map((img, idx) => {
+                    const isActive = idx === selectedImageIndex;
+                    return (
+                      <button
+                        key={`${img.url}-${idx}`}
+                        type="button"
+                        onClick={() => setSelectedImageIndex(idx)}
+                        className={`relative h-12 w-16 flex-shrink-0 overflow-hidden rounded-lg border ${
+                          isActive ? "border-teal-500 ring-2 ring-teal-200" : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <Image
+                          src={img.url || "/placeholder.jpg"}
+                          alt={lead.property.title}
+                          fill
+                          className="object-cover"
+                        />
+                      </button>
+                    );
+                  })}
                 </div>
-                <p className="text-xs text-gray-500 mb-4">
-                  Marque um dia e um resumo curto para lembrar o que precisa fazer com este lead (ex: ligar, enviar mensagem,
-                  combinar visita).
-                </p>
-
-                <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
-                  <span className="text-gray-500">Atalhos rápidos:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickReminder("CALL_TOMORROW")}
-                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  >
-                    Ligar amanhã
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickReminder("WAITING_RESPONSE")}
-                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  >
-                    Aguardando resposta
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickReminder("SCHEDULE_VISIT")}
-                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  >
-                    Agendar visita
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div>
-                    <label className="block text-gray-700 mb-1">Dia do lembrete</label>
-                    <input
-                      type="date"
-                      value={reminderDate}
-                      onChange={(e) => setReminderDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-gray-700 mb-1">Resumo rápido</label>
-                    <input
-                      type="text"
-                      value={reminderNote}
-                      onChange={(e) => setReminderNote(e.target.value)}
-                      placeholder="Ex: Ligar depois das 18h para saber decisão."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                    />
-                  </div>
-                </div>
-
-                <p className="mt-2 text-[11px] text-gray-500">
-                  Se você apagar a data e o texto e salvar, o lembrete é removido para este lead.
-                </p>
-
-                <div className="mt-3 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleSaveReminder}
-                    disabled={reminderSaving}
-                    className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {reminderSaving ? "Salvando lembrete..." : "Salvar lembrete"}
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Informações principais / Cabeçalho do lead */}
-            <div className="flex-1 space-y-4">
+            <div className="lg:col-span-8 space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
                   <h1 className="text-2xl font-bold text-gray-900">
@@ -818,7 +788,7 @@ export default function LeadDetailPage() {
                     {" "}
                     {reminderNote || "rever este lead"}
                     {reminderDate &&
-                      `  b7 ${new Date(reminderDate).toLocaleDateString("pt-BR", {
+                      ` · ${new Date(reminderDate).toLocaleDateString("pt-BR", {
                         day: "2-digit",
                         month: "2-digit",
                       })}`}
@@ -830,48 +800,63 @@ export default function LeadDetailPage() {
               <div className="mt-4">
                 <p className="text-[11px] text-gray-500 mb-1">Ações rápidas</p>
                 <div className="flex flex-wrap gap-2">
+                  {hasWhatsApp ? (
+                    <a
+                      href={whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs sm:text-sm font-semibold hover:bg-emerald-700"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      WhatsApp
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleOpenClientChat}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl glass-teal text-white text-xs sm:text-sm font-semibold"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Abrir conversa
+                    </button>
+                  )}
+
                   {lead.contact?.phone && (
                     <a
                       href={`tel:${lead.contact.phone}`}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                      className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
                     >
                       <Phone className="w-3.5 h-3.5" />
                       Ligar
                     </a>
                   )}
-                  {lead.contact?.phone && getWhatsAppUrl(lead.contact.phone) && (
-                    <a
-                      href={getWhatsAppUrl(lead.contact.phone)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
-                    >
-                      <Phone className="w-3.5 h-3.5" />
-                      WhatsApp
-                    </a>
-                  )}
+
                   {lead.contact?.email && (
                     <a
                       href={`mailto:${lead.contact.email}`}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                      className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
                     >
                       <Mail className="w-3.5 h-3.5" />
                       E-mail
                     </a>
                   )}
-                  <button
-                    type="button"
-                    onClick={handleOpenClientChat}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-indigo-200 bg-indigo-50 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    Abrir conversa
-                  </button>
+
+                  {hasWhatsApp && (
+                    <button
+                      type="button"
+                      onClick={handleOpenClientChat}
+                      className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      Abrir conversa
+                    </button>
+                  )}
+
                   <Link
                     href={`/property/${lead.property.id}`}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
                   >
-                    Ver anúncio do imóvel
+                    Ver anúncio
                   </Link>
                 </div>
               </div>
@@ -887,7 +872,7 @@ export default function LeadDetailPage() {
                       Registrar uma nota rápida com o que foi combinado, para não depender só da memória.
                     </li>
                     <li>
-                      Definir um próximo passo simples no lembrete do lado esquerdo (dia e um pequeno resumo).
+                      Definir um próximo passo simples no lembrete na lateral (dia e um pequeno resumo).
                     </li>
                   </ol>
                   <p className="mt-2 text-[11px] text-gray-500">
@@ -907,26 +892,29 @@ export default function LeadDetailPage() {
             </div>
           </div>
 
-          {/* Timeline de atividades */}
-          <LeadTimeline
-            leadId={leadId}
-            createdAt={lead.createdAt}
-            respondedAt={lead.respondedAt}
-            completedAt={lead.completedAt}
-            pipelineStage={lead.pipelineStage}
-            notes={notes}
-            messages={messages}
-          />
+          {/* Corpo principal */}
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Coluna esquerda: atividades + interação */}
+            <div className="lg:col-span-8 space-y-6">
+              {/* Timeline de atividades */}
+              <LeadTimeline
+                leadId={leadId}
+                createdAt={lead.createdAt}
+                respondedAt={lead.respondedAt}
+                completedAt={lead.completedAt}
+                pipelineStage={lead.pipelineStage}
+                notes={notes}
+                messages={messages}
+              />
 
-          {/* Corpo principal em duas colunas */}
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            {/* Coluna esquerda: interação e acompanhamento */}
-            <div className="lg:col-span-2 space-y-6">
               {/* Mensagens internas */}
-              <div className="border-t border-gray-200 pt-6">
+              <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <h2 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
                   <MessageCircle className="w-4 h-4" />
                   Mensagens internas
+                  {messagesLoading && (
+                    <span className="ml-2 text-[10px] font-medium text-gray-500">Atualizando...</span>
+                  )}
                   {hasNewMessages && (
                     <span className="ml-1 px-2 py-0.5 rounded-full bg-red-100 text-[10px] font-semibold text-red-700">
                       Novas mensagens
@@ -939,6 +927,21 @@ export default function LeadDetailPage() {
                     você enviar aqui ficam registradas no histórico de atividades acima.
                   </p>
                 </div>
+
+                {messages.length === 0 && (
+                  <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-700">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span>Nenhuma mensagem registrada ainda. Use um atalho para registrar o primeiro contato.</span>
+                      <button
+                        type="button"
+                        onClick={() => setMessageDraft((prev) => (prev ? `${prev}\n\n${MESSAGE_TEMPLATES[0].text}` : MESSAGE_TEMPLATES[0].text))}
+                        className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
+                      >
+                        Registrar primeiro contato
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {messagesError && <p className="text-xs text-red-600 mb-2">{messagesError}</p>}
 
@@ -984,73 +987,189 @@ export default function LeadDetailPage() {
               </div>
 
               {/* Notas rápidas */}
-              <div className="border-t border-gray-200 pt-6">
-                <h2 className="text-sm font-semibold text-gray-900 mb-1">Notas sobre este lead</h2>
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-gray-500">
-                    Anote com suas próprias palavras os pontos combinados, dúvidas do cliente ou próximos passos. Essas notas ficam
-                    visíveis apenas para você e também aparecem no histórico de atividades.
-                  </p>
-                </div>
+              <div className="bg-white rounded-xl border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowNotes((prev) => !prev)}
+                  className="w-full flex items-center justify-between px-4 py-3"
+                >
+                  <span className="text-sm font-semibold text-gray-900">Notas</span>
+                  <span className="text-xs text-gray-500 inline-flex items-center gap-2">
+                    {notes.length ? `${notes.length} nota(s)` : "Nenhuma nota"}
+                    {showNotes ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </span>
+                </button>
 
-                {notesError && <p className="text-xs text-red-600 mb-2">{notesError}</p>}
+                {showNotes && (
+                  <div className="px-4 pb-4 pt-1 border-t border-gray-100">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-gray-500">
+                        Anote com suas próprias palavras os pontos combinados, dúvidas do cliente ou próximos passos. Essas notas ficam
+                        visíveis apenas para você e também aparecem no histórico de atividades.
+                      </p>
+                    </div>
 
-                <div className="space-y-2">
-                  <div className="flex flex-wrap gap-2 justify-between items-center">
-                    <p className="text-[11px] text-gray-500">
-                      Se preferir, use os botões abaixo para marcar rapidamente uma conversa por WhatsApp, ligação ou e-mail e depois
-                      complemente com seus detalhes.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleQuickNote("WHATSAPP")}
-                        className="text-[11px] text-green-700 hover:text-green-800 font-medium"
-                      >
-                        Registrar conversa por WhatsApp
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleQuickNote("LIGACAO")}
-                        className="text-[11px] text-gray-700 hover:text-gray-900 font-medium"
-                      >
-                        Registrar conversa por ligação
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleQuickNote("EMAIL")}
-                        className="text-[11px] text-blue-700 hover:text-blue-800 font-medium"
-                      >
-                        Registrar conversa por e-mail
-                      </button>
+                    {notes.length === 0 && (
+                      <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-700">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span>Sem notas ainda. Registre o que combinou no primeiro contato para não esquecer.</span>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickNote("WHATSAPP")}
+                            className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
+                          >
+                            Registrar primeiro contato
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {notesError && <p className="text-xs text-red-600 mb-2">{notesError}</p>}
+
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2 justify-between items-center">
+                        <p className="text-[11px] text-gray-500">
+                          Se preferir, use os botões abaixo para marcar rapidamente uma conversa por WhatsApp, ligação ou e-mail e depois
+                          complemente com seus detalhes.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleQuickNote("WHATSAPP")}
+                            className="text-[11px] text-green-700 hover:text-green-800 font-medium"
+                          >
+                            WhatsApp
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickNote("LIGACAO")}
+                            className="text-[11px] text-gray-700 hover:text-gray-900 font-medium"
+                          >
+                            Ligação
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickNote("EMAIL")}
+                            className="text-[11px] text-blue-700 hover:text-blue-800 font-medium"
+                          >
+                            E-mail
+                          </button>
+                        </div>
+                      </div>
+                      <textarea
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                        rows={3}
+                        placeholder="Ex: Cliente pediu retorno depois das 18h; está avaliando financiamento; prefere contato por WhatsApp."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleAddNote}
+                          disabled={notesLoading}
+                          className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {notesLoading ? "Salvando..." : "Salvar nota"}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <textarea
-                    value={noteDraft}
-                    onChange={(e) => setNoteDraft(e.target.value)}
-                    rows={3}
-                    placeholder="Ex: Cliente pediu retorno depois das 18h; está avaliando financiamento; prefere contato por WhatsApp."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleAddNote}
-                      disabled={notesLoading}
-                      className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {notesLoading ? "Salvando..." : "Salvar nota"}
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
-            {/* Coluna direita: contexto do imóvel e negociação */}
-            <div className="lg:col-span-1 space-y-6">
+            {/* Coluna direita: contexto e próximos passos */}
+            <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
+              {/* Lembrete de próximo passo */}
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/80">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h2 className="text-sm font-semibold text-gray-900">Próximo passo</h2>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                      hasReminderActive
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                        : "bg-gray-100 text-gray-500 border border-gray-200"
+                    }`}
+                  >
+                    {hasReminderActive ? "Definido" : "Não definido"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mb-4">
+                  Marque um dia e um resumo curto para lembrar o que precisa fazer com este lead (ex: ligar, enviar mensagem,
+                  combinar visita).
+                </p>
+
+                <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="text-gray-500">Atalhos:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickReminder("CALL_TOMORROW")}
+                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    Ligar amanhã
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickReminder("WAITING_RESPONSE")}
+                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    Aguardando resposta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickReminder("SCHEDULE_VISIT")}
+                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    Agendar visita
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-gray-700 mb-1">Dia</label>
+                    <input
+                      type="date"
+                      value={reminderDate}
+                      onChange={(e) => setReminderDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-gray-700 mb-1">Resumo</label>
+                    <input
+                      type="text"
+                      value={reminderNote}
+                      onChange={(e) => setReminderNote(e.target.value)}
+                      placeholder="Ex: Ligar depois das 18h para saber decisão."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    />
+                  </div>
+                </div>
+
+                <p className="mt-2 text-[11px] text-gray-500">
+                  Se você apagar a data e o texto e salvar, o lembrete é removido para este lead.
+                </p>
+
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSaveReminder}
+                    disabled={reminderSaving}
+                    className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {reminderSaving ? "Salvando..." : "Salvar"}
+                  </button>
+                </div>
+              </div>
+
               {/* Resumo do imóvel */}
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                 <h2 className="text-sm font-semibold text-gray-900 mb-3">Resumo do imóvel</h2>
+                <div className="mb-3">
+                  <span className="text-gray-500 block text-xs">Preço</span>
+                  <span className="font-semibold text-gray-900">{formatPrice(lead.property.price)}</span>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-700">
                   <div>
                     <span className="text-gray-500 block text-xs">Tipo</span>
@@ -1075,121 +1194,159 @@ export default function LeadDetailPage() {
                     </div>
                   )}
                 </div>
-                <div className="mt-3 flex justify-between items-center gap-2">
-                  <p className="text-xs text-gray-500">
-                    Abra o anúncio completo se precisar de mais detalhes, fotos ou descrição completa.
-                  </p>
-                  <Link
-                    href={`/property/${lead.property.id}`}
-                    className="inline-flex items-center px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
-                  >
-                    Ver anúncio completo
-                  </Link>
+                <div className="mt-3 space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const value = `${lead.property.street}${lead.property.neighborhood ? `, ${lead.property.neighborhood}` : ""}, ${lead.property.city} - ${lead.property.state}`;
+                        copyToClipboard("Endereço", value);
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Copiar endereço
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const origin = typeof window !== "undefined" ? window.location.origin : "";
+                        const value = `${origin}/property/${lead.property.id}`;
+                        copyToClipboard("Link", value);
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Copiar link
+                    </button>
+                  </div>
+
+                  <div className="flex justify-between items-center gap-2">
+                    <p className="text-xs text-gray-500">
+                      Abra o anúncio completo se precisar de mais detalhes, fotos ou descrição completa.
+                    </p>
+                    <Link
+                      href={`/property/${lead.property.id}`}
+                      className="inline-flex items-center px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
+                    >
+                      Ver anúncio
+                    </Link>
+                  </div>
                 </div>
               </div>
 
               {/* Imóveis similares do seu estoque */}
-              <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                <h2 className="text-sm font-semibold text-gray-900 mb-1">Imóveis similares do seu estoque</h2>
-                <p className="text-xs text-gray-500 mb-3">
-                  Sugestões de imóveis seus parecidos com este (tipo, região e faixa de preço). Use como apoio na conversa ou
-                  gere um link para o cliente.
-                </p>
+              <div className="bg-white rounded-xl border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowSimilar((prev) => !prev)}
+                  className="w-full flex items-center justify-between px-4 py-3"
+                >
+                  <span className="text-sm font-semibold text-gray-900">Imóveis similares</span>
+                  <span className="text-xs text-gray-500 inline-flex items-center gap-2">
+                    {similarItems.length ? `${similarItems.length} sugestão(ões)` : "Sem sugestões"}
+                    {showSimilar ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </span>
+                </button>
 
-                {similarError && (
-                  <p className="text-[11px] text-red-600 mb-2">{similarError}</p>
-                )}
+                {showSimilar && (
+                  <div className="px-4 pb-4 pt-1 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 mb-3">
+                      Sugestões de imóveis seus parecidos com este (tipo, região e faixa de preço). Use como apoio na conversa ou
+                      gere um link para o cliente.
+                    </p>
 
-                {similarLoading && !similarItems.length ? (
-                  <p className="text-xs text-gray-500">Buscando imóveis do seu estoque...</p>
-                ) : similarItems.length === 0 ? (
-                  <p className="text-xs text-gray-500 mb-3">
-                    Ainda não encontramos imóveis seus parecidos com este. Assim que você tiver mais imóveis na mesma região e
-                    faixa de preço, eles aparecem aqui.
-                  </p>
-                ) : (
-                  <div className="space-y-2 mb-3">
-                    {similarItems.map((item) => (
-                      <Link
-                        key={item.property.id}
-                        href={`/property/${item.property.id}`}
-                        className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 hover:bg-white hover:border-gray-200 transition-colors"
+                    {similarError && (
+                      <p className="text-[11px] text-red-600 mb-2">{similarError}</p>
+                    )}
+
+                    {similarLoading && !similarItems.length ? (
+                      <p className="text-xs text-gray-500">Buscando imóveis do seu estoque...</p>
+                    ) : similarItems.length === 0 ? (
+                      <p className="text-xs text-gray-500 mb-3">
+                        Ainda não encontramos imóveis seus parecidos com este. Assim que você tiver mais imóveis na mesma região e
+                        faixa de preço, eles aparecem aqui.
+                      </p>
+                    ) : (
+                      <div className="space-y-2 mb-3">
+                        {similarItems.map((item) => (
+                          <Link
+                            key={item.property.id}
+                            href={`/property/${item.property.id}`}
+                            className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 hover:bg-white hover:border-gray-200 transition-colors"
+                          >
+                            <div className="relative h-12 w-16 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
+                              {item.property.images?.[0]?.url && (
+                                <Image
+                                  src={item.property.images[0].url}
+                                  alt={item.property.title}
+                                  fill
+                                  className="object-cover"
+                                />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-gray-900 truncate">
+                                {item.property.title}
+                              </p>
+                              <p className="text-[11px] text-gray-500 truncate">
+                                {item.property.neighborhood ? `${item.property.neighborhood}, ` : ""}
+                                {item.property.city}/{item.property.state}
+                              </p>
+                              <p className="text-[11px] text-gray-900 font-semibold">
+                                {formatPrice(item.property.price)}
+                              </p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-3 space-y-2">
+                      <button
+                        type="button"
+                        onClick={handleGenerateSimilarLink}
+                        disabled={shareGenerating}
+                        className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <div className="relative h-12 w-16 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
-                          {item.property.images?.[0]?.url && (
-                            <Image
-                              src={item.property.images[0].url}
-                              alt={item.property.title}
-                              fill
-                              className="object-cover"
+                        {shareGenerating ? (
+                          "Gerando link..."
+                        ) : (
+                          <>
+                            <LinkIcon className="w-3.5 h-3.5" />
+                            Gerar link para enviar ao cliente
+                          </>
+                        )}
+                      </button>
+
+                      {shareUrl && (
+                        <div className="text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                          <p className="font-medium mb-1">Link gerado:</p>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              readOnly
+                              value={shareUrl}
+                              className="flex-1 px-2 py-1 rounded border border-gray-200 bg-white text-[11px] text-gray-700"
                             />
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard("Link", shareUrl)}
+                              className="px-2 py-1 rounded bg-gray-900 text-white text-[11px] font-semibold"
+                            >
+                              Copiar
+                            </button>
+                          </div>
+                          {shareExpiresAt && (
+                            <p className="mt-1 text-[10px] text-gray-500">
+                              Válido até {new Date(shareExpiresAt).toLocaleDateString("pt-BR")}.
+                            </p>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-gray-900 truncate">
-                            {item.property.title}
-                          </p>
-                          <p className="text-[11px] text-gray-500 truncate">
-                            {item.property.neighborhood ? `${item.property.neighborhood}, ` : ""}
-                            {item.property.city}/{item.property.state}
-                          </p>
-                          <p className="text-[11px] text-gray-900 font-semibold">
-                            {typeof item.property.price === "number"
-                              ? `R$ ${(item.property.price / 100).toLocaleString("pt-BR")}`
-                              : "Preço sob consulta"}
-                          </p>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-
-                <div className="mt-3 space-y-2">
-                  <button
-                    type="button"
-                    onClick={handleGenerateSimilarLink}
-                    disabled={shareGenerating}
-                    className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {shareGenerating ? (
-                      "Gerando link..."
-                    ) : (
-                      <>
-                        <LinkIcon className="w-3.5 h-3.5" />
-                        Gerar link para enviar ao cliente
-                      </>
-                    )}
-                  </button>
-
-                  {shareUrl && (
-                    <div className="text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                      <p className="font-medium mb-1">Link gerado:</p>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          readOnly
-                          value={shareUrl}
-                          className="flex-1 px-2 py-1 rounded border border-gray-200 bg-white text-[11px] text-gray-700"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(shareUrl);
-                            toast.success("Link copiado!", "Cole onde preferir (WhatsApp, e-mail, etc.).");
-                          }}
-                          className="px-2 py-1 rounded bg-gray-900 text-white text-[11px] font-semibold"
-                        >
-                          Copiar
-                        </button>
-                      </div>
-                      {shareExpiresAt && (
-                        <p className="mt-1 text-[10px] text-gray-500">
-                          Válido até {new Date(shareExpiresAt).toLocaleDateString("pt-BR")}.
-                        </p>
                       )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* Seção avançada: mais detalhes da negociação */}
