@@ -149,7 +149,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     let actorId: string | undefined;
     let actorRole: string | undefined;
 
-    if (session) {
+    const chatContext = (req.headers.get("x-chat-context") || "").toLowerCase();
+    if (chatContext === "client") {
+      fromClient = true;
+    }
+
+    if (session && chatContext !== "client") {
       const userId = session.userId || session.user?.id;
       const role = session.role || session.user?.role;
 
@@ -181,8 +186,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         });
 
         // Se é corretor atribuído, dono do imóvel, dono da equipe ou admin, responde como profissional
-        if (isRealtor || isPropertyOwner || isTeamOwner || isAdmin) {
-          fromClient = false;
+        // Apenas se o request explicitamente declarar contexto profissional, ou se não houver contexto.
+        if (chatContext === "professional" || chatContext === "") {
+          if (isRealtor || isPropertyOwner || isTeamOwner || isAdmin) {
+            fromClient = false;
+          }
         }
         // Caso contrário (incluindo outros corretores), envia como cliente
         // Isso permite que corretores interessados em imóveis de outros corretores possam usar o chat

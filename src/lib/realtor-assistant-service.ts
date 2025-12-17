@@ -24,6 +24,12 @@ function isSameDay(a: Date, b: Date) {
   );
 }
 
+function addMinutes(d: Date, minutes: number) {
+  const x = new Date(d);
+  x.setMinutes(x.getMinutes() + minutes);
+  return x;
+}
+
 export class RealtorAssistantService {
   static async emitUpdated(realtorId: string) {
     try {
@@ -224,6 +230,19 @@ export class RealtorAssistantService {
 
     const leadIds = leads.map((l) => l.id);
 
+    const leadCreatedEvents = await (prisma as any).leadEvent.findMany({
+      where: {
+        leadId: { in: leadIds },
+        type: "LEAD_CREATED",
+      },
+      orderBy: { createdAt: "desc" },
+      distinct: ["leadId"],
+      select: { leadId: true, metadata: true },
+    });
+    const leadSourceMap = new Map<string, any>(
+      (leadCreatedEvents || []).map((e: any) => [e.leadId, e.metadata || null])
+    );
+
     const lastNotes = await prisma.leadNote.findMany({
       where: { leadId: { in: leadIds } },
       orderBy: { createdAt: "desc" },
@@ -248,15 +267,49 @@ export class RealtorAssistantService {
     });
     const lastProChatMap = new Map(lastProChat.map((m) => [m.leadId, m.createdAt]));
 
-    const lastClientChat = await prisma.leadClientMessage.findMany({
+    const firstClientMessages = await prisma.leadClientMessage.findMany({
+      where: { leadId: { in: leadIds }, fromClient: true },
+      orderBy: { createdAt: "asc" },
+      distinct: ["leadId"],
+      select: { leadId: true, createdAt: true, content: true },
+    });
+    const firstClientMsgMap = new Map(
+      (firstClientMessages || []).map((m: any) => [m.leadId, { createdAt: m.createdAt, content: m.content }])
+    );
+
+    const lastClientMessages = await prisma.leadClientMessage.findMany({
       where: { leadId: { in: leadIds }, fromClient: true },
       orderBy: { createdAt: "desc" },
       distinct: ["leadId"],
-      select: { leadId: true, createdAt: true },
+      select: { leadId: true, createdAt: true, content: true },
     });
-    const lastClientChatMap = new Map(lastClientChat.map((m) => [m.leadId, m.createdAt]));
+    const lastClientMsgMap = new Map(
+      (lastClientMessages || []).map((m: any) => [m.leadId, { createdAt: m.createdAt, content: m.content }])
+    );
+
+    const recentClientMessages = await prisma.leadClientMessage.findMany({
+      where: {
+        leadId: { in: leadIds },
+        fromClient: true,
+        createdAt: { gte: addDays(now, -14) },
+      },
+      orderBy: { createdAt: "asc" },
+      select: { leadId: true, createdAt: true, content: true },
+    });
 
     const dedupeKeys = new Set<string>();
+
+    const SLA_MINUTES_BY_CHANNEL: Record<string, number> = {
+      CHAT: 15,
+      FORM: 30,
+      WHATSAPP: 60,
+    };
+
+    const channelLabel: Record<string, string> = {
+      CHAT: "Chat",
+      FORM: "Formulário",
+      WHATSAPP: "WhatsApp",
+    };
 
     for (const lead of leads) {
       const propertyTitle = lead.property?.title || "Imóvel";
@@ -274,8 +327,8 @@ export class RealtorAssistantService {
           message: `${clientName} pediu informações sobre ${propertyTitle}.`,
           dueAt: null,
           dedupeKey: key,
-          primaryAction: { type: "OPEN_LEAD", leadId: lead.id },
-          secondaryAction: { type: "OPEN_CHAT", leadId: lead.id },
+          primaryAction: { type: "OPEN_CHAT", leadId: lead.id },
+          secondaryAction: { type: "OPEN_LEAD", leadId: lead.id },
           metadata: { status: lead.status },
         });
       }
@@ -378,7 +431,6 @@ export class RealtorAssistantService {
       const lastNoteAt = lastNoteMap.get(lead.id) as Date | undefined;
       const lastInternalMsgAt = lastInternalMsgMap.get(lead.id) as Date | undefined;
       const lastProChatAt = lastProChatMap.get(lead.id) as Date | undefined;
-      const lastClientChatAt = lastClientChatMap.get(lead.id) as Date | undefined;
 
       const lastContactCandidates: Date[] = [];
       if (lastNoteAt) lastContactCandidates.push(lastNoteAt);
@@ -406,31 +458,110 @@ export class RealtorAssistantService {
             message: `${clientName} pediu informações sobre ${propertyTitle}.`,
             dueAt: null,
             dedupeKey: key,
-            primaryAction: { type: "OPEN_LEAD", leadId: lead.id },
-            secondaryAction: { type: "OPEN_CHAT", leadId: lead.id },
+            primaryAction: { type: "OPEN_CHAT", leadId: lead.id },
+            secondaryAction: { type: "OPEN_LEAD", leadId: lead.id },
             metadata: { status: lead.status },
           });
         }
       }
 
-      if (lastClientChatAt) {
-        const hasUnread = !lastContactAt ? true : lastClientChatAt > lastContactAt;
-        if (hasUnread) {
-          const key = `UNANSWERED_CLIENT_MESSAGE:${lead.id}:${lastClientChatAt.toISOString()}`;
-          dedupeKeys.add(key);
-          await this.upsertFromRule({
-            realtorId,
-            leadId: lead.id,
-            type: "UNANSWERED_CLIENT_MESSAGE",
-            priority: "HIGH",
-            title: "Cliente aguardando resposta",
-            message: `${clientName} enviou uma mensagem e ainda não recebeu retorno.`,
-            dueAt: lastClientChatAt,
-            dedupeKey: key,
-            primaryAction: { type: "OPEN_CHAT", leadId: lead.id },
-            secondaryAction: { type: "OPEN_LEAD", leadId: lead.id },
-          });
-        }
+      const sourceMeta = leadSourceMap.get(lead.id) as any;
+      const leadSource = (sourceMeta as any)?.source || null;
+
+      const firstClient = firstClientMsgMap.get(lead.id) as any;
+      const lastClient = lastClientMsgMap.get(lead.id) as any;
+
+      const isFormLead = leadSource === "CONTACT_FORM" || leadSource === "VISIT_REQUEST";
+
+      const isFirstClientForm =
+        !!isFormLead &&
+        !!firstClient?.createdAt &&
+        !Number.isNaN(new Date(firstClient.createdAt).getTime());
+
+      const channelsToCheck: Array<"FORM" | "CHAT"> = [];
+      if (isFirstClientForm) channelsToCheck.push("FORM");
+      channelsToCheck.push("CHAT");
+
+      for (const channel of channelsToCheck) {
+        const clientMessagesForLead = (recentClientMessages || []).filter((m: any) => m.leadId === lead.id);
+
+        const clientMsgsInChannel = clientMessagesForLead.filter((m: any) => {
+          if (channel === "FORM") {
+            return isFirstClientForm && firstClient?.createdAt && new Date(m.createdAt).getTime() === new Date(firstClient.createdAt).getTime();
+          }
+          // CHAT
+          if (isFirstClientForm && firstClient?.createdAt) {
+            return new Date(m.createdAt).getTime() !== new Date(firstClient.createdAt).getTime();
+          }
+          return true;
+        });
+
+        const lastClientInChannel =
+          channel === "FORM"
+            ? firstClient
+            : (() => {
+                if (!lastClient?.createdAt) return null;
+                if (isFirstClientForm && firstClient?.createdAt) {
+                  const sameAsFirst =
+                    new Date(lastClient.createdAt).getTime() === new Date(firstClient.createdAt).getTime();
+                  if (sameAsFirst) return null;
+                }
+                return lastClient;
+              })();
+
+        if (!lastClientInChannel?.createdAt) continue;
+        const lastClientAt = new Date(lastClientInChannel.createdAt);
+        if (Number.isNaN(lastClientAt.getTime())) continue;
+
+        const hasUnread = !lastContactAt ? true : lastClientAt > lastContactAt;
+        if (!hasUnread) continue;
+
+        const unreadMsgs = clientMsgsInChannel.filter((m: any) => {
+          const d = new Date(m.createdAt);
+          if (Number.isNaN(d.getTime())) return false;
+          return !lastContactAt ? true : d > lastContactAt;
+        });
+
+        const unreadCount = unreadMsgs.length || 1;
+        const firstUnreadAt = unreadMsgs.length > 0 ? new Date(unreadMsgs[0].createdAt) : lastClientAt;
+
+        const slaMinutes = SLA_MINUTES_BY_CHANNEL[channel] ?? 30;
+        const dueAt = addMinutes(firstUnreadAt, slaMinutes);
+
+        const msToDue = dueAt.getTime() - now.getTime();
+        const isOverdue = msToDue <= 0;
+
+        const priority: "LOW" | "MEDIUM" | "HIGH" = isOverdue || msToDue <= 5 * 60 * 1000 ? "HIGH" : "MEDIUM";
+
+        const lastPreview = String(lastClientInChannel.content || "").trim().slice(0, 140);
+        const countText = unreadCount === 1 ? "uma mensagem" : `${unreadCount} mensagens`;
+        const title = `Cliente aguardando resposta (${channelLabel[channel] || channel})`;
+        const message = lastPreview
+          ? `${clientName} enviou ${countText} e ainda não recebeu retorno. Última: “${lastPreview}”`
+          : `${clientName} enviou ${countText} e ainda não recebeu retorno.`;
+
+        const key = `UNANSWERED_CLIENT_MESSAGE:${lead.id}:${channel}`;
+        dedupeKeys.add(key);
+        await this.upsertFromRule({
+          realtorId,
+          leadId: lead.id,
+          type: "UNANSWERED_CLIENT_MESSAGE",
+          priority,
+          title,
+          message,
+          dueAt,
+          dedupeKey: key,
+          primaryAction: { type: "OPEN_CHAT", leadId: lead.id },
+          secondaryAction: { type: "OPEN_LEAD", leadId: lead.id },
+          metadata: {
+            channel,
+            unreadCount,
+            lastClientAt: lastClientAt.toISOString(),
+            firstUnreadAt: firstUnreadAt.toISOString(),
+            slaMinutes,
+            leadSource,
+          },
+        });
       }
 
       const firstContactThreshold = new Date(lead.createdAt);

@@ -322,7 +322,7 @@ export default function ClientChatPage() {
       setSending(true);
       const response = await fetch(`/api/chat/${token}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-chat-context": "client" },
         body: JSON.stringify({ content }),
       });
 
