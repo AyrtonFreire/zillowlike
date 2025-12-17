@@ -21,6 +21,11 @@ const rateLimiters = {
     points: 20,
     duration: 60,
   }),
+
+  ai: new RateLimiterMemory({
+    points: 5,
+    duration: 60 * 60,
+  }),
 };
 
 /**

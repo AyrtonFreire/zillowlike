@@ -47,15 +47,33 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Invalid payload" }, { status: 400 });
     }
 
+    const existing = await prisma.propertyDraft.findUnique({
+      where: { userId },
+      select: { data: true },
+    });
+
+    const existingData = (existing?.data || {}) as any;
+    const incomingData = data as any;
+
+    const existingGen = Number(existingData.aiDescriptionGenerations || 0);
+    const incomingGen = Number(incomingData.aiDescriptionGenerations || 0);
+    if (incomingGen < existingGen) {
+      incomingData.aiDescriptionGenerations = existingGen;
+    }
+
+    if (typeof incomingData.aiGeneratedDescription === "undefined" && typeof existingData.aiGeneratedDescription !== "undefined") {
+      incomingData.aiGeneratedDescription = existingData.aiGeneratedDescription;
+    }
+
     const draft = await prisma.propertyDraft.upsert({
       where: { userId },
       update: {
-        data,
+        data: incomingData,
         currentStep,
       },
       create: {
         userId,
-        data,
+        data: incomingData,
         currentStep,
       },
     });

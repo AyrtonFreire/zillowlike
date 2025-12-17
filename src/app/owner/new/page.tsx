@@ -28,6 +28,8 @@ export default function NewPropertyPage() {
   const [publishedProperty, setPublishedProperty] = useState<{ id: string; title: string; url: string } | null>(null);
   
   const [description, setDescription] = useState("");
+  const [aiDescriptionGenerations, setAiDescriptionGenerations] = useState<number>(0);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [customTitle, setCustomTitle] = useState(""); // Título editável pelo usuário
   const [priceBRL, setPriceBRL] = useState("");
   const [type, setType] = useState("HOUSE");
@@ -656,6 +658,8 @@ export default function NewPropertyPage() {
     setToast(null);
     setSubmitIntent(false);
     setDescription("");
+    setAiDescriptionGenerations(0);
+    setIsGeneratingDescription(false);
     setCustomTitle("");
     setPriceBRL("");
     setType("HOUSE");
@@ -766,6 +770,7 @@ export default function NewPropertyPage() {
       if (!raw) return;
       const d = JSON.parse(raw);
       if (d.description) setDescription(d.description);
+      else if (d.aiGeneratedDescription) setDescription(d.aiGeneratedDescription);
       if (d.customTitle) setCustomTitle(d.customTitle);
       if (d.priceBRL) setPriceBRL(d.priceBRL);
       if (d.type) setType(d.type);
@@ -778,9 +783,10 @@ export default function NewPropertyPage() {
       if (typeof d.bedrooms !== 'undefined') setBedrooms(d.bedrooms);
       if (typeof d.bathrooms !== 'undefined') setBathrooms(d.bathrooms);
       if (typeof d.areaM2 !== 'undefined') setAreaM2(d.areaM2);
+      if (typeof d.aiDescriptionGenerations === 'number') setAiDescriptionGenerations(d.aiDescriptionGenerations);
       if (Array.isArray(d.images)) setImages(d.images);
       if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
-      if (typeof d.currentStep === 'number' && d.currentStep >= 1 && d.currentStep <= 6) {
+      if (typeof d.currentStep === 'number' && d.currentStep >= 1 && d.currentStep <= 7) {
         setCurrentStep(d.currentStep);
       }
       // Campos privados do proprietário
@@ -821,6 +827,7 @@ export default function NewPropertyPage() {
         const d = (draft.data || {}) as any;
 
         if (d.description) setDescription(d.description);
+        else if (d.aiGeneratedDescription) setDescription(d.aiGeneratedDescription);
         if (d.customTitle) setCustomTitle(d.customTitle);
         if (d.priceBRL) setPriceBRL(d.priceBRL);
         if (d.type) setType(d.type);
@@ -833,11 +840,12 @@ export default function NewPropertyPage() {
         if (typeof d.bedrooms !== "undefined") setBedrooms(d.bedrooms);
         if (typeof d.bathrooms !== "undefined") setBathrooms(d.bathrooms);
         if (typeof d.areaM2 !== "undefined") setAreaM2(d.areaM2);
+        if (typeof d.aiDescriptionGenerations === 'number') setAiDescriptionGenerations(d.aiDescriptionGenerations);
         if (Array.isArray(d.images)) setImages(d.images);
         if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
 
         const stepFromApi = typeof draft.currentStep === "number" ? draft.currentStep : d.currentStep;
-        if (typeof stepFromApi === "number" && stepFromApi >= 1 && stepFromApi <= 6) {
+        if (typeof stepFromApi === "number" && stepFromApi >= 1 && stepFromApi <= 7) {
           setCurrentStep(stepFromApi);
         }
 
@@ -876,6 +884,7 @@ export default function NewPropertyPage() {
       try {
         const payload = {
           description,
+          aiDescriptionGenerations,
           customTitle,
           priceBRL,
           type,
@@ -925,7 +934,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, customTitle, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images, conditionTags, currentStep, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, iptuYearlyBRL]);
+  }, [description, aiDescriptionGenerations, customTitle, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, images, conditionTags, currentStep, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, iptuYearlyBRL]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1039,8 +1048,9 @@ export default function NewPropertyPage() {
     { id: 2, name: "Localização", description: "Endereço completo" },
     { id: 3, name: "Detalhes", description: "Quartos, banheiros e área" },
     { id: 4, name: "Fotos", description: "Imagens do imóvel" },
-    { id: 5, name: "Dados do proprietário", description: "Informações internas (opcional)" },
-    { id: 6, name: "Revisão final", description: "Conferir dados e publicar" },
+    { id: 5, name: "Descrição", description: "Texto do anúncio" },
+    { id: 6, name: "Dados do proprietário", description: "Informações internas (opcional)" },
+    { id: 7, name: "Revisão final", description: "Conferir dados e publicar" },
   ];
 
   function tipsForStep(step: number): string[] {
@@ -1071,11 +1081,17 @@ export default function NewPropertyPage() {
         ];
       case 5:
         return [
+          "Clique em 'Gerar descrição com IA' para criar um texto profissional com base nos dados e fotos.",
+          "Depois você pode editar o texto manualmente e ajustar detalhes.",
+          "A descrição ajuda muito na conversão: destaque diferenciais e localização.",
+        ];
+      case 6:
+        return [
           "Esses dados são apenas para seu controle e não aparecem no anúncio.",
           "Use para registrar informações do proprietário, comissão e chave.",
           "Você pode preencher depois; essa etapa é opcional.",
         ];
-      case 6:
+      case 7:
         return [
           "Revise os dados com calma antes de publicar o anúncio.",
           "Use os botões 'Editar' para voltar rapidamente a qualquer etapa.",
@@ -1406,10 +1422,12 @@ export default function NewPropertyPage() {
         return;
       }
     }
-    // Step 5: dados do proprietário (opcional, pode pular)
+    // Step 5: descrição (opcional, pode pular)
+    // Não há validação obrigatória neste step
+    // Step 6: dados do proprietário (opcional, pode pular)
     // Não há validação obrigatória neste step
     
-    if (currentStep < 6) setCurrentStep(currentStep + 1);
+    if (currentStep < 7) setCurrentStep(currentStep + 1);
   };
 
   const prevStep = () => {
@@ -1690,7 +1708,7 @@ export default function NewPropertyPage() {
                 >
                   Voltar para etapa anterior
                 </button>
-                {currentStep < 6 ? (
+                {currentStep < 7 ? (
                   <button
                     type="button"
                     onClick={nextStep}
@@ -1775,17 +1793,6 @@ export default function NewPropertyPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">Descrição do imóvel</label>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={4}
-                      className="w-full px-4 py-2.5 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-accent focus:border-transparent text-sm resize-y"
-                      placeholder="Use este espaço para explicar os pontos fortes do imóvel, estado de conservação, diferenciais, etc."
-                    />
-                  </div>
-
                   {/* Título do anúncio */}
                   <div className="pt-4 border-t border-gray-100">
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -1804,6 +1811,132 @@ export default function NewPropertyPage() {
                       maxLength={100}
                     />
                     {fieldErrors.title && <span className="mt-1 block text-xs text-danger">{fieldErrors.title}</span>}
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 5 && (
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Descrição do imóvel</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Gere um texto profissional com IA (1 geração gratuita por anúncio) e depois edite como quiser.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      disabled={
+                        isGeneratingDescription ||
+                        aiDescriptionGenerations >= 1 ||
+                        images.some((i) => i.pending) ||
+                        !images.some((i) => i.url && !i.pending)
+                      }
+                      onClick={async () => {
+                        if (isGeneratingDescription) return;
+                        const readyImages = images
+                          .filter((i) => i.url && !i.pending)
+                          .map((i) => i.url)
+                          .slice(0, 10);
+                        if (readyImages.length === 0) {
+                          setToast({ message: "Adicione ao menos 1 foto antes de gerar a descrição.", type: "error" });
+                          return;
+                        }
+
+                        setIsGeneratingDescription(true);
+                        try {
+                          const res = await fetch("/api/ai/property-description", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              title: finalTitle,
+                              type,
+                              purpose: purpose || null,
+                              priceBRL: parseBRLToNumber(priceBRL) || null,
+                              neighborhood: neighborhood || null,
+                              city: city || null,
+                              state: state || null,
+                              bedrooms: bedrooms === "" ? null : Number(bedrooms),
+                              bathrooms: bathrooms === "" ? null : Number(bathrooms),
+                              areaM2: areaM2 === "" ? null : Number(areaM2),
+                              conditionTags,
+                              amenities: {
+                                hasBalcony,
+                                hasElevator,
+                                hasPool,
+                                hasGym,
+                                hasPlayground,
+                                hasPartyRoom,
+                                hasGourmet,
+                                hasConcierge24h,
+                              },
+                              images: readyImages,
+                            }),
+                          });
+
+                          const json = await res.json().catch(() => null);
+                          if (res.status === 429) {
+                            setAiDescriptionGenerations(1);
+                            setToast({ message: json?.error || "Limite atingido para este imóvel", type: "error" });
+                            return;
+                          }
+                          if (!res.ok) {
+                            setToast({ message: json?.error || "Falha ao gerar descrição", type: "error" });
+                            return;
+                          }
+
+                          const text = (json?.data?.description as string | undefined) || "";
+                          if (!text.trim()) {
+                            setToast({ message: "Falha ao gerar descrição", type: "error" });
+                            return;
+                          }
+
+                          setDescription(text);
+                          setAiDescriptionGenerations(1);
+                          setToast({ message: "Descrição gerada com IA!", type: "success" });
+                        } catch {
+                          setToast({ message: "Falha ao gerar descrição", type: "error" });
+                        } finally {
+                          setIsGeneratingDescription(false);
+                        }
+                      }}
+                      className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isGeneratingDescription
+                        ? "Gerando..."
+                        : aiDescriptionGenerations >= 1
+                        ? "Limite atingido"
+                        : "Gerar descrição com IA"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDescription("");
+                      }}
+                      className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                    >
+                      Limpar descrição
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">Texto do anúncio</label>
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={8}
+                      className="w-full px-4 py-2.5 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-accent focus:border-transparent text-sm resize-y"
+                      placeholder="Use este espaço para explicar os pontos fortes do imóvel, estado de conservação, diferenciais, etc."
+                    />
+                    <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                      <span>
+                        {aiDescriptionGenerations >= 1
+                          ? "Você já usou a geração gratuita deste anúncio."
+                          : "Você ainda tem 1 geração gratuita para este anúncio."}
+                      </span>
+                      <span>{description.length} caracteres</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2297,7 +2430,7 @@ export default function NewPropertyPage() {
                 </div>
               )}
 
-              {currentStep === 5 && (
+              {currentStep === 6 && (
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Dados do proprietário</h2>
@@ -2494,7 +2627,7 @@ export default function NewPropertyPage() {
                 </div>
               )}
 
-              {currentStep === 6 && (
+              {currentStep === 7 && (
                 <div className="space-y-4">
                   <h2 className="text-lg font-semibold text-gray-900">Revisão final</h2>
                   <p className="text-sm text-gray-600">
@@ -2723,7 +2856,7 @@ export default function NewPropertyPage() {
 
               {/* Navegação desktop */}
               <div className="hidden sm:flex justify-end items-center pt-4 border-t border-gray-100 mt-4">
-                {currentStep < 6 ? (
+                {currentStep < 7 ? (
                   <button
                     type="button"
                     onClick={nextStep}
