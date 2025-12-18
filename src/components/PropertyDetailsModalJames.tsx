@@ -95,8 +95,50 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [photoViewMode, setPhotoViewMode] = useState<"feed" | "fullscreen" | null>(null);
   const [showThumbGrid, setShowThumbGrid] = useState(false);
   const handleClose = useCallback(() => {
+    if (variant === "overlay" && typeof window !== "undefined") {
+      if (overlayHistoryPushedRef.current && !closingFromPopstateRef.current) {
+        try {
+          window.history.back();
+          return;
+        } catch {
+          // fallthrough
+        }
+      }
+    }
+    overlayHistoryPushedRef.current = false;
     onClose?.();
-  }, [onClose]);
+  }, [onClose, variant]);
+
+  // Mobile/browser back integration for overlay: back should close overlay instead of navigating away
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (variant !== "overlay") return;
+    if (!open) {
+      overlayHistoryPushedRef.current = false;
+      return;
+    }
+
+    if (!overlayHistoryPushedRef.current) {
+      try {
+        const nextState = { ...(window.history.state || {}), __propertyOverlay: true };
+        window.history.pushState(nextState, "", window.location.href);
+        overlayHistoryPushedRef.current = true;
+      } catch {
+        // ignore
+      }
+    }
+
+    const onPopState = () => {
+      if (!overlayHistoryPushedRef.current) return;
+      overlayHistoryPushedRef.current = false;
+      closingFromPopstateRef.current = true;
+      handleClose();
+      closingFromPopstateRef.current = false;
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [variant, open, handleClose]);
   // Zoom/Pan state for lightbox
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -141,6 +183,9 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const fsSwipeLock = useRef<null | "horizontal" | "vertical">(null);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const overlayHistoryPushedRef = useRef(false);
+  const closingFromPopstateRef = useRef(false);
 
   const poiCategories = useMemo(() => ([
     { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools },
