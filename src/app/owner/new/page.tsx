@@ -27,6 +27,9 @@ export default function NewPropertyPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitIntent, setSubmitIntent] = useState(false);
   const [publishedProperty, setPublishedProperty] = useState<{ id: string; title: string; url: string } | null>(null);
+
+  const stepperScrollRef = useRef<HTMLDivElement | null>(null);
+  const stepperItemRefs = useRef<Record<number, HTMLDivElement | null>>({});
   
   const [description, setDescription] = useState("");
   const [aiDescriptionGenerations, setAiDescriptionGenerations] = useState<number>(0);
@@ -108,6 +111,12 @@ export default function NewPropertyPage() {
       (el as any).focus?.();
     }, 50);
   };
+
+  useEffect(() => {
+    const el = stepperItemRefs.current[currentStep];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [currentStep]);
 
   // Contadores para grupos de detalhes (usados nos headers dos accordions)
   const accAccessibilityCount = (accRamps ? 1 : 0) + (accWideDoors ? 1 : 0) + (accAccessibleElevator ? 1 : 0) + (accTactile ? 1 : 0);
@@ -1798,25 +1807,25 @@ export default function NewPropertyPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               <form onSubmit={handleSubmit}>
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={prevStep}
-                    disabled={currentStep === 1}
-                    className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 text-sm font-medium text-teal-700 hover:bg-teal-100 hover:text-teal-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span>Voltar para etapa anterior</span>
-                  </button>
+                <div className="flex items-center justify-end">
                   <span className="text-xs text-gray-500">
                     Etapa {currentStep} de {steps.length}
                   </span>
                 </div>
 
-                <div className="bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40 px-2 py-3 rounded-xl ring-1 ring-black/5 overflow-x-auto">
+                <div
+                  ref={stepperScrollRef}
+                  className="bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40 px-2 py-3 rounded-xl ring-1 ring-black/5 overflow-x-auto mb-8"
+                >
                   <div className="flex items-center w-max gap-4">
                     {steps.map((step, index) => (
-                      <div key={step.id} className="flex items-center">
+                      <div
+                        key={step.id}
+                        ref={(el) => {
+                          stepperItemRefs.current[step.id] = el;
+                        }}
+                        className="flex items-center"
+                      >
                         <div
                           className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
                             currentStep >= step.id
@@ -1854,7 +1863,7 @@ export default function NewPropertyPage() {
                       type="button"
                       onClick={prevStep}
                       disabled={currentStep === 1}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 px-3 py-2 rounded-lg text-sm font-semibold shadow border border-emerald-500 text-emerald-700 bg-white hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Voltar para etapa anterior
                     </button>
@@ -1862,7 +1871,7 @@ export default function NewPropertyPage() {
                       <button
                         type="button"
                         onClick={nextStep}
-                        className="flex-1 px-3 py-2 glass-teal text-sm text-white rounded-lg shadow"
+                        className="flex-1 px-3 py-2 glass-teal text-sm font-semibold text-white rounded-lg shadow"
                       >
                         {isGeocoding && currentStep === 1 ? "Validando..." : "Próximo"}
                       </button>
@@ -1871,7 +1880,7 @@ export default function NewPropertyPage() {
                         type="submit"
                         onClick={() => setSubmitIntent(true)}
                         disabled={isSubmitting || images.some((i) => i.pending) || !canPublish}
-                        className="flex-1 px-3 py-2 glass-teal text-sm text-white rounded-lg disabled:opacity-70"
+                        className="flex-1 px-3 py-2 glass-teal text-sm font-semibold text-white rounded-lg disabled:opacity-70 shadow"
                       >
                         {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando" : "Publicar"}
                       </button>
@@ -3057,7 +3066,16 @@ export default function NewPropertyPage() {
               )}
 
               {/* Navegação desktop */}
-              <div className="hidden sm:flex justify-end items-center pt-4 border-t border-gray-100 mt-4">
+              <div className="hidden sm:flex justify-between items-center pt-4 border-t border-gray-100 mt-6">
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  disabled={currentStep === 1}
+                  className="px-5 py-2.5 rounded-lg text-sm font-semibold shadow border border-emerald-500 text-emerald-700 bg-white hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Voltar
+                </button>
+
                 {currentStep < 6 ? (
                   <button
                     type="button"
