@@ -6,6 +6,7 @@ import Image from "next/image";
 import Chip from "@/components/ui/Chip";
 import { useState, useEffect, useRef } from "react";
 import { track } from "@/lib/analytics";
+import { buildPropertyPath } from "@/lib/slug";
 
 interface PropertyCardPremiumProps {
   property: {
@@ -97,7 +98,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   const handleCopyLink = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const url = `${window.location.origin}/properties/${property.id}`;
+    const url = `${window.location.origin}${buildPropertyPath(property.id, property.title)}`;
     await navigator.clipboard.writeText(url);
     setCopySuccess(true);
     try { track({ name: 'filters_apply', payload: { action: 'copy_link', id: property.id } }); } catch {}
@@ -110,7 +111,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   const handleGmailShare = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const url = `${window.location.origin}/properties/${property.id}`;
+    const url = `${window.location.origin}${buildPropertyPath(property.id, property.title)}`;
     const subject = encodeURIComponent(property.title);
     const priceLabel = typeof property.price === 'number' && property.price > 0
       ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format((property.price as number) / 100)
@@ -123,7 +124,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   const handleOutlookShare = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const url = `${window.location.origin}/properties/${property.id}`;
+    const url = `${window.location.origin}${buildPropertyPath(property.id, property.title)}`;
     const subject = encodeURIComponent(property.title);
     const priceLabel = typeof property.price === 'number' && property.price > 0
       ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format((property.price as number) / 100)
@@ -142,7 +143,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
       onOpenOverlay(property.id);
     } else {
       // Fallback: navigate to property detail page
-      window.location.href = `/property/${property.id}`;
+      window.location.href = buildPropertyPath(property.id, property.title);
     }
   };
 

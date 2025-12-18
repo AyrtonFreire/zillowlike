@@ -28,6 +28,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { getPusherClient } from "@/lib/pusher-client";
 import { useToast } from "@/contexts/ToastContext";
 import LeadTimeline from "@/components/crm/LeadTimeline";
+import { buildPropertyPath } from "@/lib/slug";
 
 interface Lead {
   id: string;
@@ -965,7 +966,7 @@ export default function LeadDetailPage() {
                   )}
 
                   <Link
-                    href={`/property/${lead.property.id}`}
+                    href={buildPropertyPath(lead.property.id, lead.property.title)}
                     className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
                   >
                     Ver anúncio
@@ -1244,7 +1245,7 @@ export default function LeadDetailPage() {
                       type="button"
                       onClick={() => {
                         const origin = typeof window !== "undefined" ? window.location.origin : "";
-                        const value = `${origin}/property/${lead.property.id}`;
+                        const value = `${origin}${buildPropertyPath(lead.property.id, lead.property.title)}`;
                         copyToClipboard("Link", value);
                       }}
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50"
@@ -1259,7 +1260,7 @@ export default function LeadDetailPage() {
                       Abra o anúncio completo se precisar de mais detalhes, fotos ou descrição completa.
                     </p>
                     <Link
-                      href={`/property/${lead.property.id}`}
+                      href={buildPropertyPath(lead.property.id, lead.property.title)}
                       className="inline-flex items-center px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
                     >
                       Ver anúncio
@@ -1305,7 +1306,7 @@ export default function LeadDetailPage() {
                         {similarItems.map((item) => (
                           <Link
                             key={item.property.id}
-                            href={`/property/${item.property.id}`}
+                            href={buildPropertyPath(item.property.id, item.property.title)}
                             className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 hover:bg-white hover:border-gray-200 transition-colors"
                           >
                             <div className="relative h-12 w-16 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">

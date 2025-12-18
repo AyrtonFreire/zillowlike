@@ -38,6 +38,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { buildPropertyPath } from "@/lib/slug";
 import DashboardLayout from "@/components/DashboardLayout";
 
 type Tab = "resumo" | "caracteristicas" | "leads" | "documentos" | "privado";
@@ -398,7 +399,7 @@ export default function PropertyDetailPage() {
               {copied ? "Copiado!" : "Copiar link"}
             </button>
             <a
-              href={`/property/${property.id}`}
+              href={buildPropertyPath(property.id, property.title)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"

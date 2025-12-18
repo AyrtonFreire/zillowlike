@@ -17,6 +17,7 @@ import {
   MessageCircle
 } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
+import { buildPropertyPath } from "@/lib/slug";
 
 interface ChatMessage {
   id: string;
@@ -460,7 +461,7 @@ export default function ClientChatPage() {
             {/* Link para ver imóvel */}
             {lead?.property?.id && (
               <Link
-                href={`/property/${lead.property.id}`}
+                href={buildPropertyPath(lead.property.id, lead.property.title)}
                 target="_blank"
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors"
               >

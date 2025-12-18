@@ -20,6 +20,7 @@ import {
 import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import { buildPropertyPath } from "@/lib/slug";
 
 interface Lead {
   id: string;
@@ -279,7 +280,7 @@ export default function OwnerLeadsPage() {
                       {getStatusBadge(lead.status)}
                     </div>
                     <Link
-                      href={`/property/${lead.property.id}`}
+                      href={buildPropertyPath(lead.property.id, lead.property.title)}
                       className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 mb-2"
                     >
                       <Home className="w-4 h-4" />

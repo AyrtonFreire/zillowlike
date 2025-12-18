@@ -2,6 +2,7 @@
 import * as React from "react";
 import { PropertyCardPremium } from "@/components/modern";
 import Link from "next/link";
+import { buildPropertyPath } from "@/lib/slug";
 
 type Props = {
   properties: any[];
@@ -44,7 +45,7 @@ export default function SimilarCarousel({ properties, onOpenOverlay, title, show
               {onOpenOverlay ? (
                 <PropertyCardPremium property={p} onOpenOverlay={onOpenOverlay} />
               ) : (
-                <Link href={`/property/${p.id}`} className="block">
+                <Link href={buildPropertyPath(p.id, p.title)} className="block">
                   <PropertyCardPremium property={p} />
                 </Link>
               )}

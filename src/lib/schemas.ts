@@ -19,6 +19,8 @@ export const ConditionTagEnum = z.string().min(1).max(60);
 
 export const PropertyCreateSchema = z.object({
   title: z.string().min(3).max(70),
+  metaTitle: z.string().max(65).optional().or(z.literal("")),
+  metaDescription: z.string().max(155).optional().or(z.literal("")),
   description: z.string().max(5000).optional().or(z.literal("")),
   priceBRL: z
     .number()

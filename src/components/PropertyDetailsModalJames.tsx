@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import { getLowestFinancing } from "@/lib/financing";
 import { normalizePOIs } from "@/lib/overpass";
+import { buildPropertyPath } from "@/lib/slug";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 const SimilarCarousel = dynamic(() => import("@/components/SimilarCarousel"), { ssr: false });
@@ -462,7 +463,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   };
 
   const handleShare = async () => {
-    const url = `${window.location.origin}/property/${propertyId}`;
+    const url = `${window.location.origin}${buildPropertyPath(String(propertyId || ""), property?.title || "")}`;
     if (navigator.share) {
       await navigator.share({ title: property?.title, url });
     } else {

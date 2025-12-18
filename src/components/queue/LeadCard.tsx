@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Bed, Bath, Maximize, Users, Calendar } from "lucide-react";
+import { useMemo } from "react";
+import { Calendar, MapPin, Clock, ExternalLink, MessageCircle, Users, Bed, Bath, Maximize2 } from "lucide-react";
+import { buildPropertyPath } from "@/lib/slug";
 import StatusIndicator from "./StatusIndicator";
 import CountdownTimer from "./CountdownTimer";
 
@@ -97,7 +99,7 @@ export default function LeadCard({
         {/* Title & Price */}
         <div className="mb-3">
           <Link
-            href={`/property/${property.id}`}
+            href={buildPropertyPath(property.id, property.title)}
             className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors line-clamp-1"
           >
             {property.title}
@@ -132,7 +134,7 @@ export default function LeadCard({
           )}
           {property.areaM2 && (
             <div className="flex items-center gap-1">
-              <Maximize className="w-4 h-4" />
+              <Maximize2 className="w-4 h-4" />
               <span>{property.areaM2}m²</span>
             </div>
           )}

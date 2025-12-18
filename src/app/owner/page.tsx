@@ -1,8 +1,9 @@
 import { getServerSession } from "next-auth";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import Image from "next/image";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { buildPropertyPath } from "@/lib/slug";
 
 export default async function OwnerDashboardPage() {
   const session = await getServerSession();
@@ -58,7 +59,7 @@ export default async function OwnerDashboardPage() {
                   <div className="font-semibold line-clamp-2 mb-2">{p.title}</div>
                   <div className="text-blue-600 font-bold mb-3">R$ {(p.price / 100).toLocaleString("pt-BR")}</div>
                   <div className="flex gap-4 items-center">
-                    <Link href={`/property/${p.id}`} className="text-sm text-blue-600 hover:text-blue-800" aria-label={`Ver ${p.title}`}>Ver</Link>
+                    <Link href={buildPropertyPath(p.id, p.title)} className="text-sm text-blue-600 hover:text-blue-800" aria-label={`Ver ${p.title}`}>Ver</Link>
                     <Link href={`/owner/edit/${p.id}`} className="text-sm text-gray-700 hover:text-gray-900" aria-label={`Editar ${p.title}`}>Editar</Link>
                     <form action={async () => {
                       "use server";

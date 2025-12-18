@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import TopNavMega from "@/components/TopNavMega";
 import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
 import { MapPin, MessageCircle } from "lucide-react";
+import { buildPropertyPath } from "@/lib/slug";
 
 type PageProps = {
   params: Promise<{ token: string }>;
@@ -191,7 +192,7 @@ export default async function ExploreRecommendationsPage({ params }: PageProps) 
                         </span>
                         Baseada no imóvel:
                         <Link
-                          href={`/property/${baseProperty.id}`}
+                          href={buildPropertyPath(baseProperty.id, baseProperty.title)}
                           className="underline underline-offset-2 font-medium hover:text-yellow-100"
                         >
                           {baseProperty.title}
@@ -270,7 +271,7 @@ export default async function ExploreRecommendationsPage({ params }: PageProps) 
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {orderedProperties.map((p) => (
-                    <Link key={p.id} href={`/property/${p.id}`} className="block group">
+                    <Link key={p.id} href={buildPropertyPath(p.id, p.title)} className="block group">
                       <PropertyCardPremium
                         property={{
                           id: p.id,

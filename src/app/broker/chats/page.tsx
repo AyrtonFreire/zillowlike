@@ -23,6 +23,8 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import RealtorAssistantWidget from "@/components/crm/RealtorAssistantWidget";
+import { buildPropertyPath } from "@/lib/slug";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -413,7 +415,7 @@ export default function BrokerChatsPage() {
               {/* Card do imóvel (colapsado) */}
               <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
                 <Link
-                  href={`/property/${selectedChat.property.id}`}
+                  href={buildPropertyPath(selectedChat.property.id, selectedChat.property.title)}
                   className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
                 >
                   <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">

@@ -393,7 +393,7 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    const { title, description, priceBRL, type, purpose, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility } = parsed.data;
+    const { title, metaTitle, metaDescription, description, priceBRL, type, purpose, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility } = parsed.data;
 
     let latitude = geo?.lat;
     let longitude = geo?.lng;
@@ -461,6 +461,8 @@ export async function POST(req: NextRequest) {
 
     const createData: any = {
       title,
+      metaTitle: metaTitle && metaTitle.trim() ? metaTitle.trim() : null,
+      metaDescription: metaDescription && metaDescription.trim() ? metaDescription.trim() : null,
       description,
       price,
       type: safeType,

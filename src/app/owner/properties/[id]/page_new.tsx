@@ -38,6 +38,7 @@ import {
   XCircle,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { buildPropertyPath } from "@/lib/slug";
 import PropertyAnalytics from "@/components/dashboard/PropertyAnalytics";
 import PropertyQualityIndicator from "@/components/dashboard/PropertyQualityIndicator";
 
@@ -554,7 +555,7 @@ export default function PropertyDetailPageNew() {
                 </Link>
 
                 <a
-                  href={`/property/${property.id}`}
+                  href={buildPropertyPath(property.id, property.title)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl transition-colors font-medium"

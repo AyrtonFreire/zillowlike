@@ -16,6 +16,13 @@ type OpenAIChatResponse = {
   }>;
 };
 
+type AiPropertyText = {
+  title: string;
+  description: string;
+  metaTitle: string;
+  metaDescription: string;
+};
+
 const BodySchema = z.object({
   title: z.string().max(120).optional().nullable(),
   type: z.string().max(40).optional().nullable(),
@@ -53,6 +60,25 @@ function toCloudinaryThumb(url: string) {
     );
   } catch {
     return url;
+  }
+}
+
+function extractJsonObject(text: string): any | null {
+  try {
+    return JSON.parse(text);
+  } catch {
+    // try to salvage from surrounding text
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      const candidate = text.slice(start, end + 1);
+      try {
+        return JSON.parse(candidate);
+      } catch {
+        return null;
+      }
+    }
+    return null;
   }
 }
 
@@ -140,24 +166,30 @@ async function handler(req: NextRequest) {
 
   const systemPrompt =
     "Você é um redator imobiliário profissional no Brasil.\n" +
-    "Sua tarefa é escrever uma descrição de anúncio imobiliário em pt-BR, com linguagem profissional, objetiva e agradável.\n" +
+    "Sua tarefa é gerar textos para anúncio e SEO em pt-BR, com linguagem profissional, objetiva e agradável.\n" +
+    "\nFORMATO (obrigatório):\n" +
+    "- Responda SOMENTE com um JSON válido (sem markdown).\n" +
+    "- O JSON deve ter exatamente as chaves: title, description, metaTitle, metaDescription.\n" +
     "\nREGRAS (obrigatórias):\n" +
-    "1) Saída com 10 a 15 linhas, separadas por quebras de linha (\\n).\n" +
-    "2) Não invente fatos. Não inferir: vista, metragem não informada, mobília, vagas, andar, condomínio/IPTU, reforma, alto padrão, proximidade de pontos de interesse, orientação solar, etc., a menos que esteja nos dados ou claramente visível nas fotos.\n" +
-    "3) Use apenas o que estiver nos dados fornecidos e o que for visível nas fotos.\n" +
-    "4) Se faltar informação, escreva de forma neutra (sem suposições).\n" +
-    "5) Não inclua emojis.\n" +
-    "6) Não inclua telefone, e-mail, links, preço parcelado, ou chamada agressiva.\n" +
-    "7) Não inclua título, lista com bullets, ou seções com cabeçalhos; apenas texto corrido em linhas.\n" +
+    "1) title: 3 a 70 caracteres, sem emojis, sem preço, sem contato, sem exageros.\n" +
+    "2) metaTitle: até 65 caracteres (ideal para Google), conciso e informativo.\n" +
+    "3) metaDescription: até 155 caracteres, convite moderado, sem telefone/e-mail/links.\n" +
+    "4) description: 25 a 30 linhas, separadas por quebras de linha (\\n).\n" +
+    "5) Não invente fatos. Não inferir: vista, metragem não informada, mobília, vagas, andar, condomínio/IPTU, reforma, alto padrão, proximidade de pontos de interesse, orientação solar, etc., a menos que esteja nos dados ou claramente visível nas fotos.\n" +
+    "6) Use apenas o que estiver nos dados fornecidos e o que for visível nas fotos.\n" +
+    "7) Se faltar informação, escreva de forma neutra (sem suposições).\n" +
+    "8) Não inclua emojis.\n" +
+    "9) Não inclua telefone, e-mail, links, preço parcelado, ou chamada agressiva.\n" +
+    "10) A description não deve ter bullets, títulos, ou seções; apenas texto corrido em linhas.\n" +
     "\nESTILO:\n" +
-    "- Foque em benefícios reais (luz, ventilação, amplitude, integração de ambientes) apenas quando suportado pelas fotos.\n" +
-    "- Evite adjetivos exagerados e clichês.\n" +
+    "- Foque em benefícios reais (luz, ventilação, amplitude, integração) apenas quando suportado pelas fotos.\n" +
+    "- Evite clichês e adjetivos exagerados.\n" +
     "- Tom: confiável, claro e comercial moderado.";
 
   const userText =
     "Dados do imóvel (use como fonte de verdade):\n" +
     textContextLines.map((l) => `- ${l}`).join("\n") +
-    "\n\nInstrução: gere a descrição seguindo estritamente as regras.";
+    "\n\nInstrução: gere o JSON seguindo estritamente as regras.";
 
   const messages: any[] = [
     { role: "system", content: systemPrompt },
@@ -182,7 +214,7 @@ async function handler(req: NextRequest) {
       model,
       messages,
       temperature: 0.6,
-      max_tokens: 550,
+      max_tokens: 1000,
     }),
   });
 
@@ -207,11 +239,62 @@ async function handler(req: NextRequest) {
     );
   }
 
+  const parsed = extractJsonObject(content) as Partial<AiPropertyText> | null;
+  if (!parsed) {
+    return errorResponse(
+      "Falha ao preencher campos",
+      502,
+      { sample: content.slice(0, 2000) },
+      "AI_INVALID_JSON"
+    );
+  }
+
+  const title = String(parsed.title || "").trim();
+  const description = String(parsed.description || "").trim();
+  const metaTitle = String(parsed.metaTitle || "").trim();
+  const metaDescription = String(parsed.metaDescription || "").trim();
+
+  if (title.length < 3 || title.length > 70) {
+    return errorResponse(
+      "Falha ao preencher campos",
+      502,
+      { field: "title", length: title.length },
+      "AI_INVALID_TITLE"
+    );
+  }
+  if (!description) {
+    return errorResponse(
+      "Falha ao preencher campos",
+      502,
+      { field: "description" },
+      "AI_INVALID_DESCRIPTION"
+    );
+  }
+  if (metaTitle.length > 65) {
+    return errorResponse(
+      "Falha ao preencher campos",
+      502,
+      { field: "metaTitle", length: metaTitle.length },
+      "AI_INVALID_META_TITLE"
+    );
+  }
+  if (metaDescription.length > 155) {
+    return errorResponse(
+      "Falha ao preencher campos",
+      502,
+      { field: "metaDescription", length: metaDescription.length },
+      "AI_INVALID_META_DESCRIPTION"
+    );
+  }
+
   const nextData = {
     ...data,
     aiDescriptionGenerations: 1,
     aiDescriptionLastAt: new Date().toISOString(),
-    aiGeneratedDescription: content,
+    aiGeneratedTitle: title,
+    aiGeneratedMetaTitle: metaTitle,
+    aiGeneratedMetaDescription: metaDescription,
+    aiGeneratedDescription: description,
   };
 
   await prisma.propertyDraft.upsert({
@@ -220,7 +303,7 @@ async function handler(req: NextRequest) {
     create: { userId, data: nextData },
   });
 
-  return successResponse({ description: content }, "OK");
+  return successResponse({ title, description, metaTitle, metaDescription }, "OK");
 }
 
 export const POST = withErrorHandling(withRateLimit(handler, "ai"));

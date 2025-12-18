@@ -11,6 +11,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
 import { geocodeAddressParts } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
+import { buildPropertyPath } from "@/lib/slug";
 import Toast from "@/components/Toast";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
@@ -31,6 +32,8 @@ export default function NewPropertyPage() {
   const [aiDescriptionGenerations, setAiDescriptionGenerations] = useState<number>(0);
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [customTitle, setCustomTitle] = useState(""); // Título editável pelo usuário
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
   const [priceBRL, setPriceBRL] = useState("");
   const [type, setType] = useState("HOUSE");
   const [purpose, setPurpose] = useState<"SALE"|"RENT"|"">("");
@@ -678,6 +681,8 @@ export default function NewPropertyPage() {
     setAiDescriptionGenerations(0);
     setIsGeneratingDescription(false);
     setCustomTitle("");
+    setMetaTitle("");
+    setMetaDescription("");
     setPriceBRL("");
     setType("HOUSE");
     setConditionTags([]);
@@ -796,6 +801,11 @@ export default function NewPropertyPage() {
       if (d.description) setDescription(d.description);
       else if (d.aiGeneratedDescription) setDescription(d.aiGeneratedDescription);
       if (d.customTitle) setCustomTitle(d.customTitle);
+      else if (d.aiGeneratedTitle) setCustomTitle(d.aiGeneratedTitle);
+      if (d.metaTitle) setMetaTitle(d.metaTitle);
+      else if (d.aiGeneratedMetaTitle) setMetaTitle(d.aiGeneratedMetaTitle);
+      if (d.metaDescription) setMetaDescription(d.metaDescription);
+      else if (d.aiGeneratedMetaDescription) setMetaDescription(d.aiGeneratedMetaDescription);
       if (d.priceBRL) setPriceBRL(d.priceBRL);
       if (d.type) setType(d.type);
       if (d.purpose) setPurpose(d.purpose);
@@ -861,6 +871,11 @@ export default function NewPropertyPage() {
         if (d.description) setDescription(d.description);
         else if (d.aiGeneratedDescription) setDescription(d.aiGeneratedDescription);
         if (d.customTitle) setCustomTitle(d.customTitle);
+        else if (d.aiGeneratedTitle) setCustomTitle(d.aiGeneratedTitle);
+        if (d.metaTitle) setMetaTitle(d.metaTitle);
+        else if (d.aiGeneratedMetaTitle) setMetaTitle(d.aiGeneratedMetaTitle);
+        if (d.metaDescription) setMetaDescription(d.metaDescription);
+        else if (d.aiGeneratedMetaDescription) setMetaDescription(d.aiGeneratedMetaDescription);
         if (d.priceBRL) setPriceBRL(d.priceBRL);
         if (d.type) setType(d.type);
         if (d.purpose) setPurpose(d.purpose);
@@ -928,6 +943,8 @@ export default function NewPropertyPage() {
           description,
           aiDescriptionGenerations,
           customTitle,
+          metaTitle,
+          metaDescription,
           priceBRL,
           type,
           purpose,
@@ -983,7 +1000,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, isSubmitting, publishedProperty]);
+  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, isSubmitting, publishedProperty]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1122,11 +1139,11 @@ export default function NewPropertyPage() {
   }, [purpose, priceBRL, type, geo, images, description, bedrooms, bathrooms, areaM2, hasBalcony, hasPool, hasGym, hasElevator, hasConcierge24h]);
 
   const steps = [
-    { id: 1, name: "Informações básicas", description: "Título, preço e tipo" },
+    { id: 1, name: "Informações básicas", description: "Preço e tipo" },
     { id: 2, name: "Localização", description: "Endereço completo" },
     { id: 3, name: "Detalhes", description: "Quartos, banheiros e área" },
     { id: 4, name: "Fotos", description: "Imagens do imóvel" },
-    { id: 5, name: "Descrição", description: "Texto do anúncio" },
+    { id: 5, name: "Descrição", description: "Título, texto e SEO" },
     { id: 6, name: "Dados do proprietário", description: "Informações internas (opcional)" },
     { id: 7, name: "Revisão final", description: "Conferir dados e publicar" },
   ];
@@ -1159,9 +1176,9 @@ export default function NewPropertyPage() {
         ];
       case 5:
         return [
-          "Clique em 'Gerar descrição com IA' para criar um texto profissional com base nos dados e fotos.",
-          "Depois você pode editar o texto manualmente e ajustar detalhes.",
-          "A descrição ajuda muito na conversão: destaque diferenciais e localização.",
+          "Clique em 'Preencher Campos com IA' para gerar título, descrição e metas com base nos dados e fotos.",
+          "Depois você pode editar todos os campos manualmente.",
+          "Uma boa descrição aumenta a conversão e melhora a qualidade do anúncio.",
         ];
       case 6:
         return [
@@ -1209,7 +1226,7 @@ export default function NewPropertyPage() {
     setFieldErrors({});
 
     if (finalTitle.length < 3) {
-      applyErrorsAndFocus(1, { title: "Informe um título para o anúncio." });
+      applyErrorsAndFocus(5, { title: "Informe um título para o anúncio." });
       return;
     }
 
@@ -1256,6 +1273,8 @@ export default function NewPropertyPage() {
 
       const payload = {
         title: finalTitle,
+        metaTitle: metaTitle || "",
+        metaDescription: metaDescription || "",
         description,
         priceBRL: parseBRLToNumber(priceBRL),
         type,
@@ -1350,6 +1369,8 @@ export default function NewPropertyPage() {
         for (const issue of parsed.error.issues) {
           const p = issue.path.join(".");
           if (p === "title") next.title = "Informe um título válido.";
+          else if (p === "metaTitle") next.metaTitle = "Meta Title deve ter no máximo 65 caracteres.";
+          else if (p === "metaDescription") next.metaDescription = "Meta Description deve ter no máximo 155 caracteres.";
           else if (p === "priceBRL") next.priceBRL = "Informe um preço válido.";
           else if (p === "type") next.type = "Selecione o tipo de imóvel.";
           else if (p === "address.postalCode") next.postalCode = "Informe um CEP válido.";
@@ -1389,6 +1410,8 @@ export default function NewPropertyPage() {
             ? 2
             : hasStep3
             ? 3
+            : next.title || next.metaTitle || next.metaDescription
+            ? 5
             : 1;
           applyErrorsAndFocus(step, next);
         }
@@ -1415,7 +1438,7 @@ export default function NewPropertyPage() {
       
       // Mostrar tela de sucesso com compartilhamento
       const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
-      const propertyUrl = `${siteUrl}/property/${result.id}`;
+      const propertyUrl = `${siteUrl}${buildPropertyPath(result.id, finalTitle)}`;
       
       // Limpa rascunho após publicação bem-sucedida
       clearDraft();
@@ -1439,10 +1462,6 @@ export default function NewPropertyPage() {
     if (currentStep === 1) {
       if (!purpose) {
         applyErrorsAndFocus(1, { purpose: "Selecione a finalidade (Venda/Aluguel)." });
-        return;
-      }
-      if (finalTitle.length < 3) {
-        applyErrorsAndFocus(1, { title: "Informe um título para o anúncio." });
         return;
       }
       const price = parseBRLToNumber(priceBRL);
@@ -1539,8 +1558,20 @@ export default function NewPropertyPage() {
         return;
       }
     }
-    // Step 5: descrição (opcional, pode pular)
-    // Não há validação obrigatória neste step
+
+    // Step 5: título + metas
+    if (currentStep === 5) {
+      const errs: Record<string, string> = {};
+      if (finalTitle.length < 3) errs.title = "Informe um título para o anúncio.";
+      if (metaTitle && metaTitle.length > 65) errs.metaTitle = "Meta Title deve ter no máximo 65 caracteres.";
+      if (metaDescription && metaDescription.length > 155) errs.metaDescription = "Meta Description deve ter no máximo 155 caracteres.";
+      if (Object.keys(errs).length) {
+        applyErrorsAndFocus(5, errs);
+        return;
+      }
+    }
+
+    // Step 6: dados do proprietário (opcional, pode pular)
     // Step 6: dados do proprietário (opcional, pode pular)
     // Não há validação obrigatória neste step
     
@@ -1731,7 +1762,7 @@ export default function NewPropertyPage() {
               {/* Ações */}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Link
-                  href={`/property/${publishedProperty.id}`}
+                  href={buildPropertyPath(publishedProperty.id, publishedProperty.title)}
                   className="flex-1 text-center px-4 py-3 rounded-xl bg-teal-600 text-white font-semibold hover:bg-teal-700 transition-colors"
                 >
                   Ver anúncio
@@ -1755,109 +1786,107 @@ export default function NewPropertyPage() {
               </div>
             </div>
           </div>
+
         </div>
       )}
 
       {/* Formulário de criação */}
       {!publishedProperty && (
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
-          <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
-          <p>
-            Para publicar, você precisa ter pelo menos um canal verificado (telefone ou e-mail). Você pode ajustar isso em{' '}
-            <Link href="/profile" className="font-semibold text-teal hover:text-teal-dark underline-offset-2 hover:underline">Meu Perfil</Link>.
-          </p>
-        </div>
+        <div className="mx-auto max-w-6xl px-4 py-8">
+          <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
+            <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
+            <p>
+              Para publicar, você precisa ter pelo menos um canal verificado (telefone ou e-mail). Você pode ajustar isso em{' '}
+              <Link href="/profile" className="font-semibold text-teal hover:text-teal-dark underline-offset-2 hover:underline">Meu Perfil</Link>.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={prevStep}
-                disabled={currentStep === 1}
-                className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 text-sm font-medium text-teal-700 hover:bg-teal-100 hover:text-teal-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Voltar para etapa anterior</span>
-              </button>
-              <span className="text-xs text-gray-500">
-                Etapa {currentStep} de {steps.length}
-              </span>
-            </div>
-            <div className="bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40 px-2 py-3 rounded-xl ring-1 ring-black/5 overflow-x-auto">
-              <div className="flex items-center w-max gap-4">
-                {steps.map((step, index) => (
-                  <div key={step.id} className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
-                    currentStep >= step.id 
-                      ? 'glass-teal border-emerald-500 text-white' 
-                      : 'bg-white border-gray-300 text-gray-500'
-                  }`}>
-                    {step.id}
-                  </div>
-                  <div className="ml-3 hidden sm:block min-w-[120px]">
-                    <div className={`text-sm font-medium ${
-                      currentStep >= step.id ? 'text-emerald-700' : 'text-gray-500'
-                    }`}>
-                      {step.name}
-                    </div>
-                    <div className="text-xs text-gray-500">{step.description}</div>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className={`w-12 sm:w-16 h-0.5 mx-2 sm:mx-4 transition-all duration-200 ${
-                      currentStep > step.id ? 'glass-teal' : 'bg-gray-300'
-                    }`} />
-                  )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Mobile sticky nav */}
-            <div className="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/90 backdrop-blur border-t p-2">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  disabled={currentStep === 1}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Voltar para etapa anterior
-                </button>
-                {currentStep < 7 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <form onSubmit={handleSubmit}>
+                <div className="flex items-center justify-between">
                   <button
                     type="button"
-                    onClick={nextStep}
-                    className="flex-1 px-3 py-2 glass-teal text-sm text-white rounded-lg shadow"
+                    onClick={prevStep}
+                    disabled={currentStep === 1}
+                    className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 text-sm font-medium text-teal-700 hover:bg-teal-100 hover:text-teal-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
-                    {isGeocoding && currentStep === 2 ? "Validando..." : "Próximo"}
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Voltar para etapa anterior</span>
                   </button>
-                ) : (
-                  <button
-                    type="submit"
-                    onClick={() => setSubmitIntent(true)}
-                    disabled={isSubmitting || images.some((i) => i.pending) || !canPublish}
-                    className="flex-1 px-3 py-2 glass-teal text-sm text-white rounded-lg disabled:opacity-70"
-                  >
-                    {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando" : "Publicar"}
-                  </button>
-                )}
-              </div>
-            </div>
+                  <span className="text-xs text-gray-500">
+                    Etapa {currentStep} de {steps.length}
+                  </span>
+                </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-4 sm:p-6 space-y-6"
-            >
-              {currentStep === 1 && (
-                <div className="space-y-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Informações básicas</h2>
-                  <p className="text-sm text-gray-600">
-                    Comece definindo se o anúncio é de venda ou aluguel, o valor e o tipo de imóvel. Esses campos ajudam a
-                    organizar a busca para os interessados.
-                  </p>
+                <div className="bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40 px-2 py-3 rounded-xl ring-1 ring-black/5 overflow-x-auto">
+                  <div className="flex items-center w-max gap-4">
+                    {steps.map((step, index) => (
+                      <div key={step.id} className="flex items-center">
+                        <div
+                          className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
+                            currentStep >= step.id
+                              ? 'glass-teal border-emerald-500 text-white'
+                              : 'bg-white border-gray-300 text-gray-500'
+                          }`}
+                        >
+                          {step.id}
+                        </div>
+                        <div className="ml-3 hidden sm:block min-w-[120px]">
+                          <div
+                            className={`text-sm font-medium ${
+                              currentStep >= step.id ? 'text-emerald-700' : 'text-gray-500'
+                            }`}
+                          >
+                            {step.name}
+                          </div>
+                          <div className="text-xs text-gray-500">{step.description}</div>
+                        </div>
+                        {index < steps.length - 1 && (
+                          <div
+                            className={`w-12 sm:w-16 h-0.5 mx-2 sm:mx-4 transition-all duration-200 ${
+                              currentStep > step.id ? 'glass-teal' : 'bg-gray-300'
+                            }`}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
+                <div className="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/90 backdrop-blur border-t p-2">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={prevStep}
+                      disabled={currentStep === 1}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Voltar para etapa anterior
+                    </button>
+                    {currentStep < 7 ? (
+                      <button
+                        type="button"
+                        onClick={nextStep}
+                        className="flex-1 px-3 py-2 glass-teal text-sm text-white rounded-lg shadow"
+                      >
+                        {isGeocoding && currentStep === 2 ? "Validando..." : "Próximo"}
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        onClick={() => setSubmitIntent(true)}
+                        disabled={isSubmitting || images.some((i) => i.pending) || !canPublish}
+                        className="flex-1 px-3 py-2 glass-teal text-sm text-white rounded-lg disabled:opacity-70"
+                      >
+                        {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando" : "Publicar"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+            {currentStep === 1 && (
+              <div className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Select
@@ -1909,9 +1938,19 @@ export default function NewPropertyPage() {
                       </Select>
                     </div>
                   </div>
+                </div>
+              )}
 
-                  {/* Título do anúncio */}
-                  <div className="pt-4 border-t border-gray-100">
+              {currentStep === 5 && (
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Descrição do imóvel</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Preencha título, descrição e metas com IA (1 preenchimento gratuito por anúncio) e depois edite como quiser.
+                    </p>
+                  </div>
+
+                  <div className="pt-2">
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
                       Título do anúncio *
                     </label>
@@ -1925,20 +1964,50 @@ export default function NewPropertyPage() {
                       }}
                       placeholder="Ex: Casa em Petrolina"
                       className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.title ? "border-danger" : "border-neutral-300"}`}
-                      maxLength={100}
+                      maxLength={70}
                     />
                     {fieldErrors.title && <span className="mt-1 block text-xs text-danger">{fieldErrors.title}</span>}
                   </div>
-                </div>
-              )}
 
-              {currentStep === 5 && (
-                <div className="space-y-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Descrição do imóvel</h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Gere um texto profissional com IA (1 geração gratuita por anúncio) e depois edite como quiser.
-                    </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Meta Title</label>
+                      <input
+                        id="metaTitle"
+                        type="text"
+                        value={metaTitle}
+                        onChange={(e) => {
+                          setMetaTitle(e.target.value);
+                          clearFieldError("metaTitle");
+                        }}
+                        placeholder="Título otimizado para Google (até 65 caracteres)"
+                        className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.metaTitle ? "border-danger" : "border-neutral-300"}`}
+                        maxLength={65}
+                      />
+                      <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                        <span>{fieldErrors.metaTitle ? <span className="text-danger">{fieldErrors.metaTitle}</span> : <span />}</span>
+                        <span>{metaTitle.length}/65</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Meta Description</label>
+                      <input
+                        id="metaDescription"
+                        type="text"
+                        value={metaDescription}
+                        onChange={(e) => {
+                          setMetaDescription(e.target.value);
+                          clearFieldError("metaDescription");
+                        }}
+                        placeholder="Descrição curta para Google (até 155 caracteres)"
+                        className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.metaDescription ? "border-danger" : "border-neutral-300"}`}
+                        maxLength={155}
+                      />
+                      <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                        <span>{fieldErrors.metaDescription ? <span className="text-danger">{fieldErrors.metaDescription}</span> : <span />}</span>
+                        <span>{metaDescription.length}/155</span>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-2">
@@ -1967,7 +2036,7 @@ export default function NewPropertyPage() {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
-                              title: finalTitle,
+                              title: finalTitle ? finalTitle : null,
                               type,
                               purpose: purpose || null,
                               priceBRL: parseBRLToNumber(priceBRL) || null,
@@ -2003,17 +2072,24 @@ export default function NewPropertyPage() {
                             return;
                           }
 
+                          const nextTitle = (json?.data?.title as string | undefined) || "";
+                          const nextMetaTitle = (json?.data?.metaTitle as string | undefined) || "";
+                          const nextMetaDescription = (json?.data?.metaDescription as string | undefined) || "";
                           const text = (json?.data?.description as string | undefined) || "";
-                          if (!text.trim()) {
-                            setToast({ message: "Falha ao gerar descrição", type: "error" });
+
+                          if (!text.trim() || !nextTitle.trim()) {
+                            setToast({ message: "Falha ao preencher campos com IA", type: "error" });
                             return;
                           }
 
+                          setCustomTitle(nextTitle);
                           setDescription(text);
+                          setMetaTitle(nextMetaTitle);
+                          setMetaDescription(nextMetaDescription);
                           setAiDescriptionGenerations(1);
-                          setToast({ message: "Descrição gerada com IA!", type: "success" });
+                          setToast({ message: "Campos preenchidos com IA!", type: "success" });
                         } catch {
-                          setToast({ message: "Falha ao gerar descrição", type: "error" });
+                          setToast({ message: "Falha ao preencher campos com IA", type: "error" });
                         } finally {
                           setIsGeneratingDescription(false);
                         }
@@ -2024,16 +2100,18 @@ export default function NewPropertyPage() {
                         ? "Gerando..."
                         : aiDescriptionGenerations >= 1
                         ? "Limite atingido"
-                        : "Gerar descrição com IA"}
+                        : "Preencher Campos com IA"}
                     </button>
                     <button
                       type="button"
                       onClick={() => {
                         setDescription("");
+                        setMetaTitle("");
+                        setMetaDescription("");
                       }}
                       className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
                     >
-                      Limpar descrição
+                      Limpar campos
                     </button>
                   </div>
 
@@ -2049,8 +2127,8 @@ export default function NewPropertyPage() {
                     <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
                       <span>
                         {aiDescriptionGenerations >= 1
-                          ? "Você já usou a geração gratuita deste anúncio."
-                          : "Você ainda tem 1 geração gratuita para este anúncio."}
+                          ? "Você já usou o preenchimento gratuito deste anúncio."
+                          : "Você ainda tem 1 preenchimento gratuito para este anúncio."}
                       </span>
                       <span>{description.length} caracteres</span>
                     </div>

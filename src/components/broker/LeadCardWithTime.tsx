@@ -1,8 +1,9 @@
 "use client";
 
-import { Calendar, Clock, User, Users, MapPin } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
+import { Clock, MapPin, Calendar, ArrowRight, User, Users, Home, MessageCircle, CheckCircle, XCircle, AlertCircle, Star } from "lucide-react";
+import { buildPropertyPath } from "@/lib/slug";
+import Image from "next/image";
 
 interface LeadCardWithTimeProps {
   lead: {
@@ -89,7 +90,7 @@ export default function LeadCardWithTime({ lead, onCandidate }: LeadCardWithTime
             <div className="flex items-start justify-between gap-4 mb-2">
               <div>
                 <Link
-                  href={`/property/${lead.property.id}`}
+                  href={buildPropertyPath(lead.property.id, lead.property.title)}
                   className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors"
                 >
                   {lead.property.title}
@@ -147,7 +148,7 @@ export default function LeadCardWithTime({ lead, onCandidate }: LeadCardWithTime
             {/* Actions */}
             <div className="flex gap-3">
               <Link
-                href={`/property/${lead.property.id}`}
+                href={buildPropertyPath(lead.property.id, lead.property.title)}
                 className="px-4 py-2 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
               >
                 Ver Detalhes

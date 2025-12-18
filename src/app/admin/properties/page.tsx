@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { buildPropertyPath } from "@/lib/slug";
 import Image from "next/image";
 import DashboardLayout from "@/components/DashboardLayout";
 
@@ -257,7 +258,7 @@ export default function AdminPropertiesPage() {
                 {/* Actions */}
                 <div className="flex gap-2">
                   <Link
-                    href={`/property/${property.id}`}
+                    href={buildPropertyPath(property.id, property.title)}
                     className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-center text-sm font-medium"
                   >
                     <Eye className="w-4 h-4 inline mr-1" />

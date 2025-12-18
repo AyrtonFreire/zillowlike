@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { X, Plus, Home, Bed, Bath, Maximize2, MapPin, DollarSign, Check, Minus } from "lucide-react";
+import { buildPropertyPath } from "@/lib/slug";
 
 interface Property {
   id: string;
@@ -154,7 +155,7 @@ export default function ComparePage() {
 
                           {/* View Button */}
                           <Link
-                            href={`/property/${property.id}`}
+                            href={buildPropertyPath(property.id, property.title)}
                             className="block w-full mt-2 py-2 text-sm text-blue-600 hover:text-blue-700 font-medium text-center border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
                           >
                             Ver Detalhes

@@ -9,6 +9,7 @@ import Toast from "@/components/Toast";
 import EmptyState from "@/components/ui/EmptyState";
 import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
 import type { GetFavoritesResponse, GetPropertiesResponse, ApiProperty } from "@/types/api";
+import { buildPropertyPath } from "@/lib/slug";
 
 type Property = ApiProperty;
 
@@ -496,7 +497,7 @@ export default function HomeClient() {
                         R$ {(p.price / 100).toLocaleString("pt-BR")}
                       </div>
                       <Link 
-                        href={`/property/${p.id}`} 
+                        href={buildPropertyPath(p.id, p.title)} 
                         className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors duration-200"
                       >
                         Ver detalhes →

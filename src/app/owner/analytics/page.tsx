@@ -18,6 +18,7 @@ import {
   ArrowDown,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { buildPropertyPath } from "@/lib/slug";
 
 interface PropertyAnalytics {
   id: string;
@@ -248,7 +249,7 @@ export default function AnalyticsPage() {
                       {property.title}
                     </h3>
                     <Link
-                      href={`/property/${property.id}`}
+                      href={buildPropertyPath(property.id, property.title)}
                       className="text-sm text-blue-600 hover:text-blue-700"
                     >
                       Ver página do imóvel →

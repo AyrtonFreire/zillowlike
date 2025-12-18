@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useCallback } from "react";
 import type { ApiProperty } from "@/types/api";
 import { Heart, MapPin, Bed, Bath, Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
+import { buildPropertyPath } from "@/lib/slug";
 
 interface PropertyCardProps {
   property: ApiProperty;
@@ -75,7 +76,7 @@ export default function PropertyCard({
 
   return (
     <Link
-      href={`/property/${p.id}`}
+      href={buildPropertyPath(p.id, p.title)}
       className={`block group cursor-pointer ${className}`}
       onMouseEnter={() => {
         onHover?.(p.id);
