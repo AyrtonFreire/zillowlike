@@ -13,6 +13,17 @@ export async function geocodeAddress(query: string): Promise<GeocodeResult | nul
   const hit = cache.get(key);
   if (hit && now - hit.t < 5 * 60_000) return hit.v;
 
+  if (typeof window !== "undefined") {
+    const url = new URL("/api/geocode", window.location.origin);
+    url.searchParams.set("q", query);
+    const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
+    if (!res.ok) return null;
+    const data = (await res.json().catch(() => null)) as any;
+    const result = (data?.result || null) as GeocodeResult | null;
+    if (result) cache.set(key, { t: now, v: result });
+    return result;
+  }
+
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("q", query);
   url.searchParams.set("format", "json");
@@ -59,6 +70,21 @@ export async function geocodeAddressParts(opts: {
     postalCode = "",
     country = "Brazil",
   } = opts || {};
+
+  if (typeof window !== "undefined") {
+    const url = new URL("/api/geocode", window.location.origin);
+    if (street) url.searchParams.set("street", street);
+    if (number != null && String(number).trim()) url.searchParams.set("number", String(number));
+    if (neighborhood) url.searchParams.set("neighborhood", neighborhood);
+    if (city) url.searchParams.set("city", city);
+    if (state) url.searchParams.set("state", state);
+    if (postalCode) url.searchParams.set("postalCode", postalCode);
+    if (country) url.searchParams.set("country", country);
+    const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
+    if (!res.ok) return null;
+    const data = (await res.json().catch(() => null)) as any;
+    return (data?.result || null) as GeocodeResult | null;
+  }
 
   // 1) Structured query with parts
   const url = new URL("https://nominatim.openstreetmap.org/search");

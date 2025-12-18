@@ -395,6 +395,21 @@ export async function POST(req: NextRequest) {
 
     const { title, description, priceBRL, type, purpose, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility } = parsed.data;
 
+    let latitude = geo?.lat;
+    let longitude = geo?.lng;
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      const agg = await prisma.property.aggregate({
+        where: {
+          status: "ACTIVE",
+          city: address.city,
+          state: address.state,
+        },
+        _avg: { latitude: true, longitude: true },
+      });
+      latitude = agg._avg.latitude ?? -15.793889;
+      longitude = agg._avg.longitude ?? -47.882778;
+    }
+
     const price = Math.round(Number(priceBRL) * 100);
     const userId = (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub;
     if (!userId) {
@@ -456,8 +471,8 @@ export async function POST(req: NextRequest) {
       city: address.city,
       state: address.state,
       postalCode: address.postalCode ?? null,
-      latitude: geo.lat,
-      longitude: geo.lng,
+      latitude,
+      longitude,
       furnished: typeof furnished === 'boolean' ? furnished : null,
       petFriendly: typeof petFriendly === 'boolean' ? petFriendly : null,
       bedrooms: details?.bedrooms ?? null,

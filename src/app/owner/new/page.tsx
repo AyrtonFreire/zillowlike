@@ -1232,12 +1232,6 @@ export default function NewPropertyPage() {
         return;
       }
 
-      // Não valida endereço no Step 4: apenas impede e volta para Step 2 se faltou geocodificar
-      if (!geo) {
-        applyErrorsAndFocus(2, { geo: "Valide o endereço no passo de Localização antes de publicar." });
-        return;
-      }
-
       // Validar finalidade
       if (!purpose) {
         applyErrorsAndFocus(1, { purpose: "Selecione se é Venda ou Aluguel." });
@@ -1267,7 +1261,7 @@ export default function NewPropertyPage() {
         type,
         purpose,
         address: { street, neighborhood, city, state, postalCode, number: addressNumber || undefined },
-        geo: { lat: geo.lat, lng: geo.lng },
+        geo: geo ? { lat: geo.lat, lng: geo.lng } : undefined,
         furnished: isFurnished,
         petFriendly: isPetFriendly,
         details: {
@@ -1489,11 +1483,13 @@ export default function NewPropertyPage() {
       });
       setIsGeocoding(false);
       if (!res) {
-        applyErrorsAndFocus(2, { geo: "Endereço não encontrado. Ajuste os dados ou tente um CEP diferente." });
-        return;
+        setGeo(null);
+        setGeoPreview("");
+        setToast({ message: "Não conseguimos validar o endereço no mapa agora. Você pode continuar e ajustar depois.", type: "info" });
+      } else {
+        setGeo({ lat: res.lat, lng: res.lng });
+        setGeoPreview(res.displayName || `${res.lat},${res.lng}`);
       }
-      setGeo({ lat: res.lat, lng: res.lng });
-      setGeoPreview(res.displayName || `${res.lat},${res.lng}`);
     }
     // Step 3: sanidade dos números (quando fornecidos)
     if (currentStep === 3) {

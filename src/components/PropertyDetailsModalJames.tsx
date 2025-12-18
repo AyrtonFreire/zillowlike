@@ -563,14 +563,22 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 <ChevronLeft className="w-6 h-6 text-gray-800" />
               </button>
 
-              <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                onClick={() => {
+                  overlayHistoryPushedRef.current = false;
+                  onClose?.();
+                }}
+                className="flex items-center gap-2 rounded-lg -mx-1 px-1 hover:bg-gray-100 transition-colors"
+                aria-label="Ir para a página principal"
+              >
                 <div className="w-9 h-9 rounded-full bg-brand-teal flex items-center justify-center shadow-sm">
                   <span className="text-white font-bold text-base">Z</span>
                 </div>
                 <span className="text-lg font-semibold tracking-tight text-slate-900">
                   ZillowLike
                 </span>
-              </div>
+              </Link>
 
               <div className="flex items-center gap-2">
                 <button
