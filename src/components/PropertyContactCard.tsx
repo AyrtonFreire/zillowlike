@@ -185,7 +185,6 @@ export default function PropertyContactCard({
   });
   
   const [loading, setLoading] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
   const [notifySimilar, setNotifySimilar] = useState(false);
   const [successData, setSuccessData] = useState<{ chatUrl: string; email: string } | null>(null);
   const toast = useToast();
@@ -239,10 +238,6 @@ export default function PropertyContactCard({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!agreeTerms) {
-      toast.warning("Por favor, aceite os Termos de Uso e Política de Privacidade");
-      return;
-    }
     
     setLoading(true);
     try {
@@ -309,7 +304,6 @@ export default function PropertyContactCard({
     setSuccessData(null);
     setFormData({ name: "", email: "", phone: "", message: `Tenho interesse em\n${propertyTitle}` });
     setVisitData({ date: "", time: "" });
-    setAgreeTerms(false);
   };
 
   // Mostrar tela de sucesso se houver dados
@@ -412,9 +406,9 @@ export default function PropertyContactCard({
 
           {canShowWhatsApp && (
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
                 Fale diretamente com o Anunciante
-              </p>
+              </h3>
               <button
                 type="button"
                 onClick={handleWhatsAppClick}
@@ -539,16 +533,12 @@ export default function PropertyContactCard({
               <span>Notificar-me por e-mail sobre imóveis similares</span>
             </label>
           )}
-          <label className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="mt-0.5 w-5 h-5 rounded"
-              required
-              checked={agreeTerms}
-              onChange={(e) => setAgreeTerms(e.target.checked)}
-            />
-            <span>Concordo com os Termos de Uso e Política de Privacidade</span>
-          </label>
+          <p className="text-xs text-gray-500 leading-relaxed px-2">
+            Ao entrar em contato, você concorda com os{" "}
+            <Link href="/terms" className="underline hover:text-gray-700">Termos de uso</Link>
+            {" "}e com a{" "}
+            <Link href="/privacy" className="underline hover:text-gray-700">Política de privacidade</Link>.
+          </p>
         </div>
       </form>
     </div>
