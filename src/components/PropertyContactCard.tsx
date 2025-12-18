@@ -411,21 +411,19 @@ export default function PropertyContactCard({
           )}
 
           {canShowWhatsApp && (
-            <button
-              type="button"
-              onClick={handleWhatsAppClick}
-              className="mt-3 w-full group inline-flex items-center justify-between rounded-xl px-2 py-2 hover:bg-neutral-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/25 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-            >
-              <span className="inline-flex items-center gap-3">
-                <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-accent/10 border border-accent/15 text-accent">
-                  <WhatsAppIcon className="w-5 h-5" />
-                </span>
-                <span className="text-sm font-semibold text-neutral-900 underline-offset-4 decoration-neutral-300 group-hover:underline group-hover:decoration-accent/60">
-                  Conversar no WhatsApp
-                </span>
-              </span>
-              <ExternalLink className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600 transition-colors" />
-            </button>
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">
+                Fale diretamente com o Anunciante
+              </p>
+              <button
+                type="button"
+                onClick={handleWhatsAppClick}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white font-semibold px-4 py-3 shadow-sm hover:bg-[#128C7E] active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                <WhatsAppIcon className="w-5 h-5" />
+                WhatsApp
+              </button>
+            </div>
           )}
         </div>
       )}
