@@ -172,15 +172,27 @@ async function handler(req: NextRequest) {
     "- O JSON deve ter exatamente as chaves: title, description, metaTitle, metaDescription.\n" +
     "\nREGRAS (obrigatórias):\n" +
     "1) title: 3 a 70 caracteres, sem emojis, sem preço, sem contato, sem exageros.\n" +
-    "2) metaTitle: até 65 caracteres (ideal para Google), conciso e informativo.\n" +
-    "3) metaDescription: até 155 caracteres, convite moderado, sem telefone/e-mail/links.\n" +
-    "4) description: 25 a 30 linhas, separadas por quebras de linha (\\n).\n" +
+    "2) metaTitle: até 65 caracteres. Formato obrigatório: [TIPO DE IMÓVEL] + [AÇÃO] + [LOCAL] + (DIFERENCIAL opcional).\n" +
+    "   - AÇÃO deve ser: 'à venda' (SALE) ou 'para alugar' (RENT).\n" +
+    "   - LOCAL deve priorizar bairro; se faltar, usar cidade/UF.\n" +
+    "   - DIFERENCIAL opcional: escolher no máximo 1 (ex.: '2 Quartos', '3 Quartos', '80 m²', '1 Vaga', 'Varanda', 'Piscina').\n" +
+    "   - Separar diferencial com ' | ' (pipe). Ex.: 'Apartamento à venda no Centro | 2 Quartos'.\n" +
+    "3) metaDescription: até 155 caracteres. Formato obrigatório: Feature principal + Prova + CTA leve.\n" +
+    "   - Feature principal: tipo + ação + local + 1 atributo objetivo (quartos/m²/vaga/amenity).\n" +
+    "   - Prova: mencionar que há fotos/detalhes ou que o valor está atualizado, sem inventar.\n" +
+    "   - CTA leve: 'Veja fotos', 'Saiba mais', 'Agende uma visita', 'Fale com um corretor'.\n" +
+    "   - Proibido: telefone, e-mail, links, emojis, urgência/agressividade, superlativos.\n" +
+    "4) description (Texto do anúncio): 14 a 18 linhas, separadas por quebras de linha (\\n).\n" +
     "5) Não invente fatos. Não inferir: vista, metragem não informada, mobília, vagas, andar, condomínio/IPTU, reforma, alto padrão, proximidade de pontos de interesse, orientação solar, etc., a menos que esteja nos dados ou claramente visível nas fotos.\n" +
     "6) Use apenas o que estiver nos dados fornecidos e o que for visível nas fotos.\n" +
     "7) Se faltar informação, escreva de forma neutra (sem suposições).\n" +
     "8) Não inclua emojis.\n" +
     "9) Não inclua telefone, e-mail, links, preço parcelado, ou chamada agressiva.\n" +
-    "10) A description não deve ter bullets, títulos, ou seções; apenas texto corrido em linhas.\n" +
+    "10) A description não deve ter bullets, títulos, ou seções; apenas frases/linhas corridas (sem marcadores).\n" +
+    "11) Copywriting do Texto do anúncio: comece com uma abertura clara (tipo + ação + local) e depois detalhe (ambientes, metragem se tiver, diferenciais reais). Feche com CTA leve (ex.: 'Agende sua visita e conheça de perto.').\n" +
+    "12) Seja específico e útil, mas só com dados fornecidos: quartos/banheiros/área, diferenciais, comodidades e contexto de localização (bairro/cidade/UF).\n" +
+    "13) Validação final obrigatória antes de responder: metaTitle <= 65 caracteres e metaDescription <= 155 caracteres. Se passar, reescreva mais curto mantendo o formato exigido.\n" +
+    "14) metaTitle e metaDescription devem ser 1 linha (sem \\n) e sem aspas desbalanceadas.\n" +
     "\nESTILO:\n" +
     "- Foque em benefícios reais (luz, ventilação, amplitude, integração) apenas quando suportado pelas fotos.\n" +
     "- Evite clichês e adjetivos exagerados.\n" +

@@ -380,7 +380,7 @@ export default function NewPropertyPage() {
   }, []);
 
   useEffect(() => {
-    if (currentStep === 2) return;
+    if (currentStep === 1) return;
     if (typeof window !== 'undefined' && leafletResizeHandler.current) {
       try { window.removeEventListener('resize', leafletResizeHandler.current); } catch {}
       leafletResizeHandler.current = null;
@@ -394,7 +394,7 @@ export default function NewPropertyPage() {
 
   // Initialize/Update Leaflet map when on Step 2 and geo available
   useEffect(() => {
-    if (!leafletLoaded || currentStep !== 2) return;
+    if (!leafletLoaded || currentStep !== 1) return;
     const L = (window as any).L;
     if (!L || !mapContainerRef.current) return;
     const container = mapContainerRef.current;
@@ -476,8 +476,9 @@ export default function NewPropertyPage() {
 
   // When CEP becomes valid (and street/city are filled), center map on the street (no marker)
   useEffect(() => {
-    if (currentStep !== 2) return;
-    if (!cepValid || !postalCode) return;
+    if (currentStep !== 1) return;
+    const cepDigits = postalCode.replace(/\D+/g, "");
+    if (cepDigits.length !== 8) return;
     if (!street || !city || !state) return;
     // geocode without number
     geocodeNow(false);
@@ -486,16 +487,16 @@ export default function NewPropertyPage() {
 
   // When number is provided, place/update marker precisely on the address
   useEffect(() => {
-    if (currentStep !== 2) return;
+    if (currentStep !== 1) return;
     if (!cepValid || !postalCode) return;
     if (!addressNumber || String(addressNumber).trim() === '') return;
     geocodeNow(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, cepValid, postalCode, addressNumber]);
 
-  // Paste-from-clipboard support (Step 4)
+  // Paste-from-clipboard support (Step 3)
   useEffect(() => {
-    if (currentStep !== 4) return;
+    if (currentStep !== 3) return;
     const onPaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -1139,13 +1140,12 @@ export default function NewPropertyPage() {
   }, [purpose, priceBRL, type, geo, images, description, bedrooms, bathrooms, areaM2, hasBalcony, hasPool, hasGym, hasElevator, hasConcierge24h]);
 
   const steps = [
-    { id: 1, name: "Informações básicas", description: "Preço e tipo" },
-    { id: 2, name: "Localização", description: "Endereço completo" },
-    { id: 3, name: "Detalhes", description: "Quartos, banheiros e área" },
-    { id: 4, name: "Fotos", description: "Imagens do imóvel" },
-    { id: 5, name: "Descrição", description: "Título, texto e SEO" },
-    { id: 6, name: "Dados do proprietário", description: "Informações internas (opcional)" },
-    { id: 7, name: "Revisão final", description: "Conferir dados e publicar" },
+    { id: 1, name: "Informações básicas", description: "Preço, tipo e endereço" },
+    { id: 2, name: "Detalhes", description: "Quartos, banheiros e área" },
+    { id: 3, name: "Fotos", description: "Imagens do imóvel" },
+    { id: 4, name: "Descrição", description: "Título, texto e SEO" },
+    { id: 5, name: "Dados do proprietário", description: "Informações internas (opcional)" },
+    { id: 6, name: "Revisão final", description: "Conferir dados e publicar" },
   ];
 
   function tipsForStep(step: number): string[] {
@@ -1155,38 +1155,33 @@ export default function NewPropertyPage() {
           "Defina Venda ou Aluguel primeiro para orientar os campos.",
           "Preço sem centavos: use pontos para milhares (ex.: 450.000).",
           "Escolha o tipo certo (Casa, Apto, etc.) para filtros funcionarem bem.",
+          "Preencha o endereço com cuidado para melhorar a busca e o mapa.",
         ];
       case 2:
-        return [
-          "Use um CEP válido para preencher rua/bairro automaticamente.",
-          "Se o número ainda não existe, deixe em branco e valide o CEP mesmo assim.",
-          "Clique em Validar/Próximo para geolocalizar e melhorar a busca no mapa.",
-        ];
-      case 3:
         return [
           "Informe quartos/banheiros/área quando souber: ajuda o interessado a decidir.",
           "Tags como 'Reformado', 'Vaga coberta' e 'Varanda' aumentam relevância.",
           "Evite números exagerados; transparência gera melhores contatos.",
         ];
-      case 4:
+      case 3:
         return [
           "Adicione ao menos 1 foto; 8–15 fotos boas geram mais visitas.",
           "Prefira luz natural; mantenha os ambientes organizados.",
           "Arraste para ordenar; dá destaque às melhores fotos primeiro.",
         ];
-      case 5:
+      case 4:
         return [
           "Clique em 'Preencher Campos com IA' para gerar título, descrição e metas com base nos dados e fotos.",
           "Depois você pode editar todos os campos manualmente.",
           "Uma boa descrição aumenta a conversão e melhora a qualidade do anúncio.",
         ];
-      case 6:
+      case 5:
         return [
           "Esses dados são apenas para seu controle e não aparecem no anúncio.",
           "Use para registrar informações do proprietário, comissão e chave.",
           "Você pode preencher depois; essa etapa é opcional.",
         ];
-      case 7:
+      case 6:
         return [
           "Revise os dados com calma antes de publicar o anúncio.",
           "Use os botões 'Editar' para voltar rapidamente a qualquer etapa.",
@@ -1226,7 +1221,7 @@ export default function NewPropertyPage() {
     setFieldErrors({});
 
     if (finalTitle.length < 3) {
-      applyErrorsAndFocus(5, { title: "Informe um título para o anúncio." });
+      applyErrorsAndFocus(4, { title: "Informe um título para o anúncio." });
       return;
     }
 
@@ -1239,13 +1234,13 @@ export default function NewPropertyPage() {
     try {
       // Impede publicar enquanto houver uploads pendentes
       if (images.some((img) => img.pending)) {
-        applyErrorsAndFocus(4, { images: "Aguarde terminar o envio das imagens antes de publicar." });
+        applyErrorsAndFocus(3, { images: "Aguarde terminar o envio das imagens antes de publicar." });
         return;
       }
       // Exige ao menos uma imagem válida
       const hasAtLeastOneImage = images.some((img) => img.url && img.url.trim().length > 0);
       if (!hasAtLeastOneImage) {
-        applyErrorsAndFocus(4, { images: "Adicione pelo menos uma foto do imóvel." });
+        applyErrorsAndFocus(3, { images: "Adicione pelo menos uma foto do imóvel." });
         return;
       }
 
@@ -1405,13 +1400,13 @@ export default function NewPropertyPage() {
             !!next.yearRenovated ||
             !!next.iptuYearBRL;
           const step = next.images
-            ? 4
-            : next.postalCode || next.street || next.city || next.state || next.neighborhood || next.geo
-            ? 2
-            : hasStep3
             ? 3
+            : next.postalCode || next.street || next.city || next.state || next.neighborhood || next.geo
+            ? 1
+            : hasStep3
+            ? 2
             : next.title || next.metaTitle || next.metaDescription
-            ? 5
+            ? 4
             : 1;
           applyErrorsAndFocus(step, next);
         }
@@ -1473,13 +1468,11 @@ export default function NewPropertyPage() {
         applyErrorsAndFocus(1, { type: "Selecione o tipo de imóvel." });
         return;
       }
-    }
-    // Validação de endereço no Step 2 antes de avançar
-    if (currentStep === 2) {
-      // Campos obrigatórios: CEP com 8 dígitos, rua, bairro, cidade, estado
+
+      // Validação de endereço (agora no Step 1)
       const cepDigits = postalCode.replace(/\D+/g, "");
       if (!postalCode || cepDigits.length !== 8) {
-        applyErrorsAndFocus(2, { postalCode: "Informe um CEP válido (8 dígitos)." });
+        applyErrorsAndFocus(1, { postalCode: "Informe um CEP válido (8 dígitos)." });
         return;
       }
       if (!street || !neighborhood || !city || !state) {
@@ -1488,9 +1481,10 @@ export default function NewPropertyPage() {
         if (!neighborhood) errs.neighborhood = "Informe o bairro.";
         if (!city) errs.city = "Informe a cidade.";
         if (!state) errs.state = "Informe o estado (UF).";
-        applyErrorsAndFocus(2, errs);
+        applyErrorsAndFocus(1, errs);
         return;
       }
+
       setIsGeocoding(true);
       const res = await geocodeAddressParts({
         street,
@@ -1511,7 +1505,7 @@ export default function NewPropertyPage() {
       }
     }
     // Step 3: sanidade dos números (quando fornecidos)
-    if (currentStep === 3) {
+    if (currentStep === 2) {
       const errs: Record<string, string> = {};
       const checkNonNeg = (key: string, label: string, v: any) => {
         if (v === "" || v === null || v === undefined) return;
@@ -1546,27 +1540,27 @@ export default function NewPropertyPage() {
       checkYear("yearRenovated", "Ano de reforma", yearRenovated);
 
       if (Object.keys(errs).length) {
-        applyErrorsAndFocus(3, errs);
+        applyErrorsAndFocus(2, errs);
         return;
       }
     }
     // Step 4: ao menos 1 imagem
-    if (currentStep === 4) {
+    if (currentStep === 3) {
       const hasImage = images.some((it) => it.url && it.url.trim().length > 0);
       if (!hasImage) {
-        applyErrorsAndFocus(4, { images: "Adicione ao menos uma foto do imóvel." });
+        applyErrorsAndFocus(3, { images: "Adicione ao menos uma foto do imóvel." });
         return;
       }
     }
 
     // Step 5: título + metas
-    if (currentStep === 5) {
+    if (currentStep === 4) {
       const errs: Record<string, string> = {};
       if (finalTitle.length < 3) errs.title = "Informe um título para o anúncio.";
       if (metaTitle && metaTitle.length > 65) errs.metaTitle = "Meta Title deve ter no máximo 65 caracteres.";
       if (metaDescription && metaDescription.length > 155) errs.metaDescription = "Meta Description deve ter no máximo 155 caracteres.";
       if (Object.keys(errs).length) {
-        applyErrorsAndFocus(5, errs);
+        applyErrorsAndFocus(4, errs);
         return;
       }
     }
@@ -1575,7 +1569,7 @@ export default function NewPropertyPage() {
     // Step 6: dados do proprietário (opcional, pode pular)
     // Não há validação obrigatória neste step
     
-    if (currentStep < 7) setCurrentStep(currentStep + 1);
+    if (currentStep < 6) setCurrentStep(currentStep + 1);
   };
 
   const prevStep = () => {
@@ -1864,13 +1858,13 @@ export default function NewPropertyPage() {
                     >
                       Voltar para etapa anterior
                     </button>
-                    {currentStep < 7 ? (
+                    {currentStep < 6 ? (
                       <button
                         type="button"
                         onClick={nextStep}
                         className="flex-1 px-3 py-2 glass-teal text-sm text-white rounded-lg shadow"
                       >
-                        {isGeocoding && currentStep === 2 ? "Validando..." : "Próximo"}
+                        {isGeocoding && currentStep === 1 ? "Validando..." : "Próximo"}
                       </button>
                     ) : (
                       <button
@@ -1885,8 +1879,8 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
 
-            {currentStep === 1 && (
-              <div className="space-y-6">
+              {currentStep === 1 && (
+                <div className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Select
@@ -1938,76 +1932,140 @@ export default function NewPropertyPage() {
                       </Select>
                     </div>
                   </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="text-lg font-semibold text-gray-900">Localização</h2>
+                      <button
+                        type="button"
+                        onClick={clearLocationFields}
+                        className="text-xs font-semibold text-gray-600 hover:text-gray-800"
+                      >
+                        Limpar campos
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Informe o CEP e o endereço completo. Usamos essas informações para posicionar o imóvel no mapa e melhorar a
+                      busca.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <Input
+                        id="postalCode"
+                        label="CEP *"
+                        value={postalCode}
+                        error={fieldErrors.postalCode}
+                        onChange={(e) => {
+                          setPostalCode(formatCEP(e.target.value));
+                          clearFieldError("postalCode");
+                        }}
+                        placeholder="Ex: 56300-000"
+                        inputMode="numeric"
+                      />
+                      <Input
+                        id="street"
+                        label="Rua *"
+                        value={street}
+                        error={fieldErrors.street}
+                        onChange={(e) => {
+                          setStreet(e.target.value);
+                          clearFieldError("street");
+                        }}
+                      />
+                      <label className="block">
+                        <span className="block mb-1">
+                          <span className="text-sm font-medium text-neutral-700">Número</span>
+                        </span>
+                        <input
+                          id="addressNumber"
+                          ref={numberInputRef}
+                          value={addressNumber}
+                          onChange={(e) => setAddressNumber(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent transition border-neutral-300"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <Input
+                        id="neighborhood"
+                        label="Bairro *"
+                        value={neighborhood}
+                        error={fieldErrors.neighborhood}
+                        onChange={(e) => {
+                          setNeighborhood(e.target.value);
+                          clearFieldError("neighborhood");
+                        }}
+                      />
+                      <Input
+                        id="city"
+                        label="Cidade *"
+                        value={city}
+                        error={fieldErrors.city}
+                        onChange={(e) => {
+                          setCity(e.target.value);
+                          clearFieldError("city");
+                        }}
+                      />
+                      <Input
+                        id="state"
+                        label="Estado (UF) *"
+                        value={state}
+                        error={fieldErrors.state}
+                        onChange={(e) => {
+                          setState(e.target.value.toUpperCase());
+                          clearFieldError("state");
+                        }}
+                        maxLength={2}
+                      />
+                    </div>
+
+                    {addressString && (
+                      <p className="text-xs text-gray-500">Endereço atual: {addressString}</p>
+                    )}
+
+                    <div className="mt-4">
+                      {fieldErrors.geo && <div id="geo" className="mb-2 text-xs text-danger">{fieldErrors.geo}</div>}
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {isGeocoding ? (
+                            <div className="w-3.5 h-3.5 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
+                          ) : (
+                            <MapPinIcon className="w-3.5 h-3.5 text-teal-700" />
+                          )}
+                          <span className="text-xs text-gray-600 truncate">
+                            {isGeocoding
+                              ? "Atualizando mapa..."
+                              : geoPreview
+                              ? `Ponto aproximado: ${geoPreview}`
+                              : "O mapa é atualizado automaticamente conforme você preenche o endereço."}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleGeocode}
+                          disabled={isGeocoding || !addressString}
+                          className="text-xs font-semibold text-teal-700 hover:text-teal-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Atualizar
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 h-64 rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+                      <div ref={mapContainerRef} className="w-full h-full" />
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {currentStep === 5 && (
+              {currentStep === 4 && (
                 <div className="space-y-4">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Descrição do imóvel</h2>
                     <p className="text-sm text-gray-600 mt-1">
                       Preencha título, descrição e metas com IA (1 preenchimento gratuito por anúncio) e depois edite como quiser.
                     </p>
-                  </div>
-
-                  <div className="pt-2">
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Título do anúncio *
-                    </label>
-                    <input
-                      id="title"
-                      type="text"
-                      value={customTitle}
-                      onChange={(e) => {
-                        setCustomTitle(e.target.value);
-                        clearFieldError("title");
-                      }}
-                      placeholder="Ex: Casa em Petrolina"
-                      className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.title ? "border-danger" : "border-neutral-300"}`}
-                      maxLength={70}
-                    />
-                    {fieldErrors.title && <span className="mt-1 block text-xs text-danger">{fieldErrors.title}</span>}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Meta Title</label>
-                      <input
-                        id="metaTitle"
-                        type="text"
-                        value={metaTitle}
-                        onChange={(e) => {
-                          setMetaTitle(e.target.value);
-                          clearFieldError("metaTitle");
-                        }}
-                        placeholder="Título otimizado para Google (até 65 caracteres)"
-                        className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.metaTitle ? "border-danger" : "border-neutral-300"}`}
-                        maxLength={65}
-                      />
-                      <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                        <span>{fieldErrors.metaTitle ? <span className="text-danger">{fieldErrors.metaTitle}</span> : <span />}</span>
-                        <span>{metaTitle.length}/65</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Meta Description</label>
-                      <input
-                        id="metaDescription"
-                        type="text"
-                        value={metaDescription}
-                        onChange={(e) => {
-                          setMetaDescription(e.target.value);
-                          clearFieldError("metaDescription");
-                        }}
-                        placeholder="Descrição curta para Google (até 155 caracteres)"
-                        className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.metaDescription ? "border-danger" : "border-neutral-300"}`}
-                        maxLength={155}
-                      />
-                      <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                        <span>{fieldErrors.metaDescription ? <span className="text-danger">{fieldErrors.metaDescription}</span> : <span />}</span>
-                        <span>{metaDescription.length}/155</span>
-                      </div>
-                    </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-2">
@@ -2115,6 +2173,66 @@ export default function NewPropertyPage() {
                     </button>
                   </div>
 
+                  <div className="pt-2">
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Título do anúncio *
+                    </label>
+                    <input
+                      id="title"
+                      type="text"
+                      value={customTitle}
+                      onChange={(e) => {
+                        setCustomTitle(e.target.value);
+                        clearFieldError("title");
+                      }}
+                      placeholder="Ex: Casa em Petrolina"
+                      className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.title ? "border-danger" : "border-neutral-300"}`}
+                      maxLength={70}
+                    />
+                    {fieldErrors.title && <span className="mt-1 block text-xs text-danger">{fieldErrors.title}</span>}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Meta Title</label>
+                      <input
+                        id="metaTitle"
+                        type="text"
+                        value={metaTitle}
+                        onChange={(e) => {
+                          setMetaTitle(e.target.value);
+                          clearFieldError("metaTitle");
+                        }}
+                        placeholder="Título otimizado para Google (até 65 caracteres)"
+                        className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.metaTitle ? "border-danger" : "border-neutral-300"}`}
+                        maxLength={65}
+                      />
+                      <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                        <span>{fieldErrors.metaTitle ? <span className="text-danger">{fieldErrors.metaTitle}</span> : <span />}</span>
+                        <span>{metaTitle.length}/65</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Meta Description</label>
+                      <input
+                        id="metaDescription"
+                        type="text"
+                        value={metaDescription}
+                        onChange={(e) => {
+                          setMetaDescription(e.target.value);
+                          clearFieldError("metaDescription");
+                        }}
+                        placeholder="Descrição curta para Google (até 155 caracteres)"
+                        className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.metaDescription ? "border-danger" : "border-neutral-300"}`}
+                        maxLength={155}
+                      />
+                      <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                        <span>{fieldErrors.metaDescription ? <span className="text-danger">{fieldErrors.metaDescription}</span> : <span />}</span>
+                        <span>{metaDescription.length}/155</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-1">Texto do anúncio</label>
                     <textarea
@@ -2137,132 +2255,6 @@ export default function NewPropertyPage() {
               )}
 
               {currentStep === 2 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 className="text-lg font-semibold text-gray-900">Localização</h2>
-                    <button
-                      type="button"
-                      onClick={clearLocationFields}
-                      className="text-xs font-semibold text-gray-600 hover:text-gray-800"
-                    >
-                      Limpar campos
-                    </button>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Informe o CEP e o endereço completo. Usamos essas informações para posicionar o imóvel no mapa e melhorar a
-                    busca.
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <Input
-                      id="postalCode"
-                      label="CEP *"
-                      value={postalCode}
-                      error={fieldErrors.postalCode}
-                      onChange={(e) => {
-                        setPostalCode(formatCEP(e.target.value));
-                        clearFieldError("postalCode");
-                      }}
-                      placeholder="Ex: 56300-000"
-                      inputMode="numeric"
-                    />
-                    <Input
-                      id="street"
-                      label="Rua *"
-                      value={street}
-                      error={fieldErrors.street}
-                      onChange={(e) => {
-                        setStreet(e.target.value);
-                        clearFieldError("street");
-                      }}
-                    />
-                    <label className="block">
-                      <span className="block mb-1">
-                        <span className="text-sm font-medium text-neutral-700">Número</span>
-                      </span>
-                      <input
-                        id="addressNumber"
-                        ref={numberInputRef}
-                        value={addressNumber}
-                        onChange={(e) => setAddressNumber(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent transition border-neutral-300"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <Input
-                      id="neighborhood"
-                      label="Bairro *"
-                      value={neighborhood}
-                      error={fieldErrors.neighborhood}
-                      onChange={(e) => {
-                        setNeighborhood(e.target.value);
-                        clearFieldError("neighborhood");
-                      }}
-                    />
-                    <Input
-                      id="city"
-                      label="Cidade *"
-                      value={city}
-                      error={fieldErrors.city}
-                      onChange={(e) => {
-                        setCity(e.target.value);
-                        clearFieldError("city");
-                      }}
-                    />
-                    <Input
-                      id="state"
-                      label="Estado (UF) *"
-                      value={state}
-                      error={fieldErrors.state}
-                      onChange={(e) => {
-                        setState(e.target.value.toUpperCase());
-                        clearFieldError("state");
-                      }}
-                      maxLength={2}
-                    />
-                  </div>
-
-                  {addressString && (
-                    <p className="text-xs text-gray-500">Endereço atual: {addressString}</p>
-                  )}
-
-                  <div className="mt-4">
-                    {fieldErrors.geo && <div id="geo" className="mb-2 text-xs text-danger">{fieldErrors.geo}</div>}
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {isGeocoding ? (
-                          <div className="w-3.5 h-3.5 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
-                        ) : (
-                          <MapPinIcon className="w-3.5 h-3.5 text-teal-700" />
-                        )}
-                        <span className="text-xs text-gray-600 truncate">
-                          {isGeocoding
-                            ? "Atualizando mapa..."
-                            : geoPreview
-                            ? `Ponto aproximado: ${geoPreview}`
-                            : "O mapa é atualizado automaticamente conforme você preenche o endereço."}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleGeocode}
-                        disabled={isGeocoding || !addressString}
-                        className="text-xs font-semibold text-teal-700 hover:text-teal-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Atualizar
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 h-64 rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
-                    <div ref={mapContainerRef} className="w-full h-full" />
-                  </div>
-                </div>
-              )}
-
-              {currentStep === 3 && (
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Detalhes do imóvel</h2>
@@ -2442,7 +2434,7 @@ export default function NewPropertyPage() {
                 </div>
               )}
 
-              {currentStep === 4 && (
+              {currentStep === 3 && (
                 <div className="space-y-4">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Fotos do imóvel *</h2>
@@ -2649,7 +2641,7 @@ export default function NewPropertyPage() {
                 </div>
               )}
 
-              {currentStep === 6 && (
+              {currentStep === 5 && (
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Dados do proprietário</h2>
@@ -2837,7 +2829,7 @@ export default function NewPropertyPage() {
                 </div>
               )}
 
-              {currentStep === 7 && (
+              {currentStep === 6 && (
                 <div className="space-y-4">
                   <h2 className="text-lg font-semibold text-gray-900">Revisão final</h2>
                   <p className="text-sm text-gray-600">
@@ -3066,13 +3058,13 @@ export default function NewPropertyPage() {
 
               {/* Navegação desktop */}
               <div className="hidden sm:flex justify-end items-center pt-4 border-t border-gray-100 mt-4">
-                {currentStep < 7 ? (
+                {currentStep < 6 ? (
                   <button
                     type="button"
                     onClick={nextStep}
                     className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow"
                   >
-                    {isGeocoding && currentStep === 2 ? "Validando..." : "Avançar"}
+                    {isGeocoding && currentStep === 1 ? "Validando..." : "Avançar"}
                   </button>
                 ) : (
                   <button
