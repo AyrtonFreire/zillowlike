@@ -197,7 +197,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     if (!isOpen) return;
     if (shouldLoadArea && shouldLoadRelated) return;
 
-    const root = scrollContainerRef.current ?? null;
+    const root = variant === "overlay" ? (scrollContainerRef.current ?? null) : null;
     const areaEl = areaSectionRef.current;
     const relatedEl = relatedSectionRef.current;
 
@@ -226,7 +226,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     return () => {
       try { obs.disconnect(); } catch {}
     };
-  }, [isOpen, shouldLoadArea, shouldLoadRelated]);
+  }, [isOpen, shouldLoadArea, shouldLoadRelated, property, variant]);
 
   const poiCategories = useMemo(() => ([
     { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools },
