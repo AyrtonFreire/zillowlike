@@ -411,21 +411,21 @@ export default function PropertyContactCard({
           )}
 
           {canShowWhatsApp && (
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="md"
               onClick={handleWhatsAppClick}
-              leftIcon={
+              className="mt-3 w-full group inline-flex items-center justify-between rounded-xl px-2 py-2 hover:bg-neutral-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/25 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            >
+              <span className="inline-flex items-center gap-3">
                 <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-accent/10 border border-accent/15 text-accent">
                   <WhatsAppIcon className="w-5 h-5" />
                 </span>
-              }
-              rightIcon={<ExternalLink className="w-4 h-4 text-neutral-500" />}
-              className="mt-3 w-full justify-between rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 text-neutral-900 hover:bg-neutral-50 hover:shadow-sm focus-visible:ring-accent/25"
-            >
-              Conversar no WhatsApp
-            </Button>
+                <span className="text-sm font-semibold text-neutral-900 underline-offset-4 decoration-neutral-300 group-hover:underline group-hover:decoration-accent/60">
+                  Conversar no WhatsApp
+                </span>
+              </span>
+              <ExternalLink className="w-4 h-4 text-neutral-400 group-hover:text-neutral-600 transition-colors" />
+            </button>
           )}
         </div>
       )}
