@@ -365,78 +365,77 @@ export default function PropertyContactCard({
     <div className="rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-gray-50/50 to-teal-50/30 shadow-lg overflow-hidden">
       {/* Header com info do anunciante */}
       {ownerName && (
-        <div className="p-4 pb-3">
-          <div className="flex items-center justify-between gap-3">
-            {/* Avatar + Info */}
-            <div className="flex items-center gap-3 min-w-0">
-              {hasPublicProfile ? (
-                <Link href={`/realtor/${ownerPublicSlug}`} className="shrink-0">
-                  {ownerImage ? (
-                    <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-md">
-                      <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center border-2 border-white shadow-md">
-                      <span className="text-xl font-bold text-teal-700">{ownerName.charAt(0).toUpperCase()}</span>
-                    </div>
-                  )}
-                </Link>
-              ) : (
-                ownerImage ? (
-                  <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-md shrink-0">
+        <div className="p-5">
+          {/* Linha 1: Avatar + Nome + WhatsApp */}
+          <div className="flex items-center gap-4">
+            {/* Avatar */}
+            {hasPublicProfile ? (
+              <Link href={`/realtor/${ownerPublicSlug}`} className="shrink-0">
+                {ownerImage ? (
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-lg">
                     <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
                   </div>
                 ) : (
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center border-2 border-white shadow-md shrink-0">
-                    <span className="text-xl font-bold text-teal-700">{ownerName.charAt(0).toUpperCase()}</span>
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center border-2 border-white shadow-lg">
+                    <span className="text-2xl font-bold text-teal-700">{ownerName.charAt(0).toUpperCase()}</span>
                   </div>
-                )
+                )}
+              </Link>
+            ) : (
+              ownerImage ? (
+                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-lg shrink-0">
+                  <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center border-2 border-white shadow-lg shrink-0">
+                  <span className="text-2xl font-bold text-teal-700">{ownerName.charAt(0).toUpperCase()}</span>
+                </div>
+              )
+            )}
+
+            {/* Nome + Headline + Role */}
+            <div className="flex-1 min-w-0">
+              {hasPublicProfile ? (
+                <Link href={`/realtor/${ownerPublicSlug}`} className="hover:underline">
+                  <p className="font-bold text-gray-900 text-base">{ownerName}</p>
+                </Link>
+              ) : (
+                <p className="font-bold text-gray-900 text-base">{ownerName}</p>
               )}
-              <div className="min-w-0">
-                {hasPublicProfile ? (
-                  <Link href={`/realtor/${ownerPublicSlug}`} className="hover:underline">
-                    <p className="font-bold text-gray-900 uppercase tracking-wide truncate">{ownerName}</p>
-                  </Link>
-                ) : (
-                  <p className="font-bold text-gray-900 uppercase tracking-wide truncate">{ownerName}</p>
-                )}
-                {ownerHeadline && (
-                  <p className="text-xs text-gray-500 truncate">({ownerHeadline})</p>
-                )}
-                <p className="text-sm text-gray-600">
-                  {ownerRole === "AGENCY" ? "Imobiliária" : ownerRole === "REALTOR" ? "Corretor" : "Proprietário"}
-                </p>
-              </div>
+              {ownerHeadline && (
+                <p className="text-xs text-gray-500">({ownerHeadline})</p>
+              )}
+              <p className="text-sm text-gray-600">
+                {ownerRole === "AGENCY" ? "Imobiliária" : ownerRole === "REALTOR" ? "Corretor" : "Proprietário"}
+              </p>
             </div>
 
-            {/* WhatsApp Button */}
+            {/* WhatsApp Button - ícone outline como no mock */}
             {canShowWhatsApp && (
               <button
                 type="button"
                 onClick={handleWhatsAppClick}
-                className="shrink-0 inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 pl-1 pr-4 py-1 text-sm font-medium text-gray-800 shadow-sm hover:shadow-md hover:border-gray-300 transition-all"
+                className="shrink-0 inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:shadow-md hover:border-gray-300 transition-all"
               >
-                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#25D366] text-white">
-                  <WhatsAppIcon className="w-4 h-4" />
-                </span>
-                <span className="hidden sm:inline">Conversar no WhatsApp</span>
+                <WhatsAppIcon className="w-5 h-5 text-gray-500" />
+                <span>Conversar no WhatsApp</span>
               </button>
             )}
           </div>
 
-          {/* Telefone e Email inline */}
+          {/* Linha 2: Telefone e Email na mesma linha */}
           {(ownerPhone || ownerEmail) && (
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700">
+            <div className="mt-4 flex items-center justify-center gap-6 text-sm">
               {ownerPhone && (
-                <div className="inline-flex items-center gap-1.5">
+                <div className="inline-flex items-center gap-2">
                   <Phone className="w-4 h-4 text-teal-600" />
-                  <span className="font-medium">{ownerPhone}</span>
+                  <span className="text-gray-700">{ownerPhone}</span>
                 </div>
               )}
               {ownerEmail && (
-                <div className="inline-flex items-center gap-1.5">
+                <div className="inline-flex items-center gap-2">
                   <Mail className="w-4 h-4 text-gray-400" />
-                  <span className="truncate">{ownerEmail}</span>
+                  <span className="text-gray-600">{ownerEmail}</span>
                 </div>
               )}
             </div>
