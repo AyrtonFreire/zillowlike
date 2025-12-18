@@ -57,7 +57,7 @@ export default function ContinueSearching() {
         }
 
         if (!preferredCity || !preferredState) {
-          const res = await fetch("/api/properties?pageSize=1&sort=recent");
+          const res = await fetch("/api/properties?pageSize=1&sort=recent&lite=1");
           if (res.ok) {
             const data = await res.json();
             const first = data?.properties?.[0];
@@ -103,7 +103,7 @@ export default function ContinueSearching() {
       if (!query) return;
       setLoading(true);
       try {
-        const url = `/api/properties?${query}`;
+        const url = `/api/properties?${query}&lite=1`;
         const r = await fetch(url);
         if (!r.ok) return;
         const d = await r.json();

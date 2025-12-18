@@ -7,6 +7,11 @@ import { prisma } from "@/lib/prisma";
 
 const providers = [] as any[];
 
+const isDev = process.env.NODE_ENV !== "production";
+const dbg = (...args: any[]) => {
+  if (isDev) console.log(...args);
+};
+
 // Email provider removed; using only OAuth providers
 
 if (process.env.GITHUB_ID && process.env.GITHUB_SECRET) {
@@ -94,7 +99,7 @@ export const authOptions: NextAuthOptions = {
         return true;
       }
 
-      console.log("🔐 SignIn Callback START", {
+      dbg("🔐 SignIn Callback START", {
         email: user?.email,
         provider: account?.provider,
         hasAccount: !!account,
@@ -118,7 +123,7 @@ export const authOptions: NextAuthOptions = {
 
         if (dbUser) {
           // EXISTING USER - Use role from database
-          console.log("✅ SignIn - EXISTING USER FOUND", {
+          dbg("✅ SignIn - EXISTING USER FOUND", {
             email: user.email,
             dbRole: dbUser.role,
             userId: dbUser.id,
@@ -128,7 +133,7 @@ export const authOptions: NextAuthOptions = {
           user.id = dbUser.id;
           (user as any).role = dbUser.role;
           
-          console.log("✅ SignIn - User object updated with DB role:", {
+          dbg("✅ SignIn - User object updated with DB role:", {
             "user.id": user.id,
             "user.role": (user as any).role,
           });
@@ -139,7 +144,7 @@ export const authOptions: NextAuthOptions = {
           );
 
           if (!accountExists) {
-            console.log("🔗 SignIn - Linking new OAuth provider:", account.provider);
+            dbg("🔗 SignIn - Linking new OAuth provider:", account.provider);
             // Link new OAuth provider to existing user
             await prisma.account.create({
               data: {
@@ -156,13 +161,13 @@ export const authOptions: NextAuthOptions = {
                 session_state: account.session_state as string | null,
               },
             });
-            console.log("✅ SignIn - OAuth provider linked successfully");
+            dbg("✅ SignIn - OAuth provider linked successfully");
           } else {
-            console.log("✅ SignIn - OAuth account already linked");
+            dbg("✅ SignIn - OAuth account already linked");
           }
         } else {
           // NEW USER - Create with role USER
-          console.log("🆕 SignIn - Creating NEW user:", user.email);
+          dbg("🆕 SignIn - Creating NEW user:", user.email);
           
           const newUser = await prisma.user.create({
             data: {
@@ -194,14 +199,14 @@ export const authOptions: NextAuthOptions = {
           user.id = newUser.id;
           (user as any).role = "USER";
           
-          console.log("✅ SignIn - New user created successfully:", {
+          dbg("✅ SignIn - New user created successfully:", {
             email: user.email,
             role: "USER",
             userId: newUser.id,
           });
         }
 
-        console.log("🔐 SignIn Callback SUCCESS - Returning true");
+        dbg("🔐 SignIn Callback SUCCESS - Returning true");
         return true;
       } catch (error) {
         console.error("❌❌❌ SignIn callback FATAL ERROR:", error);
@@ -214,59 +219,39 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async jwt({ token, user, trigger }) {
-      console.log("🔑 JWT Callback CALLED", { 
-        trigger, 
-        hasSub: !!token.sub,
-        hasUser: !!user,
-        currentRole: token.role,
-      });
-      
-      // CRITICAL: Always fetch the latest role from database
-      // This ensures role is always up-to-date and prevents stale data
-      if (token.sub) {
-        try {
-          const dbUser = await prisma.user.findUnique({ 
-            where: { id: token.sub }, 
-            select: { role: true, email: true } 
-          });
-          
-          if (dbUser) {
-            // Always use the role from database as source of truth
-            const oldRole = token.role;
-            token.role = dbUser.role;
-            
-            console.log("🔑 JWT Callback - Fetched from DB:", {
-              email: dbUser.email,
-              oldRole,
-              newRole: token.role,
-              changed: oldRole !== token.role,
-            });
-          } else {
-            console.error("❌ JWT Callback - User not found in database:", token.sub);
-            // Fallback to USER if user not found
-            token.role = "USER";
-          }
-        } catch (error) {
-          console.error("❌ JWT Callback - Error fetching user role:", error);
-          // Keep existing role on error
-          token.role = token.role ?? "USER";
-        }
-      } else if (user) {
-        // On first sign in, use the role from user object (set in signIn callback)
-        token.role = (user as any).role ?? "USER";
-        console.log("🔑 JWT Callback - Initial sign in, role:", token.role);
+      const nowMs = Date.now();
+      const ROLE_REFRESH_MS = 10 * 60 * 1000;
+
+      if (user) {
+        // First sign in: role comes from user object
+        token.role = (user as any).role ?? token.role ?? "USER";
+        (token as any).roleCheckedAt = nowMs;
+        dbg("🔑 JWT Callback - Initial sign in, role:", token.role);
+        return token;
       }
-      
-      console.log("🔑 JWT Callback DONE - Final role:", token.role);
+
+      if (token.sub) {
+        const lastCheckedAt = Number((token as any).roleCheckedAt || 0);
+        const shouldRefresh = !lastCheckedAt || nowMs - lastCheckedAt > ROLE_REFRESH_MS || trigger === "update";
+        if (shouldRefresh) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token.sub },
+              select: { role: true },
+            });
+
+            token.role = dbUser?.role ?? token.role ?? "USER";
+            (token as any).roleCheckedAt = nowMs;
+          } catch (error) {
+            console.error("❌ JWT Callback - Error fetching user role:", error);
+            token.role = token.role ?? "USER";
+            (token as any).roleCheckedAt = nowMs;
+          }
+        }
+      }
       return token;
     },
     async session({ session, token }) {
-      console.log("📋 Session Callback CALLED", {
-        hasToken: !!token,
-        tokenRole: token?.role,
-        hasUser: !!session.user,
-      });
-      
       // CRITICAL: Must add role to BOTH session and session.user
       // NextAuth client reads from session.user
       if (token?.sub) {
@@ -284,20 +269,12 @@ export const authOptions: NextAuthOptions = {
         if (session.user) {
           (session.user as any).role = token.role;
         }
-        
-        console.log("✅ Session callback - Role set:", {
-          "token.role": token.role,
-          "session.role": (session as any).role,
-          "session.user.role": session.user ? (session.user as any).role : "no user object",
-        });
       } else {
         console.error("❌ Session callback - NO ROLE IN TOKEN!", {
           token,
           hasRole: !!token?.role,
         });
       }
-      
-      console.log("📋 Session Callback DONE");
       return session;
     },
   },

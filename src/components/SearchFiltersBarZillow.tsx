@@ -180,7 +180,7 @@ export default function SearchFiltersBarZillow({
           page: 1,
           pageSize: 1 // Apenas para pegar o total
         });
-        const res = await fetch(`/api/properties?${params}`);
+        const res = await fetch(`/api/properties?${params}&onlyTotal=1`);
         const data = await res.json();
         if (data?.success) {
           setPreviewTotal(data.total || 0);

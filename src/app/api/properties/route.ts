@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PropertyCreateSchema, PropertyQuerySchema } from "@/lib/schemas";
 import { Prisma } from "@prisma/client";
+import { createHash } from "crypto";
 
 // Simple in-memory rate limiter: allow 5 POSTs per IP per minute (best-effort, free)
 const rateMap = new Map<string, number[]>();
@@ -40,6 +41,13 @@ export async function GET(req: NextRequest) {
     const sessionUser = (session as any)?.user as any;
     const viewerRole = sessionUser?.role as string | undefined;
     const { searchParams } = new URL(req.url);
+
+    const mode = (searchParams.get("mode") || "").toLowerCase();
+    const liteParam = (searchParams.get("lite") || "").toLowerCase();
+    const onlyTotalParam = (searchParams.get("onlyTotal") || "").toLowerCase();
+    const isLite = liteParam === "1" || liteParam === "true";
+    const onlyTotal = onlyTotalParam === "1" || onlyTotalParam === "true";
+
     const qp = Object.fromEntries(searchParams.entries());
     const parsed = PropertyQuerySchema.safeParse(qp);
     if (!parsed.success) {
@@ -243,79 +251,113 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const [items, total] = await Promise.all([
-      prisma.property.findMany({
+    let items: any[] = [];
+    const total = await prisma.property.count({ where });
+
+    if (!onlyTotal) {
+      const select: any =
+        mode === "map"
+          ? {
+              id: true,
+              price: true,
+              latitude: true,
+              longitude: true,
+              title: true,
+              updatedAt: true,
+            }
+          : isLite
+          ? {
+              id: true,
+              title: true,
+              price: true,
+              type: true,
+              purpose: true,
+              neighborhood: true,
+              city: true,
+              state: true,
+              latitude: true,
+              longitude: true,
+              bedrooms: true,
+              bathrooms: true,
+              areaM2: true,
+              parkingSpots: true,
+              conditionTags: true,
+              updatedAt: true,
+              images: { select: { id: true, url: true }, orderBy: { sortOrder: "asc" } },
+            }
+          : {
+              id: true,
+              title: true,
+              description: true,
+              price: true,
+              type: true,
+              purpose: true,
+              status: true,
+              ownerId: true,
+              street: true,
+              neighborhood: true,
+              city: true,
+              state: true,
+              postalCode: true,
+              latitude: true,
+              longitude: true,
+              bedrooms: true,
+              bathrooms: true,
+              areaM2: true,
+              suites: true,
+              parkingSpots: true,
+              floor: true,
+              furnished: true,
+              petFriendly: true,
+              condoFee: true,
+              yearBuilt: true,
+              conditionTags: true,
+              createdAt: true,
+              updatedAt: true,
+              images: { select: { id: true, url: true, alt: true, sortOrder: true, blurDataURL: true }, orderBy: { sortOrder: 'asc' } },
+              hasBalcony: true,
+              hasElevator: true,
+              hasPool: true,
+              hasGym: true,
+              hasPlayground: true,
+              hasPartyRoom: true,
+              hasGourmet: true,
+              hasConcierge24h: true,
+              accRamps: true,
+              accWideDoors: true,
+              accAccessibleElevator: true,
+              accTactile: true,
+              comfortAC: true,
+              comfortHeating: true,
+              comfortSolar: true,
+              comfortNoiseWindows: true,
+              comfortLED: true,
+              comfortWaterReuse: true,
+              finishFloor: true,
+              finishCabinets: true,
+              finishCounterGranite: true,
+              finishCounterQuartz: true,
+              viewSea: true,
+              viewCity: true,
+              positionFront: true,
+              positionBack: true,
+              sunByRoomNote: true,
+              petsSmall: true,
+              petsLarge: true,
+              condoRules: true,
+              sunOrientation: true,
+              yearRenovated: true,
+              totalFloors: true,
+            };
+
+      items = await prisma.property.findMany({
         where,
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          price: true,
-          type: true,
-          purpose: true,
-          status: true,
-          ownerId: true,
-          street: true,
-          neighborhood: true,
-          city: true,
-          state: true,
-          postalCode: true,
-          latitude: true,
-          longitude: true,
-          bedrooms: true,
-          bathrooms: true,
-          areaM2: true,
-          suites: true,
-          parkingSpots: true,
-          floor: true,
-          furnished: true,
-          petFriendly: true,
-          condoFee: true,
-          yearBuilt: true,
-          conditionTags: true,
-          createdAt: true,
-          updatedAt: true,
-          images: { select: { id: true, url: true, alt: true, sortOrder: true, blurDataURL: true }, orderBy: { sortOrder: 'asc' } },
-          hasBalcony: true,
-          hasElevator: true,
-          hasPool: true,
-          hasGym: true,
-          hasPlayground: true,
-          hasPartyRoom: true,
-          hasGourmet: true,
-          hasConcierge24h: true,
-          accRamps: true,
-          accWideDoors: true,
-          accAccessibleElevator: true,
-          accTactile: true,
-          comfortAC: true,
-          comfortHeating: true,
-          comfortSolar: true,
-          comfortNoiseWindows: true,
-          comfortLED: true,
-          comfortWaterReuse: true,
-          finishFloor: true,
-          finishCabinets: true,
-          finishCounterGranite: true,
-          finishCounterQuartz: true,
-          viewSea: true,
-          viewCity: true,
-          positionFront: true,
-          positionBack: true,
-          sunByRoomNote: true,
-          petsSmall: true,
-          petsLarge: true,
-          condoRules: true,
-          sunOrientation: true,
-          yearRenovated: true,
-          totalFloors: true,
-        },
+        select,
         orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
-      }),
-      prisma.property.count({ where }),
-    ]);
+      });
+    }
 
     if (process.env.NODE_ENV !== "production") {
       console.log("api/properties GET", {
@@ -323,7 +365,8 @@ export async function GET(req: NextRequest) {
         total,
       });
     }
-    const res = NextResponse.json({
+
+    const body = {
       // compat antigo
       success: true,
       properties: items,
@@ -332,7 +375,45 @@ export async function GET(req: NextRequest) {
       total,
       page,
       pageSize,
-    });
+    };
+
+    // ETag (apenas público/visitante): permite 304 com If-None-Match sem breaking changes
+    if (!hasSessionCookie) {
+      const ifNoneMatch = req.headers.get("if-none-match") || "";
+      const queryKey = searchParams.toString();
+      const itemKey = items
+        .map((it: any) => {
+          const id = String(it?.id ?? "");
+          const u = it?.updatedAt ? new Date(it.updatedAt).getTime() : 0;
+          return `${id}:${u}`;
+        })
+        .join("|");
+      const sig = `${queryKey}::${total}::${page}::${pageSize}::${itemKey}`;
+      const hash = createHash("sha1").update(sig).digest("base64url");
+      const etag = `W/"${hash}"`;
+
+      const matches = ifNoneMatch
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .some((t) => t === etag);
+
+      if (matches) {
+        const notModified = new NextResponse(null, { status: 304 });
+        notModified.headers.set("x-request-id", requestId);
+        notModified.headers.set("ETag", etag);
+        notModified.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+        return notModified;
+      }
+
+      const res = NextResponse.json(body);
+      res.headers.set("x-request-id", requestId);
+      res.headers.set("ETag", etag);
+      res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+      return res;
+    }
+
+    const res = NextResponse.json(body);
     res.headers.set("x-request-id", requestId);
 
     // Cache apenas para visitantes (sem cookie). Evita cachear respostas potencialmente diferentes

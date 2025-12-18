@@ -56,6 +56,10 @@ export type Filters = {
   iptuMin?: string;
   iptuMax?: string;
   keywords?: string;
+
+  lite?: string | number;
+  mode?: string;
+  onlyTotal?: string | number;
 };
 
 export function parseFiltersFromSearchParams(sp: URLSearchParams): Filters {
@@ -189,5 +193,10 @@ export function buildSearchParams(filters: Filters): string {
   if (filters.iptuMin) p.set("iptuMin", filters.iptuMin);
   if (filters.iptuMax) p.set("iptuMax", filters.iptuMax);
   if (filters.keywords) p.set("keywords", filters.keywords);
+
+  if (filters.lite != null && String(filters.lite)) p.set("lite", String(filters.lite));
+  if (filters.mode) p.set("mode", filters.mode);
+  if (filters.onlyTotal != null && String(filters.onlyTotal)) p.set("onlyTotal", String(filters.onlyTotal));
+
   return p.toString();
 }
