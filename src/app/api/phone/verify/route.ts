@@ -29,7 +29,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const identifier = `phone:${userId}`;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
+    });
+
+    if (!user || !user.phone || !user.phone.trim()) {
+      return NextResponse.json(
+        { error: "Salve um telefone válido em Meu Perfil antes de verificar." },
+        { status: 400 }
+      );
+    }
+
+    const phoneDigits = String(user.phone).replace(/\D/g, "");
+    const identifier = `phone:${userId}:${phoneDigits}`;
 
     const token = await prisma.verificationToken.findFirst({
       where: {
@@ -45,24 +58,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { phone: true },
-    });
-
-    if (!user || !user.phone || !user.phone.trim()) {
-      return NextResponse.json(
-        { error: "Salve um telefone válido em Meu Perfil antes de verificar." },
-        { status: 400 }
-      );
-    }
-
     await prisma.user.update({
       where: { id: userId },
       data: { phoneVerifiedAt: new Date() },
     });
 
-    await prisma.verificationToken.deleteMany({ where: { identifier } });
+    await prisma.verificationToken.deleteMany({
+      where: {
+        identifier: { startsWith: `phone:${userId}:` },
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

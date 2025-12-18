@@ -48,10 +48,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const identifier = `phone:${userId}`;
+    const phoneDigits = String(user.phone).replace(/\D/g, "");
+    const identifier = `phone:${userId}:${phoneDigits}`;
 
     // Remove códigos antigos para este usuário
-    await prisma.verificationToken.deleteMany({ where: { identifier } });
+    await prisma.verificationToken.deleteMany({
+      where: {
+        identifier: { startsWith: `phone:${userId}:` },
+      },
+    });
 
     const code = generateCode();
     const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutos

@@ -119,7 +119,7 @@ export default function ProfilePage() {
 
       if (response.ok) {
         const data = await response.json();
-        setProfile(data.user);
+        setProfile((prev) => (prev ? ({ ...prev, ...data.user } as any) : (data.user as any)));
         setName(data.user.name || "");
         setPhone(data.user.phone || "");
         setPublicProfileEnabled(Boolean(data.user.publicProfileEnabled));
@@ -143,6 +143,11 @@ export default function ProfilePage() {
   const handleSendVerificationCode = async () => {
     if (!profile?.phone) {
       alert("Preencha e salve seu telefone antes de solicitar o código por SMS.");
+      return;
+    }
+
+    if (phone !== (profile.phone || "")) {
+      alert("Você alterou o telefone. Clique em 'Salvar Alterações' antes de solicitar um novo código por SMS.");
       return;
     }
 
@@ -242,13 +247,13 @@ export default function ProfilePage() {
 
         if (response.ok) {
           const data = await response.json();
-          setProfile(data.user);
+          setProfile((prev) => (prev ? ({ ...prev, ...data.user } as any) : (data.user as any)));
           await update();
         }
       }
     } catch (error) {
       console.error("Error uploading:", error);
-      alert("Erro no upload");
+      alert("Erro no upload da imagem");
     } finally {
       setUploadingImage(false);
     }
@@ -486,6 +491,11 @@ export default function ProfilePage() {
                   <p className="text-xs text-gray-500 mt-1">
                     Este telefone pode ser usado para contatos sobre seus imóveis.
                   </p>
+                  {profile.phoneVerifiedAt && phone !== (profile.phone || "") && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Você alterou o telefone. Salve as alterações para solicitar uma nova verificação.
+                    </p>
+                  )}
                 </div>
 
                 {/* Phone Verification */}
@@ -536,31 +546,6 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Save Button */}
-                <div className="flex justify-end pt-4 border-t">
-                  {(() => {
-                    const unchanged =
-                      name === (profile.name || "") &&
-                      phone === (profile.phone || "") &&
-                      publicProfileEnabled === Boolean(profile.publicProfileEnabled) &&
-                      publicHeadline === (profile.publicHeadline || "") &&
-                      publicBio === (profile.publicBio || "") &&
-                      publicCity === (profile.publicCity || "") &&
-                      publicState === (profile.publicState || "") &&
-                      publicPhoneOptIn === Boolean(profile.publicPhoneOptIn);
-                    return (
-                      <button
-                        onClick={handleSave}
-                        disabled={
-                      saving || unchanged
-                        }
-                        className="flex items-center gap-2 px-6 py-2.5 glass-teal disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors"
-                      >
-                        <Save className="w-5 h-5" />
-                        {saving ? "Salvando..." : "Salvar Alterações"}
-                      </button>
-                    );
-                  })()}
-                </div>
               </div>
             </div>
 
@@ -767,6 +752,31 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
+
+            {/* Save Button */}
+            <div className="flex justify-end mt-6">
+              {(() => {
+                const unchanged =
+                  name === (profile.name || "") &&
+                  phone === (profile.phone || "") &&
+                  publicProfileEnabled === Boolean(profile.publicProfileEnabled) &&
+                  publicHeadline === (profile.publicHeadline || "") &&
+                  publicBio === (profile.publicBio || "") &&
+                  publicCity === (profile.publicCity || "") &&
+                  publicState === (profile.publicState || "") &&
+                  publicPhoneOptIn === Boolean(profile.publicPhoneOptIn);
+                return (
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || unchanged}
+                    className="flex items-center gap-2 px-6 py-2.5 glass-teal disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors"
+                  >
+                    <Save className="w-5 h-5" />
+                    {saving ? "Salvando..." : "Salvar Alterações"}
+                  </button>
+                );
+              })()}
+            </div>
 
             {/* Quick Links */}
             <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
