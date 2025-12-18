@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { User, Building2, Calendar, Clock, CheckCircle, MessageCircle, Mail, ExternalLink } from "lucide-react";
+import { User, Building2, Calendar, Clock, CheckCircle, MessageCircle, Mail, ExternalLink, Phone } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,6 +40,8 @@ type ContactCardProps = {
   ownerName?: string;
   ownerImage?: string;
   ownerPhone?: string;
+  ownerEmail?: string;
+  ownerHeadline?: string;
   ownerPublicProfileEnabled?: boolean;
   ownerPublicSlug?: string | null;
   ownerPublicPhoneOptIn?: boolean;
@@ -165,12 +167,15 @@ export default function PropertyContactCard({
   propertyPurpose,
   ownerRole,
   ownerName,
+  ownerEmail,
   ownerImage,
   ownerPublicProfileEnabled,
   ownerPublicSlug,
   ownerPublicPhoneOptIn,
   hideOwnerContact,
   allowRealtorBoard,
+  ownerPhone,
+  ownerHeadline,
 }: ContactCardProps) {
   const [formData, setFormData] = useState({
     name: "",
@@ -357,102 +362,131 @@ export default function PropertyContactCard({
   }
 
   return (
-    <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
+    <div className="rounded-3xl border border-white/60 bg-white/55 shadow-xl backdrop-blur-md overflow-hidden relative">
+      <div className="absolute inset-0 bg-gradient-to-br from-teal/10 via-white to-teal/5" />
+      <div className="relative p-4">
       {/* Header: foto/logo do corretor/imobiliária (se aplicável) */}
-      {isRealtorOrAgency && ownerName && (
-        <div className="mb-6 pb-6 border-b border-gray-200">
-          {hasPublicProfile ? (
-            <Link
-              href={`/realtor/${ownerPublicSlug}`}
-              className="flex items-center gap-3 rounded-lg -mx-1 px-1 hover:bg-teal/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-            >
-              {ownerImage ? (
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-teal/20">
-                  <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
+      {ownerName && (
+        <div className="rounded-3xl bg-white/55 border border-white/70 shadow-sm backdrop-blur-md p-4 mb-4">
+          <div className="flex items-start justify-between gap-3">
+            {hasPublicProfile ? (
+              <Link
+                href={`/realtor/${ownerPublicSlug}`}
+                className="flex items-center gap-3 min-w-0 rounded-2xl -m-1 p-1 hover:bg-white/60 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                {ownerImage ? (
+                  <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-white/70 shadow-sm">
+                    <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal/20 to-teal/40 flex items-center justify-center border border-white/70 shadow-sm">
+                    {ownerRole === "AGENCY" ? (
+                      <Building2 className="w-7 h-7 text-teal" />
+                    ) : (
+                      <User className="w-7 h-7 text-teal" />
+                    )}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{ownerName}</p>
+                  <p className="text-xs text-gray-600 truncate">
+                    {ownerHeadline ? ownerHeadline : ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {ownerRole === "AGENCY" ? "Imobiliária" : ownerRole === "REALTOR" ? "Corretor" : "Proprietário"}
+                  </p>
                 </div>
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal/20 to-teal/40 flex items-center justify-center">
-                  {ownerRole === "AGENCY" ? (
-                    <Building2 className="w-8 h-8 text-teal" />
-                  ) : (
-                    <User className="w-8 h-8 text-teal" />
-                  )}
+              </Link>
+            ) : (
+              <div className="flex items-center gap-3 min-w-0">
+                {ownerImage ? (
+                  <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-white/70 shadow-sm">
+                    <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal/20 to-teal/40 flex items-center justify-center border border-white/70 shadow-sm">
+                    {ownerRole === "AGENCY" ? (
+                      <Building2 className="w-7 h-7 text-teal" />
+                    ) : (
+                      <User className="w-7 h-7 text-teal" />
+                    )}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{ownerName}</p>
+                  <p className="text-xs text-gray-600 truncate">
+                    {ownerHeadline ? ownerHeadline : ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {ownerRole === "AGENCY" ? "Imobiliária" : ownerRole === "REALTOR" ? "Corretor" : "Proprietário"}
+                  </p>
                 </div>
-              )}
-              <div>
-                <p className="font-semibold text-gray-900">{ownerName}</p>
-                <p className="text-sm text-gray-600">
-                  {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
-                </p>
               </div>
-            </Link>
-          ) : (
-            <div className="flex items-center gap-3">
-              {ownerImage ? (
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-teal/20">
-                  <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
-                </div>
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal/20 to-teal/40 flex items-center justify-center">
-                  {ownerRole === "AGENCY" ? (
-                    <Building2 className="w-8 h-8 text-teal" />
-                  ) : (
-                    <User className="w-8 h-8 text-teal" />
-                  )}
-                </div>
-              )}
-              <div>
-                <p className="font-semibold text-gray-900">{ownerName}</p>
-                <p className="text-sm text-gray-600">
-                  {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
-                </p>
-              </div>
-            </div>
-          )}
+            )}
 
-          {canShowWhatsApp && (
-            <button
-              type="button"
-              onClick={handleWhatsAppClick}
-              className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-accent/20 bg-accent/10 text-neutral-900 font-semibold px-4 py-2.5 hover:bg-accent/15 active:bg-accent/20 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-            >
-              <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white border border-accent/15 text-accent shadow-sm">
-                <WhatsAppIcon className="w-5 h-5" />
-              </span>
-              <span className="text-sm">Conversar no WhatsApp</span>
-              <ExternalLink className="w-4 h-4 text-neutral-500" />
-            </button>
+            {canShowWhatsApp && (
+              <button
+                type="button"
+                onClick={handleWhatsAppClick}
+                className="shrink-0 inline-flex items-center gap-2 rounded-full bg-white/70 border border-white/70 px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-white/90 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white border border-accent/15 text-accent shadow-sm">
+                  <WhatsAppIcon className="w-5 h-5" />
+                </span>
+                Conversar no WhatsApp
+              </button>
+            )}
+          </div>
+
+          {(ownerPhone || ownerEmail) && (
+            <div className="mt-3 grid grid-cols-1 gap-2">
+              {ownerPhone && (
+                <div className="inline-flex items-center gap-2 rounded-xl bg-white/70 border border-white/70 px-3 py-2 text-sm text-gray-800 shadow-sm">
+                  <Phone className="w-4 h-4 text-teal" />
+                  <span className="font-medium">{ownerPhone}</span>
+                </div>
+              )}
+              {ownerEmail && (
+                <div className="inline-flex items-center gap-2 rounded-xl bg-white/70 border border-white/70 px-3 py-2 text-sm text-gray-800 shadow-sm">
+                  <Mail className="w-4 h-4 text-teal" />
+                  <span className="font-medium truncate">{ownerEmail}</span>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
 
       {/* Título do card */}
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        {isLeadBoard ? "Agendar Visita" : "Entre em Contato"}
-      </h3>
+      <div className="rounded-3xl bg-white/75 border border-white/70 shadow-sm backdrop-blur-md p-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          {isLeadBoard ? "Agendar Visita" : "Entre em Contato"}
+        </h3>
 
       {/* Formulário */}
       <form onSubmit={handleSubmit} className="space-y-3">
-        <input
-          type="text"
-          placeholder="Nome"
-          required
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
-        />
-        <input
-          type="email"
-          placeholder="E-mail"
-          required
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input
+            type="text"
+            placeholder="Seu Nome"
+            required
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-4 py-3 bg-white/70 border border-white/70 rounded-2xl shadow-sm focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
+          />
+          <input
+            type="email"
+            placeholder="Seu Email"
+            required
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            className="w-full px-4 py-3 bg-white/70 border border-white/70 rounded-2xl shadow-sm focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
+          />
+        </div>
         
         {/* Phone com country code */}
         <div className="flex gap-2">
-          <select className="w-24 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base">
+          <select className="w-24 px-3 py-3 bg-white/70 border border-white/70 rounded-2xl shadow-sm focus:ring-2 focus:ring-teal-light focus:border-transparent text-base">
             <option>+55</option>
           </select>
           <input
@@ -461,7 +495,7 @@ export default function PropertyContactCard({
             required
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
+            className="flex-1 px-4 py-3 bg-white/70 border border-white/70 rounded-2xl shadow-sm focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
           />
         </div>
 
@@ -472,7 +506,7 @@ export default function PropertyContactCard({
             placeholder={formData.message}
             value={formData.message}
             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent resize-none text-base"
+            className="w-full px-4 py-3 bg-white/70 border border-white/70 rounded-2xl shadow-sm focus:ring-2 focus:ring-teal-light focus:border-transparent resize-none text-base"
           />
         )}
 
@@ -521,7 +555,7 @@ export default function PropertyContactCard({
           className="w-full glass-teal py-3 text-base"
           disabled={loading}
         >
-          {loading ? "Enviando..." : isLeadBoard ? "Solicitar Visita" : "Entrar em Contato"}
+          {loading ? "Enviando..." : isLeadBoard ? "Solicitar Visita" : "Enviar Mensagem"}
         </Button>
 
         {/* Checkboxes */}
@@ -549,6 +583,8 @@ export default function PropertyContactCard({
           </label>
         </div>
       </form>
+      </div>
+      </div>
     </div>
   );
 }

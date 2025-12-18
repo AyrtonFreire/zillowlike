@@ -88,11 +88,15 @@ export async function GET(req: NextRequest, context: RouteContext) {
           select: {
             id: true,
             name: true,
+            email: true,
             image: true,
             role: true,
             publicProfileEnabled: true,
             publicSlug: true,
+            publicHeadline: true,
             publicPhoneOptIn: true,
+            phone: true,
+            phoneVerifiedAt: true,
           } as any,
         },
       },
@@ -104,6 +108,38 @@ export async function GET(req: NextRequest, context: RouteContext) {
 
     if ((item as any)?.status !== "ACTIVE") {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const owner = (item as any)?.owner as any;
+    if (owner) {
+      const ownerRole = String(owner?.role || "").toUpperCase();
+      const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
+
+      let safePhone: string | null = null;
+      const hasVerifiedPhone = !!(owner.phone && owner.phoneVerifiedAt);
+      if (hasVerifiedPhone) {
+        if (isRealtorOrAgency) {
+          if (owner.publicPhoneOptIn) safePhone = owner.phone;
+        } else {
+          if (!(item as any)?.hideOwnerContact) safePhone = owner.phone;
+        }
+      }
+
+      let safeEmail: string | null = null;
+      if (owner.email) {
+        if (isRealtorOrAgency) {
+          if (owner.publicProfileEnabled) safeEmail = owner.email;
+        } else {
+          if (!(item as any)?.hideOwnerContact) safeEmail = owner.email;
+        }
+      }
+
+      (item as any).owner = {
+        ...owner,
+        phone: safePhone,
+        email: safeEmail,
+        phoneVerifiedAt: undefined,
+      };
     }
 
     const res = NextResponse.json({ item });
