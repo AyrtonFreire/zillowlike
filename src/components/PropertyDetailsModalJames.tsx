@@ -146,6 +146,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const panRef = useRef<{ down: boolean; x: number; y: number }>({ down: false, x: 0, y: 0 });
   const pinchRef = useRef<{ active: boolean; startDist: number; startZoom: number; cx: number; cy: number }>({ active: false, startDist: 0, startZoom: 1, cx: 0, cy: 0 });
   const [showMore, setShowMore] = useState(false);
+  const [shouldLoadArea, setShouldLoadArea] = useState(false);
+  const [shouldLoadRelated, setShouldLoadRelated] = useState(false);
+  const [relatedRequested, setRelatedRequested] = useState(false);
+  const areaSectionRef = useRef<HTMLDivElement | null>(null);
+  const relatedSectionRef = useRef<HTMLDivElement | null>(null);
   const [nearbyProperties, setNearbyProperties] = useState<any[]>([]);
   const [similarProperties, setSimilarProperties] = useState<any[]>([]);
   const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[]; hospitals: any[]; malls: any[]; parks: any[]; gyms: any[]; fuel: any[]; bakeries: any[]; banks: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
@@ -187,6 +192,41 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
   const overlayHistoryPushedRef = useRef(false);
   const closingFromPopstateRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (shouldLoadArea && shouldLoadRelated) return;
+
+    const root = scrollContainerRef.current ?? null;
+    const areaEl = areaSectionRef.current;
+    const relatedEl = relatedSectionRef.current;
+
+    if ((!areaEl || shouldLoadArea) && (!relatedEl || shouldLoadRelated)) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          if (areaEl && entry.target === areaEl && !shouldLoadArea) {
+            setShouldLoadArea(true);
+            try { obs.unobserve(areaEl); } catch {}
+          }
+          if (relatedEl && entry.target === relatedEl && !shouldLoadRelated) {
+            setShouldLoadRelated(true);
+            try { obs.unobserve(relatedEl); } catch {}
+          }
+        });
+      },
+      { root, rootMargin: "200px 0px" }
+    );
+
+    if (areaEl && !shouldLoadArea) obs.observe(areaEl);
+    if (relatedEl && !shouldLoadRelated) obs.observe(relatedEl);
+
+    return () => {
+      try { obs.disconnect(); } catch {}
+    };
+  }, [isOpen, shouldLoadArea, shouldLoadRelated]);
 
   const poiCategories = useMemo(() => ([
     { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools },
@@ -267,28 +307,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         } else {
           setProperty(data.item);
         }
-        // Buscar imóveis próximos e similares usando endpoints dedicados
-        const id = mode === "internal" ? data?.property?.id : data?.item?.id;
-        if (id) {
-          console.log('[PropertyModal] Buscando nearby properties (endpoint /api/properties/nearby)...', { id });
-          fetch(`/api/properties/nearby?id=${id}&radius=3&limit=8`)
-            .then(r => r.json())
-            .then(d => {
-              const arr = d?.properties || d?.items || [];
-              setNearbyProperties(arr);
-            })
-            .catch(() => setNearbyProperties([]));
-        }
-        if (id) {
-          console.log('[PropertyModal] Buscando similar properties (endpoint /api/properties/similar)...', { id });
-          fetch(`/api/properties/similar?id=${id}&limit=8`)
-            .then(r => r.json())
-            .then(d => {
-              const arr = d?.properties || d?.items || [];
-              setSimilarProperties(arr);
-            })
-            .catch(() => setSimilarProperties([]));
-        }
       })
       .catch((err) => {
         setError(err.message || "Erro ao carregar imóvel");
@@ -298,6 +316,32 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       })
       .finally(() => setLoading(false));
   }, [activePropertyId, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!shouldLoadRelated) return;
+    if (!property?.id) return;
+    if (relatedRequested) return;
+
+    setRelatedRequested(true);
+    const id = property.id;
+
+    fetch(`/api/properties/nearby?id=${id}&radius=3&limit=8`)
+      .then((r) => r.json())
+      .then((d) => {
+        const arr = d?.properties || d?.items || [];
+        setNearbyProperties(arr);
+      })
+      .catch(() => setNearbyProperties([]));
+
+    fetch(`/api/properties/similar?id=${id}&limit=8`)
+      .then((r) => r.json())
+      .then((d) => {
+        const arr = d?.properties || d?.items || [];
+        setSimilarProperties(arr);
+      })
+      .catch(() => setSimilarProperties([]));
+  }, [isOpen, shouldLoadRelated, property, relatedRequested]);
 
   useEffect(() => {
     setActivePropertyId(propertyId);
@@ -316,6 +360,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setProperty(null);
       setNearbyProperties([]);
       setSimilarProperties([]);
+      setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+      setPoiLoading(false);
+      setRelatedRequested(false);
+      setShouldLoadArea(false);
+      setShouldLoadRelated(false);
       setPhotoViewMode(null);
       setCurrentImageIndex(0);
       setShowThumbGrid(false);
@@ -335,7 +384,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   useEffect(() => {
     const lat = (property as any)?.latitude;
     const lng = (property as any)?.longitude;
-    if (!isOpen || !lat || !lng) return;
+    if (!isOpen || !shouldLoadArea || !lat || !lng) return;
     let ignore = false;
     (async () => {
       try {
@@ -353,7 +402,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       }
     })();
     return () => { ignore = true; };
-  }, [isOpen, property]);
+  }, [isOpen, property, shouldLoadArea]);
 
   // Reset on close
   useEffect(() => {
@@ -366,6 +415,13 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setLoading(false);
       setContactOverlayOpen(false);
       setShowThumbGrid(false);
+      setNearbyProperties([]);
+      setSimilarProperties([]);
+      setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+      setPoiLoading(false);
+      setRelatedRequested(false);
+      setShouldLoadArea(false);
+      setShouldLoadRelated(false);
     }
   }, [isOpen]);
 
@@ -1007,11 +1063,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               </div>
 
               {/* Explore the Area */}
-              <div className="pt-4 border-t border-teal/10">
+              <div ref={areaSectionRef} className="pt-4 border-t border-teal/10">
                 <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Explore a Região</h3>
                 
                 {/* Mapa com POIs */}
-                {(property as any).latitude && (property as any).longitude && (
+                {shouldLoadArea && (property as any).latitude && (property as any).longitude && (
                   <div className="mb-4 h-[300px] rounded-lg overflow-hidden border border-teal/10">
                     <Map
                       items={[{
@@ -1049,7 +1105,12 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   </div>
                 )}
 
-                {(nearbyPlaces.schools.length > 0 || nearbyPlaces.markets.length > 0 || nearbyPlaces.pharmacies.length > 0 || nearbyPlaces.restaurants.length > 0 || nearbyPlaces.hospitals.length > 0 || nearbyPlaces.parks.length > 0 || nearbyPlaces.gyms.length > 0 || nearbyPlaces.fuel.length > 0 || nearbyPlaces.bakeries.length > 0 || nearbyPlaces.banks.length > 0 || nearbyPlaces.malls.length > 0) ? (
+                {!shouldLoadArea ? (
+                  <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
+                    <p className="text-sm text-gray-600">Carregando mapa e pontos de interesse...</p>
+                    <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
+                  </div>
+                ) : (nearbyPlaces.schools.length > 0 || nearbyPlaces.markets.length > 0 || nearbyPlaces.pharmacies.length > 0 || nearbyPlaces.restaurants.length > 0 || nearbyPlaces.hospitals.length > 0 || nearbyPlaces.parks.length > 0 || nearbyPlaces.gyms.length > 0 || nearbyPlaces.fuel.length > 0 || nearbyPlaces.bakeries.length > 0 || nearbyPlaces.banks.length > 0 || nearbyPlaces.malls.length > 0) ? (
                   <div className="mb-6">
                     {(() => {
                       const lat = (property as any).latitude;
@@ -1155,27 +1216,41 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   </div>
                 )}
 
-                {/* Imóveis Próximos */}
-                {nearbyProperties.length > 0 ? (
-                  <div className="border-t border-teal/10 pt-8 mt-8">
-                    <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" onOpenOverlay={handleOpenRelated} />
-                  </div>
-                ) : (
-                  <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
-                    <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
-                  </div>
-                )}
+                <div ref={relatedSectionRef}>
+                  {/* Imóveis Próximos */}
+                  {shouldLoadRelated ? (
+                    nearbyProperties.length > 0 ? (
+                      <div className="border-t border-teal/10 pt-8 mt-8">
+                        <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" onOpenOverlay={handleOpenRelated} />
+                      </div>
+                    ) : (
+                      <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
+                        <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
+                      </div>
+                    )
+                  ) : (
+                    <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
+                      <p className="text-sm text-gray-500">Carregando sugestões de imóveis...</p>
+                    </div>
+                  )}
 
-                {/* Imóveis similares */}
-                {similarProperties.length > 0 ? (
-                  <div className="border-t border-teal/10 pt-8 mt-8">
-                    <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" onOpenOverlay={handleOpenRelated} />
-                  </div>
-                ) : (
-                  <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
-                    <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
-                  </div>
-                )}
+                  {/* Imóveis similares */}
+                  {shouldLoadRelated ? (
+                    similarProperties.length > 0 ? (
+                      <div className="border-t border-teal/10 pt-8 mt-8">
+                        <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" onOpenOverlay={handleOpenRelated} />
+                      </div>
+                    ) : (
+                      <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
+                        <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
+                      </div>
+                    )
+                  ) : (
+                    <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
+                      <p className="text-sm text-gray-500">Carregando sugestões de imóveis...</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
