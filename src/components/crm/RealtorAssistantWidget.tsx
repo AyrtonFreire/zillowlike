@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ClipboardList, Minus, X } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
@@ -10,6 +10,7 @@ import RealtorAssistantFeed from "@/components/crm/RealtorAssistantFeed";
 export default function RealtorAssistantWidget() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const role = (session as any)?.user?.role || (session as any)?.role;
   const realtorId = (session as any)?.user?.id || (session as any)?.userId;
@@ -116,6 +117,22 @@ export default function RealtorAssistantWidget() {
       // ignore
     }
   };
+
+  useEffect(() => {
+    if (!canRender) return;
+    if (searchParams?.get("assistant") !== "1") return;
+
+    setOpenPersisted(true);
+
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("assistant");
+      const next = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""}${url.hash}`;
+      window.history.replaceState(window.history.state, "", next);
+    } catch {
+      // ignore
+    }
+  }, [canRender, searchParams]);
 
   if (!canRender) return null;
 
