@@ -365,9 +365,13 @@ export default function PropertyContactCard({
     <div className="rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-gray-50/50 to-teal-50/30 shadow-lg overflow-hidden">
       {/* Header com info do anunciante */}
       {ownerName && (
-        <div className="p-5">
+        <div className="relative p-5 overflow-hidden">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute inset-0 bg-gradient-to-br from-teal-50/30 via-white to-gray-50/30" />
+            <div className="absolute -right-28 -top-16 w-[520px] h-[260px] rounded-[999px] bg-gradient-to-br from-gray-50 via-teal-50/60 to-white/0" />
+          </div>
           {/* Linha 1: Avatar + Nome + WhatsApp */}
-          <div className="flex items-center gap-4">
+          <div className="relative flex items-center gap-4">
             {/* Avatar */}
             {hasPublicProfile ? (
               <Link href={`/realtor/${ownerPublicSlug}`} className="shrink-0">
@@ -397,10 +401,10 @@ export default function PropertyContactCard({
             <div className="flex-1 min-w-0">
               {hasPublicProfile ? (
                 <Link href={`/realtor/${ownerPublicSlug}`} className="hover:underline">
-                  <p className="font-bold text-gray-900 text-base">{ownerName}</p>
+                  <p className="font-bold text-gray-900 text-base uppercase tracking-wide">{ownerName}</p>
                 </Link>
               ) : (
-                <p className="font-bold text-gray-900 text-base">{ownerName}</p>
+                <p className="font-bold text-gray-900 text-base uppercase tracking-wide">{ownerName}</p>
               )}
               {ownerHeadline && (
                 <p className="text-xs text-gray-500">({ownerHeadline})</p>
@@ -410,32 +414,43 @@ export default function PropertyContactCard({
               </p>
             </div>
 
-            {/* WhatsApp Button - ícone outline como no mock */}
-            {canShowWhatsApp && (
-              <button
-                type="button"
-                onClick={handleWhatsAppClick}
-                className="shrink-0 inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:shadow-md hover:border-gray-300 transition-all"
+            {/* WhatsApp Button (sempre visível; "desabilitado" quando indisponível) */}
+            <button
+              type="button"
+              onClick={handleWhatsAppClick}
+              aria-disabled={!canShowWhatsApp}
+              className={`shrink-0 inline-flex items-center gap-3 rounded-full bg-white/80 border px-4 py-2 text-sm font-medium shadow-sm transition-all ${
+                canShowWhatsApp
+                  ? "border-gray-200 text-gray-700 hover:shadow-md hover:border-gray-300"
+                  : "border-gray-200 text-gray-400 opacity-70"
+              }`}
+            >
+              <span
+                className={`inline-flex items-center justify-center w-9 h-9 rounded-full border ${
+                  canShowWhatsApp
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-600"
+                    : "bg-gray-100 border-gray-200 text-gray-400"
+                }`}
               >
-                <WhatsAppIcon className="w-5 h-5 text-gray-500" />
-                <span>Conversar no WhatsApp</span>
-              </button>
-            )}
+                <WhatsAppIcon className="w-5 h-5" />
+              </span>
+              <span>Conversar no WhatsApp</span>
+            </button>
           </div>
 
-          {/* Linha 2: Telefone e Email na mesma linha */}
+          {/* Linha 2: Telefone (esq) e Email (dir) na mesma linha */}
           {(ownerPhone || ownerEmail) && (
-            <div className="mt-4 flex items-center justify-center gap-6 text-sm">
+            <div className="relative mt-4 flex items-center justify-between gap-6 text-sm">
               {ownerPhone && (
-                <div className="inline-flex items-center gap-2">
+                <div className="inline-flex items-center gap-2 min-w-0">
                   <Phone className="w-4 h-4 text-teal-600" />
                   <span className="text-gray-700">{ownerPhone}</span>
                 </div>
               )}
               {ownerEmail && (
-                <div className="inline-flex items-center gap-2">
+                <div className="inline-flex items-center gap-2 min-w-0 justify-end">
                   <Mail className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-600">{ownerEmail}</span>
+                  <span className="text-gray-600 truncate">{ownerEmail}</span>
                 </div>
               )}
             </div>
