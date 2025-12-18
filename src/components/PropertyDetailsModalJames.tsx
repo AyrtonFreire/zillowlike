@@ -1083,6 +1083,24 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                   Ver no Google Maps →
                 </a>
 
+                {mode === "public" && (
+                  <div className="md:hidden mb-8">
+                    <PropertyContactCard
+                      propertyId={property.id}
+                      propertyTitle={property.title}
+                      propertyPurpose={property.purpose}
+                      ownerRole={property.owner?.role || "USER"}
+                      ownerName={property.owner?.name || undefined}
+                      ownerImage={property.owner?.image || undefined}
+                      ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
+                      ownerPublicSlug={property.owner?.publicSlug || null}
+                      ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
+                      hideOwnerContact={!!(property as any)?.hideOwnerContact}
+                      allowRealtorBoard={property.allowRealtorBoard || false}
+                    />
+                  </div>
+                )}
+
                 {/* Imóveis Próximos */}
                 {nearbyProperties.length > 0 ? (
                   <div className="border-t border-teal/10 pt-8 mt-8">
@@ -1379,15 +1397,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
               {/* Botão de contato mobile (fixo no bottom) */}
               {mode === "public" && (
-                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-10">
-                  <button
-                    type="button"
-                    onClick={() => setContactOverlayOpen(true)}
-                    className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl glass-teal text-white text-sm font-semibold"
-                  >
-                    Entrar em contato
-                  </button>
-                </div>
+                <></>
               )}
             </motion.div>
           )}
