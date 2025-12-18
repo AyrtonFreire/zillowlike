@@ -61,14 +61,11 @@ type PropertyDetails = {
   owner?: {
     id: string;
     name: string | null;
-    email?: string | null;
     image: string | null;
     role: "USER" | "OWNER" | "REALTOR" | "AGENCY" | "ADMIN";
     publicProfileEnabled?: boolean | null;
     publicSlug?: string | null;
     publicPhoneOptIn?: boolean | null;
-    publicHeadline?: string | null;
-    phone?: string | null;
   };
 };
 
@@ -1124,10 +1121,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                       propertyPurpose={property.purpose}
                       ownerRole={property.owner?.role || "USER"}
                       ownerName={property.owner?.name || undefined}
-                      ownerEmail={(property.owner as any)?.email || undefined}
                       ownerImage={property.owner?.image || undefined}
-                      ownerPhone={(property.owner as any)?.phone || undefined}
-                      ownerHeadline={(property.owner as any)?.publicHeadline || undefined}
                       ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
                       ownerPublicSlug={property.owner?.publicSlug || null}
                       ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
@@ -1638,10 +1632,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               propertyPurpose={property.purpose}
               ownerRole={property.owner?.role || "USER"}
               ownerName={property.owner?.name || undefined}
-              ownerEmail={(property.owner as any)?.email || undefined}
               ownerImage={property.owner?.image || undefined}
-              ownerPhone={(property.owner as any)?.phone || undefined}
-              ownerHeadline={(property.owner as any)?.publicHeadline || undefined}
               ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
               ownerPublicSlug={property.owner?.publicSlug || null}
               ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}

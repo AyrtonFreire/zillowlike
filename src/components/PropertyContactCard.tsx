@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { User, Building2, Calendar, Clock, CheckCircle, MessageCircle, Mail, ExternalLink, Phone } from "lucide-react";
+import { User, Building2, Calendar, Clock, CheckCircle, MessageCircle, Mail, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,8 +40,6 @@ type ContactCardProps = {
   ownerName?: string;
   ownerImage?: string;
   ownerPhone?: string;
-  ownerEmail?: string;
-  ownerHeadline?: string;
   ownerPublicProfileEnabled?: boolean;
   ownerPublicSlug?: string | null;
   ownerPublicPhoneOptIn?: boolean;
@@ -167,15 +165,12 @@ export default function PropertyContactCard({
   propertyPurpose,
   ownerRole,
   ownerName,
-  ownerEmail,
   ownerImage,
   ownerPublicProfileEnabled,
   ownerPublicSlug,
   ownerPublicPhoneOptIn,
   hideOwnerContact,
   allowRealtorBoard,
-  ownerPhone,
-  ownerHeadline,
 }: ContactCardProps) {
   const [formData, setFormData] = useState({
     name: "",
@@ -190,7 +185,7 @@ export default function PropertyContactCard({
   });
   
   const [loading, setLoading] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(true);
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [notifySimilar, setNotifySimilar] = useState(false);
   const [successData, setSuccessData] = useState<{ chatUrl: string; email: string } | null>(null);
   const toast = useToast();
@@ -362,131 +357,102 @@ export default function PropertyContactCard({
   }
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-gray-50/50 to-teal-50/30 shadow-lg overflow-hidden">
-      {/* Header com info do anunciante */}
-      {ownerName && (
-        <div className="relative p-5 overflow-hidden">
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute inset-0 bg-gradient-to-br from-teal-50/30 via-white to-gray-50/30" />
-            <div className="absolute -right-28 -top-16 w-[520px] h-[260px] rounded-[999px] bg-gradient-to-br from-gray-50 via-teal-50/60 to-white/0" />
-          </div>
-          {/* Linha 1: Avatar + Nome + WhatsApp */}
-          <div className="relative flex items-center gap-4">
-            {/* Avatar */}
-            {hasPublicProfile ? (
-              <Link href={`/realtor/${ownerPublicSlug}`} className="shrink-0">
-                {ownerImage ? (
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-lg">
-                    <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
-                  </div>
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center border-2 border-white shadow-lg">
-                    <span className="text-2xl font-bold text-teal-700">{ownerName.charAt(0).toUpperCase()}</span>
-                  </div>
-                )}
-              </Link>
-            ) : (
-              ownerImage ? (
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-lg shrink-0">
+    <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
+      {/* Header: foto/logo do corretor/imobiliária (se aplicável) */}
+      {isRealtorOrAgency && ownerName && (
+        <div className="mb-6 pb-6 border-b border-gray-200">
+          {hasPublicProfile ? (
+            <Link
+              href={`/realtor/${ownerPublicSlug}`}
+              className="flex items-center gap-3 rounded-lg -mx-1 px-1 hover:bg-teal/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            >
+              {ownerImage ? (
+                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-teal/20">
                   <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center border-2 border-white shadow-lg shrink-0">
-                  <span className="text-2xl font-bold text-teal-700">{ownerName.charAt(0).toUpperCase()}</span>
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal/20 to-teal/40 flex items-center justify-center">
+                  {ownerRole === "AGENCY" ? (
+                    <Building2 className="w-8 h-8 text-teal" />
+                  ) : (
+                    <User className="w-8 h-8 text-teal" />
+                  )}
                 </div>
-              )
-            )}
-
-            {/* Nome + Headline + Role */}
-            <div className="flex-1 min-w-0">
-              {hasPublicProfile ? (
-                <Link href={`/realtor/${ownerPublicSlug}`} className="hover:underline">
-                  <p className="font-bold text-gray-900 text-base uppercase tracking-wide">{ownerName}</p>
-                </Link>
+              )}
+              <div>
+                <p className="font-semibold text-gray-900">{ownerName}</p>
+                <p className="text-sm text-gray-600">
+                  {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
+                </p>
+              </div>
+            </Link>
+          ) : (
+            <div className="flex items-center gap-3">
+              {ownerImage ? (
+                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-teal/20">
+                  <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
+                </div>
               ) : (
-                <p className="font-bold text-gray-900 text-base uppercase tracking-wide">{ownerName}</p>
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal/20 to-teal/40 flex items-center justify-center">
+                  {ownerRole === "AGENCY" ? (
+                    <Building2 className="w-8 h-8 text-teal" />
+                  ) : (
+                    <User className="w-8 h-8 text-teal" />
+                  )}
+                </div>
               )}
-              {ownerHeadline && (
-                <p className="text-xs text-gray-500">({ownerHeadline})</p>
-              )}
-              <p className="text-sm text-gray-600">
-                {ownerRole === "AGENCY" ? "Imobiliária" : ownerRole === "REALTOR" ? "Corretor" : "Proprietário"}
-              </p>
+              <div>
+                <p className="font-semibold text-gray-900">{ownerName}</p>
+                <p className="text-sm text-gray-600">
+                  {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
+                </p>
+              </div>
             </div>
+          )}
 
-            {/* WhatsApp Button (sempre visível; "desabilitado" quando indisponível) */}
+          {canShowWhatsApp && (
             <button
               type="button"
               onClick={handleWhatsAppClick}
-              aria-disabled={!canShowWhatsApp}
-              className={`shrink-0 inline-flex items-center gap-3 rounded-full bg-white/80 border px-4 py-2 text-sm font-medium shadow-sm transition-all ${
-                canShowWhatsApp
-                  ? "border-gray-200 text-gray-700 hover:shadow-md hover:border-gray-300"
-                  : "border-gray-200 text-gray-400 opacity-70"
-              }`}
+              className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-accent/20 bg-accent/10 text-neutral-900 font-semibold px-4 py-2.5 hover:bg-accent/15 active:bg-accent/20 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             >
-              <span
-                className={`inline-flex items-center justify-center w-9 h-9 rounded-full border ${
-                  canShowWhatsApp
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-600"
-                    : "bg-gray-100 border-gray-200 text-gray-400"
-                }`}
-              >
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white border border-accent/15 text-accent shadow-sm">
                 <WhatsAppIcon className="w-5 h-5" />
               </span>
-              <span>Conversar no WhatsApp</span>
+              <span className="text-sm">Conversar no WhatsApp</span>
+              <ExternalLink className="w-4 h-4 text-neutral-500" />
             </button>
-          </div>
-
-          {/* Linha 2: Telefone (esq) e Email (dir) na mesma linha */}
-          {(ownerPhone || ownerEmail) && (
-            <div className="relative mt-4 flex items-center justify-between gap-6 text-sm">
-              {ownerPhone && (
-                <div className="inline-flex items-center gap-2 min-w-0">
-                  <Phone className="w-4 h-4 text-teal-600" />
-                  <span className="text-gray-700">{ownerPhone}</span>
-                </div>
-              )}
-              {ownerEmail && (
-                <div className="inline-flex items-center gap-2 min-w-0 justify-end">
-                  <Mail className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-600 truncate">{ownerEmail}</span>
-                </div>
-              )}
-            </div>
           )}
         </div>
       )}
 
-      {/* Formulário */}
-      <div className="bg-white rounded-xl border border-gray-100 mx-4 mb-4 p-4 shadow-sm">
-        <h3 className="text-base font-semibold text-gray-900 mb-4">
-          {isLeadBoard ? "Agendar Visita" : "Entre em Contato"}
-        </h3>
+      {/* Título do card */}
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        {isLeadBoard ? "Agendar Visita" : "Entre em Contato"}
+      </h3>
 
+      {/* Formulário */}
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <input
-            type="text"
-            placeholder="Seu Nome"
-            required
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors"
-          />
-          <input
-            type="email"
-            placeholder="Seu Email"
-            required
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors"
-          />
-        </div>
+        <input
+          type="text"
+          placeholder="Nome"
+          required
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
+        />
+        <input
+          type="email"
+          placeholder="E-mail"
+          required
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
+        />
         
         {/* Phone com country code */}
         <div className="flex gap-2">
-          <select className="w-20 px-2 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors">
+          <select className="w-24 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base">
             <option>+55</option>
           </select>
           <input
@@ -495,18 +461,18 @@ export default function PropertyContactCard({
             required
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="flex-1 px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors"
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
           />
         </div>
 
         {/* Mensagem (apenas se não for lead board) */}
         {!isLeadBoard && (
-          <input
-            type="text"
-            placeholder={`Tenho interesse em ${propertyTitle}`}
+          <textarea
+            rows={4}
+            placeholder={formData.message}
             value={formData.message}
             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-            className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors"
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent resize-none text-base"
           />
         )}
 
@@ -550,35 +516,39 @@ export default function PropertyContactCard({
           </div>
         )}
 
-        <button 
+        <Button 
           type="submit" 
-          className="w-full py-3 rounded-lg text-white font-semibold text-sm bg-gradient-to-r from-teal-700 via-teal-600 to-teal-500 hover:from-teal-800 hover:via-teal-700 hover:to-teal-600 shadow-md hover:shadow-lg transition-all disabled:opacity-60"
+          className="w-full glass-teal py-3 text-base"
           disabled={loading}
         >
-          {loading ? "Enviando..." : isLeadBoard ? "Solicitar Visita" : "Enviar Mensagem"}
-        </button>
+          {loading ? "Enviando..." : isLeadBoard ? "Solicitar Visita" : "Entrar em Contato"}
+        </Button>
 
-        {/* Checkbox de notificação */}
-        {!isLeadBoard && (
-          <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer mt-3">
+        {/* Checkboxes */}
+        <div className="space-y-3 text-sm text-gray-600">
+          {!isLeadBoard && (
+            <label className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="mt-0.5 w-5 h-5 rounded"
+                checked={notifySimilar}
+                onChange={(e) => setNotifySimilar(e.target.checked)}
+              />
+              <span>Notificar-me por e-mail sobre imóveis similares</span>
+            </label>
+          )}
+          <label className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
             <input 
               type="checkbox" 
-              className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-              checked={notifySimilar}
-              onChange={(e) => setNotifySimilar(e.target.checked)}
+              className="mt-0.5 w-5 h-5 rounded"
+              required
+              checked={agreeTerms}
+              onChange={(e) => setAgreeTerms(e.target.checked)}
             />
-            <span>Notificar-me por e-mail sobre imóveis similares</span>
-            <span className="text-gray-300">♡</span>
+            <span>Concordo com os Termos de Uso e Política de Privacidade</span>
           </label>
-        )}
-
-        {/* Termos (hidden required) */}
-        <input type="hidden" value={agreeTerms ? "true" : ""} />
-        <p className="text-[10px] text-gray-400 mt-2">
-          Ao enviar, você concorda com os <a href="/terms" className="underline hover:text-gray-600">Termos de Uso</a> e <a href="/privacy" className="underline hover:text-gray-600">Política de Privacidade</a>
-        </p>
+        </div>
       </form>
-      </div>
     </div>
   );
 }
