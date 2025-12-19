@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { randomBytes } from "crypto";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
@@ -74,10 +76,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload", issues: parsed.error.issues }, { status: 400 });
   }
 
-  const ok = await verifyTurnstile(parsed.data.turnstileToken, ip);
-  if (!ok) return NextResponse.json({ error: "Captcha failed" }, { status: 400 });
+  const session: any = await getServerSession(authOptions).catch(() => null);
+  const sessionUserId = session?.userId || session?.user?.id || null;
+
+  if (!sessionUserId) {
+    const ok = await verifyTurnstile(parsed.data.turnstileToken, ip);
+    if (!ok) return NextResponse.json({ error: "Captcha failed" }, { status: 400 });
+  }
 
   const { propertyId, name, email, phone, message, visitDate, visitTime, isDirect } = parsed.data;
+  const isDirectFlag = isDirect ?? false;
+
   const prop = await prisma.property.findUnique({
     where: { id: propertyId },
     select: { id: true, teamId: true } as any,
@@ -107,6 +116,57 @@ export async function POST(req: NextRequest) {
       });
     } catch (error: any) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+  }
+
+  if (sessionUserId) {
+    try {
+      const existing: any = await (prisma as any).lead.findFirst({
+        where: {
+          propertyId,
+          isDirect: isDirectFlag,
+          OR: [
+            { userId: String(sessionUserId) },
+            { contact: { email } },
+          ],
+        },
+        select: {
+          id: true,
+          userId: true,
+          clientChatToken: true,
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+
+      if (existing?.id) {
+        if (!existing.userId) {
+          try {
+            await (prisma as any).lead.update({
+              where: { id: existing.id },
+              data: { userId: String(sessionUserId) },
+              select: { id: true },
+            });
+          } catch {
+            // ignore
+          }
+        }
+
+        let token: string | null = existing.clientChatToken || null;
+        if (!token) {
+          token = generateChatToken();
+          const updated = await (prisma as any).lead.update({
+            where: { id: existing.id },
+            data: { clientChatToken: token },
+            select: { clientChatToken: true },
+          });
+          token = updated?.clientChatToken || token;
+        }
+
+        const chatUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://zillowlike.vercel.app"}/chat/${token}`;
+        return NextResponse.json({ ok: true, leadId: existing.id, chatToken: token, chatUrl, reused: true });
+      }
+    } catch {
+      // ignore reuse errors and continue creating new lead
     }
   }
 
@@ -152,8 +212,9 @@ export async function POST(req: NextRequest) {
     data: {
       propertyId,
       contactId: contact.id,
+      userId: sessionUserId ? String(sessionUserId) : undefined,
       message,
-      isDirect: isDirect ?? false,
+      isDirect: isDirectFlag,
       teamId: (prop as any)?.teamId ?? undefined,
       clientChatToken, // Token para o cliente acessar o chat
       // Se o owner é REALTOR/AGENCY, atribuir automaticamente como corretor responsável

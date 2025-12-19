@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { User, Building2, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -66,6 +66,8 @@ export default function PropertyContactCard({
 
   const isAuthenticated = !!session;
 
+  const [didAutoOpenChat, setDidAutoOpenChat] = useState(false);
+
   // Determinar cenário
   const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
   const isLeadBoard = (ownerRole === "OWNER" || ownerRole === "USER") && allowRealtorBoard;
@@ -120,8 +122,7 @@ export default function PropertyContactCard({
   const createLeadAndOpenChat = async () => {
     try {
       if (!isAuthenticated) {
-        const callbackUrl = getReturnUrlWithOpenChat();
-        await signIn(undefined, { callbackUrl });
+        await signIn(undefined, { callbackUrl: getReturnUrlWithOpenChat() });
         return;
       }
 
@@ -140,7 +141,6 @@ export default function PropertyContactCard({
         name,
         email,
         phone: String(s?.user?.phone || "").trim() || undefined,
-        message: `Tenho interesse em\n${propertyTitle}`,
         isDirect: !isLeadBoard,
       };
 
@@ -160,23 +160,12 @@ export default function PropertyContactCard({
         throw new Error(msg);
       }
 
-      const siteUrl = typeof window !== "undefined" ? window.location.origin : "";
-      const chatUrl = data?.chatUrl || (data?.chatToken ? `${siteUrl}/chat/${data.chatToken}` : "");
-      if (!chatUrl) {
+      const leadId = String(data?.leadId || "");
+      if (!leadId) {
         throw new Error("Não conseguimos abrir o chat agora.");
       }
 
-      const url = chatUrl.startsWith("http")
-        ? (() => {
-            try {
-              return new URL(chatUrl).pathname;
-            } catch {
-              return chatUrl;
-            }
-          })()
-        : chatUrl;
-
-      router.push(url);
+      router.push(`/chats?lead=${encodeURIComponent(leadId)}`);
     } catch (err: any) {
       toast.error(err?.message || "Não conseguimos abrir o chat agora.");
     } finally {
@@ -184,24 +173,27 @@ export default function PropertyContactCard({
     }
   };
 
-  const autoChatRef = (globalThis as any).__zlw_auto_chat_ref || { ran: false };
-  (globalThis as any).__zlw_auto_chat_ref = autoChatRef;
-  if (typeof window !== "undefined" && isAuthenticated && !autoChatRef.ran) {
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (didAutoOpenChat) return;
+    if (typeof window === "undefined") return;
+
     try {
       const url = new URL(window.location.href);
       const openChat = url.searchParams.get("openChat") === "1";
       const propMatch = url.searchParams.get("propertyId") === propertyId;
-      if (openChat && propMatch) {
-        autoChatRef.ran = true;
-        url.searchParams.delete("openChat");
-        url.searchParams.delete("propertyId");
-        const next = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""}${url.hash}`;
-        window.history.replaceState(window.history.state, "", next);
-        void createLeadAndOpenChat();
-      }
+      if (!openChat || !propMatch) return;
+
+      setDidAutoOpenChat(true);
+      url.searchParams.delete("openChat");
+      url.searchParams.delete("propertyId");
+      const next = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""}${url.hash}`;
+      window.history.replaceState(window.history.state, "", next);
+      void createLeadAndOpenChat();
     } catch {
+      // ignore
     }
-  }
+  }, [didAutoOpenChat, isAuthenticated, propertyId]);
 
   return (
     <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
@@ -267,7 +259,7 @@ export default function PropertyContactCard({
             type="button"
             onClick={handleWhatsAppClick}
             disabled={!canShowWhatsApp}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white font-semibold px-4 py-3 shadow-sm hover:bg-[#128C7E] active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white text-base font-semibold px-4 py-3 shadow-sm hover:bg-[#128C7E] active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
           >
             <WhatsAppIcon className="w-5 h-5" />
             WhatsApp
@@ -287,7 +279,7 @@ export default function PropertyContactCard({
             type="button"
             onClick={createLeadAndOpenChat}
             disabled={loading}
-            className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 text-white font-semibold px-4 py-3 shadow-sm hover:bg-teal-700 active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 text-white text-base font-semibold px-4 py-3 shadow-sm hover:bg-teal-700 active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
           >
             <MessageCircle className="w-5 h-5" />
             {loading ? "Abrindo..." : "Chat"}

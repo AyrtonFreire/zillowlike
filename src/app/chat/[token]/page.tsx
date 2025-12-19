@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { useSession } from "next-auth/react";
 import { 
   Send, 
   Wifi, 
@@ -108,6 +109,21 @@ function getInitials(name?: string | null) {
 export default function ClientChatPage() {
   const params = useParams();
   const token = (params?.token as string) || "";
+  const router = useRouter();
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (!token) return;
+    if (status === "loading") return;
+    if (!session) return;
+
+    const role = (session as any)?.role || (session as any)?.user?.role || null;
+    if (role && ["REALTOR", "AGENCY", "OWNER", "ADMIN"].includes(String(role))) {
+      return;
+    }
+
+    router.replace(`/chats?token=${encodeURIComponent(token)}`);
+  }, [router, session, status, token]);
 
   const [lead, setLead] = useState<ChatLeadInfo | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
