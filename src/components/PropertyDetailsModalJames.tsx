@@ -1262,19 +1262,21 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                     {/* Financing card will appear below the contact form */}
 
                     {/* Contact Card - Dynamic based on owner type and lead board setting */}
-                    <PropertyContactCard
-                      propertyId={property.id}
-                      propertyTitle={property.title}
-                      propertyPurpose={property.purpose}
-                      ownerRole={property.owner?.role || "USER"}
-                      ownerName={property.owner?.name || undefined}
-                      ownerImage={property.owner?.image || undefined}
-                      ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
-                      ownerPublicSlug={property.owner?.publicSlug || null}
-                      ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
-                      hideOwnerContact={!!(property as any)?.hideOwnerContact}
-                      allowRealtorBoard={property.allowRealtorBoard || false}
-                    />
+                    <div className="hidden md:block">
+                      <PropertyContactCard
+                        propertyId={property.id}
+                        propertyTitle={property.title}
+                        propertyPurpose={property.purpose}
+                        ownerRole={property.owner?.role || "USER"}
+                        ownerName={property.owner?.name || undefined}
+                        ownerImage={property.owner?.image || undefined}
+                        ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
+                        ownerPublicSlug={property.owner?.publicSlug || null}
+                        ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
+                        hideOwnerContact={!!(property as any)?.hideOwnerContact}
+                        allowRealtorBoard={property.allowRealtorBoard || false}
+                      />
+                    </div>
 
                     {/* Financing Calculator - Only for SALE properties (single card below contact form) */}
                     {property.purpose === 'SALE' && property.price && property.price > 0 && (() => {
