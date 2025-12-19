@@ -90,6 +90,9 @@ export default function UserChatsPage() {
 
   const leadIdFromUrl = searchParams.get("lead");
   const tokenFromUrl = searchParams.get("token");
+  const openChat = searchParams.get("openChat") === "1";
+  const openChatPropertyId = searchParams.get("propertyId") || "";
+  const openChatDirect = (searchParams.get("direct") || "").toLowerCase() === "1";
 
   const [chats, setChats] = useState<ChatPreview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +125,39 @@ export default function UserChatsPage() {
     }
   }, []);
 
+  const createLeadForProperty = useCallback(async () => {
+    if (!session) return;
+    if (!openChat || !openChatPropertyId) return;
+
+    const s: any = session as any;
+    const name = String(s?.user?.name || s?.user?.fullName || "").trim();
+    const email = String(s?.user?.email || "").trim();
+    if (!name || name.length < 2 || !email) {
+      return;
+    }
+
+    const payload: any = {
+      propertyId: openChatPropertyId,
+      name,
+      email,
+      phone: String(s?.user?.phone || "").trim() || undefined,
+      isDirect: openChatDirect,
+    };
+
+    const res = await fetch("/api/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) return;
+
+    const leadId = String(data?.leadId || "");
+    if (!leadId) return;
+
+    router.replace(`/chats?lead=${encodeURIComponent(leadId)}`);
+  }, [openChat, openChatDirect, openChatPropertyId, router, session]);
+
   const fetchChatByToken = useCallback(async (token: string) => {
     setMessagesLoading(true);
     try {
@@ -141,8 +177,11 @@ export default function UserChatsPage() {
   useEffect(() => {
     if (status === "loading") return;
     if (!session) return;
+    if (openChat && openChatPropertyId) {
+      void createLeadForProperty();
+    }
     fetchChats();
-  }, [fetchChats, session, status]);
+  }, [createLeadForProperty, fetchChats, openChat, openChatPropertyId, session, status]);
 
   useEffect(() => {
     if (!session) return;

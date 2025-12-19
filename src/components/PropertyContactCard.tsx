@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { User, Building2, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -66,8 +66,6 @@ export default function PropertyContactCard({
 
   const isAuthenticated = !!session;
 
-  const [didAutoOpenChat, setDidAutoOpenChat] = useState(false);
-
   // Determinar cenário
   const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
   const isLeadBoard = (ownerRole === "OWNER" || ownerRole === "USER") && allowRealtorBoard;
@@ -108,21 +106,15 @@ export default function PropertyContactCard({
     }
   };
 
-  const getReturnUrlWithOpenChat = () => {
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.set("openChat", "1");
-      url.searchParams.set("propertyId", propertyId);
-      return `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""}${url.hash}`;
-    } catch {
-      return `/property/${propertyId}?openChat=1&propertyId=${encodeURIComponent(propertyId)}`;
-    }
+  const getChatCallbackUrl = () => {
+    const direct = !isLeadBoard;
+    return `/chats?openChat=1&propertyId=${encodeURIComponent(propertyId)}&direct=${direct ? "1" : "0"}`;
   };
 
   const createLeadAndOpenChat = async () => {
     try {
       if (!isAuthenticated) {
-        await signIn(undefined, { callbackUrl: getReturnUrlWithOpenChat() });
+        await signIn(undefined, { callbackUrl: getChatCallbackUrl() });
         return;
       }
 
@@ -172,28 +164,6 @@ export default function PropertyContactCard({
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (didAutoOpenChat) return;
-    if (typeof window === "undefined") return;
-
-    try {
-      const url = new URL(window.location.href);
-      const openChat = url.searchParams.get("openChat") === "1";
-      const propMatch = url.searchParams.get("propertyId") === propertyId;
-      if (!openChat || !propMatch) return;
-
-      setDidAutoOpenChat(true);
-      url.searchParams.delete("openChat");
-      url.searchParams.delete("propertyId");
-      const next = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""}${url.hash}`;
-      window.history.replaceState(window.history.state, "", next);
-      void createLeadAndOpenChat();
-    } catch {
-      // ignore
-    }
-  }, [didAutoOpenChat, isAuthenticated, propertyId]);
 
   return (
     <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
