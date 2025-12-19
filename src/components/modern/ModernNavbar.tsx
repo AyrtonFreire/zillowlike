@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useScroll, AnimatePresence } from "framer-motion";
-import { Menu, X, User, Heart, Bell, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark, Home, HelpCircle } from "lucide-react";
+import { Menu, X, User, Heart, Bell, MessageCircle, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark, Home, HelpCircle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -28,6 +28,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   
   const role = (session as any)?.user?.role || "USER";
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [hasUnreadUserChats, setHasUnreadUserChats] = useState(false);
   const [assistantActiveCount, setAssistantActiveCount] = useState(0);
   const assistantEtagRef = useRef<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -126,6 +127,74 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
     updateUnread();
     const interval = setInterval(updateUnread, 60000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [session, role]);
+
+  // Inbox de conversas para usuário comum - verifica se há mensagens novas (vindas do profissional)
+  useEffect(() => {
+    if (!session) return;
+    if (role !== 'USER') {
+      setHasUnreadUserChats(false);
+      return;
+    }
+
+    let cancelled = false;
+    let interval: any;
+    const STORAGE_PREFIX = 'zlw_user_chat_last_read_';
+
+    const updateUnread = async () => {
+      try {
+        const response = await fetch('/api/chats');
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.success || !Array.isArray(data.chats)) {
+          if (!cancelled) setHasUnreadUserChats(false);
+          return;
+        }
+
+        let anyUnread = false;
+        if (typeof window !== 'undefined') {
+          for (const chat of data.chats) {
+            const leadId = String(chat.leadId || '');
+            if (!leadId) continue;
+
+            const lastMessageAt = chat.lastMessageAt as string | undefined;
+            const lastMessageFromClient = chat.lastMessageFromClient as boolean | undefined;
+
+            // Para o usuário (cliente), consideramos "não lido" quando a última mensagem foi do profissional.
+            if (!lastMessageAt || lastMessageFromClient !== false) continue;
+
+            const key = `${STORAGE_PREFIX}${leadId}`;
+            const stored = window.localStorage.getItem(key);
+
+            if (!stored) {
+              anyUnread = true;
+              break;
+            }
+
+            const lastRead = new Date(stored).getTime();
+            const lastMsg = new Date(lastMessageAt).getTime();
+
+            if (Number.isNaN(lastRead) || Number.isNaN(lastMsg) || lastMsg > lastRead) {
+              anyUnread = true;
+              break;
+            }
+          }
+        }
+
+        if (!cancelled) setHasUnreadUserChats(anyUnread);
+      } catch (error) {
+        console.error('Error checking unread user chats:', error);
+        if (!cancelled) setHasUnreadUserChats(false);
+      }
+    };
+
+    updateUnread();
+    interval = setInterval(updateUnread, 60000);
 
     return () => {
       cancelled = true;
@@ -574,6 +643,20 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             >
               <Heart className="w-5 h-5" />
             </Link>
+
+            {role === 'USER' && session && (
+              <Link
+                href="/chats"
+                className={`relative p-2 rounded-lg transition-colors ${
+                  forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'
+                }`}
+              >
+                <Bell className="w-5 h-5" />
+                {hasUnreadUserChats && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 border border-white" />
+                )}
+              </Link>
+            )}
             {(role === 'REALTOR' || role === 'AGENCY' || role === 'ADMIN') && (
               <Link
                 href="/broker/dashboard?assistant=1"
@@ -638,6 +721,17 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                           <li><Link href="/admin" className="block px-4 py-2 hover:bg-gray-50">Painel Admin</Link></li>
                           <li><Link href="/admin/properties" className="block px-4 py-2 hover:bg-gray-50">Gerenciar imóveis</Link></li>
                           <li><Link href="/admin/users" className="block px-4 py-2 hover:bg-gray-50">Usuários</Link></li>
+                          <li><hr className="my-1" /></li>
+                        </>
+                      )}
+                      {role === 'USER' && (
+                        <>
+                          <li>
+                            <Link href="/chats" className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50">
+                              <MessageCircle className="w-4 h-4 text-gray-400" />
+                              <span>Conversas</span>
+                            </Link>
+                          </li>
                           <li><hr className="my-1" /></li>
                         </>
                       )}

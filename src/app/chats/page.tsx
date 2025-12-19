@@ -88,6 +88,17 @@ export default function UserChatsPage() {
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
+  const markChatAsRead = useCallback((leadId: string) => {
+    if (!leadId) return;
+    if (typeof window === "undefined") return;
+    try {
+      const key = `zlw_user_chat_last_read_${leadId}`;
+      window.localStorage.setItem(key, new Date().toISOString());
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const leadIdFromUrl = searchParams.get("lead");
   const tokenFromUrl = searchParams.get("token");
   const openChat = searchParams.get("openChat") === "1";
@@ -169,10 +180,13 @@ export default function UserChatsPage() {
       setLeadInfo(data.lead || null);
       setMessages(Array.isArray(data.messages) ? data.messages : []);
       setShowSuggestions(true);
+
+      const leadId = String(data?.lead?.id || "");
+      if (leadId) markChatAsRead(leadId);
     } finally {
       setMessagesLoading(false);
     }
-  }, []);
+  }, [markChatAsRead]);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -334,6 +348,7 @@ export default function UserChatsPage() {
                     type="button"
                     onClick={() => {
                       setSelectedChat(chat);
+                      markChatAsRead(chat.leadId);
                       router.replace(`/chats?lead=${encodeURIComponent(chat.leadId)}`);
                     }}
                     className={`w-full p-4 flex gap-3 hover:bg-white transition-colors border-b border-gray-100 text-left ${

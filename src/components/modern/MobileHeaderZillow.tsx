@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
-import { Menu, X, User, Heart, ChevronDown, ChevronRight, Home, Building2, Megaphone, LineChart, Users, Bookmark, ClipboardList, LogOut, Settings } from "lucide-react";
+import { Menu, X, User, Heart, Bell, MessageCircle, ChevronDown, ChevronRight, Home, Building2, Megaphone, LineChart, Users, Bookmark, ClipboardList, LogOut, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface MobileHeaderZillowProps {
@@ -16,12 +16,78 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const { data: session } = useSession();
   const role = (session as any)?.user?.role || "USER";
+  const [hasUnreadUserChats, setHasUnreadUserChats] = useState(false);
 
   const isOverlay = variant === "overlay";
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
+
+  useEffect(() => {
+    if (!session) return;
+    if (role !== "USER") {
+      setHasUnreadUserChats(false);
+      return;
+    }
+
+    let cancelled = false;
+    let interval: any;
+    const STORAGE_PREFIX = "zlw_user_chat_last_read_";
+
+    const updateUnread = async () => {
+      try {
+        const response = await fetch("/api/chats");
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.success || !Array.isArray(data.chats)) {
+          if (!cancelled) setHasUnreadUserChats(false);
+          return;
+        }
+
+        let anyUnread = false;
+        if (typeof window !== "undefined") {
+          for (const chat of data.chats) {
+            const leadId = String(chat.leadId || "");
+            if (!leadId) continue;
+
+            const lastMessageAt = chat.lastMessageAt as string | undefined;
+            const lastMessageFromClient = chat.lastMessageFromClient as boolean | undefined;
+
+            if (!lastMessageAt || lastMessageFromClient !== false) continue;
+
+            const key = `${STORAGE_PREFIX}${leadId}`;
+            const stored = window.localStorage.getItem(key);
+
+            if (!stored) {
+              anyUnread = true;
+              break;
+            }
+
+            const lastRead = new Date(stored).getTime();
+            const lastMsg = new Date(lastMessageAt).getTime();
+
+            if (Number.isNaN(lastRead) || Number.isNaN(lastMsg) || lastMsg > lastRead) {
+              anyUnread = true;
+              break;
+            }
+          }
+        }
+
+        if (!cancelled) setHasUnreadUserChats(anyUnread);
+      } catch {
+        if (!cancelled) setHasUnreadUserChats(false);
+      }
+    };
+
+    updateUnread();
+    interval = setInterval(updateUnread, 60000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [role, session]);
 
   return (
     <>
@@ -63,34 +129,57 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
             </span>
           </Link>
 
-          {/* Right: User Menu */}
-          <button
-            onClick={() => {
-              setIsRightMenuOpen(true);
-              setIsLeftMenuOpen(false);
-            }}
-            className={`p-1.5 rounded-full transition-colors ${
-              isOverlay ? "hover:bg-white/10" : "hover:bg-gray-100"
-            }`}
-            aria-label="Menu do usuário"
-          >
-            {session ? (
-              <div className="w-8 h-8 rounded-full bg-brand-teal text-white flex items-center justify-center text-sm font-semibold shadow-sm">
-                <span>{(session as any)?.user?.name?.[0]?.toUpperCase() || 'U'}</span>
-              </div>
-            ) : (
-              <div
-                className={
-                  "w-8 h-8 rounded-full flex items-center justify-center " +
-                  (isOverlay
-                    ? "bg-white/15 border border-white/30"
-                    : "bg-gray-100 border border-gray-200")
-                }
+          {/* Right: Notifications + User Menu */}
+          <div className="flex items-center gap-2">
+            {session && role === "USER" && (
+              <Link
+                href="/chats"
+                onClick={() => {
+                  setIsLeftMenuOpen(false);
+                  setIsRightMenuOpen(false);
+                }}
+                className={`relative p-2 rounded-full transition-colors ${
+                  isOverlay ? "hover:bg-white/10" : "hover:bg-gray-100"
+                }`}
+                aria-label="Conversas"
               >
-                <User className={`w-5 h-5 ${isOverlay ? "text-white" : "text-gray-700"}`} />
-              </div>
+                <Bell className={`w-5 h-5 ${isOverlay ? "text-white" : "text-gray-800"}`} />
+                {hasUnreadUserChats && (
+                  <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 ${
+                    isOverlay ? "border border-white/60" : "border border-white"
+                  }`} />
+                )}
+              </Link>
             )}
-          </button>
+
+            <button
+              onClick={() => {
+                setIsRightMenuOpen(true);
+                setIsLeftMenuOpen(false);
+              }}
+              className={`p-1.5 rounded-full transition-colors ${
+                isOverlay ? "hover:bg-white/10" : "hover:bg-gray-100"
+              }`}
+              aria-label="Menu do usuário"
+            >
+              {session ? (
+                <div className="w-8 h-8 rounded-full bg-brand-teal text-white flex items-center justify-center text-sm font-semibold shadow-sm">
+                  <span>{(session as any)?.user?.name?.[0]?.toUpperCase() || 'U'}</span>
+                </div>
+              ) : (
+                <div
+                  className={
+                    "w-8 h-8 rounded-full flex items-center justify-center " +
+                    (isOverlay
+                      ? "bg-white/15 border border-white/30"
+                      : "bg-gray-100 border border-gray-200")
+                  }
+                >
+                  <User className={`w-5 h-5 ${isOverlay ? "text-white" : "text-gray-700"}`} />
+                </div>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -411,6 +500,17 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                     <Link href="/saved-searches" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                       Buscas salvas
                     </Link>
+
+                    {role === 'USER' && (
+                      <Link
+                        href="/chats"
+                        onClick={() => setIsRightMenuOpen(false)}
+                        className="flex items-center gap-3 px-6 py-3 text-base font-semibold text-gray-900 border-b"
+                      >
+                        <MessageCircle className="w-5 h-5 text-brand-teal" />
+                        Conversas
+                      </Link>
+                    )}
                     
                     {role === 'OWNER' && (
                       <>
