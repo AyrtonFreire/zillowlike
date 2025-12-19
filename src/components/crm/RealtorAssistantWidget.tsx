@@ -224,7 +224,7 @@ export default function RealtorAssistantWidget() {
               <div className="text-sm font-semibold text-gray-900">Assistente do Corretor</div>
               {activeCount > 0 && (
                 <div className="ml-1 text-[11px] font-bold text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
-                  {activeCount}
+                  {activeCount} pendência{activeCount > 1 ? "s" : ""}
                 </div>
               )}
             </div>
@@ -277,7 +277,7 @@ export default function RealtorAssistantWidget() {
               <div className="text-sm font-semibold text-gray-900">Assistente do Corretor</div>
               {activeCount > 0 && (
                 <div className="ml-1 text-[11px] font-bold text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
-                  {activeCount}
+                  {activeCount} pendência{activeCount > 1 ? "s" : ""}
                 </div>
               )}
             </div>

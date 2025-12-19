@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ChevronDown, ExternalLink, Eye, MessageCircle, Copy, Sparkles, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, ExternalLink, Eye, MessageCircle, Copy, Sparkles, X, Phone } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
 import { getRealtorAssistantCategory, getRealtorAssistantTaskLabel } from "@/lib/realtor-assistant-ai";
 
@@ -71,9 +71,23 @@ function getPriorityClasses(priority: AssistantItem["priority"]) {
   return "bg-gray-50 text-gray-600 border-gray-200";
 }
 
-function getActionLabel(action: AssistantAction) {
-  if (action.type === "OPEN_CHAT") return "Abrir conversa";
-  if (action.type === "OPEN_LEAD") return "Abrir lead";
+function startOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function isSameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function getActionLabel(action: AssistantAction, item?: AssistantItem | null) {
+  if (action.type === "OPEN_CHAT") {
+    if (item?.type === "UNANSWERED_CLIENT_MESSAGE") return "Responder";
+    return "Abrir conversa";
+  }
+  if (action.type === "OPEN_LEAD") {
+    if (item && isReminderType(item.type)) return "Ver detalhes";
+    return "Abrir lead";
+  }
   return "Abrir";
 }
 
@@ -103,6 +117,17 @@ function canSendAiDraftToClient(itemType: string | null | undefined) {
   );
 }
 
+function getAiDraftSectionTitle(itemType: string | null | undefined) {
+  const t = String(itemType || "").trim();
+  if (t === "REMINDER_TODAY" || t === "REMINDER_OVERDUE") return "Plano sugerido";
+  return "Texto pronto";
+}
+
+function isReminderType(itemType: string | null | undefined) {
+  const t = String(itemType || "").trim();
+  return t === "REMINDER_TODAY" || t === "REMINDER_OVERDUE";
+}
+
 export default function RealtorAssistantFeed(props: {
   realtorId?: string;
   leadId?: string;
@@ -129,12 +154,70 @@ export default function RealtorAssistantFeed(props: {
   const repliedTimerRef = useRef<any>(null);
   const [aiItemSnapshot, setAiItemSnapshot] = useState<AiItemSnapshot | null>(null);
 
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [justResolvedId, setJustResolvedId] = useState<string | null>(null);
+  const [justSnoozedId, setJustSnoozedId] = useState<string | null>(null);
+  const resolvedTimerRef = useRef<any>(null);
+
   const realtorId = props.realtorId;
   const leadId = props.leadId;
 
+  useEffect(() => {
+    return () => {
+      if (resolvedTimerRef.current) {
+        clearTimeout(resolvedTimerRef.current);
+        resolvedTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const visibleItems = useMemo(() => {
-    return items.filter((i) => i.status === "ACTIVE");
-  }, [items]);
+    return items.filter(
+      (i) =>
+        i.status === "ACTIVE" ||
+        (justResolvedId && i.id === justResolvedId) ||
+        (justSnoozedId && i.id === justSnoozedId)
+    );
+  }, [items, justResolvedId, justSnoozedId]);
+
+  useEffect(() => {
+    if (!aiForId) return;
+
+    const exists = items.some((i) => String(i.id) === String(aiForId));
+    if (exists) return;
+
+    try {
+      if (aiLoadingId === aiForId) {
+        aiAbortRef.current?.abort();
+      }
+    } catch {
+    }
+
+    setAiForId(null);
+    setAiError(null);
+    setAiResult(null);
+    setAiItemSnapshot(null);
+  }, [aiForId, aiLoadingId, items]);
+
+  useEffect(() => {
+    if (!aiForId) return;
+
+    const existing = items.find((i) => String(i.id) === String(aiForId)) || null;
+    const t = existing?.type || aiItemSnapshot?.type || null;
+    if (!isReminderType(t)) return;
+
+    try {
+      if (aiLoadingId === aiForId) {
+        aiAbortRef.current?.abort();
+      }
+    } catch {
+    }
+
+    setAiForId(null);
+    setAiError(null);
+    setAiResult(null);
+    setAiItemSnapshot(null);
+  }, [aiForId, aiItemSnapshot?.type, aiLoadingId, items]);
 
   const groupedItems = useMemo(() => {
     const groups: Record<string, AssistantItem[]> = {
@@ -334,6 +417,31 @@ export default function RealtorAssistantFeed(props: {
 
       etagRef.current = null;
       props.onDidMutate?.();
+
+      if (payload?.action === "resolve" && data?.item?.id) {
+        setJustResolvedId(String(data.item.id));
+        setJustSnoozedId(null);
+        if (resolvedTimerRef.current) clearTimeout(resolvedTimerRef.current);
+        resolvedTimerRef.current = setTimeout(() => {
+          setJustResolvedId(null);
+          etagRef.current = null;
+          fetchItems();
+        }, 1000);
+        return;
+      }
+
+      if (payload?.action === "snooze" && data?.item?.id) {
+        setJustSnoozedId(String(data.item.id));
+        setJustResolvedId(null);
+        if (resolvedTimerRef.current) clearTimeout(resolvedTimerRef.current);
+        resolvedTimerRef.current = setTimeout(() => {
+          setJustSnoozedId(null);
+          etagRef.current = null;
+          fetchItems();
+        }, 1000);
+        return;
+      }
+
       await fetchItems();
     } catch (err: any) {
       setError(err?.message || "Não conseguimos atualizar este item agora.");
@@ -476,13 +584,16 @@ export default function RealtorAssistantFeed(props: {
               : "mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-700"
           }
         >
-          O Assistente vai te avisar sobre leads sem resposta, lembretes vencidos e próximos passos.
+          Sem pendências. Você será avisado quando houver mensagens sem resposta, visitas próximas ou lembretes vencidos.
         </div>
       )}
 
       {visibleItems.length > 0 && (
         <div className={props.embedded ? "space-y-3" : "mt-4 space-y-3"}>
-          {!aiVisibleItem && aiForId && (aiError || (aiResult && aiResult.itemId === aiForId)) && (
+          {!aiVisibleItem &&
+            aiForId &&
+            (aiError || (aiResult && aiResult.itemId === aiForId)) &&
+            !isReminderType(aiItemSnapshot?.type) && (
             <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -531,7 +642,7 @@ export default function RealtorAssistantFeed(props: {
 
                   <div className="mt-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-[11px] font-semibold text-gray-900">Texto pronto</p>
+                      <p className="text-[11px] font-semibold text-gray-900">{getAiDraftSectionTitle(aiItemSnapshot?.type)}</p>
                       <button
                         type="button"
                         onClick={async () => {
@@ -607,13 +718,66 @@ export default function RealtorAssistantFeed(props: {
                   {group.map((item) => {
                     const dueLabel = formatShortDateTime(item.dueAt || null);
                     const snoozeLabel = item.status === "SNOOZED" ? formatShortDateTime(item.snoozedUntil || null) : null;
-                    const primary = defaultPrimaryAction(item);
+                    const openChatAction: AssistantAction | null = item.leadId
+                      ? { type: "OPEN_CHAT", leadId: item.leadId }
+                      : null;
+                    const openLeadAction: AssistantAction | null = item.leadId
+                      ? { type: "OPEN_LEAD", leadId: item.leadId }
+                      : null;
                     const taskLabel = getRealtorAssistantTaskLabel(item.type);
-                    const isReminder = item.type === "REMINDER_TODAY" || item.type === "REMINDER_OVERDUE";
+                    const isReminder = isReminderType(item.type);
                     const resolveLabel = isReminder ? "Marcar como feito" : "Resolver";
                     const resolveTitle = isReminder ? "Marcar como feito" : "Marcar como resolvido";
+                    const isResolvedPreview = justResolvedId === item.id && item.status === "RESOLVED";
+                    const isSnoozedPreview = justSnoozedId === item.id && item.status === "SNOOZED";
+                    const isTransientPreview = isResolvedPreview || isSnoozedPreview;
 
-                    const PrimaryIcon = primary ? getActionIcon(primary) : null;
+                    const now = new Date();
+                    let stateLabel: string | null = null;
+                    let stateTone: "overdue" | "today" | "tomorrow" | "snoozed" | "due" | null = null;
+
+                    if (item.status === "SNOOZED" && snoozeLabel) {
+                      stateLabel = `Sonecado até ${snoozeLabel}`;
+                      stateTone = "snoozed";
+                    } else if (isResolvedPreview) {
+                      stateLabel = "Feito";
+                      stateTone = "due";
+                    } else if (item.status === "ACTIVE" && item.dueAt) {
+                      const d = new Date(item.dueAt);
+                      if (!Number.isNaN(d.getTime())) {
+                        if (d.getTime() < now.getTime()) {
+                          stateLabel = "Vencido";
+                          stateTone = "overdue";
+                        } else if (isSameDay(d, now)) {
+                          stateLabel = "Hoje";
+                          stateTone = "today";
+                        } else if (isSameDay(d, new Date(startOfDay(now).getTime() + 24 * 60 * 60 * 1000))) {
+                          stateLabel = "Amanhã";
+                          stateTone = "tomorrow";
+                        } else if (dueLabel) {
+                          stateLabel = `Vence em ${dueLabel}`;
+                          stateTone = "due";
+                        }
+                      }
+                    }
+
+                    const stateClasses =
+                      stateTone === "overdue"
+                        ? "bg-red-50 text-red-700 border-red-100"
+                        : stateTone === "today"
+                          ? "bg-amber-50 text-amber-800 border-amber-100"
+                          : stateTone === "tomorrow"
+                            ? "bg-blue-50 text-blue-700 border-blue-100"
+                            : stateTone === "snoozed"
+                              ? "bg-gray-50 text-gray-700 border-gray-200"
+                              : "bg-gray-50 text-gray-700 border-gray-200";
+
+                    const responderIsPrimary = item.type === "UNANSWERED_CLIENT_MESSAGE";
+                    const primaryOpenAction = responderIsPrimary ? openChatAction : openLeadAction;
+                    const PrimaryOpenIcon = primaryOpenAction ? getActionIcon(primaryOpenAction) : null;
+
+                    const messageIsLong = String(item.message || "").trim().length > 120;
+                    const isExpanded = expandedId === item.id;
 
                     return (
                       <div
@@ -628,45 +792,68 @@ export default function RealtorAssistantFeed(props: {
                                   item.priority
                                 )}`}
                               >
-                                Prioridade {getPriorityLabel(item.priority)}
+                                {getPriorityLabel(item.priority)}
                               </span>
-                              {item.status === "SNOOZED" && snoozeLabel && (
-                                <span className="text-[10px] text-gray-500">
-                                  Sonecado até {snoozeLabel}
-                                </span>
-                              )}
-                              {item.status === "ACTIVE" && dueLabel && (
-                                <span className="text-[10px] text-gray-500">
-                                  Vence em {dueLabel}
+                              {stateLabel && (
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${stateClasses}`}
+                                >
+                                  {stateLabel}
                                 </span>
                               )}
                             </div>
                             <p className="mt-2 text-xs font-semibold text-gray-900">
                               {item.title}
                             </p>
-                            <p className="mt-1 text-xs text-gray-600">
-                              {item.message}
-                            </p>
+                            <div className={isReminder ? "mt-1 flex items-start gap-2" : "mt-1"}>
+                              {isReminder && <Phone className="w-4 h-4 text-gray-500 mt-0.5" />}
+                              <p
+                                className={
+                                  isReminder
+                                    ? `text-xs font-medium text-gray-800 ${isExpanded ? "" : "line-clamp-3"}`
+                                    : `text-xs text-gray-600 ${isExpanded ? "" : "line-clamp-3"}`
+                                }
+                              >
+                                {item.message}
+                              </p>
+                            </div>
+                            {messageIsLong && (
+                              <button
+                                type="button"
+                                onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+                                className="mt-1 text-[11px] font-semibold text-blue-700 hover:text-blue-800"
+                              >
+                                {isExpanded ? "Ver menos" : "Ver mais"}
+                              </button>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              disabled={actingId === item.id}
+                              disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
                               onClick={() => performAction(item.id, { action: "resolve" })}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+                              className={
+                                isReminder
+                                  ? "inline-flex items-center gap-1 px-3 py-2 rounded-xl glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
+                                  : "inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+                              }
                               title={resolveTitle}
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              {resolveLabel}
+                              {isResolvedPreview ? "Feito" : resolveLabel}
                             </button>
 
                             <div className="relative" data-snooze-root="true">
                               <button
                                 type="button"
-                                disabled={actingId === item.id}
+                                disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
                                 onClick={() => setSnoozeMenuFor((prev) => (prev === item.id ? null : item.id))}
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                className={
+                                  isReminder
+                                    ? "inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                                    : "inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                }
                                 title="Lembrar depois"
                               >
                                 Lembrar depois
@@ -697,38 +884,84 @@ export default function RealtorAssistantFeed(props: {
 
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                           <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              disabled={aiLoadingId === item.id}
-                              onClick={() => {
-                                setAiItemSnapshot({
-                                  id: item.id,
-                                  leadId: item.leadId ?? null,
-                                  type: item.type,
-                                  title: item.title,
-                                  message: item.message,
-                                });
-                                generateAi({ id: item.id });
-                              }}
-                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
-                            >
-                              <Sparkles className="w-3.5 h-3.5" />
-                              {aiLoadingId === item.id ? "Gerando..." : taskLabel}
-                            </button>
-                            {primary && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenAction(primary, item)}
-                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold"
-                              >
-                                {PrimaryIcon && <PrimaryIcon className="w-3.5 h-3.5" />}
-                                {getActionLabel(primary)}
-                              </button>
+                            {isReminder ? (
+                              openLeadAction && (
+                                <button
+                                  type="button"
+                                  disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                  onClick={() => handleOpenAction(openLeadAction, item)}
+                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 hover:text-blue-800 disabled:opacity-60"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  {getActionLabel(openLeadAction, item)}
+                                </button>
+                              )
+                            ) : (
+                              <>
+                                {responderIsPrimary && openChatAction && (
+                                  <button
+                                    type="button"
+                                    disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                    onClick={() => handleOpenAction(openChatAction, item)}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                    {getActionLabel(openChatAction, item)}
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  disabled={aiLoadingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
+                                  onClick={() => {
+                                    setAiItemSnapshot({
+                                      id: item.id,
+                                      leadId: item.leadId ?? null,
+                                      type: item.type,
+                                      title: item.title,
+                                      message: item.message,
+                                    });
+                                    generateAi({ id: item.id });
+                                  }}
+                                  className={
+                                    responderIsPrimary
+                                      ? "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                                      : "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
+                                  }
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  {aiLoadingId === item.id ? "Gerando..." : taskLabel}
+                                </button>
+
+                                {!responderIsPrimary && primaryOpenAction && (
+                                  <button
+                                    type="button"
+                                    disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                    onClick={() => handleOpenAction(primaryOpenAction, item)}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                                  >
+                                    {PrimaryOpenIcon && <PrimaryOpenIcon className="w-3.5 h-3.5" />}
+                                    {getActionLabel(primaryOpenAction, item)}
+                                  </button>
+                                )}
+
+                                {responderIsPrimary && openLeadAction && (
+                                  <button
+                                    type="button"
+                                    disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                    onClick={() => handleOpenAction(openLeadAction, item)}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    {getActionLabel(openLeadAction, item)}
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
 
-                        {aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id)) && (
+                        {!isReminder && aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id)) && (
                           <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
@@ -775,7 +1008,7 @@ export default function RealtorAssistantFeed(props: {
 
                                 <div className="mt-3">
                                   <div className="flex items-center justify-between gap-2">
-                                    <p className="text-[11px] font-semibold text-gray-900">Texto pronto</p>
+                                    <p className="text-[11px] font-semibold text-gray-900">{getAiDraftSectionTitle(item.type)}</p>
                                     <button
                                       type="button"
                                       onClick={async () => {

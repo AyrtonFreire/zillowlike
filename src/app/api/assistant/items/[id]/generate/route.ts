@@ -63,12 +63,44 @@ function normalizeWhitespace(text: string) {
   return text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-function sanitizeDraft(raw: string) {
+function fixCommonPlaceholders(text: string, params?: { realtorName?: string | null }) {
+  let out = String(text || "");
+  const realtorName = String(params?.realtorName || "").trim();
+
+  const placeholderRegexes: RegExp[] = [
+    /\[(?:seu|sua)\s+nome\]/gi,
+    /\{(?:seu|sua)\s+nome\}/gi,
+    /<(?:seu|sua)\s+nome>/gi,
+    /\[(?:nome\s+do\s+corretor|nome\s+do\s+atendente|nome)\]/gi,
+    /\{(?:nome\s+do\s+corretor|nome\s+do\s+atendente|nome)\}/gi,
+    /<(?:nome\s+do\s+corretor|nome\s+do\s+atendente|nome)>/gi,
+  ];
+
+  if (realtorName) {
+    for (const rx of placeholderRegexes) {
+      out = out.replace(rx, realtorName);
+    }
+    out = out.replace(/\[Seu\s+Nome\]/gi, realtorName);
+    out = out.replace(/\{Seu\s+Nome\}/gi, realtorName);
+    out = out.replace(/<Seu\s+Nome>/gi, realtorName);
+  } else {
+    for (const rx of placeholderRegexes) {
+      out = out.replace(rx, "");
+    }
+    out = out.replace(/\[Seu\s+Nome\]/gi, "");
+    out = out.replace(/\{Seu\s+Nome\}/gi, "");
+    out = out.replace(/<Seu\s+Nome>/gi, "");
+  }
+
+  return normalizeWhitespace(out);
+}
+
+function sanitizeDraft(raw: string, params?: { realtorName?: string | null }) {
   const base = String(raw || "");
   const cleaned = normalizeWhitespace(stripEmojis(stripPhones(stripUrls(base))));
-  const limited = clampText(cleaned, 1200);
+  const limited = clampText(fixCommonPlaceholders(cleaned, params), 1200);
   if (limited.length >= 5) return limited;
-  const fallback = clampText(normalizeWhitespace(stripEmojis(base)), 1200);
+  const fallback = clampText(fixCommonPlaceholders(normalizeWhitespace(stripEmojis(base)), params), 1200);
   return fallback.length >= 5 ? fallback : clampText(base.trim(), 1200);
 }
 
@@ -125,7 +157,8 @@ function buildSystemPrompt(taskLabel: string, typeInstructions: string) {
     "5) draft deve ser pronto para copiar e enviar (se for mensagem), com no máximo ~1200 caracteres.\n" +
     "6) Sem emojis, sem links, sem telefone, sem promessas agressivas.\n" +
     "7) reasons: até 6 bullets curtos (por que isso ajuda).\n" +
-    "8) confidence: low/medium/high conforme a qualidade do contexto recebido."
+    "8) confidence: low/medium/high conforme a qualidade do contexto recebido.\n" +
+    "9) PROIBIDO usar placeholders como '[Seu Nome]', '{Seu Nome}', '<Seu Nome>', '[Nome]'. Se algum dado estiver faltando, omita."
   );
 }
 
@@ -133,6 +166,7 @@ function buildUserPrompt(input: {
   itemType: string;
   itemTitle: string;
   itemMessage: string;
+  realtorName?: string | null;
   clientName?: string | null;
   propertyTitle?: string | null;
   leadStatus?: string | null;
@@ -148,6 +182,10 @@ function buildUserPrompt(input: {
   lines.push(`Tipo do item: ${itemType}`);
   lines.push(`Título do item: ${itemTitle}`);
   lines.push(`Resumo do alerta: ${itemMessage}`);
+
+  if (input.realtorName) {
+    lines.push(`Corretor (seu nome): ${String(input.realtorName || "").trim()}`);
+  }
 
   lines.push(`Cliente: ${String(input.clientName || "").trim() || "(não informado)"}`);
   lines.push(`Imóvel: ${String(input.propertyTitle || "").trim() || "(não informado)"}`);
@@ -178,6 +216,21 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
   const role = session.role || session.user?.role;
 
   if (!userId) return errorResponse("Não autenticado", 401, null, "UNAUTHORIZED");
+
+  const sessionUser = (session as any)?.user || null;
+  let realtorName: string | null =
+    (typeof sessionUser?.name === "string" ? sessionUser.name : null) ||
+    (typeof sessionUser?.fullName === "string" ? sessionUser.fullName : null) ||
+    null;
+  try {
+    const u = await prisma.user.findUnique({
+      where: { id: String(userId) },
+      select: { name: true },
+    });
+    if (u?.name && String(u.name).trim().length >= 2) realtorName = String(u.name).trim();
+  } catch {
+    // ignore
+  }
 
   if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
     return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
@@ -239,11 +292,17 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
   const spec = getRealtorAssistantAiSpec(String(item.type || ""));
   const taskLabel = spec.taskLabel;
 
+  const isReminder = String(item.type || "") === "REMINDER_TODAY" || String(item.type || "") === "REMINDER_OVERDUE";
+  const reminderExtraSystem = isReminder
+    ? "IMPORTANTE: Este item é um LEMBRETE interno. O campo draft deve ser um plano/checklist (3-6 itens) e/ou roteiro de ligação. NÃO escreva uma mensagem para alguém (não use 'Olá', não trate como chat)."
+    : undefined;
+
   const systemPrompt = buildSystemPrompt(taskLabel, spec.typeInstructions);
   const userPrompt = buildUserPrompt({
     itemType: String(item.type || ""),
     itemTitle: String(item.title || ""),
     itemMessage: String(item.message || ""),
+    realtorName,
     clientName: lead?.contact?.name || null,
     propertyTitle: lead?.property?.title || null,
     leadStatus: lead?.status || null,
@@ -291,7 +350,7 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
     const rawDraft = String((raw.data as any)?.draft ?? "");
 
     const summary = sanitizeSummary(rawSummary);
-    const draft = sanitizeDraft(rawDraft);
+    const draft = sanitizeDraft(rawDraft, { realtorName });
 
     const reasonsRaw = (raw.data as any)?.reasons;
     const reasons = Array.isArray(reasonsRaw)
@@ -323,7 +382,7 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
     return { ok: true as const, data: recheck.data };
   };
 
-  let modelAttempt = await callModel(0.6);
+  let modelAttempt = await callModel(0.6, reminderExtraSystem);
   if (!modelAttempt.ok) {
     return errorResponse(
       "Falha ao gerar sugestão",
@@ -339,7 +398,12 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
   if (!content || !parsedAttempt.ok) {
     const retry = await callModel(
       0.2,
-      "IMPORTANTE: Responda APENAS com um JSON válido. Não inclua nenhuma frase antes/depois. Não use markdown."
+      [
+        reminderExtraSystem,
+        "IMPORTANTE: Responda APENAS com um JSON válido. Não inclua nenhuma frase antes/depois. Não use markdown.",
+      ]
+        .filter(Boolean)
+        .join("\n\n")
     );
     if (!retry.ok) {
       return errorResponse(

@@ -38,7 +38,7 @@ const SPECS: Partial<Record<RealtorAssistantItemType, RealtorAssistantAiSpec>> =
   },
   NEW_LEAD: {
     category: "Leads",
-    taskLabel: "Criar resposta",
+    taskLabel: "Fazer primeiro contato",
     typeInstructions:
       "Trate como primeiro contato de um lead. Faça uma mensagem curta, acolhedora e prática.\n" +
       "- Se apresente rapidamente\n" +
@@ -48,7 +48,7 @@ const SPECS: Partial<Record<RealtorAssistantItemType, RealtorAssistantAiSpec>> =
   },
   LEAD_NO_FIRST_CONTACT: {
     category: "Leads",
-    taskLabel: "Criar primeiro contato",
+    taskLabel: "Fazer primeiro contato",
     typeInstructions:
       "O lead foi assumido mas não houve primeiro contato registrado. Faça uma mensagem de primeiro contato objetiva.\n" +
       "- Confirme o interesse\n" +
@@ -57,7 +57,7 @@ const SPECS: Partial<Record<RealtorAssistantItemType, RealtorAssistantAiSpec>> =
   },
   STALE_LEAD: {
     category: "Leads",
-    taskLabel: "Criar follow-up",
+    taskLabel: "Enviar follow-up",
     typeInstructions:
       "Lead está parado há alguns dias. Faça um follow-up curto e amigável, sem pressão.\n" +
       "- Relembre o contexto\n" +
@@ -66,21 +66,27 @@ const SPECS: Partial<Record<RealtorAssistantItemType, RealtorAssistantAiSpec>> =
   },
   REMINDER_TODAY: {
     category: "Lembretes",
-    taskLabel: "Definir próximo passo",
+    taskLabel: "Gerar checklist",
     typeInstructions:
-      "Existe um lembrete para hoje. Proponha um próximo passo concreto em 1-2 frases e um rascunho de mensagem (se aplicável).\n" +
-      "Se houver uma anotação de próximo passo, use como base.",
+      "Existe um lembrete para hoje. Ajude o corretor a executar a tarefa, mas NÃO escreva como se fosse enviar uma mensagem para alguém.\n" +
+      "- Crie um plano/checklist curto (3 a 6 itens) com passos objetivos\n" +
+      "- Se for uma ligação, escreva um roteiro de ligação (o que falar/perguntar), sem saudações longas\n" +
+      "- Se houver uma anotação de próximo passo, use como base\n" +
+      "- Evite texto em formato de chat (ex.: 'Olá, tudo bem?')",
   },
   REMINDER_OVERDUE: {
     category: "Lembretes",
-    taskLabel: "Definir próximo passo",
+    taskLabel: "Gerar checklist",
     typeInstructions:
-      "O lembrete está vencido. Proponha uma ação rápida para destravar: o que fazer agora e uma mensagem curta se necessário.\n" +
-      "Se houver uma anotação de próximo passo, use como base.",
+      "O lembrete está vencido. Ajude o corretor a destravar rapidamente, mas NÃO escreva como se fosse enviar uma mensagem para alguém.\n" +
+      "- Crie um plano/checklist curto (3 a 6 itens) com passos objetivos\n" +
+      "- Se for uma ligação, escreva um roteiro de ligação (o que falar/perguntar), sem saudações longas\n" +
+      "- Se houver uma anotação de próximo passo, use como base\n" +
+      "- Evite texto em formato de chat (ex.: 'Olá, tudo bem?')",
   },
   VISIT_TODAY: {
     category: "Visitas",
-    taskLabel: "Preparar confirmação",
+    taskLabel: "Confirmar visita",
     typeInstructions:
       "Há visita marcada para hoje. Gere uma mensagem de confirmação ao cliente com horário/local e o que levar/combinar.\n" +
       "- Confirme horário\n" +
@@ -89,7 +95,7 @@ const SPECS: Partial<Record<RealtorAssistantItemType, RealtorAssistantAiSpec>> =
   },
   VISIT_TOMORROW: {
     category: "Visitas",
-    taskLabel: "Preparar confirmação",
+    taskLabel: "Confirmar visita",
     typeInstructions:
       "Há visita marcada para amanhã. Gere uma mensagem de confirmação curta e prática.\n" +
       "- Confirme horário\n" +
