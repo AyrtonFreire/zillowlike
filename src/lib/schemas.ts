@@ -155,4 +155,9 @@ export const PropertyQuerySchema = z.object({
   maxLat: z.string().regex(/^-?\d+(\.\d+)?$/).optional(),
   minLng: z.string().regex(/^-?\d+(\.\d+)?$/).optional(),
   maxLng: z.string().regex(/^-?\d+(\.\d+)?$/).optional(),
+
+  // perf flags (opt-in)
+  lite: z.string().max(10).optional(),
+  mode: z.string().max(20).optional(),
+  onlyTotal: z.string().max(10).optional(),
 });

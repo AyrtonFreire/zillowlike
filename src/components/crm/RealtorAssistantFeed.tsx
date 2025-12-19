@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ChevronDown, ExternalLink, Eye, MessageCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ExternalLink, Eye, MessageCircle, Copy, Sparkles, X } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
+import { getRealtorAssistantCategory, getRealtorAssistantTaskLabel } from "@/lib/realtor-assistant-ai";
 
 type AssistantAction = {
   type: string;
@@ -27,6 +28,23 @@ type AssistantItem = {
   secondaryAction?: AssistantAction | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type AiAssistResult = {
+  itemId: string;
+  itemType: string;
+  taskLabel: string;
+  summary: string;
+  draft: string;
+  reasons: string[];
+  confidence: "low" | "medium" | "high";
+};
+
+type AiItemSnapshot = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
 };
 
 function formatShortDateTime(value?: string | null) {
@@ -78,6 +96,14 @@ export default function RealtorAssistantFeed(props: {
   const [actingId, setActingId] = useState<string | null>(null);
   const etagRef = useRef<string | null>(null);
   const [snoozeMenuFor, setSnoozeMenuFor] = useState<string | null>(null);
+  const [aiForId, setAiForId] = useState<string | null>(null);
+  const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<AiAssistResult | null>(null);
+  const aiAbortRef = useRef<AbortController | null>(null);
+  const [copiedForId, setCopiedForId] = useState<string | null>(null);
+  const copiedTimerRef = useRef<any>(null);
+  const [aiItemSnapshot, setAiItemSnapshot] = useState<AiItemSnapshot | null>(null);
 
   const realtorId = props.realtorId;
   const leadId = props.leadId;
@@ -85,6 +111,27 @@ export default function RealtorAssistantFeed(props: {
   const visibleItems = useMemo(() => {
     return items.filter((i) => i.status === "ACTIVE");
   }, [items]);
+
+  const groupedItems = useMemo(() => {
+    const groups: Record<string, AssistantItem[]> = {
+      Leads: [],
+      Visitas: [],
+      Lembretes: [],
+      Outros: [],
+    };
+
+    for (const item of visibleItems) {
+      const category = getRealtorAssistantCategory(item.type);
+      (groups[category] || groups.Outros).push(item);
+    }
+
+    return groups;
+  }, [visibleItems]);
+
+  const aiVisibleItem = useMemo(() => {
+    if (!aiForId) return null;
+    return visibleItems.find((i) => i.id === aiForId) || null;
+  }, [aiForId, visibleItems]);
 
   const activeCount = visibleItems.length;
 
@@ -129,6 +176,19 @@ export default function RealtorAssistantFeed(props: {
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        aiAbortRef.current?.abort();
+      } catch {
+      }
+      if (copiedTimerRef.current) {
+        clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!snoozeMenuFor) return;
@@ -205,6 +265,76 @@ export default function RealtorAssistantFeed(props: {
     }
   };
 
+  const generateAi = async (item: { id: string }) => {
+    try {
+      setAiError(null);
+      setAiForId(item.id);
+      if (aiLoadingId === item.id) return;
+
+      try {
+        aiAbortRef.current?.abort();
+      } catch {
+      }
+      const controller = new AbortController();
+      aiAbortRef.current = controller;
+
+      setAiLoadingId(item.id);
+      const res = await fetch(`/api/assistant/items/${item.id}/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        const msg =
+          json?.error ||
+          (res.status === 401
+            ? "Sua sessão expirou. Entre novamente e tente de novo."
+            : res.status === 403
+            ? "Você não tem permissão para gerar esta sugestão."
+            : res.status === 404
+            ? "Este item não existe mais (provavelmente já foi resolvido)."
+            : res.status === 429
+            ? "Limite de uso atingido. Tente novamente em alguns instantes."
+            : "Não conseguimos gerar uma sugestão agora.");
+        throw new Error(msg);
+      }
+      const data = json?.data as AiAssistResult | undefined;
+      if (!data?.itemId || !data?.draft) {
+        throw new Error("Não conseguimos gerar uma sugestão agora.");
+      }
+      setAiResult(data);
+      setAiForId(item.id);
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        return;
+      }
+      setAiResult(null);
+      setAiError(err?.message || "Não conseguimos gerar uma sugestão agora.");
+      setAiForId(item.id);
+    } finally {
+      setAiLoadingId(null);
+    }
+  };
+
+  const copyText = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      try {
+        const el = document.createElement("textarea");
+        el.value = text;
+        el.style.position = "fixed";
+        el.style.left = "-9999px";
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      } catch {
+      }
+    }
+  };
+
   const handleOpenAction = (action: AssistantAction, item: AssistantItem) => {
     const targetLeadId = action.leadId || item.leadId || undefined;
 
@@ -273,106 +403,313 @@ export default function RealtorAssistantFeed(props: {
 
       {visibleItems.length > 0 && (
         <div className={props.embedded ? "space-y-3" : "mt-4 space-y-3"}>
-          {visibleItems.map((item) => {
-            const dueLabel = formatShortDateTime(item.dueAt || null);
-            const snoozeLabel = item.status === "SNOOZED" ? formatShortDateTime(item.snoozedUntil || null) : null;
-            const primary = defaultPrimaryAction(item);
+          {!aiVisibleItem && aiForId && (aiError || (aiResult && aiResult.itemId === aiForId)) && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-gray-900">Sugestão do Assistente</p>
+                  {aiItemSnapshot?.title && (
+                    <p className="mt-1 text-[11px] text-gray-600">{aiItemSnapshot.title}</p>
+                  )}
+                  {aiError ? (
+                    <p className="mt-1 text-[11px] text-red-600">{aiError}</p>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-gray-700">{aiResult?.summary}</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      if (aiLoadingId === aiForId) {
+                        aiAbortRef.current?.abort();
+                      }
+                    } catch {
+                    }
+                    setAiForId(null);
+                    setAiError(null);
+                    setAiResult(null);
+                    setAiItemSnapshot(null);
+                  }}
+                  className="p-1 rounded-lg hover:bg-gray-100 text-gray-600"
+                  title="Fechar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-            const PrimaryIcon = primary ? getActionIcon(primary) : null;
+              {!aiError && aiResult?.draft && (
+                <>
+                  {Array.isArray(aiResult.reasons) && aiResult.reasons.length > 0 && (
+                    <div className="mt-2">
+                      <ul className="list-disc ml-5 text-[11px] text-gray-600 space-y-1">
+                        {aiResult.reasons.slice(0, 6).map((r, idx) => (
+                          <li key={`ai-detached-r-${idx}`}>{r}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] font-semibold text-gray-900">Texto pronto</p>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await copyText(aiResult.draft);
+                          setCopiedForId(aiForId);
+                          if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+                          copiedTimerRef.current = setTimeout(() => {
+                            setCopiedForId(null);
+                          }, 2000);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        {copiedForId === aiForId ? "Copiado" : "Copiar"}
+                      </button>
+                    </div>
+                    <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-800 whitespace-pre-wrap">
+                      {aiResult.draft}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {aiError && (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    disabled={aiLoadingId === aiForId}
+                    onClick={() => generateAi({ id: aiForId })}
+                    className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 disabled:opacity-60"
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(["Leads", "Visitas", "Lembretes", "Outros"] as const).map((category) => {
+            const group = groupedItems[category] || [];
+            if (group.length === 0) return null;
 
             return (
-              <div
-                key={item.id}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getPriorityClasses(
-                          item.priority
-                        )}`}
+              <div key={`cat-${category}`} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-semibold text-gray-700">{category}</p>
+                  <p className="text-[11px] font-semibold text-gray-500">{group.length}</p>
+                </div>
+                <div className="space-y-3">
+                  {group.map((item) => {
+                    const dueLabel = formatShortDateTime(item.dueAt || null);
+                    const snoozeLabel = item.status === "SNOOZED" ? formatShortDateTime(item.snoozedUntil || null) : null;
+                    const primary = defaultPrimaryAction(item);
+                    const taskLabel = getRealtorAssistantTaskLabel(item.type);
+
+                    const PrimaryIcon = primary ? getActionIcon(primary) : null;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-xl border border-gray-200 bg-white px-4 py-3"
                       >
-                        Prioridade {getPriorityLabel(item.priority)}
-                      </span>
-                      {item.status === "SNOOZED" && snoozeLabel && (
-                        <span className="text-[10px] text-gray-500">
-                          Sonecado até {snoozeLabel}
-                        </span>
-                      )}
-                      {item.status === "ACTIVE" && dueLabel && (
-                        <span className="text-[10px] text-gray-500">
-                          Vence em {dueLabel}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-xs font-semibold text-gray-900">
-                      {item.title}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-600">
-                      {item.message}
-                    </p>
-                  </div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getPriorityClasses(
+                                  item.priority
+                                )}`}
+                              >
+                                Prioridade {getPriorityLabel(item.priority)}
+                              </span>
+                              {item.status === "SNOOZED" && snoozeLabel && (
+                                <span className="text-[10px] text-gray-500">
+                                  Sonecado até {snoozeLabel}
+                                </span>
+                              )}
+                              {item.status === "ACTIVE" && dueLabel && (
+                                <span className="text-[10px] text-gray-500">
+                                  Vence em {dueLabel}
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-2 text-xs font-semibold text-gray-900">
+                              {item.title}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-600">
+                              {item.message}
+                            </p>
+                          </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={actingId === item.id}
-                      onClick={() => performAction(item.id, { action: "resolve" })}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-                      title="Marcar como resolvido"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Resolver
-                    </button>
-
-                    <div className="relative" data-snooze-root="true">
-                      <button
-                        type="button"
-                        disabled={actingId === item.id}
-                        onClick={() => setSnoozeMenuFor((prev) => (prev === item.id ? null : item.id))}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                        title="Lembrar depois"
-                      >
-                        Lembrar depois
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </button>
-
-                      {snoozeMenuFor === item.id && (
-                        <div className="absolute right-0 mt-2 w-36 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
-                          {snoozeOptions.map((opt) => (
+                          <div className="flex items-center gap-2">
                             <button
-                              key={opt.minutes}
                               type="button"
                               disabled={actingId === item.id}
-                              onClick={async () => {
-                                setSnoozeMenuFor(null);
-                                await performAction(item.id, { action: "snooze", minutes: opt.minutes });
-                              }}
-                              className="w-full text-left px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                              onClick={() => performAction(item.id, { action: "resolve" })}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+                              title="Marcar como resolvido"
                             >
-                              {opt.label}
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Resolver
                             </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap gap-2">
-                    {primary && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenAction(primary, item)}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold"
-                      >
-                        {PrimaryIcon && <PrimaryIcon className="w-3.5 h-3.5" />}
-                        {getActionLabel(primary)}
-                      </button>
-                    )}
-                  </div>
+                            <div className="relative" data-snooze-root="true">
+                              <button
+                                type="button"
+                                disabled={actingId === item.id}
+                                onClick={() => setSnoozeMenuFor((prev) => (prev === item.id ? null : item.id))}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                title="Lembrar depois"
+                              >
+                                Lembrar depois
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+
+                              {snoozeMenuFor === item.id && (
+                                <div className="absolute right-0 mt-2 w-36 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
+                                  {snoozeOptions.map((opt) => (
+                                    <button
+                                      key={opt.minutes}
+                                      type="button"
+                                      disabled={actingId === item.id}
+                                      onClick={async () => {
+                                        setSnoozeMenuFor(null);
+                                        await performAction(item.id, { action: "snooze", minutes: opt.minutes });
+                                      }}
+                                      className="w-full text-left px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              disabled={aiLoadingId === item.id}
+                              onClick={() => {
+                                setAiItemSnapshot({
+                                  id: item.id,
+                                  type: item.type,
+                                  title: item.title,
+                                  message: item.message,
+                                });
+                                generateAi({ id: item.id });
+                              }}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              {aiLoadingId === item.id ? "Gerando..." : taskLabel}
+                            </button>
+                            {primary && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAction(primary, item)}
+                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold"
+                              >
+                                {PrimaryIcon && <PrimaryIcon className="w-3.5 h-3.5" />}
+                                {getActionLabel(primary)}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id)) && (
+                          <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-semibold text-gray-900">
+                                  Sugestão do Assistente
+                                </p>
+                                {aiError ? (
+                                  <p className="mt-1 text-[11px] text-red-600">{aiError}</p>
+                                ) : (
+                                  <p className="mt-1 text-[11px] text-gray-700">{aiResult?.summary}</p>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  try {
+                                    if (aiLoadingId === item.id) {
+                                      aiAbortRef.current?.abort();
+                                    }
+                                  } catch {
+                                  }
+                                  setAiForId(null);
+                                  setAiError(null);
+                                  setAiResult(null);
+                                }}
+                                className="p-1 rounded-lg hover:bg-gray-100 text-gray-600"
+                                title="Fechar"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            {!aiError && aiResult?.draft && (
+                              <>
+                                {Array.isArray(aiResult.reasons) && aiResult.reasons.length > 0 && (
+                                  <div className="mt-2">
+                                    <ul className="list-disc ml-5 text-[11px] text-gray-600 space-y-1">
+                                      {aiResult.reasons.slice(0, 6).map((r, idx) => (
+                                        <li key={`${item.id}-ai-r-${idx}`}>{r}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                <div className="mt-3">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-[11px] font-semibold text-gray-900">Texto pronto</p>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        await copyText(aiResult.draft);
+                                        setCopiedForId(item.id);
+                                        if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+                                        copiedTimerRef.current = setTimeout(() => {
+                                          setCopiedForId(null);
+                                        }, 2000);
+                                      }}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                      {copiedForId === item.id ? "Copiado" : "Copiar"}
+                                    </button>
+                                  </div>
+                                  <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-800 whitespace-pre-wrap">
+                                    {aiResult.draft}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+
+                            {aiError && (
+                              <div className="mt-2">
+                                <button
+                                  type="button"
+                                  disabled={aiLoadingId === item.id}
+                                  onClick={() => generateAi({ id: item.id })}
+                                  className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 disabled:opacity-60"
+                                >
+                                  Tentar novamente
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );

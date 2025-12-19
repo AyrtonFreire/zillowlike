@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
 import RealtorAssistantWidget from "@/components/crm/RealtorAssistantWidget";
+import { usePathname } from "next/navigation";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -21,6 +22,9 @@ export default function DashboardLayout({
   actions,
   breadcrumbs,
 }: DashboardLayoutProps) {
+  const pathname = usePathname();
+  const isBrokerContext = !!pathname?.startsWith("/broker");
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Modern Header */}
@@ -96,7 +100,7 @@ export default function DashboardLayout({
       </div>
 
       {/* Main Content */}
-      <main>{children}</main>
+      <main className={isBrokerContext ? "lg:pr-[420px]" : undefined}>{children}</main>
 
       <RealtorAssistantWidget />
     </div>

@@ -138,46 +138,112 @@ export default function RealtorAssistantWidget() {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpenPersisted(true)}
-        className={`fixed ${bottomOffsetClass} right-5 z-[9999] flex items-center gap-2 rounded-full bg-white border border-gray-200 shadow-lg px-4 py-3 hover:shadow-xl transition-shadow`}
-      >
-        <span className="relative">
-          <ClipboardList className="w-5 h-5 text-gray-800" />
-          {activeCount > 0 && (
-            <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border border-white">
-              {activeCount > 99 ? "99+" : activeCount}
-            </span>
-          )}
-        </span>
-        <span className="text-sm font-semibold text-gray-900">Assistente</span>
-      </button>
+      <>
+        {/* Desktop launcher */}
+        <button
+          type="button"
+          onClick={() => setOpenPersisted(true)}
+          className="fixed top-28 right-4 z-[9999] hidden lg:flex items-center gap-2 rounded-full bg-white border border-gray-200 shadow-lg px-4 py-3 hover:shadow-xl transition-shadow"
+        >
+          <span className="relative">
+            <ClipboardList className="w-5 h-5 text-gray-800" />
+            {activeCount > 0 && (
+              <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border border-white">
+                {activeCount > 99 ? "99+" : activeCount}
+              </span>
+            )}
+          </span>
+          <span className="text-sm font-semibold text-gray-900">Assistente</span>
+        </button>
+
+        {/* Mobile launcher */}
+        <button
+          type="button"
+          onClick={() => setOpenPersisted(true)}
+          className={`fixed ${bottomOffsetClass} right-5 z-[9999] lg:hidden flex items-center gap-2 rounded-full bg-white border border-gray-200 shadow-lg px-4 py-3 hover:shadow-xl transition-shadow`}
+        >
+          <span className="relative">
+            <ClipboardList className="w-5 h-5 text-gray-800" />
+            {activeCount > 0 && (
+              <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border border-white">
+                {activeCount > 99 ? "99+" : activeCount}
+              </span>
+            )}
+          </span>
+          <span className="text-sm font-semibold text-gray-900">Assistente</span>
+        </button>
+      </>
     );
   }
 
   return (
-    <div className={`fixed ${bottomOffsetClass} right-5 z-[9999] w-[380px] max-w-[calc(100vw-40px)]`}>
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <ClipboardList className="w-4.5 h-4.5 text-gray-800" />
-            <div className="text-sm font-semibold text-gray-900">Assistente do Corretor</div>
-            {activeCount > 0 && (
-              <div className="ml-1 text-[11px] font-bold text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
-                {activeCount}
-              </div>
-            )}
+    <>
+      {/* Desktop sidebar */}
+      <aside className="fixed top-0 right-0 z-[9999] hidden lg:flex h-screen w-[400px] bg-white border-l border-gray-200 shadow-2xl">
+        <div className="flex flex-col w-full">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="w-4.5 h-4.5 text-gray-800" />
+              <div className="text-sm font-semibold text-gray-900">Assistente do Corretor</div>
+              {activeCount > 0 && (
+                <div className="ml-1 text-[11px] font-bold text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
+                  {activeCount}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setOpenPersisted(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                title="Minimizar"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpenPersisted(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                title="Fechar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setOpenPersisted(false)}
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-              title="Minimizar"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
+
+          <div className="flex-1 overflow-auto">
+            <div className="p-3">
+              <RealtorAssistantFeed
+                realtorId={realtorId}
+                leadId={leadIdFromPath}
+                embedded
+                onDidMutate={() => {
+                  etagRef.current = null;
+                  updateCount();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile bottom sheet */}
+      <div className="fixed inset-0 z-[9999] lg:hidden">
+        <div
+          className="absolute inset-0 bg-black/40"
+          onClick={() => setOpenPersisted(false)}
+        />
+        <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-2xl border-t border-gray-200 max-h-[80vh] flex flex-col">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="w-4.5 h-4.5 text-gray-800" />
+              <div className="text-sm font-semibold text-gray-900">Assistente do Corretor</div>
+              {activeCount > 0 && (
+                <div className="ml-1 text-[11px] font-bold text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
+                  {activeCount}
+                </div>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => setOpenPersisted(false)}
@@ -187,22 +253,21 @@ export default function RealtorAssistantWidget() {
               <X className="w-4 h-4" />
             </button>
           </div>
-        </div>
-
-        <div className="max-h-[60vh] overflow-auto">
-          <div className="p-3">
-            <RealtorAssistantFeed
-              realtorId={realtorId}
-              leadId={leadIdFromPath}
-              embedded
-              onDidMutate={() => {
-                etagRef.current = null;
-                updateCount();
-              }}
-            />
+          <div className="flex-1 overflow-auto">
+            <div className="p-3">
+              <RealtorAssistantFeed
+                realtorId={realtorId}
+                leadId={leadIdFromPath}
+                embedded
+                onDidMutate={() => {
+                  etagRef.current = null;
+                  updateCount();
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

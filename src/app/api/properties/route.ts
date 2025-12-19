@@ -27,6 +27,17 @@ function checkRateLimit(req: NextRequest): boolean {
   return true;
 }
 
+function normalizeSearchParamsForCache(searchParams: URLSearchParams) {
+  const entries = Array.from(searchParams.entries()).sort((a, b) => {
+    const k = a[0].localeCompare(b[0]);
+    if (k !== 0) return k;
+    return a[1].localeCompare(b[1]);
+  });
+  const sp = new URLSearchParams();
+  for (const [k, v] of entries) sp.append(k, v);
+  return sp.toString();
+}
+
 // GET /api/properties?city=&state=&minPrice=&maxPrice=&type=&q=&page=&pageSize=&sort=&bedroomsMin=&bathroomsMin=&areaMin=
 export async function GET(req: NextRequest) {
   try {
@@ -48,8 +59,28 @@ export async function GET(req: NextRequest) {
     const isLite = liteParam === "1" || liteParam === "true";
     const onlyTotal = onlyTotalParam === "1" || onlyTotalParam === "true";
 
-    const qp = Object.fromEntries(searchParams.entries());
-    const parsed = PropertyQuerySchema.safeParse(qp);
+    const parsed = PropertyQuerySchema.safeParse({
+      city: searchParams.get("city") ?? undefined,
+      state: searchParams.get("state") ?? undefined,
+      type: searchParams.get("type") ?? undefined,
+      purpose: searchParams.get("purpose") ?? undefined,
+      q: searchParams.get("q") ?? undefined,
+      minPrice: searchParams.get("minPrice") ?? undefined,
+      maxPrice: searchParams.get("maxPrice") ?? undefined,
+      page: searchParams.get("page") ?? undefined,
+      pageSize: searchParams.get("pageSize") ?? undefined,
+      sort: searchParams.get("sort") ?? undefined,
+      bedroomsMin: searchParams.get("bedroomsMin") ?? undefined,
+      bathroomsMin: searchParams.get("bathroomsMin") ?? undefined,
+      areaMin: searchParams.get("areaMin") ?? undefined,
+      minLat: searchParams.get("minLat") ?? undefined,
+      maxLat: searchParams.get("maxLat") ?? undefined,
+      minLng: searchParams.get("minLng") ?? undefined,
+      maxLng: searchParams.get("maxLng") ?? undefined,
+      lite: searchParams.get("lite") ?? undefined,
+      mode: searchParams.get("mode") ?? undefined,
+      onlyTotal: searchParams.get("onlyTotal") ?? undefined,
+    });
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Invalid query", issues: parsed.error.issues },
@@ -192,13 +223,17 @@ export async function GET(req: NextRequest) {
     
     if (q || keywords) {
       const searchTerm = keywords || q;
-      where.OR = [
+      const ors: any[] = [
         { title: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } },
-        { description: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } },
         { street: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } },
         { neighborhood: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } },
         { city: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } },
       ];
+      if (!isLite && mode !== "map") {
+        ors.push({ description: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } });
+      }
+
+      where.OR = ors;
     }
 
     // Bounds filtering (viewport)
@@ -251,9 +286,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    let items: any[] = [];
-    const total = await prisma.property.count({ where });
+    const totalPromise = prisma.property.count({ where });
 
+    let items: any[] = [];
     if (!onlyTotal) {
       const select: any =
         mode === "map"
@@ -283,7 +318,7 @@ export async function GET(req: NextRequest) {
               parkingSpots: true,
               conditionTags: true,
               updatedAt: true,
-              images: { select: { id: true, url: true }, orderBy: { sortOrder: "asc" } },
+              images: { select: { id: true, url: true }, orderBy: { sortOrder: "asc" }, take: 1 },
             }
           : {
               id: true,
@@ -350,14 +385,95 @@ export async function GET(req: NextRequest) {
               totalFloors: true,
             };
 
-      items = await prisma.property.findMany({
+      const itemsPromise = prisma.property.findMany({
         where,
         select,
-        orderBy,
+        orderBy: mode === "map" ? undefined : orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
       });
+
+      const [total, nextItems] = await Promise.all([totalPromise, itemsPromise]);
+      items = nextItems as any[];
+
+      if (process.env.NODE_ENV !== "production") {
+        console.log("api/properties GET", {
+          filters: { city, state, type, purpose, q, bedroomsMin, bathroomsMin, areaMin, status: (where as any).status || "ANY" },
+          total,
+        });
+      }
+
+      const body = {
+        // compat antigo
+        success: true,
+        properties: items,
+        // compat novo (HomeClient/types/api.ts)
+        items,
+        total,
+        page,
+        pageSize,
+      };
+
+      // ETag (apenas público/visitante): permite 304 com If-None-Match sem breaking changes
+      if (!hasSessionCookie) {
+        const ifNoneMatch = req.headers.get("if-none-match") || "";
+        const queryKey = normalizeSearchParamsForCache(searchParams);
+        const hasher = createHash("sha1");
+        hasher.update(queryKey);
+        hasher.update("::");
+        hasher.update(String(total));
+        hasher.update("::");
+        hasher.update(String(page));
+        hasher.update("::");
+        hasher.update(String(pageSize));
+        hasher.update("::");
+
+        for (const it of items) {
+          const id = String((it as any)?.id ?? "");
+          const rawUpdatedAt = (it as any)?.updatedAt;
+          const u =
+            rawUpdatedAt instanceof Date
+              ? rawUpdatedAt.getTime()
+              : rawUpdatedAt
+              ? new Date(rawUpdatedAt).getTime()
+              : 0;
+          hasher.update(id);
+          hasher.update(":");
+          hasher.update(String(u));
+          hasher.update("|");
+        }
+
+        const hash = hasher.digest("base64url");
+        const etag = `W/"${hash}"`;
+
+        const matches = ifNoneMatch
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .some((t) => t === etag);
+
+        if (matches) {
+          const notModified = new NextResponse(null, { status: 304 });
+          notModified.headers.set("x-request-id", requestId);
+          notModified.headers.set("ETag", etag);
+          notModified.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+          return notModified;
+        }
+
+        const res = NextResponse.json(body);
+        res.headers.set("x-request-id", requestId);
+        res.headers.set("ETag", etag);
+        res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+        return res;
+      }
+
+      const res = NextResponse.json(body);
+      res.headers.set("x-request-id", requestId);
+      res.headers.set("Cache-Control", "private, no-store");
+      return res;
     }
+
+    const total = await totalPromise;
 
     if (process.env.NODE_ENV !== "production") {
       console.log("api/properties GET", {
@@ -377,19 +493,20 @@ export async function GET(req: NextRequest) {
       pageSize,
     };
 
-    // ETag (apenas público/visitante): permite 304 com If-None-Match sem breaking changes
     if (!hasSessionCookie) {
       const ifNoneMatch = req.headers.get("if-none-match") || "";
-      const queryKey = searchParams.toString();
-      const itemKey = items
-        .map((it: any) => {
-          const id = String(it?.id ?? "");
-          const u = it?.updatedAt ? new Date(it.updatedAt).getTime() : 0;
-          return `${id}:${u}`;
-        })
-        .join("|");
-      const sig = `${queryKey}::${total}::${page}::${pageSize}::${itemKey}`;
-      const hash = createHash("sha1").update(sig).digest("base64url");
+      const queryKey = normalizeSearchParamsForCache(searchParams);
+      const hasher = createHash("sha1");
+      hasher.update(queryKey);
+      hasher.update("::");
+      hasher.update(String(total));
+      hasher.update("::");
+      hasher.update(String(page));
+      hasher.update("::");
+      hasher.update(String(pageSize));
+      hasher.update("::");
+
+      const hash = hasher.digest("base64url");
       const etag = `W/"${hash}"`;
 
       const matches = ifNoneMatch
@@ -415,14 +532,7 @@ export async function GET(req: NextRequest) {
 
     const res = NextResponse.json(body);
     res.headers.set("x-request-id", requestId);
-
-    // Cache apenas para visitantes (sem cookie). Evita cachear respostas potencialmente diferentes
-    // para usuários logados (admin, etc) e reduz invocações repetidas.
-    if (!hasSessionCookie) {
-      res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
-    } else {
-      res.headers.set("Cache-Control", "private, no-store");
-    }
+    res.headers.set("Cache-Control", "private, no-store");
     return res;
   } catch (e: any) {
     console.error("/api/properties GET error:", e?.message || e);
