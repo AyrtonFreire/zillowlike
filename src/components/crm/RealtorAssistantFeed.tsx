@@ -42,6 +42,7 @@ type AiAssistResult = {
 
 type AiItemSnapshot = {
   id: string;
+  leadId?: string | null;
   type: string;
   title: string;
   message: string;
@@ -82,6 +83,26 @@ function getActionIcon(action: AssistantAction) {
   return ExternalLink;
 }
 
+function getMessageSendLabel(itemType: string | null | undefined) {
+  const t = String(itemType || "").trim();
+  if (t === "NEW_LEAD") return "Fazer primeiro contato";
+  if (t === "STALE_LEAD") return "Enviar follow-up";
+  if (t === "VISIT_TODAY" || t === "VISIT_TOMORROW") return "Confirmar visita";
+  return "Responder";
+}
+
+function canSendAiDraftToClient(itemType: string | null | undefined) {
+  const t = String(itemType || "").trim();
+  return (
+    t === "UNANSWERED_CLIENT_MESSAGE" ||
+    t === "NEW_LEAD" ||
+    t === "LEAD_NO_FIRST_CONTACT" ||
+    t === "STALE_LEAD" ||
+    t === "VISIT_TODAY" ||
+    t === "VISIT_TOMORROW"
+  );
+}
+
 export default function RealtorAssistantFeed(props: {
   realtorId?: string;
   leadId?: string;
@@ -103,6 +124,9 @@ export default function RealtorAssistantFeed(props: {
   const aiAbortRef = useRef<AbortController | null>(null);
   const [copiedForId, setCopiedForId] = useState<string | null>(null);
   const copiedTimerRef = useRef<any>(null);
+  const [replyingForId, setReplyingForId] = useState<string | null>(null);
+  const [repliedForId, setRepliedForId] = useState<string | null>(null);
+  const repliedTimerRef = useRef<any>(null);
   const [aiItemSnapshot, setAiItemSnapshot] = useState<AiItemSnapshot | null>(null);
 
   const realtorId = props.realtorId;
@@ -187,8 +211,46 @@ export default function RealtorAssistantFeed(props: {
         clearTimeout(copiedTimerRef.current);
         copiedTimerRef.current = null;
       }
+      if (repliedTimerRef.current) {
+        clearTimeout(repliedTimerRef.current);
+        repliedTimerRef.current = null;
+      }
     };
   }, []);
+
+  const sendReply = useCallback(
+    async (params: { leadId: string; content: string; ownerId: string }) => {
+      if (!params.leadId || !params.content.trim()) return;
+      setError(null);
+      setReplyingForId(params.ownerId);
+      try {
+        const response = await fetch(`/api/leads/${encodeURIComponent(params.leadId)}/client-messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: params.content.trim() }),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data?.message?.id) {
+          throw new Error(data?.error || "Não conseguimos enviar esta mensagem agora.");
+        }
+
+        setRepliedForId(params.ownerId);
+        if (repliedTimerRef.current) clearTimeout(repliedTimerRef.current);
+        repliedTimerRef.current = setTimeout(() => {
+          setRepliedForId(null);
+        }, 2000);
+
+        etagRef.current = null;
+        props.onDidMutate?.();
+        await fetchItems();
+      } catch (err: any) {
+        setError(err?.message || "Não conseguimos enviar esta mensagem agora.");
+      } finally {
+        setReplyingForId(null);
+      }
+    },
+    [fetchItems, props]
+  );
 
   useEffect(() => {
     if (!snoozeMenuFor) return;
@@ -233,6 +295,23 @@ export default function RealtorAssistantFeed(props: {
       // ignore
     }
   }, [realtorId, fetchItems]);
+
+  useEffect(() => {
+    if (!realtorId) return;
+    if (typeof window === "undefined") return;
+
+    const onFocus = () => fetchItems();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchItems();
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [fetchItems, realtorId]);
 
   const performAction = async (itemId: string, payload: any) => {
     try {
@@ -472,6 +551,29 @@ export default function RealtorAssistantFeed(props: {
                     <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-800 whitespace-pre-wrap">
                       {aiResult.draft}
                     </div>
+                    {!!aiItemSnapshot?.leadId && canSendAiDraftToClient(aiItemSnapshot?.type) && (
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          type="button"
+                          disabled={replyingForId === aiForId}
+                          onClick={() =>
+                            sendReply({
+                              leadId: String(aiItemSnapshot.leadId),
+                              content: aiResult.draft,
+                              ownerId: String(aiForId),
+                            })
+                          }
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          {repliedForId === aiForId
+                            ? "Enviado"
+                            : replyingForId === aiForId
+                              ? "Enviando..."
+                              : getMessageSendLabel(aiItemSnapshot?.type)}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -507,6 +609,9 @@ export default function RealtorAssistantFeed(props: {
                     const snoozeLabel = item.status === "SNOOZED" ? formatShortDateTime(item.snoozedUntil || null) : null;
                     const primary = defaultPrimaryAction(item);
                     const taskLabel = getRealtorAssistantTaskLabel(item.type);
+                    const isReminder = item.type === "REMINDER_TODAY" || item.type === "REMINDER_OVERDUE";
+                    const resolveLabel = isReminder ? "Marcar como feito" : "Resolver";
+                    const resolveTitle = isReminder ? "Marcar como feito" : "Marcar como resolvido";
 
                     const PrimaryIcon = primary ? getActionIcon(primary) : null;
 
@@ -550,10 +655,10 @@ export default function RealtorAssistantFeed(props: {
                               disabled={actingId === item.id}
                               onClick={() => performAction(item.id, { action: "resolve" })}
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-                              title="Marcar como resolvido"
+                              title={resolveTitle}
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              Resolver
+                              {resolveLabel}
                             </button>
 
                             <div className="relative" data-snooze-root="true">
@@ -598,6 +703,7 @@ export default function RealtorAssistantFeed(props: {
                               onClick={() => {
                                 setAiItemSnapshot({
                                   id: item.id,
+                                  leadId: item.leadId ?? null,
                                   type: item.type,
                                   title: item.title,
                                   message: item.message,
@@ -689,6 +795,29 @@ export default function RealtorAssistantFeed(props: {
                                   <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-800 whitespace-pre-wrap">
                                     {aiResult.draft}
                                   </div>
+                                  {!!item.leadId && canSendAiDraftToClient(item.type) && (
+                                    <div className="mt-2 flex justify-end">
+                                      <button
+                                        type="button"
+                                        disabled={replyingForId === item.id}
+                                        onClick={() =>
+                                          sendReply({
+                                            leadId: String(item.leadId),
+                                            content: aiResult.draft,
+                                            ownerId: item.id,
+                                          })
+                                        }
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
+                                      >
+                                        <MessageCircle className="w-3.5 h-3.5" />
+                                        {repliedForId === item.id
+                                          ? "Enviado"
+                                          : replyingForId === item.id
+                                            ? "Enviando..."
+                                            : getMessageSendLabel(item.type)}
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </>
                             )}

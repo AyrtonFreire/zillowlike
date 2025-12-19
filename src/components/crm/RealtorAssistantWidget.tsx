@@ -8,7 +8,7 @@ import { getPusherClient } from "@/lib/pusher-client";
 import RealtorAssistantFeed from "@/components/crm/RealtorAssistantFeed";
 
 export default function RealtorAssistantWidget() {
-  const { data: session } = useSession();
+  const { data: session, status, update } = useSession();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -24,6 +24,20 @@ export default function RealtorAssistantWidget() {
     isBrokerContext &&
     !!realtorId &&
     (role === "REALTOR" || role === "AGENCY" || role === "ADMIN");
+
+  const didRefreshSessionRef = useRef(false);
+
+  useEffect(() => {
+    if (!isBrokerContext) {
+      didRefreshSessionRef.current = false;
+      return;
+    }
+    if (status !== "authenticated") return;
+    if (didRefreshSessionRef.current) return;
+
+    didRefreshSessionRef.current = true;
+    update().catch(() => null);
+  }, [isBrokerContext, status, update]);
 
   const bottomOffsetClass = pathname?.startsWith("/broker/chats") ? "bottom-24" : "bottom-5";
 
@@ -96,6 +110,23 @@ export default function RealtorAssistantWidget() {
       };
     }
   }, [canRender, realtorId, updateCount]);
+
+  useEffect(() => {
+    if (!canRender) return;
+    if (typeof window === "undefined") return;
+
+    const onFocus = () => updateCount();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") updateCount();
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [canRender, updateCount]);
 
   useEffect(() => {
     if (!canRender) return;
