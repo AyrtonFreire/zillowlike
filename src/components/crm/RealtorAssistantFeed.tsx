@@ -2,7 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ChevronDown, ExternalLink, Eye, MessageCircle, Copy, Sparkles, X, Phone } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Copy,
+  ExternalLink,
+  Eye,
+  MessageCircle,
+  Phone,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
 import { getRealtorAssistantCategory, getRealtorAssistantTaskLabel } from "@/lib/realtor-assistant-ai";
 
@@ -779,39 +791,87 @@ export default function RealtorAssistantFeed(props: {
                     const messageIsLong = String(item.message || "").trim().length > 120;
                     const isExpanded = expandedId === item.id;
 
+                    const priorityLabel = getPriorityLabel(item.priority);
+                    const chipText = `Prioridade ${priorityLabel}${stateLabel ? ` · ${stateLabel}` : ""}`;
+
+                    const priorityDotClass =
+                      item.priority === "HIGH"
+                        ? "bg-red-500"
+                        : item.priority === "MEDIUM"
+                          ? "bg-amber-500"
+                          : "bg-gray-400";
+
+                    const chipClasses =
+                      item.priority === "HIGH"
+                        ? "bg-red-50 text-red-700 border-red-100"
+                        : item.priority === "MEDIUM"
+                          ? "bg-amber-50 text-amber-800 border-amber-100"
+                          : "bg-gray-50 text-gray-700 border-gray-200";
+
                     return (
                       <div
                         key={item.id}
-                        className="rounded-xl border border-gray-200 bg-white px-4 py-3"
+                        className="rounded-[26px] border border-gray-200/70 bg-white px-5 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getPriorityClasses(
-                                  item.priority
-                                )}`}
-                              >
-                                {getPriorityLabel(item.priority)}
-                              </span>
-                              {stateLabel && (
-                                <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${stateClasses}`}
-                                >
-                                  {stateLabel}
-                                </span>
-                              )}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border ${chipClasses}`}>
+                              <span className={`inline-block w-2 h-2 rounded-full ${priorityDotClass}`} />
+                              {chipText}
+                            </span>
+                          </div>
+
+                          <div className="relative" data-snooze-root="true">
+                            <button
+                              type="button"
+                              disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
+                              onClick={() => setSnoozeMenuFor((prev) => (prev === item.id ? null : item.id))}
+                              className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                              title="Lembrar depois"
+                            >
+                              <Clock className="w-5 h-5" />
+                            </button>
+
+                            {snoozeMenuFor === item.id && (
+                              <div className="absolute right-0 mt-2 w-36 rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
+                                {snoozeOptions.map((opt) => (
+                                  <button
+                                    key={opt.minutes}
+                                    type="button"
+                                    disabled={actingId === item.id}
+                                    onClick={async () => {
+                                      setSnoozeMenuFor(null);
+                                      await performAction(item.id, { action: "snooze", minutes: opt.minutes });
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-4">
+                          <p className="text-[22px] leading-7 font-extrabold text-gray-900">{item.title}</p>
+
+                          {(dueLabel || snoozeLabel) && (
+                            <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                              <CalendarDays className="w-4.5 h-4.5" />
+                              <span>{snoozeLabel || dueLabel}</span>
                             </div>
-                            <p className="mt-2 text-xs font-semibold text-gray-900">
-                              {item.title}
-                            </p>
+                          )}
+
+                          <div className="mt-4">
+                            <p className="text-sm text-gray-500">Próxima ação sugerida:</p>
                             <div className={isReminder ? "mt-1 flex items-start gap-2" : "mt-1"}>
-                              {isReminder && <Phone className="w-4 h-4 text-gray-500 mt-0.5" />}
+                              {isReminder && <Phone className="w-4 h-4 text-gray-400 mt-1" />}
                               <p
                                 className={
                                   isReminder
-                                    ? `text-xs font-medium text-gray-800 ${isExpanded ? "" : "line-clamp-3"}`
-                                    : `text-xs text-gray-600 ${isExpanded ? "" : "line-clamp-3"}`
+                                    ? `text-[15px] leading-6 font-semibold text-gray-900 ${isExpanded ? "" : "line-clamp-3"}`
+                                    : `text-[15px] leading-6 font-medium text-gray-800 ${isExpanded ? "" : "line-clamp-3"}`
                                 }
                               >
                                 {item.message}
@@ -821,78 +881,36 @@ export default function RealtorAssistantFeed(props: {
                               <button
                                 type="button"
                                 onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
-                                className="mt-1 text-[11px] font-semibold text-blue-700 hover:text-blue-800"
+                                className="mt-1 text-[12px] font-semibold text-blue-700 hover:text-blue-800"
                               >
                                 {isExpanded ? "Ver menos" : "Ver mais"}
                               </button>
                             )}
                           </div>
+                        </div>
 
-                          <div className="flex items-center gap-2">
+                        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex flex-wrap gap-3">
                             <button
                               type="button"
                               disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
                               onClick={() => performAction(item.id, { action: "resolve" })}
-                              className={
-                                isReminder
-                                  ? "inline-flex items-center gap-1 px-3 py-2 rounded-xl glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
-                                  : "inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-                              }
+                              className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
                               title={resolveTitle}
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              {isResolvedPreview ? "Feito" : resolveLabel}
+                              <CheckCircle2 className="w-5 h-5" />
+                              {isResolvedPreview ? "Feito" : isReminder ? "Concluir" : resolveLabel}
                             </button>
 
-                            <div className="relative" data-snooze-root="true">
-                              <button
-                                type="button"
-                                disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
-                                onClick={() => setSnoozeMenuFor((prev) => (prev === item.id ? null : item.id))}
-                                className={
-                                  isReminder
-                                    ? "inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
-                                    : "inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                                }
-                                title="Lembrar depois"
-                              >
-                                Lembrar depois
-                                <ChevronDown className="w-3.5 h-3.5" />
-                              </button>
-
-                              {snoozeMenuFor === item.id && (
-                                <div className="absolute right-0 mt-2 w-36 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
-                                  {snoozeOptions.map((opt) => (
-                                    <button
-                                      key={opt.minutes}
-                                      type="button"
-                                      disabled={actingId === item.id}
-                                      onClick={async () => {
-                                        setSnoozeMenuFor(null);
-                                        await performAction(item.id, { action: "snooze", minutes: opt.minutes });
-                                      }}
-                                      className="w-full text-left px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                                    >
-                                      {opt.label}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex flex-wrap gap-2">
                             {isReminder ? (
                               openLeadAction && (
                                 <button
                                   type="button"
                                   disabled={isTransientPreview || item.status !== "ACTIVE"}
                                   onClick={() => handleOpenAction(openLeadAction, item)}
-                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 hover:text-blue-800 disabled:opacity-60"
+                                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
                                 >
-                                  <Eye className="w-3.5 h-3.5" />
+                                  <Eye className="w-5 h-5" />
                                   {getActionLabel(openLeadAction, item)}
                                 </button>
                               )
@@ -903,9 +921,9 @@ export default function RealtorAssistantFeed(props: {
                                     type="button"
                                     disabled={isTransientPreview || item.status !== "ACTIVE"}
                                     onClick={() => handleOpenAction(openChatAction, item)}
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
+                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
                                   >
-                                    <MessageCircle className="w-3.5 h-3.5" />
+                                    <MessageCircle className="w-5 h-5" />
                                     {getActionLabel(openChatAction, item)}
                                   </button>
                                 )}
@@ -925,11 +943,11 @@ export default function RealtorAssistantFeed(props: {
                                   }}
                                   className={
                                     responderIsPrimary
-                                      ? "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
-                                      : "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
+                                      ? "inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+                                      : "inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
                                   }
                                 >
-                                  <Sparkles className="w-3.5 h-3.5" />
+                                  <Sparkles className="w-5 h-5" />
                                   {aiLoadingId === item.id ? "Gerando..." : taskLabel}
                                 </button>
 
@@ -938,9 +956,9 @@ export default function RealtorAssistantFeed(props: {
                                     type="button"
                                     disabled={isTransientPreview || item.status !== "ACTIVE"}
                                     onClick={() => handleOpenAction(primaryOpenAction, item)}
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
                                   >
-                                    {PrimaryOpenIcon && <PrimaryOpenIcon className="w-3.5 h-3.5" />}
+                                    {PrimaryOpenIcon && <PrimaryOpenIcon className="w-5 h-5" />}
                                     {getActionLabel(primaryOpenAction, item)}
                                   </button>
                                 )}
@@ -950,9 +968,9 @@ export default function RealtorAssistantFeed(props: {
                                     type="button"
                                     disabled={isTransientPreview || item.status !== "ACTIVE"}
                                     onClick={() => handleOpenAction(openLeadAction, item)}
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
                                   >
-                                    <Eye className="w-3.5 h-3.5" />
+                                    <Eye className="w-5 h-5" />
                                     {getActionLabel(openLeadAction, item)}
                                   </button>
                                 )}
