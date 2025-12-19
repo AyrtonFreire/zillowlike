@@ -1,13 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { User, Building2, Calendar, Clock, CheckCircle, MessageCircle, Mail, ExternalLink } from "lucide-react";
+import { User, Building2, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Button from "./ui/Button";
 import { useToast } from "@/contexts/ToastContext";
 
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -49,120 +47,9 @@ type ContactCardProps = {
   allowRealtorBoard: boolean; // true = vai para mural de leads, false = contato direto
 };
 
-// Tela de sucesso após envio
-function SuccessScreen({ 
-  chatUrl, 
-  userEmail, 
-  isLeadBoard,
-  onReset,
-  onOpenChat,
-}: { 
-  chatUrl: string; 
-  userEmail: string;
-  isLeadBoard: boolean;
-  onReset: () => void;
-  onOpenChat: (chatUrl: string) => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="text-center py-4"
-    >
-      {/* Ícone de sucesso */}
-      <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-        <CheckCircle className="w-8 h-8 text-green-600" />
-      </div>
-
-      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-        {isLeadBoard ? "Visita Solicitada!" : "Mensagem Enviada!"}
-      </h3>
-      
-      <p className="text-gray-600 mb-6">
-        {isLeadBoard 
-          ? "O responsável pelo imóvel receberá sua solicitação e poderá confirmar o horário."
-          : "O responsável pelo imóvel foi notificado e entrará em contato em breve."
-        }
-      </p>
-
-      {/* Card do Chat */}
-      <div className="bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-4 mb-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center">
-            <MessageCircle className="w-5 h-5 text-white" />
-          </div>
-          <div className="text-left">
-            <p className="font-semibold text-gray-900">Continue pelo Chat</p>
-            <p className="text-xs text-gray-600">Acompanhe e envie mensagens</p>
-          </div>
-        </div>
-        
-        <button
-          type="button"
-          onClick={() => onOpenChat(chatUrl)}
-          className="flex items-center justify-center gap-2 w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition-colors"
-        >
-          Abrir Chat
-          <ExternalLink className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Info do email */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 justify-center mb-6">
-        <Mail className="w-4 h-4" />
-        <span>Link do chat enviado para {userEmail}</span>
-      </div>
-
-      {/* Próximos passos */}
-      <div className="text-left bg-gray-50 rounded-lg p-4 mb-4">
-        <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Próximos Passos</p>
-        <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-xs font-bold text-teal-700">1</span>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">Aguarde o retorno</p>
-              <p className="text-xs text-gray-500">O responsável será notificado agora</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-xs font-bold text-teal-700">2</span>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">Acompanhe pelo chat</p>
-              <p className="text-xs text-gray-500">Use o link acima para trocar mensagens</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-xs font-bold text-teal-700">3</span>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">Agende a visita</p>
-              <p className="text-xs text-gray-500">Combine um horário para conhecer o imóvel</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Botão para enviar outra mensagem */}
-      <button
-        type="button"
-        onClick={onReset}
-        className="text-sm text-gray-500 hover:text-teal-600 transition-colors"
-      >
-        Enviar outra mensagem
-      </button>
-    </motion.div>
-  );
-}
-
 export default function PropertyContactCard({
   propertyId,
   propertyTitle,
-  propertyPurpose,
   ownerRole,
   ownerName,
   ownerImage,
@@ -172,32 +59,15 @@ export default function PropertyContactCard({
   hideOwnerContact,
   allowRealtorBoard,
 }: ContactCardProps) {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    message: `Tenho interesse em\n${propertyTitle}`,
-  });
-  
-  const [visitData, setVisitData] = useState({
-    date: "",
-    time: "",
-  });
-  
   const [loading, setLoading] = useState(false);
-  const [notifySimilar, setNotifySimilar] = useState(false);
-  const [successData, setSuccessData] = useState<{ chatUrl: string; email: string } | null>(null);
   const toast = useToast();
   const { data: session } = useSession();
   const router = useRouter();
-  const [showLoginOverlay, setShowLoginOverlay] = useState(false);
-  const [pendingChatUrl, setPendingChatUrl] = useState<string | null>(null);
 
   const isAuthenticated = !!session;
 
   // Determinar cenário
   const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
-  const isDirectOwner = (ownerRole === "OWNER" || ownerRole === "USER") && !allowRealtorBoard;
   const isLeadBoard = (ownerRole === "OWNER" || ownerRole === "USER") && allowRealtorBoard;
   const hasPublicProfile =
     (isRealtorOrAgency && !!ownerPublicSlug) ||
@@ -236,25 +106,43 @@ export default function PropertyContactCard({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    setLoading(true);
+  const getReturnUrlWithOpenChat = () => {
     try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("openChat", "1");
+      url.searchParams.set("propertyId", propertyId);
+      return `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""}${url.hash}`;
+    } catch {
+      return `/property/${propertyId}?openChat=1&propertyId=${encodeURIComponent(propertyId)}`;
+    }
+  };
+
+  const createLeadAndOpenChat = async () => {
+    try {
+      if (!isAuthenticated) {
+        const callbackUrl = getReturnUrlWithOpenChat();
+        await signIn(undefined, { callbackUrl });
+        return;
+      }
+
+      const s: any = session as any;
+      const name = String(s?.user?.name || s?.user?.fullName || "").trim();
+      const email = String(s?.user?.email || "").trim();
+      if (!name || name.length < 2 || !email) {
+        toast.error("Para usar o chat, complete seu nome e e-mail na sua conta.");
+        return;
+      }
+
+      setLoading(true);
+
       const payload: any = {
         propertyId,
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        message: formData.message,
+        name,
+        email,
+        phone: String(s?.user?.phone || "").trim() || undefined,
+        message: `Tenho interesse em\n${propertyTitle}`,
         isDirect: !isLeadBoard,
       };
-
-      // Se for lead board, adicionar dados de visita
-      if (isLeadBoard && visitData.date && visitData.time) {
-        payload.visitDate = visitData.date;
-        payload.visitTime = visitData.time;
-      }
 
       const res = await fetch("/api/leads", {
         method: "POST",
@@ -262,92 +150,57 @@ export default function PropertyContactCard({
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Erro ao enviar solicitação");
-      
-      const data = await res.json();
-      
-      // Construir chatUrl
-      const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
-      const chatUrl = data.chatUrl || (data.chatToken ? `${siteUrl}/chat/${data.chatToken}` : '');
-      
-      // Mostrar tela de sucesso
-      setSuccessData({ 
-        chatUrl, 
-        email: formData.email 
-      });
-    } catch (err) {
-      console.error(err);
-      toast.error("Erro ao enviar. Tente novamente.");
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg =
+          data?.error ||
+          (res.status === 429
+            ? "Muitas tentativas. Tente novamente em alguns instantes."
+            : "Não conseguimos abrir o chat agora.");
+        throw new Error(msg);
+      }
+
+      const siteUrl = typeof window !== "undefined" ? window.location.origin : "";
+      const chatUrl = data?.chatUrl || (data?.chatToken ? `${siteUrl}/chat/${data.chatToken}` : "");
+      if (!chatUrl) {
+        throw new Error("Não conseguimos abrir o chat agora.");
+      }
+
+      const url = chatUrl.startsWith("http")
+        ? (() => {
+            try {
+              return new URL(chatUrl).pathname;
+            } catch {
+              return chatUrl;
+            }
+          })()
+        : chatUrl;
+
+      router.push(url);
+    } catch (err: any) {
+      toast.error(err?.message || "Não conseguimos abrir o chat agora.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenChat = (chatUrl: string) => {
-    if (!chatUrl) return;
-    if (isAuthenticated) {
-      router.push(chatUrl);
-      return;
+  const autoChatRef = (globalThis as any).__zlw_auto_chat_ref || { ran: false };
+  (globalThis as any).__zlw_auto_chat_ref = autoChatRef;
+  if (typeof window !== "undefined" && isAuthenticated && !autoChatRef.ran) {
+    try {
+      const url = new URL(window.location.href);
+      const openChat = url.searchParams.get("openChat") === "1";
+      const propMatch = url.searchParams.get("propertyId") === propertyId;
+      if (openChat && propMatch) {
+        autoChatRef.ran = true;
+        url.searchParams.delete("openChat");
+        url.searchParams.delete("propertyId");
+        const next = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""}${url.hash}`;
+        window.history.replaceState(window.history.state, "", next);
+        void createLeadAndOpenChat();
+      }
+    } catch {
     }
-    setPendingChatUrl(chatUrl);
-    setShowLoginOverlay(true);
-  };
-
-  // Gerar horários disponíveis (7h-19h) em intervalos de 1h
-  const availableTimes = [] as string[];
-  for (let h = 7; h <= 18; h++) {
-    availableTimes.push(`${h.toString().padStart(2, "0")}:00`);
-  }
-
-  // Função para resetar o formulário
-  const handleReset = () => {
-    setSuccessData(null);
-    setFormData({ name: "", email: "", phone: "", message: `Tenho interesse em\n${propertyTitle}` });
-    setVisitData({ date: "", time: "" });
-  };
-
-  // Mostrar tela de sucesso se houver dados
-  if (successData) {
-    return (
-      <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm relative">
-        <SuccessScreen 
-          chatUrl={successData.chatUrl}
-          userEmail={successData.email}
-          isLeadBoard={isLeadBoard}
-          onReset={handleReset}
-          onOpenChat={handleOpenChat}
-        />
-
-        {showLoginOverlay && pendingChatUrl && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                Entre ou crie sua conta para usar o chat
-              </h2>
-              <p className="text-sm text-gray-600 mb-4">
-                Para acompanhar respostas e continuar a conversa sobre este imóvel, você precisa estar logado.
-              </p>
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => pendingChatUrl && signIn(undefined, { callbackUrl: pendingChatUrl })}
-                  className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition-colors"
-                >
-                  Entrar / Criar conta
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowLoginOverlay(false)}
-                  className="text-sm text-gray-500 hover:text-gray-700 mt-1"
-                >
-                  Agora não
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
   }
 
   return (
@@ -403,144 +256,45 @@ export default function PropertyContactCard({
               </div>
             </div>
           )}
-
-          {canShowWhatsApp && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                Fale diretamente com o Anunciante
-              </h3>
-              <button
-                type="button"
-                onClick={handleWhatsAppClick}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white font-semibold px-4 py-3 shadow-sm hover:bg-[#128C7E] active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-              >
-                <WhatsAppIcon className="w-5 h-5" />
-                WhatsApp
-              </button>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Título do card */}
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        {isLeadBoard ? "Agendar Visita" : "Entre em Contato"}
-      </h3>
+      <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
+        <h3 className="text-lg font-semibold text-gray-900">Fale diretamente com o Anunciante</h3>
 
-      {/* Formulário */}
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <input
-          type="text"
-          placeholder="Nome"
-          required
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
-        />
-        <input
-          type="email"
-          placeholder="E-mail"
-          required
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
-        />
-        
-        {/* Phone com country code */}
-        <div className="flex gap-2">
-          <select className="w-24 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base">
-            <option>+55</option>
-          </select>
-          <input
-            type="tel"
-            placeholder="Telefone"
-            required
-            value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
-          />
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={handleWhatsAppClick}
+            disabled={!canShowWhatsApp}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white font-semibold px-4 py-3 shadow-sm hover:bg-[#128C7E] active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
+          >
+            <WhatsAppIcon className="w-5 h-5" />
+            WhatsApp
+          </button>
         </div>
 
-        {/* Mensagem (apenas se não for lead board) */}
-        {!isLeadBoard && (
-          <textarea
-            rows={4}
-            placeholder={formData.message}
-            value={formData.message}
-            onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent resize-none text-base"
-          />
-        )}
-
-        {/* Calendário de agendamento (apenas para lead board) */}
-        {isLeadBoard && (
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-              <Calendar className="w-4 h-4" />
-              <span>Escolha a data e horário desejados:</span>
-            </div>
-            
-            <input
-              type="date"
-              required
-              value={visitData.date}
-              onChange={(e) => setVisitData({ ...visitData, date: e.target.value })}
-              min={new Date().toISOString().split("T")[0]}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent text-base"
-            />
-            
-            <div className="relative">
-              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-              <select
-                required
-                value={visitData.time}
-                onChange={(e) => setVisitData({ ...visitData, time: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-light focus:border-transparent appearance-none text-base"
-              >
-                <option value="">Selecione o horário</option>
-                {availableTimes.map((time) => (
-                  <option key={time} value={time}>
-                    {time}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <p className="text-xs text-gray-500">
-              ⏰ Horários disponíveis: Segunda a Sábado, 7h às 19h (duração de 1h)
-            </p>
-          </div>
-        )}
-
-        <Button 
-          type="submit" 
-          className="w-full glass-teal py-3 text-base"
-          disabled={loading}
-        >
-          {loading ? "Enviando..." : isLeadBoard ? "Solicitar Visita" : "Entrar em Contato"}
-        </Button>
-
-        {/* Checkboxes */}
-        <div className="space-y-3 text-sm text-gray-600">
-          {!isLeadBoard && (
-            <label className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
-              <input 
-                type="checkbox" 
-                className="mt-0.5 w-5 h-5 rounded"
-                checked={notifySimilar}
-                onChange={(e) => setNotifySimilar(e.target.checked)}
-              />
-              <span>Notificar-me por e-mail sobre imóveis similares</span>
-            </label>
-          )}
-          <p className="text-xs text-gray-500 leading-relaxed px-2">
-            Ao entrar em contato, você concorda com os{" "}
-            <Link href="/terms" className="underline hover:text-gray-700">Termos de uso</Link>
-            {" "}e com a{" "}
-            <Link href="/privacy" className="underline hover:text-gray-700">Política de privacidade</Link>.
-          </p>
+        <div className="mt-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs font-semibold text-gray-500">Ou</span>
+          <div className="h-px flex-1 bg-gray-200" />
         </div>
-      </form>
+
+        <div className="mt-4">
+          <p className="text-sm font-semibold text-gray-900">Use nosso chat</p>
+          <p className="text-xs text-gray-600 mt-1">Envie mensagens e acompanhe a conversa aqui no site.</p>
+          <button
+            type="button"
+            onClick={createLeadAndOpenChat}
+            disabled={loading}
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 text-white font-semibold px-4 py-3 shadow-sm hover:bg-teal-700 active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
+          >
+            <MessageCircle className="w-5 h-5" />
+            {loading ? "Abrindo..." : "Chat"}
+          </button>
+        </div>
+      </div>
     </div>
   );
+
 }

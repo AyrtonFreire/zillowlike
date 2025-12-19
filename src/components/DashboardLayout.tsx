@@ -2,7 +2,7 @@
 
 import { ModernNavbar } from "./modern";
 import Link from "next/link";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import RealtorAssistantWidget from "@/components/crm/RealtorAssistantWidget";
 import { usePathname } from "next/navigation";
@@ -24,6 +24,41 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   const pathname = usePathname();
   const isBrokerContext = !!pathname?.startsWith("/broker");
+  const [assistantOpen, setAssistantOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isBrokerContext) return;
+
+    const key = "zlw_realtor_assistant_widget_open";
+
+    const readFromStorage = () => {
+      try {
+        setAssistantOpen(window.localStorage.getItem(key) === "1");
+      } catch {
+        setAssistantOpen(false);
+      }
+    };
+
+    readFromStorage();
+
+    const onAssistantEvent = (evt: Event) => {
+      const anyEvt: any = evt as any;
+      const open = anyEvt?.detail?.open;
+      if (typeof open === "boolean") setAssistantOpen(open);
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== key) return;
+      setAssistantOpen(e.newValue === "1");
+    };
+
+    window.addEventListener("zlw-assistant-open", onAssistantEvent as any);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("zlw-assistant-open", onAssistantEvent as any);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [isBrokerContext]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -100,7 +135,13 @@ export default function DashboardLayout({
       </div>
 
       {/* Main Content */}
-      <main className={isBrokerContext ? "lg:pr-[420px]" : undefined}>{children}</main>
+      <main
+        className={`transition-[padding] duration-300 ease-in-out ${
+          isBrokerContext && assistantOpen ? "lg:pr-[420px]" : ""
+        }`}
+      >
+        {children}
+      </main>
 
       <RealtorAssistantWidget />
     </div>

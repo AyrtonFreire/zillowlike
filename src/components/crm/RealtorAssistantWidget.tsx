@@ -116,6 +116,12 @@ export default function RealtorAssistantWidget() {
     } catch {
       // ignore
     }
+
+    try {
+      window.dispatchEvent(new CustomEvent("zlw-assistant-open", { detail: { open: value } }));
+    } catch {
+      // ignore
+    }
   };
 
   useEffect(() => {
