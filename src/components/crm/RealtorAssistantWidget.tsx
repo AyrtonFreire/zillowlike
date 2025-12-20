@@ -40,6 +40,12 @@ export default function RealtorAssistantWidget() {
   }, [isBrokerContext, status, update]);
 
   const bottomOffsetClass = pathname?.startsWith("/broker/chats") ? "bottom-24" : "bottom-5";
+  const mobileSafeAreaStyle = useMemo(() => {
+    const bottomPx = pathname?.startsWith("/broker/chats") ? 96 : 20;
+    return {
+      bottom: `calc(env(safe-area-inset-bottom, 0px) + ${bottomPx}px)`,
+    } as React.CSSProperties;
+  }, [pathname]);
 
   const leadIdFromPath = useMemo(() => {
     if (!pathname) return undefined;
@@ -197,6 +203,7 @@ export default function RealtorAssistantWidget() {
         <button
           type="button"
           onClick={() => setOpenPersisted(true)}
+          style={mobileSafeAreaStyle}
           className={`fixed ${bottomOffsetClass} right-5 z-[9999] lg:hidden flex items-center gap-2 rounded-full bg-white border border-gray-200 shadow-lg px-4 py-3 hover:shadow-xl transition-shadow`}
         >
           <span className="relative">

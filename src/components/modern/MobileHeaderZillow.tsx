@@ -5,6 +5,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import { Menu, X, User, Heart, Bell, MessageCircle, ChevronDown, ChevronRight, Home, Building2, Megaphone, LineChart, Users, Bookmark, ClipboardList, LogOut, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePathname, useRouter } from "next/navigation";
 
 interface MobileHeaderZillowProps {
   variant?: "overlay" | "solid";
@@ -15,8 +16,17 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
   const [isRightMenuOpen, setIsRightMenuOpen] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const { data: session } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
   const role = (session as any)?.user?.role || "USER";
   const [hasUnreadUserChats, setHasUnreadUserChats] = useState(false);
+  const [assistantActiveCount, setAssistantActiveCount] = useState(0);
+
+  const isBrokerContext = !!pathname?.startsWith("/broker");
+  const canShowAssistant =
+    !!session &&
+    isBrokerContext &&
+    (role === "REALTOR" || role === "AGENCY" || role === "ADMIN");
 
   const isOverlay = variant === "overlay";
 
@@ -89,6 +99,50 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
     };
   }, [role, session]);
 
+  useEffect(() => {
+    if (!canShowAssistant) {
+      setAssistantActiveCount(0);
+      return;
+    }
+
+    let cancelled = false;
+    let interval: any;
+
+    const updateAssistantCount = async () => {
+      try {
+        const response = await fetch("/api/assistant/count");
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.success || typeof data.activeCount !== "number") {
+          if (!cancelled) setAssistantActiveCount(0);
+          return;
+        }
+
+        if (!cancelled) setAssistantActiveCount(data.activeCount);
+      } catch {
+        if (!cancelled) setAssistantActiveCount(0);
+      }
+    };
+
+    updateAssistantCount();
+    interval = setInterval(updateAssistantCount, 180000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [canShowAssistant]);
+
+  const openAssistant = () => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("assistant", "1");
+      router.push(`${url.pathname}?${url.searchParams.toString()}${url.hash}`);
+    } catch {
+      router.push("/broker/dashboard?assistant=1");
+    }
+  };
+
   return (
     <>
       {/* Header */}
@@ -131,6 +185,28 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
 
           {/* Right: Notifications + User Menu */}
           <div className="flex items-center gap-2">
+            {canShowAssistant && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLeftMenuOpen(false);
+                  setIsRightMenuOpen(false);
+                  openAssistant();
+                }}
+                className={`relative p-2 rounded-full transition-colors ${
+                  isOverlay ? "hover:bg-white/10" : "hover:bg-gray-100"
+                }`}
+                aria-label="Assistente"
+              >
+                <ClipboardList className={`w-5 h-5 ${isOverlay ? "text-white" : "text-gray-800"}`} />
+                {assistantActiveCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border border-white">
+                    {assistantActiveCount > 99 ? "99+" : assistantActiveCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {session && role === "USER" && (
               <Link
                 href="/chats"
