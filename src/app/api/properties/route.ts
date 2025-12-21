@@ -318,7 +318,7 @@ export async function GET(req: NextRequest) {
               parkingSpots: true,
               conditionTags: true,
               updatedAt: true,
-              images: { select: { id: true, url: true }, orderBy: { sortOrder: "asc" }, take: 1 },
+              images: { select: { id: true, url: true }, orderBy: { sortOrder: "asc" }, take: 6 },
             }
           : {
               id: true,

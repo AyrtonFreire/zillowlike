@@ -1,10 +1,10 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, Car, Home, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X } from "lucide-react";
+import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, Home, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X } from "lucide-react";
 import Image from "next/image";
 import Chip from "@/components/ui/Chip";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { track } from "@/lib/analytics";
 import { buildPropertyPath } from "@/lib/slug";
 
@@ -51,6 +51,14 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   const lastTouchX = useRef<number | null>(null);
   const lastTouchTime = useRef<number | null>(null);
   const gestureLocked = useRef<null | 'horizontal' | 'vertical'>(null);
+
+  const MAX_CARD_IMAGES = 5;
+  const cardImages = useMemo(() => {
+    const imgs = Array.isArray(property.images) ? property.images : [];
+    return imgs.slice(0, MAX_CARD_IMAGES);
+  }, [property.images]);
+  const hasMoreImages = (Array.isArray(property.images) ? property.images.length : 0) > MAX_CARD_IMAGES;
+  const totalSlides = cardImages.length + (hasMoreImages ? 1 : 0);
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -147,12 +155,17 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     }
   };
 
+  useEffect(() => {
+    if (currentImage <= totalSlides - 1) return;
+    setCurrentImage(Math.max(0, totalSlides - 1));
+  }, [currentImage, totalSlides]);
+
   const goNext = () => {
-    setCurrentImage((prev) => (prev + 1) % property.images.length);
+    setCurrentImage((prev) => Math.min(totalSlides - 1, prev + 1));
   };
 
   const goPrev = () => {
-    setCurrentImage((prev) => (prev - 1 + property.images.length) % property.images.length);
+    setCurrentImage((prev) => Math.max(0, prev - 1));
   };
 
   const nextImage = (e: React.MouseEvent) => {
@@ -194,7 +207,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     const diff = touchStartX.current - currentTouch; // >0: arrastando para esquerda
 
     // Quando só há 1 imagem: aplicar "resistência" e impedir avanço do card externo
-    if (!property.images || property.images.length <= 1) {
+    if (totalSlides <= 1) {
       const elastic = Math.max(-24, Math.min(24, -diff * 0.2));
       setDragOffset(elastic);
       if (gestureLocked.current !== 'vertical') {
@@ -223,7 +236,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     // Para múltiplas imagens: seguir o dedo, com rubber-band nas bordas
     let dx = currentTouch - (touchStartX.current as number);
     const atFirst = currentImage === 0;
-    const atLast = currentImage === property.images.length - 1;
+    const atLast = currentImage === totalSlides - 1;
     if ((atFirst && dx > 0) || (atLast && dx < 0)) {
       const resistance = 0.35; // rubber-band
       dx = dx * resistance;
@@ -235,7 +248,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
   const onTouchEnd = () => {
     // Reset da resistência quando só há 1 imagem
-    if (!property.images || property.images.length <= 1) {
+    if (totalSlides <= 1) {
       setDragOffset(0);
     } else if (touchStartX.current != null && lastTouchX.current != null) {
       const dx = lastTouchX.current - touchStartX.current;
@@ -309,20 +322,6 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               Video
             </div>
           )}
-          
-          {/* Condition Tags */}
-          {property.conditionTags && property.conditionTags.length > 0 && (
-            <div className="flex flex-col items-start gap-1.5">
-              {property.conditionTags.slice(0, 1).map((tag, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold glass-teal text-white shadow-md"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Favorite Button */}
@@ -348,17 +347,17 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           onTouchEnd={onTouchEnd}
           style={{ touchAction: 'pan-y' }}
         >
-          {property.images && property.images.length > 0 ? (
+          {cardImages && cardImages.length > 0 ? (
             <>
               <motion.div
-                animate={(!property.images || property.images.length <= 1)
+                animate={(totalSlides <= 1)
                   ? { x: dragOffset }
                   : { x: isDragging ? -currentImage * containerW + dragX : -currentImage * containerW }
                 }
                 transition={isDragging ? { type: 'tween', duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
                 className="flex h-full"
               >
-                {property.images.map((image, i) => (
+                {cardImages.map((image, i) => (
                   <div key={i} className="min-w-full h-full relative">
                     <Image
                       src={image.url}
@@ -369,6 +368,37 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     />
                   </div>
                 ))}
+
+                {hasMoreImages && (
+                  <div className="min-w-full h-full relative">
+                    <Image
+                      src={(cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string}
+                      alt={property.title}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/45" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+                      <div className="text-white text-sm font-semibold mb-2">
+                        Visualizar o resto no anúncio
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (onOpenOverlay) onOpenOverlay(property.id);
+                          else window.location.href = buildPropertyPath(property.id, property.title);
+                        }}
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-white text-gray-900 text-sm font-semibold shadow hover:bg-gray-100 transition-colors"
+                        aria-label="Abrir anúncio"
+                      >
+                        Abrir anúncio
+                      </button>
+                    </div>
+                  </div>
+                )}
               </motion.div>
 
               {/* Watermark (preview only) */}
@@ -379,7 +409,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               )}
 
               {/* Navigation Arrows */}
-              {property.images.length > 1 && (
+              {totalSlides > 1 && (
                 <>
                   <button
                     onClick={prevImage}
@@ -401,9 +431,9 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               {/* Overlay removed: price and location moved to content */}
 
               {/* Image Dots */}
-              {property.images.length > 1 && (
+              {totalSlides > 1 && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                  {property.images.map((_, i) => (
+                  {Array.from({ length: totalSlides }).map((_, i) => (
                     <button
                       key={i}
                       onClick={(e) => {
