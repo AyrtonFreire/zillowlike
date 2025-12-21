@@ -532,6 +532,55 @@ export default function NewPropertyPage() {
     return Array.from(list) as File[];
   }
 
+  async function preprocessImageForUpload(file: File): Promise<File> {
+    const MAX_SIDE = 2560;
+    const MIN_WIDTH = 800;
+    const MAX_MB = 6;
+
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+        el.src = url;
+      });
+
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      if (!w || !h) throw new Error("Imagem inválida");
+      if (w < MIN_WIDTH) throw new Error(`A imagem é muito pequena (largura ${w}px). Mínimo: ${MIN_WIDTH}px.`);
+
+      const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+      const targetW = Math.round(w * scale);
+      const targetH = Math.round(h * scale);
+
+      const shouldReencode = scale < 1 || file.type !== "image/webp" || file.size / (1024 * 1024) > MAX_MB;
+      if (!shouldReencode) return file;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Falha ao processar imagem");
+      ctx.drawImage(img, 0, 0, targetW, targetH);
+
+      const blob: Blob = await new Promise((resolve) =>
+        canvas.toBlob((b) => resolve(b as Blob), "image/webp", 0.82)
+      );
+      const processed = new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
+
+      const finalSizeMB = processed.size / (1024 * 1024);
+      if (finalSizeMB > MAX_MB) {
+        throw new Error(`A imagem permanece acima de ${MAX_MB}MB após otimização. Tente uma imagem menor.`);
+      }
+
+      return processed;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   async function handleDroppedFiles(fileList: FileList | File[]) {
     const files: File[] = toFiles(fileList).filter((f: File) => f.type.startsWith('image/'));
     if (files.length === 0) return;
@@ -548,8 +597,25 @@ export default function NewPropertyPage() {
     for (let k = 0; k < files.length; k++) {
       const file = files[k];
       const targetIndex = targetIndices[k];
-      const localUrl = URL.createObjectURL(file as File);
-      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1, reserved: true, file } : it)));
+
+      let processedFile: File;
+      try {
+        processedFile = await preprocessImageForUpload(file as File);
+      } catch (err: any) {
+        const localUrl = URL.createObjectURL(file as File);
+        setToast({ message: err?.message || 'Imagem inválida', type: 'error' });
+        setImages((prev) =>
+          prev.map((it, i) =>
+            i === targetIndex
+              ? { ...it, url: localUrl, pending: false, error: err?.message || 'Imagem inválida', progress: undefined, reserved: false, file: undefined }
+              : it
+          )
+        );
+        continue;
+      }
+
+      const localUrl = URL.createObjectURL(processedFile as File);
+      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1, reserved: true, file: processedFile as File } : it)));
       try {
         const sigRes = await fetch('/api/upload/cloudinary-sign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: 'zillowlike' }) });
         if (!sigRes.ok) throw new Error('Falha ao assinar upload.');
@@ -567,7 +633,7 @@ export default function NewPropertyPage() {
           if (lowRes) setToast({ message: 'Foto com baixa resolução. Pode impactar a visibilidade.', type: 'info' });
         } catch {}
         const fd = new FormData();
-        fd.append('file', file as File);
+        fd.append('file', processedFile as File);
         fd.append('api_key', sig.apiKey);
         fd.append('timestamp', String(sig.timestamp));
         fd.append('signature', sig.signature);

@@ -43,6 +43,55 @@ function formatCentsToBRL(value: number | null | undefined) {
   return formatBRLInput(String(reais));
 }
 
+async function preprocessImageForUpload(file: File): Promise<File> {
+  const MAX_SIDE = 2560;
+  const MIN_WIDTH = 800;
+  const MAX_MB = 6;
+
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = url;
+    });
+
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    if (!w || !h) throw new Error("Imagem inválida");
+    if (w < MIN_WIDTH) throw new Error(`A imagem é muito pequena (largura ${w}px). Mínimo: ${MIN_WIDTH}px.`);
+
+    const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+    const targetW = Math.round(w * scale);
+    const targetH = Math.round(h * scale);
+
+    const shouldReencode = scale < 1 || file.type !== "image/webp" || file.size / (1024 * 1024) > MAX_MB;
+    if (!shouldReencode) return file;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Falha ao processar imagem");
+    ctx.drawImage(img, 0, 0, targetW, targetH);
+
+    const blob: Blob = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b as Blob), "image/webp", 0.82)
+    );
+    const processed = new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
+
+    const finalSizeMB = processed.size / (1024 * 1024);
+    if (finalSizeMB > MAX_MB) {
+      throw new Error(`A imagem permanece acima de ${MAX_MB}MB após otimização. Tente uma imagem menor.`);
+    }
+
+    return processed;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export default function EditPropertyPage() {
   const params = useParams<RouteParams>();
   const router = useRouter();
@@ -337,6 +386,7 @@ export default function EditPropertyPage() {
 
   const handleImageUpload = async (file: File) => {
     try {
+      const processedFile = await preprocessImageForUpload(file);
       // Get signature
       const sigRes = await fetch("/api/upload/cloudinary-sign", {
         method: "POST",
@@ -348,7 +398,7 @@ export default function EditPropertyPage() {
 
       // Upload to Cloudinary
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", processedFile);
       fd.append("api_key", sig.apiKey);
       fd.append("timestamp", String(sig.timestamp));
       fd.append("signature", sig.signature);
@@ -365,7 +415,7 @@ export default function EditPropertyPage() {
       }
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Erro no upload");
+      alert((error as any)?.message || "Erro no upload");
     }
   };
 

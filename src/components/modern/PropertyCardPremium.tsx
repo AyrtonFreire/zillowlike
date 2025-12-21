@@ -52,6 +52,22 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   const lastTouchTime = useRef<number | null>(null);
   const gestureLocked = useRef<null | 'horizontal' | 'vertical'>(null);
 
+  const transformCloudinary = (url: string, transformation: string) => {
+    try {
+      const marker = "/image/upload/";
+      const idx = url.indexOf(marker);
+      if (idx === -1) return url;
+      const head = url.substring(0, idx + marker.length);
+      const tail = url.substring(idx + marker.length);
+      if (tail.startsWith("f_")) return url;
+      return `${head}${transformation}/${tail}`;
+    } catch {
+      return url;
+    }
+  };
+
+  const cardImageTransform = "f_auto,q_auto:good,dpr_auto,w_1200,h_720,c_fill,g_auto";
+
   const MAX_CARD_IMAGES = 5;
   const cardImages = useMemo(() => {
     const imgs = Array.isArray(property.images) ? property.images : [];
@@ -360,7 +376,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                 {cardImages.map((image, i) => (
                   <div key={i} className="min-w-full h-full relative">
                     <Image
-                      src={image.url}
+                      src={transformCloudinary(image.url, cardImageTransform)}
                       alt={property.title}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -372,7 +388,10 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                 {hasMoreImages && (
                   <div className="min-w-full h-full relative">
                     <Image
-                      src={(cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string}
+                      src={transformCloudinary(
+                        (cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string,
+                        cardImageTransform
+                      )}
                       alt={property.title}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
