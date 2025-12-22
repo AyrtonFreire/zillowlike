@@ -23,6 +23,43 @@ type AiPropertyText = {
   metaDescription: string;
 };
 
+function clampText(s: string, max: number) {
+  const t = String(s || "").trim();
+  if (t.length <= max) return t;
+  return t.slice(0, max).trim();
+}
+
+function defaultTitleFromInput(b: z.infer<typeof BodySchema>) {
+  const base = String(b.title || "").trim();
+  if (base.length >= 3) return clampText(base, 70);
+  const type = String(b.type || "Imóvel").trim() || "Imóvel";
+  const cityState = [b.city, b.state].filter(Boolean).join("/");
+  const location = [b.neighborhood, cityState].filter(Boolean).join(" - ");
+  const t = location ? `${type} em ${location}` : type;
+  return clampText(t, 70);
+}
+
+function defaultMetaTitleFromInput(b: z.infer<typeof BodySchema>) {
+  const type = String(b.type || "Imóvel").trim() || "Imóvel";
+  const action = b.purpose === "RENT" ? "para alugar" : "à venda";
+  const cityState = [b.city, b.state].filter(Boolean).join("/");
+  const local = String(b.neighborhood || "").trim() || cityState || "Brasil";
+  return clampText(`${type} ${action} em ${local}`, 65);
+}
+
+function defaultMetaDescriptionFromInput(b: z.infer<typeof BodySchema>) {
+  const type = String(b.type || "Imóvel").trim() || "Imóvel";
+  const action = b.purpose === "RENT" ? "para alugar" : "à venda";
+  const cityState = [b.city, b.state].filter(Boolean).join("/");
+  const local = String(b.neighborhood || "").trim() || cityState || "";
+  const rooms = typeof b.bedrooms === "number" ? `${b.bedrooms} quarto(s)` : "";
+  const area = typeof b.areaM2 === "number" && b.areaM2 > 0 ? `${b.areaM2} m²` : "";
+  const attr = [rooms, area].filter(Boolean)[0] || "";
+  const head = [type, action, local].filter(Boolean).join(" ").trim();
+  const full = [head, attr ? `• ${attr}` : null, "Veja fotos e detalhes."].filter(Boolean).join(" ");
+  return clampText(full, 155);
+}
+
 const BodySchema = z.object({
   title: z.string().max(120).optional().nullable(),
   type: z.string().max(40).optional().nullable(),
@@ -216,48 +253,105 @@ async function handler(req: NextRequest) {
 
   const model = process.env.OPENAI_VISION_MODEL || "gpt-4o-mini";
 
-  const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.6,
-      max_tokens: 1000,
-    }),
-  });
+  const callOpenAI = async (payloadMessages: any[]) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25_000);
+    try {
+      return await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: payloadMessages,
+          temperature: 0.6,
+          max_tokens: 1000,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
+  let aiRes: Response | null = null;
+  try {
+    aiRes = await callOpenAI(messages);
+  } catch {
+    aiRes = null;
+  }
+
+  // Fallback: se a chamada multimodal falhar (ou der timeout), tentar texto-only
+  if (!aiRes || !aiRes.ok) {
+    const textOnlyMessages: any[] = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userText },
+    ];
+    try {
+      const retry = await callOpenAI(textOnlyMessages);
+      aiRes = retry;
+    } catch {
+      // keep aiRes as null
+    }
+  }
+
+  if (!aiRes) {
+    // Não travar o corretor: volta com um texto padrão
+    const fallback = {
+      title: defaultTitleFromInput(b),
+      description: "", // o client vai manter a descrição atual se vier vazio
+      metaTitle: defaultMetaTitleFromInput(b),
+      metaDescription: defaultMetaDescriptionFromInput(b),
+    };
+    return successResponse(fallback, "OK");
+  }
 
   if (!aiRes.ok) {
     const txt = await aiRes.text().catch(() => "");
-    return errorResponse(
-      "Falha ao gerar descrição",
-      502,
-      { status: aiRes.status, body: txt.slice(0, 2000) },
-      "AI_UPSTREAM_ERROR"
+    // Não bloquear UX: retornar fallback e registrar a falha via details
+    const fallback = {
+      title: defaultTitleFromInput(b),
+      description: "",
+      metaTitle: defaultMetaTitleFromInput(b),
+      metaDescription: defaultMetaDescriptionFromInput(b),
+    };
+    return successResponse(
+      {
+        ...fallback,
+        _aiWarning: { status: aiRes.status, body: txt.slice(0, 2000) },
+      } as any,
+      "OK"
     );
   }
 
   const json = (await aiRes.json().catch(() => null)) as OpenAIChatResponse | null;
   const content = json?.choices?.[0]?.message?.content?.trim();
   if (!content) {
-    return errorResponse(
-      "Falha ao gerar descrição",
-      502,
-      null,
-      "AI_EMPTY_RESPONSE"
-    );
+    const fallback = {
+      title: defaultTitleFromInput(b),
+      description: "",
+      metaTitle: defaultMetaTitleFromInput(b),
+      metaDescription: defaultMetaDescriptionFromInput(b),
+    };
+    return successResponse(fallback, "OK");
   }
 
   const parsed = extractJsonObject(content) as Partial<AiPropertyText> | null;
   if (!parsed) {
-    return errorResponse(
-      "Falha ao preencher campos",
-      502,
-      { sample: content.slice(0, 2000) },
-      "AI_INVALID_JSON"
+    const fallback = {
+      title: defaultTitleFromInput(b),
+      description: "",
+      metaTitle: defaultMetaTitleFromInput(b),
+      metaDescription: defaultMetaDescriptionFromInput(b),
+    };
+    return successResponse(
+      {
+        ...fallback,
+        _aiWarning: { code: "AI_INVALID_JSON", sample: content.slice(0, 2000) },
+      } as any,
+      "OK"
     );
   }
 
@@ -266,47 +360,19 @@ async function handler(req: NextRequest) {
   const metaTitle = String(parsed.metaTitle || "").trim();
   const metaDescription = String(parsed.metaDescription || "").trim();
 
-  if (title.length < 3 || title.length > 70) {
-    return errorResponse(
-      "Falha ao preencher campos",
-      502,
-      { field: "title", length: title.length },
-      "AI_INVALID_TITLE"
-    );
-  }
-  if (!description) {
-    return errorResponse(
-      "Falha ao preencher campos",
-      502,
-      { field: "description" },
-      "AI_INVALID_DESCRIPTION"
-    );
-  }
-  if (metaTitle.length > 65) {
-    return errorResponse(
-      "Falha ao preencher campos",
-      502,
-      { field: "metaTitle", length: metaTitle.length },
-      "AI_INVALID_META_TITLE"
-    );
-  }
-  if (metaDescription.length > 155) {
-    return errorResponse(
-      "Falha ao preencher campos",
-      502,
-      { field: "metaDescription", length: metaDescription.length },
-      "AI_INVALID_META_DESCRIPTION"
-    );
-  }
+  const safeTitle = title.length >= 3 ? clampText(title, 70) : defaultTitleFromInput(b);
+  const safeDescription = description || "";
+  const safeMetaTitle = metaTitle ? clampText(metaTitle, 65) : defaultMetaTitleFromInput(b);
+  const safeMetaDescription = metaDescription ? clampText(metaDescription, 155) : defaultMetaDescriptionFromInput(b);
 
   const nextData = {
     ...data,
     aiDescriptionGenerations: 1,
     aiDescriptionLastAt: new Date().toISOString(),
-    aiGeneratedTitle: title,
-    aiGeneratedMetaTitle: metaTitle,
-    aiGeneratedMetaDescription: metaDescription,
-    aiGeneratedDescription: description,
+    aiGeneratedTitle: safeTitle,
+    aiGeneratedMetaTitle: safeMetaTitle,
+    aiGeneratedMetaDescription: safeMetaDescription,
+    aiGeneratedDescription: safeDescription,
   };
 
   await prisma.propertyDraft.upsert({
@@ -315,7 +381,10 @@ async function handler(req: NextRequest) {
     create: { userId, data: nextData },
   });
 
-  return successResponse({ title, description, metaTitle, metaDescription }, "OK");
+  return successResponse(
+    { title: safeTitle, description: safeDescription, metaTitle: safeMetaTitle, metaDescription: safeMetaDescription },
+    "OK"
+  );
 }
 
 export const POST = withErrorHandling(withRateLimit(handler, "ai"));

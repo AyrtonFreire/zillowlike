@@ -20,8 +20,8 @@ async function preprocessImageForUpload(file: File): Promise<File> {
 
     const w = img.naturalWidth || img.width;
     const h = img.naturalHeight || img.height;
-    if (!w || !h) throw new Error("Imagem inválida");
-    if (w < MIN_WIDTH) throw new Error(`A imagem é muito pequena (largura ${w}px). Mínimo: ${MIN_WIDTH}px.`);
+    if (!w || !h) return file;
+    if (w < MIN_WIDTH) return file;
 
     const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
     const targetW = Math.round(w * scale);
@@ -42,12 +42,9 @@ async function preprocessImageForUpload(file: File): Promise<File> {
     );
     const processed = new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
 
-    const finalSizeMB = processed.size / (1024 * 1024);
-    if (finalSizeMB > MAX_MB) {
-      throw new Error(`A imagem permanece acima de ${MAX_MB}MB após otimização. Tente uma imagem menor.`);
-    }
-
     return processed;
+  } catch {
+    return file;
   } finally {
     URL.revokeObjectURL(url);
   }

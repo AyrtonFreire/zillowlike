@@ -59,8 +59,12 @@ async function preprocessImageForUpload(file: File): Promise<File> {
 
     const w = img.naturalWidth || img.width;
     const h = img.naturalHeight || img.height;
-    if (!w || !h) throw new Error("Imagem inválida");
-    if (w < MIN_WIDTH) throw new Error(`A imagem é muito pequena (largura ${w}px). Mínimo: ${MIN_WIDTH}px.`);
+    if (!w || !h) return file;
+
+    if (w < MIN_WIDTH) {
+      // Não bloquear upload por questões técnicas
+      return file;
+    }
 
     const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
     const targetW = Math.round(w * scale);
@@ -73,7 +77,7 @@ async function preprocessImageForUpload(file: File): Promise<File> {
     canvas.width = targetW;
     canvas.height = targetH;
     const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Falha ao processar imagem");
+    if (!ctx) return file;
     ctx.drawImage(img, 0, 0, targetW, targetH);
 
     const blob: Blob = await new Promise((resolve) =>
@@ -81,12 +85,10 @@ async function preprocessImageForUpload(file: File): Promise<File> {
     );
     const processed = new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
 
-    const finalSizeMB = processed.size / (1024 * 1024);
-    if (finalSizeMB > MAX_MB) {
-      throw new Error(`A imagem permanece acima de ${MAX_MB}MB após otimização. Tente uma imagem menor.`);
-    }
-
+    // Se ainda ficar grande, seguimos mesmo assim
     return processed;
+  } catch {
+    return file;
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -97,6 +99,8 @@ export default function EditPropertyPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [aiGenerateWarning, setAiGenerateWarning] = useState<string | null>(null);
   
   // Form fields
   const [title, setTitle] = useState("");
@@ -423,6 +427,82 @@ export default function EditPropertyPage() {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleGenerateWithAi = async () => {
+    if (isGeneratingAi) return;
+
+    const readyImages = (images || [])
+      .filter((i) => i?.url)
+      .map((i) => String(i.url))
+      .slice(0, 10);
+
+    if (readyImages.length === 0) {
+      alert("Adicione ao menos 1 foto antes de gerar a descrição.");
+      return;
+    }
+
+    setIsGeneratingAi(true);
+    setAiGenerateWarning(null);
+    try {
+      const res = await fetch("/api/ai/property-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title ? title : null,
+          type,
+          purpose: purpose || null,
+          priceBRL: price ? Math.round(Number(price)) : null,
+          neighborhood: neighborhood || null,
+          city: city || null,
+          state: state || null,
+          bedrooms: bedrooms === "" ? null : Number(bedrooms),
+          bathrooms: bathrooms === "" ? null : Number(bathrooms),
+          areaM2: areaM2 === "" ? null : Number(areaM2),
+          conditionTags,
+          amenities: {
+            hasBalcony,
+            hasElevator,
+            hasPool,
+            hasGym,
+            hasPlayground,
+            hasPartyRoom,
+            hasGourmet,
+            hasConcierge24h,
+          },
+          images: readyImages,
+        }),
+      });
+
+      const json = await res.json().catch(() => null);
+      if (res.status === 429) {
+        alert(json?.error || "Limite atingido. Tente novamente mais tarde.");
+        return;
+      }
+      if (!res.ok) {
+        alert(json?.error || "Falha ao gerar texto com IA");
+        return;
+      }
+
+      const nextTitle = (json?.data?.title as string | undefined) || "";
+      const text = (json?.data?.description as string | undefined) || "";
+      const warning = json?.data?._aiWarning;
+
+      if (warning || !text.trim()) {
+        setAiGenerateWarning(
+          "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
+        );
+      }
+
+      if (nextTitle.trim()) setTitle(nextTitle);
+      if (text.trim()) setDescription(text);
+    } catch {
+      setAiGenerateWarning(
+        "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
+      );
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -468,13 +548,31 @@ export default function EditPropertyPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Título *
                   </label>
+                  <div className="flex items-center gap-3">
                   <input
                     type="text"
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      setAiGenerateWarning(null);
+                    }}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
+                    <button
+                      type="button"
+                      onClick={handleGenerateWithAi}
+                      disabled={isGeneratingAi}
+                      className="whitespace-nowrap px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold"
+                    >
+                      {isGeneratingAi ? "Gerando..." : "Gerar com IA"}
+                    </button>
+                  </div>
+                  {aiGenerateWarning && (
+                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                      {aiGenerateWarning}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

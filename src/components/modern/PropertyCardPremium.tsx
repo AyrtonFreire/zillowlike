@@ -228,7 +228,6 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
       setDragOffset(elastic);
       if (gestureLocked.current !== 'vertical') {
         e.stopPropagation();
-        e.preventDefault();
       }
       return;
     }
@@ -259,7 +258,6 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     }
     setDragX(dx);
     e.stopPropagation();
-    e.preventDefault();
   };
 
   const onTouchEnd = () => {
@@ -356,12 +354,11 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
         {/* Image Carousel */}
         <div
-          className="relative h-48 overflow-hidden rounded-t-2xl"
+          className="relative h-48 overflow-hidden rounded-t-2xl touch-pan-y"
           ref={containerRef}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
-          style={{ touchAction: 'pan-y' }}
         >
           {cardImages && cardImages.length > 0 ? (
             <>

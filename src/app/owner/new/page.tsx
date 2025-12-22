@@ -34,6 +34,7 @@ export default function NewPropertyPage() {
   const [description, setDescription] = useState("");
   const [aiDescriptionGenerations, setAiDescriptionGenerations] = useState<number>(0);
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  const [aiGenerateWarning, setAiGenerateWarning] = useState<string | null>(null);
   const [customTitle, setCustomTitle] = useState(""); // Título editável pelo usuário
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
@@ -548,8 +549,12 @@ export default function NewPropertyPage() {
 
       const w = img.naturalWidth || img.width;
       const h = img.naturalHeight || img.height;
-      if (!w || !h) throw new Error("Imagem inválida");
-      if (w < MIN_WIDTH) throw new Error(`A imagem é muito pequena (largura ${w}px). Mínimo: ${MIN_WIDTH}px.`);
+      if (!w || !h) return file;
+
+      if (w < MIN_WIDTH) {
+        setToast({ message: `Imagem pequena (${w}px). Vamos enviar mesmo assim.`, type: "info" });
+        return file;
+      }
 
       const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
       const targetW = Math.round(w * scale);
@@ -562,7 +567,7 @@ export default function NewPropertyPage() {
       canvas.width = targetW;
       canvas.height = targetH;
       const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Falha ao processar imagem");
+      if (!ctx) return file;
       ctx.drawImage(img, 0, 0, targetW, targetH);
 
       const blob: Blob = await new Promise((resolve) =>
@@ -572,10 +577,13 @@ export default function NewPropertyPage() {
 
       const finalSizeMB = processed.size / (1024 * 1024);
       if (finalSizeMB > MAX_MB) {
-        throw new Error(`A imagem permanece acima de ${MAX_MB}MB após otimização. Tente uma imagem menor.`);
+        setToast({ message: `Imagem acima de ${MAX_MB}MB mesmo após otimização. Vamos enviar mesmo assim.`, type: "info" });
       }
 
       return processed;
+    } catch {
+      setToast({ message: "Não foi possível otimizar a imagem. Vamos enviar mesmo assim.", type: "info" });
+      return file;
     } finally {
       URL.revokeObjectURL(url);
     }
@@ -2164,6 +2172,7 @@ export default function NewPropertyPage() {
                         }
 
                         setIsGeneratingDescription(true);
+                        setAiGenerateWarning(null);
                         try {
                           const res = await fetch("/api/ai/property-description", {
                             method: "POST",
@@ -2210,19 +2219,28 @@ export default function NewPropertyPage() {
                           const nextMetaDescription = (json?.data?.metaDescription as string | undefined) || "";
                           const text = (json?.data?.description as string | undefined) || "";
 
-                          if (!text.trim() || !nextTitle.trim()) {
-                            setToast({ message: "Falha ao preencher campos com IA", type: "error" });
-                            return;
+                          const warning = json?.data?._aiWarning;
+                          if (warning || !text.trim()) {
+                            setAiGenerateWarning(
+                              "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
+                            );
+                            setToast({ message: "IA indisponível no momento — preencha manualmente.", type: "info" });
                           }
 
-                          setCustomTitle(nextTitle);
-                          setDescription(text);
-                          setMetaTitle(nextMetaTitle);
-                          setMetaDescription(nextMetaDescription);
+                          // Se a IA voltou em modo fallback, o backend pode enviar description vazia.
+                          // Nesses casos, não bloqueia o usuário com erro e não sobrescreve campos com vazio.
+
+                          if (nextTitle.trim()) setCustomTitle(nextTitle);
+                          if (text.trim()) setDescription(text);
+                          if (nextMetaTitle.trim()) setMetaTitle(nextMetaTitle);
+                          if (nextMetaDescription.trim()) setMetaDescription(nextMetaDescription);
                           setAiDescriptionGenerations(1);
-                          setToast({ message: "Campos preenchidos com IA!", type: "success" });
+                          setToast({ message: warning || !text.trim() ? "Campos atualizados (revise manualmente)." : "Campos preenchidos com IA!", type: warning || !text.trim() ? "info" : "success" });
                         } catch {
-                          setToast({ message: "Falha ao preencher campos com IA", type: "error" });
+                          setAiGenerateWarning(
+                            "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
+                          );
+                          setToast({ message: "IA indisponível no momento — preencha manualmente.", type: "info" });
                         } finally {
                           setIsGeneratingDescription(false);
                         }
@@ -2259,12 +2277,18 @@ export default function NewPropertyPage() {
                       onChange={(e) => {
                         setCustomTitle(e.target.value);
                         clearFieldError("title");
+                        setAiGenerateWarning(null);
                       }}
                       placeholder="Ex: Casa em Petrolina"
                       className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.title ? "border-danger" : "border-neutral-300"}`}
                       maxLength={70}
                     />
                     {fieldErrors.title && <span className="mt-1 block text-xs text-danger">{fieldErrors.title}</span>}
+                    {aiGenerateWarning && (
+                      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                        {aiGenerateWarning}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2613,6 +2637,9 @@ export default function NewPropertyPage() {
                                       src={img.url}
                                       alt={img.alt || `Imagem ${idx + 1}`}
                                       className="w-full h-full object-cover"
+                                      onPointerDown={(e) => e.stopPropagation()}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      onTouchStart={(e) => e.stopPropagation()}
                                       onClick={(e) => { e.stopPropagation(); openLightbox(idx); }}
                                     />
                                   ) : (
@@ -2666,6 +2693,9 @@ export default function NewPropertyPage() {
                                               });
                                               setToast({ message: "Foto definida como capa!", type: "success" });
                                             }}
+                                            onPointerDown={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                            onTouchStart={(e) => e.stopPropagation()}
                                             className="flex-1 py-1.5 bg-white/90 hover:bg-white text-gray-800 text-xs font-semibold rounded-lg transition-colors"
                                           >
                                             Usar como capa
@@ -2678,6 +2708,9 @@ export default function NewPropertyPage() {
                                             lastFocusRef.current = e.currentTarget;
                                             setConfirmDelete({ open: true, index: idx });
                                           }}
+                                          onPointerDown={(e) => e.stopPropagation()}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          onTouchStart={(e) => e.stopPropagation()}
                                           className="px-3 py-1.5 bg-red-500/90 hover:bg-red-500 text-white text-xs font-semibold rounded-lg transition-colors"
                                         >
                                           ✕

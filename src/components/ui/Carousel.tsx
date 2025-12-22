@@ -65,7 +65,6 @@ export default function Carousel({ items, renderItem, className = "", auto = fal
       dx = dx * 0.35;
     }
     setDragX(dx);
-    e.preventDefault();
   };
 
   const onTouchEnd = () => {
@@ -95,7 +94,7 @@ export default function Carousel({ items, renderItem, className = "", auto = fal
     <div className={`relative ${className}`}>
       <div
         ref={containerRef}
-        className="overflow-hidden rounded-xl"
+        className="overflow-hidden rounded-xl touch-pan-y"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}

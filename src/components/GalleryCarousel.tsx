@@ -194,9 +194,8 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
             </div>
 
             <div
+              className="relative h-full overflow-hidden touch-pan-y"
               ref={fsContainerRef}
-              className="flex-1 relative overflow-hidden"
-              style={{ touchAction: 'pan-y' }}
               onTouchStart={(e) => {
                 if (e.touches.length !== 1) return;
                 setFsContainerW(fsContainerRef.current?.clientWidth || window.innerWidth);
@@ -240,7 +239,6 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                   dx = dx * 0.35;
                 }
                 setFsDragX(dx);
-                e.preventDefault();
               }}
               onTouchEnd={() => {
                 const sx = fsStartX.current;

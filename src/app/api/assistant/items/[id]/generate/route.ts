@@ -312,23 +312,54 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
 
   const model = process.env.OPENAI_TEXT_MODEL || process.env.OPENAI_VISION_MODEL || "gpt-4o-mini";
 
+  const buildFallback = (warning?: any) => {
+    const fixedTaskLabel = taskLabel;
+    const fallback = {
+      itemId: String(item.id),
+      itemType: String(item.type || ""),
+      taskLabel: fixedTaskLabel,
+      summary: `Sugestão para você agir agora: ${fixedTaskLabel.toLowerCase()}.`,
+      draft: isReminder
+        ? `Checklist (${fixedTaskLabel}):\n- Confirme o contexto do lead\n- Revise as mensagens recentes\n- Defina um próximo passo e horário\n- Registre uma anotação objetiva\n- Execute a ação e marque como concluída`
+        : `Próximo passo: ${fixedTaskLabel}.\n\nMensagem sugerida:\nOlá! Tudo bem? Só confirmando um próximo passo sobre este atendimento. Quando você consegue me responder?`,
+      reasons: [],
+      confidence: "low" as const,
+      ...(warning ? { _aiWarning: warning } : {}),
+    };
+    return successResponse(fallback as any, "OK");
+  };
+
   const callModel = async (temperature: number, extraSystem?: string) => {
-    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        temperature,
-        max_tokens: 700,
-        messages: [
-          { role: "system", content: extraSystem ? `${systemPrompt}\n\n${extraSystem}` : systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25_000);
+    let aiRes: Response | null = null;
+    try {
+      aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature,
+          max_tokens: 700,
+          messages: [
+            { role: "system", content: extraSystem ? `${systemPrompt}\n\n${extraSystem}` : systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        }),
+        signal: controller.signal,
+      });
+    } catch {
+      aiRes = null;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!aiRes) {
+      return { ok: false as const, status: 0, body: "timeout_or_network" };
+    }
 
     if (!aiRes.ok) {
       const txt = await aiRes.text().catch(() => "");
@@ -384,12 +415,7 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
 
   let modelAttempt = await callModel(0.6, reminderExtraSystem);
   if (!modelAttempt.ok) {
-    return errorResponse(
-      "Falha ao gerar sugestão",
-      502,
-      { status: modelAttempt.status, body: modelAttempt.body },
-      "AI_UPSTREAM_ERROR"
-    );
+    return buildFallback({ code: "AI_UPSTREAM_ERROR", status: modelAttempt.status, body: modelAttempt.body });
   }
 
   let content = modelAttempt.content;
@@ -406,28 +432,18 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
         .join("\n\n")
     );
     if (!retry.ok) {
-      return errorResponse(
-        "Falha ao gerar sugestão",
-        502,
-        { status: retry.status, body: retry.body },
-        "AI_UPSTREAM_ERROR"
-      );
+      return buildFallback({ code: "AI_UPSTREAM_ERROR", status: retry.status, body: retry.body });
     }
     content = retry.content;
     parsedAttempt = content ? parseOutput(content) : ({ ok: false as const, issues: [] } as any);
   }
 
   if (!content) {
-    return errorResponse("Falha ao gerar sugestão", 502, null, "AI_EMPTY_RESPONSE");
+    return buildFallback({ code: "AI_EMPTY_RESPONSE" });
   }
 
   if (!parsedAttempt.ok) {
-    return errorResponse(
-      "Falha ao gerar sugestão",
-      502,
-      { sample: content.slice(0, 2000), issues: parsedAttempt.issues },
-      "AI_INVALID_JSON"
-    );
+    return buildFallback({ code: "AI_INVALID_JSON", sample: content.slice(0, 2000), issues: parsedAttempt.issues });
   }
 
   return successResponse(

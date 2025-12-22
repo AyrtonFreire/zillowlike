@@ -63,7 +63,6 @@ export default function ImageUploadDragDrop({
   // Image processing: downscale to 2560px max side and convert to WebP ~0.82
   const processImage = async (file: File): Promise<File> => {
     const MAX_SIDE = 2560;
-    const MIN_WIDTH = 800;
     // Create bitmap
     const url = URL.createObjectURL(file);
     try {
@@ -75,9 +74,6 @@ export default function ImageUploadDragDrop({
       });
       const { naturalWidth: w, naturalHeight: h } = img;
       if (!w || !h) return file;
-      if (w < MIN_WIDTH) {
-        throw new Error(`A imagem é muito pequena (largura ${w}px). Mínimo: ${MIN_WIDTH}px.`);
-      }
       const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
       if (scale === 1 && file.type === 'image/webp') return file;
       const targetW = Math.round(w * scale);
@@ -119,15 +115,9 @@ export default function ImageUploadDragDrop({
           try {
             candidate = await processImage(file);
           } catch (err: any) {
-            alert(err?.message || 'Imagem inválida');
-            throw err;
+            alert(err?.message || 'Não foi possível otimizar a imagem. Vamos enviar mesmo assim.');
+            candidate = file;
           }
-        }
-        // After processing, enforce max size again
-        const finalSizeMB = candidate.size / (1024 * 1024);
-        if (finalSizeMB > MAX_MB) {
-          alert(`A imagem permanece acima de ${MAX_MB}MB após otimização. Tente uma imagem menor.`);
-          throw new Error('file-too-large');
         }
         return uploadToCloudinary(candidate);
       });
