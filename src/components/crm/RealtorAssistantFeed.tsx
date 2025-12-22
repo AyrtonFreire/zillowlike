@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Phone,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
@@ -166,6 +167,9 @@ export default function RealtorAssistantFeed(props: {
   const repliedTimerRef = useRef<any>(null);
   const [aiItemSnapshot, setAiItemSnapshot] = useState<AiItemSnapshot | null>(null);
 
+  const [deleteConfirmForId, setDeleteConfirmForId] = useState<string | null>(null);
+  const deleteConfirmTimerRef = useRef<any>(null);
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [justResolvedId, setJustResolvedId] = useState<string | null>(null);
   const [justSnoozedId, setJustSnoozedId] = useState<string | null>(null);
@@ -179,6 +183,11 @@ export default function RealtorAssistantFeed(props: {
       if (resolvedTimerRef.current) {
         clearTimeout(resolvedTimerRef.current);
         resolvedTimerRef.current = null;
+      }
+
+      if (deleteConfirmTimerRef.current) {
+        clearTimeout(deleteConfirmTimerRef.current);
+        deleteConfirmTimerRef.current = null;
       }
     };
   }, []);
@@ -561,6 +570,50 @@ export default function RealtorAssistantFeed(props: {
     }
   };
 
+  const requestDeleteLead = async (item: AssistantItem) => {
+    const leadId = item.leadId ? String(item.leadId) : null;
+    if (!leadId) return;
+
+    if (deleteConfirmForId !== item.id) {
+      setDeleteConfirmForId(item.id);
+      if (deleteConfirmTimerRef.current) clearTimeout(deleteConfirmTimerRef.current);
+      deleteConfirmTimerRef.current = setTimeout(() => {
+        setDeleteConfirmForId(null);
+      }, 4500);
+      return;
+    }
+
+    try {
+      setError(null);
+      setActingId(item.id);
+
+      const res = await fetch(`/api/leads/${encodeURIComponent(leadId)}`, { method: "DELETE" });
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok || !json?.success) {
+        const msg =
+          json?.error ||
+          (res.status === 401
+            ? "Sua sessão expirou. Entre novamente e tente de novo."
+            : res.status === 403
+              ? "Você não tem permissão para excluir este lead."
+              : res.status === 404
+                ? "Este lead não existe mais (provavelmente já foi removido)."
+                : "Não conseguimos excluir este lead agora.");
+        throw new Error(msg);
+      }
+
+      setDeleteConfirmForId(null);
+      etagRef.current = null;
+      props.onDidMutate?.();
+      await fetchItems();
+    } catch (err: any) {
+      setError(err?.message || "Não conseguimos excluir este lead agora.");
+    } finally {
+      setActingId(null);
+    }
+  };
+
   const defaultPrimaryAction = (item: AssistantItem): AssistantAction | null => {
     if (!item.leadId) return null;
     if (item.type === "UNANSWERED_CLIENT_MESSAGE") {
@@ -901,6 +954,27 @@ export default function RealtorAssistantFeed(props: {
                               <CheckCircle2 className="w-5 h-5" />
                               {isResolvedPreview ? "Feito" : isReminder ? "Concluir" : resolveLabel}
                             </button>
+
+                            {!!item.leadId && !isReminder && (
+                              <button
+                                type="button"
+                                disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
+                                onClick={() => requestDeleteLead(item)}
+                                className={
+                                  deleteConfirmForId === item.id
+                                    ? "inline-flex items-center gap-2 px-5 py-3 rounded-full border border-red-200 bg-red-50 text-sm font-bold text-red-700 hover:bg-red-100 disabled:opacity-60"
+                                    : "inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+                                }
+                                title={
+                                  deleteConfirmForId === item.id
+                                    ? "Clique novamente para excluir permanentemente"
+                                    : "Excluir lead"
+                                }
+                              >
+                                <Trash2 className="w-5 h-5" />
+                                {deleteConfirmForId === item.id ? "Confirmar" : "Excluir lead"}
+                              </button>
+                            )}
 
                             {isReminder ? (
                               openLeadAction && (

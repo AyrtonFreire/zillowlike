@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Home, MapPin, Bed, Bath, Maximize } from "lucide-react";
+import { Home, MapPin, Bed, Bath, Maximize, Eye, Users } from "lucide-react";
 
 interface PropertyCardV2Props {
   id: string;
@@ -84,8 +84,8 @@ export default function PropertyCardV2({
   };
 
   return (
-    <a href={href} className="block group">
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all">
+    <a href={href} className="block group h-full">
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all h-full flex flex-col">
         {/* Image Section */}
         <div className="relative aspect-[16/10] bg-gray-100 overflow-hidden">
           {image ? (
@@ -113,13 +113,13 @@ export default function PropertyCardV2({
         </div>
 
         {/* Content Section */}
-        <div className="p-6">
+        <div className="p-6 flex-1 flex flex-col">
           {/* Title & Address */}
-          <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-teal-600 transition-colors">
+          <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 min-h-[56px] group-hover:text-teal-600 transition-colors">
             {title}
           </h3>
 
-          <div className="flex items-start gap-1.5 text-sm text-gray-600 mb-4">
+          <div className="flex items-start gap-1.5 text-sm text-gray-600 mb-4 min-h-[40px]">
             <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-400" />
             <span className="line-clamp-2">
               {street && `${street}, `}
@@ -131,8 +131,19 @@ export default function PropertyCardV2({
           {/* Price */}
           <div className="text-3xl font-extrabold text-teal-600 mb-4">{formatPrice(price)}</div>
 
+          <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+            <div className="flex items-center gap-1">
+              <Users className="w-4 h-4" />
+              <span>{leads}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Eye className="w-4 h-4" />
+              <span>{views}</span>
+            </div>
+          </div>
+
           {/* Property Details */}
-          <div className="flex items-center gap-4 text-sm text-gray-600">
+          <div className="mt-auto flex items-center gap-4 text-sm text-gray-600">
             {type && <span className="font-medium text-gray-700">{type}</span>}
             {bedrooms !== null && bedrooms !== undefined && (
               <div className="flex items-center gap-1">

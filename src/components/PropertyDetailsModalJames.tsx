@@ -156,6 +156,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[]; hospitals: any[]; malls: any[]; parks: any[]; gyms: any[]; fuel: any[]; bakeries: any[]; banks: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
   const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
   const [poiLoading, setPoiLoading] = useState(false);
+  const trackedViewRef = useRef<Set<string>>(new Set());
   // Lightbox touch resistance state
   const lbStartX = useRef<number | null>(null);
   const lbStartY = useRef<number | null>(null);
@@ -306,6 +307,14 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           });
         } else {
           setProperty(data.item);
+
+          try {
+            if (activePropertyId && !trackedViewRef.current.has(activePropertyId)) {
+              trackedViewRef.current.add(activePropertyId);
+              fetch(`/api/public/properties/${activePropertyId}/view`, { method: "POST" }).catch(() => {});
+            }
+          } catch {
+          }
         }
       })
       .catch((err) => {
