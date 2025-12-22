@@ -23,14 +23,24 @@ export default function LeadListItem({
   onAccept,
   onReject,
 }: LeadListItemProps) {
-  const statusConfig = {
+  const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
     PENDING: {
       label: "Pendente",
       color: "bg-yellow-100 text-yellow-700",
       icon: AlertCircle,
     },
+    RESERVED: {
+      label: "Reservado",
+      color: "bg-yellow-100 text-yellow-700",
+      icon: AlertCircle,
+    },
     ACCEPTED: {
       label: "Aceito",
+      color: "bg-green-100 text-green-700",
+      icon: CheckCircle,
+    },
+    COMPLETED: {
+      label: "Concluído",
       color: "bg-green-100 text-green-700",
       icon: CheckCircle,
     },
@@ -46,7 +56,11 @@ export default function LeadListItem({
     },
   };
 
-  const config = statusConfig[status];
+  const config = statusConfig[String(status)] || {
+    label: String(status || "Lead"),
+    color: "bg-gray-100 text-gray-700",
+    icon: AlertCircle,
+  };
   const StatusIcon = config.icon;
 
   const formatDate = (date: Date) => {

@@ -239,10 +239,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (lead.realtorId) {
-    try {
-      await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
-    } catch {
-      // ignore
+    const hasInitialMessage = !!(message && String(message).trim().length > 0);
+    const shouldRecalc = lead.status === "RESERVED" || hasInitialMessage;
+    if (shouldRecalc) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+      } catch {
+        // ignore
+      }
     }
   }
 

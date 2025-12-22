@@ -146,7 +146,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
 
       {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-[50000] space-y-3 max-w-md pointer-events-none">
+      <div className="fixed top-[calc(env(safe-area-inset-top)+1rem)] left-4 right-4 md:left-auto md:right-4 z-[50000] space-y-3 max-w-md pointer-events-none">
         <AnimatePresence mode="popLayout">
           {toasts.map((toast) => {
             const Icon = icons[toast.type];

@@ -490,11 +490,27 @@ export class RealtorAssistantService {
           ? new Date(Math.max(...lastContactCandidates.map((x) => x.getTime())))
           : null;
 
+      const sourceMeta = leadSourceMap.get(lead.id) as any;
+      const leadSource = (sourceMeta as any)?.source || null;
+
+      const firstClient = firstClientMsgMap.get(lead.id) as any;
+      const lastClient = lastClientMsgMap.get(lead.id) as any;
+
+      const hasClientMessage = !!firstClient?.createdAt;
+
       if (lead.status === "ACCEPTED" && !lastContactAt) {
         const createdAt = new Date(lead.createdAt);
         const threshold = new Date(now);
         threshold.setHours(threshold.getHours() - 24);
-        if (!Number.isNaN(createdAt.getTime()) && createdAt >= threshold) {
+        if (!Number.isNaN(createdAt.getTime()) && createdAt >= threshold && hasClientMessage) {
+          const lastClientAtIso = (() => {
+            const d = lastClient?.createdAt ? new Date(lastClient.createdAt) : null;
+            if (!d || Number.isNaN(d.getTime())) return null;
+            return d.toISOString();
+          })();
+          const lastPreview = String(lastClient?.content || firstClient?.content || "")
+            .trim()
+            .slice(0, 140);
           const key = `NEW_LEAD:${lead.id}`;
           dedupeKeys.add(key);
           await this.upsertFromRule({
@@ -502,22 +518,18 @@ export class RealtorAssistantService {
             leadId: lead.id,
             type: "NEW_LEAD",
             priority: "HIGH",
-            title: "Novo lead recebido",
-            message: `${clientName} pediu informações sobre ${propertyTitle}.`,
+            title: "Novo lead: mensagem recebida",
+            message: lastPreview
+              ? `${clientName} enviou uma mensagem sobre ${propertyTitle}. Última: “${lastPreview}”`
+              : `${clientName} enviou uma mensagem sobre ${propertyTitle}.`,
             dueAt: null,
             dedupeKey: key,
             primaryAction: { type: "OPEN_CHAT", leadId: lead.id },
             secondaryAction: { type: "OPEN_LEAD", leadId: lead.id },
-            metadata: { status: lead.status },
+            metadata: { status: lead.status, leadSource, lastClientAt: lastClientAtIso },
           });
         }
       }
-
-      const sourceMeta = leadSourceMap.get(lead.id) as any;
-      const leadSource = (sourceMeta as any)?.source || null;
-
-      const firstClient = firstClientMsgMap.get(lead.id) as any;
-      const lastClient = lastClientMsgMap.get(lead.id) as any;
 
       const isFormLead = leadSource === "CONTACT_FORM" || leadSource === "VISIT_REQUEST";
 
@@ -531,6 +543,12 @@ export class RealtorAssistantService {
       channelsToCheck.push("CHAT");
 
       for (const channel of channelsToCheck) {
+        // Se ainda não houve qualquer contato do corretor/owner e já existe mensagem do cliente,
+        // preferimos um único aviso de "Novo lead" (com a mensagem) em vez de duplicar com "não respondida".
+        if (!lastContactAt && hasClientMessage) {
+          continue;
+        }
+
         const clientMessagesForLead = (recentClientMessages || []).filter((m: any) => m.leadId === lead.id);
 
         const clientMsgsInChannel = clientMessagesForLead.filter((m: any) => {

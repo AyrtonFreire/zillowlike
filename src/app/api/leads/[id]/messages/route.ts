@@ -167,7 +167,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       if (isProfessional && (!currentStage || currentStage === "NEW")) {
         await (prisma as any).lead.update({
           where: { id },
-          data: { pipelineStage: "CONTACT" },
+          data: {
+            pipelineStage: "CONTACT",
+            respondedAt: (lead as any)?.respondedAt ? undefined : new Date(),
+          },
+        });
+      } else if (isProfessional && !(lead as any)?.respondedAt) {
+        await (prisma as any).lead.update({
+          where: { id },
+          data: { respondedAt: new Date() },
         });
       }
     } catch (updateError) {
