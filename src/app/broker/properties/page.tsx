@@ -32,6 +32,9 @@ interface BrokerProperty {
   completedVisits: number;
   pendingApprovals: number;
   createdAt: string;
+  conversionRatePct?: number | null;
+  daysSinceLastLead?: number | null;
+  platformComparisonPct?: number | null;
 }
 
 type BrokerPropertyWithQuality = BrokerProperty & { qualityScore: number };
@@ -343,6 +346,9 @@ export default function BrokerPropertiesPage() {
                     type={property.type}
                     views={property.views}
                     leads={property.leads}
+                    conversionRatePct={(property as any).conversionRatePct ?? (property as any)?.analytics?.conversionRatePct ?? null}
+                    daysSinceLastLead={(property as any).daysSinceLastLead ?? (property as any)?.analytics?.daysSinceLastLead ?? null}
+                    platformComparisonPct={(property as any).platformComparisonPct ?? (property as any)?.analytics?.platformComparisonPct ?? null}
                     favorites={property.favorites}
                     qualityScore={property.qualityScore}
                     hasDescription={typeof property.description === "string" && property.description.length >= 100}

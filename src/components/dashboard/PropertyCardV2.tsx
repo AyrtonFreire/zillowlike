@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Home, MapPin, Bed, Bath, Maximize, Eye, Users } from "lucide-react";
+import { Home, MapPin, Bed, Bath, Maximize, Eye, Users, Target, Timer, Stars } from "lucide-react";
 
 interface PropertyCardV2Props {
   id: string;
@@ -20,6 +20,9 @@ interface PropertyCardV2Props {
   type?: string;
   views: number;
   leads: number;
+  conversionRatePct?: number | null;
+  daysSinceLastLead?: number | null;
+  platformComparisonPct?: number | null;
   favorites?: number;
   qualityScore?: number; // 0-100
   hasDescription?: boolean;
@@ -44,6 +47,9 @@ export default function PropertyCardV2({
   type,
   views,
   leads,
+  conversionRatePct = null,
+  daysSinceLastLead = null,
+  platformComparisonPct = null,
   favorites,
   qualityScore = 75,
   hasDescription = true,
@@ -81,6 +87,31 @@ export default function PropertyCardV2({
     if (qualityScore >= 80) return "text-green-600 bg-green-50";
     if (qualityScore >= 60) return "text-yellow-600 bg-yellow-50";
     return "text-red-600 bg-red-50";
+  };
+
+  const conversionLabel = () => {
+    if (conversionRatePct === null || typeof conversionRatePct === "undefined") return "—";
+    return `${conversionRatePct.toLocaleString("pt-BR")}%`;
+  };
+
+  const staleLabel = () => {
+    if (daysSinceLastLead === null || typeof daysSinceLastLead === "undefined") return "—";
+    if (daysSinceLastLead === 0) return "hoje";
+    return `${daysSinceLastLead}d`;
+  };
+
+  const comparisonLabel = () => {
+    if (platformComparisonPct === null || typeof platformComparisonPct === "undefined") return "—";
+    return `${platformComparisonPct}%`;
+  };
+
+  const comparisonTone = () => {
+    if (platformComparisonPct === null || typeof platformComparisonPct === "undefined") {
+      return "text-gray-700";
+    }
+    if (platformComparisonPct >= 110) return "text-emerald-700";
+    if (platformComparisonPct >= 90) return "text-amber-700";
+    return "text-rose-700";
   };
 
   return (
@@ -163,6 +194,37 @@ export default function PropertyCardV2({
                 <span>{areaM2}m²</span>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Compact Analytics Bar */}
+        <div className="border-t border-gray-100 bg-gray-50/60 px-6 py-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-2 text-[12px] text-gray-700">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Eye className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <span className="font-semibold tabular-nums">{views}</span>
+              <span className="text-gray-500 truncate">views</span>
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Users className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <span className="font-semibold tabular-nums">{leads}</span>
+              <span className="text-gray-500 truncate">leads</span>
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Target className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <span className="font-semibold tabular-nums">{conversionLabel()}</span>
+              <span className="text-gray-500 truncate">conv.</span>
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Timer className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <span className="font-semibold tabular-nums">{staleLabel()}</span>
+              <span className="text-gray-500 truncate">sem lead</span>
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Stars className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <span className={`font-semibold tabular-nums ${comparisonTone()}`}>{comparisonLabel()}</span>
+              <span className="text-gray-500 truncate">média</span>
+            </div>
           </div>
         </div>
       </div>

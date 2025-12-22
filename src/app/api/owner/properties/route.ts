@@ -53,6 +53,23 @@ export async function GET(req: NextRequest) {
     // Aggregate visit stats per property
     const now = new Date();
 
+    const propertyIds = properties.map((p: any) => p.id);
+
+    const [platformViews, platformLeads, lastLeadByProperty] = await Promise.all([
+      prisma.propertyView.count(),
+      prisma.lead.count(),
+      prisma.lead.groupBy({
+        by: ["propertyId"],
+        where: { propertyId: { in: propertyIds } },
+        _max: { createdAt: true },
+      }),
+    ]);
+
+    const platformAvgConversionRate = platformViews > 0 ? platformLeads / platformViews : 0;
+    const lastLeadMap = new Map<string, Date | null>(
+      (lastLeadByProperty || []).map((row: any) => [row.propertyId, row._max?.createdAt || null])
+    );
+
     const [scheduledVisits, completedVisits, pendingApprovals] = await Promise.all([
       prisma.lead.groupBy({
         by: ["propertyId"],
@@ -125,6 +142,33 @@ export async function GET(req: NextRequest) {
 
     // Format properties for frontend
     const formattedProperties = properties.map((p: any) => ({
+      ...((): any => {
+        const views = p._count.views as number;
+        const leads = p._count.leads as number;
+        const conversionRate = views > 0 ? leads / views : 0;
+        const conversionRatePct = Math.round(conversionRate * 1000) / 10;
+        const lastLeadAt = lastLeadMap.get(p.id) || null;
+        const since = lastLeadAt || p.createdAt;
+        const daysSinceLastLead = since
+          ? Math.max(0, Math.floor((now.getTime() - new Date(since).getTime()) / (1000 * 60 * 60 * 24)))
+          : null;
+        const platformComparisonPct =
+          platformAvgConversionRate > 0
+            ? Math.round((conversionRate / platformAvgConversionRate) * 100)
+            : null;
+
+        return {
+          analytics: {
+            conversionRatePct,
+            daysSinceLastLead,
+            platformComparisonPct,
+            platformAvgConversionRatePct: Math.round(platformAvgConversionRate * 1000) / 10,
+          },
+          conversionRatePct,
+          daysSinceLastLead,
+          platformComparisonPct,
+        };
+      })(),
       id: p.id,
       title: p.title,
       price: p.price,
