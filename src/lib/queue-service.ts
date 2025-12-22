@@ -6,6 +6,45 @@ const prisma = new PrismaClient();
  * Serviço de gerenciamento da fila de corretores
  */
 export class QueueService {
+  private static async ensureQueueRecord(realtorId: string) {
+    const existing = await prisma.realtorQueue.findUnique({
+      where: { realtorId },
+      select: { id: true },
+    });
+
+    if (existing) return;
+
+    const lastPosition = await prisma.realtorQueue.findFirst({
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+
+    const newPosition = (lastPosition?.position || 0) + 1;
+
+    try {
+      await prisma.realtorQueue.create({
+        data: {
+          realtorId,
+          position: newPosition,
+          score: 0,
+          status: "ACTIVE",
+        },
+      });
+    } catch {
+      // ignore
+    }
+
+    try {
+      await prisma.realtorStats.upsert({
+        where: { realtorId },
+        create: { realtorId },
+        update: {},
+      });
+    } catch {
+      // ignore
+    }
+  }
+
   /**
    * Adiciona corretor à fila
    */
@@ -38,10 +77,10 @@ export class QueueService {
     });
 
     // Cria estatísticas
-    await prisma.realtorStats.create({
-      data: {
-        realtorId,
-      },
+    await prisma.realtorStats.upsert({
+      where: { realtorId },
+      create: { realtorId },
+      update: {},
     });
 
     return queue;
@@ -150,6 +189,7 @@ export class QueueService {
    * Incrementa contador de leads ativos
    */
   static async incrementActiveLeads(realtorId: string) {
+    await QueueService.ensureQueueRecord(realtorId);
     await prisma.realtorQueue.update({
       where: { realtorId },
       data: {
@@ -164,10 +204,19 @@ export class QueueService {
    * Decrementa contador de leads ativos
    */
   static async decrementActiveLeads(realtorId: string) {
+    await QueueService.ensureQueueRecord(realtorId);
+
+    const queue = await prisma.realtorQueue.findUnique({
+      where: { realtorId },
+      select: { activeLeads: true },
+    });
+
+    if (!queue) return;
+
     await prisma.realtorQueue.update({
       where: { realtorId },
       data: {
-        activeLeads: { decrement: 1 },
+        activeLeads: Math.max(0, queue.activeLeads - 1),
         lastActivity: new Date(),
       },
     });
@@ -177,6 +226,7 @@ export class QueueService {
    * Incrementa contador de leads rejeitados
    */
   static async incrementRejected(realtorId: string) {
+    await QueueService.ensureQueueRecord(realtorId);
     await prisma.realtorQueue.update({
       where: { realtorId },
       data: {
