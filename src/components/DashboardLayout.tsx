@@ -9,7 +9,7 @@ import { usePathname } from "next/navigation";
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  title: string;
+  title: ReactNode;
   description?: string;
   actions?: ReactNode;
   breadcrumbs?: { label: string; href?: string }[];

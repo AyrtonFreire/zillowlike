@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { 
@@ -20,6 +20,7 @@ import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import DashboardLayout from "@/components/DashboardLayout";
 import { canonicalToBoardGroup, boardGroupToCanonical } from "@/lib/lead-pipeline";
+import { getPusherClient } from "@/lib/pusher-client";
 
 // Tipo de imóvel traduzido
 const PROPERTY_TYPES: Record<string, string> = {
@@ -114,7 +115,7 @@ function DroppableColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col rounded-xl border transition-colors w-[280px] md:w-[320px] max-h-[70vh] ${
+      className={`flex flex-col rounded-xl border transition-colors w-full min-w-0 max-h-[70vh] ${
         isOver
           ? "border-teal-400 bg-teal-50/40 ring-2 ring-teal-200"
           : "border-gray-200 bg-gray-50"
@@ -289,6 +290,7 @@ export default function MyLeadsPage() {
   const moveLeadToStageRef = useRef<
     ((leadId: string, newStage: PipelineStage) => Promise<void>) | null
   >(null);
+  const [nameFilter, setNameFilter] = useState("");
   const [cityFilter, setCityFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "last7">("all");
@@ -334,7 +336,7 @@ export default function MyLeadsPage() {
     }
   }, [pipelineFilter]);
 
-  const fetchLeads = async (options?: { isBackground?: boolean }) => {
+  const fetchLeads = useCallback(async (options?: { isBackground?: boolean }) => {
     try {
       if (!realtorId) return;
       if (!options?.isBackground) {
@@ -377,7 +379,37 @@ export default function MyLeadsPage() {
         setLoading(false);
       }
     }
-  };
+  }, [realtorId]);
+
+  useEffect(() => {
+    if (!realtorId) return;
+
+    let cancelled = false;
+    try {
+      const pusher = getPusherClient();
+      const channelName = `private-realtor-${realtorId}`;
+      const channel = pusher.subscribe(channelName);
+
+      const handler = () => {
+        if (cancelled) return;
+        fetchLeads({ isBackground: true });
+      };
+
+      channel.bind("assistant-updated", handler as any);
+
+      return () => {
+        cancelled = true;
+        try {
+          channel.unbind("assistant-updated", handler as any);
+          pusher.unsubscribe(channelName);
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      return;
+    }
+  }, [realtorId, fetchLeads]);
 
   const fetchLeadNotes = async (leadId: string) => {
     try {
@@ -710,6 +742,13 @@ export default function MyLeadsPage() {
       if (stage !== pipelineFilter) return false;
     }
 
+    if (nameFilter) {
+      const name = String(lead.contact?.name || "");
+      if (!name.toLowerCase().includes(nameFilter.toLowerCase())) {
+        return false;
+      }
+    }
+
     // City filter
     if (
       cityFilter &&
@@ -846,8 +885,8 @@ export default function MyLeadsPage() {
         {/* Contadores inteligentes - visíveis quando tem algo relevante */}
         {(smartCounters.awaitingResponse > 0 || smartCounters.noContact48h > 0) && (
           <div className="bg-white border-b border-gray-200">
-            <div className="max-w-7xl mx-auto px-4 py-2">
-              <div className="flex gap-4 overflow-x-auto scrollbar-hide">
+            <div className="w-full px-4 sm:px-6 lg:px-8 py-2">
+              <div className="flex flex-wrap gap-3">
                 {smartCounters.awaitingResponse > 0 && (
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg text-xs whitespace-nowrap">
                     <Bell className="w-3.5 h-3.5 text-rose-600" />
@@ -873,7 +912,7 @@ export default function MyLeadsPage() {
 
         {/* Barra de filtros e toggle de visualização */}
         <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             {/* Toggle mobile + Filtros */}
             <div className="px-4 py-3">
               <div className="flex items-center gap-3">
@@ -900,8 +939,8 @@ export default function MyLeadsPage() {
                 </div>
 
                 {/* Filtros - scroll horizontal */}
-                <div className="flex-1 overflow-x-auto scrollbar-hide">
-                  <div className="flex gap-2 min-w-max">
+                <div className="flex-1">
+                  <div className="flex flex-wrap gap-2">
                     {[
                       { key: "all" as const, label: "Todos", count: counts.all },
                       { key: "NEW" as const, label: "Novos", count: counts.NEW },
@@ -946,14 +985,14 @@ export default function MyLeadsPage() {
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  showFilters || cityFilter || typeFilter || dateFilter !== "all"
+                  showFilters || nameFilter || cityFilter || typeFilter || dateFilter !== "all"
                     ? "bg-teal-50 text-teal-700 border border-teal-200"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
                 <Filter className="w-4 h-4" />
                 Filtros
-                {(cityFilter || typeFilter || dateFilter !== "all") && (
+                {(nameFilter || cityFilter || typeFilter || dateFilter !== "all") && (
                   <span className="w-2 h-2 rounded-full bg-teal-500" />
                 )}
               </button>
@@ -974,7 +1013,14 @@ export default function MyLeadsPage() {
                   className="overflow-hidden border-t border-gray-100"
                 >
                   <div className="px-4 py-3 bg-gray-50 space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Nome..."
+                        value={nameFilter}
+                        onChange={(e) => setNameFilter(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
                       <input
                         type="text"
                         placeholder="Cidade..."
@@ -1013,9 +1059,10 @@ export default function MyLeadsPage() {
                         </button>
                       ))}
                     </div>
-                    {(cityFilter || typeFilter || dateFilter !== "all") && (
+                    {(nameFilter || cityFilter || typeFilter || dateFilter !== "all") && (
                       <button
                         onClick={() => {
+                          setNameFilter("");
                           setCityFilter("");
                           setTypeFilter("");
                           setDateFilter("all");
@@ -1033,7 +1080,7 @@ export default function MyLeadsPage() {
         </div>
 
         {/* Leads Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {error ? (
           <EmptyState
             title="Não foi possível carregar seus leads"
@@ -1077,8 +1124,8 @@ export default function MyLeadsPage() {
 
                 return (
                   <div className="space-y-3">
-                    <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
-                      <div className="flex gap-2 min-w-max">
+                    <div className="flex flex-wrap gap-2 -mx-4 px-4 pb-1">
+                      <div className="flex flex-wrap gap-2">
                         {(
                           [
                             { key: "NEW" as const, label: "Novos", count: counts.NEW },
@@ -1103,7 +1150,7 @@ export default function MyLeadsPage() {
                         ))}
                       </div>
                     </div>
-                    <DroppableColumn stageId={activeStage.id} className="w-full md:w-[320px] max-h-[65vh]">
+                    <DroppableColumn stageId={activeStage.id} className="w-full max-h-[65vh]">
                       <div className="px-3 pt-3">
                         <div className="h-1 rounded-full bg-gradient-to-r from-teal-500/70 to-teal-400/30" />
                       </div>
@@ -1144,8 +1191,8 @@ export default function MyLeadsPage() {
             </div>
 
             {/* Desktop: board completo */}
-            <div className="hidden md:block -mx-4 px-4 overflow-x-auto pb-2">
-              <div className="flex gap-4 min-w-max">
+            <div className="hidden md:block pb-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {PIPELINE_STAGES.map((stage) => {
                   const stageLeads = filteredLeadsByPipelineStage[stage.id];
                   const Icon = stage.icon;

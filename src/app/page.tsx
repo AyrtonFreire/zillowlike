@@ -1570,7 +1570,7 @@ export default function Home() {
                 <div className="md:hidden space-y-2">
                   <div className="flex items-center gap-2 relative">
                     {/* Search Bar com Autocomplete */}
-                    <div className="flex-1 relative">
+                    <div ref={searchInputRef} className="flex-1 relative">
                       <div className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg bg-white">
                         <Search className="w-4 h-4 text-gray-400" />
                         <input
@@ -1602,7 +1602,7 @@ export default function Home() {
                       
                       {/* Autocomplete Dropdown Mobile */}
                       {showSearchSuggestions && searchSuggestions.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-80 overflow-y-auto">
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-80 overflow-y-auto pointer-events-auto">
                           {searchSuggestions.map((suggestion, idx) => (
                             <button
                               key={idx}

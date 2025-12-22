@@ -155,6 +155,7 @@ export async function GET(_req: NextRequest) {
           clientPhone: lead.contact?.phone || null,
           lastMessage: lastMessage ? (lastMessage.length > 50 ? lastMessage.slice(0, 50) + "..." : lastMessage) : undefined,
           lastMessageAt,
+          lastMessageFromClient,
           unreadCount,
           daysUntilArchive,
           property: {

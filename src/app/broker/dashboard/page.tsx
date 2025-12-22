@@ -107,6 +107,8 @@ export default function BrokerDashboard() {
   } | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
+  const BROKER_CHAT_LAST_READ_PREFIX = "zlw_broker_chat_last_read_";
+
   const userId = (session?.user as any)?.id as string | undefined;
 
   useEffect(() => {
@@ -145,12 +147,51 @@ export default function BrokerDashboard() {
     }
   }, [userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+    const onFocus = () => fetchUnreadMessages();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchUnreadMessages();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [userId]);
+
   const fetchUnreadMessages = async () => {
     try {
       const response = await fetch("/api/broker/chats");
       const data = await response.json();
       if (response.ok && data.chats) {
-        const total = data.chats.reduce((acc: number, chat: any) => acc + (chat.unreadCount || 0), 0);
+        let total = 0;
+        if (typeof window !== "undefined") {
+          for (const chat of data.chats as any[]) {
+            const leadId = String(chat.leadId || "");
+            const lastMessageAt = chat.lastMessageAt as string | undefined;
+            const lastMessageFromClient = chat.lastMessageFromClient as boolean | undefined;
+
+            if (!leadId || !lastMessageAt) continue;
+            if (!lastMessageFromClient) continue;
+
+            const key = `${BROKER_CHAT_LAST_READ_PREFIX}${leadId}`;
+            const stored = window.localStorage.getItem(key);
+            if (!stored) {
+              total += 1;
+              continue;
+            }
+
+            const lastRead = new Date(stored).getTime();
+            const lastMsg = new Date(lastMessageAt).getTime();
+            if (Number.isNaN(lastRead) || Number.isNaN(lastMsg) || lastMsg > lastRead) {
+              total += 1;
+            }
+          }
+        } else {
+          total = (data.chats as any[]).reduce((acc: number, chat: any) => acc + (chat.unreadCount || 0), 0);
+        }
         setUnreadMessages(total);
       }
     } catch (err) {
@@ -394,7 +435,14 @@ export default function BrokerDashboard() {
 
   return (
     <DashboardLayout
-      title={`${getGreeting()}, ${session?.user?.name ?? "Corretor"} 👋`}
+      title={
+        <>
+          <span className="md:hidden">{getGreeting()},</span>
+          <span className="hidden md:inline">
+            {getGreeting()}, {session?.user?.name ?? "Corretor"} 👋
+          </span>
+        </>
+      }
       description="Aqui está um resumo do seu desempenho"
       breadcrumbs={[
         { label: "Home", href: "/" },

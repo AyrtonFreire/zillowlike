@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -27,6 +27,7 @@ import RealtorAssistantWidget from "@/components/crm/RealtorAssistantWidget";
 import { buildPropertyPath } from "@/lib/slug";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import { getPusherClient } from "@/lib/pusher-client";
 
 interface ChatPreview {
   leadId: string;
@@ -36,6 +37,7 @@ interface ChatPreview {
   clientPhone?: string | null;
   lastMessage?: string;
   lastMessageAt?: string;
+  lastMessageFromClient?: boolean;
   unreadCount: number;
   daysUntilArchive?: number | null;
   property: {
@@ -62,6 +64,9 @@ export default function BrokerChatsPage() {
   const searchParams = useSearchParams();
   const leadIdFromUrl = searchParams.get("lead");
   const userId = (session?.user as any)?.id || "";
+
+  const STORAGE_PREFIX = "zlw_broker_chat_last_read_";
+  const [readTick, setReadTick] = useState(0);
 
   const [chats, setChats] = useState<ChatPreview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,12 +98,42 @@ export default function BrokerChatsPage() {
     }
   }, [leadIdFromUrl, chats, selectedChat]);
 
+  const markChatAsRead = useCallback((leadId: string) => {
+    if (!leadId) return;
+    if (typeof window === "undefined") return;
+    try {
+      const key = `${STORAGE_PREFIX}${leadId}`;
+      window.localStorage.setItem(key, new Date().toISOString());
+      setReadTick(Date.now());
+    } catch {
+      // ignore
+    }
+  }, [STORAGE_PREFIX]);
+
+  const getUnreadCount = useCallback((chat: ChatPreview) => {
+    if (typeof window === "undefined") return chat.unreadCount || 0;
+    if (!chat.lastMessageAt) return 0;
+    if (!chat.lastMessageFromClient) return 0;
+    try {
+      const key = `${STORAGE_PREFIX}${chat.leadId}`;
+      const stored = window.localStorage.getItem(key);
+      if (!stored) return 1;
+      const lastRead = new Date(stored).getTime();
+      const lastMsg = new Date(chat.lastMessageAt).getTime();
+      if (Number.isNaN(lastRead) || Number.isNaN(lastMsg)) return 1;
+      return lastMsg > lastRead ? 1 : 0;
+    } catch {
+      return 0;
+    }
+  }, [STORAGE_PREFIX]);
+
   // Fetch messages when chat is selected
   useEffect(() => {
     if (selectedChat) {
       fetchMessages(selectedChat.leadId);
+      markChatAsRead(selectedChat.leadId);
     }
-  }, [selectedChat]);
+  }, [selectedChat, markChatAsRead]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -110,14 +145,47 @@ export default function BrokerChatsPage() {
     if (!selectedChat) return;
     const interval = setInterval(() => {
       fetchMessages(selectedChat.leadId, true);
-    }, 5000);
+    }, 30000);
     return () => clearInterval(interval);
   }, [selectedChat]);
 
-  const fetchChats = async () => {
+  useEffect(() => {
+    if (!selectedChat?.leadId) return;
+
+    let cancelled = false;
     try {
-      setError(null);
-      setLoading(true);
+      const pusher = getPusherClient();
+      const channelName = `chat-${selectedChat.leadId}`;
+      const channel = pusher.subscribe(channelName);
+
+      const handler = () => {
+        if (cancelled) return;
+        fetchMessages(selectedChat.leadId, true);
+        fetchChats(true);
+      };
+
+      channel.bind("new-chat-message", handler as any);
+
+      return () => {
+        cancelled = true;
+        try {
+          channel.unbind("new-chat-message", handler as any);
+          pusher.unsubscribe(channelName);
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      return;
+    }
+  }, [selectedChat?.leadId]);
+
+  const fetchChats = async (silent = false) => {
+    try {
+      if (!silent) {
+        setError(null);
+        setLoading(true);
+      }
       const response = await fetch("/api/broker/chats");
       const data = await response.json();
 
@@ -128,11 +196,41 @@ export default function BrokerChatsPage() {
       setChats(Array.isArray(data.chats) ? data.chats : []);
     } catch (err: any) {
       console.error("Error fetching chats:", err);
-      setError(err?.message || "Erro ao carregar conversas.");
+      if (!silent) setError(err?.message || "Erro ao carregar conversas.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!userId) return;
+
+    let cancelled = false;
+    try {
+      const pusher = getPusherClient();
+      const channelName = `private-realtor-${userId}`;
+      const channel = pusher.subscribe(channelName);
+
+      const handler = () => {
+        if (cancelled) return;
+        fetchChats(true);
+      };
+
+      channel.bind("assistant-updated", handler as any);
+
+      return () => {
+        cancelled = true;
+        try {
+          channel.unbind("assistant-updated", handler as any);
+          pusher.unsubscribe(channelName);
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      return;
+    }
+  }, [userId]);
 
   const fetchMessages = async (leadId: string, silent = false) => {
     try {
@@ -222,6 +320,14 @@ export default function BrokerChatsPage() {
     );
   });
 
+  const displayChats = useMemo(() => {
+    void readTick;
+    return filteredChats.map((chat) => ({
+      ...chat,
+      unreadCount: getUnreadCount(chat),
+    }));
+  }, [filteredChats, getUnreadCount, readTick]);
+
   // Group messages by date
   const groupedMessages: { date: string; messages: Message[] }[] = [];
   messages.forEach((msg) => {
@@ -260,7 +366,7 @@ export default function BrokerChatsPage() {
         { label: "Conversas" },
       ]}
     >
-      <div className="h-[calc(100vh-200px)] min-h-[500px] bg-white rounded-xl border border-gray-200 overflow-hidden flex">
+      <div className="h-[calc(100vh-200px)] min-h-[500px] bg-white rounded-xl border border-gray-200 overflow-hidden flex min-w-0 w-full max-w-full">
         {/* Lista de conversas - Sidebar */}
         <div
           className={`w-full md:w-80 lg:w-96 border-r border-gray-200 flex flex-col bg-gray-50 ${
@@ -283,7 +389,7 @@ export default function BrokerChatsPage() {
 
           {/* Lista de chats */}
           <div className="flex-1 overflow-y-auto">
-            {filteredChats.length === 0 ? (
+            {displayChats.length === 0 ? (
               <div className="p-8 text-center">
                 <MessageCircle className="w-12 h-12 mx-auto text-gray-300 mb-3" />
                 <p className="text-sm text-gray-500">
@@ -291,10 +397,13 @@ export default function BrokerChatsPage() {
                 </p>
               </div>
             ) : (
-              filteredChats.map((chat) => (
+              displayChats.map((chat) => (
                 <button
                   key={chat.leadId}
-                  onClick={() => setSelectedChat(chat)}
+                  onClick={() => {
+                    setSelectedChat(chat);
+                    markChatAsRead(chat.leadId);
+                  }}
                   className={`w-full p-4 flex gap-3 hover:bg-white transition-colors border-b border-gray-100 text-left ${
                     selectedChat?.leadId === chat.leadId ? "bg-white border-l-4 border-l-teal-500" : ""
                   }`}
@@ -361,7 +470,7 @@ export default function BrokerChatsPage() {
         </div>
 
         {/* Área do chat */}
-        <div className={`flex-1 flex flex-col ${selectedChat ? "flex" : "hidden md:flex"}`}>
+        <div className={`flex-1 flex flex-col min-w-0 ${selectedChat ? "flex" : "hidden md:flex"}`}>
           {selectedChat ? (
             <>
               {/* Header do chat */}

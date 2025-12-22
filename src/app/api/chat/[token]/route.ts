@@ -128,6 +128,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       select: {
         id: true,
         realtorId: true,
+        pipelineStage: true,
+        respondedAt: true,
         property: {
           select: {
             ownerId: true,
@@ -202,6 +204,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       orderBy: { createdAt: "desc" },
     });
 
+    const previousStage = (lead as any)?.pipelineStage as string | null | undefined;
+
     const message = await (prisma as any).leadClientMessage.create({
       data: {
         leadId: lead.id,
@@ -209,6 +213,30 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         content: parsed.data.content.trim(),
       },
     });
+
+    if (!fromClient) {
+      try {
+        const currentStage = previousStage;
+        if (!currentStage || currentStage === "NEW") {
+          await (prisma as any).lead.update({
+            where: { id: lead.id },
+            data: {
+              pipelineStage: "CONTACT",
+              respondedAt: (lead as any)?.respondedAt ? undefined : new Date(),
+            },
+            select: { id: true },
+          });
+        } else if (!(lead as any)?.respondedAt) {
+          await (prisma as any).lead.update({
+            where: { id: lead.id },
+            data: { respondedAt: new Date() },
+            select: { id: true },
+          });
+        }
+      } catch (updateError) {
+        console.error("Error auto-updating lead pipelineStage on chat reply:", updateError);
+      }
+    }
 
     if (fromClient) {
       await LeadEventService.record({

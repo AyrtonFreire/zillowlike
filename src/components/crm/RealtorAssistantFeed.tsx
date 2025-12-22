@@ -844,20 +844,23 @@ export default function RealtorAssistantFeed(props: {
                     const messageIsLong = String(item.message || "").trim().length > 120;
                     const isExpanded = expandedId === item.id;
 
-                    const priorityLabel = getPriorityLabel(item.priority);
+                    const effectivePriority =
+                      item.status === "ACTIVE" && stateTone === "overdue" ? "HIGH" : item.priority;
+
+                    const priorityLabel = getPriorityLabel(effectivePriority);
                     const chipText = `Prioridade ${priorityLabel}${stateLabel ? ` · ${stateLabel}` : ""}`;
 
                     const priorityDotClass =
-                      item.priority === "HIGH"
+                      effectivePriority === "HIGH"
                         ? "bg-red-500"
-                        : item.priority === "MEDIUM"
+                        : effectivePriority === "MEDIUM"
                           ? "bg-amber-500"
                           : "bg-gray-400";
 
                     const chipClasses =
-                      item.priority === "HIGH"
+                      effectivePriority === "HIGH"
                         ? "bg-red-50 text-red-700 border-red-100"
-                        : item.priority === "MEDIUM"
+                        : effectivePriority === "MEDIUM"
                           ? "bg-amber-50 text-amber-800 border-amber-100"
                           : "bg-gray-50 text-gray-700 border-gray-200";
 
