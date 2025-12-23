@@ -546,7 +546,13 @@ export class RealtorAssistantService {
         // Se ainda não houve qualquer contato do corretor/owner e já existe mensagem do cliente,
         // preferimos um único aviso de "Novo lead" (com a mensagem) em vez de duplicar com "não respondida".
         if (!lastContactAt && hasClientMessage) {
-          continue;
+          const createdAt = new Date(lead.createdAt);
+          const threshold = new Date(now);
+          threshold.setHours(threshold.getHours() - 24);
+          const isFresh = !Number.isNaN(createdAt.getTime()) && createdAt >= threshold;
+          if (isFresh) {
+            continue;
+          }
         }
 
         const clientMessagesForLead = (recentClientMessages || []).filter((m: any) => m.leadId === lead.id);

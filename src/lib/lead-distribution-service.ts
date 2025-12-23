@@ -641,6 +641,17 @@ export class LeadDistributionService {
 
     // Buscar dados adicionais para indicadores (notas, mensagens)
     const leadIds = leads.map(l => l.id);
+
+    const readReceipts = await (prisma as any).leadChatReadReceipt.findMany({
+      where: {
+        userId: realtorId,
+        leadId: { in: leadIds },
+      },
+      select: { leadId: true, lastReadAt: true },
+    });
+    const readReceiptMap = new Map(
+      (readReceipts || []).map((r: any) => [String(r.leadId), new Date(r.lastReadAt)])
+    );
     
     // Buscar última nota de cada lead
     const lastNotes = await prisma.leadNote.findMany({
@@ -697,14 +708,17 @@ export class LeadDistributionService {
         lastContactAt = null;
       }
 
-      // Verificar se há mensagens do cliente mais recentes do que o último contato profissional
+      // Verificar se há mensagens do cliente mais recentes do que a última visualização do corretor
       const lastClientMsgAt = lastClientMessageMap.get(lead.id) as Date | undefined;
       let hasUnreadMessages = false;
       if (lastClientMsgAt) {
-        if (!lastContactAt) {
-          hasUnreadMessages = true; // Cliente já falou, mas ainda não houve nenhum contato do corretor
+        const lastReadAt = readReceiptMap.get(String(lead.id)) || null;
+        if (!lastReadAt) {
+          hasUnreadMessages = true;
         } else {
-          hasUnreadMessages = lastClientMsgAt > lastContactAt;
+          const lastReadMs = lastReadAt.getTime();
+          const lastClientMs = lastClientMsgAt.getTime();
+          hasUnreadMessages = !Number.isNaN(lastReadMs) && !Number.isNaN(lastClientMs) && lastClientMs > lastReadMs;
         }
       }
 

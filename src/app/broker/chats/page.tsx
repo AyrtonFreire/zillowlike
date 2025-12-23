@@ -102,6 +102,8 @@ export default function BrokerChatsPage() {
   const markChatAsRead = useCallback((leadId: string) => {
     if (!leadId) return;
     if (typeof window === "undefined") return;
+
+    setChats((prev) => prev.map((c) => (c.leadId === leadId ? { ...c, unreadCount: 0 } : c)));
     try {
       const key = `${STORAGE_PREFIX}${leadId}`;
       window.localStorage.setItem(key, new Date().toISOString());
@@ -109,22 +111,15 @@ export default function BrokerChatsPage() {
     } catch {
       // ignore
     }
-  }, [STORAGE_PREFIX]);
 
-  const getUnreadCount = useCallback((chat: ChatPreview) => {
-    if (typeof window === "undefined") return chat.unreadCount || 0;
-    if (!chat.lastMessageAt) return 0;
-    if (!chat.lastMessageFromClient) return 0;
     try {
-      const key = `${STORAGE_PREFIX}${chat.leadId}`;
-      const stored = window.localStorage.getItem(key);
-      if (!stored) return 1;
-      const lastRead = new Date(stored).getTime();
-      const lastMsg = new Date(chat.lastMessageAt).getTime();
-      if (Number.isNaN(lastRead) || Number.isNaN(lastMsg)) return 1;
-      return lastMsg > lastRead ? 1 : 0;
+      void fetch("/api/broker/chats/mark-read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId }),
+      });
     } catch {
-      return 0;
+      // ignore
     }
   }, [STORAGE_PREFIX]);
 
@@ -311,24 +306,20 @@ export default function BrokerChatsPage() {
     return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
   };
 
-  const filteredChats = chats.filter((chat) => {
-    if (propertyIdFromUrl && chat.property?.id !== propertyIdFromUrl) return false;
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      chat.clientName.toLowerCase().includes(q) ||
-      chat.property.title.toLowerCase().includes(q) ||
-      chat.property.city.toLowerCase().includes(q)
+  const filteredChats = useMemo(() => {
+    if (!searchQuery.trim()) return chats;
+    const query = searchQuery.toLowerCase();
+    return chats.filter(
+      (chat) =>
+        chat.clientName.toLowerCase().includes(query) ||
+        chat.property.title.toLowerCase().includes(query)
     );
-  });
+  }, [chats, searchQuery]);
 
   const displayChats = useMemo(() => {
     void readTick;
-    return filteredChats.map((chat) => ({
-      ...chat,
-      unreadCount: getUnreadCount(chat),
-    }));
-  }, [filteredChats, getUnreadCount, readTick]);
+    return filteredChats;
+  }, [filteredChats, readTick]);
 
   // Group messages by date
   const groupedMessages: { date: string; messages: Message[] }[] = [];

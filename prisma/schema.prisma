@@ -660,6 +660,22 @@ model LeadClientMessage {
   @@map("lead_client_messages")
 }
 
+model LeadChatReadReceipt {
+  id         String   @id @default(cuid())
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  lastReadAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([leadId, userId])
+  @@index([userId])
+  @@index([leadId])
+  @@map("lead_chat_read_receipts")
+}
+
 model LeadEvent {
   id          String         @id @default(cuid())
   lead        Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)

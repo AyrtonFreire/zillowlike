@@ -81,6 +81,20 @@ export async function GET(_req: NextRequest) {
 
     console.log("[Broker Chats] Leads únicos com mensagens:", leads.length);
 
+    // Buscar receipts de leitura (persistidos) para calcular unreadCount
+    let readReceipts: any[] = [];
+    try {
+      readReceipts = await (prisma as any).leadChatReadReceipt.findMany({
+        where: { userId: String(userId), leadId: { in: leads.map((l: any) => l.id) } },
+        select: { leadId: true, lastReadAt: true },
+      });
+    } catch {
+      readReceipts = [];
+    }
+    const readMap = new Map<string, Date>(
+      (readReceipts || []).map((r: any) => [String(r.leadId), new Date(r.lastReadAt)])
+    );
+
     // Para cada lead, buscar última mensagem e contagem de não lidas
     const chatsWithMessages = await Promise.all(
       leads.map(async (lead) => {
@@ -132,9 +146,21 @@ export async function GET(_req: NextRequest) {
           lastMessageFromClient = false;
         }
 
-        // unreadCount indica apenas se há uma mensagem recente do cliente ainda sem resposta
-        // (última mensagem do lead enviada pelo cliente)
-        const unreadCount = lastMessageFromClient ? 1 : 0;
+        // unreadCount indica se há mensagem do cliente após o último "visto" do corretor
+        // (independente de ter respondido)
+        let unreadCount = 0;
+        if (lastMessageFromClient && lastMessageAt) {
+          const lastReadAt = readMap.get(String(lead.id)) || null;
+          if (!lastReadAt) {
+            unreadCount = 1;
+          } else {
+            const lastReadMs = lastReadAt.getTime();
+            const lastMsgMs = new Date(lastMessageAt).getTime();
+            if (!Number.isNaN(lastReadMs) && !Number.isNaN(lastMsgMs) && lastMsgMs > lastReadMs) {
+              unreadCount = 1;
+            }
+          }
+        }
 
         // Calcular dias até arquivamento (10 dias sem atividade)
         const ARCHIVE_DAYS = 10;

@@ -166,32 +166,10 @@ export default function BrokerDashboard() {
       const response = await fetch("/api/broker/chats");
       const data = await response.json();
       if (response.ok && data.chats) {
-        let total = 0;
-        if (typeof window !== "undefined") {
-          for (const chat of data.chats as any[]) {
-            const leadId = String(chat.leadId || "");
-            const lastMessageAt = chat.lastMessageAt as string | undefined;
-            const lastMessageFromClient = chat.lastMessageFromClient as boolean | undefined;
-
-            if (!leadId || !lastMessageAt) continue;
-            if (!lastMessageFromClient) continue;
-
-            const key = `${BROKER_CHAT_LAST_READ_PREFIX}${leadId}`;
-            const stored = window.localStorage.getItem(key);
-            if (!stored) {
-              total += 1;
-              continue;
-            }
-
-            const lastRead = new Date(stored).getTime();
-            const lastMsg = new Date(lastMessageAt).getTime();
-            if (Number.isNaN(lastRead) || Number.isNaN(lastMsg) || lastMsg > lastRead) {
-              total += 1;
-            }
-          }
-        } else {
-          total = (data.chats as any[]).reduce((acc: number, chat: any) => acc + (chat.unreadCount || 0), 0);
-        }
+        const total = (data.chats as any[]).reduce(
+          (acc: number, chat: any) => acc + (chat.unreadCount || 0),
+          0
+        );
         setUnreadMessages(total);
       }
     } catch (err) {
