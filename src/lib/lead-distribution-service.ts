@@ -649,7 +649,7 @@ export class LeadDistributionService {
       },
       select: { leadId: true, lastReadAt: true },
     });
-    const readReceiptMap = new Map(
+    const readReceiptMap = new Map<string, Date>(
       (readReceipts || []).map((r: any) => [String(r.leadId), new Date(r.lastReadAt)])
     );
     
@@ -712,7 +712,7 @@ export class LeadDistributionService {
       const lastClientMsgAt = lastClientMessageMap.get(lead.id) as Date | undefined;
       let hasUnreadMessages = false;
       if (lastClientMsgAt) {
-        const lastReadAt = readReceiptMap.get(String(lead.id)) || null;
+        const lastReadAt = readReceiptMap.get(String(lead.id));
         if (!lastReadAt) {
           hasUnreadMessages = true;
         } else {
