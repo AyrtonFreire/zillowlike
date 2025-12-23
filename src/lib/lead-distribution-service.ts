@@ -651,9 +651,15 @@ export class LeadDistributionService {
         },
         select: { leadId: true, lastReadAt: true },
       });
-    } catch {
-      readReceipts = [];
+    } catch (err: any) {
+      // If the table hasn't been migrated yet in production (P2021), keep the site working.
+      if (err?.code === "P2021") {
+        readReceipts = [];
+      } else {
+        throw err;
+      }
     }
+
     const readReceiptMap = new Map<string, Date>(
       (readReceipts || []).map((r: any) => [String(r.leadId), new Date(r.lastReadAt)])
     );

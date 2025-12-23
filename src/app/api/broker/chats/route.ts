@@ -88,8 +88,12 @@ export async function GET(_req: NextRequest) {
         where: { userId: String(userId), leadId: { in: leads.map((l: any) => l.id) } },
         select: { leadId: true, lastReadAt: true },
       });
-    } catch {
-      readReceipts = [];
+    } catch (err: any) {
+      if (err?.code === "P2021") {
+        readReceipts = [];
+      } else {
+        throw err;
+      }
     }
     const readMap = new Map<string, Date>(
       (readReceipts || []).map((r: any) => [String(r.leadId), new Date(r.lastReadAt)])

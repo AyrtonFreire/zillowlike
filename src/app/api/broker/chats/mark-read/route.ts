@@ -80,9 +80,13 @@ export async function POST(req: NextRequest) {
       });
 
       return NextResponse.json({ success: true, receipt: { leadId: receipt.leadId, lastReadAt: receipt.lastReadAt } });
-    } catch (err) {
-      console.error("Error upserting read receipt (best-effort):", err);
-      return NextResponse.json({ success: true, skipped: true });
+    } catch (error: any) {
+      // If the table doesn't exist yet (pending migrations), do not break UX.
+      if (error?.code === "P2021") {
+        return NextResponse.json({ success: true, skipped: true });
+      }
+      console.error("Error marking chat as read:", error);
+      return NextResponse.json({ error: "Não foi possível marcar como lido." }, { status: 500 });
     }
   } catch (error) {
     console.error("Error marking chat as read:", error);
