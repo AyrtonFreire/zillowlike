@@ -35,6 +35,11 @@ interface BrokerProperty {
   conversionRatePct?: number | null;
   daysSinceLastLead?: number | null;
   platformComparisonPct?: number | null;
+  timeseries14d?: {
+    days: string[];
+    views: number[];
+    leads: number[];
+  } | null;
 }
 
 type BrokerPropertyWithQuality = BrokerProperty & { qualityScore: number };
@@ -349,6 +354,12 @@ export default function BrokerPropertiesPage() {
                     conversionRatePct={(property as any).conversionRatePct ?? (property as any)?.analytics?.conversionRatePct ?? null}
                     daysSinceLastLead={(property as any).daysSinceLastLead ?? (property as any)?.analytics?.daysSinceLastLead ?? null}
                     platformComparisonPct={(property as any).platformComparisonPct ?? (property as any)?.analytics?.platformComparisonPct ?? null}
+                    timeseries14d={(property as any).timeseries14d ?? null}
+                    quickActions={{
+                      viewLeadsUrl: `/broker/leads?propertyId=${property.id}`,
+                      viewChatUrl: `/broker/chats?propertyId=${property.id}`,
+                      editUrl: `/broker/properties/${property.id}/overview`,
+                    }}
                     favorites={property.favorites}
                     qualityScore={property.qualityScore}
                     hasDescription={typeof property.description === "string" && property.description.length >= 100}

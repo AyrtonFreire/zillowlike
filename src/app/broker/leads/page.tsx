@@ -307,6 +307,7 @@ export default function MyLeadsPage() {
   
   // Toggle visualização Lista/Pipeline (lendo query param `view`)
   const searchParams = useSearchParams();
+  const propertyIdFromUrl = searchParams.get("propertyId");
   const initialView = (searchParams.get("view") === "pipeline" ? "pipeline" : "list") as
     | "list"
     | "pipeline";
@@ -737,6 +738,7 @@ export default function MyLeadsPage() {
   const leadsBaseForView = viewMode === "pipeline" ? leads : activeLeads;
 
   const filteredLeads = leadsBaseForView.filter((lead) => {
+    if (propertyIdFromUrl && lead.property?.id !== propertyIdFromUrl) return false;
     if (pipelineFilter !== "all") {
       const stage = getLeadPipelineStage(lead);
       if (stage !== pipelineFilter) return false;

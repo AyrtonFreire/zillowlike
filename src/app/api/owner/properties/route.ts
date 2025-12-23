@@ -55,7 +55,29 @@ export async function GET(req: NextRequest) {
 
     const propertyIds = properties.map((p: any) => p.id);
 
-    const [platformViews, platformLeads, lastLeadByProperty] = await Promise.all([
+    if (propertyIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        properties: [],
+        metrics: {
+          totalProperties: 0,
+          activeProperties: 0,
+          pausedProperties: 0,
+          draftProperties: 0,
+          totalViews: 0,
+          totalLeads: 0,
+          totalFavorites: 0,
+          scheduledVisits: 0,
+          completedVisits: 0,
+        },
+      });
+    }
+
+    const start14d = new Date(now);
+    start14d.setHours(0, 0, 0, 0);
+    start14d.setDate(start14d.getDate() - 13);
+
+    const [platformViews, platformLeads, lastLeadByProperty, viewsByDayRows, leadsByDayRows] = await Promise.all([
       prisma.propertyView.count(),
       prisma.lead.count(),
       prisma.lead.groupBy({
@@ -63,12 +85,46 @@ export async function GET(req: NextRequest) {
         where: { propertyId: { in: propertyIds } },
         _max: { createdAt: true },
       }),
+      prisma.$queryRaw<
+        Array<{ propertyId: string; day: string; count: number }>
+      >`
+        SELECT "propertyId", (DATE("viewedAt"))::text AS day, COUNT(*)::int AS count
+        FROM "property_views"
+        WHERE "propertyId" = ANY(${propertyIds})
+          AND "viewedAt" >= ${start14d}
+        GROUP BY 1, 2
+      `,
+      prisma.$queryRaw<
+        Array<{ propertyId: string; day: string; count: number }>
+      >`
+        SELECT "propertyId", (DATE("createdAt"))::text AS day, COUNT(*)::int AS count
+        FROM "leads"
+        WHERE "propertyId" = ANY(${propertyIds})
+          AND "createdAt" >= ${start14d}
+        GROUP BY 1, 2
+      `,
     ]);
 
     const platformAvgConversionRate = platformViews > 0 ? platformLeads / platformViews : 0;
     const lastLeadMap = new Map<string, Date | null>(
       (lastLeadByProperty || []).map((row: any) => [row.propertyId, row._max?.createdAt || null])
     );
+
+    const days: string[] = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(start14d);
+      d.setDate(start14d.getDate() + i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+
+    const viewsDayMap = new Map<string, number>();
+    for (const r of viewsByDayRows || []) {
+      viewsDayMap.set(`${r.propertyId}|${r.day}`, Number(r.count) || 0);
+    }
+    const leadsDayMap = new Map<string, number>();
+    for (const r of leadsByDayRows || []) {
+      leadsDayMap.set(`${r.propertyId}|${r.day}`, Number(r.count) || 0);
+    }
 
     const [scheduledVisits, completedVisits, pendingApprovals] = await Promise.all([
       prisma.lead.groupBy({
@@ -157,6 +213,9 @@ export async function GET(req: NextRequest) {
             ? Math.round((conversionRate / platformAvgConversionRate) * 100)
             : null;
 
+        const viewsSeries = days.map((day) => viewsDayMap.get(`${p.id}|${day}`) || 0);
+        const leadsSeries = days.map((day) => leadsDayMap.get(`${p.id}|${day}`) || 0);
+
         return {
           analytics: {
             conversionRatePct,
@@ -167,6 +226,11 @@ export async function GET(req: NextRequest) {
           conversionRatePct,
           daysSinceLastLead,
           platformComparisonPct,
+          timeseries14d: {
+            days,
+            views: viewsSeries,
+            leads: leadsSeries,
+          },
         };
       })(),
       id: p.id,

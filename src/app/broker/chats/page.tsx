@@ -63,6 +63,7 @@ export default function BrokerChatsPage() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const leadIdFromUrl = searchParams.get("lead");
+  const propertyIdFromUrl = searchParams.get("propertyId");
   const userId = (session?.user as any)?.id || "";
 
   const STORAGE_PREFIX = "zlw_broker_chat_last_read_";
@@ -311,6 +312,7 @@ export default function BrokerChatsPage() {
   };
 
   const filteredChats = chats.filter((chat) => {
+    if (propertyIdFromUrl && chat.property?.id !== propertyIdFromUrl) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (

@@ -35,6 +35,11 @@ interface Property {
   conversionRatePct?: number | null;
   daysSinceLastLead?: number | null;
   platformComparisonPct?: number | null;
+  timeseries14d?: {
+    days: string[];
+    views: number[];
+    leads: number[];
+  } | null;
 }
 
 interface Metrics {
@@ -285,6 +290,10 @@ export default function OwnerPropertiesPage() {
                 conversionRatePct={(property as any).conversionRatePct ?? (property as any)?.analytics?.conversionRatePct ?? null}
                 daysSinceLastLead={(property as any).daysSinceLastLead ?? (property as any)?.analytics?.daysSinceLastLead ?? null}
                 platformComparisonPct={(property as any).platformComparisonPct ?? (property as any)?.analytics?.platformComparisonPct ?? null}
+                timeseries14d={(property as any).timeseries14d ?? null}
+                quickActions={{
+                  editUrl: `/owner/properties/edit/${property.id}`,
+                }}
                 favorites={property.stats.favorites}
                 qualityScore={calculateQualityScore(property)}
                 hasDescription={typeof property.description === "string" && property.description.length >= 100}
