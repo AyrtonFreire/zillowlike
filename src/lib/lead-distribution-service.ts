@@ -642,13 +642,18 @@ export class LeadDistributionService {
     // Buscar dados adicionais para indicadores (notas, mensagens)
     const leadIds = leads.map(l => l.id);
 
-    const readReceipts = await (prisma as any).leadChatReadReceipt.findMany({
-      where: {
-        userId: realtorId,
-        leadId: { in: leadIds },
-      },
-      select: { leadId: true, lastReadAt: true },
-    });
+    let readReceipts: any[] = [];
+    try {
+      readReceipts = await (prisma as any).leadChatReadReceipt.findMany({
+        where: {
+          userId: realtorId,
+          leadId: { in: leadIds },
+        },
+        select: { leadId: true, lastReadAt: true },
+      });
+    } catch {
+      readReceipts = [];
+    }
     const readReceiptMap = new Map<string, Date>(
       (readReceipts || []).map((r: any) => [String(r.leadId), new Date(r.lastReadAt)])
     );

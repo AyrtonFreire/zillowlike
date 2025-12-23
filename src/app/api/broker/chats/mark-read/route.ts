@@ -61,24 +61,29 @@ export async function POST(req: NextRequest) {
 
     const now = new Date();
 
-    const receipt = await (prisma as any).leadChatReadReceipt.upsert({
-      where: {
-        leadId_userId: {
+    try {
+      const receipt = await (prisma as any).leadChatReadReceipt.upsert({
+        where: {
+          leadId_userId: {
+            leadId,
+            userId: String(userId),
+          },
+        },
+        create: {
           leadId,
           userId: String(userId),
+          lastReadAt: now,
         },
-      },
-      create: {
-        leadId,
-        userId: String(userId),
-        lastReadAt: now,
-      },
-      update: {
-        lastReadAt: now,
-      },
-    });
+        update: {
+          lastReadAt: now,
+        },
+      });
 
-    return NextResponse.json({ success: true, receipt: { leadId: receipt.leadId, lastReadAt: receipt.lastReadAt } });
+      return NextResponse.json({ success: true, receipt: { leadId: receipt.leadId, lastReadAt: receipt.lastReadAt } });
+    } catch (err) {
+      console.error("Error upserting read receipt (best-effort):", err);
+      return NextResponse.json({ success: true, skipped: true });
+    }
   } catch (error) {
     console.error("Error marking chat as read:", error);
     return NextResponse.json({ error: "Não foi possível marcar como lido." }, { status: 500 });
