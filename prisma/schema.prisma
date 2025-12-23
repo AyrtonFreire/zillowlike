@@ -451,6 +451,7 @@ model User {
 
   leadRecommendationLists LeadRecommendationList[]
   realtorAssistantItems   RealtorAssistantItem[] @relation("RealtorAssistantItems")
+  leadChatReadReceipts    LeadChatReadReceipt[]
 }
 
 model VerificationToken {
@@ -526,6 +527,8 @@ model Lead {
   notes LeadNote[]
 
   messages LeadMessage[]
+
+  chatReadReceipts LeadChatReadReceipt[]
 
   events LeadEvent[]
 
