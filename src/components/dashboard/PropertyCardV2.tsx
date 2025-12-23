@@ -2,6 +2,91 @@
 
 import Image from "next/image";
 import { Home, MapPin, Bed, Bath, Maximize, Eye, Users, Target, Timer, Stars } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
+
+function TooltipMetric({
+  id,
+  label,
+  title,
+  description,
+  example,
+  children,
+  isTapMode,
+  activeTooltipId,
+  setActiveTooltipId,
+}: {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+  example?: string;
+  children: ReactNode;
+  isTapMode: boolean;
+  activeTooltipId: string | null;
+  setActiveTooltipId: (next: string | null) => void;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const isOpen = activeTooltipId === id;
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onDocPointerDown = (e: Event) => {
+      const el = ref.current;
+      if (!el) return;
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (el.contains(target)) return;
+      setActiveTooltipId(null);
+    };
+
+    document.addEventListener("pointerdown", onDocPointerDown);
+    return () => document.removeEventListener("pointerdown", onDocPointerDown);
+  }, [isOpen, setActiveTooltipId]);
+
+  const tooltipVisible = isOpen;
+
+  const handleToggleTap = (e: PointerEvent | MouseEvent) => {
+    if (!isTapMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setActiveTooltipId(isOpen ? null : id);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (!isTapMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setActiveTooltipId(isOpen ? null : id);
+  };
+
+  return (
+    <div
+      ref={ref}
+      className="flex items-center gap-1.5 min-w-0 relative group/tt outline-none"
+      tabIndex={0}
+      title={title}
+      aria-label={`${title}. ${description}${example ? ` Exemplo: ${example}` : ""}`}
+      role="group"
+      onPointerDown={handleToggleTap}
+      onClick={handleToggleTap}
+      onKeyDown={handleKeyDown}
+    >
+      {children}
+      <div
+        className={`pointer-events-none absolute bottom-full right-0 mb-2 w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] text-gray-700 shadow-lg ${
+          tooltipVisible ? "block" : "hidden"
+        } group-hover/tt:block group-focus/tt:block`}
+      >
+        <div className="font-semibold text-gray-900 mb-0.5">{label}</div>
+        <div>{description}</div>
+        {example ? <div className="mt-1 text-gray-600">Ex: {example}</div> : null}
+      </div>
+    </div>
+  );
+}
 
 interface PropertyCardV2Props {
   id: string;
@@ -56,6 +141,17 @@ export default function PropertyCardV2({
   hasMinPhotos = true,
   missingFields = [],
 }: PropertyCardV2Props) {
+  const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
+
+  const isTapMode = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    } catch {
+      return false;
+    }
+  }, []);
+
   const formatPrice = (cents: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -200,31 +296,88 @@ export default function PropertyCardV2({
         {/* Compact Analytics Bar */}
         <div className="border-t border-gray-100 bg-gray-50/60 px-6 py-3">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-2 text-[12px] text-gray-700">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Eye className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <span className="font-semibold tabular-nums">{views}</span>
-              <span className="text-gray-500 truncate">views</span>
-            </div>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Users className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <span className="font-semibold tabular-nums">{leads}</span>
-              <span className="text-gray-500 truncate">leads</span>
-            </div>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Target className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <span className="font-semibold tabular-nums">{conversionLabel()}</span>
-              <span className="text-gray-500 truncate">conv.</span>
-            </div>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Timer className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <span className="font-semibold tabular-nums">{staleLabel()}</span>
-              <span className="text-gray-500 truncate">sem lead</span>
-            </div>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Stars className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <span className={`font-semibold tabular-nums ${comparisonTone()}`}>{comparisonLabel()}</span>
-              <span className="text-gray-500 truncate">média</span>
-            </div>
+            <TooltipMetric
+              id="views"
+              label="Views"
+              title="Views (visualizações)"
+              description="Quantidade de vezes que o anúncio foi visualizado."
+              isTapMode={isTapMode}
+              activeTooltipId={activeTooltipId}
+              setActiveTooltipId={setActiveTooltipId}
+            >
+              <>
+                <Eye className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <span className="font-semibold tabular-nums">{views}</span>
+                <span className="text-gray-500 truncate">views</span>
+              </>
+            </TooltipMetric>
+
+            <TooltipMetric
+              id="leads"
+              label="Leads"
+              title="Leads (contatos)"
+              description="Quantidade de pessoas que enviaram contato/interesse por este imóvel."
+              isTapMode={isTapMode}
+              activeTooltipId={activeTooltipId}
+              setActiveTooltipId={setActiveTooltipId}
+            >
+              <>
+                <Users className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <span className="font-semibold tabular-nums">{leads}</span>
+                <span className="text-gray-500 truncate">leads</span>
+              </>
+            </TooltipMetric>
+
+            <TooltipMetric
+              id="conversion"
+              label="Conversão"
+              title="Conversão (leads/views)"
+              description="Percentual de visualizações que viraram lead."
+              example="2 leads / 100 views = 2%"
+              isTapMode={isTapMode}
+              activeTooltipId={activeTooltipId}
+              setActiveTooltipId={setActiveTooltipId}
+            >
+              <>
+                <Target className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <span className="font-semibold tabular-nums">{conversionLabel()}</span>
+                <span className="text-gray-500 truncate">conv.</span>
+              </>
+            </TooltipMetric>
+
+            <TooltipMetric
+              id="stale"
+              label="Tempo sem lead"
+              title="Tempo sem gerar lead"
+              description="Dias desde o último lead. Se nunca teve lead, conta desde a criação do anúncio."
+              example="10d = 10 dias sem lead"
+              isTapMode={isTapMode}
+              activeTooltipId={activeTooltipId}
+              setActiveTooltipId={setActiveTooltipId}
+            >
+              <>
+                <Timer className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <span className="font-semibold tabular-nums">{staleLabel()}</span>
+                <span className="text-gray-500 truncate">sem lead</span>
+              </>
+            </TooltipMetric>
+
+            <TooltipMetric
+              id="avg"
+              label="Média da plataforma"
+              title="% vs média da plataforma"
+              description="Mostra sua conversão (leads/views) comparada à conversão média da plataforma."
+              example="120% = 20% melhor que a média"
+              isTapMode={isTapMode}
+              activeTooltipId={activeTooltipId}
+              setActiveTooltipId={setActiveTooltipId}
+            >
+              <>
+                <Stars className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <span className={`font-semibold tabular-nums ${comparisonTone()}`}>{comparisonLabel()}</span>
+                <span className="text-gray-500 truncate">média</span>
+              </>
+            </TooltipMetric>
           </div>
         </div>
       </div>
