@@ -31,8 +31,25 @@ interface Metrics {
     isPositive: boolean;
   };
   avgResponseTime: number;
+  avgResponseTimeTrend?: {
+    value: number;
+    isPositive: boolean;
+  };
   activeLeads: number;
   leadsWithReminders: number;
+}
+
+function formatMinutesCompact(totalMinutes: number) {
+  const minutes = Math.max(0, Math.round(totalMinutes || 0));
+  if (minutes < 60) return `${minutes}min`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours < 24) return mins > 0 ? `${hours}h${String(mins).padStart(2, "0")}` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  if (days <= 0) return `${hours}h`;
+  if (remHours <= 0) return `${days}d`;
+  return `${days}d${remHours}h`;
 }
 
 interface Property {
@@ -546,16 +563,17 @@ export default function BrokerDashboard() {
             title="Leads em atendimento"
             value={metrics?.activeLeads || 0}
             icon={Activity}
-            subtitle="Reservados ou em atendimento"
+            subtitle="Reservados/atendendo"
             iconColor="text-purple-600"
             iconBgColor="bg-purple-50"
           />
           {isPartner ? (
             <MetricCard
-              title="Tempo de Resposta"
-              value={`${metrics?.avgResponseTime || 0}min`}
+              title="Tempo de resposta (7 dias)"
+              value={formatMinutesCompact(metrics?.avgResponseTime || 0)}
               icon={Clock}
-              subtitle="Média de resposta nos leads da fila"
+              trend={metrics?.avgResponseTimeTrend}
+              subtitle="Média p/ leads recebidos"
               iconColor="text-orange-600"
               iconBgColor="bg-orange-50"
             />
@@ -564,7 +582,7 @@ export default function BrokerDashboard() {
               title="Lembretes marcados"
               value={metrics?.leadsWithReminders || 0}
               icon={Clock}
-              subtitle="Leads com próxima ação definida"
+              subtitle="Leads com próxima ação"
               iconColor="text-orange-600"
               iconBgColor="bg-orange-50"
             />

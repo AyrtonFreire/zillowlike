@@ -33,10 +33,10 @@ export default function MetricCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1 truncate">{title}</p>
+          <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1 whitespace-normal leading-snug">{title}</p>
           <p className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{value}</p>
           {subtitle && (
-            <p className="text-[11px] sm:text-xs text-gray-500 truncate">{subtitle}</p>
+            <p className="text-[11px] sm:text-xs text-gray-500 whitespace-normal leading-snug">{subtitle}</p>
           )}
           {trend && (
             <div className="flex items-center gap-1 mt-2">

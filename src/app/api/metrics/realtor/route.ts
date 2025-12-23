@@ -56,10 +56,33 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get average response time (in minutes) for leads efetivamente respondidos
+    // Get average response time (in minutes) for leads responded in the last 7 days window
     const leads = await prisma.lead.findMany({
       where: {
         realtorId: userId,
+        createdAt: {
+          gte: last7Days,
+        },
+        status: {
+          in: ["ACCEPTED", "REJECTED"],
+        },
+        respondedAt: {
+          not: null,
+        },
+      },
+      select: {
+        createdAt: true,
+        respondedAt: true,
+      },
+    });
+
+    const prevLeads = await prisma.lead.findMany({
+      where: {
+        realtorId: userId,
+        createdAt: {
+          gte: last14Days,
+          lt: last7Days,
+        },
         status: {
           in: ["ACCEPTED", "REJECTED"],
         },
@@ -84,6 +107,23 @@ export async function GET(request: NextRequest) {
       }, 0);
       avgResponseTime = Math.round(totalMinutes / leads.length);
     }
+
+    let avgResponseTimePrevious = 0;
+    if (prevLeads.length > 0) {
+      const totalMinutes = prevLeads.reduce((sum, lead) => {
+        if (lead.respondedAt) {
+          const diff = lead.respondedAt.getTime() - lead.createdAt.getTime();
+          return sum + diff / 60000;
+        }
+        return sum;
+      }, 0);
+      avgResponseTimePrevious = Math.round(totalMinutes / prevLeads.length);
+    }
+
+    const avgResponseTimeTrend =
+      avgResponseTimePrevious > 0
+        ? ((avgResponseTimePrevious - avgResponseTime) / avgResponseTimePrevious) * 100
+        : 0;
 
     // Leads atualmente em atendimento (reservados ou aceitos)
     const activeLeads = await prisma.lead.count({
@@ -179,6 +219,10 @@ export async function GET(request: NextRequest) {
           isPositive: leadTrend >= 0,
         },
         avgResponseTime,
+        avgResponseTimeTrend: {
+          value: Math.round(avgResponseTimeTrend),
+          isPositive: avgResponseTimeTrend >= 0,
+        },
         activeLeads,
         leadsWithReminders,
       },
