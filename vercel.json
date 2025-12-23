@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/archive-chats",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/recalc-conversion-benchmarks",
+      "schedule": "0 2 * * *"
     }
   ]
 }

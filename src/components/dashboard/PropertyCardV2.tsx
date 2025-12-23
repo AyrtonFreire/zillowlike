@@ -496,9 +496,9 @@ export default function PropertyCardV2({
               <TooltipMetric
                 id="avg"
                 label="Média do site"
-                title="Comparação com a média do site"
-                description="Mostra quanto sua conversão (leads/views) está acima ou abaixo da média do site."
-                example="+20% = 20% acima da média"
+                title="Comparação com anúncios parecidos"
+                description="Mostra quanto sua conversão (leads/views) está acima ou abaixo da média do site para anúncios com idade parecida. Quando há poucos dados, a comparação pode aparecer como “—”."
+                example="+20% = 20% acima da média para anúncios parecidos"
                 isTapMode={isTapMode}
                 activeTooltipId={activeTooltipId}
                 setActiveTooltipId={setActiveTooltipId}

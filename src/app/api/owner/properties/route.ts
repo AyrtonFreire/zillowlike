@@ -106,6 +106,27 @@ export async function GET(req: NextRequest) {
     ]);
 
     const platformAvgConversionRate = platformViews > 0 ? platformLeads / platformViews : 0;
+
+    let benchmarks: any[] = [];
+    try {
+      benchmarks = await (prisma as any).platformConversionBenchmark.findMany();
+    } catch {
+      benchmarks = [];
+    }
+
+    const benchmarkByBucketId = new Map<string, any>(
+      (benchmarks || []).map((b: any) => [String(b.bucketId), b])
+    );
+
+    const getBucketIdForAgeDays = (ageDays: number) => {
+      const a = Math.max(0, Math.floor(ageDays));
+      if (a <= 2) return "0_2";
+      if (a <= 6) return "3_6";
+      if (a <= 13) return "7_13";
+      if (a <= 29) return "14_29";
+      if (a <= 59) return "30_59";
+      return "60_plus";
+    };
     const lastLeadMap = new Map<string, Date | null>(
       (lastLeadByProperty || []).map((row: any) => [row.propertyId, row._max?.createdAt || null])
     );
@@ -203,15 +224,38 @@ export async function GET(req: NextRequest) {
         const leads = p._count.leads as number;
         const conversionRate = views > 0 ? leads / views : 0;
         const conversionRatePct = Math.round(conversionRate * 1000) / 10;
+
+        const ageDays = Math.max(
+          0,
+          Math.floor((now.getTime() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+        );
+        const bucketId = getBucketIdForAgeDays(ageDays);
+        const bench = benchmarkByBucketId.get(bucketId) || null;
+        const cohortAvgConversionRate = bench?.conversionRate ?? null;
+
+        const hasFewPropertyData = ageDays < 7 && views < 30;
+        const hasWeakBenchmark =
+          !!bench &&
+          (!Number.isFinite(bench?.conversionRate) ||
+            (Number(bench?.viewsTotal) || 0) < 500 ||
+            (Number(bench?.propertiesCount) || 0) < 20 ||
+            (Number(bench?.conversionRate) || 0) <= 0);
         const lastLeadAt = lastLeadMap.get(p.id) || null;
         const since = lastLeadAt || p.createdAt;
         const daysSinceLastLead = since
           ? Math.max(0, Math.floor((now.getTime() - new Date(since).getTime()) / (1000 * 60 * 60 * 24)))
           : null;
+        const baseRateForComparison =
+          cohortAvgConversionRate && cohortAvgConversionRate > 0
+            ? cohortAvgConversionRate
+            : platformAvgConversionRate;
+
         const platformComparisonPct =
-          platformAvgConversionRate > 0
-            ? Math.round((conversionRate / platformAvgConversionRate) * 100)
-            : null;
+          hasFewPropertyData || hasWeakBenchmark
+            ? null
+            : baseRateForComparison > 0
+              ? Math.round((conversionRate / baseRateForComparison) * 100)
+              : null;
 
         const viewsSeries = days.map((day) => viewsDayMap.get(`${p.id}|${day}`) || 0);
         const leadsSeries = days.map((day) => leadsDayMap.get(`${p.id}|${day}`) || 0);
@@ -221,7 +265,14 @@ export async function GET(req: NextRequest) {
             conversionRatePct,
             daysSinceLastLead,
             platformComparisonPct,
-            platformAvgConversionRatePct: Math.round(platformAvgConversionRate * 1000) / 10,
+            platformAvgConversionRatePct: baseRateForComparison
+              ? Math.round(baseRateForComparison * 1000) / 10
+              : Math.round(platformAvgConversionRate * 1000) / 10,
+            platformComparisonBucketId: bucketId,
+            platformComparisonBucketMinDays: bench?.bucketMinDays ?? null,
+            platformComparisonBucketMaxDays: bench?.bucketMaxDays ?? null,
+            platformComparisonSampleProperties: bench?.propertiesCount ?? null,
+            platformComparisonSampleViews: bench?.viewsTotal ?? null,
           },
           conversionRatePct,
           daysSinceLastLead,

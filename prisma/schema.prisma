@@ -747,6 +747,23 @@ model PropertyView {
   @@map("property_views")
 }
 
+model PlatformConversionBenchmark {
+  id              String   @id @default(cuid())
+  bucketId        String   @unique
+  bucketMinDays   Int
+  bucketMaxDays   Int?
+  propertiesCount Int
+  viewsTotal      Int
+  leadsTotal      Int
+  conversionRate  Float
+  calculatedAt    DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([bucketId])
+  @@map("platform_conversion_benchmarks")
+}
+
 // ============================================
 // SISTEMA DE FILA + MURAL DE LEADS
 // ============================================
