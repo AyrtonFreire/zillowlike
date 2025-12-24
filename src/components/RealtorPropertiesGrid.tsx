@@ -19,6 +19,9 @@ interface Property {
   type: string;
   purpose: string;
   images: { url: string }[];
+  createdAt?: string | Date;
+  viewsCount?: number;
+  leadsCount?: number;
 }
 
 interface RealtorPropertiesGridProps {
@@ -224,6 +227,9 @@ export default function RealtorPropertiesGrid({ properties, realtorName }: Realt
                 type: p.type as any,
                 purpose: p.purpose as any,
                 images: p.images,
+                createdAt: p.createdAt,
+                viewsCount: p.viewsCount,
+                leadsCount: p.leadsCount,
               }}
             />
           ))}

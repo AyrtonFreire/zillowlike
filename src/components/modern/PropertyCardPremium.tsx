@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, Home, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X } from "lucide-react";
+import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, Home, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Eye, Zap, Percent } from "lucide-react";
 import Image from "next/image";
 import Chip from "@/components/ui/Chip";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -27,6 +27,11 @@ interface PropertyCardPremiumProps {
     conditionTags?: string[];
     description?: string;
     media?: { type: 'image' | 'video'; url: string }[];
+    createdAt?: string | Date | null;
+    viewsCount?: number | null;
+    leadsCount?: number | null;
+    benchmarkPricePerM2?: number | null;
+    benchmarkConversionRate?: number | null;
   };
   onOpenOverlay?: (id: string) => void;
   watermark?: boolean;
@@ -51,6 +56,75 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   const lastTouchX = useRef<number | null>(null);
   const lastTouchTime = useRef<number | null>(null);
   const gestureLocked = useRef<null | 'horizontal' | 'vertical'>(null);
+
+  const createdAtDate = useMemo(() => {
+    if (!property.createdAt) return null;
+    const d = property.createdAt instanceof Date ? property.createdAt : new Date(property.createdAt);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }, [property.createdAt]);
+
+  const intelligentBadges = useMemo(() => {
+    const badges: Array<{
+      key: string;
+      label: string;
+      className: string;
+      Icon: any;
+    }> = [];
+
+    if (createdAtDate) {
+      const ageDays = Math.floor((Date.now() - createdAtDate.getTime()) / (24 * 60 * 60 * 1000));
+      if (ageDays >= 0 && ageDays <= 7) {
+        badges.push({
+          key: "new",
+          label: "Novo",
+          className: "bg-teal-600 text-white",
+          Icon: Sparkles,
+        });
+      }
+    }
+
+    const views = typeof property.viewsCount === "number" ? property.viewsCount : null;
+    if (views != null && views >= 500) {
+      badges.push({
+        key: "popular",
+        label: "Muito visto",
+        className: "bg-indigo-600 text-white",
+        Icon: Eye,
+      });
+    }
+
+    const leads = typeof property.leadsCount === "number" ? property.leadsCount : null;
+    if (views != null && leads != null && views >= 50 && leads >= 3) {
+      const conv = leads / views;
+      const bench = typeof property.benchmarkConversionRate === "number" ? property.benchmarkConversionRate : null;
+      const isGood = bench != null ? conv >= bench : conv >= 0.03;
+      if (isGood) {
+        badges.push({
+          key: "conversion",
+          label: "Converte bem",
+          className: "bg-emerald-600 text-white",
+          Icon: Percent,
+        });
+      }
+    }
+
+    const price = typeof property.price === "number" ? property.price : null;
+    const areaM2 = typeof property.areaM2 === "number" ? property.areaM2 : null;
+    const benchPricePerM2 = typeof property.benchmarkPricePerM2 === "number" ? property.benchmarkPricePerM2 : null;
+    if (price != null && areaM2 != null && areaM2 > 0 && benchPricePerM2 != null && benchPricePerM2 > 0) {
+      const pricePerM2 = (price / 100) / areaM2;
+      if (pricePerM2 <= benchPricePerM2 * 0.9) {
+        badges.push({
+          key: "deal",
+          label: "Preço bom",
+          className: "bg-amber-500 text-white",
+          Icon: Zap,
+        });
+      }
+    }
+
+    return badges;
+  }, [createdAtDate, property.areaM2, property.benchmarkConversionRate, property.benchmarkPricePerM2, property.leadsCount, property.price, property.viewsCount]);
 
   const transformCloudinary = (url: string, transformation: string) => {
     try {
@@ -336,6 +410,15 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               Video
             </div>
           )}
+          {intelligentBadges.map(({ key, label, className, Icon }) => (
+            <div
+              key={key}
+              className={`${className} px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow`}
+            >
+              <Icon className="w-3 h-3" />
+              {label}
+            </div>
+          ))}
         </div>
 
         {/* Favorite Button */}
