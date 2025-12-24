@@ -154,6 +154,11 @@ function isInternalChecklistType(itemType: string | null | undefined) {
   return isReminderType(t) || t === "WEEKLY_SUMMARY";
 }
 
+function shouldAutoResolveOnReply(itemType: string | null | undefined) {
+  const t = String(itemType || "").trim();
+  return t === "UNANSWERED_CLIENT_MESSAGE" || t === "NEW_LEAD" || t === "LEAD_NO_FIRST_CONTACT" || t === "STALE_LEAD";
+}
+
 export default function RealtorAssistantFeed(props: {
   realtorId?: string;
   leadId?: string;
@@ -314,6 +319,44 @@ export default function RealtorAssistantFeed(props: {
     }
   }, [realtorId, leadId]);
 
+  const resolveItemsOptimistically = useCallback(
+    (ids: string[]) => {
+      const unique = Array.from(new Set((ids || []).map((x) => String(x || "")).filter(Boolean)));
+      if (unique.length === 0) return;
+
+      setItems((prev) =>
+        prev.map((it) => {
+          if (!unique.includes(String(it.id))) return it;
+          if (it.status === "RESOLVED") return it;
+          return { ...it, status: "RESOLVED" };
+        })
+      );
+
+      if (aiForId && unique.includes(String(aiForId))) {
+        try {
+          if (aiLoadingId === aiForId) {
+            aiAbortRef.current?.abort();
+          }
+        } catch {
+        }
+        setAiForId(null);
+        setAiError(null);
+        setAiResult(null);
+        setAiItemSnapshot(null);
+      }
+
+      unique.forEach((id) => {
+        fetch(`/api/assistant/items/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "resolve" }),
+          keepalive: true,
+        }).catch(() => null);
+      });
+    },
+    [aiForId, aiLoadingId]
+  );
+
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
@@ -351,6 +394,16 @@ export default function RealtorAssistantFeed(props: {
           throw new Error(data?.error || "Não conseguimos enviar esta mensagem agora.");
         }
 
+        const idsToResolve = items
+          .filter(
+            (it) =>
+              String(it.leadId || "") === String(params.leadId) &&
+              it.status === "ACTIVE" &&
+              shouldAutoResolveOnReply(it.type)
+          )
+          .map((it) => String(it.id));
+        resolveItemsOptimistically([String(params.ownerId), ...idsToResolve]);
+
         setRepliedForId(params.ownerId);
         if (repliedTimerRef.current) clearTimeout(repliedTimerRef.current);
         repliedTimerRef.current = setTimeout(() => {
@@ -366,7 +419,7 @@ export default function RealtorAssistantFeed(props: {
         setReplyingForId(null);
       }
     },
-    [fetchItems, props]
+    [fetchItems, items, props, resolveItemsOptimistically]
   );
 
   useEffect(() => {
@@ -424,18 +477,18 @@ export default function RealtorAssistantFeed(props: {
 
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [fetchItems, realtorId]);
+  }, [realtorId, fetchItems]);
 
-  const performAction = async (itemId: string, payload: any) => {
+  const performAction = async (itemId: string, payload: { action: "resolve" | "snooze"; minutes?: number }) => {
     try {
-      setSnoozeMenuFor(null);
       setActingId(itemId);
       setError(null);
-      const response = await fetch(`/api/assistant/items/${itemId}`, {
+      const response = await fetch(`/api/assistant/items/${encodeURIComponent(itemId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -559,6 +612,8 @@ export default function RealtorAssistantFeed(props: {
   const handleOpenAction = (action: AssistantAction, item: AssistantItem) => {
     const targetLeadId = action.leadId || item.leadId || undefined;
 
+    resolveItemsOptimistically([String(item.id)]);
+
     if (action.type === "OPEN_CHAT") {
       if (targetLeadId) {
         router.push(`/broker/chats?lead=${targetLeadId}`);
@@ -615,6 +670,11 @@ export default function RealtorAssistantFeed(props: {
                 : "Não conseguimos excluir este lead agora.");
         throw new Error(msg);
       }
+
+      const idsToResolve = items
+        .filter((it) => String(it.leadId || "") === String(leadId) && it.status === "ACTIVE")
+        .map((it) => String(it.id));
+      resolveItemsOptimistically(idsToResolve.length > 0 ? idsToResolve : [String(item.id)]);
 
       setDeleteConfirmForId(null);
       etagRef.current = null;

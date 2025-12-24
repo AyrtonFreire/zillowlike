@@ -1,6 +1,6 @@
 import { Circle } from "lucide-react";
 
-type Status = "AVAILABLE" | "RESERVED" | "ACCEPTED" | "PENDING" | "REJECTED" | "EXPIRED";
+type Status = "AVAILABLE" | "RESERVED" | "ACCEPTED" | "PENDING" | "REJECTED" | "EXPIRED" | "COMPLETED" | (string & {});
 
 interface StatusIndicatorProps {
   status: Status;
@@ -44,10 +44,23 @@ const statusConfig = {
     label: "Expirado",
     icon: "⚫",
   },
+  COMPLETED: {
+    color: "text-gray-600",
+    bgColor: "bg-gray-50",
+    label: "Concluído",
+    icon: "⚫",
+  },
 };
 
 export default function StatusIndicator({ status, showLabel = true }: StatusIndicatorProps) {
-  const config = statusConfig[status];
+  const config =
+    (statusConfig as any)[status] ||
+    ({
+      color: "text-gray-600",
+      bgColor: "bg-gray-50",
+      label: status ? String(status) : "Status",
+      icon: "⚫",
+    } as const);
 
   return (
     <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${config.bgColor}`}>
