@@ -551,7 +551,10 @@ export class RealtorAssistantService {
           threshold.setHours(threshold.getHours() - 24);
           const isFresh = !Number.isNaN(createdAt.getTime()) && createdAt >= threshold;
           if (isFresh) {
-            continue;
+            const newLeadKey = `NEW_LEAD:${lead.id}`;
+            if (dedupeKeys.has(newLeadKey)) {
+              continue;
+            }
           }
         }
 
