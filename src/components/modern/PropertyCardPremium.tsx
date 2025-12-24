@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, Home, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Eye, Zap, Percent } from "lucide-react";
+import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, Home, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent } from "lucide-react";
 import Image from "next/image";
 import Chip from "@/components/ui/Chip";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -32,6 +32,7 @@ interface PropertyCardPremiumProps {
     leadsCount?: number | null;
     benchmarkPricePerM2?: number | null;
     benchmarkConversionRate?: number | null;
+    benchmarkLeadsTop20Threshold?: number | null;
   };
   onOpenOverlay?: (id: string) => void;
   watermark?: boolean;
@@ -83,25 +84,25 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
       }
     }
 
-    const views = typeof property.viewsCount === "number" ? property.viewsCount : null;
-    if (views != null && views >= 500) {
+    const leads = typeof property.leadsCount === "number" ? property.leadsCount : null;
+    const top20 = typeof property.benchmarkLeadsTop20Threshold === "number" ? property.benchmarkLeadsTop20Threshold : null;
+    if (leads != null && top20 != null && top20 > 0 && leads >= top20) {
       badges.push({
-        key: "popular",
-        label: "Muito visto",
+        key: "most_sought",
+        label: "Mais procurado",
         className: "bg-indigo-600 text-white",
-        Icon: Eye,
+        Icon: TrendingUp,
       });
     }
 
-    const leads = typeof property.leadsCount === "number" ? property.leadsCount : null;
-    if (views != null && leads != null && views >= 50 && leads >= 3) {
+    const views = typeof property.viewsCount === "number" ? property.viewsCount : null;
+    if (views != null && leads != null && views > 0) {
       const conv = leads / views;
       const bench = typeof property.benchmarkConversionRate === "number" ? property.benchmarkConversionRate : null;
-      const isGood = bench != null ? conv >= bench : conv >= 0.03;
-      if (isGood) {
+      if (bench != null && bench > 0 && conv > bench) {
         badges.push({
-          key: "conversion",
-          label: "Converte bem",
+          key: "high_conversion",
+          label: "Alta conversão",
           className: "bg-emerald-600 text-white",
           Icon: Percent,
         });
@@ -113,10 +114,10 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     const benchPricePerM2 = typeof property.benchmarkPricePerM2 === "number" ? property.benchmarkPricePerM2 : null;
     if (price != null && areaM2 != null && areaM2 > 0 && benchPricePerM2 != null && benchPricePerM2 > 0) {
       const pricePerM2 = (price / 100) / areaM2;
-      if (pricePerM2 <= benchPricePerM2 * 0.9) {
+      if (pricePerM2 < benchPricePerM2) {
         badges.push({
           key: "deal",
-          label: "Preço bom",
+          label: "Preço abaixo da média",
           className: "bg-amber-500 text-white",
           Icon: Zap,
         });
@@ -124,7 +125,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     }
 
     return badges;
-  }, [createdAtDate, property.areaM2, property.benchmarkConversionRate, property.benchmarkPricePerM2, property.leadsCount, property.price, property.viewsCount]);
+  }, [createdAtDate, property.areaM2, property.benchmarkConversionRate, property.benchmarkLeadsTop20Threshold, property.benchmarkPricePerM2, property.leadsCount, property.price, property.viewsCount]);
 
   const transformCloudinary = (url: string, transformation: string) => {
     try {

@@ -16,6 +16,12 @@ type ActiveProperty = {
   type: string;
   purpose: string;
   images: { url: string }[];
+  createdAt?: string | Date;
+  viewsCount?: number;
+  leadsCount?: number;
+  benchmarkPricePerM2?: number | null;
+  benchmarkConversionRate?: number | null;
+  benchmarkLeadsTop20Threshold?: number | null;
 };
 
 type SoldProperty = {

@@ -109,6 +109,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
           type: true,
           purpose: true,
           createdAt: true,
+          updatedAt: true,
           _count: {
             select: {
               views: true,
@@ -171,54 +172,90 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
 
   const avgRating = stats?.avgRating || 0;
   const totalRatings = stats?.totalRatings || 0;
-  const leadsAccepted = stats?.leadsAccepted || 0;
-  const leadsCompleted = stats?.leadsCompleted || 0;
-  const visitsCompleted = stats?.visitsCompleted || 0;
   const avgResponseTime = stats?.avgResponseTime || null;
 
   const participatesInLeadBoard = Boolean(realtor.queue);
 
-  const activeLeads = typeof realtor.queue?.activeLeads === "number"
-    ? realtor.queue.activeLeads
-    : await (prisma as any).lead.count({
-        where: {
-          realtorId: realtor.id,
-          status: {
-            in: [
-              "WAITING_REALTOR_ACCEPT",
-              "WAITING_OWNER_APPROVAL",
-              "CONFIRMED",
-              "ACCEPTED",
-              "RESERVED",
-            ] as any,
-          },
-        },
-      });
-
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const responseCandidates = await (prisma as any).lead.findMany({
+  const openLeads = await prisma.lead.findMany({
     where: {
       realtorId: realtor.id,
-      createdAt: { gte: thirtyDaysAgo },
+      pipelineStage: {
+        in: ["NEW", "CONTACT", "VISIT", "PROPOSAL", "DOCUMENTS"] as any,
+      },
+      status: {
+        notIn: ["CANCELLED", "EXPIRED"] as any,
+      },
     },
     select: {
-      createdAt: true,
-      respondedAt: true,
+      id: true,
     },
-    take: 250,
+    take: 500,
     orderBy: { createdAt: "desc" },
   });
 
+  const openLeadIds = openLeads.map((l) => l.id);
+  const activeLeads = openLeadIds.length;
+
+  const lastClientMessages = openLeadIds.length
+    ? await (prisma as any).leadClientMessage.findMany({
+        where: { leadId: { in: openLeadIds }, fromClient: true },
+        orderBy: { createdAt: "desc" },
+        distinct: ["leadId"],
+        select: { leadId: true, createdAt: true },
+      })
+    : [];
+
+  const lastProMessages = openLeadIds.length
+    ? await (prisma as any).leadClientMessage.findMany({
+        where: { leadId: { in: openLeadIds }, fromClient: false },
+        orderBy: { createdAt: "desc" },
+        distinct: ["leadId"],
+        select: { leadId: true, createdAt: true },
+      })
+    : [];
+
+  const lastProMap = new Map<string, Date>((lastProMessages || []).map((m: any) => [m.leadId, m.createdAt]));
+
   const nowMs = Date.now();
-  const longestResponseTimeMinutes = responseCandidates.reduce((max: number | null, lead: { createdAt: Date; respondedAt: Date | null }) => {
-    const start = new Date(lead.createdAt).getTime();
-    const end = lead.respondedAt ? new Date(lead.respondedAt).getTime() : nowMs;
-    const minutes = Math.max(0, Math.floor((end - start) / 60000));
-    if (max == null) return minutes;
-    return Math.max(max, minutes);
-  }, null);
+  let longestNoResponseMinutes: number | null = null;
+  for (const m of lastClientMessages || []) {
+    const clientAt = new Date((m as any).createdAt);
+    if (Number.isNaN(clientAt.getTime())) continue;
+    const proAt = lastProMap.get(String((m as any).leadId));
+    const hasNoReply = !proAt || clientAt.getTime() > new Date(proAt).getTime();
+    if (!hasNoReply) continue;
+
+    const minutes = Math.max(0, Math.floor((nowMs - clientAt.getTime()) / 60000));
+    if (longestNoResponseMinutes == null) longestNoResponseMinutes = minutes;
+    else longestNoResponseMinutes = Math.max(longestNoResponseMinutes, minutes);
+  }
+
+  const lastProResponseAt = (lastProMessages || []).reduce(
+    (max: Date | null, row: any) => {
+      const d = row?.createdAt ? new Date(row.createdAt) : null;
+      if (!d || Number.isNaN(d.getTime())) return max;
+      if (!max) return d;
+      return d > max ? d : max;
+    },
+    null as Date | null
+  );
+
+  const lastPropertyUpdateAt = (realtor.properties || []).reduce(
+    (max: Date | null, p: any) => {
+      const d = p?.updatedAt ? new Date(p.updatedAt) : null;
+      if (!d || Number.isNaN(d.getTime())) return max;
+      if (!max) return d;
+      return d > max ? d : max;
+    },
+    null as Date | null
+  );
+
+  const lastActivityAt = (() => {
+    if (lastProResponseAt && lastPropertyUpdateAt) {
+      return lastProResponseAt > lastPropertyUpdateAt ? lastProResponseAt : lastPropertyUpdateAt;
+    }
+    return lastProResponseAt || lastPropertyUpdateAt || null;
+  })();
 
   const completedDeals = await (prisma as any).lead.count({
     where: {
@@ -226,6 +263,67 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
       pipelineStage: "WON" as any,
     },
   });
+
+  const activeSince = (realtor as any).createdAt as Date;
+
+  const cityForBench = city || null;
+  let benchmarkConversionRate: number | null = null;
+  let benchmarkLeadsTop20Threshold: number | null = null;
+  const benchmarkPricePerM2ByGroup = new Map<string, number>();
+
+  if (cityForBench) {
+    const cityProperties = await (prisma as any).property.findMany({
+      where: { city: cityForBench, status: "ACTIVE" },
+      select: {
+        id: true,
+        type: true,
+        neighborhood: true,
+        price: true,
+        areaM2: true,
+        _count: { select: { views: true, leads: true } },
+      },
+      take: 2000,
+      orderBy: { createdAt: "desc" },
+    });
+
+    const cityCounts = (cityProperties || []).map((p: any) => Number(p?._count?.leads || 0));
+    const sortedCounts = [...cityCounts].sort((a, b) => a - b);
+    if (sortedCounts.length >= 5) {
+      const idx = Math.min(sortedCounts.length - 1, Math.max(0, Math.ceil(sortedCounts.length * 0.8) - 1));
+      const threshold = sortedCounts[idx];
+      benchmarkLeadsTop20Threshold = threshold > 0 ? threshold : null;
+    }
+
+    const totals = (cityProperties || []).reduce(
+      (acc: { leads: number; views: number }, p: any) => {
+        acc.leads += Number(p?._count?.leads || 0);
+        acc.views += Number(p?._count?.views || 0);
+        return acc;
+      },
+      { leads: 0, views: 0 }
+    );
+    benchmarkConversionRate = totals.views > 0 ? totals.leads / totals.views : null;
+
+    const priceGroups = await (prisma as any).property.groupBy({
+      by: ["type", "neighborhood"],
+      where: {
+        city: cityForBench,
+        status: "ACTIVE",
+        areaM2: { gt: 0 },
+      },
+      _avg: { price: true, areaM2: true },
+    });
+
+    for (const g of priceGroups || []) {
+      const avgPrice = Number((g as any)?._avg?.price || 0);
+      const avgArea = Number((g as any)?._avg?.areaM2 || 0);
+      if (!avgPrice || !avgArea) continue;
+      const bench = (avgPrice / 100) / avgArea;
+      if (!bench || Number.isNaN(bench)) continue;
+      const key = `${String((g as any).type)}:${String((g as any).neighborhood || "")}`;
+      benchmarkPricePerM2ByGroup.set(key, bench);
+    }
+  }
 
   // Redes sociais
   const instagram = realtor.publicInstagram;
@@ -238,7 +336,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
   const reviews = realtor.ratings || [];
 
   // Top Producer badge (mais de 50 leads concluídos)
-  const isTopProducer = leadsCompleted >= 50;
+  const isTopProducer = completedDeals >= 50;
   const isFastResponder = avgResponseTime != null && avgResponseTime <= 30;
 
   const app = (realtor as any).realtorApplication as
@@ -330,33 +428,34 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
           isTopProducer={isTopProducer}
           isFastResponder={isFastResponder}
           totalActiveProperties={totalActiveProperties}
-          leadsAccepted={leadsAccepted}
-          leadsCompleted={leadsCompleted}
-          visitsCompleted={visitsCompleted}
+          activeLeads={activeLeads}
+          longestNoResponseMinutes={longestNoResponseMinutes}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left column: About + Highlights */}
           <div className="space-y-6 lg:col-span-1">
-            <SobreCorretor bio={realtor.publicBio} />
+            <SobreCorretor
+              bio={realtor.publicBio}
+              specialties={app?.specialties || null}
+              city={city}
+              state={state}
+              headline={realtor.publicHeadline}
+            />
 
-            {participatesInLeadBoard && (
-              <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">Atividade no programa</h2>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm text-gray-700">Status na fila</div>
-                  <SeloAtividade status={realtor.queue?.status} lastActivity={realtor.queue?.lastActivity} />
-                </div>
-              </section>
-            )}
+            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Selo de atividade</h2>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm text-gray-700">Status</div>
+                <SeloAtividade lastActivity={lastActivityAt} />
+              </div>
+            </section>
 
             <IndicadoresConfianca
-              activeProperties={totalActiveProperties}
-              activeLeads={activeLeads}
-              longestResponseTimeMinutes={longestResponseTimeMinutes}
               avgRating={avgRating}
               totalRatings={totalRatings}
               completedDeals={completedDeals}
+              activeSince={activeSince}
             />
 
             {/* Especialidades */}
@@ -490,25 +589,32 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
                 soldAt: p.updatedAt?.toISOString(),
                 images: p.images,
               }))}
-              activeProperties={realtor.properties.map((p: any) => ({
-                id: p.id,
-                title: p.title,
-                price: p.price,
-                city: p.city,
-                state: p.state,
-                bedrooms: p.bedrooms ?? undefined,
-                bathrooms: p.bathrooms != null ? Number(p.bathrooms) : undefined,
-                areaM2: p.areaM2 ?? undefined,
-                neighborhood: p.neighborhood ?? undefined,
-                parkingSpots: p.parkingSpots ?? undefined,
-                conditionTags: p.conditionTags ?? [],
-                type: p.type,
-                purpose: p.purpose,
-                images: p.images,
-                createdAt: p.createdAt,
-                viewsCount: p._count?.views,
-                leadsCount: p._count?.leads,
-              }))}
+              activeProperties={realtor.properties.map((p: any) => {
+                const groupKey = `${String(p.type)}:${String(p.neighborhood || "")}`;
+                const benchPrice = benchmarkPricePerM2ByGroup.get(groupKey) || null;
+                return {
+                  id: p.id,
+                  title: p.title,
+                  price: p.price,
+                  city: p.city,
+                  state: p.state,
+                  bedrooms: p.bedrooms ?? undefined,
+                  bathrooms: p.bathrooms != null ? Number(p.bathrooms) : undefined,
+                  areaM2: p.areaM2 ?? undefined,
+                  neighborhood: p.neighborhood ?? undefined,
+                  parkingSpots: p.parkingSpots ?? undefined,
+                  conditionTags: p.conditionTags ?? [],
+                  type: p.type,
+                  purpose: p.purpose,
+                  images: p.images,
+                  createdAt: p.createdAt,
+                  viewsCount: p._count?.views,
+                  leadsCount: p._count?.leads,
+                  benchmarkPricePerM2: benchPrice,
+                  benchmarkConversionRate: benchmarkConversionRate,
+                  benchmarkLeadsTop20Threshold: benchmarkLeadsTop20Threshold,
+                };
+              })}
             />
           </div>
         </div>

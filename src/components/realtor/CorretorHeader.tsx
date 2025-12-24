@@ -39,10 +39,20 @@ type Props = {
   isTopProducer: boolean;
   isFastResponder: boolean;
   totalActiveProperties: number;
-  leadsAccepted: number;
-  leadsCompleted: number;
-  visitsCompleted: number;
+  activeLeads: number;
+  longestNoResponseMinutes: number | null;
 };
+
+function formatMinutesCompact(totalMinutes: number) {
+  const minutes = Math.max(0, Math.round(totalMinutes || 0));
+  if (minutes < 60) return `${minutes}min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours < 24) return rest > 0 ? `${hours}h ${rest}min` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const hoursRest = hours % 24;
+  return hoursRest > 0 ? `${days}d ${hoursRest}h` : `${days}d`;
+}
 
 export default function CorretorHeader({
   realtorId,
@@ -66,12 +76,13 @@ export default function CorretorHeader({
   isTopProducer,
   isFastResponder,
   totalActiveProperties,
-  leadsAccepted,
-  leadsCompleted,
-  visitsCompleted,
+  activeLeads,
+  longestNoResponseMinutes,
 }: Props) {
   const initial = (name || "?").charAt(0).toUpperCase();
   const creciVerified = Boolean(creci && creciState);
+  const longestLabel =
+    typeof longestNoResponseMinutes === "number" ? formatMinutesCompact(longestNoResponseMinutes) : "—";
 
   return (
     <section className="mb-8">
@@ -233,17 +244,17 @@ export default function CorretorHeader({
             </div>
             <div className="rounded-2xl bg-white/10 px-4 py-3 border border-white/15">
               <div className="flex items-center justify-between text-xs text-white/80">
-                <span>Leads atendidos</span>
+                <span>Leads ativos</span>
                 <Users className="h-4 w-4" />
               </div>
-              <p className="mt-1 text-2xl font-semibold">{leadsAccepted}</p>
+              <p className="mt-1 text-2xl font-semibold">{activeLeads}</p>
             </div>
             <div className="rounded-2xl bg-white/10 px-4 py-3 border border-white/15">
               <div className="flex items-center justify-between text-xs text-white/80">
-                <span>Visitas concluídas</span>
+                <span>Maior tempo s/ resposta</span>
                 <Clock className="h-4 w-4" />
               </div>
-              <p className="mt-1 text-2xl font-semibold">{visitsCompleted || leadsCompleted}</p>
+              <p className="mt-1 text-2xl font-semibold">{longestLabel}</p>
             </div>
           </div>
         </div>

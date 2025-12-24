@@ -22,6 +22,9 @@ interface Property {
   createdAt?: string | Date;
   viewsCount?: number;
   leadsCount?: number;
+  benchmarkPricePerM2?: number | null;
+  benchmarkConversionRate?: number | null;
+  benchmarkLeadsTop20Threshold?: number | null;
 }
 
 interface RealtorPropertiesGridProps {
@@ -230,6 +233,9 @@ export default function RealtorPropertiesGrid({ properties, realtorName }: Realt
                 createdAt: p.createdAt,
                 viewsCount: p.viewsCount,
                 leadsCount: p.leadsCount,
+                benchmarkPricePerM2: p.benchmarkPricePerM2 ?? null,
+                benchmarkConversionRate: p.benchmarkConversionRate ?? null,
+                benchmarkLeadsTop20Threshold: p.benchmarkLeadsTop20Threshold ?? null,
               }}
             />
           ))}

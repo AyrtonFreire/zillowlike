@@ -4,7 +4,6 @@ import Badge from "@/components/ui/Badge";
 import Tooltip from "@/components/ui/Tooltip";
 
 type Props = {
-  status?: "ACTIVE" | "INACTIVE" | "SUSPENDED" | string | null;
   lastActivity?: Date | string | null;
 };
 
@@ -25,22 +24,27 @@ function timeAgoLabel(date: Date) {
   return `${days}d atrás`;
 }
 
-export default function SeloAtividade({ status, lastActivity }: Props) {
-  const normalized = (status || "").toString().toUpperCase();
+export default function SeloAtividade({ lastActivity }: Props) {
   const last = toDate(lastActivity);
 
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const isToday = !!(last && last.getTime() >= todayStart.getTime());
+  const isThisWeek = !!(last && last.getTime() >= sevenDaysAgo.getTime());
+
   const { label, variant } =
-    normalized === "ACTIVE"
-      ? { label: "Ativo", variant: "success" as const }
-      : normalized === "INACTIVE"
-        ? { label: "Inativo", variant: "muted" as const }
-        : normalized === "SUSPENDED"
-          ? { label: "Suspenso", variant: "danger" as const }
-          : { label: normalized ? normalized : "—", variant: "muted" as const };
+    isToday
+      ? { label: "Ativo hoje", variant: "success" as const }
+      : isThisWeek
+        ? { label: "Ativo esta semana", variant: "warning" as const }
+        : { label: "Pouca atividade recente", variant: "danger" as const };
 
   const tooltip = last
-    ? `Última atividade: ${last.toLocaleString("pt-BR")} (${timeAgoLabel(last)})`
-    : "Sem registro de última atividade";
+    ? `Última atividade: ${last.toLocaleString("pt-BR")} (${timeAgoLabel(last)}). Baseado em respostas a leads e atualização de anúncios.`
+    : "Sem registro de última atividade. Baseado em respostas a leads e atualização de anúncios.";
 
   return (
     <Tooltip content={tooltip}>
