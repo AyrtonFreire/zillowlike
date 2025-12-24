@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   CalendarDays,
   CheckCircle2,
@@ -172,6 +173,7 @@ export default function RealtorAssistantFeed(props: {
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const etagRef = useRef<string | null>(null);
+  const optimisticHideRef = useRef<Record<string, number>>({});
   const [snoozeMenuFor, setSnoozeMenuFor] = useState<string | null>(null);
   const [aiForId, setAiForId] = useState<string | null>(null);
   const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
@@ -184,6 +186,10 @@ export default function RealtorAssistantFeed(props: {
   const [repliedForId, setRepliedForId] = useState<string | null>(null);
   const repliedTimerRef = useRef<any>(null);
   const [aiItemSnapshot, setAiItemSnapshot] = useState<AiItemSnapshot | null>(null);
+
+  const [successById, setSuccessById] = useState<Record<string, { message: string }>>({});
+  const successTimersRef = useRef<Record<string, any>>({});
+  const delayedRefreshRef = useRef<any>(null);
 
   const [deleteConfirmForId, setDeleteConfirmForId] = useState<string | null>(null);
   const deleteConfirmTimerRef = useRef<any>(null);
@@ -207,6 +213,22 @@ export default function RealtorAssistantFeed(props: {
         clearTimeout(deleteConfirmTimerRef.current);
         deleteConfirmTimerRef.current = null;
       }
+
+      if (delayedRefreshRef.current) {
+        clearTimeout(delayedRefreshRef.current);
+        delayedRefreshRef.current = null;
+      }
+
+      try {
+        const timers = successTimersRef.current || {};
+        Object.keys(timers).forEach((k) => {
+          try {
+            clearTimeout(timers[k]);
+          } catch {
+          }
+        });
+      } catch {
+      }
     };
   }, []);
 
@@ -214,10 +236,11 @@ export default function RealtorAssistantFeed(props: {
     return items.filter(
       (i) =>
         i.status === "ACTIVE" ||
+        !!successById[String(i.id)] ||
         (justResolvedId && i.id === justResolvedId) ||
         (justSnoozedId && i.id === justSnoozedId)
     );
-  }, [items, justResolvedId, justSnoozedId]);
+  }, [items, justResolvedId, justSnoozedId, successById]);
 
   useEffect(() => {
     if (!aiForId) return;
@@ -310,7 +333,20 @@ export default function RealtorAssistantFeed(props: {
       if (!response.ok || !data?.success) {
         throw new Error(data?.error || "Não conseguimos carregar o Assistente agora.");
       }
-      setItems(Array.isArray(data.items) ? data.items : []);
+      const nowMs = Date.now();
+      const rawItems = Array.isArray(data.items) ? data.items : [];
+      const filtered = rawItems.filter((it: any) => {
+        const id = String(it?.id || "");
+        const until = optimisticHideRef.current[id];
+        if (!until) return true;
+        if (until > nowMs) return false;
+        try {
+          delete optimisticHideRef.current[id];
+        } catch {
+        }
+        return true;
+      });
+      setItems(filtered);
     } catch (err: any) {
       setItems([]);
       setError(err?.message || "Não conseguimos carregar o Assistente agora.");
@@ -319,10 +355,45 @@ export default function RealtorAssistantFeed(props: {
     }
   }, [realtorId, leadId]);
 
+  const showSuccess = useCallback((id: string, message: string) => {
+    const itemId = String(id || "").trim();
+    if (!itemId) return;
+
+    setSuccessById((prev) => ({
+      ...prev,
+      [itemId]: { message },
+    }));
+
+    try {
+      if (successTimersRef.current[itemId]) {
+        clearTimeout(successTimersRef.current[itemId]);
+      }
+    } catch {
+    }
+
+    successTimersRef.current[itemId] = setTimeout(() => {
+      setSuccessById((prev) => {
+        if (!prev[itemId]) return prev;
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
+      try {
+        delete successTimersRef.current[itemId];
+      } catch {
+      }
+    }, 2000);
+  }, []);
+
   const resolveItemsOptimistically = useCallback(
     (ids: string[]) => {
       const unique = Array.from(new Set((ids || []).map((x) => String(x || "")).filter(Boolean)));
       if (unique.length === 0) return;
+
+      const until = Date.now() + 6000;
+      unique.forEach((id) => {
+        optimisticHideRef.current[String(id)] = until;
+      });
 
       setItems((prev) =>
         prev.map((it) => {
@@ -404,6 +475,8 @@ export default function RealtorAssistantFeed(props: {
           .map((it) => String(it.id));
         resolveItemsOptimistically([String(params.ownerId), ...idsToResolve]);
 
+        showSuccess(String(params.ownerId), "Mensagem enviada");
+
         setRepliedForId(params.ownerId);
         if (repliedTimerRef.current) clearTimeout(repliedTimerRef.current);
         repliedTimerRef.current = setTimeout(() => {
@@ -412,14 +485,18 @@ export default function RealtorAssistantFeed(props: {
 
         etagRef.current = null;
         props.onDidMutate?.();
-        await fetchItems();
+        if (delayedRefreshRef.current) clearTimeout(delayedRefreshRef.current);
+        delayedRefreshRef.current = setTimeout(() => {
+          etagRef.current = null;
+          fetchItems();
+        }, 1200);
       } catch (err: any) {
         setError(err?.message || "Não conseguimos enviar esta mensagem agora.");
       } finally {
         setReplyingForId(null);
       }
     },
-    [fetchItems, items, props, resolveItemsOptimistically]
+    [fetchItems, items, props, resolveItemsOptimistically, showSuccess]
   );
 
   useEffect(() => {
@@ -506,26 +583,23 @@ export default function RealtorAssistantFeed(props: {
       props.onDidMutate?.();
 
       if (payload?.action === "resolve" && data?.item?.id) {
-        setJustResolvedId(String(data.item.id));
-        setJustSnoozedId(null);
-        if (resolvedTimerRef.current) clearTimeout(resolvedTimerRef.current);
-        resolvedTimerRef.current = setTimeout(() => {
-          setJustResolvedId(null);
+        optimisticHideRef.current[String(data.item.id)] = Date.now() + 6000;
+        showSuccess(String(data.item.id), "Resolvido");
+        if (delayedRefreshRef.current) clearTimeout(delayedRefreshRef.current);
+        delayedRefreshRef.current = setTimeout(() => {
           etagRef.current = null;
           fetchItems();
-        }, 1000);
+        }, 1200);
         return;
       }
 
       if (payload?.action === "snooze" && data?.item?.id) {
-        setJustSnoozedId(String(data.item.id));
-        setJustResolvedId(null);
-        if (resolvedTimerRef.current) clearTimeout(resolvedTimerRef.current);
-        resolvedTimerRef.current = setTimeout(() => {
-          setJustSnoozedId(null);
+        showSuccess(String(data.item.id), "Ok, lembrete adiado");
+        if (delayedRefreshRef.current) clearTimeout(delayedRefreshRef.current);
+        delayedRefreshRef.current = setTimeout(() => {
           etagRef.current = null;
           fetchItems();
-        }, 1000);
+        }, 1200);
         return;
       }
 
@@ -615,6 +689,12 @@ export default function RealtorAssistantFeed(props: {
     resolveItemsOptimistically([String(item.id)]);
 
     if (action.type === "OPEN_CHAT") {
+      showSuccess(String(item.id), "Abrindo conversa");
+    } else {
+      showSuccess(String(item.id), "Abrindo lead");
+    }
+
+    if (action.type === "OPEN_CHAT") {
       if (targetLeadId) {
         router.push(`/broker/chats?lead=${targetLeadId}`);
         return;
@@ -676,10 +756,16 @@ export default function RealtorAssistantFeed(props: {
         .map((it) => String(it.id));
       resolveItemsOptimistically(idsToResolve.length > 0 ? idsToResolve : [String(item.id)]);
 
+      showSuccess(String(item.id), "Lead excluído");
+
       setDeleteConfirmForId(null);
       etagRef.current = null;
       props.onDidMutate?.();
-      await fetchItems();
+      if (delayedRefreshRef.current) clearTimeout(delayedRefreshRef.current);
+      delayedRefreshRef.current = setTimeout(() => {
+        etagRef.current = null;
+        fetchItems();
+      }, 1200);
     } catch (err: any) {
       setError(err?.message || "Não conseguimos excluir este lead agora.");
     } finally {
@@ -877,6 +963,7 @@ export default function RealtorAssistantFeed(props: {
                   <p className="text-[11px] font-semibold text-gray-500">{leadGroups.length}</p>
                 </div>
                 <div className="space-y-3">
+                  <AnimatePresence initial={false}>
                   {leadGroups.map((leadGroup) => {
                     const item = leadGroup.items[0];
                     const subtasks = leadGroup.items.slice(1);
@@ -964,50 +1051,76 @@ export default function RealtorAssistantFeed(props: {
                           ? "bg-amber-50 text-amber-800 border-amber-100"
                           : "bg-gray-50 text-gray-700 border-gray-200";
 
+                    const successState = successById[String(item.id)];
+
                     return (
-                      <div
+                      <motion.div
                         key={item.id}
-                        className="rounded-[26px] border border-gray-200/70 bg-white px-5 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
+                        layout
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.18 }}
+                        className={
+                          successState
+                            ? "rounded-[26px] border border-emerald-200/70 bg-emerald-50 px-5 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
+                            : "rounded-[26px] border border-gray-200/70 bg-white px-5 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
+                        }
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border ${chipClasses}`}>
-                              <span className={`inline-block w-2 h-2 rounded-full ${priorityDotClass}`} />
-                              {chipText}
-                            </span>
-                          </div>
-
-                          <div className="relative" data-snooze-root="true">
-                            <button
-                              type="button"
-                              disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
-                              onClick={() => setSnoozeMenuFor((prev) => (prev === item.id ? null : item.id))}
-                              className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                              title="Lembrar depois"
-                            >
-                              <Clock className="w-5 h-5" />
-                            </button>
-
-                            {snoozeMenuFor === item.id && (
-                              <div className="absolute right-0 mt-2 w-36 rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
-                                {snoozeOptions.map((opt) => (
-                                  <button
-                                    key={opt.minutes}
-                                    type="button"
-                                    disabled={actingId === item.id}
-                                    onClick={async () => {
-                                      setSnoozeMenuFor(null);
-                                      await performAction(item.id, { action: "snooze", minutes: opt.minutes });
-                                    }}
-                                    className="w-full text-left px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                                  >
-                                    {opt.label}
-                                  </button>
-                                ))}
+                        {successState ? (
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/80 border border-emerald-200 text-emerald-700">
+                                <CheckCircle2 className="w-5 h-5" />
+                              </span>
+                              <div>
+                                <p className="text-[13px] font-extrabold text-emerald-900">Tudo certo</p>
+                                <p className="mt-0.5 text-[12px] font-semibold text-emerald-800">{successState.message}</p>
                               </div>
-                            )}
+                            </div>
+                            <p className="text-[11px] font-semibold text-emerald-700">2s</p>
                           </div>
-                        </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border ${chipClasses}`}>
+                                  <span className={`inline-block w-2 h-2 rounded-full ${priorityDotClass}`} />
+                                  {chipText}
+                                </span>
+                              </div>
+
+                              <div className="relative" data-snooze-root="true">
+                                <button
+                                  type="button"
+                                  disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
+                                  onClick={() => setSnoozeMenuFor((prev) => (prev === item.id ? null : item.id))}
+                                  className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                  title="Lembrar depois"
+                                >
+                                  <Clock className="w-5 h-5" />
+                                </button>
+
+                                {snoozeMenuFor === item.id && (
+                                  <div className="absolute right-0 mt-2 w-36 rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
+                                    {snoozeOptions.map((opt) => (
+                                      <button
+                                        key={opt.minutes}
+                                        type="button"
+                                        disabled={actingId === item.id}
+                                        onClick={async () => {
+                                          setSnoozeMenuFor(null);
+                                          await performAction(item.id, { action: "snooze", minutes: opt.minutes });
+                                        }}
+                                        className="w-full text-left px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                      >
+                                        {opt.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
 
                         <div className="mt-4">
                           <p className="text-[22px] leading-7 font-extrabold text-gray-900">{item.title}</p>
@@ -1351,9 +1464,12 @@ export default function RealtorAssistantFeed(props: {
                             )}
                           </div>
                         )}
-                      </div>
+                          </>
+                        )}
+                      </motion.div>
                     );
                   })}
+                  </AnimatePresence>
                 </div>
               </div>
             );

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 
 async function getSessionContext() {
   const session: any = await getServerSession(authOptions);
@@ -91,6 +92,17 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         },
       });
 
+      try {
+        if (previousRealtorId && String(previousRealtorId) !== String(newRealtorId)) {
+          await RealtorAssistantService.recalculateForRealtor(String(previousRealtorId));
+        }
+        if (newRealtorId) {
+          await RealtorAssistantService.recalculateForRealtor(String(newRealtorId));
+        }
+      } catch {
+        // ignore
+      }
+
       return NextResponse.json({ success: true, lead: updatedLead });
     }
 
@@ -161,6 +173,17 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         teamId: effectiveTeamId,
       },
     });
+
+    try {
+      if (previousRealtorId && String(previousRealtorId) !== String(newRealtorId)) {
+        await RealtorAssistantService.recalculateForRealtor(String(previousRealtorId));
+      }
+      if (newRealtorId) {
+        await RealtorAssistantService.recalculateForRealtor(String(newRealtorId));
+      }
+    } catch {
+      // ignore
+    }
 
     return NextResponse.json({ success: true, lead: updated });
   } catch (error) {

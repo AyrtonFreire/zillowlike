@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
+import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 
 const noteSchema = z.object({
   content: z.string().min(1, "Escreva uma nota antes de salvar.").max(2000, "A nota está muito longa."),
@@ -124,6 +125,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       title: "Nota adicionada",
       description: parsed.data.content.trim().slice(0, 200),
     });
+
+    if (lead.realtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+      } catch {
+        // ignore
+      }
+    }
 
     return NextResponse.json({ note });
   } catch (error) {

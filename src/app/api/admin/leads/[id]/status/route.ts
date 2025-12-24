@@ -4,6 +4,7 @@ import type { LeadStatus } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
+import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 
 const ALLOWED_STATUSES: LeadStatus[] = [
   "PENDING",
@@ -48,6 +49,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         status: true,
         completedAt: true,
         cancelledAt: true,
+        realtorId: true,
       },
     });
 
@@ -79,6 +81,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         status: true,
         completedAt: true,
         cancelledAt: true,
+        realtorId: true,
       },
     });
 
@@ -98,6 +101,14 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         },
       });
     } catch {}
+
+    if (updated.realtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(String(updated.realtorId));
+      } catch {
+        // ignore
+      }
+    }
 
     return NextResponse.json({ success: true, lead: updated });
   } catch (error) {

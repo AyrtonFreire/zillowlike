@@ -3,6 +3,7 @@ import { QueueService } from "./queue-service";
 import { logger } from "./logger";
 import { getPusherServer, PUSHER_EVENTS, PUSHER_CHANNELS } from "./pusher-server";
 import { LeadEventService } from "./lead-event-service";
+import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 
 /**
  * Serviço de aprovação de visitas pelo proprietário
@@ -58,6 +59,14 @@ export class OwnerApprovalService {
         status: "WAITING_OWNER_APPROVAL",
       },
     });
+
+    if (lead.realtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+      } catch {
+        // ignore
+      }
+    }
 
     await LeadEventService.record({
       leadId,
@@ -139,6 +148,14 @@ export class OwnerApprovalService {
         confirmedAt: new Date(),
       },
     });
+
+    if (lead.realtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+      } catch {
+        // ignore
+      }
+    }
 
     await LeadEventService.record({
       leadId,
@@ -262,6 +279,14 @@ export class OwnerApprovalService {
         },
       }),
     ]);
+
+    if (lead.realtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+      } catch {
+        // ignore
+      }
+    }
 
     await LeadEventService.record({
       leadId,
