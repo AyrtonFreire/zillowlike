@@ -170,7 +170,7 @@ function buildUserPrompt(input: {
   clientName?: string | null;
   propertyTitle?: string | null;
   leadStatus?: string | null;
-  recentClientMessages?: Array<{ createdAt: string; content: string }>;
+  recentChatMessages?: Array<{ createdAt: string; fromClient: boolean; content: string }>;
   nextActionNote?: string | null;
 }) {
   const lines: string[] = [];
@@ -192,13 +192,14 @@ function buildUserPrompt(input: {
   if (input.leadStatus) lines.push(`Status do lead: ${String(input.leadStatus).trim()}`);
   if (input.nextActionNote) lines.push(`Próximo passo (anotação): ${String(input.nextActionNote).trim()}`);
 
-  const msgs = input.recentClientMessages || [];
+  const msgs = input.recentChatMessages || [];
   if (msgs.length > 0) {
-    lines.push("\nMensagens recentes do cliente (use como contexto, sem copiar literal se não fizer sentido):");
-    msgs.slice(-6).forEach((m) => {
+    lines.push("\nMensagens recentes no chat (use como contexto, sem copiar literal se não fizer sentido):");
+    msgs.slice(-10).forEach((m) => {
       const dt = m.createdAt;
+      const who = m.fromClient ? "Cliente" : "Corretor";
       const content = String(m.content || "").trim().replace(/\s+/g, " ").slice(0, 240);
-      lines.push(`- (${dt}) ${content}`);
+      lines.push(`- (${dt}) ${who}: ${content}`);
     });
   }
 
@@ -261,7 +262,7 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
   }
 
   let lead: any = null;
-  let recentClientMessages: Array<{ createdAt: string; content: string }> = [];
+  let recentChatMessages: Array<{ createdAt: string; fromClient: boolean; content: string }> = [];
 
   if (item.leadId) {
     lead = await prisma.lead.findFirst({
@@ -277,13 +278,14 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
 
     if (lead?.id) {
       const msgs = await prisma.leadClientMessage.findMany({
-        where: { leadId: String(lead.id), fromClient: true },
+        where: { leadId: String(lead.id) },
         orderBy: { createdAt: "asc" },
-        take: 6,
-        select: { createdAt: true, content: true },
+        take: 12,
+        select: { createdAt: true, content: true, fromClient: true },
       });
-      recentClientMessages = (msgs || []).map((m: any) => ({
+      recentChatMessages = (msgs || []).map((m: any) => ({
         createdAt: new Date(m.createdAt).toISOString(),
+        fromClient: Boolean(m.fromClient),
         content: String(m.content || ""),
       }));
     }
@@ -292,7 +294,10 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
   const spec = getRealtorAssistantAiSpec(String(item.type || ""));
   const taskLabel = spec.taskLabel;
 
-  const isReminder = String(item.type || "") === "REMINDER_TODAY" || String(item.type || "") === "REMINDER_OVERDUE";
+  const isReminder =
+    String(item.type || "") === "REMINDER_TODAY" ||
+    String(item.type || "") === "REMINDER_OVERDUE" ||
+    String(item.type || "") === "WEEKLY_SUMMARY";
   const reminderExtraSystem = isReminder
     ? "IMPORTANTE: Este item é um LEMBRETE interno. O campo draft deve ser um plano/checklist (3-6 itens) e/ou roteiro de ligação. NÃO escreva uma mensagem para alguém (não use 'Olá', não trate como chat)."
     : undefined;
@@ -306,7 +311,7 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
     clientName: lead?.contact?.name || null,
     propertyTitle: lead?.property?.title || null,
     leadStatus: lead?.status || null,
-    recentClientMessages,
+    recentChatMessages,
     nextActionNote: lead?.nextActionNote || null,
   });
 

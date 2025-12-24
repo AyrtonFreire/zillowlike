@@ -39,6 +39,14 @@ type AssistantItem = {
   snoozedUntil?: string | null;
   primaryAction?: AssistantAction | null;
   secondaryAction?: AssistantAction | null;
+  impactScore?: number;
+  lead?: {
+    id: string;
+    status?: string | null;
+    pipelineStage?: string | null;
+    clientName?: string | null;
+    propertyTitle?: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -132,13 +140,18 @@ function canSendAiDraftToClient(itemType: string | null | undefined) {
 
 function getAiDraftSectionTitle(itemType: string | null | undefined) {
   const t = String(itemType || "").trim();
-  if (t === "REMINDER_TODAY" || t === "REMINDER_OVERDUE") return "Plano sugerido";
+  if (t === "REMINDER_TODAY" || t === "REMINDER_OVERDUE" || t === "WEEKLY_SUMMARY") return "Plano sugerido";
   return "Texto pronto";
 }
 
 function isReminderType(itemType: string | null | undefined) {
   const t = String(itemType || "").trim();
   return t === "REMINDER_TODAY" || t === "REMINDER_OVERDUE";
+}
+
+function isInternalChecklistType(itemType: string | null | undefined) {
+  const t = String(itemType || "").trim();
+  return isReminderType(t) || t === "WEEKLY_SUMMARY";
 }
 
 export default function RealtorAssistantFeed(props: {
@@ -225,7 +238,7 @@ export default function RealtorAssistantFeed(props: {
 
     const existing = items.find((i) => String(i.id) === String(aiForId)) || null;
     const t = existing?.type || aiItemSnapshot?.type || null;
-    if (!isReminderType(t)) return;
+    if (!isInternalChecklistType(t)) return;
 
     try {
       if (aiLoadingId === aiForId) {
@@ -658,7 +671,7 @@ export default function RealtorAssistantFeed(props: {
           {!aiVisibleItem &&
             aiForId &&
             (aiError || (aiResult && aiResult.itemId === aiForId)) &&
-            !isReminderType(aiItemSnapshot?.type) && (
+            !isInternalChecklistType(aiItemSnapshot?.type) && (
             <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -773,14 +786,40 @@ export default function RealtorAssistantFeed(props: {
             const group = groupedItems[category] || [];
             if (group.length === 0) return null;
 
+            const leadGroups = (() => {
+              const map = new Map<string, AssistantItem[]>();
+              for (const it of group) {
+                const key = it.leadId ? `lead:${String(it.leadId)}` : `item:${String(it.id)}`;
+                const arr = map.get(key) || [];
+                arr.push(it);
+                map.set(key, arr);
+              }
+              return Array.from(map.entries()).map(([key, items]) => {
+                const sorted = [...items].sort((a, b) => {
+                  const sa = typeof a.impactScore === "number" ? a.impactScore : 0;
+                  const sb = typeof b.impactScore === "number" ? b.impactScore : 0;
+                  if (sb !== sa) return sb - sa;
+                  const da = a.dueAt ? new Date(a.dueAt) : null;
+                  const db = b.dueAt ? new Date(b.dueAt) : null;
+                  const ta = da && !Number.isNaN(da.getTime()) ? da.getTime() : Number.POSITIVE_INFINITY;
+                  const tb = db && !Number.isNaN(db.getTime()) ? db.getTime() : Number.POSITIVE_INFINITY;
+                  if (ta !== tb) return ta - tb;
+                  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                });
+                return { key, items: sorted };
+              });
+            })();
+
             return (
               <div key={`cat-${category}`} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] font-semibold text-gray-700">{category}</p>
-                  <p className="text-[11px] font-semibold text-gray-500">{group.length}</p>
+                  <p className="text-[11px] font-semibold text-gray-500">{leadGroups.length}</p>
                 </div>
                 <div className="space-y-3">
-                  {group.map((item) => {
+                  {leadGroups.map((leadGroup) => {
+                    const item = leadGroup.items[0];
+                    const subtasks = leadGroup.items.slice(1);
                     const dueLabel = formatShortDateTime(item.dueAt || null);
                     const snoozeLabel = item.status === "SNOOZED" ? formatShortDateTime(item.snoozedUntil || null) : null;
                     const openChatAction: AssistantAction | null = item.leadId
@@ -791,8 +830,9 @@ export default function RealtorAssistantFeed(props: {
                       : null;
                     const taskLabel = getRealtorAssistantTaskLabel(item.type);
                     const isReminder = isReminderType(item.type);
-                    const resolveLabel = isReminder ? "Marcar como feito" : "Resolver";
-                    const resolveTitle = isReminder ? "Marcar como feito" : "Marcar como resolvido";
+                    const isInternalChecklist = isInternalChecklistType(item.type);
+                    const resolveLabel = isInternalChecklist ? "Marcar como feito" : "Resolver";
+                    const resolveTitle = isInternalChecklist ? "Marcar como feito" : "Marcar como resolvido";
                     const isResolvedPreview = justResolvedId === item.id && item.status === "RESOLVED";
                     const isSnoozedPreview = justSnoozedId === item.id && item.status === "SNOOZED";
                     const isTransientPreview = isResolvedPreview || isSnoozedPreview;
@@ -921,11 +961,11 @@ export default function RealtorAssistantFeed(props: {
 
                           <div className="mt-4">
                             <p className="text-sm text-gray-500">Próxima ação sugerida:</p>
-                            <div className={isReminder ? "mt-1 flex items-start gap-2" : "mt-1"}>
+                            <div className={isInternalChecklist ? "mt-1 flex items-start gap-2" : "mt-1"}>
                               {isReminder && <Phone className="w-4 h-4 text-gray-400 mt-1" />}
                               <p
                                 className={
-                                  isReminder
+                                  isInternalChecklist
                                     ? `text-[15px] leading-6 font-semibold text-gray-900 ${isExpanded ? "" : "line-clamp-3"}`
                                     : `text-[15px] leading-6 font-medium text-gray-800 ${isExpanded ? "" : "line-clamp-3"}`
                                 }
@@ -944,6 +984,93 @@ export default function RealtorAssistantFeed(props: {
                             )}
                           </div>
                         </div>
+
+                        {subtasks.length > 0 && (
+                          <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-[11px] font-semibold text-gray-800">Outras pendências deste lead</p>
+                              <p className="text-[11px] font-semibold text-gray-500">{subtasks.length}</p>
+                            </div>
+                            <div className="mt-3 space-y-2">
+                              {subtasks.map((st) => {
+                                const stOpenChatAction: AssistantAction | null = st.leadId
+                                  ? { type: "OPEN_CHAT", leadId: st.leadId }
+                                  : null;
+                                const stOpenLeadAction: AssistantAction | null = st.leadId
+                                  ? { type: "OPEN_LEAD", leadId: st.leadId }
+                                  : null;
+                                const stIsResponder = st.type === "UNANSWERED_CLIENT_MESSAGE";
+                                const stPrimaryOpen = stIsResponder ? stOpenChatAction : stOpenLeadAction;
+                                const StOpenIcon = stPrimaryOpen ? getActionIcon(stPrimaryOpen) : null;
+
+                                return (
+                                  <div key={st.id} className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <p className="text-[12px] font-semibold text-gray-900">{st.title}</p>
+                                        <p className="mt-0.5 text-[11px] text-gray-600 line-clamp-2">{st.message}</p>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {stPrimaryOpen && (
+                                          <button
+                                            type="button"
+                                            disabled={isTransientPreview || st.status !== "ACTIVE"}
+                                            onClick={() => handleOpenAction(stPrimaryOpen, st)}
+                                            className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                            title={getActionLabel(stPrimaryOpen, st)}
+                                          >
+                                            {StOpenIcon && <StOpenIcon className="w-4 h-4" />}
+                                          </button>
+                                        )}
+
+                                        <div className="relative" data-snooze-root="true">
+                                          <button
+                                            type="button"
+                                            disabled={actingId === st.id || isTransientPreview || st.status !== "ACTIVE"}
+                                            onClick={() => setSnoozeMenuFor((prev) => (prev === st.id ? null : st.id))}
+                                            className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                            title="Lembrar depois"
+                                          >
+                                            <Clock className="w-4 h-4" />
+                                          </button>
+
+                                          {snoozeMenuFor === st.id && (
+                                            <div className="absolute right-0 mt-2 w-36 rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
+                                              {snoozeOptions.map((opt) => (
+                                                <button
+                                                  key={opt.minutes}
+                                                  type="button"
+                                                  disabled={actingId === st.id}
+                                                  onClick={async () => {
+                                                    setSnoozeMenuFor(null);
+                                                    await performAction(st.id, { action: "snooze", minutes: opt.minutes });
+                                                  }}
+                                                  className="w-full text-left px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                                >
+                                                  {opt.label}
+                                                </button>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <button
+                                          type="button"
+                                          disabled={actingId === st.id || isTransientPreview || st.status !== "ACTIVE"}
+                                          onClick={() => performAction(st.id, { action: "resolve" })}
+                                          className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                          title="Marcar como concluído"
+                                        >
+                                          <CheckCircle2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                           <div className="flex flex-wrap gap-3">

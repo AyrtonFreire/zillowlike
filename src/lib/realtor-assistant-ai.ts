@@ -8,6 +8,7 @@ export type RealtorAssistantItemType =
   | "VISIT_TODAY"
   | "VISIT_TOMORROW"
   | "OWNER_APPROVAL_PENDING"
+  | "WEEKLY_SUMMARY"
   | (string & {});
 
 export type RealtorAssistantCategory = "Leads" | "Visitas" | "Lembretes" | "Outros";
@@ -26,6 +27,15 @@ const DEFAULT_SPEC: RealtorAssistantAiSpec = {
 };
 
 const SPECS: Partial<Record<RealtorAssistantItemType, RealtorAssistantAiSpec>> = {
+  WEEKLY_SUMMARY: {
+    category: "Outros",
+    taskLabel: "Revisar a semana",
+    typeInstructions:
+      "Este item é um resumo interno semanal. NÃO escreva mensagem para cliente.\n" +
+      "- Gere um resumo curto do que merece atenção\n" +
+      "- Liste 3 a 6 próximos passos objetivos\n" +
+      "- Priorize pendências com maior chance de virar visita/proposta",
+  },
   UNANSWERED_CLIENT_MESSAGE: {
     category: "Leads",
     taskLabel: "Criar resposta",

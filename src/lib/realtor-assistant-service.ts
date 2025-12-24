@@ -30,6 +30,47 @@ function addMinutes(d: Date, minutes: number) {
   return x;
 }
 
+function safeDate(value: any): Date | null {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function impactScoreForItem(item: any, now: Date): number {
+  const priority = String(item?.priority || "");
+  const base = priority === "HIGH" ? 60 : priority === "MEDIUM" ? 30 : 10;
+
+  const dueAt = safeDate(item?.dueAt);
+  const snoozedUntil = safeDate(item?.snoozedUntil);
+
+  // Penaliza itens efetivamente sonegados no futuro, pra não poluir o topo.
+  if (String(item?.status) === "SNOOZED" && snoozedUntil && snoozedUntil.getTime() > now.getTime()) {
+    return Math.max(0, base - 20);
+  }
+
+  let urgency = 0;
+  if (dueAt) {
+    const deltaMs = dueAt.getTime() - now.getTime();
+    if (deltaMs <= 0) urgency += 40;
+    else if (deltaMs <= 15 * 60 * 1000) urgency += 30;
+    else if (deltaMs <= 60 * 60 * 1000) urgency += 18;
+    else if (deltaMs <= 24 * 60 * 60 * 1000) urgency += 8;
+  }
+
+  const type = String(item?.type || "");
+  let typeWeight = 0;
+  if (type === "UNANSWERED_CLIENT_MESSAGE") typeWeight = 30;
+  else if (type === "VISIT_TODAY") typeWeight = 25;
+  else if (type === "OWNER_APPROVAL_PENDING") typeWeight = 22;
+  else if (type === "REMINDER_OVERDUE") typeWeight = 18;
+  else if (type === "LEAD_NO_FIRST_CONTACT") typeWeight = 16;
+  else if (type === "STALE_LEAD") typeWeight = 10;
+  else if (type === "NEW_LEAD") typeWeight = 12;
+  else if (type === "WEEKLY_SUMMARY") typeWeight = 0;
+
+  return base + urgency + typeWeight;
+}
+
 export class RealtorAssistantService {
   static async emitUpdated(realtorId: string) {
     try {
@@ -61,7 +102,7 @@ export class RealtorAssistantService {
       take: 100,
     });
 
-    return (items || []).map((item: any) => {
+    const normalized = (items || []).map((item: any) => {
       if (item?.status === "SNOOZED" && item?.snoozedUntil) {
         const until = new Date(item.snoozedUntil);
         if (!Number.isNaN(until.getTime()) && until.getTime() <= now.getTime()) {
@@ -70,6 +111,64 @@ export class RealtorAssistantService {
       }
       return item;
     });
+
+    const leadIds = Array.from(
+      new Set(
+        normalized
+          .map((i: any) => (i?.leadId ? String(i.leadId) : null))
+          .filter(Boolean)
+      )
+    ) as string[];
+
+    const leadRows = leadIds.length
+      ? await prisma.lead.findMany({
+          where: { id: { in: leadIds }, realtorId },
+          select: {
+            id: true,
+            status: true,
+            pipelineStage: true,
+            contact: { select: { name: true } },
+            property: { select: { title: true } },
+          },
+        })
+      : [];
+
+    const leadMap = new Map<string, any>(
+      (leadRows || []).map((l: any) => [
+        String(l.id),
+        {
+          id: String(l.id),
+          status: l.status || null,
+          pipelineStage: l.pipelineStage || null,
+          clientName: l?.contact?.name || null,
+          propertyTitle: l?.property?.title || null,
+        },
+      ])
+    );
+
+    const enriched = normalized.map((item: any) => {
+      const impactScore = impactScoreForItem(item, now);
+      const lead = item?.leadId ? leadMap.get(String(item.leadId)) || null : null;
+      return { ...item, impactScore, lead };
+    });
+
+    enriched.sort((a: any, b: any) => {
+      const sa = typeof a.impactScore === "number" ? a.impactScore : 0;
+      const sb = typeof b.impactScore === "number" ? b.impactScore : 0;
+      if (sb !== sa) return sb - sa;
+
+      const da = safeDate(a?.dueAt);
+      const db = safeDate(b?.dueAt);
+      const ta = da ? da.getTime() : Number.POSITIVE_INFINITY;
+      const tb = db ? db.getTime() : Number.POSITIVE_INFINITY;
+      if (ta !== tb) return ta - tb;
+
+      const ca = safeDate(a?.createdAt);
+      const cb = safeDate(b?.createdAt);
+      return (cb?.getTime() || 0) - (ca?.getTime() || 0);
+    });
+
+    return enriched;
   }
 
   static async resolve(realtorId: string, itemId: string) {
@@ -238,19 +337,32 @@ export class RealtorAssistantService {
   static async recalculateForRealtor(realtorId: string) {
     const now = new Date();
     const today = startOfDay(now);
+    const recentClientThreshold = addDays(now, -14);
 
     const leads = await prisma.lead.findMany({
       where: {
         realtorId,
-        status: {
-          in: [
-            "RESERVED",
-            "ACCEPTED",
-            "WAITING_REALTOR_ACCEPT",
-            "WAITING_OWNER_APPROVAL",
-            "CONFIRMED",
-          ] as any,
-        },
+        OR: [
+          {
+            status: {
+              in: [
+                "RESERVED",
+                "ACCEPTED",
+                "WAITING_REALTOR_ACCEPT",
+                "WAITING_OWNER_APPROVAL",
+                "CONFIRMED",
+              ] as any,
+            },
+          },
+          {
+            clientMessages: {
+              some: {
+                fromClient: true,
+                createdAt: { gte: recentClientThreshold },
+              },
+            },
+          },
+        ],
       },
       select: {
         id: true,
@@ -498,39 +610,6 @@ export class RealtorAssistantService {
 
       const hasClientMessage = !!firstClient?.createdAt;
 
-      if (lead.status === "ACCEPTED" && !lastContactAt) {
-        const createdAt = new Date(lead.createdAt);
-        const threshold = new Date(now);
-        threshold.setHours(threshold.getHours() - 24);
-        if (!Number.isNaN(createdAt.getTime()) && createdAt >= threshold && hasClientMessage) {
-          const lastClientAtIso = (() => {
-            const d = lastClient?.createdAt ? new Date(lastClient.createdAt) : null;
-            if (!d || Number.isNaN(d.getTime())) return null;
-            return d.toISOString();
-          })();
-          const lastPreview = String(lastClient?.content || firstClient?.content || "")
-            .trim()
-            .slice(0, 140);
-          const key = `NEW_LEAD:${lead.id}`;
-          dedupeKeys.add(key);
-          await this.upsertFromRule({
-            realtorId,
-            leadId: lead.id,
-            type: "NEW_LEAD",
-            priority: "HIGH",
-            title: "Novo lead: mensagem recebida",
-            message: lastPreview
-              ? `${clientName} enviou uma mensagem sobre ${propertyTitle}. Última: “${lastPreview}”`
-              : `${clientName} enviou uma mensagem sobre ${propertyTitle}.`,
-            dueAt: null,
-            dedupeKey: key,
-            primaryAction: { type: "OPEN_CHAT", leadId: lead.id },
-            secondaryAction: { type: "OPEN_LEAD", leadId: lead.id },
-            metadata: { status: lead.status, leadSource, lastClientAt: lastClientAtIso },
-          });
-        }
-      }
-
       const isFormLead = leadSource === "CONTACT_FORM" || leadSource === "VISIT_REQUEST";
 
       const isFirstClientForm =
@@ -544,19 +623,9 @@ export class RealtorAssistantService {
 
       for (const channel of channelsToCheck) {
         // Se ainda não houve qualquer contato do corretor/owner e já existe mensagem do cliente,
-        // preferimos um único aviso de "Novo lead" (com a mensagem) em vez de duplicar com "não respondida".
-        if (!lastContactAt && hasClientMessage) {
-          const createdAt = new Date(lead.createdAt);
-          const threshold = new Date(now);
-          threshold.setHours(threshold.getHours() - 24);
-          const isFresh = !Number.isNaN(createdAt.getTime()) && createdAt >= threshold;
-          if (isFresh) {
-            const newLeadKey = `NEW_LEAD:${lead.id}`;
-            if (dedupeKeys.has(newLeadKey)) {
-              continue;
-            }
-          }
-        }
+        // queremos garantir que o aviso de "não respondida" apareça imediatamente.
+
+        const lastReplyAt = channel === "CHAT" ? lastProChatAt || null : lastContactAt;
 
         const clientMessagesForLead = (recentClientMessages || []).filter((m: any) => m.leadId === lead.id);
 
@@ -588,13 +657,13 @@ export class RealtorAssistantService {
         const lastClientAt = new Date(lastClientInChannel.createdAt);
         if (Number.isNaN(lastClientAt.getTime())) continue;
 
-        const hasUnread = !lastContactAt ? true : lastClientAt > lastContactAt;
+        const hasUnread = !lastReplyAt ? true : lastClientAt > lastReplyAt;
         if (!hasUnread) continue;
 
         const unreadMsgs = clientMsgsInChannel.filter((m: any) => {
           const d = new Date(m.createdAt);
           if (Number.isNaN(d.getTime())) return false;
-          return !lastContactAt ? true : d > lastContactAt;
+          return !lastReplyAt ? true : d > lastReplyAt;
         });
 
         const unreadCount = unreadMsgs.length || 1;
@@ -677,6 +746,36 @@ export class RealtorAssistantService {
         });
       }
     }
+
+    const weekStart = (() => {
+      const d = startOfDay(now);
+      const day = d.getDay();
+      const diffToMonday = day === 0 ? 6 : day - 1;
+      d.setDate(d.getDate() - diffToMonday);
+      return d;
+    })();
+
+    const weekKey = `WEEKLY_SUMMARY:${weekStart.toISOString().slice(0, 10)}`;
+    dedupeKeys.add(weekKey);
+
+    const weeklyDueAt = new Date(weekStart);
+    weeklyDueAt.setHours(9, 0, 0, 0);
+
+    await this.upsertFromRule({
+      realtorId,
+      leadId: null,
+      type: "WEEKLY_SUMMARY",
+      priority: "LOW",
+      title: "Resumo da semana",
+      message: "Quando tiver 3 minutos, revise o que merece atenção e defina os próximos passos.",
+      dueAt: weeklyDueAt,
+      dedupeKey: weekKey,
+      primaryAction: null,
+      secondaryAction: null,
+      metadata: {
+        weekStart: weekStart.toISOString(),
+      },
+    });
 
     // Auto-resolve items from RULE that are no longer applicable
     await (prisma as any).realtorAssistantItem.updateMany({
