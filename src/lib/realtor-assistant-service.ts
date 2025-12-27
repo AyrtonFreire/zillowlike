@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getPusherServer, PUSHER_CHANNELS } from "@/lib/pusher-server";
+import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
 
 type AssistantAction = {
   type: string;
@@ -71,6 +71,96 @@ function impactScoreForItem(item: any, now: Date): number {
   return base + urgency + typeWeight;
 }
 
+function clampNumber(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, value));
+}
+
+function computeLeadHealthAndNba(params: {
+  now: Date;
+  lastClientAt?: Date | null;
+  lastProAt?: Date | null;
+  nextActionDate?: Date | null;
+  visitDate?: Date | null;
+  visitTime?: string | null;
+  ownerApproved?: boolean | null;
+  leadStatus?: string | null;
+}) {
+  const nowMs = params.now.getTime();
+  const lastClientMs = params.lastClientAt && !Number.isNaN(params.lastClientAt.getTime()) ? params.lastClientAt.getTime() : 0;
+  const lastProMs = params.lastProAt && !Number.isNaN(params.lastProAt.getTime()) ? params.lastProAt.getTime() : 0;
+  const lastInteractionMs = Math.max(lastClientMs, lastProMs);
+
+  const nextActionMs = params.nextActionDate && !Number.isNaN(params.nextActionDate.getTime()) ? params.nextActionDate.getTime() : 0;
+  const visitMs = params.visitDate && !Number.isNaN(params.visitDate.getTime()) ? params.visitDate.getTime() : 0;
+
+  let score = 62;
+  let nba: string | null = null;
+
+  if (lastInteractionMs) {
+    const days = (nowMs - lastInteractionMs) / (24 * 60 * 60 * 1000);
+    if (days >= 14) score -= 30;
+    else if (days >= 7) score -= 18;
+    else if (days >= 3) score -= 10;
+    else score += 4;
+  } else {
+    score -= 12;
+  }
+
+  const clientUnanswered = lastClientMs > 0 && lastClientMs > lastProMs;
+  if (clientUnanswered) {
+    score -= 22;
+    nba = "Responder cliente";
+  }
+
+  const overdueNextAction = nextActionMs > 0 && nextActionMs < nowMs - 60 * 60 * 1000;
+  if (overdueNextAction) {
+    score -= 12;
+    if (!nba) nba = "Executar próxima ação (atrasada)";
+  } else if (nextActionMs > 0 && nextActionMs < nowMs + 24 * 60 * 60 * 1000) {
+    score -= 4;
+    if (!nba) nba = "Executar próxima ação hoje";
+  }
+
+  const visitIsTodayOrTomorrow = (() => {
+    if (!visitMs) return false;
+    const today = startOfDay(params.now);
+    const tomorrow = addDays(today, 1);
+    const v = startOfDay(new Date(visitMs));
+    return isSameDay(v, today) || isSameDay(v, tomorrow);
+  })();
+
+  if (visitMs && visitIsTodayOrTomorrow) {
+    score -= 6;
+    if (!nba) nba = "Confirmar visita";
+    if (params.ownerApproved === false) {
+      score -= 10;
+      nba = "Cobrar aprovação do proprietário";
+    }
+  }
+
+  const status = String(params.leadStatus || "").trim();
+  if (status === "WAITING_OWNER_APPROVAL") {
+    score -= 10;
+    nba = "Cobrar aprovação do proprietário";
+  }
+
+  if (!nba) {
+    if (lastInteractionMs && (nowMs - lastInteractionMs) / (24 * 60 * 60 * 1000) >= 7) {
+      nba = "Enviar follow-up";
+    } else if (nextActionMs) {
+      nba = "Definir próximo passo";
+    } else {
+      nba = "Qualificar e propor próximo passo";
+    }
+  }
+
+  return {
+    leadHealthScore: clampNumber(Math.round(score), 0, 100),
+    nextBestAction: nba,
+  };
+}
+
 export class RealtorAssistantService {
   static async emitUpdated(realtorId: string) {
     try {
@@ -82,6 +172,127 @@ export class RealtorAssistantService {
     } catch {
       // ignore
     }
+  }
+
+  static async enrichItemForRealtime(item: any) {
+    const now = new Date();
+    const impactScore = impactScoreForItem(item, now);
+
+    let lead: any = null;
+    const leadId = item?.leadId ? String(item.leadId) : null;
+    if (leadId) {
+      try {
+        const row = await prisma.lead.findUnique({
+          where: { id: leadId },
+          select: {
+            id: true,
+            status: true,
+            pipelineStage: true,
+            nextActionDate: true,
+            nextActionNote: true,
+            visitDate: true,
+            visitTime: true,
+            ownerApproved: true,
+            contact: { select: { name: true } },
+            property: { select: { title: true } },
+          },
+        });
+
+        const lastClientMsg = await prisma.leadClientMessage.findFirst({
+          where: { leadId, fromClient: true },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true, content: true },
+        });
+
+        const lastProMsg = await prisma.leadClientMessage.findFirst({
+          where: { leadId, fromClient: false },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true },
+        });
+
+        const lastClientAt = lastClientMsg?.createdAt ? new Date(lastClientMsg.createdAt) : null;
+        const lastProAt = lastProMsg?.createdAt ? new Date(lastProMsg.createdAt) : null;
+        const lastClientMs = lastClientAt && !Number.isNaN(lastClientAt.getTime()) ? lastClientAt.getTime() : 0;
+        const lastProMs = lastProAt && !Number.isNaN(lastProAt.getTime()) ? lastProAt.getTime() : 0;
+        const lastInteractionMs = Math.max(lastClientMs, lastProMs);
+
+        const health = computeLeadHealthAndNba({
+          now,
+          lastClientAt,
+          lastProAt,
+          nextActionDate: safeDate(row?.nextActionDate),
+          visitDate: safeDate(row?.visitDate),
+          visitTime: row?.visitTime ? String(row.visitTime) : null,
+          ownerApproved: typeof row?.ownerApproved === "boolean" ? row.ownerApproved : row?.ownerApproved ?? null,
+          leadStatus: row?.status ? String(row.status) : null,
+        });
+
+        if (row) {
+          lead = {
+            id: String(row.id),
+            status: row.status || null,
+            pipelineStage: row.pipelineStage || null,
+            nextActionDate: row.nextActionDate || null,
+            nextActionNote: row.nextActionNote || null,
+            visitDate: row.visitDate || null,
+            visitTime: row.visitTime || null,
+            ownerApproved: typeof row.ownerApproved === "boolean" ? row.ownerApproved : row.ownerApproved ?? null,
+            lastClientAt: lastClientAt ? lastClientAt.toISOString() : null,
+            lastProAt: lastProAt ? lastProAt.toISOString() : null,
+            lastInteractionAt: lastInteractionMs ? new Date(lastInteractionMs).toISOString() : null,
+            lastInteractionFrom: lastInteractionMs ? (lastClientMs >= lastProMs ? "CLIENT" : "REALTOR") : null,
+            lastClientMessagePreview: lastClientMsg?.content
+              ? String(lastClientMsg.content).trim().slice(0, 160)
+              : null,
+            clientName: row?.contact?.name || null,
+            propertyTitle: row?.property?.title || null,
+            leadHealthScore: health.leadHealthScore,
+            nextBestAction: health.nextBestAction,
+          };
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    return {
+      ...item,
+      impactScore,
+      lead,
+    };
+  }
+
+  static async emitItemUpdated(realtorId: string, item: any) {
+    try {
+      const pusher = getPusherServer();
+      const payloadItem = await this.enrichItemForRealtime(item);
+      await pusher.trigger(PUSHER_CHANNELS.REALTOR(realtorId), PUSHER_EVENTS.ASSISTANT_ITEM_UPDATED, {
+        realtorId,
+        item: payloadItem,
+        ts: new Date().toISOString(),
+      });
+    } catch {
+      // ignore
+    }
+
+    // backward compat
+    await this.emitUpdated(realtorId);
+  }
+
+  static async emitItemsRecalculated(realtorId: string, meta?: { count?: number }) {
+    try {
+      const pusher = getPusherServer();
+      await pusher.trigger(PUSHER_CHANNELS.REALTOR(realtorId), PUSHER_EVENTS.ASSISTANT_ITEMS_RECALCULATED, {
+        realtorId,
+        count: meta?.count ?? null,
+        ts: new Date().toISOString(),
+      });
+    } catch {
+      // ignore
+    }
+
+    // backward compat
+    await this.emitUpdated(realtorId);
   }
 
   static async list(realtorId: string, options?: { leadId?: string | null }) {
@@ -120,29 +331,107 @@ export class RealtorAssistantService {
       )
     ) as string[];
 
-    const leadRows = leadIds.length
-      ? await prisma.lead.findMany({
-          where: { id: { in: leadIds }, realtorId },
-          select: {
-            id: true,
-            status: true,
-            pipelineStage: true,
-            contact: { select: { name: true } },
-            property: { select: { title: true } },
-          },
-        })
-      : [];
+    const [leadRows, lastClientMessages, lastProMessages] = await Promise.all([
+      leadIds.length
+        ? prisma.lead.findMany({
+            where: { id: { in: leadIds }, realtorId },
+            select: {
+              id: true,
+              status: true,
+              pipelineStage: true,
+              nextActionDate: true,
+              nextActionNote: true,
+              visitDate: true,
+              visitTime: true,
+              ownerApproved: true,
+              contact: { select: { name: true } },
+              property: { select: { title: true } },
+            },
+          })
+        : [],
+      leadIds.length
+        ? prisma.leadClientMessage.findMany({
+            where: { leadId: { in: leadIds }, fromClient: true },
+            orderBy: { createdAt: "desc" },
+            select: { leadId: true, createdAt: true, content: true },
+            take: Math.max(100, leadIds.length * 10),
+          })
+        : [],
+      leadIds.length
+        ? prisma.leadClientMessage.findMany({
+            where: { leadId: { in: leadIds }, fromClient: false },
+            orderBy: { createdAt: "desc" },
+            select: { leadId: true, createdAt: true },
+            take: Math.max(100, leadIds.length * 10),
+          })
+        : [],
+    ]);
+
+    const lastClientMap = new Map<string, { createdAt: Date; content: string | null }>();
+    for (const m of lastClientMessages || []) {
+      const id = String((m as any).leadId);
+      if (lastClientMap.has(id)) continue;
+      lastClientMap.set(id, { createdAt: (m as any).createdAt, content: (m as any).content ?? null });
+    }
+
+    const lastProMap = new Map<string, Date>();
+    for (const m of lastProMessages || []) {
+      const id = String((m as any).leadId);
+      if (lastProMap.has(id)) continue;
+      lastProMap.set(id, (m as any).createdAt);
+    }
 
     const leadMap = new Map<string, any>(
       (leadRows || []).map((l: any) => [
         String(l.id),
-        {
-          id: String(l.id),
-          status: l.status || null,
-          pipelineStage: l.pipelineStage || null,
-          clientName: l?.contact?.name || null,
-          propertyTitle: l?.property?.title || null,
-        },
+        (() => {
+          const id = String(l.id);
+          const lastClientAt = (() => {
+            const x = lastClientMap.get(id)?.createdAt;
+            return x && !Number.isNaN(new Date(x).getTime()) ? new Date(x) : null;
+          })();
+          const lastProAt = (() => {
+            const x = lastProMap.get(id) || null;
+            return x && !Number.isNaN(new Date(x).getTime()) ? new Date(x) : null;
+          })();
+          const lastClientMs = lastClientAt && !Number.isNaN(lastClientAt.getTime()) ? lastClientAt.getTime() : 0;
+          const lastProMs = lastProAt && !Number.isNaN(lastProAt.getTime()) ? lastProAt.getTime() : 0;
+          const lastInteractionMs = Math.max(lastClientMs, lastProMs);
+
+          const health = computeLeadHealthAndNba({
+            now,
+            lastClientAt,
+            lastProAt,
+            nextActionDate: safeDate(l?.nextActionDate),
+            visitDate: safeDate(l?.visitDate),
+            visitTime: l?.visitTime ? String(l.visitTime) : null,
+            ownerApproved: typeof l?.ownerApproved === "boolean" ? l.ownerApproved : l?.ownerApproved ?? null,
+            leadStatus: l?.status ? String(l.status) : null,
+          });
+
+          return {
+            id,
+            status: l.status || null,
+            pipelineStage: l.pipelineStage || null,
+            nextActionDate: l.nextActionDate || null,
+            nextActionNote: l.nextActionNote || null,
+            visitDate: l.visitDate || null,
+            visitTime: l.visitTime || null,
+            ownerApproved: typeof l.ownerApproved === "boolean" ? l.ownerApproved : l.ownerApproved ?? null,
+            lastClientAt: lastClientAt ? lastClientAt.toISOString() : null,
+            lastProAt: lastProAt ? lastProAt.toISOString() : null,
+            lastInteractionAt: lastInteractionMs ? new Date(lastInteractionMs).toISOString() : null,
+            lastInteractionFrom: lastInteractionMs ? (lastClientMs >= lastProMs ? "CLIENT" : "REALTOR") : null,
+            lastClientMessagePreview: (() => {
+              const content = lastClientMap.get(id)?.content;
+              return content ? String(content).trim().slice(0, 160) : null;
+            })(),
+            clientName: l?.contact?.name || null,
+            propertyTitle: l?.property?.title || null,
+            leadHealthScore: health.leadHealthScore,
+            nextBestAction: health.nextBestAction,
+          };
+        })(),
       ])
     );
 
@@ -187,7 +476,7 @@ export class RealtorAssistantService {
       },
     });
 
-    await this.emitUpdated(realtorId);
+    await this.emitItemUpdated(realtorId, updated);
     return updated;
   }
 
@@ -207,7 +496,7 @@ export class RealtorAssistantService {
       },
     });
 
-    await this.emitUpdated(realtorId);
+    await this.emitItemUpdated(realtorId, updated);
     return updated;
   }
 
@@ -229,7 +518,7 @@ export class RealtorAssistantService {
       },
     });
 
-    await this.emitUpdated(realtorId);
+    await this.emitItemUpdated(realtorId, updated);
     return updated;
   }
 
@@ -792,7 +1081,7 @@ export class RealtorAssistantService {
       },
     });
 
-    await this.emitUpdated(realtorId);
+    await this.emitItemsRecalculated(realtorId, { count: dedupeKeys.size });
 
     return { count: dedupeKeys.size };
   }

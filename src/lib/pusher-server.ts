@@ -28,6 +28,9 @@ export const PUSHER_EVENTS = {
   SCORE_UPDATED: "score-updated",
   VISIT_CONFIRMED: "visit-confirmed",
   VISIT_REJECTED_BY_OWNER: "visit-rejected-by-owner",
+  // Assistant events
+  ASSISTANT_ITEM_UPDATED: "assistant:item_updated",
+  ASSISTANT_ITEMS_RECALCULATED: "assistant:items_recalculated",
   // Chat events
   NEW_CHAT_MESSAGE: "new-chat-message",
   USER_TYPING: "user-typing",

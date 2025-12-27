@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
+  ClipboardList,
   Clock,
   Copy,
   ExternalLink,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
 import { getRealtorAssistantCategory, getRealtorAssistantTaskLabel } from "@/lib/realtor-assistant-ai";
+import { buildPropertyPath } from "@/lib/slug";
 
 type AssistantAction = {
   type: string;
@@ -45,8 +47,20 @@ type AssistantItem = {
     id: string;
     status?: string | null;
     pipelineStage?: string | null;
+    nextActionDate?: string | null;
+    nextActionNote?: string | null;
+    visitDate?: string | null;
+    visitTime?: string | null;
+    ownerApproved?: boolean | null;
+    lastClientAt?: string | null;
+    lastProAt?: string | null;
+    lastInteractionAt?: string | null;
+    lastInteractionFrom?: "CLIENT" | "REALTOR" | null;
+    lastClientMessagePreview?: string | null;
     clientName?: string | null;
     propertyTitle?: string | null;
+    leadHealthScore?: number | null;
+    nextBestAction?: string | null;
   } | null;
   createdAt: string;
   updatedAt: string;
@@ -68,6 +82,40 @@ type AiItemSnapshot = {
   type: string;
   title: string;
   message: string;
+};
+
+type PlaybookKind = "FOLLOW_UP" | "CONFIRM_VISIT" | "REQUEST_DOCS" | "SUGGEST_3_PROPERTIES";
+
+type PlaybookResult = {
+  kind: PlaybookKind;
+  title: string;
+  draft: string;
+};
+
+type CoachIntent = "PRICE" | "LOCATION" | "FINANCING" | "VISIT" | "GENERAL";
+
+type CoachResult = {
+  intent: CoachIntent;
+  confidence: "low" | "medium" | "high";
+  questions: string[];
+  nextSteps: string[];
+  draft: string;
+};
+
+type SimilarPropertyItem = {
+  property: {
+    id: string;
+    title: string;
+    price: number;
+    city: string;
+    state: string;
+    neighborhood: string | null;
+    bedrooms: number | null;
+    bathrooms: number | null;
+    areaM2: number | null;
+  };
+  matchScore: number;
+  matchReasons: string[];
 };
 
 function formatShortDateTime(value?: string | null) {
@@ -95,6 +143,18 @@ function getPriorityClasses(priority: AssistantItem["priority"]) {
 
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function formatPriceBRL(value: number | null | undefined) {
+  if (value == null) return null;
+  const cents = Number(value);
+  if (!Number.isFinite(cents)) return null;
+  const brl = cents / 100;
+  try {
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(brl);
+  } catch {
+    return `R$ ${brl.toFixed(2)}`;
+  }
 }
 
 function isSameDay(a: Date, b: Date) {
@@ -168,12 +228,15 @@ export default function RealtorAssistantFeed(props: {
   onDidMutate?: () => void;
 }) {
   const router = useRouter();
+  const realtorId = props.realtorId;
+  const leadId = props.leadId;
   const [items, setItems] = useState<AssistantItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const etagRef = useRef<string | null>(null);
   const optimisticHideRef = useRef<Record<string, number>>({});
+  const lastRealtimeUpdateRef = useRef<Record<string, number>>({});
   const [snoozeMenuFor, setSnoozeMenuFor] = useState<string | null>(null);
   const [aiForId, setAiForId] = useState<string | null>(null);
   const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
@@ -187,6 +250,21 @@ export default function RealtorAssistantFeed(props: {
   const repliedTimerRef = useRef<any>(null);
   const [aiItemSnapshot, setAiItemSnapshot] = useState<AiItemSnapshot | null>(null);
 
+  const [playbookForId, setPlaybookForId] = useState<string | null>(null);
+  const [playbookResult, setPlaybookResult] = useState<PlaybookResult | null>(null);
+
+  const [coachForId, setCoachForId] = useState<string | null>(null);
+  const [coachLoadingId, setCoachLoadingId] = useState<string | null>(null);
+  const [coachError, setCoachError] = useState<string | null>(null);
+  const [coachResult, setCoachResult] = useState<CoachResult | null>(null);
+
+  const [recForId, setRecForId] = useState<string | null>(null);
+  const [recLoadingId, setRecLoadingId] = useState<string | null>(null);
+  const [recError, setRecError] = useState<string | null>(null);
+  const [recItems, setRecItems] = useState<SimilarPropertyItem[] | null>(null);
+  const [recShareUrl, setRecShareUrl] = useState<string | null>(null);
+  const [recDraft, setRecDraft] = useState<string | null>(null);
+
   const [successById, setSuccessById] = useState<Record<string, { message: string }>>({});
   const successTimersRef = useRef<Record<string, any>>({});
   const delayedRefreshRef = useRef<any>(null);
@@ -195,12 +273,10 @@ export default function RealtorAssistantFeed(props: {
   const deleteConfirmTimerRef = useRef<any>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [leadSummaryExpandedForId, setLeadSummaryExpandedForId] = useState<string | null>(null);
   const [justResolvedId, setJustResolvedId] = useState<string | null>(null);
   const [justSnoozedId, setJustSnoozedId] = useState<string | null>(null);
   const resolvedTimerRef = useRef<any>(null);
-
-  const realtorId = props.realtorId;
-  const leadId = props.leadId;
 
   useEffect(() => {
     return () => {
@@ -260,6 +336,36 @@ export default function RealtorAssistantFeed(props: {
     setAiResult(null);
     setAiItemSnapshot(null);
   }, [aiForId, aiLoadingId, items]);
+
+  useEffect(() => {
+    if (!playbookForId) return;
+    const exists = items.some((i) => String(i.id) === String(playbookForId));
+    if (exists) return;
+    setPlaybookForId(null);
+    setPlaybookResult(null);
+  }, [items, playbookForId]);
+
+  useEffect(() => {
+    if (!coachForId) return;
+    const exists = items.some((i) => String(i.id) === String(coachForId));
+    if (exists) return;
+    setCoachForId(null);
+    setCoachLoadingId(null);
+    setCoachError(null);
+    setCoachResult(null);
+  }, [coachForId, items]);
+
+  useEffect(() => {
+    if (!recForId) return;
+    const exists = items.some((i) => String(i.id) === String(recForId));
+    if (exists) return;
+    setRecForId(null);
+    setRecLoadingId(null);
+    setRecError(null);
+    setRecItems(null);
+    setRecShareUrl(null);
+    setRecDraft(null);
+  }, [items, recForId]);
 
   useEffect(() => {
     if (!aiForId) return;
@@ -499,6 +605,262 @@ export default function RealtorAssistantFeed(props: {
     [fetchItems, items, props, resolveItemsOptimistically, showSuccess]
   );
 
+  const buildPlaybookDraft = useCallback(
+    (kind: PlaybookKind, item: AssistantItem) => {
+      const clientName = item.lead?.clientName ? String(item.lead.clientName).trim() : "";
+      const propertyTitle = item.lead?.propertyTitle ? String(item.lead.propertyTitle).trim() : "";
+      const nextActionNote = item.lead?.nextActionNote ? String(item.lead.nextActionNote).trim() : "";
+      const visitDateLabel = formatShortDateTime(item.lead?.visitDate || null);
+      const visitTimeLabel = item.lead?.visitTime ? String(item.lead.visitTime).trim() : "";
+
+      const greet = clientName ? `Olá ${clientName}, tudo bem?` : "Olá, tudo bem?";
+      const propertyLine = propertyTitle ? `Sobre o imóvel ${propertyTitle}, ` : "";
+
+      if (kind === "FOLLOW_UP") {
+        const draft =
+          `${greet}\n\n` +
+          `${propertyLine}queria só fazer um follow-up para entender se você ainda tem interesse e como posso te ajudar.\n\n` +
+          `Você prefere que eu:` +
+          `\n- te envie mais detalhes (valor/condições/fotos)` +
+          `\n- ou a gente já agenda uma visita?\n\n` +
+          `Se preferir visita, quais horários ficam melhores para você (manhã/tarde/noite)?`;
+        return { kind, title: "Follow-up", draft };
+      }
+
+      if (kind === "CONFIRM_VISIT") {
+        const when = [visitDateLabel, visitTimeLabel].filter(Boolean).join(" · ");
+        const draft =
+          `${greet}\n\n` +
+          `Confirmando nossa visita${when ? ` (${when})` : ""}.` +
+          `\n\nVocê consegue confirmar presença? Se precisar ajustar o horário, me diga uma alternativa.` +
+          `\n\nCombinamos o ponto de encontro na portaria/entrada?`;
+        return { kind, title: "Confirmar visita", draft };
+      }
+
+      if (kind === "REQUEST_DOCS") {
+        const draft =
+          `${greet}\n\n` +
+          `${propertyLine}para a gente avançar com o atendimento, você consegue me enviar estes dados/documentos?` +
+          `\n- Documento com foto (RG ou CNH)` +
+          `\n- CPF` +
+          `\n- Comprovante de renda` +
+          `\n- Comprovante de residência` +
+          `\n\nSe for para locação, me diga também quantas pessoas vão morar no imóvel.`;
+        return { kind, title: "Pedir documentos", draft };
+      }
+
+      const draft =
+        `${greet}\n\n` +
+        `${propertyLine}posso te mandar 3 opções bem alinhadas com o que você procura.` +
+        `\n\nSó para eu acertar em cheio: qual faixa de valor e quais bairros/regiões você prefere?` +
+        `\nE você busca quantos quartos e qual prazo para mudar?` +
+        (nextActionNote ? `\n\nObs.: ${nextActionNote}` : "");
+      return { kind, title: "Sugerir 3 imóveis", draft };
+    },
+    []
+  );
+
+  const openPlaybook = useCallback(
+    (kind: PlaybookKind, item: AssistantItem) => {
+      const next = buildPlaybookDraft(kind, item);
+      setPlaybookForId(String(item.id));
+      setPlaybookResult(next);
+    },
+    [buildPlaybookDraft]
+  );
+
+  const getWinnerKey = useCallback(
+    (intent: CoachIntent) => {
+      const rid = realtorId ? String(realtorId) : "anon";
+      return `assistant:winner:${rid}:${intent}`;
+    },
+    [realtorId]
+  );
+
+  const readWinner = useCallback(
+    (intent: CoachIntent) => {
+      if (typeof window === "undefined") return null;
+      try {
+        const v = window.localStorage.getItem(getWinnerKey(intent));
+        return v && v.trim().length > 0 ? v : null;
+      } catch {
+        return null;
+      }
+    },
+    [getWinnerKey]
+  );
+
+  const saveWinner = useCallback(
+    (intent: CoachIntent, draft: string) => {
+      if (typeof window === "undefined") return;
+      try {
+        window.localStorage.setItem(getWinnerKey(intent), String(draft || "").trim().slice(0, 2000));
+      } catch {
+      }
+    },
+    [getWinnerKey]
+  );
+
+  const buildRecommendationsDraft = useCallback((item: AssistantItem, list: SimilarPropertyItem[], shareUrl?: string | null) => {
+    const clientName = item.lead?.clientName ? String(item.lead.clientName).trim() : "";
+    const greet = clientName ? `Olá ${clientName}, tudo bem?` : "Olá, tudo bem?";
+
+    const lines = list
+      .slice(0, 3)
+      .map((it, idx) => {
+        const p = it.property;
+        const price = formatPriceBRL(p.price) || "";
+        const neigh = p.neighborhood ? ` - ${p.neighborhood}` : "";
+        const beds = p.bedrooms != null ? `${p.bedrooms}q` : "";
+        const baths = p.bathrooms != null ? `${p.bathrooms}b` : "";
+        const area = p.areaM2 != null ? `${p.areaM2}m²` : "";
+        const meta = [beds, baths, area].filter(Boolean).join(" · ");
+        const path = buildPropertyPath(String(p.id), String(p.title || "Imóvel"));
+        const reasons = (it.matchReasons || []).slice(0, 2).join(", ");
+        const why = reasons ? ` (${reasons})` : "";
+        return `${idx + 1}) ${p.title}${price ? ` - ${price}` : ""}${neigh}${meta ? ` - ${meta}` : ""}${why}\n${path}`;
+      })
+      .join("\n\n");
+
+    const tail = shareUrl
+      ? `\n\nSe preferir, deixei uma lista organizada aqui: ${shareUrl}`
+      : "";
+
+    return `${greet}\n\nSeparei 3 opções bem alinhadas para você: \n\n${lines}${tail}`.trim();
+  }, []);
+
+  const openCoach = useCallback(
+    async (item: AssistantItem) => {
+      const leadId = item.leadId ? String(item.leadId) : "";
+      if (!leadId) return;
+
+      setRecForId(null);
+      setRecLoadingId(null);
+      setRecError(null);
+      setRecItems(null);
+      setRecShareUrl(null);
+      setRecDraft(null);
+
+      setCoachForId(String(item.id));
+      setCoachError(null);
+      setCoachResult(null);
+      setCoachLoadingId(String(item.id));
+
+      try {
+        const res = await fetch(`/api/assistant/leads/${encodeURIComponent(leadId)}/coach?ai=1`);
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.success || !json?.data) {
+          throw new Error(json?.error || "Não conseguimos gerar o coach agora.");
+        }
+        setCoachResult(json.data as CoachResult);
+      } catch (e: any) {
+        setCoachError(e?.message || "Não conseguimos gerar o coach agora.");
+      } finally {
+        setCoachLoadingId(null);
+      }
+    },
+    []
+  );
+
+  const openRecommendations = useCallback(
+    async (item: AssistantItem) => {
+      const leadId = item.leadId ? String(item.leadId) : "";
+      if (!leadId) return;
+
+      setCoachForId(null);
+      setCoachLoadingId(null);
+      setCoachError(null);
+      setCoachResult(null);
+
+      setRecForId(String(item.id));
+      setRecError(null);
+      setRecItems(null);
+      setRecShareUrl(null);
+      setRecDraft(null);
+      setRecLoadingId(String(item.id));
+
+      try {
+        const res = await fetch(`/api/leads/${encodeURIComponent(leadId)}/similar-properties?limit=3`);
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.success || !Array.isArray(json?.items)) {
+          throw new Error(json?.error || "Não conseguimos buscar imóveis similares agora.");
+        }
+        const list = (json.items as SimilarPropertyItem[]).slice(0, 3);
+        setRecItems(list);
+        setRecDraft(buildRecommendationsDraft(item, list, null));
+      } catch (e: any) {
+        setRecError(e?.message || "Não conseguimos buscar imóveis similares agora.");
+      } finally {
+        setRecLoadingId(null);
+      }
+    },
+    [buildRecommendationsDraft]
+  );
+
+  const generateExploreLink = useCallback(
+    async (item: AssistantItem, list: SimilarPropertyItem[]) => {
+      const leadId = item.leadId ? String(item.leadId) : "";
+      if (!leadId) return;
+      const ids = list.map((x) => String(x?.property?.id || "")).filter(Boolean);
+      if (ids.length === 0) return;
+
+      setRecError(null);
+      setRecLoadingId(String(item.id));
+
+      try {
+        const title = "Seleção de imóveis";
+        const res = await fetch(`/api/leads/${encodeURIComponent(leadId)}/similar-properties`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ propertyIds: ids, title }),
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.success || !json?.shareUrl) {
+          throw new Error(json?.error || "Não conseguimos gerar o link agora.");
+        }
+        setRecShareUrl(String(json.shareUrl));
+        setRecDraft(buildRecommendationsDraft(item, list, String(json.shareUrl)));
+      } catch (e: any) {
+        setRecError(e?.message || "Não conseguimos gerar o link agora.");
+      } finally {
+        setRecLoadingId(null);
+      }
+    },
+    [buildRecommendationsDraft]
+  );
+
+  const sortAssistantItems = useCallback((list: AssistantItem[]) => {
+    const now = Date.now();
+    const safeMs = (v: any) => {
+      if (!v) return 0;
+      const d = new Date(v);
+      const t = d.getTime();
+      return Number.isNaN(t) ? 0 : t;
+    };
+
+    return [...list].sort((a, b) => {
+      const sa = typeof a.impactScore === "number" ? a.impactScore : 0;
+      const sb = typeof b.impactScore === "number" ? b.impactScore : 0;
+      if (sb !== sa) return sb - sa;
+
+      const aIsSnoozedFuture =
+        a.status === "SNOOZED" && a.snoozedUntil && safeMs(a.snoozedUntil) > now;
+      const bIsSnoozedFuture =
+        b.status === "SNOOZED" && b.snoozedUntil && safeMs(b.snoozedUntil) > now;
+      if (aIsSnoozedFuture !== bIsSnoozedFuture) return aIsSnoozedFuture ? 1 : -1;
+
+      const ta = a.dueAt ? safeMs(a.dueAt) : Number.POSITIVE_INFINITY;
+      const tb = b.dueAt ? safeMs(b.dueAt) : Number.POSITIVE_INFINITY;
+      if (ta !== tb) return ta - tb;
+
+      const ua = safeMs(a.updatedAt) || safeMs(a.createdAt);
+      const ub = safeMs(b.updatedAt) || safeMs(b.createdAt);
+      if (ub !== ua) return ub - ua;
+
+      return String(b.id).localeCompare(String(a.id));
+    });
+  }, []);
+
   useEffect(() => {
     if (!snoozeMenuFor) return;
     const onDown = (ev: MouseEvent) => {
@@ -522,17 +884,72 @@ export default function RealtorAssistantFeed(props: {
       const channelName = `private-realtor-${realtorId}`;
       const channel = pusher.subscribe(channelName);
 
-      const handler = () => {
+      const refresh = () => {
         if (cancelled) return;
-        fetchItems();
+        if (delayedRefreshRef.current) clearTimeout(delayedRefreshRef.current);
+        delayedRefreshRef.current = setTimeout(() => {
+          if (cancelled) return;
+          fetchItems();
+        }, 250);
       };
 
-      channel.bind("assistant-updated", handler as any);
+      const onItemUpdated = (data: any) => {
+        if (cancelled) return;
+        const updated = data?.item;
+        if (!updated?.id) {
+          refresh();
+          return;
+        }
+
+        const id = String(updated.id);
+        const status = String(updated.status || "");
+
+        const eventMs = (() => {
+          const fromItem = updated.updatedAt || updated.resolvedAt || updated.dismissedAt || updated.createdAt || null;
+          if (fromItem) {
+            const d = new Date(fromItem);
+            const t = d.getTime();
+            if (!Number.isNaN(t)) return t;
+          }
+          const fromPayload = data?.ts ? new Date(data.ts).getTime() : 0;
+          return Number.isNaN(fromPayload) ? Date.now() : fromPayload;
+        })();
+
+        const lastSeen = lastRealtimeUpdateRef.current[id] || 0;
+        if (eventMs && lastSeen && eventMs <= lastSeen) {
+          return;
+        }
+        lastRealtimeUpdateRef.current[id] = eventMs || Date.now();
+
+        if (status === "RESOLVED" || status === "DISMISSED") {
+          optimisticHideRef.current[id] = Date.now() + 6000;
+        }
+
+        setItems((prev) => {
+          const kept = prev.filter((it) => String(it.id) !== id);
+          const next =
+            status === "ACTIVE" || status === "SNOOZED" ? [updated as any, ...kept] : kept;
+          return sortAssistantItems(next as any);
+        });
+      };
+
+      const onItemsRecalculated = () => {
+        refresh();
+      };
+
+      // New authoritative assistant events
+      channel.bind("assistant:item_updated", onItemUpdated as any);
+      channel.bind("assistant:items_recalculated", onItemsRecalculated as any);
+
+      // Backward-compatible: still emitted in some places
+      channel.bind("assistant-updated", refresh as any);
 
       return () => {
         cancelled = true;
         try {
-          channel.unbind("assistant-updated", handler as any);
+          channel.unbind("assistant:item_updated", onItemUpdated as any);
+          channel.unbind("assistant:items_recalculated", onItemsRecalculated as any);
+          channel.unbind("assistant-updated", refresh as any);
           pusher.unsubscribe(channelName);
         } catch {
           // ignore
@@ -686,12 +1103,15 @@ export default function RealtorAssistantFeed(props: {
   const handleOpenAction = (action: AssistantAction, item: AssistantItem) => {
     const targetLeadId = action.leadId || item.leadId || undefined;
 
-    resolveItemsOptimistically([String(item.id)]);
-
-    if (action.type === "OPEN_CHAT") {
-      showSuccess(String(item.id), "Abrindo conversa");
-    } else {
-      showSuccess(String(item.id), "Abrindo lead");
+    const itemType = String(item.type || "").trim();
+    const shouldResolveOnOpen = itemType !== "UNANSWERED_CLIENT_MESSAGE" && !isReminderType(itemType);
+    if (shouldResolveOnOpen) {
+      resolveItemsOptimistically([String(item.id)]);
+      if (action.type === "OPEN_CHAT") {
+        showSuccess(String(item.id), "Abrindo conversa");
+      } else {
+        showSuccess(String(item.id), "Abrindo lead");
+      }
     }
 
     if (action.type === "OPEN_CHAT") {
@@ -1031,6 +1451,14 @@ export default function RealtorAssistantFeed(props: {
                     const messageIsLong = String(item.message || "").trim().length > 120;
                     const isExpanded = expandedId === item.id;
 
+                    const hasLeadSummary = !!item.lead;
+                    const isLeadSummaryExpanded = leadSummaryExpandedForId === item.id;
+
+                    const lastInteractionLabel = formatShortDateTime(item.lead?.lastInteractionAt || null);
+                    const nextActionLabel = formatShortDateTime(item.lead?.nextActionDate || null);
+                    const visitDateLabel = item.lead?.visitDate ? String(item.lead.visitDate) : null;
+                    const visitTimeLabel = item.lead?.visitTime ? String(item.lead.visitTime) : null;
+
                     const effectivePriority =
                       item.status === "ACTIVE" && stateTone === "overdue" ? "HIGH" : item.priority;
 
@@ -1122,41 +1550,169 @@ export default function RealtorAssistantFeed(props: {
                               </div>
                             </div>
 
-                        <div className="mt-4">
-                          <p className="text-[22px] leading-7 font-extrabold text-gray-900">{item.title}</p>
+                            <div className="mt-4">
+                              <p className="text-[22px] leading-7 font-extrabold text-gray-900">{item.title}</p>
 
-                          {(dueLabel || snoozeLabel) && (
-                            <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                              <CalendarDays className="w-4.5 h-4.5" />
-                              <span>{snoozeLabel || dueLabel}</span>
-                            </div>
-                          )}
+                              {(dueLabel || snoozeLabel) && (
+                                <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                                  <CalendarDays className="w-4.5 h-4.5" />
+                                  <span>{snoozeLabel || dueLabel}</span>
+                                </div>
+                              )}
 
-                          <div className="mt-4">
-                            <p className="text-sm text-gray-500">Próxima ação sugerida:</p>
-                            <div className={isInternalChecklist ? "mt-1 flex items-start gap-2" : "mt-1"}>
-                              {isReminder && <Phone className="w-4 h-4 text-gray-400 mt-1" />}
-                              <p
-                                className={
-                                  isInternalChecklist
-                                    ? `text-[15px] leading-6 font-semibold text-gray-900 ${isExpanded ? "" : "line-clamp-3"}`
-                                    : `text-[15px] leading-6 font-medium text-gray-800 ${isExpanded ? "" : "line-clamp-3"}`
-                                }
-                              >
-                                {item.message}
-                              </p>
+                              <div className="mt-4">
+                                <p className="text-sm text-gray-500">Próxima ação sugerida:</p>
+                                <div className={isInternalChecklist ? "mt-1 flex items-start gap-2" : "mt-1"}>
+                                  {isReminder && <Phone className="w-4 h-4 text-gray-400 mt-1" />}
+                                  <p
+                                    className={
+                                      isInternalChecklist
+                                        ? `text-[15px] leading-6 font-semibold text-gray-900 ${
+                                            isExpanded ? "" : "line-clamp-3"
+                                          }`
+                                        : `text-[15px] leading-6 font-medium text-gray-800 ${
+                                            isExpanded ? "" : "line-clamp-3"
+                                          }`
+                                    }
+                                  >
+                                    {item.message}
+                                  </p>
+                                </div>
+                                {messageIsLong && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+                                    className="mt-1 text-[12px] font-semibold text-blue-700 hover:text-blue-800"
+                                  >
+                                    {isExpanded ? "Ver menos" : "Ver mais"}
+                                  </button>
+                                )}
+                              </div>
+
+                              {hasLeadSummary && (
+                                <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <p className="text-[11px] font-semibold text-gray-800">Resumo do lead</p>
+                                      {(item.lead?.clientName || item.lead?.propertyTitle) && (
+                                        <p className="mt-0.5 text-[11px] text-gray-600 line-clamp-1">
+                                          {item.lead?.clientName ? String(item.lead.clientName) : "Lead"}
+                                          {item.lead?.propertyTitle
+                                            ? ` · ${String(item.lead.propertyTitle)}`
+                                            : ""}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setLeadSummaryExpandedForId((prev) => (prev === item.id ? null : item.id))
+                                      }
+                                      className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
+                                    >
+                                      {isLeadSummaryExpanded ? "Esconder" : "Ver"}
+                                    </button>
+                                  </div>
+
+                                  {isLeadSummaryExpanded && (
+                                    <div className="mt-3 space-y-2">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                          <p className="text-[10px] font-semibold text-gray-500">Status</p>
+                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
+                                            {item.lead?.status ? String(item.lead.status) : "—"}
+                                          </p>
+                                        </div>
+
+                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                          <p className="text-[10px] font-semibold text-gray-500">Pipeline</p>
+                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
+                                            {item.lead?.pipelineStage ? String(item.lead.pipelineStage) : "—"}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                          <p className="text-[10px] font-semibold text-gray-500">Última interação</p>
+                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
+                                            {lastInteractionLabel || "—"}
+                                            {item.lead?.lastInteractionFrom
+                                              ? ` · ${item.lead.lastInteractionFrom === "CLIENT" ? "Cliente" : "Corretor"}`
+                                              : ""}
+                                          </p>
+                                        </div>
+
+                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                          <p className="text-[10px] font-semibold text-gray-500">Próxima ação</p>
+                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
+                                            {nextActionLabel || "—"}
+                                          </p>
+                                          {item.lead?.nextActionNote && (
+                                            <p className="mt-1 text-[11px] text-gray-600 line-clamp-2">
+                                              {String(item.lead.nextActionNote)}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                          <p className="text-[10px] font-semibold text-gray-500">Health score</p>
+                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
+                                            {typeof item.lead?.leadHealthScore === "number" ? `${item.lead.leadHealthScore}/100` : "—"}
+                                          </p>
+                                        </div>
+
+                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                          <p className="text-[10px] font-semibold text-gray-500">Next Best Action</p>
+                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
+                                            {item.lead?.nextBestAction ? String(item.lead.nextBestAction) : "—"}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      {(visitDateLabel ||
+                                        visitTimeLabel ||
+                                        typeof item.lead?.ownerApproved === "boolean") && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                          <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                            <p className="text-[10px] font-semibold text-gray-500">Visita</p>
+                                            <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
+                                              {visitDateLabel ? visitDateLabel : "—"}
+                                              {visitTimeLabel ? ` · ${visitTimeLabel}` : ""}
+                                            </p>
+                                          </div>
+
+                                          <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                            <p className="text-[10px] font-semibold text-gray-500">Aprovação</p>
+                                            <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
+                                              {typeof item.lead?.ownerApproved === "boolean"
+                                                ? item.lead.ownerApproved
+                                                  ? "Aprovado"
+                                                  : "Pendente"
+                                                : "—"}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {item.lead?.lastClientMessagePreview && (
+                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                          <p className="text-[10px] font-semibold text-gray-500">
+                                            Última mensagem do cliente
+                                          </p>
+                                          <p className="mt-0.5 text-[12px] text-gray-800 whitespace-pre-wrap">
+                                            {String(item.lead.lastClientMessagePreview)}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            {messageIsLong && (
-                              <button
-                                type="button"
-                                onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
-                                className="mt-1 text-[12px] font-semibold text-blue-700 hover:text-blue-800"
-                              >
-                                {isExpanded ? "Ver menos" : "Ver mais"}
-                              </button>
-                            )}
-                          </div>
-                        </div>
 
                         {subtasks.length > 0 && (
                           <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
@@ -1241,6 +1797,417 @@ export default function RealtorAssistantFeed(props: {
                                   </div>
                                 );
                               })}
+                            </div>
+                          </div>
+                        )}
+
+                        {!!item.leadId && (
+                          <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-semibold text-gray-800">Playbooks</p>
+                                <p className="mt-0.5 text-[11px] text-gray-600">Gere um rascunho e só envie se você aprovar.</p>
+                              </div>
+                              {playbookForId === item.id && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPlaybookForId(null);
+                                    setPlaybookResult(null);
+                                  }}
+                                  className="p-1 rounded-lg hover:bg-gray-100 text-gray-600"
+                                  title="Fechar"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                onClick={() => openPlaybook("FOLLOW_UP", item)}
+                                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                                Follow-up
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                onClick={() => openPlaybook("CONFIRM_VISIT", item)}
+                                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                              >
+                                <CalendarDays className="w-3.5 h-3.5" />
+                                Confirmar visita
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                onClick={() => openPlaybook("REQUEST_DOCS", item)}
+                                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                              >
+                                <ClipboardList className="w-3.5 h-3.5" />
+                                Pedir docs
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                onClick={() => openPlaybook("SUGGEST_3_PROPERTIES", item)}
+                                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                Sugerir 3 imóveis
+                              </button>
+                            </div>
+
+                            {playbookForId === item.id && playbookResult?.draft && (
+                              <div className="mt-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-[11px] font-semibold text-gray-900">{playbookResult.title}</p>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      await copyText(playbookResult.draft);
+                                      setCopiedForId(item.id);
+                                      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+                                      copiedTimerRef.current = setTimeout(() => {
+                                        setCopiedForId(null);
+                                      }, 2000);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                    {copiedForId === item.id ? "Copiado" : "Copiar"}
+                                  </button>
+                                </div>
+
+                                <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-800 whitespace-pre-wrap">
+                                  {playbookResult.draft}
+                                </div>
+
+                                <div className="mt-2 flex justify-end">
+                                  <button
+                                    type="button"
+                                    disabled={replyingForId === item.id}
+                                    onClick={() =>
+                                      sendReply({
+                                        leadId: String(item.leadId),
+                                        content: playbookResult.draft,
+                                        ownerId: item.id,
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                    {repliedForId === item.id
+                                      ? "Enviado"
+                                      : replyingForId === item.id
+                                        ? "Enviando..."
+                                        : "Enviar"}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {!!item.leadId && (
+                          <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-[11px] font-semibold text-gray-900">Coach</p>
+                                  <p className="mt-0.5 text-[11px] text-gray-600">Intenção + 2–4 perguntas + próximo passo (você aprova antes de enviar).</p>
+                                </div>
+                                {coachForId === item.id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCoachForId(null);
+                                      setCoachError(null);
+                                      setCoachResult(null);
+                                    }}
+                                    className="p-1 rounded-lg hover:bg-gray-100 text-gray-600"
+                                    title="Fechar"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  disabled={isTransientPreview || item.status !== "ACTIVE" || coachLoadingId === item.id}
+                                  onClick={() => openCoach(item)}
+                                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-900 hover:bg-gray-100 disabled:opacity-60"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  {coachLoadingId === item.id ? "Gerando..." : "Gerar coach"}
+                                </button>
+
+                                {coachForId === item.id && coachResult?.intent && (
+                                  (() => {
+                                    const winner = readWinner(coachResult.intent);
+                                    if (!winner) return null;
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setCoachResult({ ...coachResult, draft: winner });
+                                        }}
+                                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-900 hover:bg-gray-50"
+                                      >
+                                        <MessageCircle className="w-3.5 h-3.5" />
+                                        Usar vencedor
+                                      </button>
+                                    );
+                                  })()
+                                )}
+                              </div>
+
+                              {coachForId === item.id && coachError && (
+                                <p className="mt-2 text-[11px] text-red-600">{coachError}</p>
+                              )}
+
+                              {coachForId === item.id && coachResult?.draft && (
+                                <div className="mt-3">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-[11px] font-semibold text-gray-900">
+                                      Intenção: {coachResult.intent} · Confiança: {coachResult.confidence}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          await copyText(coachResult.draft);
+                                          setCopiedForId(item.id);
+                                          if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+                                          copiedTimerRef.current = setTimeout(() => {
+                                            setCopiedForId(null);
+                                          }, 2000);
+                                        }}
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50"
+                                      >
+                                        <Copy className="w-3.5 h-3.5" />
+                                        {copiedForId === item.id ? "Copiado" : "Copiar"}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          saveWinner(coachResult.intent, coachResult.draft);
+                                          showSuccess(String(item.id), "Resposta vencedora salva");
+                                        }}
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50"
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        Salvar vencedor
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {Array.isArray(coachResult.questions) && coachResult.questions.length > 0 && (
+                                    <div className="mt-2">
+                                      <p className="text-[11px] font-semibold text-gray-900">Perguntas</p>
+                                      <div className="mt-1 text-[11px] text-gray-700">
+                                        {coachResult.questions.slice(0, 4).map((q, idx) => (
+                                          <div key={idx} className="mt-1">{idx + 1}. {q}</div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {Array.isArray(coachResult.nextSteps) && coachResult.nextSteps.length > 0 && (
+                                    <div className="mt-2">
+                                      <p className="text-[11px] font-semibold text-gray-900">Próximos passos</p>
+                                      <div className="mt-1 text-[11px] text-gray-700">
+                                        {coachResult.nextSteps.slice(0, 4).map((s, idx) => (
+                                          <div key={idx} className="mt-1">- {s}</div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-900 whitespace-pre-wrap">
+                                    {coachResult.draft}
+                                  </div>
+
+                                  <div className="mt-2 flex justify-end">
+                                    <button
+                                      type="button"
+                                      disabled={replyingForId === item.id}
+                                      onClick={() =>
+                                        sendReply({
+                                          leadId: String(item.leadId),
+                                          content: coachResult.draft,
+                                          ownerId: item.id,
+                                        })
+                                      }
+                                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
+                                    >
+                                      <MessageCircle className="w-3.5 h-3.5" />
+                                      {repliedForId === item.id
+                                        ? "Enviado"
+                                        : replyingForId === item.id
+                                          ? "Enviando..."
+                                          : "Enviar"}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-[11px] font-semibold text-gray-900">Recomendações</p>
+                                  <p className="mt-0.5 text-[11px] text-gray-600">Sugira 3 imóveis do seu estoque + mensagem pronta (você aprova antes de enviar).</p>
+                                </div>
+                                {recForId === item.id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setRecForId(null);
+                                      setRecError(null);
+                                      setRecItems(null);
+                                      setRecShareUrl(null);
+                                      setRecDraft(null);
+                                    }}
+                                    className="p-1 rounded-lg hover:bg-gray-100 text-gray-600"
+                                    title="Fechar"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  disabled={isTransientPreview || item.status !== "ACTIVE" || recLoadingId === item.id}
+                                  onClick={() => openRecommendations(item)}
+                                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-900 hover:bg-gray-100 disabled:opacity-60"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  {recLoadingId === item.id ? "Buscando..." : "Buscar 3 imóveis"}
+                                </button>
+
+                                {recForId === item.id && Array.isArray(recItems) && recItems.length > 0 && (
+                                  <button
+                                    type="button"
+                                    disabled={recLoadingId === item.id}
+                                    onClick={() => generateExploreLink(item, recItems)}
+                                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    Gerar link /explore
+                                  </button>
+                                )}
+                              </div>
+
+                              {recForId === item.id && recError && (
+                                <p className="mt-2 text-[11px] text-red-600">{recError}</p>
+                              )}
+
+                              {recForId === item.id && Array.isArray(recItems) && recItems.length > 0 && (
+                                <div className="mt-3">
+                                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                                    <p className="text-[11px] font-semibold text-gray-900">Top 3 do estoque</p>
+                                    <div className="mt-1 text-[11px] text-gray-700">
+                                      {recItems.slice(0, 3).map((it, idx) => {
+                                        const p = it.property;
+                                        const price = formatPriceBRL(p.price);
+                                        const link = buildPropertyPath(String(p.id), String(p.title || "Imóvel"));
+                                        return (
+                                          <div key={p.id} className="mt-2">
+                                            <div className="font-semibold text-gray-900">{idx + 1}. {p.title}{price ? ` - ${price}` : ""}</div>
+                                            <div className="text-gray-600">
+                                              {[p.neighborhood, p.city, p.state].filter(Boolean).join(" · ")}
+                                              {it.matchReasons?.length ? ` · ${it.matchReasons.slice(0, 2).join(", ")}` : ""}
+                                            </div>
+                                            <a
+                                              href={link}
+                                              className="text-teal-700 hover:underline"
+                                              target="_blank"
+                                              rel="noreferrer"
+                                            >
+                                              {link}
+                                            </a>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+
+                                  {recShareUrl && (
+                                    <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px]">
+                                      <p className="font-semibold text-gray-900">Link</p>
+                                      <a
+                                        href={recShareUrl}
+                                        className="text-teal-700 hover:underline"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        {recShareUrl}
+                                      </a>
+                                    </div>
+                                  )}
+
+                                  {recDraft && (
+                                    <div className="mt-2">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <p className="text-[11px] font-semibold text-gray-900">Mensagem pronta</p>
+                                        <button
+                                          type="button"
+                                          onClick={async () => {
+                                            await copyText(recDraft);
+                                            setCopiedForId(item.id);
+                                            if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+                                            copiedTimerRef.current = setTimeout(() => {
+                                              setCopiedForId(null);
+                                            }, 2000);
+                                          }}
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50"
+                                        >
+                                          <Copy className="w-3.5 h-3.5" />
+                                          {copiedForId === item.id ? "Copiado" : "Copiar"}
+                                        </button>
+                                      </div>
+
+                                      <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-900 whitespace-pre-wrap">
+                                        {recDraft}
+                                      </div>
+
+                                      <div className="mt-2 flex justify-end">
+                                        <button
+                                          type="button"
+                                          disabled={replyingForId === item.id}
+                                          onClick={() =>
+                                            sendReply({
+                                              leadId: String(item.leadId),
+                                              content: recDraft,
+                                              ownerId: item.id,
+                                            })
+                                          }
+                                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
+                                        >
+                                          <MessageCircle className="w-3.5 h-3.5" />
+                                          {repliedForId === item.id
+                                            ? "Enviado"
+                                            : replyingForId === item.id
+                                              ? "Enviando..."
+                                              : "Enviar"}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
