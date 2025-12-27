@@ -43,22 +43,20 @@ type AssistantItem = {
   impactScore?: number;
   lead?: {
     id: string;
-    status?: string | null;
-    pipelineStage?: string | null;
-    nextActionDate?: string | null;
-    nextActionNote?: string | null;
-    visitDate?: string | null;
-    visitTime?: string | null;
-    ownerApproved?: boolean | null;
-    lastClientAt?: string | null;
-    lastProAt?: string | null;
-    lastInteractionAt?: string | null;
-    lastInteractionFrom?: "CLIENT" | "REALTOR" | null;
-    lastClientMessagePreview?: string | null;
-    clientName?: string | null;
-    propertyTitle?: string | null;
-    leadHealthScore?: number | null;
-    nextBestAction?: string | null;
+    property?: {
+      id: string;
+      title?: string | null;
+      price?: number | null;
+      hidePrice?: boolean | null;
+      neighborhood?: string | null;
+      city?: string | null;
+      state?: string | null;
+      bedrooms?: number | null;
+      bathrooms?: number | null;
+      areaM2?: number | null;
+      type?: string | null;
+      purpose?: string | null;
+    } | null;
   } | null;
   createdAt: string;
   updatedAt: string;
@@ -107,6 +105,18 @@ function getPriorityClasses(priority: AssistantItem["priority"]) {
 
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function formatPriceBRL(value: number | null | undefined) {
+  if (value == null) return null;
+  const cents = Number(value);
+  if (!Number.isFinite(cents)) return null;
+  const brl = cents / 100;
+  try {
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(brl);
+  } catch {
+    return `R$ ${brl.toFixed(2)}`;
+  }
 }
 
 function isSameDay(a: Date, b: Date) {
@@ -210,7 +220,7 @@ export default function RealtorAssistantFeed(props: {
   const deleteConfirmTimerRef = useRef<any>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [leadSummaryExpandedForId, setLeadSummaryExpandedForId] = useState<string | null>(null);
+  const [propertySummaryExpandedForId, setPropertySummaryExpandedForId] = useState<string | null>(null);
   const [justResolvedId, setJustResolvedId] = useState<string | null>(null);
   const [justSnoozedId, setJustSnoozedId] = useState<string | null>(null);
   const resolvedTimerRef = useRef<any>(null);
@@ -1134,13 +1144,9 @@ export default function RealtorAssistantFeed(props: {
                     const messageIsLong = String(item.message || "").trim().length > 120;
                     const isExpanded = expandedId === item.id;
 
-                    const hasLeadSummary = !!item.lead;
-                    const isLeadSummaryExpanded = leadSummaryExpandedForId === item.id;
-
-                    const lastInteractionLabel = formatShortDateTime(item.lead?.lastInteractionAt || null);
-                    const nextActionLabel = formatShortDateTime(item.lead?.nextActionDate || null);
-                    const visitDateLabel = item.lead?.visitDate ? String(item.lead.visitDate) : null;
-                    const visitTimeLabel = item.lead?.visitTime ? String(item.lead.visitTime) : null;
+                    const property = item.lead?.property || null;
+                    const hasPropertySummary = !!property;
+                    const isPropertySummaryExpanded = propertySummaryExpandedForId === item.id;
 
                     const effectivePriority =
                       item.status === "ACTIVE" && stateTone === "overdue" ? "HIGH" : item.priority;
@@ -1272,125 +1278,77 @@ export default function RealtorAssistantFeed(props: {
                                 )}
                               </div>
 
-                              {hasLeadSummary && (
+                              {hasPropertySummary && (
                                 <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
                                   <div className="flex items-center justify-between gap-3">
                                     <div className="min-w-0">
-                                      <p className="text-[11px] font-semibold text-gray-800">Resumo do lead</p>
-                                      {(item.lead?.clientName || item.lead?.propertyTitle) && (
-                                        <p className="mt-0.5 text-[11px] text-gray-600 line-clamp-1">
-                                          {item.lead?.clientName ? String(item.lead.clientName) : "Lead"}
-                                          {item.lead?.propertyTitle
-                                            ? ` · ${String(item.lead.propertyTitle)}`
-                                            : ""}
-                                        </p>
+                                      <p className="text-[11px] font-semibold text-gray-800">Resumo do imóvel</p>
+                                      {property?.title && (
+                                        <p className="mt-0.5 text-[11px] text-gray-600 line-clamp-1">{String(property.title)}</p>
                                       )}
                                     </div>
 
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        setLeadSummaryExpandedForId((prev) => (prev === item.id ? null : item.id))
+                                        setPropertySummaryExpandedForId((prev) => (prev === item.id ? null : item.id))
                                       }
                                       className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
                                     >
-                                      {isLeadSummaryExpanded ? "Esconder" : "Ver"}
+                                      {isPropertySummaryExpanded ? "Esconder" : "Ver"}
                                     </button>
                                   </div>
 
-                                  {isLeadSummaryExpanded && (
+                                  {isPropertySummaryExpanded && (
                                     <div className="mt-3 space-y-2">
                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">Status</p>
+                                          <p className="text-[10px] font-semibold text-gray-500">Preço</p>
                                           <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                            {item.lead?.status ? String(item.lead.status) : "—"}
+                                            {property?.hidePrice ? "Consulte" : formatPriceBRL(property?.price) || "—"}
                                           </p>
                                         </div>
 
                                         <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">Pipeline</p>
+                                          <p className="text-[10px] font-semibold text-gray-500">Localização</p>
                                           <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                            {item.lead?.pipelineStage ? String(item.lead.pipelineStage) : "—"}
+                                            {[property?.neighborhood, property?.city, property?.state]
+                                              .filter(Boolean)
+                                              .join(" · ") || "—"}
                                           </p>
                                         </div>
                                       </div>
 
                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">Última interação</p>
+                                          <p className="text-[10px] font-semibold text-gray-500">Tipo</p>
                                           <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                            {lastInteractionLabel || "—"}
-                                            {item.lead?.lastInteractionFrom
-                                              ? ` · ${item.lead.lastInteractionFrom === "CLIENT" ? "Cliente" : "Corretor"}`
-                                              : ""}
+                                            {[property?.type, property?.purpose].filter(Boolean).join(" · ") || "—"}
                                           </p>
                                         </div>
 
                                         <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">Próxima ação</p>
+                                          <p className="text-[10px] font-semibold text-gray-500">Características</p>
                                           <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                            {nextActionLabel || "—"}
+                                            {[
+                                              typeof property?.bedrooms === "number" ? `${property.bedrooms}q` : null,
+                                              typeof property?.bathrooms === "number" ? `${property.bathrooms}b` : null,
+                                              typeof property?.areaM2 === "number" ? `${property.areaM2}m²` : null,
+                                            ]
+                                              .filter(Boolean)
+                                              .join(" · ") || "—"}
                                           </p>
-                                          {item.lead?.nextActionNote && (
-                                            <p className="mt-1 text-[11px] text-gray-600 line-clamp-2">
-                                              {String(item.lead.nextActionNote)}
-                                            </p>
-                                          )}
                                         </div>
                                       </div>
 
                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">Health score</p>
+                                          <p className="text-[10px] font-semibold text-gray-500">ID do imóvel</p>
                                           <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                            {typeof item.lead?.leadHealthScore === "number" ? `${item.lead.leadHealthScore}/100` : "—"}
-                                          </p>
-                                        </div>
-
-                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">Next Best Action</p>
-                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                            {item.lead?.nextBestAction ? String(item.lead.nextBestAction) : "—"}
+                                            {property?.id ? String(property.id) : "—"}
                                           </p>
                                         </div>
                                       </div>
-
-                                      {(visitDateLabel ||
-                                        visitTimeLabel ||
-                                        typeof item.lead?.ownerApproved === "boolean") && (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                          <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                            <p className="text-[10px] font-semibold text-gray-500">Visita</p>
-                                            <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                              {visitDateLabel ? visitDateLabel : "—"}
-                                              {visitTimeLabel ? ` · ${visitTimeLabel}` : ""}
-                                            </p>
-                                          </div>
-
-                                          <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                            <p className="text-[10px] font-semibold text-gray-500">Aprovação</p>
-                                            <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                              {typeof item.lead?.ownerApproved === "boolean"
-                                                ? item.lead.ownerApproved
-                                                  ? "Aprovado"
-                                                  : "Pendente"
-                                                : "—"}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                      {item.lead?.lastClientMessagePreview && (
-                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">
-                                            Última mensagem do cliente
-                                          </p>
-                                          <p className="mt-0.5 text-[12px] text-gray-800 whitespace-pre-wrap">
-                                            {String(item.lead.lastClientMessagePreview)}
-                                          </p>
-                                        </div>
-                                      )}
                                     </div>
                                   )}
                                 </div>

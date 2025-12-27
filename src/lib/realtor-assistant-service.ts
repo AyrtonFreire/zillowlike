@@ -194,7 +194,22 @@ export class RealtorAssistantService {
             visitTime: true,
             ownerApproved: true,
             contact: { select: { name: true } },
-            property: { select: { title: true } },
+            property: {
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                hidePrice: true,
+                neighborhood: true,
+                city: true,
+                state: true,
+                bedrooms: true,
+                bathrooms: true,
+                areaM2: true,
+                type: true,
+                purpose: true,
+              },
+            },
           },
         });
 
@@ -246,6 +261,22 @@ export class RealtorAssistantService {
               : null,
             clientName: row?.contact?.name || null,
             propertyTitle: row?.property?.title || null,
+            property: row?.property
+              ? {
+                  id: String((row as any).property.id),
+                  title: (row as any).property.title || null,
+                  price: typeof (row as any).property.price === "number" ? (row as any).property.price : null,
+                  hidePrice: typeof (row as any).property.hidePrice === "boolean" ? (row as any).property.hidePrice : null,
+                  neighborhood: (row as any).property.neighborhood || null,
+                  city: (row as any).property.city || null,
+                  state: (row as any).property.state || null,
+                  bedrooms: typeof (row as any).property.bedrooms === "number" ? (row as any).property.bedrooms : null,
+                  bathrooms: typeof (row as any).property.bathrooms === "number" ? (row as any).property.bathrooms : null,
+                  areaM2: typeof (row as any).property.areaM2 === "number" ? (row as any).property.areaM2 : null,
+                  type: (row as any).property.type || null,
+                  purpose: (row as any).property.purpose || null,
+                }
+              : null,
             leadHealthScore: health.leadHealthScore,
             nextBestAction: health.nextBestAction,
           };
@@ -345,7 +376,22 @@ export class RealtorAssistantService {
               visitTime: true,
               ownerApproved: true,
               contact: { select: { name: true } },
-              property: { select: { title: true } },
+              property: {
+                select: {
+                  id: true,
+                  title: true,
+                  price: true,
+                  hidePrice: true,
+                  neighborhood: true,
+                  city: true,
+                  state: true,
+                  bedrooms: true,
+                  bathrooms: true,
+                  areaM2: true,
+                  type: true,
+                  purpose: true,
+                },
+              },
             },
           })
         : [],
@@ -428,6 +474,22 @@ export class RealtorAssistantService {
             })(),
             clientName: l?.contact?.name || null,
             propertyTitle: l?.property?.title || null,
+            property: l?.property
+              ? {
+                  id: String(l.property.id),
+                  title: l.property.title || null,
+                  price: typeof l.property.price === "number" ? l.property.price : null,
+                  hidePrice: typeof l.property.hidePrice === "boolean" ? l.property.hidePrice : null,
+                  neighborhood: l.property.neighborhood || null,
+                  city: l.property.city || null,
+                  state: l.property.state || null,
+                  bedrooms: typeof l.property.bedrooms === "number" ? l.property.bedrooms : null,
+                  bathrooms: typeof l.property.bathrooms === "number" ? l.property.bathrooms : null,
+                  areaM2: typeof l.property.areaM2 === "number" ? l.property.areaM2 : null,
+                  type: l.property.type || null,
+                  purpose: l.property.purpose || null,
+                }
+              : null,
             leadHealthScore: health.leadHealthScore,
             nextBestAction: health.nextBestAction,
           };
