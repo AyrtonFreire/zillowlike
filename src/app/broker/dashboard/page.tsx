@@ -21,6 +21,18 @@ import LeadListItem from "@/components/dashboard/LeadListItem";
 import DashboardLayout from "@/components/DashboardLayout";
 import BrokerOnboarding, { resetBrokerOnboarding } from "@/components/onboarding/BrokerOnboarding";
 import LeadSearchBar from "@/components/crm/LeadSearchBar";
+import { motion } from "framer-motion";
+import {
+  Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 interface Metrics {
   activeProperties: number;
@@ -50,6 +62,18 @@ function formatMinutesCompact(totalMinutes: number) {
   if (days <= 0) return `${hours}h`;
   if (remHours <= 0) return `${days}d`;
   return `${days}d${remHours}h`;
+}
+
+function clampNumber(n: number) {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, n);
+}
+
+function formatPercent(value: number) {
+  const v = clampNumber(value);
+  if (v <= 0) return "0%";
+  if (v >= 100) return "100%";
+  return `${Math.round(v)}%`;
 }
 
 interface Property {
@@ -383,6 +407,53 @@ export default function BrokerDashboard() {
     isSameDay(new Date(lead.createdAt), today)
   );
 
+  const dayTotal = myLeads.length;
+  const dayChartData = [
+    {
+      key: "today",
+      name: "Leads de hoje",
+      value: leadsToday.length,
+      color: "#14b8a6",
+    },
+    {
+      key: "in_service",
+      name: "Em atendimento",
+      value: inServiceLeads.length,
+      color: "#8b5cf6",
+    },
+    {
+      key: "new",
+      name: "Novos",
+      value: newLeads.length,
+      color: "#3b82f6",
+    },
+  ].filter((x) => x.value > 0);
+
+  const pipelineStageMeta: Array<{ stage: PipelineStage; label: string; color: string }> = [
+    { stage: "NEW", label: "Novo", color: "#3b82f6" },
+    { stage: "CONTACT", label: "Contato", color: "#06b6d4" },
+    { stage: "VISIT", label: "Visita", color: "#14b8a6" },
+    { stage: "PROPOSAL", label: "Proposta", color: "#f59e0b" },
+    { stage: "DOCUMENTS", label: "Documentos", color: "#fb7185" },
+    { stage: "WON", label: "Ganho", color: "#22c55e" },
+    { stage: "LOST", label: "Perdido", color: "#94a3b8" },
+  ];
+
+  const pipelineTotal = pipelineCounts
+    ? Object.values(pipelineCounts).reduce((sum, value) => sum + value, 0)
+    : 0;
+  const pipelineChartData = pipelineCounts
+    ? pipelineStageMeta
+        .map((m) => ({
+          stage: m.stage,
+          name: m.label,
+          value: clampNumber(pipelineCounts[m.stage] || 0),
+          color: m.color,
+          pct: pipelineTotal > 0 ? (clampNumber(pipelineCounts[m.stage] || 0) / pipelineTotal) * 100 : 0,
+        }))
+        .filter((x) => x.value > 0)
+    : [];
+
   const remindersToday = myLeads.filter((lead) => {
     if (!lead.nextActionDate) return false;
     const d = new Date(lead.nextActionDate);
@@ -607,29 +678,143 @@ export default function BrokerDashboard() {
                   : "Nenhum lead ativo no momento. Quando você tiver leads gerados pelos imóveis que anunciar, um resumo rápido do seu dia aparece aqui."}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-700">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Novos</p>
-                  <p className="text-2xl font-semibold text-gray-900">{newLeads.length}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Leads reservados esperando sua decisão.
-                  </p>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className="grid grid-cols-1 md:grid-cols-12 gap-4"
+              >
+                <div className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">Total ativo</p>
+                      <p className="text-2xl font-semibold text-gray-900">{dayTotal}</p>
+                    </div>
+                    <div className="h-20 w-20">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={dayChartData.length > 0 ? dayChartData : [{ name: "Ativos", value: dayTotal, color: "#94a3b8" }]}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={26}
+                            outerRadius={36}
+                            paddingAngle={3}
+                            stroke="rgba(255,255,255,0.9)"
+                            strokeWidth={2}
+                            isAnimationActive
+                          >
+                            {(dayChartData.length > 0 ? dayChartData : [{ name: "Ativos", value: dayTotal, color: "#94a3b8" }]).map(
+                              (entry) => (
+                                <Cell key={String((entry as any).name)} fill={(entry as any).color} />
+                              )
+                            )}
+                          </Pie>
+                          <Tooltip
+                            cursor={false}
+                            contentStyle={{
+                              borderRadius: 12,
+                              border: "1px solid rgba(229,231,235,1)",
+                              boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+                            }}
+                            formatter={(value: any, name: any) => [`${value}`, String(name || "")]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {(
+                      dayChartData.length > 0
+                        ? dayChartData
+                        : [{ key: "active", name: "Ativos", value: dayTotal, color: "#94a3b8" }]
+                    ).map((row) => {
+                      const pct = dayTotal > 0 ? (row.value / dayTotal) * 100 : 0;
+                      return (
+                        <div key={row.key} className="flex items-center justify-between text-xs text-gray-600">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
+                            <span className="truncate">{row.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="tabular-nums text-gray-900 font-medium">{row.value}</span>
+                            <span className="text-gray-500">{formatPercent(pct)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Em atendimento</p>
-                  <p className="text-2xl font-semibold text-gray-900">{inServiceLeads.length}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Leads que você já aceitou e está conduzindo.
-                  </p>
+
+                <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <motion.div whileHover={{ y: -2 }} className="rounded-2xl border border-gray-100 bg-white p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500">Novos</p>
+                        <p className="mt-1 text-3xl font-semibold text-gray-900 tabular-nums">{newLeads.length}</p>
+                        <p className="mt-1 text-xs text-gray-500">Reservados esperando sua decisão</p>
+                      </div>
+                      <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+                        <Users className="h-5 w-5" />
+                      </div>
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${dayTotal > 0 ? (newLeads.length / dayTotal) * 100 : 0}%` }}
+                        transition={{ duration: 0.45 }}
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: "#3b82f6" }}
+                      />
+                    </div>
+                  </motion.div>
+
+                  <motion.div whileHover={{ y: -2 }} className="rounded-2xl border border-gray-100 bg-white p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500">Em atendimento</p>
+                        <p className="mt-1 text-3xl font-semibold text-gray-900 tabular-nums">{inServiceLeads.length}</p>
+                        <p className="mt-1 text-xs text-gray-500">Leads que você aceitou e está conduzindo</p>
+                      </div>
+                      <div className="h-10 w-10 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center">
+                        <Activity className="h-5 w-5" />
+                      </div>
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${dayTotal > 0 ? (inServiceLeads.length / dayTotal) * 100 : 0}%` }}
+                        transition={{ duration: 0.45 }}
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: "#8b5cf6" }}
+                      />
+                    </div>
+                  </motion.div>
+
+                  <motion.div whileHover={{ y: -2 }} className="rounded-2xl border border-gray-100 bg-white p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500">Leads de hoje</p>
+                        <p className="mt-1 text-3xl font-semibold text-gray-900 tabular-nums">{leadsToday.length}</p>
+                        <p className="mt-1 text-xs text-gray-500">Oportunidades que chegaram nas últimas horas</p>
+                      </div>
+                      <div className="h-10 w-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
+                        <Plus className="h-5 w-5" />
+                      </div>
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${dayTotal > 0 ? (leadsToday.length / dayTotal) * 100 : 0}%` }}
+                        transition={{ duration: 0.45 }}
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: "#14b8a6" }}
+                      />
+                    </div>
+                  </motion.div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Leads de hoje</p>
-                  <p className="text-2xl font-semibold text-gray-900">{leadsToday.length}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Novas oportunidades que chegaram nas últimas horas.
-                  </p>
-                </div>
-              </div>
+              </motion.div>
             )}
           </StatCard>
         </div>
@@ -648,35 +833,95 @@ export default function BrokerDashboard() {
                 este quadro mostra em que etapa estão suas oportunidades.
               </p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-700">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Topo do funil</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {pipelineCounts.NEW + pipelineCounts.CONTACT}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Leads novos ou em primeiro contato.
-                  </p>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className="grid grid-cols-1 md:grid-cols-12 gap-4"
+              >
+                <div className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4">
+                  <p className="text-xs font-medium text-gray-500">Total no funil</p>
+                  <p className="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{pipelineTotal}</p>
+
+                  <div className="mt-4 space-y-3">
+                    <div className="rounded-xl border border-gray-100 bg-white p-3">
+                      <p className="text-xs text-gray-500">Topo do funil</p>
+                      <p className="text-xl font-semibold text-gray-900 tabular-nums">{pipelineCounts.NEW + pipelineCounts.CONTACT}</p>
+                      <p className="text-xs text-gray-500 mt-1">Novos e primeiro contato</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-100 bg-white p-3">
+                      <p className="text-xs text-gray-500">Em negociação</p>
+                      <p className="text-xl font-semibold text-gray-900 tabular-nums">{pipelineCounts.VISIT + pipelineCounts.PROPOSAL + pipelineCounts.DOCUMENTS}</p>
+                      <p className="text-xs text-gray-500 mt-1">Visitas, propostas e docs</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-100 bg-white p-3">
+                      <p className="text-xs text-gray-500">Resultado</p>
+                      <p className="text-xl font-semibold text-gray-900 tabular-nums">{pipelineCounts.WON + pipelineCounts.LOST}</p>
+                      <p className="text-xs text-gray-500 mt-1">Ganho + perdido</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Em negociação</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {pipelineCounts.VISIT + pipelineCounts.PROPOSAL + pipelineCounts.DOCUMENTS}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Visitas, propostas e documentação em andamento.
-                  </p>
+
+                <div className="md:col-span-8 rounded-2xl border border-gray-100 bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Distribuição por etapa</p>
+                      <p className="text-xs text-gray-500 mt-1">Passe o mouse para ver valores e % do total</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={pipelineChartData}
+                        layout="vertical"
+                        margin={{ top: 6, right: 18, bottom: 6, left: 0 }}
+                      >
+                        <XAxis type="number" hide />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          width={90}
+                          tick={{ fontSize: 12, fill: "#6b7280" }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip
+                          cursor={{ fill: "rgba(15, 23, 42, 0.04)" }}
+                          contentStyle={{
+                            borderRadius: 12,
+                            border: "1px solid rgba(229,231,235,1)",
+                            boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+                          }}
+                          formatter={(value: any, name: any, props: any) => {
+                            const pct = props?.payload?.pct;
+                            return [`${value} (${formatPercent(pct)})`, String(name || "")];
+                          }}
+                        />
+                        <Bar dataKey="value" radius={[10, 10, 10, 10]} isAnimationActive>
+                          {pipelineChartData.map((entry) => (
+                            <Cell key={String(entry.stage)} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {pipelineChartData.slice(0, 8).map((row) => (
+                      <div key={String(row.stage)} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
+                            <span className="text-xs text-gray-600 truncate">{row.name}</span>
+                          </div>
+                          <span className="text-xs font-semibold text-gray-900 tabular-nums">{row.value}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Resultado</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {pipelineCounts.WON + pipelineCounts.LOST}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Negócios fechados ou marcados como perdidos.
-                  </p>
-                </div>
-              </div>
+              </motion.div>
             )}
           </StatCard>
         </div>
