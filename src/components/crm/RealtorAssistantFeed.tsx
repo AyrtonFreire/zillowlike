@@ -1250,7 +1250,6 @@ export default function RealtorAssistantFeed(props: {
                               )}
 
                               <div className="mt-4">
-                                <p className="text-sm text-gray-500">Próxima ação sugerida:</p>
                                 <div className={isInternalChecklist ? "mt-1 flex items-start gap-2" : "mt-1"}>
                                   {isReminder && <Phone className="w-4 h-4 text-gray-400 mt-1" />}
                                   <p
@@ -1515,14 +1514,10 @@ export default function RealtorAssistantFeed(props: {
                                     });
                                     generateAi({ id: item.id });
                                   }}
-                                  className={
-                                    responderIsPrimary
-                                      ? "inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
-                                      : "inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
-                                  }
+                                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
                                 >
                                   <Sparkles className="w-5 h-5" />
-                                  {aiLoadingId === item.id ? "Gerando..." : taskLabel}
+                                  {aiLoadingId === item.id ? "Gerando..." : "Responder com IA"}
                                 </button>
 
                                 {!responderIsPrimary && primaryOpenAction && (
