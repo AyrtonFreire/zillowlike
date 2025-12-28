@@ -161,6 +161,19 @@ function canSendAiDraftToClient(itemType: string | null | undefined) {
   );
 }
 
+function getAiButtonLabel(itemType: string | null | undefined) {
+  const t = String(itemType || "").trim();
+  if (t === "UNANSWERED_CLIENT_MESSAGE") return "Responder com IA";
+  if (t === "NEW_LEAD" || t === "LEAD_NO_FIRST_CONTACT") return "Gerar primeiro contato com IA";
+  if (t === "STALE_LEAD") return "Gerar follow-up com IA";
+  if (t === "VISIT_TODAY" || t === "VISIT_TOMORROW") return "Confirmar visita com IA";
+  if (t === "OWNER_APPROVAL_PENDING") return "Cobrar aprovação com IA";
+  if (t === "REMINDER_TODAY" || t === "REMINDER_OVERDUE") return "Gerar checklist com IA";
+  if (t === "WEEKLY_SUMMARY") return "Revisar semana com IA";
+  const fallback = getRealtorAssistantTaskLabel(t);
+  return fallback ? `${fallback} com IA` : "Gerar sugestão com IA";
+}
+
 function getAiDraftSectionTitle(itemType: string | null | undefined) {
   const t = String(itemType || "").trim();
   if (t === "REMINDER_TODAY" || t === "REMINDER_OVERDUE" || t === "WEEKLY_SUMMARY") return "Plano sugerido";
@@ -1517,7 +1530,7 @@ export default function RealtorAssistantFeed(props: {
                                   className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
                                 >
                                   <Sparkles className="w-5 h-5" />
-                                  {aiLoadingId === item.id ? "Gerando..." : "Responder com IA"}
+                                  {aiLoadingId === item.id ? "Gerando..." : getAiButtonLabel(item.type)}
                                 </button>
 
                                 {!responderIsPrimary && primaryOpenAction && (

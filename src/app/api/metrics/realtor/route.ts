@@ -3,6 +3,30 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Tempo de reserva em minutos (mantém em sync com LeadDistributionService)
+const RESERVATION_TIME_MINUTES = 10;
+
+function computeResponseMinutes(params: {
+  createdAt: Date;
+  respondedAt: Date;
+  reservedUntil?: Date | null;
+}) {
+  const referenceStart = (() => {
+    if (params.reservedUntil) {
+      const reservedAt = new Date(params.reservedUntil.getTime() - RESERVATION_TIME_MINUTES * 60000);
+      if (!Number.isNaN(reservedAt.getTime())) return reservedAt;
+    }
+    return params.createdAt;
+  })();
+
+  const diffMs = params.respondedAt.getTime() - referenceStart.getTime();
+  const minutes = diffMs / 60000;
+  if (!Number.isFinite(minutes)) return 0;
+  if (minutes <= 0) return 0;
+  // Evita cair em 0min quando existe resposta rápida (< 1 min)
+  return Math.ceil(minutes);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -73,6 +97,7 @@ export async function GET(request: NextRequest) {
       select: {
         createdAt: true,
         respondedAt: true,
+        reservedUntil: true,
       },
     });
 
@@ -93,35 +118,46 @@ export async function GET(request: NextRequest) {
       select: {
         createdAt: true,
         respondedAt: true,
+        reservedUntil: true,
       },
     });
 
-    let avgResponseTime = 0;
-    if (leads.length > 0) {
-      const totalMinutes = leads.reduce((sum, lead) => {
-        if (lead.respondedAt) {
-          const diff = lead.respondedAt.getTime() - lead.createdAt.getTime();
-          return sum + diff / 60000; // Convert to minutes
-        }
-        return sum;
-      }, 0);
-      avgResponseTime = Math.round(totalMinutes / leads.length);
-    }
+    const avgResponseTime =
+      leads.length > 0
+        ? Math.round(
+            leads.reduce((sum, lead) => {
+              if (!lead.respondedAt) return sum;
+              return (
+                sum +
+                computeResponseMinutes({
+                  createdAt: lead.createdAt,
+                  respondedAt: lead.respondedAt,
+                  reservedUntil: (lead as any).reservedUntil ?? null,
+                })
+              );
+            }, 0) / leads.length
+          )
+        : null;
 
-    let avgResponseTimePrevious = 0;
-    if (prevLeads.length > 0) {
-      const totalMinutes = prevLeads.reduce((sum, lead) => {
-        if (lead.respondedAt) {
-          const diff = lead.respondedAt.getTime() - lead.createdAt.getTime();
-          return sum + diff / 60000;
-        }
-        return sum;
-      }, 0);
-      avgResponseTimePrevious = Math.round(totalMinutes / prevLeads.length);
-    }
+    const avgResponseTimePrevious =
+      prevLeads.length > 0
+        ? Math.round(
+            prevLeads.reduce((sum, lead) => {
+              if (!lead.respondedAt) return sum;
+              return (
+                sum +
+                computeResponseMinutes({
+                  createdAt: lead.createdAt,
+                  respondedAt: lead.respondedAt,
+                  reservedUntil: (lead as any).reservedUntil ?? null,
+                })
+              );
+            }, 0) / prevLeads.length
+          )
+        : null;
 
     const avgResponseTimeTrend =
-      avgResponseTimePrevious > 0
+      avgResponseTimePrevious && avgResponseTimePrevious > 0 && typeof avgResponseTime === "number"
         ? ((avgResponseTimePrevious - avgResponseTime) / avgResponseTimePrevious) * 100
         : 0;
 

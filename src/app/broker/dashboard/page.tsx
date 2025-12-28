@@ -570,7 +570,7 @@ export default function BrokerDashboard() {
           {isPartner ? (
             <MetricCard
               title="Tempo de resposta (7 dias)"
-              value={formatMinutesCompact(metrics?.avgResponseTime || 0)}
+              value={typeof metrics?.avgResponseTime === "number" ? formatMinutesCompact(metrics.avgResponseTime) : "—"}
               icon={Clock}
               trend={metrics?.avgResponseTimeTrend}
               subtitle="Média p/ leads recebidos"
