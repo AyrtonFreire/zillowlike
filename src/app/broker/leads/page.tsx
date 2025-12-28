@@ -284,7 +284,31 @@ export default function MyLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pipelineFilter, setPipelineFilter] = useState<"all" | PipelineStage>("all");
+  // Toggle visualização Lista/Pipeline (lendo query param `view`)
+  const searchParams = useSearchParams();
+  const propertyIdFromUrl = searchParams.get("propertyId");
+  const initialView = (searchParams.get("view") === "pipeline" ? "pipeline" : "list") as
+    | "list"
+    | "pipeline";
+
+  const normalizePipelineStageFromUrl = useCallback((value: string | null): "all" | PipelineStage => {
+    const v = String(value || "").trim().toUpperCase();
+    const isValid = PIPELINE_STAGES.some((s) => s.id === (v as any));
+    return isValid ? (v as PipelineStage) : "all";
+  }, []);
+
+  const normalizeDateFilterFromUrl = useCallback((value: string | null): "all" | "today" | "last7" => {
+    const v = String(value || "").trim().toLowerCase();
+    if (v === "today" || v === "last7") return v;
+    return "all";
+  }, []);
+
+  const stageFromUrl = searchParams.get("stage");
+  const dateFromUrl = searchParams.get("date");
+
+  const [pipelineFilter, setPipelineFilter] = useState<"all" | PipelineStage>(
+    () => normalizePipelineStageFromUrl(stageFromUrl)
+  );
   const [mobileActiveStage, setMobileActiveStage] = useState<PipelineStage>("NEW");
   const [moveSheetLeadId, setMoveSheetLeadId] = useState<string | null>(null);
   const moveLeadToStageRef = useRef<
@@ -293,7 +317,9 @@ export default function MyLeadsPage() {
   const [nameFilter, setNameFilter] = useState("");
   const [cityFilter, setCityFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState<"all" | "today" | "last7">("all");
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "last7">(
+    () => normalizeDateFilterFromUrl(dateFromUrl)
+  );
 
   const [openNotesLeadId, setOpenNotesLeadId] = useState<string | null>(null);
   const [notesByLead, setNotesByLead] = useState<Record<string, LeadNote[]>>({});
@@ -305,12 +331,6 @@ export default function MyLeadsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
   
-  // Toggle visualização Lista/Pipeline (lendo query param `view`)
-  const searchParams = useSearchParams();
-  const propertyIdFromUrl = searchParams.get("propertyId");
-  const initialView = (searchParams.get("view") === "pipeline" ? "pipeline" : "list") as
-    | "list"
-    | "pipeline";
   const [viewMode, setViewMode] = useState<"list" | "pipeline">(initialView);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   
@@ -336,6 +356,14 @@ export default function MyLeadsPage() {
       setMobileActiveStage(pipelineFilter);
     }
   }, [pipelineFilter]);
+
+  useEffect(() => {
+    setPipelineFilter(normalizePipelineStageFromUrl(stageFromUrl));
+  }, [stageFromUrl, normalizePipelineStageFromUrl]);
+
+  useEffect(() => {
+    setDateFilter(normalizeDateFilterFromUrl(dateFromUrl));
+  }, [dateFromUrl, normalizeDateFilterFromUrl]);
 
   const fetchLeads = useCallback(async (options?: { isBackground?: boolean }) => {
     try {

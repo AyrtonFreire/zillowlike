@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
@@ -156,6 +157,7 @@ type PipelineStage =
   | "LOST";
 
 export default function BrokerDashboard() {
+  const router = useRouter();
   const { data: session } = useSession();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -178,7 +180,6 @@ export default function BrokerDashboard() {
   const [pipelineLoading, setPipelineLoading] = useState(true);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
   const [pipelineTrend, setPipelineTrend] = useState<{ value: number; isPositive: boolean } | null>(null);
-  const [dayFilterKey, setDayFilterKey] = useState<string | null>(null);
   const [pipelineFilterStage, setPipelineFilterStage] = useState<PipelineStage | null>(null);
   const [teamSummary, setTeamSummary] = useState<{
     id: string;
@@ -467,20 +468,15 @@ export default function BrokerDashboard() {
   };
 
   const today = new Date();
-  const newLeads = myLeads.filter((lead) => lead.status === "RESERVED");
-  const inServiceLeads = myLeads.filter((lead) => lead.status === "ACCEPTED");
-  const leadsToday = myLeads.filter((lead) =>
+  const activeMyLeads = myLeads.filter((lead: any) => lead?.status === "RESERVED" || lead?.status === "ACCEPTED");
+  const newLeads = activeMyLeads.filter((lead) => lead.status === "RESERVED");
+  const inServiceLeads = activeMyLeads.filter((lead) => lead.status === "ACCEPTED");
+  const leadsToday = activeMyLeads.filter((lead) =>
     isSameDay(new Date(lead.createdAt), today)
   );
 
-  const dayTotal = myLeads.length;
+  const dayTotal = newLeads.length + inServiceLeads.length;
   const dayChartData = [
-    {
-      key: "today",
-      name: "Leads de hoje",
-      value: leadsToday.length,
-      color: "#14b8a6",
-    },
     {
       key: "in_service",
       name: "Em atendimento",
@@ -495,7 +491,6 @@ export default function BrokerDashboard() {
     },
   ].filter((x) => x.value > 0);
 
-  const dayChartDataFiltered = dayFilterKey ? dayChartData.filter((x) => x.key === dayFilterKey) : dayChartData;
   const dayBaseline = typeof metrics?.leadsLast7Days === "number" ? metrics.leadsLast7Days / 7 : null;
   const dayTrend =
     dayBaseline && dayBaseline > 0
@@ -736,10 +731,10 @@ export default function BrokerDashboard() {
           )}
         </div>
 
-        {/* Meu dia hoje */}
+        {/* Resumo dos Leads */}
         <div className="mb-8">
           <StatCard
-            title="Meu dia hoje"
+            title="Resumo dos Leads"
             action={
               <div className="flex items-center gap-2">
                 <span className="hidden sm:inline text-xs text-gray-500">vs média 7d</span>
@@ -767,7 +762,7 @@ export default function BrokerDashboard() {
                     <Skeleton className="h-3 w-10/12 rounded" />
                   </div>
                 </div>
-                <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="rounded-2xl border border-gray-100 bg-white p-4">
                     <Skeleton className="h-3 w-16 rounded" />
                     <Skeleton className="mt-2 h-8 w-10 rounded" />
@@ -780,15 +775,9 @@ export default function BrokerDashboard() {
                     <Skeleton className="mt-2 h-3 w-36 rounded" />
                     <Skeleton className="mt-4 h-2 w-full rounded-full" />
                   </div>
-                  <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                    <Skeleton className="h-3 w-24 rounded" />
-                    <Skeleton className="mt-2 h-8 w-10 rounded" />
-                    <Skeleton className="mt-2 h-3 w-40 rounded" />
-                    <Skeleton className="mt-4 h-2 w-full rounded-full" />
-                  </div>
                 </div>
               </div>
-            ) : myLeads.length === 0 ? (
+            ) : activeMyLeads.length === 0 ? (
               <div className="text-sm text-gray-600">
                 {partnerStatus === "APPROVED"
                   ? "Nenhum lead ativo no momento. Assim que novos leads da plataforma ou dos seus anúncios chegarem, um resumo rápido do seu dia aparece aqui."
@@ -801,19 +790,24 @@ export default function BrokerDashboard() {
                 transition={{ duration: 0.25 }}
                 className="grid grid-cols-1 md:grid-cols-12 gap-4"
               >
-                <div className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4">
+                <button
+                  type="button"
+                  onClick={() => router.push("/broker/leads?view=list")}
+                  className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 text-left hover:shadow-sm transition-shadow"
+                >
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-medium text-gray-500">Total ativo</p>
                       <p className="text-2xl font-semibold text-gray-900">{dayTotal}</p>
+                      <p className="mt-1 text-xs text-gray-500">Novos + em atendimento</p>
                     </div>
                     <div className="h-20 w-20">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
                             data={
-                              dayChartDataFiltered.length > 0
-                                ? dayChartDataFiltered
+                              dayChartData.length > 0
+                                ? dayChartData
                                 : [{ name: "Ativos", value: dayTotal, color: "#94a3b8" }]
                             }
                             dataKey="value"
@@ -826,8 +820,8 @@ export default function BrokerDashboard() {
                             isAnimationActive
                           >
                             {(
-                              dayChartDataFiltered.length > 0
-                                ? dayChartDataFiltered
+                              dayChartData.length > 0
+                                ? dayChartData
                                 : [{ name: "Ativos", value: dayTotal, color: "#94a3b8" }]
                             ).map((entry) => (
                               <Cell key={String((entry as any).name)} fill={(entry as any).color} />
@@ -847,46 +841,28 @@ export default function BrokerDashboard() {
                     </div>
                   </div>
 
-                  <div className="mt-3 space-y-2">
-                    {(
-                      dayChartData.length > 0
-                        ? dayChartData
-                        : [{ key: "active", name: "Ativos", value: dayTotal, color: "#94a3b8" }]
-                    ).map((row) => {
-                      const pct = dayTotal > 0 ? (row.value / dayTotal) * 100 : 0;
-                      const isSelected = dayFilterKey ? row.key === dayFilterKey : true;
-                      return (
-                        <button
+                  {dayChartData.length > 1 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {dayChartData.map((row) => (
+                        <span
                           key={row.key}
-                          type="button"
-                          onClick={() => setDayFilterKey((prev) => (prev === row.key ? null : row.key))}
-                          className={`w-full flex items-center justify-between text-xs rounded-lg px-2 py-1 transition-colors ${
-                            isSelected ? "text-gray-700 hover:bg-white" : "text-gray-400 hover:bg-white/70"
-                          }`}
+                          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
-                            <span className="truncate">{row.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`tabular-nums font-medium ${isSelected ? "text-gray-900" : "text-gray-500"}`}>
-                              {row.value}
-                            </span>
-                            <span className="text-gray-500">{formatPercent(pct)}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
+                          <span>
+                            {row.name}: {row.value}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </button>
 
-                <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <motion.div
                     whileHover={{ y: -2 }}
-                    className={`rounded-2xl border border-gray-100 bg-white p-4 ${
-                      dayFilterKey && dayFilterKey !== "new" ? "opacity-60" : ""
-                    }`}
-                    onClick={() => setDayFilterKey((prev) => (prev === "new" ? null : "new"))}
+                    className="rounded-2xl border border-gray-100 bg-white p-4 cursor-pointer"
+                    onClick={() => router.push("/broker/leads?view=pipeline&stage=NEW")}
                     role="button"
                     tabIndex={0}
                   >
@@ -913,40 +889,8 @@ export default function BrokerDashboard() {
 
                   <motion.div
                     whileHover={{ y: -2 }}
-                    className={`rounded-2xl border border-gray-100 bg-white p-4 ${
-                      dayFilterKey && dayFilterKey !== "in_service" ? "opacity-60" : ""
-                    }`}
-                    onClick={() => setDayFilterKey((prev) => (prev === "in_service" ? null : "in_service"))}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-xs font-medium text-gray-500">Em atendimento</p>
-                        <p className="mt-1 text-3xl font-semibold text-gray-900 tabular-nums">{inServiceLeads.length}</p>
-                        <p className="mt-1 text-xs text-gray-500">Leads que você aceitou e está conduzindo</p>
-                      </div>
-                      <div className="h-10 w-10 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center">
-                        <Activity className="h-5 w-5" />
-                      </div>
-                    </div>
-                    <div className="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${dayTotal > 0 ? (inServiceLeads.length / dayTotal) * 100 : 0}%` }}
-                        transition={{ duration: 0.45 }}
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: "#8b5cf6" }}
-                      />
-                    </div>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ y: -2 }}
-                    className={`rounded-2xl border border-gray-100 bg-white p-4 ${
-                      dayFilterKey && dayFilterKey !== "today" ? "opacity-60" : ""
-                    }`}
-                    onClick={() => setDayFilterKey((prev) => (prev === "today" ? null : "today"))}
+                    className="rounded-2xl border border-gray-100 bg-white p-4 cursor-pointer"
+                    onClick={() => router.push("/broker/leads?view=list&date=today")}
                     role="button"
                     tabIndex={0}
                   >
@@ -1220,113 +1164,6 @@ export default function BrokerDashboard() {
             )}
           </StatCard>
         </div>
-
-        {/* Quadro simples de leads em andamento */}
-        {myLeads.length > 0 && (
-          <div className="mb-8">
-            <StatCard title="Meus leads em andamento">
-              <p className="text-xs text-gray-500 mb-4">
-                Aqui você vê, em blocos, os leads que ainda precisam de decisão e os que você já está atendendo. Para ver os
-                detalhes completos ou registrar notas, use a página Meus Leads.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Coluna: precisam de decisão */}
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-semibold text-gray-900">
-                      Precisam de decisão
-                    </p>
-                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-100 text-orange-800">
-                      {newLeads.length}
-                    </span>
-                  </div>
-                  {newLeads.length === 0 ? (
-                    <p className="text-xs text-gray-500">
-                      Nenhum lead reservado aguardando sua decisão neste momento.
-                    </p>
-                  ) : (
-                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                      {newLeads.map((lead) => (
-                        <div
-                          key={lead.id}
-                          className="bg-white rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-800"
-                        >
-                          <p className="font-semibold line-clamp-1">
-                            {lead.property?.title || "Imóvel deste lead"}
-                          </p>
-                          {lead.property && (
-                            <p className="text-[11px] text-gray-500">
-                              {lead.property.city} - {lead.property.state}
-                            </p>
-                          )}
-                          <p className="mt-1 text-[11px] text-gray-500">
-                            Recebido em {new Date(lead.createdAt).toLocaleString("pt-BR", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Coluna: em atendimento */}
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-semibold text-gray-900">
-                      Em atendimento
-                    </p>
-                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
-                      {inServiceLeads.length}
-                    </span>
-                  </div>
-                  {inServiceLeads.length === 0 ? (
-                    <p className="text-xs text-gray-500">
-                      Assim que você aceitar um lead, ele aparece aqui como "Em atendimento".
-                    </p>
-                  ) : (
-                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                      {inServiceLeads.map((lead) => (
-                        <div
-                          key={lead.id}
-                          className="bg-white rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-800"
-                        >
-                          <p className="font-semibold line-clamp-1">
-                            {lead.property?.title || "Imóvel deste lead"}
-                          </p>
-                          {lead.property && (
-                            <p className="text-[11px] text-gray-500">
-                              {lead.property.city} - {lead.property.state}
-                            </p>
-                          )}
-                          <p className="mt-1 text-[11px] text-gray-500">
-                            Em atendimento desde {new Date(lead.createdAt).toLocaleString("pt-BR", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="mt-3 flex justify-end">
-                <Link
-                  href="/broker/leads"
-                  className="text-[11px] text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Abrir página completa de Meus Leads
-                </Link>
-              </div>
-            </StatCard>
-          </div>
-        )}
 
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
