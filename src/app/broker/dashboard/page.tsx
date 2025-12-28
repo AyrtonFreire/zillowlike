@@ -76,6 +76,42 @@ function formatPercent(value: number) {
   return `${Math.round(v)}%`;
 }
 
+function hexToRgba(hex: string, alpha: number) {
+  const raw = String(hex || "").replace("#", "").trim();
+  if (raw.length !== 6) return `rgba(148, 163, 184, ${alpha})`;
+  const r = parseInt(raw.slice(0, 2), 16);
+  const g = parseInt(raw.slice(2, 4), 16);
+  const b = parseInt(raw.slice(4, 6), 16);
+  if (![r, g, b].every((x) => Number.isFinite(x))) return `rgba(148, 163, 184, ${alpha})`;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-xl bg-gray-100 ${className}`} />;
+}
+
+function TrendPill({ trend }: { trend: { value: number; isPositive: boolean } | null }) {
+  if (!trend) {
+    return (
+      <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-600">
+        —
+      </span>
+    );
+  }
+  const isPositive = Boolean(trend.isPositive);
+  const color = isPositive
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    : "border-rose-200 bg-rose-50 text-rose-700";
+  const arrow = isPositive ? "↑" : "↓";
+  const v = Math.round(Math.abs(trend.value));
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${color}`}>
+      <span>{arrow}</span>
+      <span className="tabular-nums">{v}%</span>
+    </span>
+  );
+}
+
 interface Property {
   id: string;
   title: string;
@@ -141,6 +177,9 @@ export default function BrokerDashboard() {
   const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number> | null>(null);
   const [pipelineLoading, setPipelineLoading] = useState(true);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
+  const [pipelineTrend, setPipelineTrend] = useState<{ value: number; isPositive: boolean } | null>(null);
+  const [dayFilterKey, setDayFilterKey] = useState<string | null>(null);
+  const [pipelineFilterStage, setPipelineFilterStage] = useState<PipelineStage | null>(null);
   const [teamSummary, setTeamSummary] = useState<{
     id: string;
     name: string;
@@ -291,20 +330,47 @@ export default function BrokerDashboard() {
         LOST: 0,
       };
 
+      const now = new Date();
+      const startCurrent = new Date(now);
+      startCurrent.setDate(now.getDate() - 7);
+      const startPrev = new Date(now);
+      startPrev.setDate(now.getDate() - 14);
+      let currentWindow = 0;
+      let prevWindow = 0;
+
       (Array.isArray(data) ? data : []).forEach((lead: any) => {
         const stage = (lead.pipelineStage || "NEW") as PipelineStage;
         if (initial[stage] !== undefined) {
           initial[stage] += 1;
         }
+
+        const createdAt = lead?.createdAt ? new Date(lead.createdAt) : null;
+        if (createdAt && !Number.isNaN(createdAt.getTime())) {
+          if (createdAt >= startCurrent) {
+            currentWindow += 1;
+          } else if (createdAt >= startPrev && createdAt < startCurrent) {
+            prevWindow += 1;
+          }
+        }
       });
 
       setPipelineCounts(initial);
+
+      if (prevWindow <= 0 && currentWindow <= 0) {
+        setPipelineTrend(null);
+      } else if (prevWindow <= 0 && currentWindow > 0) {
+        setPipelineTrend({ value: 100, isPositive: true });
+      } else {
+        const delta = ((currentWindow - prevWindow) / Math.max(1, prevWindow)) * 100;
+        setPipelineTrend({ value: Math.round(Math.abs(delta)), isPositive: delta >= 0 });
+      }
     } catch (error) {
       console.error("Error fetching pipeline summary:", error);
       setPipelineCounts(null);
       setPipelineError(
         "Não conseguimos carregar o resumo do seu funil agora. Se quiser, atualize a página em alguns instantes."
       );
+      setPipelineTrend(null);
     } finally {
       setPipelineLoading(false);
     }
@@ -428,6 +494,16 @@ export default function BrokerDashboard() {
       color: "#3b82f6",
     },
   ].filter((x) => x.value > 0);
+
+  const dayChartDataFiltered = dayFilterKey ? dayChartData.filter((x) => x.key === dayFilterKey) : dayChartData;
+  const dayBaseline = typeof metrics?.leadsLast7Days === "number" ? metrics.leadsLast7Days / 7 : null;
+  const dayTrend =
+    dayBaseline && dayBaseline > 0
+      ? {
+          value: Math.round(Math.abs(((leadsToday.length - dayBaseline) / dayBaseline) * 100)),
+          isPositive: leadsToday.length >= dayBaseline,
+        }
+      : null;
 
   const pipelineStageMeta: Array<{ stage: PipelineStage; label: string; color: string }> = [
     { stage: "NEW", label: "Novo", color: "#3b82f6" },
@@ -662,14 +738,55 @@ export default function BrokerDashboard() {
 
         {/* Meu dia hoje */}
         <div className="mb-8">
-          <StatCard title="Meu dia hoje">
+          <StatCard
+            title="Meu dia hoje"
+            action={
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline text-xs text-gray-500">vs média 7d</span>
+                <TrendPill trend={dayTrend} />
+              </div>
+            }
+          >
             {myLeadsError ? (
               <div className="flex items-center justify-center py-4 text-sm text-gray-500">
                 {myLeadsError}
               </div>
             ) : myLeadsLoading ? (
-              <div className="flex items-center justify-center py-4 text-sm text-gray-500">
-                Carregando seus leads ativos...
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Skeleton className="h-3 w-20 rounded" />
+                      <Skeleton className="mt-2 h-7 w-10 rounded" />
+                    </div>
+                    <Skeleton className="h-20 w-20 rounded-full" />
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <Skeleton className="h-3 w-full rounded" />
+                    <Skeleton className="h-3 w-11/12 rounded" />
+                    <Skeleton className="h-3 w-10/12 rounded" />
+                  </div>
+                </div>
+                <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                    <Skeleton className="h-3 w-16 rounded" />
+                    <Skeleton className="mt-2 h-8 w-10 rounded" />
+                    <Skeleton className="mt-2 h-3 w-32 rounded" />
+                    <Skeleton className="mt-4 h-2 w-full rounded-full" />
+                  </div>
+                  <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                    <Skeleton className="h-3 w-24 rounded" />
+                    <Skeleton className="mt-2 h-8 w-10 rounded" />
+                    <Skeleton className="mt-2 h-3 w-36 rounded" />
+                    <Skeleton className="mt-4 h-2 w-full rounded-full" />
+                  </div>
+                  <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                    <Skeleton className="h-3 w-24 rounded" />
+                    <Skeleton className="mt-2 h-8 w-10 rounded" />
+                    <Skeleton className="mt-2 h-3 w-40 rounded" />
+                    <Skeleton className="mt-4 h-2 w-full rounded-full" />
+                  </div>
+                </div>
               </div>
             ) : myLeads.length === 0 ? (
               <div className="text-sm text-gray-600">
@@ -694,7 +811,11 @@ export default function BrokerDashboard() {
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
-                            data={dayChartData.length > 0 ? dayChartData : [{ name: "Ativos", value: dayTotal, color: "#94a3b8" }]}
+                            data={
+                              dayChartDataFiltered.length > 0
+                                ? dayChartDataFiltered
+                                : [{ name: "Ativos", value: dayTotal, color: "#94a3b8" }]
+                            }
                             dataKey="value"
                             nameKey="name"
                             innerRadius={26}
@@ -704,11 +825,13 @@ export default function BrokerDashboard() {
                             strokeWidth={2}
                             isAnimationActive
                           >
-                            {(dayChartData.length > 0 ? dayChartData : [{ name: "Ativos", value: dayTotal, color: "#94a3b8" }]).map(
-                              (entry) => (
-                                <Cell key={String((entry as any).name)} fill={(entry as any).color} />
-                              )
-                            )}
+                            {(
+                              dayChartDataFiltered.length > 0
+                                ? dayChartDataFiltered
+                                : [{ name: "Ativos", value: dayTotal, color: "#94a3b8" }]
+                            ).map((entry) => (
+                              <Cell key={String((entry as any).name)} fill={(entry as any).color} />
+                            ))}
                           </Pie>
                           <Tooltip
                             cursor={false}
@@ -731,24 +854,42 @@ export default function BrokerDashboard() {
                         : [{ key: "active", name: "Ativos", value: dayTotal, color: "#94a3b8" }]
                     ).map((row) => {
                       const pct = dayTotal > 0 ? (row.value / dayTotal) * 100 : 0;
+                      const isSelected = dayFilterKey ? row.key === dayFilterKey : true;
                       return (
-                        <div key={row.key} className="flex items-center justify-between text-xs text-gray-600">
+                        <button
+                          key={row.key}
+                          type="button"
+                          onClick={() => setDayFilterKey((prev) => (prev === row.key ? null : row.key))}
+                          className={`w-full flex items-center justify-between text-xs rounded-lg px-2 py-1 transition-colors ${
+                            isSelected ? "text-gray-700 hover:bg-white" : "text-gray-400 hover:bg-white/70"
+                          }`}
+                        >
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
                             <span className="truncate">{row.name}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="tabular-nums text-gray-900 font-medium">{row.value}</span>
+                            <span className={`tabular-nums font-medium ${isSelected ? "text-gray-900" : "text-gray-500"}`}>
+                              {row.value}
+                            </span>
                             <span className="text-gray-500">{formatPercent(pct)}</span>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
                 </div>
 
                 <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <motion.div whileHover={{ y: -2 }} className="rounded-2xl border border-gray-100 bg-white p-4">
+                  <motion.div
+                    whileHover={{ y: -2 }}
+                    className={`rounded-2xl border border-gray-100 bg-white p-4 ${
+                      dayFilterKey && dayFilterKey !== "new" ? "opacity-60" : ""
+                    }`}
+                    onClick={() => setDayFilterKey((prev) => (prev === "new" ? null : "new"))}
+                    role="button"
+                    tabIndex={0}
+                  >
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-xs font-medium text-gray-500">Novos</p>
@@ -770,7 +911,15 @@ export default function BrokerDashboard() {
                     </div>
                   </motion.div>
 
-                  <motion.div whileHover={{ y: -2 }} className="rounded-2xl border border-gray-100 bg-white p-4">
+                  <motion.div
+                    whileHover={{ y: -2 }}
+                    className={`rounded-2xl border border-gray-100 bg-white p-4 ${
+                      dayFilterKey && dayFilterKey !== "in_service" ? "opacity-60" : ""
+                    }`}
+                    onClick={() => setDayFilterKey((prev) => (prev === "in_service" ? null : "in_service"))}
+                    role="button"
+                    tabIndex={0}
+                  >
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-xs font-medium text-gray-500">Em atendimento</p>
@@ -792,7 +941,15 @@ export default function BrokerDashboard() {
                     </div>
                   </motion.div>
 
-                  <motion.div whileHover={{ y: -2 }} className="rounded-2xl border border-gray-100 bg-white p-4">
+                  <motion.div
+                    whileHover={{ y: -2 }}
+                    className={`rounded-2xl border border-gray-100 bg-white p-4 ${
+                      dayFilterKey && dayFilterKey !== "today" ? "opacity-60" : ""
+                    }`}
+                    onClick={() => setDayFilterKey((prev) => (prev === "today" ? null : "today"))}
+                    role="button"
+                    tabIndex={0}
+                  >
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-xs font-medium text-gray-500">Leads de hoje</p>
@@ -821,11 +978,57 @@ export default function BrokerDashboard() {
 
         {/* Meu funil de leads */}
         <div className="mb-8" data-onboarding="pipeline-section">
-          <StatCard title="Meu funil de leads">
+          <StatCard
+            title="Meu funil de leads"
+            action={
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline text-xs text-gray-500">vs 7d anteriores</span>
+                <TrendPill trend={pipelineTrend} />
+              </div>
+            }
+          >
             {pipelineError ? (
               <p className="text-sm text-gray-600">{pipelineError}</p>
             ) : pipelineLoading ? (
-              <p className="text-sm text-gray-600">Carregando resumo do funil...</p>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4">
+                  <Skeleton className="h-3 w-24 rounded" />
+                  <Skeleton className="mt-2 h-7 w-12 rounded" />
+                  <div className="mt-4 space-y-3">
+                    <div className="rounded-xl border border-gray-100 bg-white p-3">
+                      <Skeleton className="h-3 w-20 rounded" />
+                      <Skeleton className="mt-2 h-6 w-10 rounded" />
+                      <Skeleton className="mt-2 h-3 w-28 rounded" />
+                    </div>
+                    <div className="rounded-xl border border-gray-100 bg-white p-3">
+                      <Skeleton className="h-3 w-24 rounded" />
+                      <Skeleton className="mt-2 h-6 w-10 rounded" />
+                      <Skeleton className="mt-2 h-3 w-32 rounded" />
+                    </div>
+                    <div className="rounded-xl border border-gray-100 bg-white p-3">
+                      <Skeleton className="h-3 w-20 rounded" />
+                      <Skeleton className="mt-2 h-6 w-10 rounded" />
+                      <Skeleton className="mt-2 h-3 w-24 rounded" />
+                    </div>
+                  </div>
+                </div>
+                <div className="md:col-span-8 rounded-2xl border border-gray-100 bg-white p-4">
+                  <Skeleton className="h-4 w-44 rounded" />
+                  <Skeleton className="mt-2 h-3 w-64 rounded" />
+                  <div className="mt-6 space-y-3">
+                    <Skeleton className="h-5 w-full rounded" />
+                    <Skeleton className="h-5 w-11/12 rounded" />
+                    <Skeleton className="h-5 w-10/12 rounded" />
+                    <Skeleton className="h-5 w-9/12 rounded" />
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <Skeleton className="h-9 w-full rounded-xl" />
+                    <Skeleton className="h-9 w-full rounded-xl" />
+                    <Skeleton className="h-9 w-full rounded-xl" />
+                    <Skeleton className="h-9 w-full rounded-xl" />
+                  </div>
+                </div>
+              </div>
             ) : !pipelineCounts ||
               Object.values(pipelineCounts).reduce((sum, value) => sum + value, 0) === 0 ? (
               <p className="text-sm text-gray-600">
@@ -866,8 +1069,17 @@ export default function BrokerDashboard() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-gray-900">Distribuição por etapa</p>
-                      <p className="text-xs text-gray-500 mt-1">Passe o mouse para ver valores e % do total</p>
+                      <p className="text-xs text-gray-500 mt-1">Clique em uma etapa para filtrar</p>
                     </div>
+                    {pipelineFilterStage ? (
+                      <button
+                        type="button"
+                        onClick={() => setPipelineFilterStage(null)}
+                        className="text-xs font-semibold text-gray-600 hover:text-gray-900"
+                      >
+                        Limpar filtro
+                      </button>
+                    ) : null}
                   </div>
 
                   <div className="mt-4 h-56">
@@ -899,9 +1111,20 @@ export default function BrokerDashboard() {
                           }}
                         />
                         <Bar dataKey="value" radius={[10, 10, 10, 10]} isAnimationActive>
-                          {pipelineChartData.map((entry) => (
-                            <Cell key={String(entry.stage)} fill={entry.color} />
-                          ))}
+                          {pipelineChartData.map((entry) => {
+                            const isDim = pipelineFilterStage ? entry.stage !== pipelineFilterStage : false;
+                            const fill = isDim ? hexToRgba(entry.color, 0.22) : entry.color;
+                            return (
+                              <Cell
+                                key={String(entry.stage)}
+                                fill={fill}
+                                onClick={() =>
+                                  setPipelineFilterStage((prev) => (prev === entry.stage ? null : (entry.stage as PipelineStage)))
+                                }
+                                cursor="pointer"
+                              />
+                            );
+                          })}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
@@ -909,7 +1132,18 @@ export default function BrokerDashboard() {
 
                   <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {pipelineChartData.slice(0, 8).map((row) => (
-                      <div key={String(row.stage)} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
+                      <button
+                        key={String(row.stage)}
+                        type="button"
+                        onClick={() =>
+                          setPipelineFilterStage((prev) => (prev === row.stage ? null : (row.stage as PipelineStage)))
+                        }
+                        className={`rounded-xl border px-3 py-2 text-left transition-colors ${
+                          pipelineFilterStage && pipelineFilterStage !== row.stage
+                            ? "border-gray-100 bg-gray-50 opacity-60"
+                            : "border-gray-200 bg-white hover:bg-gray-50"
+                        }`}
+                      >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
@@ -917,7 +1151,7 @@ export default function BrokerDashboard() {
                           </div>
                           <span className="text-xs font-semibold text-gray-900 tabular-nums">{row.value}</span>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
