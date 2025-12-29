@@ -47,6 +47,7 @@ const PIPELINE_STAGES: { id: PipelineStage; label: string; icon: any; color: str
 
 // Mapeamento de status do lead para etapa do pipeline (4 colunas agrupadas)
 function getLeadPipelineStage(lead: Lead): PipelineStage {
+  if (lead.status === "COMPLETED") return "CLOSED";
   // Se tem pipelineStage canônico definido, usar
   const canonicalStage = ((lead as any).pipelineStage as string | undefined) || null;
   return canonicalToBoardGroup(canonicalStage as any, lead.status) as PipelineStage;
@@ -763,7 +764,14 @@ export default function MyLeadsPage() {
     moveLeadToStageRef.current = moveLeadToStage;
   }, [moveLeadToStage]);
 
-  const leadsBaseForView = viewMode === "pipeline" ? leads : activeLeads;
+  const leadsBaseForView = useMemo(() => {
+    if (viewMode !== "pipeline") return activeLeads;
+    return leads.filter((lead) => {
+      if (lead.status !== "COMPLETED") return true;
+      if (!lead.completedAt) return false;
+      return new Date(lead.completedAt) >= sevenDaysAgo;
+    });
+  }, [viewMode, activeLeads, leads, sevenDaysAgo]);
 
   const filteredLeads = leadsBaseForView.filter((lead) => {
     if (propertyIdFromUrl && lead.property?.id !== propertyIdFromUrl) return false;

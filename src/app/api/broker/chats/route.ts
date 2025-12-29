@@ -33,9 +33,14 @@ export async function GET(_req: NextRequest) {
     const clientMessages = await (prisma as any).leadClientMessage.findMany({
       where: {
         lead: {
-          OR: [
-            { realtorId: String(userId) },
-            { property: { ownerId: String(userId) } },
+          AND: [
+            {
+              OR: [
+                { realtorId: String(userId) },
+                { property: { ownerId: String(userId) } },
+              ],
+            },
+            { status: { not: "COMPLETED" } },
           ],
         },
       },

@@ -883,6 +883,16 @@ export class LeadDistributionService {
       },
     });
 
+    try {
+      const pusher = getPusherServer();
+      await pusher.trigger(PUSHER_CHANNELS.REALTOR(realtorId), "assistant-updated", {
+        realtorId,
+        ts: new Date().toISOString(),
+      });
+    } catch {
+      // ignore
+    }
+
     return result;
   }
 }
