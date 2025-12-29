@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Send } from "lucide-react";
+import { Copy, Send, Trash2 } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 
 type ChatMessage = {
@@ -163,6 +163,39 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
   const send = useCallback(async () => {
     await sendWithContent(input);
   }, [input, sendWithContent]);
+
+  const clearChat = useCallback(async () => {
+    const ok = await toast.confirm({
+      title: "Limpar chat",
+      message: "Isso vai apagar o histórico deste chat. Esta ação não pode ser desfeita.",
+      confirmText: "Limpar",
+      cancelText: "Cancelar",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    try {
+      setError(null);
+      const qs = leadId ? `?leadId=${encodeURIComponent(leadId)}` : "";
+      const res = await fetch(`/api/assistant/chat${qs}`, { method: "DELETE" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        const msg =
+          json?.error ||
+          (res.status === 401
+            ? "Sua sessão expirou. Entre novamente e tente de novo."
+            : res.status === 403
+              ? "Você não tem permissão para limpar este chat."
+              : "Não conseguimos limpar o chat agora.");
+        throw new Error(msg);
+      }
+
+      setMessages([]);
+      toast.success("Chat limpo", "Histórico removido.");
+    } catch (err: any) {
+      toast.error("Erro", err?.message || "Não conseguimos limpar o chat agora.");
+    }
+  }, [leadId, toast]);
 
   const suggestionBlocks = useMemo(() => {
     const blocks: Array<{ messageId: string; actions: SuggestedAction[] }> = [];
@@ -373,14 +406,26 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
     <div className="flex flex-col">
       <div className="flex items-center justify-between">
         <p className="text-[11px] font-semibold text-gray-700">Chat IA ({scopeLabel})</p>
-        <button
-          type="button"
-          onClick={loadHistory}
-          disabled={loading}
-          className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 disabled:opacity-60"
-        >
-          Atualizar
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={clearChat}
+            disabled={loading || sending}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 hover:text-red-800 disabled:opacity-60"
+            title="Limpar chat"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Limpar
+          </button>
+          <button
+            type="button"
+            onClick={loadHistory}
+            disabled={loading}
+            className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 disabled:opacity-60"
+          >
+            Atualizar
+          </button>
+        </div>
       </div>
 
       {error && <p className="mt-2 text-[11px] text-red-600">{error}</p>}
@@ -419,6 +464,8 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
                   : "max-w-[85%] rounded-2xl bg-white border border-gray-200 px-3 py-2";
 
                 const actionBlock = suggestionBlocks.find((b) => b.messageId === m.id);
+                const highlights = Array.isArray((m.data as any)?.highlights) ? ((m.data as any).highlights as any[]) : [];
+                const properties = Array.isArray((m.data as any)?.properties) ? ((m.data as any).properties as any[]) : [];
 
                 return (
                   <div key={m.id} className={wrapper}>
@@ -437,6 +484,58 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
                         )}
                       </div>
                       <div className="mt-1 text-[11px] text-gray-800 whitespace-pre-wrap">{m.content}</div>
+
+                      {highlights.length > 0 && (
+                        <div className="mt-3">
+                          <div className="text-[11px] font-semibold text-gray-700">Lista</div>
+                          <div className="mt-2 space-y-1">
+                            {highlights.slice(0, 12).map((h: any, idx: number) => (
+                              <div
+                                key={`${m.id}-h-${idx}`}
+                                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-800"
+                              >
+                                {String(h)}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {properties.length > 0 && (
+                        <div className="mt-3">
+                          <div className="text-[11px] font-semibold text-gray-700">Imóveis</div>
+                          <div className="mt-2 space-y-2">
+                            {properties.slice(0, 8).map((p: any) => {
+                              const id = String(p?.id || "");
+                              const title = String(p?.title || "Imóvel");
+                              const status = String(p?.status || "");
+                              const loc = [p?.neighborhood, p?.city, p?.state].filter(Boolean).join(" - ");
+                              const views = Number(p?.views || 0);
+                              const leads = Number(p?.leads || 0);
+                              const conv = p?.conversionRatePct == null ? null : Number(p.conversionRatePct);
+                              const days = p?.daysSinceLastLead == null ? null : Number(p.daysSinceLastLead);
+                              return (
+                                <button
+                                  key={`${m.id}-p-${id}`}
+                                  type="button"
+                                  onClick={() => id && router.push(`/broker/properties/${encodeURIComponent(id)}/overview`)}
+                                  className="w-full text-left rounded-xl border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50"
+                                >
+                                  <div className="text-[11px] font-semibold text-gray-900">{title}</div>
+                                  <div className="mt-1 text-[11px] text-gray-600">
+                                    {loc || "(sem localização)"}
+                                  </div>
+                                  <div className="mt-1 text-[11px] text-gray-700">
+                                    status={status || "(n/a)"} | views={views} | leads={leads}
+                                    {conv == null ? "" : ` | conv=${conv}%`}
+                                    {days == null ? "" : ` | diasSemLead=${days}`}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
                       {actionBlock && (
                         <div className="mt-3 space-y-2">

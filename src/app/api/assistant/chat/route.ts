@@ -28,6 +28,33 @@ function normalizeQuery(text: string) {
     .trim();
 }
 
+async function deleteHandler(req: NextRequest) {
+  const { userId, role } = await getSessionContext();
+  if (!userId) return errorResponse("Não autenticado", 401);
+  if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
+
+  const url = new URL(req.url);
+  const queryParsed = QuerySchema.safeParse({ leadId: url.searchParams.get("leadId") || undefined });
+  if (!queryParsed.success) {
+    return errorResponse("Parâmetros inválidos", 400, queryParsed.error.issues, "VALIDATION_ERROR");
+  }
+
+  const leadId = queryParsed.data.leadId || null;
+  const scopeKey = getScopeKey(leadId);
+
+  const thread = await (prisma as any).realtorAssistantChatThread.findFirst({
+    where: { realtorId: String(userId), scopeKey },
+    select: { id: true },
+  });
+
+  if (!thread) {
+    return successResponse({ threadId: null, cleared: true });
+  }
+
+  await (prisma as any).realtorAssistantChatThread.delete({ where: { id: thread.id } });
+  return successResponse({ threadId: null, cleared: true });
+}
+
 function tryAnswerDeterministic(input: {
   message: string;
   leadMetrics: LeadMetrics | null;
@@ -160,6 +187,19 @@ function tryAnswerDeterministic(input: {
       return `propertyId=${p.id} | ${p.title} | ${perf}${stale}`;
     });
 
+    const properties = filtered.map((p) => ({
+      id: p.id,
+      title: p.title,
+      status: p.status,
+      city: p.city,
+      state: p.state,
+      neighborhood: p.neighborhood,
+      views: p.views,
+      leads: p.leads,
+      conversionRatePct: p.conversionRatePct,
+      daysSinceLastLead: p.daysSinceLastLead,
+    }));
+
     const suggestedActions = filtered.length
       ? [
           makePropertyAction(
@@ -178,6 +218,7 @@ function tryAnswerDeterministic(input: {
       answer,
       highlights: highlights.length ? highlights : undefined,
       suggestedActions,
+      properties,
     };
   }
 
@@ -509,6 +550,7 @@ async function getLeadMetricsForRealtor(params: { userId: string; role: string |
     OR: [
       { realtorId: String(params.userId) },
       { team: { is: { ownerId: String(params.userId) } } },
+      { team: { is: { members: { some: { userId: String(params.userId) } } } } },
       { property: { is: { ownerId: String(params.userId) } } },
     ],
   };
@@ -560,9 +602,24 @@ async function getLeadMetricsForRealtor(params: { userId: string; role: string |
           m."leadId" AS "leadId",
           m."fromClient" AS "fromClient",
           m."createdAt" AS "createdAt"
-        FROM "lead_client_messages" m
+        FROM (
+          SELECT
+            cm."leadId" AS "leadId",
+            cm."fromClient" AS "fromClient",
+            cm."createdAt" AS "createdAt"
+          FROM "lead_client_messages" cm
+
+          UNION ALL
+
+          SELECT
+            im."leadId" AS "leadId",
+            false AS "fromClient",
+            im."createdAt" AS "createdAt"
+          FROM "lead_messages" im
+        ) m
         JOIN "leads" l ON l."id" = m."leadId"
         LEFT JOIN "teams" t ON t."id" = l."teamId"
+        LEFT JOIN "team_members" tm ON tm."teamId" = l."teamId" AND tm."userId" = ${userId}
         LEFT JOIN "properties" p ON p."id" = l."propertyId"
         WHERE
           l."status" NOT IN (${closedStatusesSql})
@@ -570,6 +627,7 @@ async function getLeadMetricsForRealtor(params: { userId: string; role: string |
           AND (
             l."realtorId" = ${userId}
             OR (t."ownerId" = ${userId})
+            OR (tm."userId" = ${userId})
             OR (p."ownerId" = ${userId})
           )
         ORDER BY m."leadId", m."createdAt" DESC
@@ -935,3 +993,4 @@ async function postHandler(req: NextRequest) {
 
 export const GET = withErrorHandling(withRateLimit(getHandler, "default"));
 export const POST = withErrorHandling(withRateLimit(postHandler, "ai"));
+export const DELETE = withErrorHandling(withRateLimit(deleteHandler, "default"));
