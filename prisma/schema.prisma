@@ -452,6 +452,8 @@ model User {
   leadRecommendationLists LeadRecommendationList[]
   realtorAssistantItems   RealtorAssistantItem[] @relation("RealtorAssistantItems")
   leadChatReadReceipts    LeadChatReadReceipt[]
+
+  realtorAssistantChatThreads RealtorAssistantChatThread[]
 }
 
 model VerificationToken {
@@ -534,6 +536,7 @@ model Lead {
 
   recommendationLists LeadRecommendationList[]
   assistantItems       RealtorAssistantItem[]
+  assistantChatThreads  RealtorAssistantChatThread[]
 
   @@index([propertyId])
   @@index([userId])
@@ -1082,4 +1085,51 @@ model AuditLog {
   @@index([level, createdAt])
   @@index([action])
   @@map("audit_logs")
+}
+
+enum RealtorAssistantChatMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model RealtorAssistantChatThread {
+  id        String @id @default(cuid())
+
+  realtor   User   @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+  realtorId String
+
+  lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId String?
+
+  scopeKey String
+
+  title String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages RealtorAssistantChatMessage[]
+
+  @@unique([realtorId, scopeKey])
+  @@index([realtorId])
+  @@index([leadId])
+  @@index([scopeKey])
+  @@map("realtor_assistant_chat_threads")
+}
+
+model RealtorAssistantChatMessage {
+  id       String @id @default(cuid())
+
+  thread   RealtorAssistantChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  threadId String
+
+  role    RealtorAssistantChatMessageRole
+  content String
+  data    Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([threadId, createdAt])
+  @@map("realtor_assistant_chat_messages")
 }

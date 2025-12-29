@@ -64,6 +64,7 @@ export default function BrokerChatsPage() {
   const searchParams = useSearchParams();
   const leadIdFromUrl = searchParams.get("lead");
   const propertyIdFromUrl = searchParams.get("propertyId");
+  const draftFromUrl = searchParams.get("draft");
   const userId = (session?.user as any)?.id || "";
 
   const STORAGE_PREFIX = "zlw_broker_chat_last_read_";
@@ -82,6 +83,7 @@ export default function BrokerChatsPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const didApplyDraftRef = useRef<string | null>(null);
 
   // Fetch all chats
   useEffect(() => {
@@ -98,6 +100,30 @@ export default function BrokerChatsPage() {
       }
     }
   }, [leadIdFromUrl, chats, selectedChat]);
+
+  useEffect(() => {
+    if (!draftFromUrl) {
+      didApplyDraftRef.current = null;
+      return;
+    }
+    if (!selectedChat?.leadId) return;
+    if (leadIdFromUrl && selectedChat.leadId !== leadIdFromUrl) return;
+
+    if (didApplyDraftRef.current === draftFromUrl) return;
+    didApplyDraftRef.current = draftFromUrl;
+
+    setNewMessage(draftFromUrl);
+    setTimeout(() => inputRef.current?.focus(), 0);
+
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("draft");
+      const next = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""}${url.hash}`;
+      window.history.replaceState(window.history.state, "", next);
+    } catch {
+      // ignore
+    }
+  }, [draftFromUrl, leadIdFromUrl, selectedChat?.leadId]);
 
   const markChatAsRead = useCallback((leadId: string) => {
     if (!leadId) return;
