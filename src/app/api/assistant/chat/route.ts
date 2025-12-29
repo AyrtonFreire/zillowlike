@@ -25,6 +25,34 @@ type PropertyMetrics = {
   byStatus: Record<string, number>;
 };
 
+type AssistantUpcomingItem = {
+  id: string;
+  title: string | null;
+  message: string | null;
+  status: string;
+  priority: string;
+  dueAt: string | null;
+  snoozedUntil: string | null;
+  leadId: string | null;
+};
+
+type UpcomingLeadActionItem = {
+  leadId: string;
+  when: string;
+  note: string | null;
+  contactName: string | null;
+  propertyTitle: string | null;
+  pipelineStage: string | null;
+};
+
+type UpcomingVisitItem = {
+  leadId: string;
+  when: string;
+  contactName: string | null;
+  propertyTitle: string | null;
+  pipelineStage: string | null;
+};
+
 function normalizeQuery(text: string) {
   return String(text || "")
     .toLowerCase()
@@ -55,6 +83,54 @@ function makeDefaultReminderAction(leadId: string) {
     impact: "Garantir que você volte neste lead no próximo dia útil",
     requiresConfirmation: true,
     payload: { leadId, date: d.toISOString(), note: "Follow-up" },
+  };
+}
+
+function formatShortDateTimeBR(value: Date) {
+  try {
+    return new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(value);
+  } catch {
+    const dd = String(value.getDate()).padStart(2, "0");
+    const mm = String(value.getMonth() + 1).padStart(2, "0");
+    const yyyy = String(value.getFullYear());
+    const hh = String(value.getHours()).padStart(2, "0");
+    const mi = String(value.getMinutes()).padStart(2, "0");
+    return `${dd}/${mm}/${yyyy}, ${hh}:${mi}`;
+  }
+}
+
+function getEffectiveAssistantDateMs(item: AssistantUpcomingItem) {
+  const raw = item.status === "SNOOZED" ? item.snoozedUntil || item.dueAt : item.dueAt || item.snoozedUntil;
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.getTime();
+}
+
+function startOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function addDays(d: Date, n: number) {
+  const next = new Date(d);
+  next.setDate(next.getDate() + n);
+  return next;
+}
+
+function buildLeadAccessWhere(userId: string): Prisma.LeadWhereInput {
+  return {
+    OR: [
+      { realtorId: String(userId) },
+      { team: { is: { ownerId: String(userId) } } },
+      { team: { is: { members: { some: { userId: String(userId) } } } } },
+      { property: { is: { ownerId: String(userId) } } },
+    ],
   };
 }
 
@@ -90,12 +166,26 @@ function tryAnswerDeterministic(input: {
   leadMetrics: LeadMetrics | null;
   propertiesSummary: PropertySummary[];
   propertyMetrics: PropertyMetrics | null;
+  upcomingAssistantItems: AssistantUpcomingItem[];
+  upcomingLeadActions: UpcomingLeadActionItem[];
+  upcomingVisits: UpcomingVisitItem[];
 }) {
-  const { message, leadMetrics, propertiesSummary, propertyMetrics } = input;
+  const {
+    message,
+    leadMetrics,
+    propertiesSummary,
+    propertyMetrics,
+    upcomingAssistantItems,
+    upcomingLeadActions,
+    upcomingVisits,
+  } = input;
   if (
     !leadMetrics &&
     (!Array.isArray(propertiesSummary) || !propertiesSummary.length) &&
-    (!propertyMetrics || (!propertyMetrics.total && !propertyMetrics.activeTotal))
+    (!propertyMetrics || (!propertyMetrics.total && !propertyMetrics.activeTotal)) &&
+    (!Array.isArray(upcomingAssistantItems) || upcomingAssistantItems.length === 0) &&
+    (!Array.isArray(upcomingLeadActions) || upcomingLeadActions.length === 0) &&
+    (!Array.isArray(upcomingVisits) || upcomingVisits.length === 0)
   ) {
     return null;
   }
@@ -129,6 +219,28 @@ function tryAnswerDeterministic(input: {
   const asksPropertiesActive = asksProperties && (/\bativos\b/.test(q) || /\bativo\b/.test(q));
   const asksPropertiesTotal = asksProperties && (/\btotal\b/.test(q) || /\bno total\b/.test(q) || /\btenho\b/.test(q));
 
+  const asksAgenda = /\bagenda\b|\bvisita\b|\bvisitas\b|\bcompromisso\b|\bcompromissos\b/.test(q);
+  const asksFollowUp =
+    /\bfollow\s*-?up\b/.test(q) ||
+    /\bproxima acao\b/.test(q) ||
+    /\bproximas acoes\b/.test(q) ||
+    /\bretornar\b/.test(q) ||
+    /\blembrete\b/.test(q) ||
+    /\blembretes\b/.test(q);
+
+  const asksToday = /\bhoje\b/.test(q);
+  const asksTomorrow = /\bamanha\b/.test(q);
+  const asksThisWeek = /\bessa semana\b|\besta semana\b/.test(q);
+  const asksDailyPriorities =
+    /\bprioridad/.test(q) ||
+    /\bo que (eu )?faco\b/.test(q) ||
+    /\bo que devo fazer\b/.test(q) ||
+    /\bmeu foco\b/.test(q);
+
+  const asksAssistantUpcoming =
+    /\blembrete\b|\blembretes\b|\bpendencia\b|\bpendencias\b|\btarefa\b|\btarefas\b/.test(q) &&
+    (/\bproxim/.test(q) || /\bvenc/.test(q) || /\bagenda\b/.test(q) || asksList || asksHowMany);
+
   const makePropertyChecklist = () => [
     "Revisar título e 1ª foto (mais chamativa)",
     "Conferir preço vs concorrentes (ajuste fino)",
@@ -144,6 +256,158 @@ function tryAnswerDeterministic(input: {
     requiresConfirmation: true,
     payload: { propertyId, checklist: makePropertyChecklist().slice(0, 5) },
   });
+
+  if (asksAssistantUpcoming) {
+    const list = Array.isArray(upcomingAssistantItems) ? upcomingAssistantItems.slice() : [];
+    const normalized = list
+      .map((it) => {
+        const ts = getEffectiveAssistantDateMs(it);
+        return { it, ts };
+      })
+      .filter((x) => typeof x.ts === "number") as Array<{ it: AssistantUpcomingItem; ts: number }>;
+
+    normalized.sort((a, b) => a.ts - b.ts);
+    const top = normalized.slice(0, 5);
+
+    if (top.length === 0) {
+      return {
+        answer:
+          "No momento, não encontrei lembretes/pendências com data marcada para vencer. Quer que eu abra o CRM para você ver todas as pendências?",
+        highlights: undefined,
+        suggestedActions: [
+          makeOpenPageAction(
+            "/broker/crm",
+            "Abrir Assistente",
+            "Ver suas pendências e lembretes no Assistente do Corretor"
+          ),
+        ],
+      };
+    }
+
+    const highlights = top.map(({ it, ts }) => {
+      const when = formatShortDateTimeBR(new Date(ts));
+      const title = String(it.title || "(sem título)");
+      const suffix = it.leadId ? ` | leadId=${String(it.leadId)}` : "";
+      return `${title} | ${when}${suffix}`;
+    });
+
+    return {
+      answer: `Aqui estão seus próximos lembretes/pendências a vencer (top ${highlights.length}). Quer que eu abra o Assistente para você agir neles?`,
+      highlights,
+      suggestedActions: [
+        makeOpenPageAction(
+          "/broker/crm",
+          "Abrir Assistente",
+          "Ver suas pendências e lembretes (com prioridade e data)"
+        ),
+      ],
+    };
+  }
+
+  if ((asksAgenda || asksFollowUp) && (asksHowMany || asksList || asksToday || asksTomorrow || asksThisWeek)) {
+    const now = new Date();
+    const start = startOfDay(now);
+    const rangeStart = asksTomorrow ? addDays(start, 1) : asksToday ? start : start;
+    const rangeEnd = asksTomorrow
+      ? addDays(start, 2)
+      : asksToday
+        ? addDays(start, 1)
+        : asksThisWeek
+          ? addDays(start, 7)
+          : addDays(start, 7);
+
+    const visitList = (Array.isArray(upcomingVisits) ? upcomingVisits : [])
+      .map((v) => {
+        const d = new Date(v.when);
+        return Number.isNaN(d.getTime()) ? null : { v, ts: d.getTime() };
+      })
+      .filter(Boolean)
+      .filter((x: any) => x.ts >= rangeStart.getTime() && x.ts < rangeEnd.getTime())
+      .sort((a: any, b: any) => a.ts - b.ts)
+      .slice(0, 6);
+
+    const actionList = (Array.isArray(upcomingLeadActions) ? upcomingLeadActions : [])
+      .map((a) => {
+        const d = new Date(a.when);
+        return Number.isNaN(d.getTime()) ? null : { a, ts: d.getTime() };
+      })
+      .filter(Boolean)
+      .filter((x: any) => x.ts >= rangeStart.getTime() && x.ts < rangeEnd.getTime())
+      .sort((a: any, b: any) => a.ts - b.ts)
+      .slice(0, 6);
+
+    const total = visitList.length + actionList.length;
+    const highlights = [
+      ...visitList.map(({ v, ts }: any) => {
+        const who = v.contactName || "(sem nome)";
+        const prop = v.propertyTitle ? ` | ${v.propertyTitle}` : "";
+        return `Visita | ${formatShortDateTimeBR(new Date(ts))} | ${who}${prop} | leadId=${v.leadId}`;
+      }),
+      ...actionList.map(({ a, ts }: any) => {
+        const who = a.contactName || "(sem nome)";
+        const prop = a.propertyTitle ? ` | ${a.propertyTitle}` : "";
+        const note = a.note ? ` | ${a.note}` : "";
+        return `Próxima ação | ${formatShortDateTimeBR(new Date(ts))} | ${who}${prop}${note} | leadId=${a.leadId}`;
+      }),
+    ].slice(0, 6);
+
+    const answer = total
+      ? `Encontrei ${total} itens na sua agenda (visitas + próximas ações do CRM). Quer que eu abra a agenda?`
+      : `Não encontrei visitas ou próximas ações do CRM no período consultado. Quer que eu abra a agenda para você conferir?`;
+
+    return {
+      answer,
+      highlights: highlights.length ? highlights : undefined,
+      suggestedActions: [makeOpenPageAction("/broker/agenda", "Abrir agenda", "Ver visitas e próximas ações do CRM")],
+    };
+  }
+
+  if (asksDailyPriorities && leadMetrics) {
+    const pendingReply = Number(leadMetrics.pendingReplyTotal || 0);
+    const inAttendance = Number(leadMetrics.inAttendanceTotal || 0);
+
+    const highlights: string[] = [];
+    if (pendingReply > 0) highlights.push(`Responder clientes: ${pendingReply} conversa(s) aguardando sua resposta`);
+    if (Array.isArray(upcomingAssistantItems) && upcomingAssistantItems.length > 0) {
+      const nextTask = upcomingAssistantItems
+        .map((it) => ({ it, ts: getEffectiveAssistantDateMs(it) }))
+        .filter((x) => typeof x.ts === "number") as Array<{ it: AssistantUpcomingItem; ts: number }>;
+      nextTask.sort((a, b) => a.ts - b.ts);
+      if (nextTask.length) {
+        highlights.push(
+          `Próxima pendência: ${String(nextTask[0].it.title || "(sem título)")} | ${formatShortDateTimeBR(new Date(nextTask[0].ts))}`
+        );
+      }
+    }
+    if (Array.isArray(upcomingLeadActions) && upcomingLeadActions.length > 0) {
+      const a = upcomingLeadActions
+        .map((x) => {
+          const d = new Date(x.when);
+          return Number.isNaN(d.getTime()) ? null : { x, ts: d.getTime() };
+        })
+        .filter(Boolean)
+        .sort((aa: any, bb: any) => aa.ts - bb.ts)[0];
+      if (a) {
+        highlights.push(
+          `Próximo follow-up: ${formatShortDateTimeBR(new Date(a.ts))} | ${a.x.contactName || "(sem nome)"} | leadId=${a.x.leadId}`
+        );
+      }
+    }
+    if (highlights.length === 0) {
+      highlights.push(`Leads em atendimento: ${inAttendance}`);
+    }
+
+    const suggestedActions =
+      pendingReply > 0
+        ? [makeOpenPageAction("/broker/chats", "Abrir chats", "Responder rapidamente clientes que já estão esperando")]
+        : [makeOpenPageAction("/broker/crm", "Abrir Assistente", "Ver pendências e priorizar seus próximos passos")];
+
+    return {
+      answer: "Aqui vai um resumo prático do seu foco agora. Quer que eu abra a tela mais relevante?",
+      highlights: highlights.slice(0, 6),
+      suggestedActions,
+    };
+  }
 
   if (leadMetrics && (asksHowMany || asksList) && asksPendingReply) {
     const count = Number(leadMetrics.pendingReplyTotal || 0);
@@ -464,7 +728,7 @@ function buildSystemPrompt(leadMode: boolean) {
     "- Nunca invente dados. Se algo não estiver no contexto, diga claramente.\n" +
     "- Nunca chute números. Só informe contagens (ex: leads pendentes / em atendimento) quando o contexto trouxer as métricas.\n" +
     "- Nunca use conhecimento externo para afirmar fatos sobre os dados do corretor. Use SOMENTE o que estiver no contexto fornecido.\n" +
-    "- Se a pergunta exigir dados que não estão no contexto, responda que você não tem essa informação no momento e que não está programado para isso.\n" +
+    "- Se a pergunta exigir dados que não estão no contexto, responda que você não tem essa informação no momento (não aparece no contexto disponível) e indique qual tela do sistema o corretor pode abrir para ver isso.\n" +
     "- Seja direto e objetivo.\n" +
     "- Sem emojis, sem links, sem telefone.\n" +
     "- Se sugerir uma ação operacional, ela DEVE exigir confirmação explícita (requiresConfirmation=true).\n" +
@@ -568,7 +832,7 @@ function buildUserPrompt(input: {
   out.push("\nInstrução:");
   out.push(
     "Responda com diagnóstico curto, sugestão prática e próximo passo acionável.\n" +
-      "Se a pergunta pedir informação que NÃO está nas seções acima, diga: 'Não tenho essa informação no momento (não está disponível no sistema)' e sugira o que você precisaria para responder."
+      "Se a pergunta pedir informação que NÃO está nas seções acima, diga: 'Não tenho essa informação no momento (não aparece no contexto disponível)' e sugira qual tela o corretor pode abrir (ex: /broker/leads, /broker/chats, /broker/properties, /broker/agenda)."
   );
   return out.join("\n");
 }
@@ -1011,6 +1275,9 @@ async function postHandler(req: NextRequest) {
   let allowedPropertyIds: string[] = [];
   let leadMetrics: LeadMetrics | null = null;
   let propertyMetrics: PropertyMetrics | null = null;
+  let upcomingAssistantItems: AssistantUpcomingItem[] = [];
+  let upcomingLeadActions: UpcomingLeadActionItem[] = [];
+  let upcomingVisits: UpcomingVisitItem[] = [];
 
   if (leadId) {
     lead = await (prisma as any).lead.findUnique({
@@ -1073,6 +1340,160 @@ async function postHandler(req: NextRequest) {
       console.error("assistant/chat: failed to load lead metrics", e);
       leadMetrics = null;
     }
+
+    try {
+      const now = new Date();
+      const rows = await (prisma as any).realtorAssistantItem.findMany({
+        where: {
+          realtorId: String(userId),
+          status: { in: ["ACTIVE", "SNOOZED"] },
+          OR: [{ dueAt: { not: null } }, { snoozedUntil: { not: null } }],
+        },
+        select: {
+          id: true,
+          title: true,
+          message: true,
+          status: true,
+          priority: true,
+          dueAt: true,
+          snoozedUntil: true,
+          leadId: true,
+        },
+        take: 40,
+        orderBy: [{ dueAt: "asc" }, { updatedAt: "desc" }],
+      });
+
+      upcomingAssistantItems = (Array.isArray(rows) ? rows : [])
+        .map((r: any) => {
+          const status = String(r.status || "");
+          const dueAt = r.dueAt ? new Date(r.dueAt) : null;
+          const snoozedUntil = r.snoozedUntil ? new Date(r.snoozedUntil) : null;
+          const effective =
+            status === "SNOOZED"
+              ? snoozedUntil
+              : dueAt;
+          const effectiveMs = effective && !Number.isNaN(effective.getTime()) ? effective.getTime() : null;
+          if (effectiveMs == null) return null;
+          if (status === "SNOOZED" && snoozedUntil && snoozedUntil.getTime() <= now.getTime()) {
+            return null;
+          }
+          return {
+            id: String(r.id),
+            title: r.title != null ? String(r.title) : null,
+            message: r.message != null ? String(r.message) : null,
+            status,
+            priority: String(r.priority || ""),
+            dueAt: dueAt ? dueAt.toISOString() : null,
+            snoozedUntil: snoozedUntil ? snoozedUntil.toISOString() : null,
+            leadId: r.leadId != null ? String(r.leadId) : null,
+          } satisfies AssistantUpcomingItem;
+        })
+        .filter(Boolean)
+        .slice(0, 25) as AssistantUpcomingItem[];
+    } catch (e) {
+      console.error("assistant/chat: failed to load upcoming assistant items", e);
+      upcomingAssistantItems = [];
+    }
+
+    try {
+      const closedStatuses: LeadStatus[] = ["COMPLETED", "CANCELLED", "EXPIRED", "OWNER_REJECTED"];
+      const closedStages: LeadPipelineStage[] = ["WON", "LOST"];
+      const now = new Date();
+      const start = startOfDay(now);
+      const end = addDays(start, 14);
+
+      const accessWhere = buildLeadAccessWhere(String(userId));
+
+      const leads = await prisma.lead.findMany({
+        where: {
+          ...accessWhere,
+          status: { notIn: closedStatuses },
+          pipelineStage: { notIn: closedStages },
+          nextActionDate: { gte: start, lt: end },
+        },
+        select: {
+          id: true,
+          pipelineStage: true,
+          nextActionDate: true,
+          nextActionNote: true,
+          contact: { select: { name: true } },
+          property: { select: { title: true } },
+        },
+        orderBy: [{ nextActionDate: "asc" }],
+        take: 20,
+      });
+
+      upcomingLeadActions = (leads || [])
+        .map((l) => {
+          const d = l.nextActionDate ? new Date(l.nextActionDate as any) : null;
+          if (!d || Number.isNaN(d.getTime())) return null;
+          return {
+            leadId: String(l.id),
+            when: d.toISOString(),
+            note: l.nextActionNote ? String(l.nextActionNote) : null,
+            contactName: l.contact?.name ? String(l.contact.name) : null,
+            propertyTitle: l.property?.title ? String(l.property.title) : null,
+            pipelineStage: l.pipelineStage ? String(l.pipelineStage) : null,
+          } satisfies UpcomingLeadActionItem;
+        })
+        .filter(Boolean) as UpcomingLeadActionItem[];
+    } catch (e) {
+      console.error("assistant/chat: failed to load upcoming lead actions", e);
+      upcomingLeadActions = [];
+    }
+
+    try {
+      const closedStatuses: LeadStatus[] = ["COMPLETED", "CANCELLED", "EXPIRED", "OWNER_REJECTED"];
+      const closedStages: LeadPipelineStage[] = ["WON", "LOST"];
+      const now = new Date();
+      const start = startOfDay(now);
+      const end = addDays(start, 14);
+
+      const accessWhere = buildLeadAccessWhere(String(userId));
+
+      const leads = await prisma.lead.findMany({
+        where: {
+          ...accessWhere,
+          status: { notIn: closedStatuses },
+          pipelineStage: { notIn: closedStages },
+          visitDate: { gte: start, lt: end },
+        },
+        select: {
+          id: true,
+          pipelineStage: true,
+          visitDate: true,
+          visitTime: true,
+          contact: { select: { name: true } },
+          property: { select: { title: true } },
+        },
+        orderBy: [{ visitDate: "asc" }],
+        take: 20,
+      });
+
+      upcomingVisits = (leads || [])
+        .map((l: any) => {
+          const base = l.visitDate ? new Date(l.visitDate as any) : null;
+          if (!base || Number.isNaN(base.getTime())) return null;
+          const time = l.visitTime ? String(l.visitTime) : "";
+          const m = time.match(/^(\d{1,2}):(\d{2})/);
+          if (m) {
+            const hh = Math.min(23, Math.max(0, Number(m[1])));
+            const mm = Math.min(59, Math.max(0, Number(m[2])));
+            base.setHours(hh, mm, 0, 0);
+          }
+          return {
+            leadId: String(l.id),
+            when: base.toISOString(),
+            contactName: l.contact?.name ? String(l.contact.name) : null,
+            propertyTitle: l.property?.title ? String(l.property.title) : null,
+            pipelineStage: l.pipelineStage ? String(l.pipelineStage) : null,
+          } satisfies UpcomingVisitItem;
+        })
+        .filter(Boolean) as UpcomingVisitItem[];
+    } catch (e) {
+      console.error("assistant/chat: failed to load upcoming visits", e);
+      upcomingVisits = [];
+    }
   }
 
   const thread = await (prisma as any).realtorAssistantChatThread.upsert({
@@ -1103,6 +1524,9 @@ async function postHandler(req: NextRequest) {
         leadMetrics,
         propertiesSummary,
         propertyMetrics,
+        upcomingAssistantItems,
+        upcomingLeadActions,
+        upcomingVisits,
       })
     : null;
   if (deterministic) {
