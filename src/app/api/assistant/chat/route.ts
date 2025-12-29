@@ -33,6 +33,14 @@ type PropertySummary = {
   conversionRatePct: number;
 };
 
+type LeadMetrics = {
+  activeTotal: number;
+  byStage: Record<string, number>;
+  inAttendanceTotal: number;
+  pendingReplyTotal: number;
+  pendingReplyLeads: Array<{ leadId: string; contactName: string | null; propertyTitle: string | null; pipelineStage: string | null }>;
+};
+
 const QuerySchema = z
   .object({
     leadId: z.string().min(1).optional(),
@@ -49,8 +57,7 @@ const PostSchema = z
 const ActionSchema = z
   .object({
     type: z
-      .enum(["DRAFT_MESSAGE", "SET_REMINDER", "PROPERTY_DIAGNOSIS", "LISTING_IMPROVEMENT"])
-      .optional(),
+      .enum(["DRAFT_MESSAGE", "SET_REMINDER", "PROPERTY_DIAGNOSIS", "LISTING_IMPROVEMENT"]),
     title: z.string().min(2).max(80),
     impact: z.string().min(2).max(220),
     requiresConfirmation: z.boolean().optional(),
@@ -145,6 +152,9 @@ function buildSystemPrompt(leadMode: boolean) {
     "Você é o ASSISTENTE INTELIGENTE DO CORRETOR da plataforma ZillowLike (pt-BR).\n" +
     "Regras obrigatórias:\n" +
     "- Nunca invente dados. Se algo não estiver no contexto, diga claramente.\n" +
+    "- Nunca chute números. Só informe contagens (ex: leads pendentes / em atendimento) quando o contexto trouxer as métricas.\n" +
+    "- Nunca use conhecimento externo para afirmar fatos sobre os dados do corretor. Use SOMENTE o que estiver no contexto fornecido.\n" +
+    "- Se a pergunta exigir dados que não estão no contexto, responda que você não tem essa informação no momento e que não está programado para isso.\n" +
     "- Seja direto e objetivo.\n" +
     "- Sem emojis, sem links, sem telefone.\n" +
     "- Se sugerir uma ação operacional, ela DEVE exigir confirmação explícita (requiresConfirmation=true).\n" +
@@ -155,8 +165,8 @@ function buildSystemPrompt(leadMode: boolean) {
     "Se você sugerir ações, use payloads estruturados assim:\n" +
     "- DRAFT_MESSAGE: payload = { leadId: string, content: string } (rascunho para o cliente; não enviar)\n" +
     "- SET_REMINDER: payload = { leadId: string, date: string|null (ISO), note: string|null }\n" +
-    "- PROPERTY_DIAGNOSIS: payload = { propertyId?: string }\n" +
-    "- LISTING_IMPROVEMENT: payload = { propertyId?: string }\n";
+    "- PROPERTY_DIAGNOSIS: payload = { propertyId?: string, checklist: string[] } (checklist obrigatório com 3 a 6 itens curtos; se não conseguir, NÃO sugira essa ação)\n" +
+    "- LISTING_IMPROVEMENT: payload = { propertyId?: string, checklist: string[] } (checklist obrigatório com 3 a 6 itens curtos; se não conseguir, NÃO sugira essa ação)\n";
 
   return leadMode
     ? `${base}\nContexto: chat ligado a um lead. Você pode sugerir rascunho de mensagem ao cliente e lembretes internos.`
@@ -168,6 +178,7 @@ function buildUserPrompt(input: {
   lead?: any | null;
   recentClientMessages?: Array<{ createdAt: string; fromClient: boolean; content: string }>;
   propertiesSummary?: PropertySummary[];
+  leadMetrics?: LeadMetrics | null;
 }) {
   const out: string[] = [];
   out.push("Pedido do corretor:");
@@ -205,8 +216,35 @@ function buildUserPrompt(input: {
     });
   }
 
+  if (!input.lead && input.leadMetrics) {
+    const m = input.leadMetrics;
+    out.push("\nMétricas do CRM (fonte de verdade; não conte WON/LOST como ativo):");
+    out.push(`- Leads ativos (exclui WON/LOST e status fechados): ${m.activeTotal}`);
+    out.push(`- Leads em atendimento (CONTACT/VISIT/PROPOSAL/DOCUMENTS): ${m.inAttendanceTotal}`);
+    out.push(`- Conversas aguardando sua resposta (última msg do cliente): ${m.pendingReplyTotal}`);
+    const stages = Object.entries(m.byStage)
+      .filter(([, v]) => (Number(v) || 0) > 0)
+      .sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0))
+      .slice(0, 8)
+      .map(([k, v]) => `${k}:${v}`)
+      .join(", ");
+    if (stages) out.push(`- Ativos por etapa: ${stages}`);
+
+    if (m.pendingReplyLeads.length) {
+      out.push("\nLeads aguardando resposta (use leadId exatamente; não invente):");
+      m.pendingReplyLeads.slice(0, 6).forEach((l) => {
+        out.push(
+          `- leadId=${l.leadId} | ${l.contactName || "(sem nome)"} | ${l.propertyTitle || "(sem imóvel)"} | stage=${l.pipelineStage || "(n/a)"}`
+        );
+      });
+    }
+  }
+
   out.push("\nInstrução:");
-  out.push("Responda com diagnóstico curto, sugestão prática e próximo passo acionável.");
+  out.push(
+    "Responda com diagnóstico curto, sugestão prática e próximo passo acionável.\n" +
+      "Se a pergunta pedir informação que NÃO está nas seções acima, diga: 'Não tenho essa informação no momento (não está disponível no sistema)' e sugira o que você precisaria para responder."
+  );
   return out.join("\n");
 }
 
@@ -291,6 +329,77 @@ async function getPropertiesSummaryForUser(userId: string): Promise<PropertySumm
   return summaries.slice(0, 12);
 }
 
+async function getLeadMetricsForRealtor(userId: string): Promise<LeadMetrics> {
+  const closedStatuses = ["COMPLETED", "CANCELLED", "EXPIRED", "OWNER_REJECTED"]; // LeadStatus
+  const closedStages = ["WON", "LOST"]; // LeadPipelineStage
+  const inAttendanceStages = ["CONTACT", "VISIT", "PROPOSAL", "DOCUMENTS"];
+
+  const activeWhere: any = {
+    realtorId: String(userId),
+    status: { notIn: closedStatuses },
+    OR: [{ pipelineStage: null }, { pipelineStage: { notIn: closedStages } }],
+  };
+
+  const [activeTotal, groupStages, lastMsgs] = await Promise.all([
+    prisma.lead.count({ where: activeWhere }),
+    prisma.lead.groupBy({
+      by: ["pipelineStage"],
+      where: activeWhere,
+      _count: { _all: true },
+    }),
+    prisma.leadClientMessage.findMany({
+      where: {
+        lead: activeWhere,
+      },
+      select: {
+        leadId: true,
+        fromClient: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      distinct: ["leadId"],
+      take: 200,
+    }),
+  ]);
+
+  const byStage: Record<string, number> = {};
+  for (const row of groupStages as any[]) {
+    const key = row.pipelineStage == null ? "(sem etapa)" : String(row.pipelineStage);
+    byStage[key] = Number(row._count?._all || 0);
+  }
+
+  const inAttendanceTotal = inAttendanceStages.reduce((sum, s) => sum + (Number(byStage[s]) || 0), 0);
+  const pendingReplyLeadIds = (lastMsgs || []).filter((m: any) => !!m.fromClient).map((m: any) => String(m.leadId));
+  const pendingReplyTotal = pendingReplyLeadIds.length;
+
+  const pendingReplyLeadsRaw = pendingReplyLeadIds.length
+    ? await prisma.lead.findMany({
+        where: { id: { in: pendingReplyLeadIds.slice(0, 6) } },
+        select: {
+          id: true,
+          pipelineStage: true,
+          contact: { select: { name: true } },
+          property: { select: { title: true } },
+        },
+      })
+    : [];
+
+  const pendingReplyLeads = (pendingReplyLeadsRaw || []).map((l: any) => ({
+    leadId: String(l.id),
+    contactName: l.contact?.name ? String(l.contact.name) : null,
+    propertyTitle: l.property?.title ? String(l.property.title) : null,
+    pipelineStage: l.pipelineStage ? String(l.pipelineStage) : null,
+  }));
+
+  return {
+    activeTotal: Number(activeTotal || 0),
+    byStage,
+    inAttendanceTotal,
+    pendingReplyTotal,
+    pendingReplyLeads,
+  };
+}
+
 async function callOpenAi(params: { apiKey: string; systemPrompt: string; userPrompt: string }) {
   const model = process.env.OPENAI_TEXT_MODEL || process.env.OPENAI_VISION_MODEL || "gpt-4o-mini";
   const controller = new AbortController();
@@ -337,7 +446,25 @@ async function callOpenAi(params: { apiKey: string; systemPrompt: string; userPr
 function parseAi(content: string, params?: { leadId?: string | null; allowedPropertyIds?: string[] }) {
   const obj = extractJsonObject(content);
   const parsed = OutputSchema.safeParse(obj);
-  if (!parsed.success) return null;
+
+  const salvage = z
+    .object({
+      answer: z.string().min(1).max(1200),
+      highlights: z.array(z.string()).optional(),
+    })
+    .passthrough()
+    .safeParse(obj);
+
+  if (!parsed.success) {
+    if (!salvage.success) return null;
+    return {
+      answer: sanitizeText(salvage.data.answer, 1200),
+      highlights: salvage.data.highlights
+        ? salvage.data.highlights.map((h) => sanitizeText(h, 140)).filter(Boolean).slice(0, 6)
+        : undefined,
+      suggestedActions: undefined,
+    };
+  }
 
   const leadId = params?.leadId ? String(params.leadId) : null;
   const allowedPropertyIds = new Set((params?.allowedPropertyIds || []).map((x) => String(x)));
@@ -361,6 +488,18 @@ function parseAi(content: string, params?: { leadId?: string | null; allowedProp
               if (pid && allowedPropertyIds.size > 0 && !allowedPropertyIds.has(pid)) {
                 (nextPayload as any).propertyId = undefined;
               }
+
+              const listRaw = (nextPayload as any)?.checklist;
+              const list = Array.isArray(listRaw)
+                ? listRaw
+                    .map((x: any) => sanitizeText(String(x || ""), 120))
+                    .filter(Boolean)
+                    .slice(0, 6)
+                : [];
+              if (list.length < 3) {
+                return null;
+              }
+              (nextPayload as any).checklist = list;
             }
 
             return {
@@ -371,6 +510,7 @@ function parseAi(content: string, params?: { leadId?: string | null; allowedProp
               payload: nextPayload,
             };
           })
+          .filter(Boolean)
           .slice(0, 6)
       : undefined,
   };
@@ -431,6 +571,7 @@ async function postHandler(req: NextRequest) {
   let recentClientMessages: Array<{ createdAt: string; fromClient: boolean; content: string }> = [];
   let propertiesSummary: PropertySummary[] = [];
   let allowedPropertyIds: string[] = [];
+  let leadMetrics: LeadMetrics | null = null;
 
   if (leadId) {
     lead = await (prisma as any).lead.findUnique({
@@ -478,6 +619,12 @@ async function postHandler(req: NextRequest) {
     } catch {
       propertiesSummary = [];
     }
+
+    try {
+      leadMetrics = await getLeadMetricsForRealtor(String(userId));
+    } catch {
+      leadMetrics = null;
+    }
   }
 
   const thread = await (prisma as any).realtorAssistantChatThread.upsert({
@@ -508,6 +655,7 @@ async function postHandler(req: NextRequest) {
     lead,
     recentClientMessages,
     propertiesSummary,
+    leadMetrics,
   });
 
   const attempt = await callOpenAi({ apiKey, systemPrompt, userPrompt });

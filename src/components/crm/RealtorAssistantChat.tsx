@@ -106,10 +106,10 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, sending]);
 
-  const send = useCallback(async () => {
-    const content = input.trim();
-    if (!content) return;
-
+  const sendWithContent = useCallback(async (raw: string) => {
+    const content = String(raw || "").trim();
+    if (!content || sending) return;
+    setError(null);
     setSending(true);
     setError(null);
 
@@ -144,21 +144,13 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
         throw new Error(msg);
       }
 
-      const newMessages = Array.isArray(json?.data?.messages) ? (json.data.messages as any[]) : [];
-      const normalized = newMessages
-        .map((m) => ({
-          id: String(m.id),
-          role: String(m.role || "SYSTEM") as any,
-          content: String(m.content || ""),
-          data: m.data ?? null,
-          createdAt: String(m.createdAt || new Date().toISOString()),
-        }))
-        .filter((m) => m.content.trim().length > 0);
-
+      const data = json.data;
+      const normalized = Array.isArray(data.messages) ? data.messages : [];
       setMessages((prev) => {
         const withoutOptimistic = prev.filter((m) => m.id !== optimisticId);
         return [...withoutOptimistic, ...normalized];
       });
+      setInput("");
     } catch (err: any) {
       setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
       setInput(content);
@@ -166,7 +158,11 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
     } finally {
       setSending(false);
     }
-  }, [input, leadId]);
+  }, [leadId, sending]);
+
+  const send = useCallback(async () => {
+    await sendWithContent(input);
+  }, [input, sendWithContent]);
 
   const suggestionBlocks = useMemo(() => {
     const blocks: Array<{ messageId: string; actions: SuggestedAction[] }> = [];
@@ -250,6 +246,26 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
     [leadId, toast]
   );
 
+  const executeReminderActionWithOffsetDays = useCallback(
+    async (action: SuggestedAction, offsetDays: number) => {
+      const now = new Date();
+      const d = new Date(now);
+      d.setDate(d.getDate() + Math.max(0, Math.floor(offsetDays || 0)));
+      d.setHours(9, 0, 0, 0);
+
+      const next: SuggestedAction = {
+        ...action,
+        payload: {
+          ...((action.payload as any) || {}),
+          date: d.toISOString(),
+        },
+      };
+
+      await executeReminderAction(next);
+    },
+    [executeReminderAction]
+  );
+
   const openDraftInClientChat = useCallback(
     async (action: SuggestedAction) => {
       const targetLeadId = String((action.payload as any)?.leadId || leadId || "").trim();
@@ -268,6 +284,45 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
         variant: "info",
       });
       if (!ok) return;
+
+      router.push(`/broker/chats?lead=${encodeURIComponent(targetLeadId)}&draft=${encodeURIComponent(content)}`);
+    },
+    [leadId, router, toast]
+  );
+
+  const openDraftAndCreateTask = useCallback(
+    async (action: SuggestedAction) => {
+      const targetLeadId = String((action.payload as any)?.leadId || leadId || "").trim();
+      const content = String((action.payload as any)?.content || "").trim();
+
+      if (!targetLeadId || !content) {
+        toast.error("Ação indisponível", "Este rascunho precisa estar vinculado a um lead e ter texto.");
+        return;
+      }
+
+      const ok = await toast.confirm({
+        title: "Confirmar ação",
+        message: "Vou abrir o chat do cliente com o rascunho e criar uma tarefa 'Responder' no assistente. Você ainda precisará clicar em enviar.",
+        confirmText: "Continuar",
+        cancelText: "Cancelar",
+        variant: "info",
+      });
+      if (!ok) return;
+
+      try {
+        const res = await fetch("/api/assistant/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId: targetLeadId, draft: content }),
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.success) {
+          throw new Error(json?.error || "Não conseguimos criar a tarefa agora.");
+        }
+        toast.success("Tarefa criada", "Adicionamos uma tarefa de resposta no seu assistente.");
+      } catch (err: any) {
+        toast.error("Erro", err?.message || "Não conseguimos criar a tarefa agora.");
+      }
 
       router.push(`/broker/chats?lead=${encodeURIComponent(targetLeadId)}&draft=${encodeURIComponent(content)}`);
     },
@@ -304,6 +359,16 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
     }
   };
 
+  const quickPrompts = useMemo(() => {
+    if (leadId) return [] as Array<{ label: string; message: string }>;
+    return [
+      { label: "Prioridades de hoje", message: "Quais são minhas prioridades de hoje? Considere métricas do CRM e sugira próximos passos." },
+      { label: "Leads aguardando resposta", message: "Quais leads/conversas estão aguardando uma resposta minha agora?" },
+      { label: "Leads em atendimento", message: "Quantos leads estão em atendimento e o que devo fazer primeiro?" },
+      { label: "Imóveis com baixa conversão", message: "Quais imóveis têm baixa conversão e o que eu devo melhorar primeiro?" },
+    ];
+  }, [leadId]);
+
   return (
     <div className="flex flex-col">
       <div className="flex items-center justify-between">
@@ -320,6 +385,22 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
 
       {error && <p className="mt-2 text-[11px] text-red-600">{error}</p>}
       {loading && <p className="mt-2 text-[11px] text-gray-500">Carregando...</p>}
+
+      {quickPrompts.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {quickPrompts.map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => void sendWithContent(p.message)}
+              disabled={sending}
+              className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="mt-3 max-h-[420px] overflow-auto rounded-xl border border-gray-200 bg-gray-50 p-3">
         {messages.length === 0 && !loading ? (
@@ -382,24 +463,57 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
                                     >
                                       Abrir chat
                                     </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => void openDraftAndCreateTask(a)}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-900 hover:bg-gray-50"
+                                    >
+                                      Abrir chat + tarefa
+                                    </button>
                                   </div>
                                 </div>
                               )}
 
                               {a.type === "SET_REMINDER" && (
                                 <div className="mt-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => void executeReminderAction(a)}
-                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-900 text-white text-[11px] font-semibold hover:bg-gray-800"
-                                  >
-                                    Criar lembrete
-                                  </button>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => void executeReminderActionWithOffsetDays(a, 0)}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-900 text-white text-[11px] font-semibold hover:bg-gray-800"
+                                    >
+                                      Hoje
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => void executeReminderActionWithOffsetDays(a, 1)}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-900 hover:bg-gray-50"
+                                    >
+                                      Amanhã
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => void executeReminderActionWithOffsetDays(a, 3)}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-900 hover:bg-gray-50"
+                                    >
+                                      3 dias
+                                    </button>
+                                  </div>
                                 </div>
                               )}
 
                               {(a.type === "PROPERTY_DIAGNOSIS" || a.type === "LISTING_IMPROVEMENT") && (
                                 <div className="mt-2">
+                                  {Array.isArray((a.payload as any)?.checklist) && (a.payload as any).checklist.length > 0 && (
+                                    <div className="mb-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                                      <div className="text-[11px] font-semibold text-gray-800">Checklist</div>
+                                      <div className="mt-1 text-[11px] text-gray-700 space-y-1">
+                                        {(a.payload as any).checklist.slice(0, 6).map((it: any, i: number) => (
+                                          <div key={i}>{String(it)}</div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => void openPropertyAction(a)}

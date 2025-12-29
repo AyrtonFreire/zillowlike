@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { prisma } from "@/lib/prisma";
+
+const PostSchema = z
+  .object({
+    leadId: z.string().min(1),
+    draft: z.string().min(1).max(2000),
+  })
+  .strict();
 
 export async function GET(req: NextRequest) {
   try {
@@ -95,5 +103,102 @@ export async function GET(req: NextRequest) {
       { error: "Não conseguimos carregar o Assistente agora." },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session: any = await getServerSession(authOptions);
+
+    if (!session) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    }
+
+    const userId = session.userId || session.user?.id;
+    const role = session.role || session.user?.role;
+
+    if (!userId) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    }
+
+    if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const parsed = PostSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Dados inválidos", issues: parsed.error.issues }, { status: 400 });
+    }
+
+    const leadId = String(parsed.data.leadId);
+    const draft = String(parsed.data.draft).trim();
+
+    const lead: any = await (prisma as any).lead.findUnique({
+      where: { id: leadId },
+      select: {
+        id: true,
+        realtorId: true,
+        team: {
+          select: {
+            ownerId: true,
+          },
+        },
+        contact: { select: { name: true } },
+        property: { select: { title: true } },
+      },
+    });
+
+    if (!lead) {
+      return NextResponse.json({ error: "Lead não encontrado" }, { status: 404 });
+    }
+
+    const isTeamOwner = !!lead.team && String(lead.team.ownerId) === String(userId);
+    const isAssignedRealtor = lead.realtorId && String(lead.realtorId) === String(userId);
+    if (role !== "ADMIN" && !isAssignedRealtor && !isTeamOwner) {
+      return NextResponse.json(
+        { error: "Você só pode criar tarefas para leads que está atendendo ou dos times que lidera." },
+        { status: 403 }
+      );
+    }
+
+    const clientName = lead.contact?.name ? String(lead.contact.name) : "o cliente";
+    const propertyTitle = lead.property?.title ? String(lead.property.title) : null;
+    const title = "Responder lead";
+    const message = propertyTitle
+      ? `Responder ${clientName} sobre “${propertyTitle}”.`
+      : `Responder ${clientName}.`;
+
+    const dedupeKey = `AI_REPLY_TASK:${leadId}`;
+    const dueAt = new Date();
+    dueAt.setMinutes(dueAt.getMinutes() + 30);
+
+    const item = await RealtorAssistantService.upsertFromRule({
+      realtorId: String(userId),
+      leadId,
+      type: "UNANSWERED_CLIENT_MESSAGE",
+      priority: "HIGH",
+      title,
+      message,
+      dueAt,
+      dedupeKey,
+      primaryAction: { type: "OPEN_CHAT", leadId },
+      secondaryAction: { type: "OPEN_LEAD", leadId },
+      metadata: {
+        source: "AI",
+        draft,
+      },
+    });
+
+    try {
+      await RealtorAssistantService.emitItemUpdated(String(userId), item);
+    } catch {
+      // ignore
+    }
+
+    return NextResponse.json({ success: true, item });
+  } catch (error) {
+    console.error("Error creating assistant item:", error);
+    return NextResponse.json({ error: "Não conseguimos criar esta tarefa agora." }, { status: 500 });
   }
 }
