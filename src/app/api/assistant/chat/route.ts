@@ -19,6 +19,12 @@ type OpenAIChatResponse = {
   }>;
 };
 
+type PropertyMetrics = {
+  total: number;
+  activeTotal: number;
+  byStatus: Record<string, number>;
+};
+
 function normalizeQuery(text: string) {
   return String(text || "")
     .toLowerCase()
@@ -26,6 +32,30 @@ function normalizeQuery(text: string) {
     .replace(/\p{Diacritic}/gu, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function makeOpenPageAction(path: string, title: string, impact: string) {
+  return {
+    type: "OPEN_PAGE" as const,
+    title,
+    impact,
+    requiresConfirmation: true,
+    payload: { path },
+  };
+}
+
+function makeDefaultReminderAction(leadId: string) {
+  const now = new Date();
+  const d = new Date(now);
+  d.setDate(d.getDate() + 1);
+  d.setHours(9, 0, 0, 0);
+  return {
+    type: "SET_REMINDER" as const,
+    title: "Lembrete de follow-up",
+    impact: "Garantir que você volte neste lead no próximo dia útil",
+    requiresConfirmation: true,
+    payload: { leadId, date: d.toISOString(), note: "Follow-up" },
+  };
 }
 
 async function deleteHandler(req: NextRequest) {
@@ -59,9 +89,16 @@ function tryAnswerDeterministic(input: {
   message: string;
   leadMetrics: LeadMetrics | null;
   propertiesSummary: PropertySummary[];
+  propertyMetrics: PropertyMetrics | null;
 }) {
-  const { message, leadMetrics, propertiesSummary } = input;
-  if (!leadMetrics && (!Array.isArray(propertiesSummary) || !propertiesSummary.length)) return null;
+  const { message, leadMetrics, propertiesSummary, propertyMetrics } = input;
+  if (
+    !leadMetrics &&
+    (!Array.isArray(propertiesSummary) || !propertiesSummary.length) &&
+    (!propertyMetrics || (!propertyMetrics.total && !propertyMetrics.activeTotal))
+  ) {
+    return null;
+  }
   const q = normalizeQuery(message);
 
   const asksHowMany = /\bquantos\b|\bqtd\b|\bnumero\b|\btotal\b/.test(q);
@@ -87,6 +124,10 @@ function tryAnswerDeterministic(input: {
     (/imoveis/.test(q) && /conversao/.test(q) && /baixa/.test(q));
   const asksNoLeadsProps = /imoveis/.test(q) && (/sem leads/.test(q) || /zero leads/.test(q) || /0 leads/.test(q));
   const asksStaleProps = /imoveis/.test(q) && (/parados/.test(q) || /sem lead ha/.test(q) || /sem leads ha/.test(q));
+
+  const asksProperties = /\bimovel\b|\bimoveis\b/.test(q);
+  const asksPropertiesActive = asksProperties && (/\bativos\b/.test(q) || /\bativo\b/.test(q));
+  const asksPropertiesTotal = asksProperties && (/\btotal\b/.test(q) || /\bno total\b/.test(q) || /\btenho\b/.test(q));
 
   const makePropertyChecklist = () => [
     "Revisar título e 1ª foto (mais chamativa)",
@@ -116,31 +157,56 @@ function tryAnswerDeterministic(input: {
       });
 
     const answer = asksList
-      ? `Aqui estão leads com conversa aguardando sua resposta (última mensagem do cliente). Total: ${count}.`
-      : `Você tem ${count} conversas aguardando sua resposta (última mensagem do cliente).`;
+      ? `Aqui estão leads com conversa aguardando sua resposta (última mensagem do cliente). Total: ${count}. Quer que eu abra a tela de chats agora?`
+      : `Você tem ${count} conversas aguardando sua resposta (última mensagem do cliente). Quer que eu abra a tela de chats agora?`;
 
     return {
       answer,
       highlights: highlights.length ? highlights : undefined,
-      suggestedActions: undefined,
+      suggestedActions: [
+        makeOpenPageAction(
+          "/broker/chats",
+          "Abrir chats",
+          "Ver as conversas e responder as últimas mensagens do cliente"
+        ),
+      ],
+    };
+  }
+
+  if (asksHowMany && (asksPropertiesActive || asksPropertiesTotal) && propertyMetrics) {
+    const active = Number(propertyMetrics.activeTotal || 0);
+    const total = Number(propertyMetrics.total || 0);
+
+    if (asksPropertiesActive) {
+      return {
+        answer: `Você possui ${active} imóveis ativos atualmente. Quer que eu abra a tela de imóveis?`,
+        highlights: undefined,
+        suggestedActions: [makeOpenPageAction("/broker/properties", "Abrir imóveis", "Ver e gerenciar seus imóveis")],
+      };
+    }
+
+    return {
+      answer: `Você possui ${total} imóveis no total. Quer que eu abra a tela de imóveis?`,
+      highlights: undefined,
+      suggestedActions: [makeOpenPageAction("/broker/properties", "Abrir imóveis", "Ver e filtrar por status")],
     };
   }
 
   if (leadMetrics && asksHowMany && asksInAttendance) {
     const count = Number(leadMetrics.inAttendanceTotal || 0);
     return {
-      answer: `Você tem ${count} leads em atendimento (CONTACT/VISIT/PROPOSAL/DOCUMENTS).`,
+      answer: `Você tem ${count} leads em atendimento (CONTACT/VISIT/PROPOSAL/DOCUMENTS). Quer que eu abra a lista de leads?`,
       highlights: undefined,
-      suggestedActions: undefined,
+      suggestedActions: [makeOpenPageAction("/broker/leads", "Abrir leads", "Ver os leads em atendimento e definir o próximo passo")],
     };
   }
 
   if (leadMetrics && asksHowMany && asksActive) {
     const count = Number(leadMetrics.activeTotal || 0);
     return {
-      answer: `Você tem ${count} leads ativos (exclui WON/LOST e status fechados).`,
+      answer: `Você tem ${count} leads ativos (exclui WON/LOST e status fechados). Quer que eu abra a lista de leads?`,
       highlights: undefined,
-      suggestedActions: undefined,
+      suggestedActions: [makeOpenPageAction("/broker/leads", "Abrir leads", "Ver e priorizar seus leads ativos")],
     };
   }
 
@@ -152,9 +218,9 @@ function tryAnswerDeterministic(input: {
     const highlights = entries.slice(0, 12).map(([k, v]) => `${k}: ${v}`);
     const total = Number(leadMetrics.activeTotal || 0);
     return {
-      answer: `Distribuição de leads ativos por etapa (total ${total}).`,
+      answer: `Distribuição de leads ativos por etapa (total ${total}). Quer que eu abra a lista de leads para você filtrar por etapa?`,
       highlights: highlights.length ? highlights : undefined,
-      suggestedActions: undefined,
+      suggestedActions: [makeOpenPageAction("/broker/leads", "Abrir leads", "Filtrar por etapa e agir nos maiores gargalos")],
     };
   }
 
@@ -211,8 +277,8 @@ function tryAnswerDeterministic(input: {
       : undefined;
 
     const answer = asksList
-      ? `${label} (top ${highlights.length}):`
-      : `${label}: encontrei ${highlights.length} no seu estoque.`;
+      ? `${label} (top ${highlights.length}):${filtered.length ? " Quer que eu abra o 1º imóvel da lista para diagnóstico?" : ""}`
+      : `${label}: encontrei ${highlights.length} no seu estoque.${filtered.length ? " Quer que eu abra o 1º imóvel da lista para diagnóstico?" : ""}`;
 
     return {
       answer,
@@ -269,7 +335,7 @@ const PostSchema = z
 const ActionSchema = z
   .object({
     type: z
-      .enum(["DRAFT_MESSAGE", "SET_REMINDER", "PROPERTY_DIAGNOSIS", "LISTING_IMPROVEMENT"]),
+      .enum(["DRAFT_MESSAGE", "SET_REMINDER", "PROPERTY_DIAGNOSIS", "LISTING_IMPROVEMENT", "OPEN_PAGE"]),
     title: z.string().min(2).max(80),
     impact: z.string().min(2).max(220),
     requiresConfirmation: z.boolean().optional(),
@@ -281,9 +347,41 @@ const OutputSchema = z
   .object({
     answer: z.string().min(1).max(1200),
     highlights: z.array(z.string().min(1).max(140)).max(6).optional(),
-    suggestedActions: z.array(ActionSchema).max(6).optional(),
+    suggestedActions: z.array(ActionSchema).max(1).optional(),
   })
   .strict();
+
+const AllowedOpenPagePaths = new Set([
+  "/broker/dashboard",
+  "/broker/crm",
+  "/broker/leads",
+  "/broker/chats",
+  "/broker/properties",
+  "/broker/queue",
+  "/broker/agenda",
+  "/broker/teams",
+  "/broker/profile",
+  "/broker/messages",
+]);
+
+function buildFallbackSuggestedActions(params: { message: string; leadId: string | null }) {
+  const q = normalizeQuery(params.message);
+  if (params.leadId) {
+    return [makeDefaultReminderAction(String(params.leadId))];
+  }
+
+  if (/\bimovel\b|\bimoveis\b|\bestoque\b/.test(q)) {
+    return [makeOpenPageAction("/broker/properties", "Abrir imóveis", "Ver e agir no seu estoque")];
+  }
+  if (/\blead\b|\bleads\b|\bfunil\b|\bpipeline\b|\batendimento\b/.test(q)) {
+    return [makeOpenPageAction("/broker/leads", "Abrir leads", "Ver, filtrar e priorizar leads")];
+  }
+  if (/\bchat\b|\bchats\b|\bmensagem\b|\bresponder\b/.test(q)) {
+    return [makeOpenPageAction("/broker/chats", "Abrir chats", "Ver conversas e responder clientes")];
+  }
+
+  return [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver visão geral e próximos passos")];
+}
 
 function clampText(value: string, max: number) {
   const s = String(value || "");
@@ -370,6 +468,8 @@ function buildSystemPrompt(leadMode: boolean) {
     "- Seja direto e objetivo.\n" +
     "- Sem emojis, sem links, sem telefone.\n" +
     "- Se sugerir uma ação operacional, ela DEVE exigir confirmação explícita (requiresConfirmation=true).\n" +
+    "- Sempre que fizer sentido, sugira NO MÁXIMO 1 ação prática e relevante para a dúvida do corretor.\n" +
+    "- Se você incluir suggestedActions, finalize a resposta perguntando se o corretor quer executar a ação sugerida.\n" +
     "\n" +
     "Responda SOMENTE com JSON válido, sem markdown.\n" +
     "Formato: { answer: string, highlights?: string[], suggestedActions?: { type, title, impact, requiresConfirmation, payload }[] }\n" +
@@ -378,11 +478,12 @@ function buildSystemPrompt(leadMode: boolean) {
     "- DRAFT_MESSAGE: payload = { leadId: string, content: string } (rascunho para o cliente; não enviar)\n" +
     "- SET_REMINDER: payload = { leadId: string, date: string|null (ISO), note: string|null }\n" +
     "- PROPERTY_DIAGNOSIS: payload = { propertyId?: string, checklist: string[] } (checklist obrigatório com 3 a 6 itens curtos; se não conseguir, NÃO sugira essa ação)\n" +
-    "- LISTING_IMPROVEMENT: payload = { propertyId?: string, checklist: string[] } (checklist obrigatório com 3 a 6 itens curtos; se não conseguir, NÃO sugira essa ação)\n";
+    "- LISTING_IMPROVEMENT: payload = { propertyId?: string, checklist: string[] } (checklist obrigatório com 3 a 6 itens curtos; se não conseguir, NÃO sugira essa ação)\n" +
+    "- OPEN_PAGE: payload = { path: string } (deve ser um path interno permitido, ex: /broker/leads, /broker/chats, /broker/properties)\n";
 
   return leadMode
     ? `${base}\nContexto: chat ligado a um lead. Você pode sugerir rascunho de mensagem ao cliente e lembretes internos.`
-    : `${base}\nContexto: chat geral. Foque em rotina e diagnóstico. Se faltar dados, peça as informações necessárias.`;
+    : `${base}\nContexto: chat geral. Foque em rotina e diagnóstico. Se faltar dados, peça as informações necessárias. Neste modo, NÃO sugira SET_REMINDER/DRAFT_MESSAGE (a menos que você tenha um leadId explícito no payload). Prefira OPEN_PAGE e ações de imóveis.`;
 }
 
 function buildUserPrompt(input: {
@@ -391,6 +492,7 @@ function buildUserPrompt(input: {
   recentClientMessages?: Array<{ createdAt: string; fromClient: boolean; content: string }>;
   propertiesSummary?: PropertySummary[];
   leadMetrics?: LeadMetrics | null;
+  propertyMetrics?: PropertyMetrics | null;
 }) {
   const out: string[] = [];
   out.push("Pedido do corretor:");
@@ -426,6 +528,17 @@ function buildUserPrompt(input: {
       const stale = p.daysSinceLastLead == null ? "" : `, diasSemLead=${p.daysSinceLastLead}`;
       out.push(`- propertyId=${p.id} | ${p.title} | ${loc} | status=${p.status} | ${perf}${stale}`);
     });
+  }
+
+  if (!input.lead && input.propertyMetrics) {
+    const pm = input.propertyMetrics;
+    out.push("\nMétricas de imóveis (fonte de verdade):");
+    out.push(`- Imóveis no total: ${Number(pm.total || 0)}`);
+    out.push(`- Imóveis ativos: ${Number(pm.activeTotal || 0)}`);
+    const by = Object.entries(pm.byStatus || {})
+      .map(([k, v]) => `${k}:${Number(v || 0)}`)
+      .sort();
+    if (by.length) out.push(`- Por status: ${by.join(", ")}`);
   }
 
   if (!input.lead && input.leadMetrics) {
@@ -539,6 +652,32 @@ async function getPropertiesSummaryForUser(userId: string): Promise<PropertySumm
   });
 
   return summaries.slice(0, 12);
+}
+
+async function getPropertyMetricsForUser(userId: string): Promise<PropertyMetrics> {
+  let rows: Array<{ status: any; _count: { _all: number } }> = [];
+  try {
+    rows = (await (prisma.property as any).groupBy({
+      by: ["status"],
+      where: { ownerId: String(userId) },
+      _count: { _all: true },
+    })) as Array<{ status: any; _count: { _all: number } }>;
+  } catch (e) {
+    console.error("assistant/chat: property.groupBy failed", e);
+    rows = [];
+  }
+
+  const byStatus: Record<string, number> = {};
+  let total = 0;
+  for (const r of rows || []) {
+    const key = r.status == null ? "(sem status)" : String(r.status);
+    const n = Number(r._count?._all || 0);
+    byStatus[key] = n;
+    total += n;
+  }
+
+  const activeTotal = Number(byStatus.ACTIVE || 0);
+  return { total, activeTotal, byStatus };
 }
 
 async function getLeadMetricsForRealtor(params: { userId: string; role: string | null | undefined }): Promise<LeadMetrics> {
@@ -764,6 +903,11 @@ function parseAi(content: string, params?: { leadId?: string | null; allowedProp
                 ? { ...payload, leadId: String((payload as any)?.leadId || leadId) }
                 : payload;
 
+            if (!leadId && (a.type === "DRAFT_MESSAGE" || a.type === "SET_REMINDER")) {
+              const targetLeadId = String((nextPayload as any)?.leadId || "").trim();
+              if (!targetLeadId) return null;
+            }
+
             if (a.type === "PROPERTY_DIAGNOSIS" || a.type === "LISTING_IMPROVEMENT") {
               const pid = String((nextPayload as any)?.propertyId || "").trim();
               if (pid && allowedPropertyIds.size > 0 && !allowedPropertyIds.has(pid)) {
@@ -783,6 +927,19 @@ function parseAi(content: string, params?: { leadId?: string | null; allowedProp
               (nextPayload as any).checklist = list;
             }
 
+            if (a.type === "OPEN_PAGE") {
+              const rawPath = String((nextPayload as any)?.path || "").trim();
+              if (!rawPath || rawPath.includes("://") || rawPath.startsWith("javascript:")) {
+                return null;
+              }
+              const path = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+              const normalized = path.replace(/\?.*$/, "").replace(/#.*$/, "");
+              if (!AllowedOpenPagePaths.has(normalized)) {
+                return null;
+              }
+              (nextPayload as any).path = normalized;
+            }
+
             return {
               ...a,
               title: sanitizeText(a.title, 80),
@@ -792,7 +949,7 @@ function parseAi(content: string, params?: { leadId?: string | null; allowedProp
             };
           })
           .filter(Boolean)
-          .slice(0, 6)
+          .slice(0, 1)
       : undefined,
   };
 
@@ -853,6 +1010,7 @@ async function postHandler(req: NextRequest) {
   let propertiesSummary: PropertySummary[] = [];
   let allowedPropertyIds: string[] = [];
   let leadMetrics: LeadMetrics | null = null;
+  let propertyMetrics: PropertyMetrics | null = null;
 
   if (leadId) {
     lead = await (prisma as any).lead.findUnique({
@@ -903,6 +1061,13 @@ async function postHandler(req: NextRequest) {
     }
 
     try {
+      propertyMetrics = await getPropertyMetricsForUser(String(userId));
+    } catch (e) {
+      console.error("assistant/chat: failed to load property metrics", e);
+      propertyMetrics = null;
+    }
+
+    try {
       leadMetrics = await getLeadMetricsForRealtor({ userId: String(userId), role: role || null });
     } catch (e) {
       console.error("assistant/chat: failed to load lead metrics", e);
@@ -937,6 +1102,7 @@ async function postHandler(req: NextRequest) {
         message: parsedBody.data.content.trim(),
         leadMetrics,
         propertiesSummary,
+        propertyMetrics,
       })
     : null;
   if (deterministic) {
@@ -959,6 +1125,7 @@ async function postHandler(req: NextRequest) {
     recentClientMessages,
     propertiesSummary,
     leadMetrics,
+    propertyMetrics,
   });
 
   const attempt = await callOpenAi({ apiKey, systemPrompt, userPrompt });
@@ -977,6 +1144,13 @@ async function postHandler(req: NextRequest) {
       { sample: attempt.content.slice(0, 1200) },
       "AI_INVALID_JSON"
     );
+  }
+
+  if (!Array.isArray(parsedAi.suggestedActions) || parsedAi.suggestedActions.length === 0) {
+    parsedAi.suggestedActions = buildFallbackSuggestedActions({
+      message: parsedBody.data.content.trim(),
+      leadId: leadId ? String(leadId) : null,
+    }).slice(0, 1);
   }
 
   const assistantMessage = await (prisma as any).realtorAssistantChatMessage.create({

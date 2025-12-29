@@ -14,7 +14,7 @@ type ChatMessage = {
 };
 
 type SuggestedAction = {
-  type?: "DRAFT_MESSAGE" | "SET_REMINDER" | "PROPERTY_DIAGNOSIS" | "LISTING_IMPROVEMENT";
+  type?: "DRAFT_MESSAGE" | "SET_REMINDER" | "PROPERTY_DIAGNOSIS" | "LISTING_IMPROVEMENT" | "OPEN_PAGE";
   title: string;
   impact: string;
   requiresConfirmation?: boolean;
@@ -385,6 +385,28 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
     [router, toast]
   );
 
+  const openPageAction = useCallback(
+    async (action: SuggestedAction) => {
+      const path = String((action.payload as any)?.path || "").trim();
+      if (!path) {
+        toast.error("Ação indisponível", "Esta ação não tem uma página alvo.");
+        return;
+      }
+
+      const ok = await toast.confirm({
+        title: "Abrir página",
+        message: "Vou abrir a página sugerida. Nenhuma alteração será feita automaticamente.",
+        confirmText: "Abrir",
+        cancelText: "Cancelar",
+        variant: "info",
+      });
+      if (!ok) return;
+
+      router.push(path);
+    },
+    [router, toast]
+  );
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -619,6 +641,18 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
                                     className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-900 text-white text-[11px] font-semibold hover:bg-gray-800"
                                   >
                                     Ver imóvel
+                                  </button>
+                                </div>
+                              )}
+
+                              {a.type === "OPEN_PAGE" && (
+                                <div className="mt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => void openPageAction(a)}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-900 text-white text-[11px] font-semibold hover:bg-gray-800"
+                                  >
+                                    Abrir
                                   </button>
                                 </div>
                               )}
