@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
+import { LeadPipelineStage, LeadStatus, Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { errorResponse, successResponse, withErrorHandling } from "@/lib/api-response";
@@ -17,6 +18,171 @@ type OpenAIChatResponse = {
     };
   }>;
 };
+
+function normalizeQuery(text: string) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function tryAnswerDeterministic(input: {
+  message: string;
+  leadMetrics: LeadMetrics | null;
+  propertiesSummary: PropertySummary[];
+}) {
+  const { message, leadMetrics, propertiesSummary } = input;
+  if (!leadMetrics && (!Array.isArray(propertiesSummary) || !propertiesSummary.length)) return null;
+  const q = normalizeQuery(message);
+
+  const asksHowMany = /\bquantos\b|\bqtd\b|\bnumero\b|\btotal\b/.test(q);
+
+  const asksList =
+    /\bquais\b/.test(q) || /\blistar\b/.test(q) || /\bmostre\b/.test(q) || /\bme mostre\b/.test(q);
+
+  const asksPendingReply =
+    /aguardando( uma)? resposta/.test(q) ||
+    /pendente(s)? de resposta/.test(q) ||
+    /pendentes resposta/.test(q) ||
+    /ultima msg( do)? cliente/.test(q);
+
+  const asksInAttendance = /em atendimento/.test(q) || /em andamento/.test(q) || /atendimento/.test(q);
+  const asksActive = /leads ativos/.test(q) || (/leads/.test(q) && /ativos/.test(q));
+
+  const asksFunnel =
+    /por etapa/.test(q) || /por estagio/.test(q) || /funil/.test(q) || /pipeline/.test(q) || /etapas/.test(q);
+
+  const asksLowConversion =
+    /baixa conversao/.test(q) ||
+    /pouca conversao/.test(q) ||
+    (/imoveis/.test(q) && /conversao/.test(q) && /baixa/.test(q));
+  const asksNoLeadsProps = /imoveis/.test(q) && (/sem leads/.test(q) || /zero leads/.test(q) || /0 leads/.test(q));
+  const asksStaleProps = /imoveis/.test(q) && (/parados/.test(q) || /sem lead ha/.test(q) || /sem leads ha/.test(q));
+
+  const makePropertyChecklist = () => [
+    "Revisar título e 1ª foto (mais chamativa)",
+    "Conferir preço vs concorrentes (ajuste fino)",
+    "Melhorar descrição com diferenciais e condições",
+    "Adicionar/atualizar fotos (mín. 10; boa iluminação)",
+    "Confirmar status e disponibilidade (evitar fricção)",
+  ];
+
+  const makePropertyAction = (propertyId: string, title: string, impact: string) => ({
+    type: "PROPERTY_DIAGNOSIS" as const,
+    title,
+    impact,
+    requiresConfirmation: true,
+    payload: { propertyId, checklist: makePropertyChecklist().slice(0, 5) },
+  });
+
+  if (leadMetrics && (asksHowMany || asksList) && asksPendingReply) {
+    const count = Number(leadMetrics.pendingReplyTotal || 0);
+    const highlights = (leadMetrics.pendingReplyLeads || [])
+      .slice(0, 10)
+      .map((l) => {
+        const who = l.contactName || "(sem nome)";
+        const prop = l.propertyTitle ? ` | ${l.propertyTitle}` : "";
+        const stage = l.pipelineStage ? ` | stage=${l.pipelineStage}` : "";
+        return `leadId=${l.leadId} | ${who}${prop}${stage}`;
+      });
+
+    const answer = asksList
+      ? `Aqui estão leads com conversa aguardando sua resposta (última mensagem do cliente). Total: ${count}.`
+      : `Você tem ${count} conversas aguardando sua resposta (última mensagem do cliente).`;
+
+    return {
+      answer,
+      highlights: highlights.length ? highlights : undefined,
+      suggestedActions: undefined,
+    };
+  }
+
+  if (leadMetrics && asksHowMany && asksInAttendance) {
+    const count = Number(leadMetrics.inAttendanceTotal || 0);
+    return {
+      answer: `Você tem ${count} leads em atendimento (CONTACT/VISIT/PROPOSAL/DOCUMENTS).`,
+      highlights: undefined,
+      suggestedActions: undefined,
+    };
+  }
+
+  if (leadMetrics && asksHowMany && asksActive) {
+    const count = Number(leadMetrics.activeTotal || 0);
+    return {
+      answer: `Você tem ${count} leads ativos (exclui WON/LOST e status fechados).`,
+      highlights: undefined,
+      suggestedActions: undefined,
+    };
+  }
+
+  if (leadMetrics && (asksHowMany || asksList) && asksFunnel) {
+    const entries = Object.entries(leadMetrics.byStage || {})
+      .map(([k, v]) => [String(k), Number(v || 0)] as const)
+      .filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1]);
+    const highlights = entries.slice(0, 12).map(([k, v]) => `${k}: ${v}`);
+    const total = Number(leadMetrics.activeTotal || 0);
+    return {
+      answer: `Distribuição de leads ativos por etapa (total ${total}).`,
+      highlights: highlights.length ? highlights : undefined,
+      suggestedActions: undefined,
+    };
+  }
+
+  if ((asksHowMany || asksList) && (asksLowConversion || asksNoLeadsProps || asksStaleProps)) {
+    const list = Array.isArray(propertiesSummary) ? propertiesSummary.slice() : [];
+
+    const filtered = list
+      .filter((p) => {
+        if (!p) return false;
+        if (asksNoLeadsProps) return Number(p.leads || 0) === 0 && Number(p.views || 0) > 0;
+        if (asksStaleProps) return (p.daysSinceLastLead ?? 0) >= 21;
+        return true;
+      })
+      .sort((a, b) => {
+        if (asksStaleProps) return Number(b.daysSinceLastLead || 0) - Number(a.daysSinceLastLead || 0);
+        if (asksNoLeadsProps) return Number(b.views || 0) - Number(a.views || 0);
+        return Number(a.conversionRatePct || 0) - Number(b.conversionRatePct || 0);
+      })
+      .slice(0, 8);
+
+    const label = asksNoLeadsProps
+      ? "Imóveis com views mas 0 leads"
+      : asksStaleProps
+        ? "Imóveis parados (>= 21 dias sem lead)"
+        : "Imóveis com baixa conversão";
+
+    const highlights = filtered.map((p) => {
+      const perf = `views=${p.views}, leads=${p.leads}, conv=${p.conversionRatePct}%`;
+      const stale = p.daysSinceLastLead == null ? "" : `, diasSemLead=${p.daysSinceLastLead}`;
+      return `propertyId=${p.id} | ${p.title} | ${perf}${stale}`;
+    });
+
+    const suggestedActions = filtered.length
+      ? [
+          makePropertyAction(
+            filtered[0].id,
+            "Diagnosticar 1º imóvel da lista",
+            "Ver rapidamente ajustes que podem destravar conversão"
+          ),
+        ]
+      : undefined;
+
+    const answer = asksList
+      ? `${label} (top ${highlights.length}):`
+      : `${label}: encontrei ${highlights.length} no seu estoque.`;
+
+    return {
+      answer,
+      highlights: highlights.length ? highlights : undefined,
+      suggestedActions,
+    };
+  }
+
+  return null;
+}
 
 type PropertySummary = {
   id: string;
@@ -335,46 +501,43 @@ async function getPropertiesSummaryForUser(userId: string): Promise<PropertySumm
 }
 
 async function getLeadMetricsForRealtor(params: { userId: string; role: string | null | undefined }): Promise<LeadMetrics> {
-  const closedStatuses = ["COMPLETED", "CANCELLED", "EXPIRED", "OWNER_REJECTED"]; // LeadStatus
-  const closedStages = ["WON", "LOST"]; // LeadPipelineStage
+  const closedStatuses: LeadStatus[] = ["COMPLETED", "CANCELLED", "EXPIRED", "OWNER_REJECTED"]; // LeadStatus
+  const closedStages: LeadPipelineStage[] = ["WON", "LOST"]; // LeadPipelineStage
   const inAttendanceStages = ["CONTACT", "VISIT", "PROPOSAL", "DOCUMENTS"];
 
-  const accessWhere: any =
-    params.role === "AGENCY"
-      ? {
-          OR: [
-            { realtorId: String(params.userId) },
-            { team: { is: { ownerId: String(params.userId) } } },
-          ],
-        }
-      : { realtorId: String(params.userId) };
-
-  const activeWhere: any = {
-    ...accessWhere,
-    status: { notIn: closedStatuses },
-    OR: [{ pipelineStage: null }, { pipelineStage: { notIn: closedStages } }],
+  const accessWhere: Prisma.LeadWhereInput = {
+    OR: [
+      { realtorId: String(params.userId) },
+      { team: { is: { ownerId: String(params.userId) } } },
+      { property: { is: { ownerId: String(params.userId) } } },
+    ],
   };
 
-  const [activeTotal, groupStages, recentMsgs] = await Promise.all([
-    prisma.lead.count({ where: activeWhere }),
-    prisma.lead.groupBy({
+  const activeWhere: Prisma.LeadWhereInput = {
+    ...accessWhere,
+    status: { notIn: closedStatuses },
+    pipelineStage: { notIn: closedStages },
+  };
+
+  let activeTotal = 0;
+  let groupStages: Array<{ pipelineStage: any; _count: { _all: number } }> = [];
+  try {
+    activeTotal = await prisma.lead.count({ where: activeWhere });
+  } catch (e) {
+    console.error("assistant/chat: lead.count failed", e);
+    activeTotal = 0;
+  }
+
+  try {
+    groupStages = (await (prisma.lead as any).groupBy({
       by: ["pipelineStage"],
       where: activeWhere,
       _count: { _all: true },
-    }),
-    prisma.leadClientMessage.findMany({
-      where: {
-        lead: { is: activeWhere },
-      },
-      select: {
-        leadId: true,
-        fromClient: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 1200,
-    }),
-  ]);
+    })) as Array<{ pipelineStage: any; _count: { _all: number } }>;
+  } catch (e) {
+    console.error("assistant/chat: lead.groupBy failed", e);
+    groupStages = [];
+  }
 
   const byStage: Record<string, number> = {};
   for (const row of groupStages as any[]) {
@@ -384,39 +547,72 @@ async function getLeadMetricsForRealtor(params: { userId: string; role: string |
 
   const inAttendanceTotal = inAttendanceStages.reduce((sum, s) => sum + (Number(byStage[s]) || 0), 0);
 
-  const lastByLeadId = new Map<string, { fromClient: boolean; createdAt: Date }>();
-  for (const m of (recentMsgs || []) as any[]) {
-    const lid = String(m.leadId);
-    if (!lid) continue;
-    if (!lastByLeadId.has(lid)) {
-      lastByLeadId.set(lid, { fromClient: !!m.fromClient, createdAt: new Date(m.createdAt) });
-      if (lastByLeadId.size >= 200) break;
-    }
+  let pendingReplyTotal = 0;
+  let pendingReplyLeads: LeadMetrics["pendingReplyLeads"] = [];
+  try {
+    const userId = String(params.userId);
+    const closedStatusesSql = Prisma.join(closedStatuses.map((s) => Prisma.sql`${s}`));
+    const closedStagesSql = Prisma.join(closedStages.map((s) => Prisma.sql`${s}`));
+
+    const lastMsgCte = Prisma.sql`
+      WITH last_msg AS (
+        SELECT DISTINCT ON (m."leadId")
+          m."leadId" AS "leadId",
+          m."fromClient" AS "fromClient",
+          m."createdAt" AS "createdAt"
+        FROM "lead_client_messages" m
+        JOIN "leads" l ON l."id" = m."leadId"
+        LEFT JOIN "teams" t ON t."id" = l."teamId"
+        LEFT JOIN "properties" p ON p."id" = l."propertyId"
+        WHERE
+          l."status" NOT IN (${closedStatusesSql})
+          AND l."pipelineStage" NOT IN (${closedStagesSql})
+          AND (
+            l."realtorId" = ${userId}
+            OR (t."ownerId" = ${userId})
+            OR (p."ownerId" = ${userId})
+          )
+        ORDER BY m."leadId", m."createdAt" DESC
+      )
+    `;
+
+    const countRows = (await prisma.$queryRaw(
+      Prisma.sql`${lastMsgCte}
+        SELECT COUNT(*)::int AS "pendingReplyTotal"
+        FROM last_msg
+        WHERE "fromClient" = true;
+      `
+    )) as any[];
+    pendingReplyTotal = Number(countRows?.[0]?.pendingReplyTotal || 0);
+
+    const leadsRows = (await prisma.$queryRaw(
+      Prisma.sql`${lastMsgCte}
+        SELECT
+          l."id" AS "leadId",
+          l."pipelineStage" AS "pipelineStage",
+          c."name" AS "contactName",
+          p2."title" AS "propertyTitle"
+        FROM last_msg lm
+        JOIN "leads" l ON l."id" = lm."leadId"
+        LEFT JOIN "contacts" c ON c."id" = l."contactId"
+        LEFT JOIN "properties" p2 ON p2."id" = l."propertyId"
+        WHERE lm."fromClient" = true
+        ORDER BY lm."createdAt" DESC
+        LIMIT 10;
+      `
+    )) as any[];
+
+    pendingReplyLeads = (leadsRows || []).map((r: any) => ({
+      leadId: String(r.leadId),
+      contactName: r.contactName ? String(r.contactName) : null,
+      propertyTitle: r.propertyTitle ? String(r.propertyTitle) : null,
+      pipelineStage: r.pipelineStage ? String(r.pipelineStage) : null,
+    }));
+  } catch (e) {
+    console.error("assistant/chat: pendingReply query failed", e);
+    pendingReplyTotal = 0;
+    pendingReplyLeads = [];
   }
-
-  const pendingReplyLeadIds = Array.from(lastByLeadId.entries())
-    .filter(([, v]) => !!v.fromClient)
-    .map(([leadId]) => String(leadId));
-  const pendingReplyTotal = pendingReplyLeadIds.length;
-
-  const pendingReplyLeadsRaw = pendingReplyLeadIds.length
-    ? await prisma.lead.findMany({
-        where: { id: { in: pendingReplyLeadIds.slice(0, 6) } },
-        select: {
-          id: true,
-          pipelineStage: true,
-          contact: { select: { name: true } },
-          property: { select: { title: true } },
-        },
-      })
-    : [];
-
-  const pendingReplyLeads = (pendingReplyLeadsRaw || []).map((l: any) => ({
-    leadId: String(l.id),
-    contactName: l.contact?.name ? String(l.contact.name) : null,
-    propertyTitle: l.property?.title ? String(l.property.title) : null,
-    pipelineStage: l.pipelineStage ? String(l.pipelineStage) : null,
-  }));
 
   return {
     activeTotal: Number(activeTotal || 0),
@@ -677,6 +873,26 @@ async function postHandler(req: NextRequest) {
       data: null,
     },
   });
+
+  const deterministic = !leadId
+    ? tryAnswerDeterministic({
+        message: parsedBody.data.content.trim(),
+        leadMetrics,
+        propertiesSummary,
+      })
+    : null;
+  if (deterministic) {
+    const assistantMessage = await (prisma as any).realtorAssistantChatMessage.create({
+      data: {
+        threadId: thread.id,
+        role: "ASSISTANT",
+        content: deterministic.answer,
+        data: deterministic,
+      },
+    });
+
+    return successResponse({ threadId: thread.id, messages: [userMessage, assistantMessage] });
+  }
 
   const systemPrompt = buildSystemPrompt(!!leadId);
   const userPrompt = buildUserPrompt({
