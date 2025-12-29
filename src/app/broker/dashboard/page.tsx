@@ -862,7 +862,7 @@ export default function BrokerDashboard() {
                   <motion.div
                     whileHover={{ y: -2 }}
                     className="rounded-2xl border border-gray-100 bg-white p-4 cursor-pointer"
-                    onClick={() => router.push("/broker/leads?view=pipeline&stage=NEW")}
+                    onClick={() => router.push("/broker/leads?view=list&stage=NEW")}
                     role="button"
                     tabIndex={0}
                   >
