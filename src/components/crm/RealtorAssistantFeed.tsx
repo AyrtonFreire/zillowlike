@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  CalendarDays,
   CheckCircle2,
   ChevronDown,
   Clock,
@@ -104,10 +103,6 @@ function getPriorityClasses(priority: AssistantItem["priority"]) {
   return "bg-gray-50 text-gray-600 border-gray-200";
 }
 
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
 function formatPriceBRL(value: number | null | undefined) {
   if (value == null) return null;
   const cents = Number(value);
@@ -118,10 +113,6 @@ function formatPriceBRL(value: number | null | undefined) {
   } catch {
     return `R$ ${brl.toFixed(2)}`;
   }
-}
-
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
 function getActionLabel(action: AssistantAction, item?: AssistantItem | null) {
@@ -1147,45 +1138,16 @@ export default function RealtorAssistantFeed(props: {
                     const isSnoozedPreview = justSnoozedId === item.id && item.status === "SNOOZED";
                     const isTransientPreview = isResolvedPreview || isSnoozedPreview;
 
+                    const dateLabel = snoozeLabel || dueLabel;
                     const now = new Date();
-                    let stateLabel: string | null = null;
-                    let stateTone: "overdue" | "today" | "tomorrow" | "snoozed" | "due" | null = null;
-
-                    if (item.status === "SNOOZED" && snoozeLabel) {
-                      stateLabel = `Sonecado até ${snoozeLabel}`;
-                      stateTone = "snoozed";
-                    } else if (isResolvedPreview) {
-                      stateLabel = "Feito";
-                      stateTone = "due";
-                    } else if (item.status === "ACTIVE" && item.dueAt) {
-                      const d = new Date(item.dueAt);
-                      if (!Number.isNaN(d.getTime())) {
-                        if (d.getTime() < now.getTime()) {
-                          stateLabel = "Vencido";
-                          stateTone = "overdue";
-                        } else if (isSameDay(d, now)) {
-                          stateLabel = "Hoje";
-                          stateTone = "today";
-                        } else if (isSameDay(d, new Date(startOfDay(now).getTime() + 24 * 60 * 60 * 1000))) {
-                          stateLabel = "Amanhã";
-                          stateTone = "tomorrow";
-                        } else if (dueLabel) {
-                          stateLabel = `Vence em ${dueLabel}`;
-                          stateTone = "due";
-                        }
-                      }
-                    }
-
-                    const stateClasses =
-                      stateTone === "overdue"
-                        ? "bg-red-50 text-red-700 border-red-100"
-                        : stateTone === "today"
-                          ? "bg-amber-50 text-amber-800 border-amber-100"
-                          : stateTone === "tomorrow"
-                            ? "bg-blue-50 text-blue-700 border-blue-100"
-                            : stateTone === "snoozed"
-                              ? "bg-gray-50 text-gray-700 border-gray-200"
-                              : "bg-gray-50 text-gray-700 border-gray-200";
+                    const isOverdue =
+                      item.status === "ACTIVE" &&
+                      !!item.dueAt &&
+                      (() => {
+                        const d = new Date(item.dueAt as any);
+                        if (Number.isNaN(d.getTime())) return false;
+                        return d.getTime() < now.getTime();
+                      })();
 
                     const responderIsPrimary = item.type === "UNANSWERED_CLIENT_MESSAGE";
                     const primaryOpenAction = responderIsPrimary ? openChatAction : openLeadAction;
@@ -1199,10 +1161,10 @@ export default function RealtorAssistantFeed(props: {
                     const isPropertySummaryExpanded = propertySummaryExpandedForId === item.id;
 
                     const effectivePriority =
-                      item.status === "ACTIVE" && stateTone === "overdue" ? "HIGH" : item.priority;
+                      item.status === "ACTIVE" && isOverdue ? "HIGH" : item.priority;
 
                     const priorityLabel = getPriorityLabel(effectivePriority);
-                    const chipText = `Prioridade ${priorityLabel}${stateLabel ? ` · ${stateLabel}` : ""}`;
+                    const chipText = `Prioridade ${priorityLabel}${dateLabel ? ` · ${dateLabel}` : ""}`;
 
                     const priorityDotClass =
                       effectivePriority === "HIGH"
@@ -1289,45 +1251,36 @@ export default function RealtorAssistantFeed(props: {
                               </div>
                             </div>
 
-                            <div className="mt-4">
-                              <p className="text-[22px] leading-7 font-extrabold text-gray-900">{item.title}</p>
-
-                              {(dueLabel || snoozeLabel) && (
-                                <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                                  <CalendarDays className="w-4.5 h-4.5" />
-                                  <span>{snoozeLabel || dueLabel}</span>
-                                </div>
-                              )}
-
-                              <div className="mt-4">
-                                <div className={isInternalChecklist ? "mt-1 flex items-start gap-2" : "mt-1"}>
-                                  {isReminder && <Phone className="w-4 h-4 text-gray-400 mt-1" />}
-                                  <p
-                                    className={
-                                      isInternalChecklist
-                                        ? `text-[15px] leading-6 font-semibold text-gray-900 ${
-                                            isExpanded ? "" : "line-clamp-3"
-                                          }`
-                                        : `text-[15px] leading-6 font-medium text-gray-800 ${
-                                            isExpanded ? "" : "line-clamp-3"
-                                          }`
-                                    }
-                                  >
-                                    {item.message}
-                                  </p>
-                                </div>
-                                {messageIsLong && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
-                                    className="mt-1 text-[12px] font-semibold text-blue-700 hover:text-blue-800"
-                                  >
-                                    {isExpanded ? "Ver menos" : "Ver mais"}
-                                  </button>
-                                )}
+                            <div className="mt-3 flex items-start gap-2">
+                              <div className="flex-1 min-w-0">
+                                {isReminder && <Phone className="w-4 h-4 text-gray-400 mt-1" />}
+                                <p className="text-[18px] leading-6 font-extrabold text-gray-900">{item.title}</p>
+                                <p
+                                  className={
+                                    isInternalChecklist
+                                      ? `text-[15px] leading-6 font-semibold text-gray-900 ${
+                                          isExpanded ? "" : "line-clamp-3"
+                                        }`
+                                      : `text-[15px] leading-6 font-medium text-gray-800 ${
+                                          isExpanded ? "" : "line-clamp-3"
+                                        }`
+                                  }
+                                >
+                                  {item.message}
+                                </p>
                               </div>
+                              {messageIsLong && (
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+                                  className="mt-1 text-[12px] font-semibold text-blue-700 hover:text-blue-800"
+                                >
+                                  {isExpanded ? "Ver menos" : "Ver mais"}
+                                </button>
+                              )}
+                            </div>
 
-                              {hasPropertySummary && (
+                            {hasPropertySummary && (
                                 <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
                                   <div className="flex items-center justify-between gap-3">
                                     <div className="min-w-0">
@@ -1402,7 +1355,6 @@ export default function RealtorAssistantFeed(props: {
                                   )}
                                 </div>
                               )}
-                            </div>
 
                         {subtasks.length > 0 && (
                           <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
