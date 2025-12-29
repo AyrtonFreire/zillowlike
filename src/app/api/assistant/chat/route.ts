@@ -38,7 +38,12 @@ type LeadMetrics = {
   byStage: Record<string, number>;
   inAttendanceTotal: number;
   pendingReplyTotal: number;
-  pendingReplyLeads: Array<{ leadId: string; contactName: string | null; propertyTitle: string | null; pipelineStage: string | null }>;
+  pendingReplyLeads: Array<{
+    leadId: string;
+    contactName: string | null;
+    propertyTitle: string | null;
+    pipelineStage: string | null;
+  }>;
 };
 
 const QuerySchema = z
@@ -329,18 +334,28 @@ async function getPropertiesSummaryForUser(userId: string): Promise<PropertySumm
   return summaries.slice(0, 12);
 }
 
-async function getLeadMetricsForRealtor(userId: string): Promise<LeadMetrics> {
+async function getLeadMetricsForRealtor(params: { userId: string; role: string | null | undefined }): Promise<LeadMetrics> {
   const closedStatuses = ["COMPLETED", "CANCELLED", "EXPIRED", "OWNER_REJECTED"]; // LeadStatus
   const closedStages = ["WON", "LOST"]; // LeadPipelineStage
   const inAttendanceStages = ["CONTACT", "VISIT", "PROPOSAL", "DOCUMENTS"];
 
+  const accessWhere: any =
+    params.role === "AGENCY"
+      ? {
+          OR: [
+            { realtorId: String(params.userId) },
+            { team: { is: { ownerId: String(params.userId) } } },
+          ],
+        }
+      : { realtorId: String(params.userId) };
+
   const activeWhere: any = {
-    realtorId: String(userId),
+    ...accessWhere,
     status: { notIn: closedStatuses },
     OR: [{ pipelineStage: null }, { pipelineStage: { notIn: closedStages } }],
   };
 
-  const [activeTotal, groupStages, lastMsgs] = await Promise.all([
+  const [activeTotal, groupStages, recentMsgs] = await Promise.all([
     prisma.lead.count({ where: activeWhere }),
     prisma.lead.groupBy({
       by: ["pipelineStage"],
@@ -349,7 +364,7 @@ async function getLeadMetricsForRealtor(userId: string): Promise<LeadMetrics> {
     }),
     prisma.leadClientMessage.findMany({
       where: {
-        lead: activeWhere,
+        lead: { is: activeWhere },
       },
       select: {
         leadId: true,
@@ -357,8 +372,7 @@ async function getLeadMetricsForRealtor(userId: string): Promise<LeadMetrics> {
         createdAt: true,
       },
       orderBy: { createdAt: "desc" },
-      distinct: ["leadId"],
-      take: 200,
+      take: 1200,
     }),
   ]);
 
@@ -369,7 +383,20 @@ async function getLeadMetricsForRealtor(userId: string): Promise<LeadMetrics> {
   }
 
   const inAttendanceTotal = inAttendanceStages.reduce((sum, s) => sum + (Number(byStage[s]) || 0), 0);
-  const pendingReplyLeadIds = (lastMsgs || []).filter((m: any) => !!m.fromClient).map((m: any) => String(m.leadId));
+
+  const lastByLeadId = new Map<string, { fromClient: boolean; createdAt: Date }>();
+  for (const m of (recentMsgs || []) as any[]) {
+    const lid = String(m.leadId);
+    if (!lid) continue;
+    if (!lastByLeadId.has(lid)) {
+      lastByLeadId.set(lid, { fromClient: !!m.fromClient, createdAt: new Date(m.createdAt) });
+      if (lastByLeadId.size >= 200) break;
+    }
+  }
+
+  const pendingReplyLeadIds = Array.from(lastByLeadId.entries())
+    .filter(([, v]) => !!v.fromClient)
+    .map(([leadId]) => String(leadId));
   const pendingReplyTotal = pendingReplyLeadIds.length;
 
   const pendingReplyLeadsRaw = pendingReplyLeadIds.length
@@ -616,13 +643,15 @@ async function postHandler(req: NextRequest) {
     try {
       propertiesSummary = await getPropertiesSummaryForUser(String(userId));
       allowedPropertyIds = propertiesSummary.map((p) => p.id);
-    } catch {
+    } catch (e) {
+      console.error("assistant/chat: failed to load properties summary", e);
       propertiesSummary = [];
     }
 
     try {
-      leadMetrics = await getLeadMetricsForRealtor(String(userId));
-    } catch {
+      leadMetrics = await getLeadMetricsForRealtor({ userId: String(userId), role: role || null });
+    } catch (e) {
+      console.error("assistant/chat: failed to load lead metrics", e);
       leadMetrics = null;
     }
   }
