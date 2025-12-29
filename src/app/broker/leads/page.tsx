@@ -1359,7 +1359,7 @@ export default function MyLeadsPage() {
           />
         ) : (
           /* ===== MODO LISTA ===== */
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
             {filteredLeads.map((lead) => {
               const isExpanded = expandedLeadId === lead.id;
               
@@ -1367,7 +1367,7 @@ export default function MyLeadsPage() {
                 <motion.div
                   key={lead.id}
                   layout
-                  className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow self-start"
                 >
                   {/* Card compacto - sempre visível */}
                   <div 
