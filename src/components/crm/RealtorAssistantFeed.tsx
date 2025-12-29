@@ -36,6 +36,7 @@ type AssistantItem = {
   source: string;
   title: string;
   message: string;
+  metadata?: Record<string, any> | null;
   dueAt?: string | null;
   snoozedUntil?: string | null;
   primaryAction?: AssistantAction | null;
@@ -113,6 +114,11 @@ function formatPriceBRL(value: number | null | undefined) {
   } catch {
     return `R$ ${brl.toFixed(2)}`;
   }
+}
+
+function buildWhatsAppShareUrl(text: string) {
+  const encoded = encodeURIComponent(String(text || "").trim());
+  return `https://wa.me/?text=${encoded}`;
 }
 
 function getActionLabel(action: AssistantAction, item?: AssistantItem | null) {
@@ -1132,8 +1138,18 @@ export default function RealtorAssistantFeed(props: {
                     const taskLabel = getRealtorAssistantTaskLabel(item.type);
                     const isReminder = isReminderType(item.type);
                     const isInternalChecklist = isInternalChecklistType(item.type);
-                    const resolveLabel = isInternalChecklist ? "Marcar como feito" : "Resolver";
-                    const resolveTitle = isInternalChecklist ? "Marcar como feito" : "Marcar como resolvido";
+                    const meta: any = (item as any)?.metadata || null;
+                    const isWhatsAppIntent = String(meta?.source || "").toUpperCase() === "WHATSAPP";
+                    const resolveLabel = isWhatsAppIntent
+                      ? "Estou em contato"
+                      : isInternalChecklist
+                        ? "Marcar como feito"
+                        : "Resolver";
+                    const resolveTitle = isWhatsAppIntent
+                      ? "Marcar como feito (já estou em contato)"
+                      : isInternalChecklist
+                        ? "Marcar como feito"
+                        : "Marcar como resolvido";
                     const isResolvedPreview = justResolvedId === item.id && item.status === "RESOLVED";
                     const isSnoozedPreview = justSnoozedId === item.id && item.status === "SNOOZED";
                     const isTransientPreview = isResolvedPreview || isSnoozedPreview;
@@ -1159,6 +1175,11 @@ export default function RealtorAssistantFeed(props: {
                     const property = item.lead?.property || null;
                     const hasPropertySummary = !!property;
                     const isPropertySummaryExpanded = propertySummaryExpandedForId === item.id;
+
+                    const draftForThisItem =
+                      !aiError && aiResult?.itemId === item.id && typeof aiResult?.draft === "string"
+                        ? String(aiResult.draft).trim()
+                        : "";
 
                     const effectivePriority =
                       item.status === "ACTIVE" && isOverdue ? "HIGH" : item.priority;
@@ -1521,6 +1542,31 @@ export default function RealtorAssistantFeed(props: {
                                   <Sparkles className="w-5 h-5" />
                                   {aiLoadingId === item.id ? "Gerando..." : getAiButtonLabel(item.type)}
                                 </button>
+
+                                {isWhatsAppIntent && (
+                                  <button
+                                    type="button"
+                                    disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                    onClick={() => {
+                                      const propertyTitle =
+                                        String(property?.title || "").trim() ||
+                                        String(meta?.propertyTitle || "").trim() ||
+                                        "o imóvel";
+                                      const propertyUrl = String(meta?.propertyUrl || "").trim();
+
+                                      const baseText =
+                                        draftForThisItem ||
+                                        `Olá! Tudo bem? Vi seu interesse no imóvel “${propertyTitle}”. Posso te ajudar?`;
+                                      const text = propertyUrl ? `${baseText}\n\n${propertyUrl}` : baseText;
+                                      const url = buildWhatsAppShareUrl(text);
+                                      window.open(url, "_blank", "noopener,noreferrer");
+                                    }}
+                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+                                  >
+                                    <ExternalLink className="w-5 h-5" />
+                                    Abrir WhatsApp com texto
+                                  </button>
+                                )}
 
                                 {!responderIsPrimary && primaryOpenAction && (
                                   <button

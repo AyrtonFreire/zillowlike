@@ -88,19 +88,22 @@ export default function PropertyContactCard({
         return;
       }
 
-      const res = await fetch(`/api/properties/${propertyId}/whatsapp`, { method: "GET" });
-      const data = await res.json().catch(() => ({} as any));
-      if (!res.ok) {
+      const tryFetch = async (method: "GET" | "POST") => {
+        const res = await fetch(`/api/properties/${propertyId}/whatsapp`, { method });
+        const data = await res.json().catch(() => ({} as any));
+        const url = data?.whatsappUrl as string | undefined;
+        return { ok: res.ok, url };
+      };
+
+      const primary = await tryFetch("POST");
+      const fallback = primary.ok && primary.url ? primary : await tryFetch("GET");
+
+      if (!fallback.ok || !fallback.url) {
         toast.error("WhatsApp indisponível no momento.");
         return;
       }
 
-      const url = data?.whatsappUrl as string | undefined;
-      if (!url) {
-        toast.error("WhatsApp indisponível no momento.");
-        return;
-      }
-      window.open(url, "_blank", "noopener,noreferrer");
+      window.open(fallback.url, "_blank", "noopener,noreferrer");
     } catch {
       toast.error("WhatsApp indisponível no momento.");
     }
