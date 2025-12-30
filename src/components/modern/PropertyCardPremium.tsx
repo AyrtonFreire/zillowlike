@@ -453,7 +453,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
         {/* Image Carousel */}
         <div
-          className="relative h-40 overflow-hidden rounded-t-2xl touch-pan-y"
+          className="relative h-44 overflow-hidden rounded-t-2xl touch-pan-y"
           ref={containerRef}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
@@ -578,7 +578,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
         </div>
 
         {/* Content */}
-        <div className="p-3 flex flex-col flex-1 relative bg-gradient-to-b from-white via-white to-gray-50">
+        <div className="p-2.5 flex flex-col flex-1 relative bg-gradient-to-b from-white via-white to-gray-50">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleShare}
@@ -589,17 +589,30 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </motion.button>
 
           {/* Title + Price */}
-          <div className="mb-3 mt-0.5 pr-10">
+          <div className="mb-2.5 mt-0.5 pr-10">
             <div
-              className="text-[16px] sm:text-[17px] font-semibold text-gray-900 leading-snug"
+              className="text-[15px] sm:text-[16px] font-semibold text-gray-900 leading-snug"
               style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
             >
               {property.title}
             </div>
-            <div className="mt-1.5 text-[20px] font-extrabold text-gray-900">
-              {typeof property.price === 'number' && property.price > 0
-                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
-                : 'Price on Request'}
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <div className="text-[19px] font-extrabold text-gray-900">
+                {typeof property.price === 'number' && property.price > 0
+                  ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
+                  : 'Price on Request'}
+              </div>
+
+              {(property.type || property.purpose) && (
+                <div className="flex items-center gap-2">
+                  {property.type && (
+                    <Chip icon={<Home className="w-4 h-4" />}>{property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type === 'STUDIO' ? 'Studio' : property.type}</Chip>
+                  )}
+                  {property.purpose && (
+                    <Chip>{property.purpose === 'RENT' ? 'Aluguel' : 'Venda'}</Chip>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -661,21 +674,11 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
             )}
           </AnimatePresence>
 
-          {/* Tags row: Tipo + Finalidade (Venda/Aluguel) */}
-          <div className="flex items-center gap-2 mb-2">
-            {property.type && (
-              <Chip icon={<Home className="w-4 h-4" />}>{property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type === 'STUDIO' ? 'Studio' : property.type}</Chip>
-            )}
-            {property.purpose && (
-              <Chip>{property.purpose === 'RENT' ? 'Aluguel' : 'Venda'}</Chip>
-            )}
-          </div>
-
           {/* Features row: quartos, banheiros, área (readable) */}
-          <div className="flex items-center text-gray-700 text-sm mb-2">
+          <div className="flex items-center text-gray-700 text-[13px] mb-1.5">
             {property.bedrooms != null && (
               <div className="flex items-center gap-1" title="Quartos">
-                <Bed className="w-4 h-4 text-gray-600" />
+                <Bed className="w-3.5 h-3.5 text-gray-600" />
                 <span className="font-semibold">{property.bedrooms}</span>
               </div>
             )}
@@ -684,7 +687,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
             )}
             {property.bathrooms != null && (
               <div className="flex items-center gap-1" title="Banheiros">
-                <Bath className="w-4 h-4 text-gray-600" />
+                <Bath className="w-3.5 h-3.5 text-gray-600" />
                 <span className="font-semibold">{property.bathrooms}</span>
               </div>
             )}
@@ -693,15 +696,15 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
             )}
             {property.areaM2 != null && (
               <div className="flex items-center gap-1" title="Área">
-                <Maximize className="w-4 h-4 text-gray-600" />
+                <Maximize className="w-3.5 h-3.5 text-gray-600" />
                 <span className="font-semibold">{property.areaM2}m²</span>
               </div>
             )}
           </div>
 
           {/* Location (clean, readable) */}
-          <div className="flex items-center gap-1.5 text-gray-700 text-sm mb-1.5">
-            <MapPin className="w-4 h-4 text-gray-600" />
+          <div className="flex items-center gap-1.5 text-gray-700 text-[13px] mb-1">
+            <MapPin className="w-3.5 h-3.5 text-gray-600" />
             <span>
               {property.neighborhood && `${property.neighborhood}, `}
               {property.city}/{property.state}
