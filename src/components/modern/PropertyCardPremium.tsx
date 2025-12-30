@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, Home, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent, BadgeCheck, PhoneCall } from "lucide-react";
+import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, Home, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import Chip from "@/components/ui/Chip";
@@ -708,9 +708,9 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
             </span>
           </div>
 
-          {/* Owner / Broker block (no phone number) */}
+          {/* Owner / Broker block (avatar + name only, pinned to bottom) */}
           {property.owner?.name && (
-            <div className="mt-2.5 pt-2.5 border-t border-gray-200 flex items-center justify-between gap-3">
+            <div className="mt-auto pt-3 flex items-center gap-3">
               {property.owner?.publicSlug ? (
                 <Link
                   href={`/realtor/${property.owner.publicSlug}`}
@@ -737,10 +737,6 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     <span className="block text-[14px] font-bold text-gray-900 leading-tight truncate">
                       {property.owner.name}
                     </span>
-                    <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-gray-600 leading-tight">
-                      <BadgeCheck className="w-4 h-4 text-emerald-600" />
-                      <span>{ownerRoleLabel} verificado</span>
-                    </span>
                   </span>
                 </Link>
               ) : (
@@ -764,32 +760,8 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     <span className="block text-[14px] font-bold text-gray-900 leading-tight truncate">
                       {property.owner.name}
                     </span>
-                    <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-gray-600 leading-tight">
-                      <BadgeCheck className="w-4 h-4 text-emerald-600" />
-                      <span>{ownerRoleLabel} verificado</span>
-                    </span>
                   </span>
                 </div>
-              )}
-
-              {property.owner?.publicSlug ? (
-                <Link
-                  href={`/realtor/${property.owner.publicSlug}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="shrink-0 w-11 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow flex items-center justify-center transition-colors"
-                  aria-label={`Ver perfil de ${property.owner.name}`}
-                >
-                  <PhoneCall className="w-5 h-5" />
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(e) => e.stopPropagation()}
-                  className="shrink-0 w-11 h-11 rounded-xl bg-emerald-600 text-white shadow flex items-center justify-center"
-                  aria-label="Contato"
-                >
-                  <PhoneCall className="w-5 h-5" />
-                </button>
               )}
             </div>
           )}
