@@ -1,10 +1,9 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, Home, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent } from "lucide-react";
+import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import Chip from "@/components/ui/Chip";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { track } from "@/lib/analytics";
 import { buildPropertyPath } from "@/lib/slug";
@@ -453,7 +452,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
         {/* Image Carousel */}
         <div
-          className="relative h-44 overflow-hidden rounded-t-2xl touch-pan-y"
+          className="relative h-36 overflow-hidden rounded-t-2xl touch-pan-y"
           ref={containerRef}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
@@ -578,7 +577,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
         </div>
 
         {/* Content */}
-        <div className="p-2.5 flex flex-col flex-1 relative bg-gradient-to-b from-white via-white to-gray-50">
+        <div className="p-2 flex flex-col flex-1 relative bg-gradient-to-b from-white via-white to-gray-50">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleShare}
@@ -589,30 +588,19 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </motion.button>
 
           {/* Title + Price */}
-          <div className="mb-2.5 mt-0.5 pr-10">
+          <div className="mb-2 mt-0.5 pr-10">
             <div
-              className="text-[15px] sm:text-[16px] font-semibold text-gray-900 leading-snug"
+              className="text-[14px] sm:text-[15px] font-semibold text-gray-900 leading-snug"
               style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
             >
               {property.title}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <div className="text-[19px] font-extrabold text-gray-900">
+              <div className="text-[18px] font-extrabold text-gray-900">
                 {typeof property.price === 'number' && property.price > 0
                   ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
                   : 'Price on Request'}
               </div>
-
-              {(property.type || property.purpose) && (
-                <div className="flex items-center gap-2">
-                  {property.type && (
-                    <Chip icon={<Home className="w-4 h-4" />}>{property.type === 'HOUSE' ? 'Casa' : property.type === 'APARTMENT' ? 'Apartamento' : property.type === 'CONDO' ? 'Condomínio' : property.type === 'LAND' ? 'Terreno' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type === 'STUDIO' ? 'Studio' : property.type}</Chip>
-                  )}
-                  {property.purpose && (
-                    <Chip>{property.purpose === 'RENT' ? 'Aluguel' : 'Venda'}</Chip>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
@@ -675,7 +663,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </AnimatePresence>
 
           {/* Features row: quartos, banheiros, área (readable) */}
-          <div className="flex items-center text-gray-700 text-[13px] mb-1.5">
+          <div className="flex items-center text-gray-700 text-[12.5px] mb-1">
             {property.bedrooms != null && (
               <div className="flex items-center gap-1" title="Quartos">
                 <Bed className="w-3.5 h-3.5 text-gray-600" />
@@ -703,7 +691,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </div>
 
           {/* Location (clean, readable) */}
-          <div className="flex items-center gap-1.5 text-gray-700 text-[13px] mb-1">
+          <div className="flex items-center gap-1.5 text-gray-700 text-[12.5px] mb-0.5">
             <MapPin className="w-3.5 h-3.5 text-gray-600" />
             <span>
               {property.neighborhood && `${property.neighborhood}, `}
@@ -713,7 +701,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
           {/* Owner / Broker block (avatar + name only, pinned to bottom) */}
           {property.owner?.name && (
-            <div className="mt-auto pt-3 flex items-center gap-3">
+            <div className="mt-auto pt-2 flex items-center gap-2.5">
               {property.owner?.publicSlug ? (
                 <Link
                   href={`/realtor/${property.owner.publicSlug}`}
@@ -721,46 +709,46 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                   className="flex items-center gap-3 min-w-0"
                   aria-label={`Ver perfil de ${property.owner.name}`}
                 >
-                  <span className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
+                  <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
                     {property.owner?.image ? (
                       <Image
                         src={property.owner.image}
                         alt={property.owner.name || "Profissional"}
                         fill
                         className="object-cover"
-                        sizes="40px"
+                        sizes="36px"
                       />
                     ) : (
-                      <span className="absolute inset-0 flex items-center justify-center text-[14px] font-extrabold text-gray-700">
+                      <span className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-gray-700">
                         {String(property.owner.name).trim().slice(0, 1).toUpperCase()}
                       </span>
                     )}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[14px] font-bold text-gray-900 leading-tight truncate">
+                    <span className="block text-[13px] font-bold text-gray-900 leading-tight truncate">
                       {property.owner.name}
                     </span>
                   </span>
                 </Link>
               ) : (
                 <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-3 min-w-0">
-                  <span className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
+                  <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
                     {property.owner?.image ? (
                       <Image
                         src={property.owner.image}
                         alt={property.owner.name || "Profissional"}
                         fill
                         className="object-cover"
-                        sizes="40px"
+                        sizes="36px"
                       />
                     ) : (
-                      <span className="absolute inset-0 flex items-center justify-center text-[14px] font-extrabold text-gray-700">
+                      <span className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-gray-700">
                         {String(property.owner.name).trim().slice(0, 1).toUpperCase()}
                       </span>
                     )}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[14px] font-bold text-gray-900 leading-tight truncate">
+                    <span className="block text-[13px] font-bold text-gray-900 leading-tight truncate">
                       {property.owner.name}
                     </span>
                   </span>
