@@ -90,7 +90,7 @@ export default function ShowcasePage() {
             <PropertyListSkeleton count={3} />
           ) : (
             <motion.div 
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-8"
               initial="hidden"
               whileInView="show"
               viewport={{ once: true }}

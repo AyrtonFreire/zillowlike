@@ -4,6 +4,13 @@ export type ApiProperty = {
   description: string;
   price: number;
   type: string;
+  owner?: {
+    id: string;
+    name?: string | null;
+    image?: string | null;
+    publicSlug?: string | null;
+    role?: string | null;
+  } | null;
   street: string;
   neighborhood?: string | null;
   city: string;

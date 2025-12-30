@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, Home, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import Chip from "@/components/ui/Chip";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { track } from "@/lib/analytics";
@@ -14,6 +15,12 @@ interface PropertyCardPremiumProps {
     title: string;
     price?: number | null;
     images: { url: string }[];
+    owner?: {
+      id: string;
+      name?: string | null;
+      image?: string | null;
+      publicSlug?: string | null;
+    } | null;
     city: string;
     state: string;
     bedrooms?: number | null;
@@ -63,6 +70,13 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     const d = property.createdAt instanceof Date ? property.createdAt : new Date(property.createdAt);
     return Number.isNaN(d.getTime()) ? null : d;
   }, [property.createdAt]);
+
+  const ownerRoleLabel = useMemo(() => {
+    const r = String((property as any)?.owner?.role || "").toUpperCase();
+    if (r === "REALTOR" || r === "AGENCY") return "Corretor";
+    if (r === "OWNER") return "Anunciante";
+    return "Profissional";
+  }, [property]);
 
   const intelligentBadges = useMemo(() => {
     const badges: Array<{
@@ -564,21 +578,95 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
         {/* Content */}
         <div className="p-3 flex flex-col flex-1 relative">
-          {/* Price + Share */}
-          <div className="mb-2 mt-0.5 flex items-center justify-between">
-            <div className="text-xl font-bold text-gray-900">
-              {typeof property.price === 'number' && property.price > 0
-                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
-                : 'Price on Request'}
+          {/* Title + Price + Broker + Share */}
+          <div className="mb-2 mt-0.5 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div
+                className="text-[13px] font-semibold text-gray-900 leading-snug"
+                style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+              >
+                {property.title}
+              </div>
+              <div className="mt-1 text-xl font-bold text-gray-900">
+                {typeof property.price === 'number' && property.price > 0
+                  ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
+                  : 'Price on Request'}
+              </div>
             </div>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={handleShare}
-              className="p-1.5 rounded-md transition-colors hover:bg-gray-50"
-              aria-label="Abrir opções de compartilhamento"
-            >
-              <Share2 className="w-5 h-5 text-teal hover:text-teal-dark transition-colors" />
-            </motion.button>
+
+            <div className="flex flex-col items-end gap-2 flex-shrink-0">
+              {property.owner?.name && property.owner?.publicSlug && (
+                <Link
+                  href={`/realtor/${property.owner.publicSlug}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  className="group inline-flex items-center gap-2 rounded-full bg-white/90 border border-gray-200 px-2 py-1 shadow-sm backdrop-blur hover:bg-white transition-colors"
+                  aria-label={`Ver perfil de ${property.owner.name}`}
+                >
+                  <span className="relative w-7 h-7 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
+                    {property.owner?.image ? (
+                      <Image
+                        src={property.owner.image}
+                        alt={property.owner.name || "Corretor"}
+                        fill
+                        className="object-cover"
+                        sizes="28px"
+                      />
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center text-[11px] font-extrabold text-gray-700">
+                        {String(property.owner.name).trim().slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                  </span>
+                  <span className="max-w-[140px]">
+                    <span className="block text-[11px] font-bold text-gray-900 leading-tight truncate">
+                      {property.owner.name}
+                    </span>
+                    <span className="block text-[10px] font-semibold text-gray-500 leading-tight">{ownerRoleLabel}</span>
+                  </span>
+                </Link>
+              )}
+
+              {property.owner?.name && !property.owner?.publicSlug && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="group inline-flex items-center gap-2 rounded-full bg-white/90 border border-gray-200 px-2 py-1 shadow-sm backdrop-blur"
+                  aria-label={`${ownerRoleLabel} ${property.owner.name}`}
+                >
+                  <span className="relative w-7 h-7 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
+                    {property.owner?.image ? (
+                      <Image
+                        src={property.owner.image}
+                        alt={property.owner.name || "Profissional"}
+                        fill
+                        className="object-cover"
+                        sizes="28px"
+                      />
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center text-[11px] font-extrabold text-gray-700">
+                        {String(property.owner.name).trim().slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                  </span>
+                  <span className="max-w-[140px]">
+                    <span className="block text-[11px] font-bold text-gray-900 leading-tight truncate">
+                      {property.owner.name}
+                    </span>
+                    <span className="block text-[10px] font-semibold text-gray-500 leading-tight">{ownerRoleLabel}</span>
+                  </span>
+                </div>
+              )}
+
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleShare}
+                className="p-1.5 rounded-md transition-colors hover:bg-gray-50"
+                aria-label="Abrir opções de compartilhamento"
+              >
+                <Share2 className="w-5 h-5 text-teal hover:text-teal-dark transition-colors" />
+              </motion.button>
+            </div>
           </div>
 
           {/* Share Modal */}

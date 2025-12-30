@@ -173,7 +173,7 @@ export default function FavoritesPage() {
       {/* Conteúdo */}
       <div className="mx-auto max-w-7xl px-4 py-8">
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
                 <div className="aspect-[4/3] bg-gray-200" />
@@ -204,7 +204,7 @@ export default function FavoritesPage() {
         ) : (
           <div className={`grid gap-6 ${
             viewMode === "grid"
-              ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3"
               : "grid-cols-1"
           }`}>
             {sorted.map((property) => (

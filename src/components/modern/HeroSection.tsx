@@ -423,14 +423,17 @@ export default function HeroSection() {
                         const grouped = suggestions.reduce((acc, s) => {
                           const key = `${s.city}, ${s.state}`;
                           if (!acc[key]) {
-                            acc[key] = { city: s.city, state: s.state, neighborhoods: [], totalCount: 0 };
+                            acc[key] = { city: s.city, state: s.state, neighborhoods: [], totalCount: 0, cityCount: null as number | null };
                           }
-                          if (s.neighborhood) {
+                          if (!s.neighborhood) {
+                            acc[key].cityCount = Number(s.count || 0);
+                          } else {
                             acc[key].neighborhoods.push({ name: s.neighborhood, count: s.count });
                           }
-                          acc[key].totalCount += s.count;
+                          const sumNeighborhoods = acc[key].neighborhoods.reduce((sum, n) => sum + Number(n.count || 0), 0);
+                          acc[key].totalCount = acc[key].cityCount != null ? acc[key].cityCount : sumNeighborhoods;
                           return acc;
-                        }, {} as Record<string, { city: string; state: string; neighborhoods: { name: string; count: number }[]; totalCount: number }>);
+                        }, {} as Record<string, { city: string; state: string; neighborhoods: { name: string; count: number }[]; totalCount: number; cityCount: number | null }>);
                         
                         return Object.entries(grouped).map(([key, data], cityIndex) => (
                           <div key={key} className="mb-4 last:mb-0">

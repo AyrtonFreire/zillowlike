@@ -94,6 +94,15 @@ export default async function ExploreRecommendationsPage({ params }: PageProps) 
           purpose: true,
           parkingSpots: true,
           conditionTags: true,
+          owner: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+              publicSlug: true,
+              role: true,
+            },
+          },
           images: {
             take: 1,
             orderBy: { sortOrder: "asc" },
@@ -121,6 +130,7 @@ export default async function ExploreRecommendationsPage({ params }: PageProps) 
           parkingSpots: p.parkingSpots ?? null,
           conditionTags: Array.isArray(p.conditionTags) ? p.conditionTags : [],
           images: p.images || [],
+          owner: p.owner || null,
         }));
     }
   }
@@ -269,7 +279,7 @@ export default async function ExploreRecommendationsPage({ params }: PageProps) 
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-5">
                   {orderedProperties.map((p) => (
                     <Link key={p.id} href={buildPropertyPath(p.id, p.title)} className="block group">
                       <PropertyCardPremium

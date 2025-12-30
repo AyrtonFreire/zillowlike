@@ -319,6 +319,7 @@ export async function GET(req: NextRequest) {
               conditionTags: true,
               updatedAt: true,
               images: { select: { id: true, url: true }, orderBy: { sortOrder: "asc" }, take: 6 },
+              owner: { select: { id: true, name: true, image: true, publicSlug: true, role: true } },
             }
           : {
               id: true,

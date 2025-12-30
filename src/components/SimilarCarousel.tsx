@@ -41,7 +41,7 @@ export default function SimilarCarousel({ properties, onOpenOverlay, title, show
       <div className="relative">
         <div ref={scrollerRef} className="flex gap-4 md:gap-5 overflow-x-auto no-scrollbar snap-x snap-mandatory">
           {properties.map((p) => (
-            <div key={p.id} className="snap-start shrink-0 w-[85vw] sm:w-[300px] md:w-[320px] xl:w-[340px] 2xl:w-[360px]">
+            <div key={p.id} className="snap-start shrink-0 w-[88vw] sm:w-[340px] md:w-[380px] xl:w-[420px] 2xl:w-[460px]">
               {onOpenOverlay ? (
                 <PropertyCardPremium property={p} onOpenOverlay={onOpenOverlay} />
               ) : (
