@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ClipboardList, Minus, X } from "lucide-react";
-import { getPusherClient } from "@/lib/pusher-client";
 import RealtorAssistantFeed from "@/components/crm/RealtorAssistantFeed";
 
 export default function RealtorAssistantWidget() {
@@ -20,7 +19,6 @@ export default function RealtorAssistantWidget() {
 
   const [open, setOpen] = useState(false);
   const [activeCount, setActiveCount] = useState(0);
-  const etagRef = useRef<string | null>(null);
 
   const isBrokerContext = !!pathname?.startsWith("/broker");
   const canRender =
@@ -61,85 +59,39 @@ export default function RealtorAssistantWidget() {
     return m[1];
   }, [pathname]);
 
-  const updateCount = useCallback(async () => {
-    if (!canRender) return;
+  const syncCountFromWindow = () => {
     try {
-      const response = await fetch(
-        "/api/assistant/count",
-        etagRef.current ? { headers: { "if-none-match": etagRef.current } } : undefined
-      );
-
-      if (response.status === 304) return;
-
-      const nextEtag = response.headers.get("etag");
-      if (nextEtag) etagRef.current = nextEtag;
-
-      const data = await response.json().catch(() => null);
-      if (!response.ok || !data?.success || typeof data.activeCount !== "number") {
-        setActiveCount(0);
-        return;
-      }
-      setActiveCount(data.activeCount);
+      const next = Number((window as any).__zlw_assistant_active_count || 0);
+      setActiveCount(Number.isFinite(next) ? next : 0);
     } catch {
       setActiveCount(0);
     }
-  }, [canRender]);
+  };
 
   useEffect(() => {
-    if (!canRender) return;
-
-    let cancelled = false;
-    let interval: any;
-
-    updateCount();
-    interval = setInterval(() => updateCount(), 180000);
-
-    try {
-      const pusher = getPusherClient();
-      const channelName = `private-realtor-${realtorId}`;
-      const channel = pusher.subscribe(channelName);
-
-      const handler = () => {
-        if (cancelled) return;
-        updateCount();
-      };
-
-      channel.bind("assistant-updated", handler as any);
-
-      return () => {
-        cancelled = true;
-        clearInterval(interval);
-        try {
-          channel.unbind("assistant-updated", handler as any);
-          pusher.unsubscribe(channelName);
-        } catch {
-          // ignore
-        }
-      };
-    } catch {
-      return () => {
-        cancelled = true;
-        clearInterval(interval);
-      };
+    if (!canRender) {
+      setActiveCount(0);
+      return;
     }
-  }, [canRender, realtorId, updateCount]);
-
-  useEffect(() => {
-    if (!canRender) return;
     if (typeof window === "undefined") return;
 
-    const onFocus = () => updateCount();
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") updateCount();
+    syncCountFromWindow();
+
+    const onCount = (evt: Event) => {
+      try {
+        const anyEvt: any = evt as any;
+        const count = Number(anyEvt?.detail?.count || 0);
+        setActiveCount(Number.isFinite(count) ? count : 0);
+      } catch {
+        syncCountFromWindow();
+      }
     };
 
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("zlw-assistant-count", onCount as any);
     return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("zlw-assistant-count", onCount as any);
     };
-  }, [canRender, updateCount]);
+  }, [canRender]);
 
   useEffect(() => {
     if (!canRender) return;
@@ -267,8 +219,16 @@ export default function RealtorAssistantWidget() {
                 leadId={leadIdFromPath}
                 embedded
                 onDidMutate={() => {
-                  etagRef.current = null;
-                  updateCount();
+                  try {
+                    window.dispatchEvent(new Event("zlw-assistant-force-refresh"));
+                  } catch {
+                  }
+
+                  try {
+                    syncCountFromWindow();
+                    window.setTimeout(() => syncCountFromWindow(), 800);
+                  } catch {
+                  }
                 }}
               />
             </div>
@@ -306,8 +266,16 @@ export default function RealtorAssistantWidget() {
                 leadId={leadIdFromPath}
                 embedded
                 onDidMutate={() => {
-                  etagRef.current = null;
-                  updateCount();
+                  try {
+                    window.dispatchEvent(new Event("zlw-assistant-force-refresh"));
+                  } catch {
+                  }
+
+                  try {
+                    syncCountFromWindow();
+                    window.setTimeout(() => syncCountFromWindow(), 800);
+                  } catch {
+                  }
                 }}
               />
             </div>

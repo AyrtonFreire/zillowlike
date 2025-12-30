@@ -35,101 +35,125 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
   };
 
   useEffect(() => {
-    if (!session) return;
     if (role !== "USER") {
       setHasUnreadUserChats(false);
       return;
     }
+    if (typeof window === "undefined") return;
+
+    try {
+      setHasUnreadUserChats(!!(window as any).__zlw_has_unread_user_chats);
+    } catch {
+      setHasUnreadUserChats(false);
+    }
 
     let cancelled = false;
     let interval: any;
-    const STORAGE_PREFIX = "zlw_user_chat_last_read_";
 
-    const updateUnread = async () => {
+    const onUnread = (evt: Event) => {
       try {
-        const response = await fetch("/api/chats");
-        const data = await response.json().catch(() => null);
-
-        if (!response.ok || !data?.success || !Array.isArray(data.chats)) {
-          if (!cancelled) setHasUnreadUserChats(false);
-          return;
-        }
-
-        let anyUnread = false;
-        if (typeof window !== "undefined") {
-          for (const chat of data.chats) {
-            const leadId = String(chat.leadId || "");
-            if (!leadId) continue;
-
-            const lastMessageAt = chat.lastMessageAt as string | undefined;
-            const lastMessageFromClient = chat.lastMessageFromClient as boolean | undefined;
-
-            if (!lastMessageAt || lastMessageFromClient !== false) continue;
-
-            const key = `${STORAGE_PREFIX}${leadId}`;
-            const stored = window.localStorage.getItem(key);
-
-            if (!stored) {
-              anyUnread = true;
-              break;
-            }
-
-            const lastRead = new Date(stored).getTime();
-            const lastMsg = new Date(lastMessageAt).getTime();
-
-            if (Number.isNaN(lastRead) || Number.isNaN(lastMsg) || lastMsg > lastRead) {
-              anyUnread = true;
-              break;
-            }
-          }
-        }
-
-        if (!cancelled) setHasUnreadUserChats(anyUnread);
+        const anyEvt: any = evt as any;
+        const unread = !!anyEvt?.detail?.unread;
+        setHasUnreadUserChats(unread);
       } catch {
-        if (!cancelled) setHasUnreadUserChats(false);
+        setHasUnreadUserChats(false);
       }
     };
 
-    updateUnread();
-    interval = setInterval(updateUnread, 60000);
+    window.addEventListener("zlw-user-chat-unread", onUnread as any);
+
+    const shouldFallbackPoll = !((window as any).__zlw_provider_user_chat_unread);
+
+    const updateUnreadFallback = async () => {
+      if ((window as any).__zlw_provider_user_chat_unread) {
+        try {
+          if (interval) clearInterval(interval);
+        } catch {
+        }
+        interval = null;
+        return;
+      }
+      if (!shouldFallbackPoll) return;
+      if (cancelled) return;
+      try {
+        if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+        const response = await fetch("/api/chats");
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data?.success || !Array.isArray(data.chats)) {
+          setHasUnreadUserChats(false);
+          return;
+        }
+
+        const STORAGE_PREFIX = "zlw_user_chat_last_read_";
+        let anyUnread = false;
+        for (const chat of data.chats) {
+          const leadId = String(chat.leadId || "");
+          if (!leadId) continue;
+          const lastMessageAt = chat.lastMessageAt as string | undefined;
+          const lastMessageFromClient = chat.lastMessageFromClient as boolean | undefined;
+          if (!lastMessageAt || lastMessageFromClient !== false) continue;
+          const key = `${STORAGE_PREFIX}${leadId}`;
+          const stored = window.localStorage.getItem(key);
+          if (!stored) {
+            anyUnread = true;
+            break;
+          }
+          const lastRead = new Date(stored).getTime();
+          const lastMsg = new Date(lastMessageAt).getTime();
+          if (Number.isNaN(lastRead) || Number.isNaN(lastMsg) || lastMsg > lastRead) {
+            anyUnread = true;
+            break;
+          }
+        }
+        setHasUnreadUserChats(anyUnread);
+      } catch {
+        setHasUnreadUserChats(false);
+      }
+    };
+
+    updateUnreadFallback();
+    interval = shouldFallbackPoll ? setInterval(updateUnreadFallback, 300000) : null;
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      try {
+        window.removeEventListener("zlw-user-chat-unread", onUnread as any);
+      } catch {
+      }
+      try {
+        if (interval) clearInterval(interval);
+      } catch {
+      }
     };
-  }, [role, session]);
+  }, [role]);
 
   useEffect(() => {
     if (!canShowAssistant) {
       setAssistantActiveCount(0);
       return;
     }
+    if (typeof window === "undefined") return;
 
-    let cancelled = false;
-    let interval: any;
+    try {
+      const initial = Number((window as any).__zlw_assistant_active_count || 0);
+      setAssistantActiveCount(Number.isFinite(initial) ? initial : 0);
+    } catch {
+      setAssistantActiveCount(0);
+    }
 
-    const updateAssistantCount = async () => {
+    const onCount = (evt: Event) => {
       try {
-        const response = await fetch("/api/assistant/count");
-        const data = await response.json().catch(() => null);
-
-        if (!response.ok || !data?.success || typeof data.activeCount !== "number") {
-          if (!cancelled) setAssistantActiveCount(0);
-          return;
-        }
-
-        if (!cancelled) setAssistantActiveCount(data.activeCount);
+        const anyEvt: any = evt as any;
+        const count = Number(anyEvt?.detail?.count || 0);
+        setAssistantActiveCount(Number.isFinite(count) ? count : 0);
       } catch {
-        if (!cancelled) setAssistantActiveCount(0);
+        setAssistantActiveCount(0);
       }
     };
 
-    updateAssistantCount();
-    interval = setInterval(updateAssistantCount, 180000);
-
+    window.addEventListener("zlw-assistant-count", onCount as any);
     return () => {
-      cancelled = true;
-      clearInterval(interval);
+      window.removeEventListener("zlw-assistant-count", onCount as any);
     };
   }, [canShowAssistant]);
 

@@ -11,8 +11,8 @@ export default function ClientProviders({ children, session }: { children: React
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <SessionProvider 
           session={session}
-          refetchInterval={60} // Refetch session every 60 seconds to get latest role
-          refetchOnWindowFocus={true} // Refetch when user returns to tab
+          refetchInterval={600} // Refetch session every 60 seconds to get latest role
+          refetchOnWindowFocus={false} // Refetch when user returns to tab
         >
           <ToastProvider>
             {children}

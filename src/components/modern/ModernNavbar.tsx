@@ -79,6 +79,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
     const updateUnread = async () => {
       try {
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
         const response = await fetch('/api/broker/messages/inbox?mode=unread', {
           headers: lastEtag ? { 'if-none-match': lastEtag } : undefined,
         });
@@ -126,11 +127,19 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     };
 
     updateUnread();
-    const interval = setInterval(updateUnread, 60000);
+    const interval = setInterval(updateUnread, 300000);
+
+    const onVisibility = () => {
+      if (typeof document === 'undefined') return;
+      if (document.visibilityState !== 'visible') return;
+      updateUnread();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [session, role]);
 
@@ -148,6 +157,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
     const updateUnread = async () => {
       try {
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
         const response = await fetch('/api/chats');
         const data = await response.json().catch(() => null);
 
@@ -187,6 +197,15 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         }
 
         if (!cancelled) setHasUnreadUserChats(anyUnread);
+
+        try {
+          if (typeof window !== 'undefined') {
+            (window as any).__zlw_provider_user_chat_unread = true;
+            (window as any).__zlw_has_unread_user_chats = anyUnread;
+            window.dispatchEvent(new CustomEvent('zlw-user-chat-unread', { detail: { unread: anyUnread } }));
+          }
+        } catch {
+        }
       } catch (error) {
         console.error('Error checking unread user chats:', error);
         if (!cancelled) setHasUnreadUserChats(false);
@@ -194,11 +213,19 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     };
 
     updateUnread();
-    interval = setInterval(updateUnread, 60000);
+    interval = setInterval(updateUnread, 300000);
+
+    const onVisibility = () => {
+      if (typeof document === 'undefined') return;
+      if (document.visibilityState !== 'visible') return;
+      updateUnread();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [session, role]);
 
@@ -214,6 +241,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
     const updateAssistantCount = async () => {
       try {
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
         const response = await fetch('/api/assistant/count',
           assistantEtagRef.current
             ? {
@@ -236,14 +264,36 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
           return;
         }
 
-        if (!cancelled) setAssistantActiveCount(data.activeCount);
+        if (!cancelled) {
+          setAssistantActiveCount(data.activeCount);
+          try {
+            if (typeof window !== 'undefined') {
+              (window as any).__zlw_provider_assistant_count = true;
+              (window as any).__zlw_assistant_active_count = data.activeCount;
+              window.dispatchEvent(new CustomEvent('zlw-assistant-count', { detail: { count: data.activeCount } }));
+            }
+          } catch {
+          }
+        }
       } catch {
         if (!cancelled) setAssistantActiveCount(0);
       }
     };
 
     updateAssistantCount();
-    interval = setInterval(updateAssistantCount, 180000);
+    interval = setInterval(updateAssistantCount, 600000);
+
+    const onVisibility = () => {
+      if (typeof document === 'undefined') return;
+      if (document.visibilityState !== 'visible') return;
+      updateAssistantCount();
+    };
+    const onFocus = () => updateAssistantCount();
+    const onForceRefresh = () => updateAssistantCount();
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('zlw-assistant-force-refresh', onForceRefresh as any);
 
     try {
       const pusher = getPusherClient();
@@ -260,6 +310,9 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       return () => {
         cancelled = true;
         clearInterval(interval);
+        document.removeEventListener('visibilitychange', onVisibility);
+        window.removeEventListener('focus', onFocus);
+        window.removeEventListener('zlw-assistant-force-refresh', onForceRefresh as any);
         try {
           channel.unbind('assistant-updated', handler as any);
           pusher.unsubscribe(channelName);
@@ -271,6 +324,9 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       return () => {
         cancelled = true;
         clearInterval(interval);
+        document.removeEventListener('visibilitychange', onVisibility);
+        window.removeEventListener('focus', onFocus);
+        window.removeEventListener('zlw-assistant-force-refresh', onForceRefresh as any);
       };
     }
   }, [session, role]);
