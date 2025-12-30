@@ -198,6 +198,11 @@ export default function RealtorAssistantFeed(props: {
   leadId?: string;
   compact?: boolean;
   embedded?: boolean;
+  categoryFilter?: "Leads" | "Visitas" | "Lembretes" | "Outros" | "ALL";
+  showCategoryHeadings?: boolean;
+  showChatTab?: boolean;
+  limit?: number;
+  onItemsUpdated?: (items: AssistantItem[]) => void;
   onDidMutate?: () => void;
 }) {
   const router = useRouter();
@@ -207,8 +212,12 @@ export default function RealtorAssistantFeed(props: {
   const [items, setItems] = useState<AssistantItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const etagRef = useRef<string | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const optimisticHideRef = useRef<Record<string, number>>({});
   const lastRealtimeUpdateRef = useRef<Record<string, number>>({});
   const [snoozeMenuFor, setSnoozeMenuFor] = useState<string | null>(null);
@@ -236,6 +245,16 @@ export default function RealtorAssistantFeed(props: {
   const [justResolvedId, setJustResolvedId] = useState<string | null>(null);
   const [justSnoozedId, setJustSnoozedId] = useState<string | null>(null);
   const resolvedTimerRef = useRef<any>(null);
+
+  const showChatTab = props.showChatTab !== false;
+  const showCategoryHeadings = props.showCategoryHeadings !== false;
+  const infiniteScrollEnabled = !!props.categoryFilter && props.categoryFilter !== "ALL";
+
+  useEffect(() => {
+    etagRef.current = null;
+    setNextCursor(null);
+    setHasMore(false);
+  }, [realtorId, leadId, props.limit, props.categoryFilter]);
 
   useEffect(() => {
     return () => {
@@ -276,6 +295,10 @@ export default function RealtorAssistantFeed(props: {
         (justSnoozedId && i.id === justSnoozedId)
     );
   }, [items, justResolvedId, justSnoozedId, successById]);
+
+  useEffect(() => {
+    props.onItemsUpdated?.(items);
+  }, [items, props.onItemsUpdated]);
 
   useEffect(() => {
     if (!aiForId) return;
@@ -339,13 +362,29 @@ export default function RealtorAssistantFeed(props: {
 
   const activeCount = visibleItems.length;
 
+  const limit = (() => {
+    const raw = props.limit;
+    if (raw == null) return 100;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return 100;
+    return Math.min(200, Math.max(1, Math.floor(n)));
+  })();
+
   const fetchItems = useCallback(async () => {
     if (!realtorId) return;
     try {
       setError(null);
       setLoading(true);
-      const qs = leadId ? `?leadId=${encodeURIComponent(leadId)}` : "";
-      const response = await fetch(`/api/assistant/items${qs}`,
+      setLoadingMore(false);
+      const search = new URLSearchParams();
+      if (leadId) search.set("leadId", String(leadId));
+      search.set("limit", String(limit));
+      if (props.categoryFilter && props.categoryFilter !== "ALL") {
+        search.set("category", String(props.categoryFilter));
+        search.set("order", "cursor");
+      }
+      const qs = search.toString();
+      const response = await fetch(`/api/assistant/items${qs ? `?${qs}` : ""}`,
         etagRef.current
           ? {
               headers: {
@@ -382,13 +421,115 @@ export default function RealtorAssistantFeed(props: {
         return true;
       });
       setItems(filtered);
+
+      if (infiniteScrollEnabled) {
+        const nc = data?.nextCursor ? String(data.nextCursor).trim() : "";
+        setNextCursor(nc || null);
+        setHasMore(!!nc);
+      } else {
+        setNextCursor(null);
+        setHasMore(false);
+      }
     } catch (err: any) {
       setItems([]);
       setError(err?.message || "Não conseguimos carregar o Assistente agora.");
+      setNextCursor(null);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
-  }, [realtorId, leadId]);
+  }, [realtorId, leadId, limit, infiniteScrollEnabled, props.categoryFilter]);
+
+  const fetchMore = useCallback(async () => {
+    if (!realtorId) return;
+    if (!infiniteScrollEnabled) return;
+    if (loading || loadingMore) return;
+    if (!hasMore || !nextCursor) return;
+
+    try {
+      setError(null);
+      setLoadingMore(true);
+
+      const search = new URLSearchParams();
+      if (leadId) search.set("leadId", String(leadId));
+      search.set("limit", String(limit));
+      search.set("cursor", String(nextCursor));
+      search.set("order", "cursor");
+      if (props.categoryFilter && props.categoryFilter !== "ALL") {
+        search.set("category", String(props.categoryFilter));
+      }
+
+      const qs = search.toString();
+      const response = await fetch(`/api/assistant/items${qs ? `?${qs}` : ""}`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || "Não conseguimos carregar mais itens agora.");
+      }
+
+      const nowMs = Date.now();
+      const rawItems = Array.isArray(data.items) ? data.items : [];
+      const filtered = rawItems.filter((it: any) => {
+        const id = String(it?.id || "");
+        const until = optimisticHideRef.current[id];
+        if (!until) return true;
+        if (until > nowMs) return false;
+        try {
+          delete optimisticHideRef.current[id];
+        } catch {
+        }
+        return true;
+      });
+
+      setItems((prev) => {
+        const existing = new Set(prev.map((x) => String(x.id)));
+        const merged: AssistantItem[] = [...prev];
+        for (const it of filtered) {
+          const id = String((it as any)?.id || "");
+          if (!id || existing.has(id)) continue;
+          existing.add(id);
+          merged.push(it);
+        }
+        return merged;
+      });
+
+      const nc = data?.nextCursor ? String(data.nextCursor).trim() : "";
+      setNextCursor(nc || null);
+      setHasMore(!!nc);
+    } catch (err: any) {
+      setError(err?.message || "Não conseguimos carregar mais itens agora.");
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [realtorId, infiniteScrollEnabled, loading, loadingMore, hasMore, nextCursor, leadId, limit, props.categoryFilter]);
+
+  useEffect(() => {
+    if (!infiniteScrollEnabled) return;
+    if (!hasMore) return;
+    if (loading || loadingMore) return;
+    const node = loadMoreRef.current;
+    if (!node) return;
+
+    let cancelled = false;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (cancelled) return;
+        const first = entries && entries[0];
+        if (!first?.isIntersecting) return;
+        fetchMore();
+      },
+      { root: null, rootMargin: "300px 0px", threshold: 0 }
+    );
+
+    obs.observe(node);
+    return () => {
+      cancelled = true;
+      try {
+        obs.disconnect();
+      } catch {
+      }
+    };
+  }, [infiniteScrollEnabled, hasMore, loading, loadingMore, fetchMore]);
 
   const showSuccess = useCallback((id: string, message: string) => {
     const itemId = String(id || "").trim();
@@ -735,11 +876,11 @@ export default function RealtorAssistantFeed(props: {
     }
   };
 
-  const generateAi = async (item: { id: string }) => {
+  const generateAi = async (item: { id: string }): Promise<string | null> => {
     try {
       setAiError(null);
       setAiForId(item.id);
-      if (aiLoadingId === item.id) return;
+      if (aiLoadingId === item.id) return null;
 
       try {
         aiAbortRef.current?.abort();
@@ -775,13 +916,15 @@ export default function RealtorAssistantFeed(props: {
       }
       setAiResult(data);
       setAiForId(item.id);
+      return String(data.draft);
     } catch (err: any) {
       if (err?.name === "AbortError") {
-        return;
+        return null;
       }
       setAiResult(null);
       setAiError(err?.message || "Não conseguimos gerar uma sugestão agora.");
       setAiForId(item.id);
+      return null;
     } finally {
       setAiLoadingId(null);
     }
@@ -946,9 +1089,9 @@ export default function RealtorAssistantFeed(props: {
 
   const content = (
     <>
-      {tabSelector}
+      {showChatTab && tabSelector}
 
-      {activeTab === "CHAT" ? (
+      {showChatTab && activeTab === "CHAT" ? (
         <RealtorAssistantChat leadId={leadId} />
       ) : (
         <>
@@ -1088,7 +1231,11 @@ export default function RealtorAssistantFeed(props: {
             </div>
           )}
 
-          {(["Leads", "Visitas", "Lembretes", "Outros"] as const).map((category) => {
+          {(
+            (props.categoryFilter && props.categoryFilter !== "ALL"
+              ? ([props.categoryFilter] as const)
+              : (["Leads", "Visitas", "Lembretes", "Outros"] as const))
+          ).map((category) => {
             const group = groupedItems[category] || [];
             if (group.length === 0) return null;
 
@@ -1118,10 +1265,12 @@ export default function RealtorAssistantFeed(props: {
 
             return (
               <div key={`cat-${category}`} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-[11px] font-semibold text-gray-700">{category}</p>
-                  <p className="text-[11px] font-semibold text-gray-500">{leadGroups.length}</p>
-                </div>
+                {showCategoryHeadings && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-semibold text-gray-700">{category}</p>
+                    <p className="text-[11px] font-semibold text-gray-500">{leadGroups.length}</p>
+                  </div>
+                )}
                 <div className="space-y-3">
                   <AnimatePresence initial={false}>
                   {leadGroups.map((leadGroup) => {
@@ -1527,7 +1676,7 @@ export default function RealtorAssistantFeed(props: {
                                 <button
                                   type="button"
                                   disabled={aiLoadingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
-                                  onClick={() => {
+                                  onClick={async () => {
                                     setAiItemSnapshot({
                                       id: item.id,
                                       leadId: item.leadId ?? null,
@@ -1535,38 +1684,36 @@ export default function RealtorAssistantFeed(props: {
                                       title: item.title,
                                       message: item.message,
                                     });
-                                    generateAi({ id: item.id });
-                                  }}
-                                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
-                                >
-                                  <Sparkles className="w-5 h-5" />
-                                  {aiLoadingId === item.id ? "Gerando..." : getAiButtonLabel(item.type)}
-                                </button>
 
-                                {isWhatsAppIntent && (
-                                  <button
-                                    type="button"
-                                    disabled={isTransientPreview || item.status !== "ACTIVE"}
-                                    onClick={() => {
+                                    if (isWhatsAppIntent) {
                                       const propertyTitle =
                                         String(property?.title || "").trim() ||
                                         String(meta?.propertyTitle || "").trim() ||
                                         "o imóvel";
                                       const propertyUrl = String(meta?.propertyUrl || "").trim();
 
+                                      const draft = await generateAi({ id: item.id });
                                       const baseText =
-                                        draftForThisItem ||
+                                        String(draft || "").trim() ||
                                         `Olá! Tudo bem? Vi seu interesse no imóvel “${propertyTitle}”. Posso te ajudar?`;
                                       const text = propertyUrl ? `${baseText}\n\n${propertyUrl}` : baseText;
                                       const url = buildWhatsAppShareUrl(text);
                                       window.open(url, "_blank", "noopener,noreferrer");
-                                    }}
-                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
-                                  >
-                                    <ExternalLink className="w-5 h-5" />
-                                    Abrir WhatsApp com texto
-                                  </button>
-                                )}
+                                      return;
+                                    }
+
+                                    await generateAi({ id: item.id });
+                                  }}
+                                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
+                                >
+                                  <Sparkles className="w-5 h-5" />
+                                  {aiLoadingId === item.id
+                                    ? "Gerando..."
+                                    : isWhatsAppIntent &&
+                                        (item.type === "NEW_LEAD" || item.type === "LEAD_NO_FIRST_CONTACT")
+                                      ? "Gerar primeiro contato via whatsapp"
+                                      : getAiButtonLabel(item.type)}
+                                </button>
 
                                 {!responderIsPrimary && primaryOpenAction && (
                                   <button
@@ -1714,6 +1861,17 @@ export default function RealtorAssistantFeed(props: {
               </div>
             );
           })}
+
+          {infiniteScrollEnabled && (
+            <div className="pt-2">
+              {loadingMore ? (
+                <p className="text-xs text-gray-500">Carregando mais...</p>
+              ) : hasMore ? (
+                <p className="text-xs text-gray-400">Role para carregar mais</p>
+              ) : null}
+              <div ref={loadMoreRef} className="h-1" />
+            </div>
+          )}
         </div>
       )}
         </>

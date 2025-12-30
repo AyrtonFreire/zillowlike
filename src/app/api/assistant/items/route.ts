@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { prisma } from "@/lib/prisma";
+import { getRealtorAssistantTypesForCategory } from "@/lib/realtor-assistant-ai";
 
 const PostSchema = z
   .object({
@@ -33,14 +34,83 @@ export async function GET(req: NextRequest) {
 
     const url = new URL(req.url);
     const leadId = url.searchParams.get("leadId");
+    const limitRaw = url.searchParams.get("limit");
+    const cursor = url.searchParams.get("cursor");
+    const orderRaw = url.searchParams.get("order");
+    const q = url.searchParams.get("q");
+    const priorityRaw = url.searchParams.get("priority");
+    const categoryRaw = url.searchParams.get("category");
+    const includeSnoozedRaw = url.searchParams.get("includeSnoozed");
+    const limit = (() => {
+      if (!limitRaw) return 100;
+      const n = Number(limitRaw);
+      if (!Number.isFinite(n)) return 100;
+      return Math.min(200, Math.max(1, Math.floor(n)));
+    })();
+
+    const priority = (() => {
+      const v = String(priorityRaw || "").trim().toUpperCase();
+      if (v === "LOW" || v === "MEDIUM" || v === "HIGH") return v as any;
+      return null;
+    })();
+
+    const category = (() => {
+      const v = String(categoryRaw || "").trim();
+      if (v === "Leads" || v === "Visitas" || v === "Lembretes" || v === "Outros" || v === "ALL") return v as any;
+      return null;
+    })();
+
+    const includeSnoozed = (() => {
+      if (includeSnoozedRaw == null) return true;
+      const v = String(includeSnoozedRaw || "").trim().toLowerCase();
+      if (v === "0" || v === "false" || v === "no") return false;
+      return true;
+    })();
+
+    const order = (() => {
+      const v = String(orderRaw || "").trim().toLowerCase();
+      if (v === "cursor") return "CURSOR" as const;
+      return "PRIORITY" as const;
+    })();
 
     const now = new Date();
 
     const baseWhere: any = {
       realtorId: String(userId),
-      status: { in: ["ACTIVE", "SNOOZED"] },
       ...(leadId ? { leadId } : {}),
     };
+
+    baseWhere.status = includeSnoozed ? { in: ["ACTIVE", "SNOOZED"] } : "ACTIVE";
+
+    if (priority) {
+      baseWhere.priority = priority;
+    }
+
+    const qq = q ? String(q).trim() : "";
+    if (qq) {
+      baseWhere.OR = [
+        { title: { contains: qq, mode: "insensitive" } },
+        { message: { contains: qq, mode: "insensitive" } },
+      ];
+    }
+
+    if (category && category !== "ALL") {
+      if (category === "Outros") {
+        const notIn = [
+          ...getRealtorAssistantTypesForCategory("Leads"),
+          ...getRealtorAssistantTypesForCategory("Visitas"),
+          ...getRealtorAssistantTypesForCategory("Lembretes"),
+        ];
+        if (notIn.length > 0) {
+          baseWhere.type = { notIn };
+        }
+      } else {
+        const typeIn = getRealtorAssistantTypesForCategory(category);
+        if (typeIn.length > 0) {
+          baseWhere.type = { in: typeIn };
+        }
+      }
+    }
 
     const [agg, effectiveActiveCount, snoozedFutureAgg] = await Promise.all([
       (prisma as any).realtorAssistantItem.aggregate({
@@ -48,24 +118,28 @@ export async function GET(req: NextRequest) {
         _count: { _all: true },
         _max: { updatedAt: true },
       }),
-      (prisma as any).realtorAssistantItem.count({
-        where: {
-          ...baseWhere,
-          OR: [
-            { status: "ACTIVE" },
-            { status: "SNOOZED", snoozedUntil: { lte: now } },
-          ],
-        },
-      }),
-      (prisma as any).realtorAssistantItem.aggregate({
-        where: {
-          ...baseWhere,
-          status: "SNOOZED",
-          snoozedUntil: { gt: now },
-        },
-        _count: { _all: true },
-        _min: { snoozedUntil: true },
-      }),
+      includeSnoozed
+        ? (prisma as any).realtorAssistantItem.count({
+            where: {
+              ...baseWhere,
+              OR: [
+                { status: "ACTIVE" },
+                { status: "SNOOZED", snoozedUntil: { lte: now } },
+              ],
+            },
+          })
+        : (prisma as any).realtorAssistantItem.count({ where: baseWhere }),
+      includeSnoozed
+        ? (prisma as any).realtorAssistantItem.aggregate({
+            where: {
+              ...baseWhere,
+              status: "SNOOZED",
+              snoozedUntil: { gt: now },
+            },
+            _count: { _all: true },
+            _min: { snoozedUntil: true },
+          })
+        : Promise.resolve({ _count: { _all: 0 }, _min: { snoozedUntil: null } } as any),
     ]);
 
     const totalCount = Number(agg?._count?._all || 0);
@@ -75,7 +149,7 @@ export async function GET(req: NextRequest) {
       ? new Date(snoozedFutureAgg._min.snoozedUntil).getTime()
       : 0;
 
-    const key = `${String(userId)}:${leadId || "all"}`;
+    const key = `${String(userId)}:${leadId || "all"}:${limit}:${order}:${cursor || ""}:${qq || ""}:${priority || ""}:${category || ""}:${includeSnoozed ? "1" : "0"}`;
     const etag = `W/\"assistant-items:${key}:${maxUpdatedAt}:${totalCount}:${effectiveActiveCount}:${snoozedFutureCount}:${nextWakeAtMs}\"`;
 
     const ifNoneMatch = req.headers.get("if-none-match");
@@ -91,9 +165,31 @@ export async function GET(req: NextRequest) {
 
     const items = await RealtorAssistantService.list(String(userId), {
       leadId: leadId || undefined,
+      limit,
+      order,
+      cursor: cursor || undefined,
+      query: qq || undefined,
+      priority: priority || undefined,
+      includeSnoozed,
+      ...(category && category !== "ALL"
+        ? category === "Outros"
+          ? {
+              typeNotIn: [
+                ...getRealtorAssistantTypesForCategory("Leads"),
+                ...getRealtorAssistantTypesForCategory("Visitas"),
+                ...getRealtorAssistantTypesForCategory("Lembretes"),
+              ],
+            }
+          : { typeIn: getRealtorAssistantTypesForCategory(category) }
+        : null),
     });
 
-    const res = NextResponse.json({ success: true, items });
+    const nextCursor =
+      order === "CURSOR" && Array.isArray(items) && items.length === limit
+        ? String((items as any)[items.length - 1]?.id || "")
+        : "";
+
+    const res = NextResponse.json({ success: true, items, nextCursor: nextCursor || null });
     res.headers.set("ETag", etag);
     res.headers.set("Cache-Control", "private, max-age=0, must-revalidate");
     return res;

@@ -711,6 +711,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       {(role === 'REALTOR' || role === 'AGENCY') && (
                         <>
                           <li><Link href="/broker/dashboard" className="block px-4 py-2 hover:bg-gray-50">Painel</Link></li>
+                          <li><Link href="/broker/assistant" className="block px-4 py-2 hover:bg-gray-50">Assistente</Link></li>
                           <li><Link href="/broker/leads" className="block px-4 py-2 hover:bg-gray-50">Leads</Link></li>
                           <li><Link href="/broker/properties" className="block px-4 py-2 hover:bg-gray-50">Imóveis</Link></li>
                           <li><hr className="my-1" /></li>

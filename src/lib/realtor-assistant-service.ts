@@ -326,7 +326,20 @@ export class RealtorAssistantService {
     await this.emitUpdated(realtorId);
   }
 
-  static async list(realtorId: string, options?: { leadId?: string | null }) {
+  static async list(
+    realtorId: string,
+    options?: {
+      leadId?: string | null;
+      limit?: number | null;
+      typeIn?: string[] | null;
+      typeNotIn?: string[] | null;
+      priority?: "LOW" | "MEDIUM" | "HIGH" | null;
+      query?: string | null;
+      cursor?: string | null;
+      order?: "PRIORITY" | "CURSOR" | null;
+      includeSnoozed?: boolean | null;
+    }
+  ) {
     const now = new Date();
 
     const where: any = {
@@ -338,11 +351,67 @@ export class RealtorAssistantService {
       where.leadId = options.leadId;
     }
 
-    const items = await (prisma as any).realtorAssistantItem.findMany({
-      where,
-      orderBy: [{ priority: "desc" }, { dueAt: "asc" }, { createdAt: "desc" }],
-      take: 100,
-    });
+    if (options?.includeSnoozed === false) {
+      where.status = "ACTIVE";
+    }
+
+    const typeIn = Array.isArray(options?.typeIn)
+      ? (options?.typeIn || []).map((t) => String(t)).filter((t) => t.trim().length > 0)
+      : [];
+    if (typeIn.length > 0) {
+      where.type = { in: typeIn };
+    }
+
+    const typeNotIn = Array.isArray(options?.typeNotIn)
+      ? (options?.typeNotIn || []).map((t) => String(t)).filter((t) => t.trim().length > 0)
+      : [];
+    if (typeNotIn.length > 0) {
+      where.type = { ...(where.type || {}), notIn: typeNotIn };
+    }
+
+    if (options?.priority) {
+      where.priority = options.priority;
+    }
+
+    const q = options?.query ? String(options.query).trim() : "";
+    if (q) {
+      where.OR = [
+        { title: { contains: q, mode: "insensitive" } },
+        { message: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    const limit = (() => {
+      const raw = options?.limit;
+      if (raw == null) return 100;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return 100;
+      return Math.min(200, Math.max(1, Math.floor(n)));
+    })();
+
+    const cursorId = options?.cursor ? String(options.cursor).trim() : "";
+    const orderMode = options?.order || "PRIORITY";
+    const useCursorOrder = orderMode === "CURSOR";
+
+    const items = await (prisma as any).realtorAssistantItem.findMany(
+      useCursorOrder
+        ? {
+            where,
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            ...(cursorId
+              ? {
+                  cursor: { id: cursorId },
+                  skip: 1,
+                }
+              : null),
+            take: limit,
+          }
+        : {
+            where,
+            orderBy: [{ priority: "desc" }, { dueAt: "asc" }, { createdAt: "desc" }],
+            take: limit,
+          }
+    );
 
     const normalized = (items || []).map((item: any) => {
       if (item?.status === "SNOOZED" && item?.snoozedUntil) {

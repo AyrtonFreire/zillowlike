@@ -136,6 +136,17 @@ export function getRealtorAssistantCategory(type: string | null | undefined): Re
   return getRealtorAssistantAiSpec(type).category;
 }
 
+export function getRealtorAssistantTypesForCategory(category: RealtorAssistantCategory): string[] {
+  const wanted = String(category || "").trim();
+  if (!wanted) return [];
+  const out: string[] = [];
+  for (const [type, spec] of Object.entries(SPECS)) {
+    if (!spec) continue;
+    if (String(spec.category) === wanted) out.push(String(type));
+  }
+  return out;
+}
+
 export function getRealtorAssistantTypeInstructions(type: string | null | undefined): string {
   return getRealtorAssistantAiSpec(type).typeInstructions;
 }
