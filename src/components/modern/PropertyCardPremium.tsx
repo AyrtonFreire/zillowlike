@@ -453,7 +453,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
         {/* Image Carousel */}
         <div
-          className="relative h-48 overflow-hidden rounded-t-2xl touch-pan-y"
+          className="relative h-40 overflow-hidden rounded-t-2xl touch-pan-y"
           ref={containerRef}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
@@ -578,7 +578,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
         </div>
 
         {/* Content */}
-        <div className="p-4 flex flex-col flex-1 relative bg-gradient-to-b from-white via-white to-gray-50">
+        <div className="p-3 flex flex-col flex-1 relative bg-gradient-to-b from-white via-white to-gray-50">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleShare}
@@ -591,12 +591,12 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           {/* Title + Price */}
           <div className="mb-3 mt-0.5 pr-10">
             <div
-              className="text-[20px] sm:text-[22px] font-semibold text-gray-900 leading-tight"
+              className="text-[16px] sm:text-[17px] font-semibold text-gray-900 leading-snug"
               style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
             >
               {property.title}
             </div>
-            <div className="mt-2 text-[26px] font-extrabold text-gray-900">
+            <div className="mt-1.5 text-[20px] font-extrabold text-gray-900">
               {typeof property.price === 'number' && property.price > 0
                 ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
                 : 'Price on Request'}
@@ -710,7 +710,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
           {/* Owner / Broker block (no phone number) */}
           {property.owner?.name && (
-            <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between gap-3">
+            <div className="mt-2.5 pt-2.5 border-t border-gray-200 flex items-center justify-between gap-3">
               {property.owner?.publicSlug ? (
                 <Link
                   href={`/realtor/${property.owner.publicSlug}`}
@@ -718,14 +718,14 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                   className="flex items-center gap-3 min-w-0"
                   aria-label={`Ver perfil de ${property.owner.name}`}
                 >
-                  <span className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
+                  <span className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
                     {property.owner?.image ? (
                       <Image
                         src={property.owner.image}
                         alt={property.owner.name || "Profissional"}
                         fill
                         className="object-cover"
-                        sizes="48px"
+                        sizes="40px"
                       />
                     ) : (
                       <span className="absolute inset-0 flex items-center justify-center text-[14px] font-extrabold text-gray-700">
@@ -734,10 +734,10 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     )}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[15px] font-bold text-gray-900 leading-tight truncate">
+                    <span className="block text-[14px] font-bold text-gray-900 leading-tight truncate">
                       {property.owner.name}
                     </span>
-                    <span className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-gray-600 leading-tight">
+                    <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-gray-600 leading-tight">
                       <BadgeCheck className="w-4 h-4 text-emerald-600" />
                       <span>{ownerRoleLabel} verificado</span>
                     </span>
@@ -745,14 +745,14 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                 </Link>
               ) : (
                 <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-3 min-w-0">
-                  <span className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
+                  <span className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
                     {property.owner?.image ? (
                       <Image
                         src={property.owner.image}
                         alt={property.owner.name || "Profissional"}
                         fill
                         className="object-cover"
-                        sizes="48px"
+                        sizes="40px"
                       />
                     ) : (
                       <span className="absolute inset-0 flex items-center justify-center text-[14px] font-extrabold text-gray-700">
@@ -761,10 +761,10 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     )}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[15px] font-bold text-gray-900 leading-tight truncate">
+                    <span className="block text-[14px] font-bold text-gray-900 leading-tight truncate">
                       {property.owner.name}
                     </span>
-                    <span className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-gray-600 leading-tight">
+                    <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-gray-600 leading-tight">
                       <BadgeCheck className="w-4 h-4 text-emerald-600" />
                       <span>{ownerRoleLabel} verificado</span>
                     </span>
@@ -776,7 +776,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                 <Link
                   href={`/realtor/${property.owner.publicSlug}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="shrink-0 w-12 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow flex items-center justify-center transition-colors"
+                  className="shrink-0 w-11 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow flex items-center justify-center transition-colors"
                   aria-label={`Ver perfil de ${property.owner.name}`}
                 >
                   <PhoneCall className="w-5 h-5" />
@@ -785,7 +785,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                 <button
                   type="button"
                   onClick={(e) => e.stopPropagation()}
-                  className="shrink-0 w-12 h-12 rounded-xl bg-emerald-600 text-white shadow flex items-center justify-center"
+                  className="shrink-0 w-11 h-11 rounded-xl bg-emerald-600 text-white shadow flex items-center justify-center"
                   aria-label="Contato"
                 >
                   <PhoneCall className="w-5 h-5" />

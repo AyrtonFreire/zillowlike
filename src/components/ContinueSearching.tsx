@@ -201,7 +201,7 @@ export default function ContinueSearching() {
           <div className="text-gray-500 text-sm">Sem resultados salvos para continuar.</div>
         ) : (
           items.map((p) => (
-            <div key={p.id} className="w-[88vw] sm:w-[340px] md:w-[380px] xl:w-[420px] flex-shrink-0 snap-start">
+            <div key={p.id} className="w-[85vw] sm:w-[300px] md:w-[320px] xl:w-[340px] flex-shrink-0 snap-start">
               <PropertyCardPremium
                 property={p}
                 onOpenOverlay={(id) => window.dispatchEvent(new CustomEvent('open-overlay', { detail: { id } }))}
