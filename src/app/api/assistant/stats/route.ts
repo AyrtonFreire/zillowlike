@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       OR: [{ status: "ACTIVE" }, { status: "SNOOZED", snoozedUntil: { lte: now } }],
     };
 
-    const [byType, agg] = await Promise.all([
+    const [byType, agg, snoozedCount] = await Promise.all([
       (prisma as any).realtorAssistantItem.groupBy({
         by: ["type"],
         where: activeWhere,
@@ -56,6 +56,12 @@ export async function GET(req: NextRequest) {
         where: baseWhere,
         _max: { updatedAt: true },
         _count: { _all: true },
+      }),
+      (prisma as any).realtorAssistantItem.count({
+        where: {
+          ...baseWhere,
+          status: "SNOOZED",
+        },
       }),
     ]);
 
@@ -79,7 +85,7 @@ export async function GET(req: NextRequest) {
     const newestMs = agg?._max?.updatedAt ? new Date(agg._max.updatedAt).getTime() : 0;
     const total = Number(agg?._count?._all || 0);
     const key = `${String(userId)}:${leadId || "all"}`;
-    const etag = `W/\"assistant-stats:${key}:${newestMs}:${total}:${counts.ALL}:${counts.Leads}:${counts.Visitas}:${counts.Lembretes}:${counts.Outros}\"`;
+    const etag = `W/\"assistant-stats:${key}:${newestMs}:${total}:${counts.ALL}:${counts.Leads}:${counts.Visitas}:${counts.Lembretes}:${counts.Outros}:${Number(snoozedCount || 0)}\"`;
 
     const ifNoneMatch = req.headers.get("if-none-match");
     if (ifNoneMatch && ifNoneMatch === etag) {
@@ -92,7 +98,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const res = NextResponse.json({ success: true, counts });
+    const res = NextResponse.json({ success: true, counts, snoozedCount: Number(snoozedCount || 0) });
     res.headers.set("ETag", etag);
     res.headers.set("Cache-Control", "private, max-age=0, must-revalidate");
     return res;

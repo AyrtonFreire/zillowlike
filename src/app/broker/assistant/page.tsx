@@ -27,6 +27,7 @@ export default function BrokerAssistantPage() {
   const [query, setQuery] = useState<string>("");
   const [priority, setPriority] = useState<"" | "LOW" | "MEDIUM" | "HIGH">("");
   const [includeSnoozed, setIncludeSnoozed] = useState(true);
+  const [snoozedCount, setSnoozedCount] = useState(0);
   const [counts, setCounts] = useState<Counts>({
     ALL: 0,
     Leads: 0,
@@ -55,6 +56,7 @@ export default function BrokerAssistantPage() {
       }
 
       const next = json.counts as Counts;
+      setSnoozedCount(Number(json?.snoozedCount || 0));
       setCounts({
         ALL: Number(next.ALL || 0),
         Leads: Number(next.Leads || 0),
@@ -228,15 +230,17 @@ export default function BrokerAssistantPage() {
                       <option value="LOW">Baixa</option>
                     </select>
 
-                    <label className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 text-[13px] text-gray-900">
-                      <input
-                        type="checkbox"
-                        checked={includeSnoozed}
-                        onChange={(e) => setIncludeSnoozed(e.target.checked)}
-                        className="h-4 w-4"
-                      />
-                      Snoozed
-                    </label>
+                    {snoozedCount > 0 && (
+                      <label className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 text-[13px] text-gray-900">
+                        <input
+                          type="checkbox"
+                          checked={includeSnoozed}
+                          onChange={(e) => setIncludeSnoozed(e.target.checked)}
+                          className="h-4 w-4"
+                        />
+                        Mostrar adiados
+                      </label>
+                    )}
                   </div>
                 </div>
 
