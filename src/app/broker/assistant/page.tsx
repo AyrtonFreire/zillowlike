@@ -24,6 +24,9 @@ export default function BrokerAssistantPage() {
   const realtorId = (session as any)?.user?.id || (session as any)?.userId || "";
 
   const [category, setCategory] = useState<CategoryKey>("ALL");
+  const [query, setQuery] = useState<string>("");
+  const [priority, setPriority] = useState<"" | "LOW" | "MEDIUM" | "HIGH">("");
+  const [includeSnoozed, setIncludeSnoozed] = useState(true);
   const [counts, setCounts] = useState<Counts>({
     ALL: 0,
     Leads: 0,
@@ -202,11 +205,49 @@ export default function BrokerAssistantPage() {
                   </div>
                 </div>
 
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Buscar por título ou mensagem..."
+                      className="w-full rounded-2xl border border-gray-200 bg-white px-3 py-2 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={priority}
+                      onChange={(e) => setPriority((e.target.value || "") as any)}
+                      className="rounded-2xl border border-gray-200 bg-white px-3 py-2 text-[13px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+                      aria-label="Prioridade"
+                    >
+                      <option value="">Todas</option>
+                      <option value="HIGH">Alta</option>
+                      <option value="MEDIUM">Média</option>
+                      <option value="LOW">Baixa</option>
+                    </select>
+
+                    <label className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 text-[13px] text-gray-900">
+                      <input
+                        type="checkbox"
+                        checked={includeSnoozed}
+                        onChange={(e) => setIncludeSnoozed(e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      Snoozed
+                    </label>
+                  </div>
+                </div>
+
                 <div className="mt-4">
                   <RealtorAssistantFeed
                     realtorId={realtorId}
                     embedded
                     categoryFilter={category}
+                    query={query}
+                    priority={priority}
+                    includeSnoozed={includeSnoozed}
                     showCategoryHeadings={category === "ALL"}
                     showChatTab={false}
                     limit={200}

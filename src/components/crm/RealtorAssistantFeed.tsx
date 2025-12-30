@@ -199,6 +199,9 @@ export default function RealtorAssistantFeed(props: {
   compact?: boolean;
   embedded?: boolean;
   categoryFilter?: "Leads" | "Visitas" | "Lembretes" | "Outros" | "ALL";
+  query?: string;
+  priority?: "LOW" | "MEDIUM" | "HIGH" | "" | null;
+  includeSnoozed?: boolean;
   showCategoryHeadings?: boolean;
   showChatTab?: boolean;
   limit?: number;
@@ -254,7 +257,7 @@ export default function RealtorAssistantFeed(props: {
     etagRef.current = null;
     setNextCursor(null);
     setHasMore(false);
-  }, [realtorId, leadId, props.limit, props.categoryFilter]);
+  }, [realtorId, leadId, props.limit, props.categoryFilter, props.query, props.priority, props.includeSnoozed]);
 
   useEffect(() => {
     return () => {
@@ -379,6 +382,19 @@ export default function RealtorAssistantFeed(props: {
       const search = new URLSearchParams();
       if (leadId) search.set("leadId", String(leadId));
       search.set("limit", String(limit));
+
+      const q = props.query ? String(props.query).trim() : "";
+      if (q) search.set("q", q);
+
+      const priority = props.priority ? String(props.priority).trim().toUpperCase() : "";
+      if (priority === "LOW" || priority === "MEDIUM" || priority === "HIGH") {
+        search.set("priority", priority);
+      }
+
+      if (props.includeSnoozed === false) {
+        search.set("includeSnoozed", "0");
+      }
+
       if (props.categoryFilter && props.categoryFilter !== "ALL") {
         search.set("category", String(props.categoryFilter));
         search.set("order", "cursor");
@@ -438,7 +454,16 @@ export default function RealtorAssistantFeed(props: {
     } finally {
       setLoading(false);
     }
-  }, [realtorId, leadId, limit, infiniteScrollEnabled, props.categoryFilter]);
+  }, [
+    realtorId,
+    leadId,
+    limit,
+    infiniteScrollEnabled,
+    props.categoryFilter,
+    props.query,
+    props.priority,
+    props.includeSnoozed,
+  ]);
 
   const fetchMore = useCallback(async () => {
     if (!realtorId) return;
@@ -455,6 +480,19 @@ export default function RealtorAssistantFeed(props: {
       search.set("limit", String(limit));
       search.set("cursor", String(nextCursor));
       search.set("order", "cursor");
+
+      const q = props.query ? String(props.query).trim() : "";
+      if (q) search.set("q", q);
+
+      const priority = props.priority ? String(props.priority).trim().toUpperCase() : "";
+      if (priority === "LOW" || priority === "MEDIUM" || priority === "HIGH") {
+        search.set("priority", priority);
+      }
+
+      if (props.includeSnoozed === false) {
+        search.set("includeSnoozed", "0");
+      }
+
       if (props.categoryFilter && props.categoryFilter !== "ALL") {
         search.set("category", String(props.categoryFilter));
       }
@@ -501,7 +539,20 @@ export default function RealtorAssistantFeed(props: {
     } finally {
       setLoadingMore(false);
     }
-  }, [realtorId, infiniteScrollEnabled, loading, loadingMore, hasMore, nextCursor, leadId, limit, props.categoryFilter]);
+  }, [
+    realtorId,
+    infiniteScrollEnabled,
+    loading,
+    loadingMore,
+    hasMore,
+    nextCursor,
+    leadId,
+    limit,
+    props.categoryFilter,
+    props.query,
+    props.priority,
+    props.includeSnoozed,
+  ]);
 
   useEffect(() => {
     if (!infiniteScrollEnabled) return;
