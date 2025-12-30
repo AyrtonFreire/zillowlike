@@ -590,7 +590,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           {/* Title + Price */}
           <div className="mb-2 mt-0.5 pr-10">
             <div
-              className="text-[14px] sm:text-[15px] font-semibold text-gray-900 leading-snug"
+              className="text-[14px] sm:text-[15px] font-semibold text-gray-900 leading-snug min-h-[2.6em]"
               style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
             >
               {property.title}
@@ -663,7 +663,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </AnimatePresence>
 
           {/* Features row: quartos, banheiros, área (readable) */}
-          <div className="flex items-center text-gray-700 text-[12.5px] mb-1">
+          <div className="flex items-center text-gray-700 text-[12.5px] mb-1 min-h-[1.25rem]">
             {property.bedrooms != null && (
               <div className="flex items-center gap-1" title="Quartos">
                 <Bed className="w-3.5 h-3.5 text-gray-600" />
@@ -691,71 +691,75 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </div>
 
           {/* Location (clean, readable) */}
-          <div className="flex items-center gap-1.5 text-gray-700 text-[12.5px] mb-0.5">
+          <div className="flex items-center gap-1.5 text-gray-700 text-[12.5px] mb-0.5 min-h-[1.25rem]">
             <MapPin className="w-3.5 h-3.5 text-gray-600" />
-            <span>
+            <span className="truncate">
               {property.neighborhood && `${property.neighborhood}, `}
               {property.city}/{property.state}
             </span>
           </div>
 
-          {/* Owner / Broker block (avatar + name only, pinned to bottom) */}
-          {property.owner?.name && (
-            <div className="mt-auto pt-2 flex items-center gap-2.5">
-              {property.owner?.publicSlug ? (
-                <Link
-                  href={`/realtor/${property.owner.publicSlug}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-3 min-w-0"
-                  aria-label={`Ver perfil de ${property.owner.name}`}
-                >
-                  <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
-                    {property.owner?.image ? (
-                      <Image
-                        src={property.owner.image}
-                        alt={property.owner.name || "Profissional"}
-                        fill
-                        className="object-cover"
-                        sizes="36px"
-                      />
-                    ) : (
-                      <span className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-gray-700">
-                        {String(property.owner.name).trim().slice(0, 1).toUpperCase()}
-                      </span>
-                    )}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[13px] font-bold text-gray-900 leading-tight truncate">
-                      {property.owner.name}
+          {/* Footer area (reserved height to keep all cards equal) */}
+          <div className="mt-auto pt-2 min-h-[44px] flex items-center">
+            {property.owner?.name ? (
+              <div className="flex items-center gap-2.5 w-full">
+                {property.owner?.publicSlug ? (
+                  <Link
+                    href={`/realtor/${property.owner.publicSlug}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-3 min-w-0"
+                    aria-label={`Ver perfil de ${property.owner.name}`}
+                  >
+                    <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
+                      {property.owner?.image ? (
+                        <Image
+                          src={property.owner.image}
+                          alt={property.owner.name || "Profissional"}
+                          fill
+                          className="object-cover"
+                          sizes="36px"
+                        />
+                      ) : (
+                        <span className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-gray-700">
+                          {String(property.owner.name).trim().slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
                     </span>
-                  </span>
-                </Link>
-              ) : (
-                <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-3 min-w-0">
-                  <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
-                    {property.owner?.image ? (
-                      <Image
-                        src={property.owner.image}
-                        alt={property.owner.name || "Profissional"}
-                        fill
-                        className="object-cover"
-                        sizes="36px"
-                      />
-                    ) : (
-                      <span className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-gray-700">
-                        {String(property.owner.name).trim().slice(0, 1).toUpperCase()}
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-bold text-gray-900 leading-tight truncate">
+                        {property.owner.name}
                       </span>
-                    )}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[13px] font-bold text-gray-900 leading-tight truncate">
-                      {property.owner.name}
                     </span>
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
+                  </Link>
+                ) : (
+                  <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-3 min-w-0">
+                    <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
+                      {property.owner?.image ? (
+                        <Image
+                          src={property.owner.image}
+                          alt={property.owner.name || "Profissional"}
+                          fill
+                          className="object-cover"
+                          sizes="36px"
+                        />
+                      ) : (
+                        <span className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-gray-700">
+                          {String(property.owner.name).trim().slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-bold text-gray-900 leading-tight truncate">
+                        {property.owner.name}
+                      </span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div aria-hidden="true" className="w-full" />
+            )}
+          </div>
           {/* No description: keep info concise up to the address */}
         </div>
       </motion.div>
