@@ -20,5 +20,9 @@ run("npx", ["prisma", "migrate", "deploy"], { allowFailure: true });
 // 3) Ensure the critical table exists even if migrations didn't run
 run("npx", ["tsx", "scripts/ensure-lead-chat-read-receipts.ts"], { allowFailure: true });
 
+// 3.1) Ensure reviews schema exists (critical for runtime)
+const isProd = process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+run("npx", ["tsx", "scripts/ensure-reviews-schema.ts"], { allowFailure: !isProd });
+
 // 4) Next build
 run("npx", ["next", "build"]);
