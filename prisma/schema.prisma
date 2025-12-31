@@ -464,6 +464,8 @@ model User {
   reportsCreated       Report[]             @relation("ReportsByUser")
   reportsHandled       Report[]             @relation("ReportsHandledByAdmin")
   reportsAgainstUser   Report[]             @relation("ReportsTargetUser")
+  reviewReportsCreated ReviewReport[]       @relation("ReviewReportReportedBy")
+  reviewReportsHandled ReviewReport[]       @relation("ReviewReportHandledBy")
 
   realtorCreci      String?
   realtorCreciState String?
@@ -982,10 +984,10 @@ model ReviewReport {
   ownerRating     OwnerRating?   @relation(fields: [ownerRatingId], references: [id], onDelete: Cascade)
   ownerRatingId   String?
 
-  reportedBy       User   @relation(fields: [reportedByUserId], references: [id])
+  reportedBy       User   @relation("ReviewReportReportedBy", fields: [reportedByUserId], references: [id])
   reportedByUserId String
 
-  handledBy        User?   @relation(fields: [handledByAdminId], references: [id])
+  handledBy        User?   @relation("ReviewReportHandledBy", fields: [handledByAdminId], references: [id])
   handledByAdminId String?
 
   reason      ReviewReportReason
