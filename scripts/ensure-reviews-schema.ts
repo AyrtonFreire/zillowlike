@@ -1,3 +1,4 @@
+import dns from "node:dns";
 import { Client } from "pg";
 
 const SQL = `
@@ -204,38 +205,56 @@ END $$;
 `;
 
 async function main() {
+  const isProd = process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+
+  // Avoid Vercel environments that can resolve to IPv6 first (ENETUNREACH)
+  try {
+    dns.setDefaultResultOrder("ipv4first");
+  } catch {
+    // ignore
+  }
+
   const direct = process.env.DIRECT_URL;
   const pooled = process.env.DATABASE_URL;
-  const url = direct || pooled;
-
-  if (!url) {
+  const candidates = [direct, pooled].filter(Boolean) as string[];
+  if (candidates.length === 0) {
     console.warn("[ensure-reviews-schema] DIRECT_URL/DATABASE_URL not set; skipping.");
     return;
   }
 
-  const isProd = process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
   if (!direct && isProd) {
     console.warn("[ensure-reviews-schema] DIRECT_URL not set in production; DDL may fail via pooler.");
   }
 
-  const client = new Client({ connectionString: url });
-  try {
-    await client.connect();
-    await client.query(SQL);
-    console.log("[ensure-reviews-schema] OK");
-  } catch (err) {
-    if (isProd) {
-      console.error("[ensure-reviews-schema] FAILED:", err);
-      process.exit(1);
-    }
-    console.warn("[ensure-reviews-schema] Skipped due to error:", err);
-  } finally {
+  let lastErr: unknown;
+  for (const url of candidates) {
+    const useSsl = !/sslmode=disable/i.test(url);
+    const client = new Client({
+      connectionString: url,
+      ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+    });
     try {
-      await client.end();
-    } catch {
-      // ignore
+      await client.connect();
+      await client.query(SQL);
+      console.log("[ensure-reviews-schema] OK");
+      return;
+    } catch (err) {
+      lastErr = err;
+      console.warn("[ensure-reviews-schema] Failed with one URL; trying fallback.");
+    } finally {
+      try {
+        await client.end();
+      } catch {
+        // ignore
+      }
     }
   }
+
+  if (isProd) {
+    console.error("[ensure-reviews-schema] FAILED:", lastErr);
+    process.exit(1);
+  }
+  console.warn("[ensure-reviews-schema] Skipped due to error:", lastErr);
 }
 
 main().catch((err) => {

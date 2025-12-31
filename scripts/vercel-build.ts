@@ -1,7 +1,17 @@
 import { spawnSync } from "child_process";
 
 function run(cmd: string, args: string[], opts?: { allowFailure?: boolean }) {
-  const res = spawnSync(cmd, args, { stdio: "inherit", shell: true });
+  const dnsOpt = "--dns-result-order=ipv4first";
+  const existing = process.env.NODE_OPTIONS ?? "";
+  const nextNodeOptions = existing.includes(dnsOpt) ? existing : `${existing} ${dnsOpt}`.trim();
+  const res = spawnSync(cmd, args, {
+    stdio: "inherit",
+    shell: true,
+    env: {
+      ...process.env,
+      NODE_OPTIONS: nextNodeOptions,
+    },
+  });
   if (res.status !== 0) {
     if (opts?.allowFailure) {
       console.warn(`[vercel-build] Command failed but continuing: ${cmd} ${args.join(" ")}`);

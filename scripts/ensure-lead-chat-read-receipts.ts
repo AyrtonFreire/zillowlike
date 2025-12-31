@@ -41,7 +41,11 @@ async function main() {
     return;
   }
 
-  const client = new Client({ connectionString: url });
+  const useSsl = !/sslmode=disable/i.test(url);
+  const client = new Client({
+    connectionString: url,
+    ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+  });
   try {
     await client.connect();
     await client.query(SQL);
