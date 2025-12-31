@@ -156,6 +156,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [nearbyPlaces, setNearbyPlaces] = useState<{ schools: any[]; markets: any[]; pharmacies: any[]; restaurants: any[]; hospitals: any[]; malls: any[]; parks: any[]; gyms: any[]; fuel: any[]; bakeries: any[]; banks: any[] }>({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
   const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
   const [poiLoading, setPoiLoading] = useState(false);
+  const [poiOpen, setPoiOpen] = useState(false);
   const trackedViewRef = useRef<Set<string>>(new Set());
   // Lightbox touch resistance state
   const lbStartX = useRef<number | null>(null);
@@ -1146,47 +1147,65 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                       const selected = (available as any[]).find((c: any) => c.key === activePOITab) || (available as any[])[0];
                       const selectedList = (selected as any).sorted || [];
 
+                      const totalPois = (available as any[]).reduce((acc: number, c: any) => acc + (((c.items as any[]) || []).length), 0);
+
                       return (
                         <>
-                          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                            {(available as any[]).map((c: any) => (
-                              <button
-                                key={`poi-tab-${c.key}`}
-                                type="button"
-                                onClick={() => setActivePOITab(c.key)}
-                                className={`shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
-                                  c.key === (selected as any).key
-                                    ? "border-teal-500 bg-teal-50 text-teal-800"
-                                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                                }`}
-                              >
-                                {(() => {
-                                  const I = c.Icon as any;
-                                  return <I className="w-3.5 h-3.5" />;
-                                })()}
-                                <span>{c.label}</span>
-                                <span className="text-[11px] font-semibold text-gray-500">{((c.items as any[]) || []).length}</span>
-                              </button>
-                            ))}
-                          </div>
-                          <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
-                            {selectedList.slice(0, 8).map((p: any, idx: number) => {
-                              const dist = hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number' ? formatDistance(haversine(lat, lng, p.lat, p.lng)) : null;
-                              return (
-                                <div key={`poi-${idx}`} className="flex items-center justify-between gap-3 px-4 py-3 bg-white">
-                                  <div className="min-w-0">
-                                    <div className="text-sm font-medium text-gray-900 truncate">{p.name}</div>
-                                    <div className="text-xs text-gray-500">{(selected as any).label}</div>
-                                  </div>
-                                  {dist && (
-                                    <span className="shrink-0 text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
-                                      {dist}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPoiOpen((v) => !v)}
+                            className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+                          >
+                            <span className="text-sm font-semibold text-gray-900">Estabelecimentos próximos</span>
+                            <span className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                              <span>{totalPois}</span>
+                              <ChevronDown className={`w-4 h-4 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
+                            </span>
+                          </button>
+
+                          {poiOpen && (
+                            <>
+                              <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                                {(available as any[]).map((c: any) => (
+                                  <button
+                                    key={`poi-tab-${c.key}`}
+                                    type="button"
+                                    onClick={() => setActivePOITab(c.key)}
+                                    className={`shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+                                      c.key === (selected as any).key
+                                        ? "border-teal-500 bg-teal-50 text-teal-800"
+                                        : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    {(() => {
+                                      const I = c.Icon as any;
+                                      return <I className="w-3.5 h-3.5" />;
+                                    })()}
+                                    <span>{c.label}</span>
+                                    <span className="text-[11px] font-semibold text-gray-500">{((c.items as any[]) || []).length}</span>
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+                                {selectedList.slice(0, 8).map((p: any, idx: number) => {
+                                  const dist = hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number' ? formatDistance(haversine(lat, lng, p.lat, p.lng)) : null;
+                                  return (
+                                    <div key={`poi-${idx}`} className="flex items-center justify-between gap-3 px-4 py-3 bg-white">
+                                      <div className="min-w-0">
+                                        <div className="text-sm font-medium text-gray-900 truncate">{p.name}</div>
+                                        <div className="text-xs text-gray-500">{(selected as any).label}</div>
+                                      </div>
+                                      {dist && (
+                                        <span className="shrink-0 text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
+                                          {dist}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          )}
                         </>
                       );
                     })()}

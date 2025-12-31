@@ -176,61 +176,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
 
   const participatesInLeadBoard = Boolean(realtor.queue);
 
-  const openLeads = await prisma.lead.findMany({
-    where: {
-      realtorId: realtor.id,
-      pipelineStage: {
-        in: ["NEW", "CONTACT", "VISIT", "PROPOSAL", "DOCUMENTS"] as any,
-      },
-      status: {
-        notIn: ["CANCELLED", "EXPIRED"] as any,
-      },
-    },
-    select: {
-      id: true,
-    },
-    take: 500,
-    orderBy: { createdAt: "desc" },
-  });
-
-  const openLeadIds = openLeads.map((l) => l.id);
-  const activeLeads = openLeadIds.length;
-
-  const lastClientMessages = openLeadIds.length
-    ? await (prisma as any).leadClientMessage.findMany({
-        where: { leadId: { in: openLeadIds }, fromClient: true },
-        orderBy: { createdAt: "desc" },
-        distinct: ["leadId"],
-        select: { leadId: true, createdAt: true },
-      })
-    : [];
-
-  const lastProMessages = openLeadIds.length
-    ? await (prisma as any).leadClientMessage.findMany({
-        where: { leadId: { in: openLeadIds }, fromClient: false },
-        orderBy: { createdAt: "desc" },
-        distinct: ["leadId"],
-        select: { leadId: true, createdAt: true },
-      })
-    : [];
-
-  const lastProMap = new Map<string, Date>((lastProMessages || []).map((m: any) => [m.leadId, m.createdAt]));
-
-  const nowMs = Date.now();
-  let longestNoResponseMinutes: number | null = null;
-  for (const m of lastClientMessages || []) {
-    const clientAt = new Date((m as any).createdAt);
-    if (Number.isNaN(clientAt.getTime())) continue;
-    const proAt = lastProMap.get(String((m as any).leadId));
-    const hasNoReply = !proAt || clientAt.getTime() > new Date(proAt).getTime();
-    if (!hasNoReply) continue;
-
-    const minutes = Math.max(0, Math.floor((nowMs - clientAt.getTime()) / 60000));
-    if (longestNoResponseMinutes == null) longestNoResponseMinutes = minutes;
-    else longestNoResponseMinutes = Math.max(longestNoResponseMinutes, minutes);
-  }
-
-  const lastProResponseAt = (lastProMessages || []).reduce(
+  const lastProResponseAt = ([] as any[]).reduce(
     (max: Date | null, row: any) => {
       const d = row?.createdAt ? new Date(row.createdAt) : null;
       if (!d || Number.isNaN(d.getTime())) return max;
@@ -403,7 +349,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdAgent) }}
       />
-      <ModernNavbar />
+      <ModernNavbar forceLight />
 
       <main className="mx-auto max-w-7xl px-4 pt-6 pb-12">
         <CorretorHeader
@@ -428,8 +374,6 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
           isTopProducer={isTopProducer}
           isFastResponder={isFastResponder}
           totalActiveProperties={totalActiveProperties}
-          activeLeads={activeLeads}
-          longestNoResponseMinutes={longestNoResponseMinutes}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

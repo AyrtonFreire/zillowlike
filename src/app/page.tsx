@@ -2331,8 +2331,8 @@ export default function Home() {
             items={[
               { key: 'featured', label: 'Destaques', content: (
                 featuredLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[...Array(4)].map((_, i) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (
                       <div key={i} className="card animate-pulse">
                         <div className="h-48 bg-gray-200 rounded-t-xl"></div>
                         <div className="p-5 space-y-3">
@@ -2367,7 +2367,7 @@ export default function Home() {
                         )}
                       />
                     </div>
-                    <div className="hidden md:grid grid-cols-2 gap-6">
+                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
                       {featured.slice(0, 6).map((property) => (
                         <PropertyCardPremium
                           key={property.id}
@@ -2381,8 +2381,8 @@ export default function Home() {
               )},
               { key: 'trending', label: 'Em alta', content: (
                 trendingLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[...Array(4)].map((_, i) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (
                       <div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>
                     ))}
                   </div>
@@ -2391,7 +2391,7 @@ export default function Home() {
                     <div className="md:hidden">
                       <Carousel items={trending} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} />
                     </div>
-                    <div className="hidden md:grid grid-cols-2 gap-6">
+                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
                       {trending.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
                   </>
@@ -2399,8 +2399,8 @@ export default function Home() {
               )},
               { key: 'new', label: 'Novidades', content: (
                 newestLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[...Array(4)].map((_, i) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (
                       <div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>
                     ))}
                   </div>
@@ -2409,7 +2409,7 @@ export default function Home() {
                     <div className="md:hidden">
                       <Carousel items={newest} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} />
                     </div>
-                    <div className="hidden md:grid grid-cols-2 gap-6">
+                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
                       {newest.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
                   </>
@@ -2417,13 +2417,13 @@ export default function Home() {
               )},
               { key: 'furnished', label: 'Mobiliados', content: (
                 furnishedLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[...Array(4)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
                   </div>
                 ) : (
                   <>
                     <div className="md:hidden"><Carousel items={furnishedList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
-                    <div className="hidden md:grid grid-cols-2 gap-6">
+                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
                       {furnishedList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
                   </>
@@ -2431,13 +2431,13 @@ export default function Home() {
               )},
               { key: 'luxury', label: 'Luxo', content: (
                 luxuryLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[...Array(4)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
                   </div>
                 ) : (
                   <>
                     <div className="md:hidden"><Carousel items={luxuryList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
-                    <div className="hidden md:grid grid-cols-2 gap-6">
+                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
                       {luxuryList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
                   </>
@@ -2445,13 +2445,13 @@ export default function Home() {
               )},
               { key: 'condos', label: 'Condomínios', content: (
                 condoLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[...Array(4)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
                   </div>
                 ) : (
                   <>
                     <div className="md:hidden"><Carousel items={condoList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
-                    <div className="hidden md:grid grid-cols-2 gap-6">
+                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
                       {condoList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
                   </>
@@ -2459,13 +2459,13 @@ export default function Home() {
               )},
               { key: 'studios', label: 'Studios', content: (
                 studioLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[...Array(4)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
                   </div>
                 ) : (
                   <>
                     <div className="md:hidden"><Carousel items={studioList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
-                    <div className="hidden md:grid grid-cols-2 gap-6">
+                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
                       {studioList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
                   </>
@@ -2473,13 +2473,13 @@ export default function Home() {
               )},
               { key: 'lands', label: 'Terrenos', content: (
                 landLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[...Array(4)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
                   </div>
                 ) : (
                   <>
                     <div className="md:hidden"><Carousel items={landList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
-                    <div className="hidden md:grid grid-cols-2 gap-6">
+                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
                       {landList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
                   </>

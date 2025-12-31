@@ -18,6 +18,20 @@ const roleBasedPaths: Record<string, string[]> = {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  const segments = pathname.split("/").filter(Boolean);
+  const isPublicRealtorProfile =
+    segments.length === 2 &&
+    segments[0] === "realtor" &&
+    !["register", "leads"].includes(segments[1]);
+  const isPublicOwnerProfile =
+    segments.length === 2 &&
+    segments[0] === "owner" &&
+    !["dashboard", "analytics", "leads", "new", "edit", "properties"].includes(segments[1]);
+
+  if (isPublicRealtorProfile || isPublicOwnerProfile) {
+    return NextResponse.next();
+  }
+
   // Este middleware deve rodar apenas nas rotas protegidas (ver matcher abaixo)
   // Mantemos uma verificação defensiva para evitar custos inesperados.
   const isProtected = protectedPaths.some((path) => pathname.startsWith(path));

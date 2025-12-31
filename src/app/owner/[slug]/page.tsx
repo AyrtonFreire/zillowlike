@@ -96,7 +96,7 @@ export default async function OwnerPublicProfilePage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <ModernNavbar />
+      <ModernNavbar forceLight />
 
       <main className="mx-auto max-w-7xl px-4 pt-6 pb-12">
         <section className="mb-8">
