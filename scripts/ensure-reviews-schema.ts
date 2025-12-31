@@ -229,6 +229,7 @@ async function main() {
   let lastErr: unknown;
   for (const url of candidates) {
     const useSsl = !/sslmode=disable/i.test(url);
+    if (useSsl) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
     const client = new Client({
       connectionString: url,
       ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
