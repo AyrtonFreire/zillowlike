@@ -3,10 +3,11 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import ModernNavbar from "@/components/modern/ModernNavbar";
 import RealtorServiceAreasMap from "@/components/RealtorServiceAreasMap";
-import SobreCorretor from "@/components/realtor/SobreCorretor";
-import IndicadoresConfianca from "@/components/realtor/IndicadoresConfianca";
 import CorretorHeader from "@/components/realtor/CorretorHeader";
+import IndicadoresConfianca from "@/components/realtor/IndicadoresConfianca";
+import SobreCorretor from "@/components/realtor/SobreCorretor";
 import ListaImoveis from "@/components/realtor/ListaImoveis";
+import RealtorReviewsSection from "@/components/realtor/RealtorReviewsSection";
 import SeloAtividade from "@/components/realtor/SeloAtividade";
 import { Phone, Star, Target } from "lucide-react";
 
@@ -424,67 +425,6 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
 
             {/* Mapa de atuação */}
             <RealtorServiceAreasMap areas={serviceAreas} city={city ?? undefined} state={state ?? undefined} />
-
-            {/* Avaliações de clientes */}
-            {reviews.length > 0 && (
-              <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Star className="h-5 w-5 text-yellow-500" />
-                  Avaliações de clientes
-                </h2>
-                <div className="space-y-4">
-                  {reviews.slice(0, 5).map((review: any) => (
-                    <div key={review.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
-                      <div className="flex items-start gap-3">
-                        {review.lead?.user?.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={review.lead.user.image}
-                            alt=""
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-sm font-medium">
-                            {review.lead?.user?.name?.charAt(0) || "?"}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-medium text-gray-900 text-sm truncate">
-                              {review.lead?.user?.name || "Cliente"}
-                            </span>
-                            <div className="flex items-center gap-0.5">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
-                                  className={`h-3.5 w-3.5 ${
-                                    star <= review.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                          {review.comment && (
-                            <p className="text-sm text-gray-600 mt-1">{review.comment}</p>
-                          )}
-                          <span className="text-xs text-gray-400 mt-1 block">
-                            {new Date(review.createdAt).toLocaleDateString("pt-BR", {
-                              month: "short",
-                              year: "numeric",
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {reviews.length > 5 && (
-                  <p className="text-sm text-gray-500 mt-4 text-center">
-                    +{reviews.length - 5} avaliação{reviews.length - 5 === 1 ? "" : "s"}
-                  </p>
-                )}
-              </section>
-            )}
 
             {/* Botões de contato direto (sticky no mobile) */}
             {(realtor.publicPhoneOptIn && realtor.phone || whatsapp) && (

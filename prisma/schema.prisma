@@ -32,6 +32,26 @@ enum Role {
   ADMIN
 }
 
+enum ReviewStatus {
+  PUBLISHED
+  PENDING
+  HIDDEN
+  REMOVED
+}
+
+enum ReviewReportReason {
+  SPAM
+  OFFENSIVE
+  FAKE
+  OTHER
+}
+
+enum ReviewReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
 // Property status
 enum PropertyStatus {
   ACTIVE
@@ -431,6 +451,10 @@ model User {
   queue                RealtorQueue?
   stats                RealtorStats?
   ratings              RealtorRating[]
+  ownerStats           OwnerStats?
+  ownerRatings         OwnerRating[]
+  ratingsAuthored      RealtorRating[] @relation("RealtorRatingAuthor")
+  ownerRatingsAuthored OwnerRating[]   @relation("OwnerRatingAuthor")
   teamMemberships      TeamMember[]
   ownedTeams           Team[]
   phone                String?
@@ -523,6 +547,7 @@ model Lead {
 
   candidatures LeadCandidature[]
   rating       RealtorRating?
+  ownerRating  OwnerRating?
   reports      Report[]
   clientMessages LeadClientMessage[]
 
@@ -886,13 +911,97 @@ model RealtorRating {
   realtorId String
   lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
   leadId    String   @unique
-  rating    Int // 1-5 estrelas
-  comment   String?
-  createdAt DateTime @default(now())
+
+  author   User?   @relation("RealtorRatingAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String?
+
+  rating  Int // 1-5 estrelas
+  comment String?
+
+  status     ReviewStatus @default(PUBLISHED)
+  replyText  String?
+  repliedAt  DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  reports ReviewReport[]
 
   @@index([realtorId])
   @@index([leadId])
+  @@index([authorId])
+  @@index([status])
   @@map("realtor_ratings")
+}
+
+model OwnerStats {
+  id           String   @id @default(cuid())
+  owner        User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId      String   @unique
+  avgRating    Float?
+  totalRatings Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([ownerId])
+  @@map("owner_stats")
+}
+
+model OwnerRating {
+  id      String @id @default(cuid())
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String
+  lead    Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId  String @unique
+
+  author   User?   @relation("OwnerRatingAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String?
+
+  rating  Int
+  comment String?
+
+  status     ReviewStatus @default(PUBLISHED)
+  replyText  String?
+  repliedAt  DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  reports ReviewReport[]
+
+  @@index([ownerId])
+  @@index([leadId])
+  @@index([authorId])
+  @@index([status])
+  @@map("owner_ratings")
+}
+
+model ReviewReport {
+  id String @id @default(cuid())
+
+  realtorRating   RealtorRating? @relation(fields: [realtorRatingId], references: [id], onDelete: Cascade)
+  realtorRatingId String?
+  ownerRating     OwnerRating?   @relation(fields: [ownerRatingId], references: [id], onDelete: Cascade)
+  ownerRatingId   String?
+
+  reportedBy       User   @relation(fields: [reportedByUserId], references: [id])
+  reportedByUserId String
+
+  handledBy        User?   @relation(fields: [handledByAdminId], references: [id])
+  handledByAdminId String?
+
+  reason      ReviewReportReason
+  description String?
+  status      ReviewReportStatus @default(OPEN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([realtorRatingId])
+  @@index([ownerRatingId])
+  @@index([reportedByUserId])
+  @@index([status])
+  @@unique([reportedByUserId, realtorRatingId])
+  @@unique([reportedByUserId, ownerRatingId])
+  @@map("review_reports")
 }
 
 enum TeamMemberRole {

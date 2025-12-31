@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import ModernNavbar from "@/components/modern/ModernNavbar";
 import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
+import OwnerReviewsSection from "@/components/owner/OwnerReviewsSection";
 import { Home as HomeIcon, User as UserIcon } from "lucide-react";
 
 interface PageProps {
@@ -158,6 +159,10 @@ export default async function OwnerPublicProfilePage({ params }: PageProps) {
             </div>
           </div>
         </section>
+
+        <div className="mb-8">
+          <OwnerReviewsSection ownerId={owner.id} />
+        </div>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
