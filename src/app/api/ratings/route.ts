@@ -12,14 +12,6 @@ function getSessionUserId(session: any): string | null {
   return (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub || null;
 }
 
-function isLeadEligibleForRating(lead: any): boolean {
-  return Boolean(
-    lead?.pipelineStage === "WON" ||
-      lead?.completedAt ||
-      lead?.respondedAt
-  );
-}
-
 // Criar avaliação
 export const POST = withRateLimit(
   withErrorHandling(async (request: NextRequest) => {
@@ -45,17 +37,11 @@ export const POST = withRateLimit(
     },
     select: {
       id: true,
-      pipelineStage: true,
-      completedAt: true,
-      respondedAt: true,
     },
   });
 
   if (!lead) {
     return errorResponse("Lead not found", 404, null, "LEAD_NOT_FOUND");
-  }
-  if (!isLeadEligibleForRating(lead)) {
-    return errorResponse("Lead not eligible for rating", 400, null, "LEAD_NOT_ELIGIBLE");
   }
 
   // Verifica se já existe avaliação para este lead

@@ -25,11 +25,6 @@ export async function GET(req: NextRequest) {
       userId,
       realtorId,
       rating: null,
-      OR: [
-        { pipelineStage: "WON" as any },
-        { completedAt: { not: null } },
-        { respondedAt: { not: null } },
-      ],
     },
     orderBy: { createdAt: "desc" },
     select: { id: true },

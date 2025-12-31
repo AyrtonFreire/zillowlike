@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -140,6 +142,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const payload = await getWhatsAppPayload(req, String(id));
     if (!payload.ok) return payload.response;
 
+    const session: any = await getServerSession(authOptions).catch(() => null);
+    const sessionUserId = session?.userId || session?.user?.id || session?.user?.sub || null;
+
     // Only realtor/agency listings can generate assistant items.
     if (payload.isRealtorOrAgency && payload.ownerId) {
       const now = new Date();
@@ -150,8 +155,11 @@ export async function POST(req: NextRequest, { params }: Ctx) {
           propertyId: payload.propertyId,
           realtorId: payload.ownerId,
           isDirect: true,
-          userId: null,
-          contactId: null,
+          ...(sessionUserId
+            ? {
+                OR: [{ userId: String(sessionUserId) }, { userId: null, contactId: null }],
+              }
+            : { userId: null, contactId: null }),
           updatedAt: { gte: recentThreshold },
         },
         orderBy: { updatedAt: "desc" },
@@ -161,7 +169,10 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       const lead = existingLead?.id
         ? await (prisma as any).lead.update({
             where: { id: String(existingLead.id) },
-            data: { updatedAt: now },
+            data: {
+              updatedAt: now,
+              ...(sessionUserId ? { userId: String(sessionUserId) } : {}),
+            },
             select: { id: true },
           })
         : await (prisma as any).lead.create({
@@ -169,6 +180,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
               propertyId: payload.propertyId,
               realtorId: payload.ownerId,
               teamId: payload.teamId ?? undefined,
+              ...(sessionUserId ? { userId: String(sessionUserId) } : {}),
               status: "ACCEPTED",
               pipelineStage: "NEW",
               isDirect: true,
