@@ -20,10 +20,17 @@ export async function POST(req: NextRequest) {
     // Verificar autorização (pode ser um secret no header)
     const authHeader = req.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
+    const isProd = process.env.NODE_ENV === "production";
     
     // Se CRON_SECRET estiver configurado, verificar autorização
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (isProd) {
+      if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else {
+      if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
     const cutoffDate = new Date();
@@ -109,6 +116,20 @@ export async function POST(req: NextRequest) {
 // GET para verificar status (pode ser útil para monitoramento)
 export async function GET(req: NextRequest) {
   try {
+    const authHeader = req.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
+    const isProd = process.env.NODE_ENV === "production";
+
+    if (isProd) {
+      if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else {
+      if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - ARCHIVE_AFTER_DAYS);
 

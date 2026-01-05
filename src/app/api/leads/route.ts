@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
   }
 
   const session: any = await getServerSession(authOptions).catch(() => null);
-  const sessionUserId = session?.userId || session?.user?.id || null;
+  const sessionUserId = session?.userId || session?.user?.id || session?.user?.sub || null;
 
   if (!sessionUserId) {
     const ok = await verifyTurnstile(parsed.data.turnstileToken, ip);

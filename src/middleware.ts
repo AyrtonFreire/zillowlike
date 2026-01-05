@@ -28,14 +28,14 @@ export async function middleware(request: NextRequest) {
     segments[0] === "owner" &&
     !["dashboard", "analytics", "leads", "new", "edit", "properties"].includes(segments[1]);
 
-  if (isPublicRealtorProfile || isPublicOwnerProfile) {
-    return NextResponse.next();
-  }
-
   // Este middleware deve rodar apenas nas rotas protegidas (ver matcher abaixo)
   // Mantemos uma verificação defensiva para evitar custos inesperados.
   const isProtected = protectedPaths.some((path) => pathname.startsWith(path));
-  if (!isProtected) return NextResponse.next();
+
+  if (!isProtected || isPublicRealtorProfile || isPublicOwnerProfile) {
+    const response = NextResponse.next();
+    return applySecurityHeaders(request, response);
+  }
 
   // Obtém token JWT do NextAuth
   const token = await getToken({
@@ -47,7 +47,8 @@ export async function middleware(request: NextRequest) {
   if (!token) {
     const url = new URL("/api/auth/signin", request.url);
     url.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+    return applySecurityHeaders(request, response);
   }
 
   // Removido: fluxo automático de onboarding que promovia USER para OWNER/REALTOR
@@ -59,7 +60,8 @@ export async function middleware(request: NextRequest) {
       
       if (!allowedRoles.includes(userRole)) {
         // Usuário não tem permissão
-        return NextResponse.redirect(new URL("/unauthorized", request.url));
+        const response = NextResponse.redirect(new URL("/unauthorized", request.url));
+        return applySecurityHeaders(request, response);
       }
     }
   }
@@ -83,10 +85,6 @@ export async function middleware(request: NextRequest) {
 // Configuração de quais paths o middleware deve rodar
 export const config = {
   matcher: [
-    "/admin/:path*",
-    "/broker/:path*",
-    "/realtor/:path*",
-    "/owner/:path*",
-    "/dashboard/:path*",
+    "/((?!_next/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|txt)).*)",
   ],
 };

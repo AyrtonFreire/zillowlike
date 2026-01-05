@@ -30,17 +30,25 @@ export async function apiFetch<T = any>(input: RequestInfo | URL, init: RequestI
   } catch (e: any) {
     // fire-and-forget client log
     try {
-      fetch("/api/logs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cid,
-          at: new Date().toISOString(),
-          url: String(input),
-          status: e?.status || 0,
-          message: e?.message || String(e),
-        }),
-      });
+      const isProd = process.env.NODE_ENV === "production";
+      const secret = (process.env as any).NEXT_PUBLIC_CLIENT_LOG_SECRET as string | undefined;
+
+      if (!isProd || !!secret) {
+        fetch("/api/logs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(secret ? { "x-client-log-secret": secret } : {}),
+          },
+          body: JSON.stringify({
+            cid,
+            at: new Date().toISOString(),
+            url: String(input),
+            status: e?.status || 0,
+            message: e?.message || String(e),
+          }),
+        });
+      }
     } catch {}
     throw e;
   }

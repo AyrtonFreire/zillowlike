@@ -1,31 +1,89 @@
-import { RateLimiterMemory } from "rate-limiter-flexible";
+import { RateLimiterMemory, RateLimiterRedis } from "rate-limiter-flexible";
+import { Redis } from "ioredis";
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "./api-response";
+
+let redisClient: Redis | null = null;
+
+function getRedisClient(): Redis | null {
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return null;
+  }
+
+  if (redisClient) return redisClient;
+
+  const redisUrl = process.env.REDIS_URL?.trim();
+  const host = process.env.REDIS_HOST?.trim();
+  const portStr = process.env.REDIS_PORT?.trim();
+  const password = process.env.REDIS_PASSWORD?.trim();
+
+  const hasUrl = !!redisUrl;
+  const hasHostPort = !!host && !!portStr;
+  if (!hasUrl && !hasHostPort) return null;
+
+  try {
+    if (hasUrl) {
+      redisClient = new Redis(redisUrl!, {
+        maxRetriesPerRequest: 3,
+        retryStrategy: (times: number): number | null => {
+          if (times > 3) return null;
+          return Math.min(times * 100, 2000);
+        },
+      });
+    } else {
+      const port = parseInt(portStr!, 10);
+      if (!Number.isFinite(port)) return null;
+      redisClient = new Redis({
+        host: host!,
+        port,
+        password,
+        maxRetriesPerRequest: 3,
+        retryStrategy: (times: number): number | null => {
+          if (times > 3) return null;
+          return Math.min(times * 100, 2000);
+        },
+      });
+    }
+
+    return redisClient;
+  } catch {
+    redisClient = null;
+    return null;
+  }
+}
+
+function createLimiter(options: { points: number; duration: number; keyPrefix: string }) {
+  const redis = getRedisClient();
+  if (!redis) {
+    return new RateLimiterMemory({ points: options.points, duration: options.duration });
+  }
+
+  const insuranceLimiter = new RateLimiterMemory({
+    points: options.points,
+    duration: options.duration,
+  });
+
+  return new RateLimiterRedis({
+    storeClient: redis,
+    points: options.points,
+    duration: options.duration,
+    keyPrefix: options.keyPrefix,
+    insuranceLimiter,
+  });
+}
 
 // Rate limiters para diferentes endpoints
 const rateLimiters = {
   // 10 requests por minuto por IP (geral)
-  default: new RateLimiterMemory({
-    points: 10,
-    duration: 60,
-  }),
+  default: createLimiter({ points: 10, duration: 60, keyPrefix: "rl:default" }),
   
   // 5 requests por minuto para criar avaliações
-  ratings: new RateLimiterMemory({
-    points: 5,
-    duration: 60,
-  }),
+  ratings: createLimiter({ points: 5, duration: 60, keyPrefix: "rl:ratings" }),
   
   // 20 requests por minuto para aceitar/rejeitar leads
-  leads: new RateLimiterMemory({
-    points: 20,
-    duration: 60,
-  }),
+  leads: createLimiter({ points: 20, duration: 60, keyPrefix: "rl:leads" }),
 
-  ai: new RateLimiterMemory({
-    points: 5,
-    duration: 60 * 60,
-  }),
+  ai: createLimiter({ points: 5, duration: 60 * 60, keyPrefix: "rl:ai" }),
 };
 
 /**
@@ -76,8 +134,11 @@ export async function checkRateLimit(
   try {
     await rateLimiters[limiter].consume(key);
     return true;
-  } catch {
-    return false;
+  } catch (err: any) {
+    if (err && typeof err.msBeforeNext === "number") {
+      return false;
+    }
+    return true;
   }
 }
 

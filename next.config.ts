@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   
   // Ignore ESLint during build (warnings won't block deploy)
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   
   images: {
