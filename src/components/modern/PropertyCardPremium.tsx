@@ -700,7 +700,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </div>
 
           {/* Footer area (reserved height to keep all cards equal) */}
-          <div className="mt-auto pt-2 min-h-[44px] flex items-center">
+          <div className="mt-auto pt-3 border-t border-gray-200/60 min-h-[44px] flex items-center">
             {property.owner?.name ? (
               <div className="flex items-center gap-2.5 w-full">
                 {property.owner?.publicSlug ? (
