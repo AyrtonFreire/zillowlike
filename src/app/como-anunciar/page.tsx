@@ -21,7 +21,7 @@ export default function ComoAnunciarPage() {
               Anuncie seus imóveis com uma experiência pensada para pessoas físicas e corretores.
             </h1>
             <p className="text-sm sm:text-base text-teal-50/95 mb-6 max-w-xl">
-              Nosso modelo conecta proprietários, compradores e corretores em um único fluxo, com foco em transparência, organização de leads e facilidade para publicar anúncios de alta qualidade.
+              Nosso modelo conecta proprietários, interessados e corretores em um único fluxo, com foco em transparência, publicação simples e um CRM com IA para organizar atendimento, visitas e próximos passos.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
@@ -65,7 +65,7 @@ export default function ComoAnunciarPage() {
                   <span className="mt-1 h-6 w-0.5 rounded-full bg-accent/70" />
                   <div>
                     <p className="font-semibold">3. Organização de contatos</p>
-                    <p className="text-teal-50/90">Os contatos ficam registrados por imóvel para facilitar o acompanhamento e o histórico.</p>
+                    <p className="text-teal-50/90">Os contatos ficam registrados por imóvel e por cliente, com histórico, lembretes e etapas do CRM.</p>
                   </div>
                 </div>
               </div>
@@ -127,19 +127,19 @@ export default function ComoAnunciarPage() {
             <ul className="space-y-3 text-sm text-gray-700">
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-indigo-600 mt-0.5" />
-                <span>Organize leads e negociações com um CRM simples, com histórico por imóvel e por cliente.</span>
+                <span>Organize leads e negociações em um CRM com funil (do primeiro contato até proposta e fechamento).</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-indigo-600 mt-0.5" />
-                <span>Use dashboards para acompanhar visitas, retornos e etapas do funil comercial.</span>
+                <span>Use dashboards e lembretes para acompanhar visitas, retornos, tarefas e etapas do funil.</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-indigo-600 mt-0.5" />
-                <span>Construa reputação atendendo bem leads indicados pelo site e fechando mais negócios.</span>
+                <span>Conte com IA para sugerir próximos passos, organizar prioridades e acelerar respostas com consistência.</span>
               </li>
             </ul>
             <div className="mt-6 flex justify-between items-center text-sm">
-              <p className="text-gray-500">Sua atuação é integrada ao funil do ZillowLike, sem perder o controle da sua carteira.</p>
+              <p className="text-gray-500">Sua carteira fica centralizada no CRM, com histórico e etapas claras de atendimento.</p>
               <Link
                 href="/realtor/register"
                 className="inline-flex items-center text-indigo-700 font-semibold hover:text-indigo-800"
@@ -166,28 +166,28 @@ export default function ComoAnunciarPage() {
             <div className="space-y-2">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                 <Users className="w-4 h-4 text-teal-600" />
-                Conexão PF + Corretor
+                Fluxo direto e organizado
               </h3>
               <p>
-                Proprietários podem anunciar direto no site, e caso opte, corretores entram no fluxo para ajudar a conduzir visitas, propostas e fechamento de forma profissional.
+                Proprietários anunciam direto no site e acompanham contatos por imóvel. Corretores organizam a carteira no CRM com histórico, tarefas e etapas do funil.
               </p>
             </div>
             <div className="space-y-2">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-teal-600" />
-                Leads organizados e rastreáveis
+                CRM + histórico completo
               </h3>
               <p>
-                Interessados são registrados com data, origem e imóvel de interesse, facilitando acompanhamento, retorno e histórico de conversas.
+                Interessados ficam registrados com data, origem e imóvel de interesse, com histórico de mensagens, visitas e mudanças de etapa no funil.
               </p>
             </div>
             <div className="space-y-2">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-teal-600" />
-                Experiência inspirada em grandes portais
+                IA para acelerar atendimento
               </h3>
               <p>
-                Interface moderna, ituitiva e adaptada à realidade do mercado local e às necessidades de Pessoas Físicas e Corretores.
+                Um assistente ajuda a priorizar leads, sugerir próximos passos e manter o ritmo de follow-up para você fechar mais.
               </p>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function ComoAnunciarPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-600 mb-2">Passo 1</p>
             <h3 className="text-lg font-bold text-gray-900 mb-2">Crie sua conta e defina o perfil</h3>
             <p className="text-sm text-gray-700 mb-4 flex-1">
-              Acesse o site, crie seu login, cadastre e valide seu telefone para contato via SMS em Meu Perfil e informe se é corretor(a) ou pessoa física. Ao anunciar um imóvel grátis como pessoa física, seu perfil é atualizado automaticamente para Proprietário(a), desbloqueando os fluxos corretos para cada tipo de usuário.
+              Acesse o site, crie seu login e valide seu telefone em Meu Perfil. Se você é proprietário(a), comece um anúncio. Se você é corretor(a), crie sua conta profissional para acessar o CRM e suas ferramentas de atendimento.
             </p>
             <Link href="/realtor/register" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
               Criar conta de corretor(a)
@@ -223,12 +223,18 @@ export default function ComoAnunciarPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-600 mb-2">Passo 3</p>
             <h3 className="text-lg font-bold text-gray-900 mb-2">Acompanhe leads e negociações</h3>
             <p className="text-sm text-gray-700 mb-4 flex-1">
-              Use os painéis do site para acompanhar quem entrou em contato, marcar visitas e registrar o andamento das propostas.
+              Use os painéis do site para acompanhar quem entrou em contato, marcar visitas e registrar o andamento no CRM. A IA ajuda a sugerir próximos passos e manter follow-up em dia.
             </p>
-            <Link href="/owner/dashboard" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
-              Ver painel do proprietário
-              <ArrowRightCircle className="w-4 h-4 ml-1" />
-            </Link>
+            <div className="flex flex-col gap-2">
+              <Link href="/owner/dashboard" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
+                Ver painel do proprietário
+                <ArrowRightCircle className="w-4 h-4 ml-1" />
+              </Link>
+              <Link href="/broker/crm" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
+                Abrir CRM do corretor(a)
+                <ArrowRightCircle className="w-4 h-4 ml-1" />
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -237,7 +243,7 @@ export default function ComoAnunciarPage() {
           <div>
             <h2 className="text-2xl font-bold mb-2">Pronto para anunciar?</h2>
             <p className="text-sm text-teal-50/95 max-w-xl">
-              Comece criando seu primeiro anúncio ou definindo seu perfil como corretor(a). Você pode experimentar a plataforma e ajustar seus anúncios a qualquer momento.
+              Comece criando seu primeiro anúncio ou definindo seu perfil como corretor(a). Você pode experimentar a plataforma e acompanhar tudo por painéis, CRM e assistente.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
