@@ -452,7 +452,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
 
         {/* Image Carousel */}
         <div
-          className="relative h-36 overflow-hidden rounded-t-2xl touch-pan-y"
+          className="relative h-56 sm:h-64 overflow-hidden rounded-t-2xl touch-pan-y"
           ref={containerRef}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
@@ -577,26 +577,26 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
         </div>
 
         {/* Content */}
-        <div className="p-2 flex flex-col flex-1 relative bg-gradient-to-b from-white via-white to-gray-50">
+        <div className="px-3 pt-2 pb-2 flex flex-col flex-1 relative bg-gradient-to-b from-white via-white to-gray-50">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleShare}
-            className="absolute right-3 top-3 p-1.5 rounded-md transition-colors hover:bg-gray-100"
+            className="absolute right-2 top-2 p-1.5 rounded-md transition-colors hover:bg-gray-100"
             aria-label="Abrir opções de compartilhamento"
           >
-            <Share2 className="w-5 h-5 text-teal hover:text-teal-dark transition-colors" />
+            <Share2 className="w-4.5 h-4.5 text-teal hover:text-teal-dark transition-colors" />
           </motion.button>
 
           {/* Title + Price */}
-          <div className="mb-2 mt-0.5 pr-10">
+          <div className="mb-1 pr-9">
             <div
-              className="text-[14px] sm:text-[15px] font-semibold text-gray-900 leading-snug min-h-[2.6em]"
+              className="text-[13px] sm:text-[14px] font-semibold text-gray-900 leading-snug"
               style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
             >
               {property.title}
             </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <div className="text-[18px] font-extrabold text-gray-900">
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <div className="text-[16px] font-extrabold text-gray-900">
                 {typeof property.price === 'number' && property.price > 0
                   ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
                   : 'Price on Request'}
@@ -663,7 +663,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </AnimatePresence>
 
           {/* Features row: quartos, banheiros, área (readable) */}
-          <div className="flex items-center text-gray-700 text-[12.5px] mb-1 min-h-[1.25rem]">
+          <div className="flex items-center text-gray-700 text-[12px] mb-0.5">
             {property.bedrooms != null && (
               <div className="flex items-center gap-1" title="Quartos">
                 <Bed className="w-3.5 h-3.5 text-gray-600" />
@@ -691,7 +691,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </div>
 
           {/* Location (clean, readable) */}
-          <div className="flex items-center gap-1.5 text-gray-700 text-[12.5px] mb-0.5 min-h-[1.25rem]">
+          <div className="flex items-center gap-1.5 text-gray-700 text-[12px]">
             <MapPin className="w-3.5 h-3.5 text-gray-600" />
             <span className="truncate">
               {property.neighborhood && `${property.neighborhood}, `}
@@ -700,7 +700,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </div>
 
           {/* Footer area (reserved height to keep all cards equal) */}
-          <div className="mt-auto pt-3 border-t border-gray-200/60 min-h-[44px] flex items-center">
+          <div className="mt-auto pt-2 border-t border-gray-200/60 min-h-[36px] flex items-center">
             {property.owner?.name ? (
               <div className="flex items-center gap-2.5 w-full">
                 {property.owner?.publicSlug ? (
@@ -710,14 +710,14 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     className="flex items-center gap-3 min-w-0"
                     aria-label={`Ver perfil de ${property.owner.name}`}
                   >
-                    <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
+                    <span className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
                       {property.owner?.image ? (
                         <Image
                           src={property.owner.image}
                           alt={property.owner.name || "Profissional"}
                           fill
                           className="object-cover"
-                          sizes="36px"
+                          sizes="32px"
                         />
                       ) : (
                         <span className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-gray-700">
@@ -726,21 +726,21 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                       )}
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-bold text-gray-900 leading-tight truncate">
+                      <span className="block text-[12.5px] font-bold text-gray-900 leading-tight truncate">
                         {property.owner.name}
                       </span>
                     </span>
                   </Link>
                 ) : (
                   <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-3 min-w-0">
-                    <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
+                    <span className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
                       {property.owner?.image ? (
                         <Image
                           src={property.owner.image}
                           alt={property.owner.name || "Profissional"}
                           fill
                           className="object-cover"
-                          sizes="36px"
+                          sizes="32px"
                         />
                       ) : (
                         <span className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-gray-700">
@@ -749,7 +749,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                       )}
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-bold text-gray-900 leading-tight truncate">
+                      <span className="block text-[12.5px] font-bold text-gray-900 leading-tight truncate">
                         {property.owner.name}
                       </span>
                     </span>
