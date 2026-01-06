@@ -85,6 +85,7 @@ export default function SearchFiltersBarZillow({
   const [localFilters, setLocalFilters] = useState(filters);
   const [previewTotal, setPreviewTotal] = useState<number | undefined>(totalResults);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [isPriceSliding, setIsPriceSliding] = useState(false);
 
   const updateFilter = (key: keyof FilterValues, value: any) => {
     setLocalFilters(prev => ({ ...prev, [key]: value }));
@@ -123,6 +124,7 @@ export default function SearchFiltersBarZillow({
 
   // Buscar preview do total conforme usuário altera filtros localmente
   useEffect(() => {
+    if (isPriceSliding) return;
     const fetchPreviewTotal = async () => {
       setIsLoadingPreview(true);
       try {
@@ -194,7 +196,7 @@ export default function SearchFiltersBarZillow({
 
     const debounce = setTimeout(fetchPreviewTotal, 500);
     return () => clearTimeout(debounce);
-  }, [localFilters, city, state, search]);
+  }, [localFilters, city, state, search, isPriceSliding]);
 
   const formatResultsLabel = (count?: number, loading?: boolean) => {
     if (loading) return 'Buscando...';
@@ -311,10 +313,16 @@ export default function SearchFiltersBarZillow({
             <PriceRangeSlider
               min={0}
               max={maxPriceLimit ?? 3000000}
-              step={50000}
+              step={localFilters.purpose === 'RENT' ? 500 : 50000}
               minValue={localFilters.minPrice ? Number(localFilters.minPrice) : null}
               maxValue={localFilters.maxPrice ? Number(localFilters.maxPrice) : null}
+              onPreviewChange={({ min, max }) => {
+                setIsPriceSliding(true);
+                updateFilter('minPrice', min ? String(min) : '');
+                updateFilter('maxPrice', max ? String(max) : '');
+              }}
               onChange={({ min, max }) => {
+                setIsPriceSliding(false);
                 updateFilter('minPrice', min ? String(min) : '');
                 updateFilter('maxPrice', max ? String(max) : '');
               }}

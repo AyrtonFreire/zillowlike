@@ -1281,9 +1281,13 @@ export default function Home() {
                             <PriceRangeSlider
                               min={0}
                               max={dynamicMaxPrice}
-                              step={50000}
+                              step={(purpose || "SALE") === "RENT" ? 500 : 50000}
                               minValue={minPrice ? Number(minPrice) : null}
                               maxValue={maxPrice ? Number(maxPrice) : null}
+                              onPreviewChange={({ min, max }) => {
+                                setMinPrice(min ? String(min) : "");
+                                setMaxPrice(max ? String(max) : "");
+                              }}
                               onChange={({ min, max }) => {
                                 setMinPrice(min ? String(min) : "");
                                 setMaxPrice(max ? String(max) : "");
