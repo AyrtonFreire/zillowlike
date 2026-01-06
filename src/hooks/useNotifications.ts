@@ -24,54 +24,24 @@ export function useNotifications(realtorId?: string) {
 
     setChannel(realtorChannel);
 
-    // Evento: Novo lead reservado para você
-    realtorChannel.bind("lead-reserved", (data: any) => {
+    // Evento: Visita aprovada pelo proprietário
+    realtorChannel.bind("visit-confirmed", (data: any) => {
       addNotification({
-        type: "info",
-        title: "Novo Lead Reservado!",
-        message: `Você tem ${data.timeLimit} minutos para aceitar o lead: ${data.propertyTitle}`,
+        type: "success",
+        title: "Visita confirmada",
+        message: data?.message || "O proprietário aprovou a visita.",
       });
 
-      // Tocar som de notificação
       playNotificationSound();
     });
 
-    // Evento: Lead aceito com sucesso
-    realtorChannel.bind("lead-accepted", (data: any) => {
-      addNotification({
-        type: "success",
-        title: "Lead Aceito!",
-        message: `Você aceitou o lead: ${data.propertyTitle}. Score: +${data.pointsEarned}`,
-      });
-    });
-
-    // Evento: Reserva expirou
-    realtorChannel.bind("lead-expired", (data: any) => {
+    // Evento: Visita recusada pelo proprietário
+    realtorChannel.bind("visit-rejected-by-owner", (data: any) => {
       addNotification({
         type: "warning",
-        title: "Reserva Expirada",
-        message: `Sua reserva para ${data.propertyTitle} expirou. Score: -8`,
+        title: "Visita recusada",
+        message: data?.message || "O proprietário recusou o horário da visita.",
       });
-    });
-
-    // Evento: Score atualizado
-    realtorChannel.bind("score-updated", (data: any) => {
-      addNotification({
-        type: "info",
-        title: "Score Atualizado",
-        message: `${data.action}: ${data.points > 0 ? "+" : ""}${data.points} pontos`,
-      });
-    });
-
-    // Evento: Posição na fila mudou
-    realtorChannel.bind("queue-updated", (data: any) => {
-      if (data.positionChange) {
-        addNotification({
-          type: "info",
-          title: "Posição Atualizada",
-          message: `Você agora está na posição #${data.newPosition} da fila`,
-        });
-      }
     });
 
     return () => {

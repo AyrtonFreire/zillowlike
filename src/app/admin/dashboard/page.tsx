@@ -112,7 +112,7 @@ export default function AdminDashboard() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
-              <p className="text-gray-600 mt-1">Visão geral do sistema de fila</p>
+              <p className="text-gray-600 mt-1">Visão geral do sistema</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
               <div className="flex flex-wrap gap-2 text-xs">
@@ -136,7 +136,7 @@ export default function AdminDashboard() {
                   <span className="text-gray-500">Origem:</span>
                   {[
                     { value: "all", label: "Todos" },
-                    { value: "board", label: "Fila / mural" },
+                    { value: "board", label: "Plataforma" },
                     { value: "direct", label: "Diretos" },
                   ].map((opt) => (
                     <button
@@ -284,7 +284,7 @@ export default function AdminDashboard() {
                 <Users className="w-6 h-6 text-blue-600" />
               </div>
             </div>
-            <p className="text-sm text-gray-500">No mural agora</p>
+            <p className="text-sm text-gray-500">Sem corretor atribuído</p>
           </div>
         </div>
 

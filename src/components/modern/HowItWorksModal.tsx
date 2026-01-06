@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Home, Users, TrendingUp, Award, Camera, Eye, MessageSquare, Shield, Sparkles, CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
+import { X, Home, Users, Camera, Eye, MessageSquare, Shield, Sparkles, CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
 
 interface HowItWorksModalProps {
   isOpen: boolean;
@@ -17,57 +17,6 @@ export default function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProp
   React.useEffect(() => {
     if (isOpen) setStep('choose');
   }, [isOpen]);
-
-  const sections = [
-    {
-      icon: Home,
-      title: "Anuncie Gratuitamente",
-      description: "Proprietários podem anunciar seus imóveis sem custo algum",
-      color: "teal",
-      features: [
-        "Cadastro simples e rápido",
-        "Fotos ilimitadas em alta qualidade",
-        "Descrição detalhada do imóvel",
-        "Geolocalização precisa"
-      ]
-    },
-    {
-      icon: Users,
-      title: "Para Corretores",
-      description: "Acesso profissional a leads qualificados",
-      color: "blue",
-      features: [
-        "Painel exclusivo com leads em tempo real",
-        "Sistema de captação inteligente",
-        "Analytics detalhado de visualizações",
-        "Badge de verificação profissional"
-      ]
-    },
-    {
-      icon: TrendingUp,
-      title: "Mural de Leads",
-      description: "Conecte-se diretamente com interessados",
-      color: "purple",
-      features: [
-        "Receba notificações instantâneas",
-        "Histórico completo de contatos",
-        "Responda pelo próprio painel",
-        "Filtre leads por interesse"
-      ]
-    },
-    {
-      icon: Award,
-      title: "Venda Direta",
-      description: "Negocie sem intermediários e economize",
-      color: "green",
-      features: [
-        "Sem taxas de comissão",
-        "Chat direto com interessados",
-        "Total controle da negociação",
-        "Atendimento 100% pela plataforma"
-      ]
-    }
-  ];
 
   const premiumFeatures = [
     { icon: Camera, text: "Mídias avançadas como vídeo e tour 360° (em estudo)" },
@@ -121,11 +70,11 @@ export default function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProp
         ],
       },
       {
-        title: 'Mural de leads',
+        title: 'CRM e organização',
         bullets: [
-          'Acesse o mural com oportunidades organizadas por região e perfil',
-          'Use filtros por tipo de imóvel, cidade e faixa de valor',
-          'Candidate-se aos leads, acompanhe status e organize seu dia',
+          'Organize seus leads e visitas em um pipeline simples',
+          'Acompanhe conversas, próximas ações e lembretes',
+          'Mantenha tudo centralizado por imóvel e por cliente',
         ],
       },
       {

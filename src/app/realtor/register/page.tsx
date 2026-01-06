@@ -104,8 +104,7 @@ export default function RealtorRegisterPage() {
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Cadastro rápido de corretor</h1>
               <p className="text-xs sm:text-sm text-gray-600">
-                Essas informações identificam você como profissional no site. A validação manual para corretores parceiros
-                continua disponível no fluxo completo de aplicação.
+                Essas informações identificam você como profissional no site.
               </p>
             </div>
           </div>
@@ -183,13 +182,7 @@ export default function RealtorRegisterPage() {
           </form>
 
           <p className="mt-4 text-[11px] text-gray-500">
-            Quer se tornar <span className="font-semibold">corretor parceiro</span> e entrar na fila inteligente de leads?
-            Você pode enviar documentos completos no fluxo de aplicação em
-            {" "}
-            <Link href="/become-realtor" className="text-indigo-700 hover:text-indigo-800 font-semibold">
-              /become-realtor
-            </Link>
-            .
+            Você pode completar seu perfil público a qualquer momento nas configurações da conta.
           </p>
         </div>
       </main>

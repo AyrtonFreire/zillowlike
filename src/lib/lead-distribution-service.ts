@@ -1,6 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 import { QueueService } from "./queue-service";
-import { getPusherServer, PUSHER_EVENTS, PUSHER_CHANNELS } from "./pusher-server";
 import { logger } from "./logger";
 import { LeadEventService } from "./lead-event-service";
 import { RealtorAssistantService } from "./realtor-assistant-service";
@@ -31,7 +30,7 @@ export class LeadDistributionService {
     const nextRealtor = await QueueService.getNextRealtor();
 
     if (!nextRealtor) {
-      // Nenhum corretor disponível, marca como AVAILABLE no mural
+      // Nenhum corretor disponível, marca como AVAILABLE
       await prisma.lead.update({
         where: { id: leadId },
         data: {
@@ -185,38 +184,6 @@ export class LeadDistributionService {
       logger.info("Owner approval requested automatically", { leadId });
     }
 
-    // Envia notificação via Pusher
-    try {
-      const pusher = getPusherServer();
-      const property = await prisma.property.findUnique({
-        where: { id: lead.propertyId },
-        select: { title: true },
-      });
-
-      await pusher.trigger(
-        PUSHER_CHANNELS.REALTOR(realtorId),
-        PUSHER_EVENTS.LEAD_ACCEPTED,
-        {
-          leadId,
-          propertyTitle: property?.title || "Imóvel",
-          pointsEarned,
-          responseTime,
-        }
-      );
-
-      // Notifica mural que lead foi aceito
-      await pusher.trigger(
-        PUSHER_CHANNELS.MURAL,
-        PUSHER_EVENTS.LEAD_ACCEPTED,
-        {
-          leadId,
-          realtorId,
-        }
-      );
-    } catch (error) {
-      console.error("Error sending pusher notification:", error);
-    }
-
     try {
       await RealtorAssistantService.recalculateForRealtor(realtorId);
     } catch {
@@ -242,7 +209,7 @@ export class LeadDistributionService {
 
     // Usa transação para garantir consistência
     await prisma.$transaction(async (tx) => {
-      // Atualiza lead para disponível no mural
+      // Atualiza lead para disponível
       await tx.lead.update({
         where: { id: leadId },
         data: {
@@ -290,7 +257,7 @@ export class LeadDistributionService {
   }
 
   /**
-   * Candidata-se a um lead do mural
+   * Candidata-se a um lead
    */
   static async candidateToLead(leadId: string, realtorId: string) {
     const lead = await prisma.lead.findUnique({
@@ -465,7 +432,7 @@ export class LeadDistributionService {
     });
 
     if (!nextCandidate) {
-      // Sem mais candidatos, volta ao mural
+      // Sem mais candidatos, volta para PENDING
       await prisma.lead.update({
         where: { id: leadId },
         data: {
@@ -499,7 +466,7 @@ export class LeadDistributionService {
   }
 
   /**
-   * Lista leads disponíveis no mural
+   * Lista leads disponíveis
    * 🆕 Filtro: NÃO mostra imóveis de corretores e leads diretos
    */
   static async getAvailableLeads(filters?: {
@@ -513,7 +480,7 @@ export class LeadDistributionService {
       status: {
         in: ["AVAILABLE", "PENDING", "MATCHING"], // 🆕 Adicionado status novo
       },
-      isDirect: false, // 🆕 REGRA: Apenas leads não-diretos vão ao mural
+      isDirect: false, // 🆕 REGRA: Apenas leads não-diretos
     };
 
     if (filters) {
@@ -795,8 +762,8 @@ export class LeadDistributionService {
           newRealtorId: nextRealtor.id,
         });
       } else {
-        // Sem mais candidatos, volta ao mural
-        logger.info("No more candidates, lead back to mural", {
+        // Sem mais candidatos
+        logger.info("No more candidates", {
           leadId: lead.id,
         });
       }
@@ -882,16 +849,6 @@ export class LeadDistributionService {
         hadVisit: !!(lead.visitDate && lead.visitTime),
       },
     });
-
-    try {
-      const pusher = getPusherServer();
-      await pusher.trigger(PUSHER_CHANNELS.REALTOR(realtorId), "assistant-updated", {
-        realtorId,
-        ts: new Date().toISOString(),
-      });
-    } catch {
-      // ignore
-    }
 
     return result;
   }

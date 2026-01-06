@@ -19,13 +19,6 @@ export function getPusherServer() {
 
 // Eventos disponíveis
 export const PUSHER_EVENTS = {
-  NEW_LEAD: "new-lead",
-  LEAD_RESERVED: "lead-reserved",
-  LEAD_ACCEPTED: "lead-accepted",
-  LEAD_REJECTED: "lead-rejected",
-  LEAD_EXPIRED: "lead-expired",
-  QUEUE_UPDATED: "queue-updated",
-  SCORE_UPDATED: "score-updated",
   VISIT_CONFIRMED: "visit-confirmed",
   VISIT_REJECTED_BY_OWNER: "visit-rejected-by-owner",
   // Assistant events
@@ -33,16 +26,11 @@ export const PUSHER_EVENTS = {
   ASSISTANT_ITEMS_RECALCULATED: "assistant:items_recalculated",
   // Chat events
   NEW_CHAT_MESSAGE: "new-chat-message",
-  USER_TYPING: "user-typing",
-  USER_ONLINE: "user-online",
-  USER_OFFLINE: "user-offline",
 } as const;
 
 // Canais disponíveis
 export const PUSHER_CHANNELS = {
-  MURAL: "mural",
   REALTOR: (realtorId: string) => `private-realtor-${realtorId}`,
-  QUEUE: "queue",
   // Chat channels (público para clientes que só tem o token)
   CHAT: (leadId: string) => `chat-${leadId}`,
   PRESENCE_CHAT: (leadId: string) => `presence-chat-${leadId}`,

@@ -28,7 +28,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: "Horário recusado. Lead voltou ao mural.",
+      message: "Horário recusado. Vamos reavaliar o atendimento.",
       lead,
     });
   } catch (error: any) {

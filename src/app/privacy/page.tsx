@@ -93,7 +93,7 @@ export default function PrivacyPage() {
               <li><strong>Entre usuários:</strong> leads compartilham dados com proprietários/corretores</li>
               <li><strong>Prestadores de serviço:</strong> hospedagem, email, pagamentos (processadores)</li>
               <li><strong>Autoridades:</strong> quando exigido por lei ou ordem judicial</li>
-              <li><strong>Parceiros:</strong> com seu consentimento explícito</li>
+              <li><strong>Terceiros:</strong> com seu consentimento explícito</li>
             </ul>
 
             <h3 className="text-xl font-semibold text-gray-900 mb-3 mt-4">5.2. O que NÃO fazemos</h3>

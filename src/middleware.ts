@@ -4,19 +4,50 @@ import { getToken } from "next-auth/jwt";
 import { applySecurityHeaders } from "@/lib/security-headers";
 
 // Rotas que requerem autenticação
-const protectedPaths = ["/broker", "/admin", "/owner", "/dashboard", "/realtor"];
+const protectedPaths = ["/admin", "/owner", "/dashboard", "/realtor", "/broker"];
 
 // Mapeamento de paths para roles permitidos
 const roleBasedPaths: Record<string, string[]> = {
   "/admin": ["ADMIN"],
-  "/broker": ["REALTOR", "AGENCY", "ADMIN"],
   "/realtor": ["REALTOR", "AGENCY", "ADMIN"],
+  "/broker": ["REALTOR", "AGENCY", "ADMIN"],
   "/owner": ["OWNER", "REALTOR", "AGENCY", "ADMIN"],
   "/dashboard": ["USER", "REALTOR", "AGENCY", "OWNER", "ADMIN"], // Todos autenticados
 };
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  const isDeprecatedApiPath =
+    pathname.startsWith("/api/leads/mural") ||
+    /^\/api\/leads\/[^/]+\/(candidate|distribute|select-priority)\/?$/.test(pathname) ||
+    /^\/api\/admin\/leads\/[^/]+\/mural\/?$/.test(pathname) ||
+    pathname.startsWith("/api/realtor/apply");
+
+  if (isDeprecatedApiPath) {
+    const response = NextResponse.json({ error: "Not found" }, { status: 404 });
+    return applySecurityHeaders(request, response);
+  }
+
+  if (pathname === "/broker/leads" || pathname === "/broker/leads/") {
+    const response = NextResponse.redirect(new URL("/broker/crm", request.url));
+    return applySecurityHeaders(request, response);
+  }
+
+  if (pathname.startsWith("/broker/leads/mural")) {
+    const response = NextResponse.redirect(new URL("/broker/crm", request.url));
+    return applySecurityHeaders(request, response);
+  }
+
+  if (pathname.startsWith("/broker/apply")) {
+    const response = NextResponse.redirect(new URL("/broker/dashboard", request.url));
+    return applySecurityHeaders(request, response);
+  }
+
+  if (pathname.startsWith("/become-realtor")) {
+    const response = NextResponse.redirect(new URL("/realtor/register", request.url));
+    return applySecurityHeaders(request, response);
+  }
 
   const segments = pathname.split("/").filter(Boolean);
   const isPublicRealtorProfile =

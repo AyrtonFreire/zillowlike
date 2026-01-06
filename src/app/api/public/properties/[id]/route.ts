@@ -37,7 +37,6 @@ export async function GET(req: NextRequest, context: RouteContext) {
         petFriendly: true,
         condoFee: true,
         yearBuilt: true,
-        allowRealtorBoard: true,
         hidePrice: true,
         hideExactAddress: true,
         hideOwnerContact: true,

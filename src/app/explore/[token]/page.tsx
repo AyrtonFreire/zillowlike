@@ -229,7 +229,7 @@ export default async function ExploreRecommendationsPage({ params }: PageProps) 
                           Profissional responsável
                         </p>
                         <p className="text-base md:text-lg font-semibold leading-tight">
-                          {realtor.name || "Corretor parceiro"}
+                          {realtor.name || "Profissional"}
                         </p>
                         {(realtor.publicCity || realtor.publicState) && (
                           <p className="text-xs text-white/80 mt-0.5 flex items-center gap-1.5">

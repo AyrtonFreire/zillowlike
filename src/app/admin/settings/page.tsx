@@ -6,9 +6,7 @@ import { Settings, Save, AlertTriangle } from "lucide-react";
 
 type SettingsKey =
   | "leadReservationMinutes"
-  | "maxActiveLeadsPerRealtor"
-  | "enableRealtorBoard"
-  | "enableAutoReassignExpired";
+  | "maxActiveLeadsPerRealtor";
 
 interface SystemSettingDto {
   key: string;
@@ -19,8 +17,6 @@ interface SystemSettingDto {
 const DEFAULTS: Record<SettingsKey, string> = {
   leadReservationMinutes: "10",
   maxActiveLeadsPerRealtor: "3",
-  enableRealtorBoard: "true",
-  enableAutoReassignExpired: "true",
 };
 
 export default function AdminSettingsPage() {
@@ -67,10 +63,6 @@ export default function AdminSettingsPage() {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleToggle = (key: Extract<SettingsKey, "enableRealtorBoard" | "enableAutoReassignExpired">) => {
-    setSettings((prev) => ({ ...prev, [key]: prev[key] === "true" ? "false" : "true" }));
-  };
-
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -107,13 +99,11 @@ export default function AdminSettingsPage() {
 
   const parsedLeadReservation = Number.parseInt(settings.leadReservationMinutes, 10) || 0;
   const parsedMaxActiveLeads = Number.parseInt(settings.maxActiveLeadsPerRealtor, 10) || 0;
-  const enableBoard = settings.enableRealtorBoard === "true";
-  const autoReassign = settings.enableAutoReassignExpired === "true";
 
   return (
     <DashboardLayout
       title="Configurações do sistema"
-      description="Ajustes globais que afetam como a fila, o mural e os leads funcionam."
+      description="Ajustes globais que afetam como leads e limites operacionais funcionam."
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Admin", href: "/admin" },
@@ -158,7 +148,7 @@ export default function AdminSettingsPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 gap-6 mb-8">
               <div className="bg-white rounded-2xl border border-gray-200 p-5">
                 <h2 className="text-sm font-semibold text-gray-900 mb-1">Fila e reservas de leads</h2>
                 <p className="text-xs text-gray-500 mb-4">
@@ -200,57 +190,6 @@ export default function AdminSettingsPage() {
                     <p className="mt-1 text-xs text-gray-500">
                       Este número pode ser usado em futuras regras de distribuição/alertas para evitar sobrecarga de corretores.
                     </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                <h2 className="text-sm font-semibold text-gray-900 mb-1">Mural e reaproveitamento de leads</h2>
-                <p className="text-xs text-gray-500 mb-4">
-                  Controles que determinam quando o mural está ativo e como leads expirados podem voltar para novos corretores.
-                </p>
-
-                <div className="space-y-4 text-sm text-gray-700">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-medium text-gray-700 mb-0.5">Ativar mural de corretores</p>
-                      <p className="text-xs text-gray-500">
-                        Quando desligado, novos leads não vão para o mural público. Eles continuam funcionando para donos de
-                        imóveis e fluxos diretos.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleToggle("enableRealtorBoard")}
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
-                        enableBoard
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-gray-50 text-gray-600 border-gray-200"
-                      }`}
-                    >
-                      {enableBoard ? "Ligado" : "Desligado"}
-                    </button>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-medium text-gray-700 mb-0.5">Repassar automaticamente leads expirados</p>
-                      <p className="text-xs text-gray-500">
-                        Quando ligado, o sistema tenta mover leads reservados que expiraram para o próximo candidato ou de volta
-                        ao mural, sem intervenção manual.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleToggle("enableAutoReassignExpired")}
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
-                        autoReassign
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : "bg-gray-50 text-gray-600 border-gray-200"
-                      }`}
-                    >
-                      {autoReassign ? "Ligado" : "Desligado"}
-                    </button>
                   </div>
                 </div>
               </div>

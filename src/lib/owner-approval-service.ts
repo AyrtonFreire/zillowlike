@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { QueueService } from "./queue-service";
 import { logger } from "./logger";
 import { getPusherServer, PUSHER_EVENTS, PUSHER_CHANNELS } from "./pusher-server";
 import { LeadEventService } from "./lead-event-service";
@@ -257,29 +256,6 @@ export class OwnerApprovalService {
       reason,
     });
 
-    // Realocar corretor para TOP 5 da fila (sem penalidade)
-    if (lead.realtorId) {
-      await this.reallocateRealtorToTop5(lead.realtorId);
-    }
-
-    // Limpar candidaturas e voltar lead ao mural
-    await prisma.$transaction([
-      // Limpar candidaturas
-      prisma.leadCandidature.deleteMany({
-        where: { leadId },
-      }),
-      // Resetar lead
-      prisma.lead.update({
-        where: { id: leadId },
-        data: {
-          status: "PENDING",
-          realtorId: null,
-          candidatesCount: 0,
-          reservedUntil: null,
-        },
-      }),
-    ]);
-
     if (lead.realtorId) {
       try {
         await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
@@ -296,7 +272,7 @@ export class OwnerApprovalService {
       title: "Visita recusada pelo proprietário",
       description: reason,
       fromStatus: lead.status as any,
-      toStatus: "PENDING",
+      toStatus: updatedLead.status as any,
       metadata: { reason },
     });
 
@@ -320,60 +296,6 @@ export class OwnerApprovalService {
     }
 
     return updatedLead;
-  }
-
-  /**
-   * Realoca corretor para TOP 5 da fila após recusa do proprietário
-   * (sem penalidade, pois não foi culpa do corretor)
-   */
-  static async reallocateRealtorToTop5(realtorId: string) {
-    const queue = await prisma.realtorQueue.findUnique({
-      where: { realtorId },
-    });
-
-    if (!queue) {
-      logger.warn("Realtor queue not found", { realtorId });
-      return;
-    }
-
-    // Pegar a 5ª posição atual
-    const fifthPosition = await prisma.realtorQueue.findMany({
-      where: {
-        status: "ACTIVE",
-      },
-      orderBy: {
-        position: "asc",
-      },
-      take: 5,
-      select: {
-        position: true,
-      },
-    });
-
-    const targetPosition = fifthPosition.length >= 5 
-      ? fifthPosition[4].position 
-      : 5;
-
-    // Mover corretor para posição 5
-    await prisma.realtorQueue.update({
-      where: { realtorId },
-      data: {
-        position: targetPosition,
-        lastActivity: new Date(),
-      },
-    });
-
-    // Reorganizar fila
-    await prisma.$executeRaw`
-      UPDATE realtor_queue 
-      SET position = position + 1 
-      WHERE position >= ${targetPosition} AND position < ${queue.position} AND realtor_id != ${realtorId}
-    `;
-
-    logger.info("Realtor reallocated to top 5", {
-      realtorId,
-      newPosition: targetPosition,
-    });
   }
 
   /**

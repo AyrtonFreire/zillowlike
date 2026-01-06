@@ -127,8 +127,6 @@ export default function AdminLeadDetailPage() {
   const [statusDraft, setStatusDraft] = useState<LeadStatus | "">("");
   const [statusSaving, setStatusSaving] = useState(false);
 
-  const [blockSaving, setBlockSaving] = useState(false);
-
   useEffect(() => {
     if (!leadId) return;
     fetchLead();
@@ -215,30 +213,6 @@ export default function AdminLeadDetailPage() {
       alert("Erro ao atualizar status do lead.");
     } finally {
       setStatusSaving(false);
-    }
-  };
-
-  const handleToggleMural = async () => {
-    if (!lead) return;
-    try {
-      setBlockSaving(true);
-      const block = !lead.isDirect;
-      const res = await fetch(`/api/admin/leads/${leadId}/mural`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ block }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) {
-        alert(data?.error || "Não conseguimos atualizar a visibilidade deste lead no mural.");
-        return;
-      }
-      setLead((prev) => (prev ? { ...prev, isDirect: data.lead.isDirect } : prev));
-    } catch (err) {
-      console.error("Error toggling lead mural visibility from admin panel:", err);
-      alert("Erro ao atualizar visibilidade do lead no mural.");
-    } finally {
-      setBlockSaving(false);
     }
   };
 
@@ -357,7 +331,7 @@ export default function AdminLeadDetailPage() {
           className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
         >
           <ArrowLeft className="w-4 h-4" />
-          Voltar para mural
+          Voltar para leads
         </button>
       }
     >
@@ -383,7 +357,7 @@ export default function AdminLeadDetailPage() {
                     {pipelineLabel}
                   </span>
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border text-gray-600 border-gray-200">
-                    {lead.isDirect ? "Lead direto (fora do mural)" : "Participa do mural"}
+                    {lead.isDirect ? "Lead direto" : "Lead"}
                   </span>
                 </div>
               </div>
@@ -507,7 +481,7 @@ export default function AdminLeadDetailPage() {
                       onChange={(e) => setReassignRealtorId(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="">Selecione um corretor parceiro</option>
+                      <option value="">Selecione um corretor</option>
                       {realtors.map((item) => (
                         <option key={item.realtorId} value={item.realtorId}>
                           {item.realtor.name || item.realtor.email}
@@ -529,8 +503,7 @@ export default function AdminLeadDetailPage() {
                 <div className="border-b border-gray-100 pb-4">
                   <p className="font-semibold text-gray-900 mb-1">Forçar status do lead</p>
                   <p className="text-gray-500 mb-2">
-                    Ajuste manualmente o status técnico do lead (fila/mural) em casos de correção pontual. Não use para penalizar
-                    corretores.
+                    Ajuste manualmente o status técnico do lead em casos de correção pontual. Não use para penalizar corretores.
                   </p>
                   <div className="flex flex-col gap-2">
                     <select
@@ -560,30 +533,6 @@ export default function AdminLeadDetailPage() {
                   </div>
                 </div>
 
-                <div>
-                  <p className="font-semibold text-gray-900 mb-1">Controle de participação no mural</p>
-                  <p className="text-gray-500 mb-3">
-                    Use este controle apenas quando for necessário remover ou permitir este lead no mural de corretores, sem mexer em
-                    pontos ou penalidades.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleToggleMural}
-                    disabled={blockSaving}
-                    className={`inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-[11px] font-semibold border ${
-                      lead.isDirect
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                        : "border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100"
-                    } disabled:opacity-60 disabled:cursor-not-allowed`}
-                  >
-                    {lead.isDirect ? <Eye className="w-3 h-3" /> : <Ban className="w-3 h-3" />}
-                    {blockSaving
-                      ? "Salvando..."
-                      : lead.isDirect
-                      ? "Permitir novamente no mural"
-                      : "Bloquear lead do mural"}
-                  </button>
-                </div>
               </div>
             </div>
 
@@ -591,7 +540,7 @@ export default function AdminLeadDetailPage() {
               <p className="font-semibold text-gray-900 mb-1">Observação</p>
               <p>
                 Estas ferramentas são pensadas para correções pontuais e suporte ao time. Sempre que possível, deixe que a própria
-                fila e o funil façam o trabalho automático, mantendo o sistema leve e sem pressão para corretores.
+                automação do funil faça o trabalho, mantendo o sistema leve e sem pressão para corretores.
               </p>
             </div>
           </div>

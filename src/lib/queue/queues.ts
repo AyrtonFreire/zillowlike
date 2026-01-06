@@ -11,13 +11,6 @@ const maybeQueue = (name: string) =>
     ? new Queue(name, { connection, defaultJobOptions })
     : null;
 
-export const leadDistributionQueue = maybeQueue(QUEUE_NAMES.LEAD_DISTRIBUTION);
-
-/**
- * Queue para liberar reservas expiradas
- */
-export const reservationExpiryQueue = maybeQueue(QUEUE_NAMES.RESERVATION_EXPIRY);
-
 /**
  * Queue para expirar leads antigos
  */
@@ -39,20 +32,6 @@ export const cleanupQueue = maybeQueue(QUEUE_NAMES.CLEANUP);
 export const assistantRecalculationQueue = maybeQueue(QUEUE_NAMES.ASSISTANT_RECALCULATION);
 
 /**
- * Adicionar job para distribuir lead
- */
-export async function scheduleLeadDistribution(leadId: string) {
-  if (!leadDistributionQueue) return Promise.resolve();
-  return leadDistributionQueue.add(
-    "distribute-lead",
-    { leadId },
-    {
-      priority: 1, // Alta prioridade
-    }
-  );
-}
-
-/**
  * Adicionar job recorrente para recalcular itens do Assistente
  */
 export async function scheduleAssistantRecalculation() {
@@ -65,23 +44,6 @@ export async function scheduleAssistantRecalculation() {
         every: 10 * 60 * 1000, // A cada 10 minutos
       },
       jobId: "assistant-recalculation",
-    }
-  );
-}
-
-/**
- * Adicionar job recorrente para checar reservas expiradas
- */
-export async function scheduleReservationCheck() {
-  if (!reservationExpiryQueue) return Promise.resolve();
-  return reservationExpiryQueue.add(
-    "check-expired-reservations",
-    {},
-    {
-      repeat: {
-        every: 60 * 1000, // A cada 1 minuto
-      },
-      jobId: "reservation-check", // ID único para evitar duplicatas
     }
   );
 }
@@ -121,23 +83,6 @@ export async function scheduleQueueRecalculation() {
 }
 
 /**
- * Adicionar job recorrente para distribuir leads pendentes
- */
-export async function schedulePendingDistribution() {
-  if (!leadDistributionQueue) return Promise.resolve();
-  return leadDistributionQueue.add(
-    "distribute-pending",
-    {},
-    {
-      repeat: {
-        every: 2 * 60 * 1000, // A cada 2 minutos
-      },
-      jobId: "pending-distribution",
-    }
-  );
-}
-
-/**
  * Adicionar job recorrente para limpeza
  */
 export async function scheduleCleanup() {
@@ -160,11 +105,9 @@ export async function scheduleCleanup() {
 export async function initializeRecurringJobs() {
   if (!connection) return; // queues desabilitadas
   await Promise.all([
-    scheduleReservationCheck(),
     scheduleLeadExpiryCheck(),
     scheduleQueueRecalculation(),
     scheduleCleanup(),
-    schedulePendingDistribution(),
     scheduleAssistantRecalculation(),
   ]);
 }
@@ -174,8 +117,6 @@ export async function initializeRecurringJobs() {
  */
 export function getQueues() {
   return {
-    [QUEUE_NAMES.LEAD_DISTRIBUTION]: leadDistributionQueue,
-    [QUEUE_NAMES.RESERVATION_EXPIRY]: reservationExpiryQueue,
     [QUEUE_NAMES.LEAD_EXPIRY]: leadExpiryQueue,
     [QUEUE_NAMES.QUEUE_RECALCULATION]: queueRecalculationQueue,
     [QUEUE_NAMES.CLEANUP]: cleanupQueue,

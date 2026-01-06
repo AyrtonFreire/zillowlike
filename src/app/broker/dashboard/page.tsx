@@ -12,8 +12,8 @@ import {
   Plus,
   Eye,
   Activity,
-  Crown,
   MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
@@ -134,15 +134,15 @@ interface Lead {
 
 interface MyLead {
   id: string;
-  status: "RESERVED" | "ACCEPTED";
+  status: string;
   createdAt: string;
-  reservedUntil?: string | null;
   property?: {
     id: string;
     title: string;
     city: string;
     state: string;
   };
+  pipelineStage?: PipelineStage;
   nextActionDate?: string | null;
   nextActionNote?: string | null;
 }
@@ -168,10 +168,6 @@ export default function BrokerDashboard() {
   const [myLeadsLoading, setMyLeadsLoading] = useState(true);
   const [myLeadsError, setMyLeadsError] = useState<string | null>(null);
   const [leadFilter, setLeadFilter] = useState<"ALL" | "NEW" | "IN_SERVICE">("ALL");
-  const [partnerStatus, setPartnerStatus] = useState<
-    "NONE" | "PENDING" | "APPROVED" | "REJECTED"
-  >("NONE");
-  const [partnerStatusLoading, setPartnerStatusLoading] = useState(true);
 
   const searchParams = useSearchParams();
   const previewUserId = searchParams.get("previewUserId");
@@ -201,12 +197,6 @@ export default function BrokerDashboard() {
   useEffect(() => {
     if (userId) {
       fetchMyLeads();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (userId) {
-      fetchPartnerStatus();
     }
   }, [userId]);
 
@@ -294,14 +284,14 @@ export default function BrokerDashboard() {
     try {
       setMyLeadsError(null);
       setMyLeadsLoading(true);
-      const response = await fetch("/api/leads/my-leads");
+      const response = await fetch("/api/leads/my-pipeline");
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data?.error || `API error: ${response.status}`);
       }
 
-      setMyLeads(Array.isArray(data) ? data : []);
+      setMyLeads(Array.isArray(data) ? (data as MyLead[]) : []);
     } catch (error) {
       console.error("Error fetching my leads:", error);
       setMyLeads([]);
@@ -377,42 +367,6 @@ export default function BrokerDashboard() {
     }
   };
 
-  const fetchPartnerStatus = async () => {
-    try {
-      setPartnerStatusLoading(true);
-      const response = await fetch("/api/realtor/status");
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const applicationStatus = data?.partner?.applicationStatus as
-        | "PENDING"
-        | "APPROVED"
-        | "REJECTED"
-        | null;
-      const hasQueueEntry = Boolean(data?.partner?.hasQueueEntry);
-
-      let status: "NONE" | "PENDING" | "APPROVED" | "REJECTED" = "NONE";
-
-      if (applicationStatus === "APPROVED" || hasQueueEntry) {
-        status = "APPROVED";
-      } else if (applicationStatus === "PENDING") {
-        status = "PENDING";
-      } else if (applicationStatus === "REJECTED") {
-        status = "REJECTED";
-      }
-
-      setPartnerStatus(status);
-    } catch (error) {
-      console.error("Error fetching realtor partner status:", error);
-      setPartnerStatus("NONE");
-    } finally {
-      setPartnerStatusLoading(false);
-    }
-  };
-
   const fetchTeamsPreview = async () => {
     try {
       const response = await fetch("/api/teams");
@@ -468,9 +422,9 @@ export default function BrokerDashboard() {
   };
 
   const today = new Date();
-  const activeMyLeads = myLeads.filter((lead: any) => lead?.status === "RESERVED" || lead?.status === "ACCEPTED");
-  const newLeads = activeMyLeads.filter((lead) => lead.status === "RESERVED");
-  const inServiceLeads = activeMyLeads.filter((lead) => lead.status === "ACCEPTED");
+  const activeMyLeads = myLeads.filter((lead: any) => lead?.pipelineStage !== "WON" && lead?.pipelineStage !== "LOST");
+  const newLeads = activeMyLeads.filter((lead: any) => (lead.pipelineStage || "NEW") === "NEW");
+  const inServiceLeads = activeMyLeads.filter((lead: any) => (lead.pipelineStage || "NEW") !== "NEW");
   const leadsToday = activeMyLeads.filter((lead) =>
     isSameDay(new Date(lead.createdAt), today)
   );
@@ -546,9 +500,6 @@ export default function BrokerDashboard() {
     return true;
   });
 
-  const showPartnerCta = !partnerStatusLoading && partnerStatus !== "APPROVED";
-  const isPartner = partnerStatus === "APPROVED";
-
   if (loading) {
     return (
       <DashboardLayout
@@ -615,8 +566,8 @@ export default function BrokerDashboard() {
             className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
           >
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors">
-                <Eye className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-600" />
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">Ver Imóveis</h3>
@@ -626,7 +577,7 @@ export default function BrokerDashboard() {
           </Link>
 
           <Link
-            href="/broker/leads"
+            href="/broker/crm"
             className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
           >
             <div className="flex items-center gap-4">
@@ -635,7 +586,7 @@ export default function BrokerDashboard() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">Minha lista de leads</h3>
-                <p className="text-sm text-gray-600">Ver e acompanhar todos os seus leads</p>
+                <p className="text-sm text-gray-500 mt-1">Acompanhe suas oportunidades</p>
               </div>
             </div>
           </Link>
@@ -709,26 +660,14 @@ export default function BrokerDashboard() {
             iconColor="text-purple-600"
             iconBgColor="bg-purple-50"
           />
-          {isPartner ? (
-            <MetricCard
-              title="Tempo de resposta (7 dias)"
-              value={typeof metrics?.avgResponseTime === "number" ? formatMinutesCompact(metrics.avgResponseTime) : "—"}
-              icon={Clock}
-              trend={metrics?.avgResponseTimeTrend}
-              subtitle="Média p/ leads recebidos"
-              iconColor="text-orange-600"
-              iconBgColor="bg-orange-50"
-            />
-          ) : (
-            <MetricCard
-              title="Lembretes marcados"
-              value={metrics?.leadsWithReminders || 0}
-              icon={Clock}
-              subtitle="Leads com próxima ação"
-              iconColor="text-orange-600"
-              iconBgColor="bg-orange-50"
-            />
-          )}
+          <MetricCard
+            title="Lembretes marcados"
+            value={metrics?.leadsWithReminders || 0}
+            icon={Clock}
+            subtitle="Leads com próxima ação"
+            iconColor="text-orange-600"
+            iconBgColor="bg-orange-50"
+          />
         </div>
 
         {/* Resumo dos Leads */}
@@ -779,9 +718,7 @@ export default function BrokerDashboard() {
               </div>
             ) : activeMyLeads.length === 0 ? (
               <div className="text-sm text-gray-600">
-                {partnerStatus === "APPROVED"
-                  ? "Nenhum lead ativo no momento. Assim que novos leads da plataforma ou dos seus anúncios chegarem, um resumo rápido do seu dia aparece aqui."
-                  : "Nenhum lead ativo no momento. Quando você tiver leads gerados pelos imóveis que anunciar, um resumo rápido do seu dia aparece aqui."}
+                Nenhum lead ativo no momento. Quando você tiver leads gerados pelos imóveis que anunciar, um resumo rápido do seu dia aparece aqui.
               </div>
             ) : (
               <motion.div
@@ -792,7 +729,7 @@ export default function BrokerDashboard() {
               >
                 <button
                   type="button"
-                  onClick={() => router.push("/broker/leads?view=list")}
+                  onClick={() => router.push("/broker/crm")}
                   className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 text-left hover:shadow-sm transition-shadow"
                 >
                   <div className="flex items-center justify-between">
@@ -862,7 +799,7 @@ export default function BrokerDashboard() {
                   <motion.div
                     whileHover={{ y: -2 }}
                     className="rounded-2xl border border-gray-100 bg-white p-4 cursor-pointer"
-                    onClick={() => router.push("/broker/leads?view=list&stage=NEW")}
+                    onClick={() => router.push("/broker/crm")}
                     role="button"
                     tabIndex={0}
                   >
@@ -870,10 +807,10 @@ export default function BrokerDashboard() {
                       <div>
                         <p className="text-xs font-medium text-gray-500">Novos</p>
                         <p className="mt-1 text-3xl font-semibold text-gray-900 tabular-nums">{newLeads.length}</p>
-                        <p className="mt-1 text-xs text-gray-500">Reservados esperando sua decisão</p>
+                        <p className="mt-1 text-xs text-gray-500">Leads no topo do funil</p>
                       </div>
                       <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
-                        <Users className="h-5 w-5" />
+                        <Sparkles className="w-5 h-5" />
                       </div>
                     </div>
                     <div className="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
@@ -890,7 +827,7 @@ export default function BrokerDashboard() {
                   <motion.div
                     whileHover={{ y: -2 }}
                     className="rounded-2xl border border-gray-100 bg-white p-4 cursor-pointer"
-                    onClick={() => router.push("/broker/leads?view=list&date=today")}
+                    onClick={() => router.push("/broker/crm")}
                     role="button"
                     tabIndex={0}
                   >
@@ -1210,7 +1147,7 @@ export default function BrokerDashboard() {
             title="Leads Recentes"
             action={
               <Link
-                href="/broker/leads"
+                href="/broker/crm"
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 Ver todos
@@ -1252,13 +1189,7 @@ export default function BrokerDashboard() {
                 <div className="text-center py-8 text-gray-500">
                   <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                   <p>
-                    {partnerStatus === "APPROVED"
-                      ? leadFilter === "NEW"
-                        ? "Nenhum lead novo da plataforma ou dos seus anúncios para esse filtro agora."
-                        : leadFilter === "IN_SERVICE"
-                        ? "Nenhum lead em atendimento no momento para esse filtro."
-                        : "Nenhum lead da plataforma ou dos seus anúncios encontrado para esse filtro."
-                      : leadFilter === "NEW"
+                    {leadFilter === "NEW"
                       ? "Nenhum lead novo dos imóveis que você anunciou para esse filtro agora."
                       : leadFilter === "IN_SERVICE"
                       ? "Nenhum lead em atendimento no momento para esse filtro."
@@ -1269,66 +1200,6 @@ export default function BrokerDashboard() {
             </div>
           </StatCard>
         </div>
-
-        {showPartnerCta && (
-          <div className="mb-8 rounded-2xl bg-gradient-to-r from-teal-dark via-teal to-accent text-white shadow-lg p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[11px] font-semibold uppercase tracking-[0.16em] mb-3">
-                <Crown className="w-4 h-4" />
-                <span>
-                  {partnerStatus === "PENDING"
-                    ? "Aplicação em análise"
-                    : partnerStatus === "REJECTED"
-                    ? "Aplicação não aprovada"
-                    : "Programa de corretores parceiros"}
-                </span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-bold mb-2">
-                {partnerStatus === "PENDING"
-                  ? "Estamos revisando seu cadastro para o programa de parceiros"
-                  : partnerStatus === "REJECTED"
-                  ? "Sua aplicação para o programa de parceiros foi analisada"
-                  : "Quer aparecer na fila inteligente de leads do ZillowLike?"}
-              </h2>
-              <p className="text-sm sm:text-base text-white/85 max-w-xl">
-                {partnerStatus === "PENDING" ? (
-                  "Obrigado por se candidatar! Estamos validando seus dados profissionais e em breve você poderá começar a receber leads da fila inteligente, direto aqui no seu painel."
-                ) : partnerStatus === "REJECTED" ? (
-                  "Sua aplicação para o programa de corretores parceiros não foi aprovada neste momento. Se você tiver dúvidas sobre essa decisão, entre em contato com o suporte da plataforma."
-                ) : (
-                  <>
-                    Para se tornar <span className="font-semibold">corretor parceiro</span>, envie fotos dos seus documentos para análise e o site irá te conectar com interessados em imóveis publicados por pessoas físicas, com distribuição justa e acompanhamento organizado direto no seu painel.
-                  </>
-                )}
-              </p>
-            </div>
-            {partnerStatus === "REJECTED" ? (
-              <div className="w-full md:w-auto flex flex-col items-stretch gap-2">
-                <p className="text-[11px] text-white/80 md:text-right">
-                  Se você tiver dúvidas, envie uma mensagem pelos canais de contato do ZillowLike.
-                </p>
-              </div>
-            ) : (
-              <div className="w-full md:w-auto flex flex-col items-stretch gap-2">
-                <Link
-                  href="/become-realtor"
-                  className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold bg-white text-teal-dark shadow-md hover:shadow-lg hover:bg-teal-50 transition-all"
-                >
-                  <span>
-                    {partnerStatus === "PENDING"
-                      ? "Acompanhar status da aplicação"
-                      : "Conhecer programa de parceria"}
-                  </span>
-                </Link>
-                <p className="text-[11px] text-white/80 md:text-right">
-                  {partnerStatus === "PENDING"
-                    ? "Avisaremos por e-mail assim que sua análise for concluída."
-                    : "Cadastro gratuito, sujeito à validação dos seus dados profissionais."}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
 
         {teamSummary && (
           <div className="mt-8">

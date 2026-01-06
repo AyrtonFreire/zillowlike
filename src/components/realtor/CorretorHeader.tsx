@@ -11,7 +11,6 @@ import {
   MapPin,
   MessageCircle,
   Phone,
-  ShieldCheck,
   Star,
   TrendingUp,
 } from "lucide-react";
@@ -32,7 +31,6 @@ type Props = {
   linkedin?: string | null;
   facebook?: string | null;
   whatsapp?: string | null;
-  participatesInLeadBoard: boolean;
   creci?: string | null;
   creciState?: string | null;
   isTopProducer: boolean;
@@ -56,7 +54,6 @@ export default function CorretorHeader({
   linkedin,
   facebook,
   whatsapp,
-  participatesInLeadBoard,
   creci,
   creciState,
   isTopProducer,
@@ -94,12 +91,12 @@ export default function CorretorHeader({
                   {isAgency ? (
                     <>
                       <Building2 className="mr-1.5 h-3.5 w-3.5" />
-                      Imobiliária parceira
+                      Imobiliária
                     </>
                   ) : (
                     <>
                       <HomeIcon className="mr-1.5 h-3.5 w-3.5" />
-                      Corretor parceiro
+                      Corretor
                     </>
                   )}
                 </span>
@@ -107,12 +104,6 @@ export default function CorretorHeader({
                   <span className="inline-flex items-center rounded-full bg-green-500/20 px-3 py-1 text-xs font-medium text-green-50 border border-green-300/50">
                     <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
                     CRECI {creci}/{creciState}
-                  </span>
-                )}
-                {participatesInLeadBoard && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-50 border border-emerald-300/50">
-                    <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-                    Mural de Leads
                   </span>
                 )}
                 {isTopProducer && (

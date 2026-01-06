@@ -1,6 +1,5 @@
 import { Worker } from "bullmq";
 import { QUEUE_NAMES, getRedisConnection } from "@/lib/queue/config";
-import { LeadDistributionService } from "@/lib/lead-distribution-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { PrismaClient } from "@prisma/client";
 import { QueueService } from "@/lib/queue-service";
@@ -10,24 +9,6 @@ const connection = getRedisConnection();
 
 // If Redis is not configured (or during build), do not initialize workers
 if (connection) {
-
-new Worker(
-  QUEUE_NAMES.LEAD_DISTRIBUTION,
-  async (job) => {
-    const { leadId } = job.data as { leadId: string };
-    await LeadDistributionService.distributeNewLead(leadId);
-  },
-  { connection, concurrency: 5 }
-);
-
-new Worker(
-  QUEUE_NAMES.RESERVATION_EXPIRY,
-  async () => {
-    await LeadDistributionService.releaseExpiredReservations();
-  },
-  { connection, concurrency: 1 }
-);
-
 new Worker(
   QUEUE_NAMES.LEAD_EXPIRY,
   async () => {

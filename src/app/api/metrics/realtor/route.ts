@@ -3,23 +3,11 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Tempo de reserva em minutos (mantém em sync com LeadDistributionService)
-const RESERVATION_TIME_MINUTES = 10;
-
 function computeResponseMinutes(params: {
   createdAt: Date;
   respondedAt: Date;
-  reservedUntil?: Date | null;
 }) {
-  const referenceStart = (() => {
-    if (params.reservedUntil) {
-      const reservedAt = new Date(params.reservedUntil.getTime() - RESERVATION_TIME_MINUTES * 60000);
-      if (!Number.isNaN(reservedAt.getTime())) return reservedAt;
-    }
-    return params.createdAt;
-  })();
-
-  const diffMs = params.respondedAt.getTime() - referenceStart.getTime();
+  const diffMs = params.respondedAt.getTime() - params.createdAt.getTime();
   const minutes = diffMs / 60000;
   if (!Number.isFinite(minutes)) return 0;
   if (minutes <= 0) return 0;
@@ -87,9 +75,6 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: last7Days,
         },
-        status: {
-          in: ["ACCEPTED", "REJECTED"],
-        },
         respondedAt: {
           not: null,
         },
@@ -97,7 +82,6 @@ export async function GET(request: NextRequest) {
       select: {
         createdAt: true,
         respondedAt: true,
-        reservedUntil: true,
       },
     });
 
@@ -108,9 +92,6 @@ export async function GET(request: NextRequest) {
           gte: last14Days,
           lt: last7Days,
         },
-        status: {
-          in: ["ACCEPTED", "REJECTED"],
-        },
         respondedAt: {
           not: null,
         },
@@ -118,7 +99,6 @@ export async function GET(request: NextRequest) {
       select: {
         createdAt: true,
         respondedAt: true,
-        reservedUntil: true,
       },
     });
 
@@ -132,7 +112,6 @@ export async function GET(request: NextRequest) {
                 computeResponseMinutes({
                   createdAt: lead.createdAt,
                   respondedAt: lead.respondedAt,
-                  reservedUntil: (lead as any).reservedUntil ?? null,
                 })
               );
             }, 0) / leads.length
@@ -149,7 +128,6 @@ export async function GET(request: NextRequest) {
                 computeResponseMinutes({
                   createdAt: lead.createdAt,
                   respondedAt: lead.respondedAt,
-                  reservedUntil: (lead as any).reservedUntil ?? null,
                 })
               );
             }, 0) / prevLeads.length
@@ -161,13 +139,11 @@ export async function GET(request: NextRequest) {
         ? ((avgResponseTimePrevious - avgResponseTime) / avgResponseTimePrevious) * 100
         : 0;
 
-    // Leads atualmente em atendimento (reservados ou aceitos)
+    // Leads atualmente em atendimento
     const activeLeads = await prisma.lead.count({
       where: {
         realtorId: userId,
-        status: {
-          in: ["RESERVED", "ACCEPTED"],
-        },
+        pipelineStage: { notIn: ["WON", "LOST"] },
       },
     });
 

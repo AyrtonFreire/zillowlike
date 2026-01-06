@@ -25,6 +25,34 @@ type PropertyMetrics = {
   byStatus: Record<string, number>;
 };
 
+type PropertySummary = {
+  id: string;
+  title: string;
+  status: string;
+  city: string;
+  state: string;
+  neighborhood: string | null;
+  createdAt: string;
+  views: number;
+  leads: number;
+  favorites: number;
+  daysSinceLastLead: number | null;
+  conversionRatePct: number;
+};
+
+type LeadMetrics = {
+  activeTotal: number;
+  byStage: Record<string, number>;
+  inAttendanceTotal: number;
+  pendingReplyTotal: number;
+  pendingReplyLeads: Array<{
+    leadId: string;
+    contactName: string | null;
+    propertyTitle: string | null;
+    pipelineStage: string | null;
+  }>;
+};
+
 type AssistantUpcomingItem = {
   id: string;
   title: string | null;
@@ -273,167 +301,23 @@ function tryAnswerDeterministic(input: {
       return {
         answer:
           "No momento, não encontrei lembretes/pendências com data marcada para vencer. Quer que eu abra o CRM para você ver todas as pendências?",
-        highlights: undefined,
-        suggestedActions: [
-          makeOpenPageAction(
-            "/broker/crm",
-            "Abrir Assistente",
-            "Ver suas pendências e lembretes no Assistente do Corretor"
-          ),
-        ],
+        suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver pendências e próximos passos")],
       };
     }
 
-    const highlights = top.map(({ it, ts }) => {
-      const when = formatShortDateTimeBR(new Date(ts));
-      const title = String(it.title || "(sem título)");
-      const suffix = it.leadId ? ` | leadId=${String(it.leadId)}` : "";
-      return `${title} | ${when}${suffix}`;
-    });
+    const highlights = top
+      .map(({ it, ts }) => {
+        const when = formatShortDateTimeBR(new Date(ts));
+        const title = it.title ? String(it.title).trim() : "(sem título)";
+        const msg = it.message ? String(it.message).trim() : "";
+        return msg ? `${when} · ${title} · ${msg}` : `${when} · ${title}`;
+      })
+      .slice(0, 6);
 
     return {
-      answer: `Aqui estão seus próximos lembretes/pendências a vencer (top ${highlights.length}). Quer que eu abra o Assistente para você agir neles?`,
+      answer: `Próximas pendências (${highlights.length}):`,
       highlights,
-      suggestedActions: [
-        makeOpenPageAction(
-          "/broker/crm",
-          "Abrir Assistente",
-          "Ver suas pendências e lembretes (com prioridade e data)"
-        ),
-      ],
-    };
-  }
-
-  if ((asksAgenda || asksFollowUp) && (asksHowMany || asksList || asksToday || asksTomorrow || asksThisWeek)) {
-    const now = new Date();
-    const start = startOfDay(now);
-    const rangeStart = asksTomorrow ? addDays(start, 1) : asksToday ? start : start;
-    const rangeEnd = asksTomorrow
-      ? addDays(start, 2)
-      : asksToday
-        ? addDays(start, 1)
-        : asksThisWeek
-          ? addDays(start, 7)
-          : addDays(start, 7);
-
-    const visitList = (Array.isArray(upcomingVisits) ? upcomingVisits : [])
-      .map((v) => {
-        const d = new Date(v.when);
-        return Number.isNaN(d.getTime()) ? null : { v, ts: d.getTime() };
-      })
-      .filter(Boolean)
-      .filter((x: any) => x.ts >= rangeStart.getTime() && x.ts < rangeEnd.getTime())
-      .sort((a: any, b: any) => a.ts - b.ts)
-      .slice(0, 6);
-
-    const actionList = (Array.isArray(upcomingLeadActions) ? upcomingLeadActions : [])
-      .map((a) => {
-        const d = new Date(a.when);
-        return Number.isNaN(d.getTime()) ? null : { a, ts: d.getTime() };
-      })
-      .filter(Boolean)
-      .filter((x: any) => x.ts >= rangeStart.getTime() && x.ts < rangeEnd.getTime())
-      .sort((a: any, b: any) => a.ts - b.ts)
-      .slice(0, 6);
-
-    const total = visitList.length + actionList.length;
-    const highlights = [
-      ...visitList.map(({ v, ts }: any) => {
-        const who = v.contactName || "(sem nome)";
-        const prop = v.propertyTitle ? ` | ${v.propertyTitle}` : "";
-        return `Visita | ${formatShortDateTimeBR(new Date(ts))} | ${who}${prop} | leadId=${v.leadId}`;
-      }),
-      ...actionList.map(({ a, ts }: any) => {
-        const who = a.contactName || "(sem nome)";
-        const prop = a.propertyTitle ? ` | ${a.propertyTitle}` : "";
-        const note = a.note ? ` | ${a.note}` : "";
-        return `Próxima ação | ${formatShortDateTimeBR(new Date(ts))} | ${who}${prop}${note} | leadId=${a.leadId}`;
-      }),
-    ].slice(0, 6);
-
-    const answer = total
-      ? `Encontrei ${total} itens na sua agenda (visitas + próximas ações do CRM). Quer que eu abra a agenda?`
-      : `Não encontrei visitas ou próximas ações do CRM no período consultado. Quer que eu abra a agenda para você conferir?`;
-
-    return {
-      answer,
-      highlights: highlights.length ? highlights : undefined,
-      suggestedActions: [makeOpenPageAction("/broker/agenda", "Abrir agenda", "Ver visitas e próximas ações do CRM")],
-    };
-  }
-
-  if (asksDailyPriorities && leadMetrics) {
-    const pendingReply = Number(leadMetrics.pendingReplyTotal || 0);
-    const inAttendance = Number(leadMetrics.inAttendanceTotal || 0);
-
-    const highlights: string[] = [];
-    if (pendingReply > 0) highlights.push(`Responder clientes: ${pendingReply} conversa(s) aguardando sua resposta`);
-    if (Array.isArray(upcomingAssistantItems) && upcomingAssistantItems.length > 0) {
-      const nextTask = upcomingAssistantItems
-        .map((it) => ({ it, ts: getEffectiveAssistantDateMs(it) }))
-        .filter((x) => typeof x.ts === "number") as Array<{ it: AssistantUpcomingItem; ts: number }>;
-      nextTask.sort((a, b) => a.ts - b.ts);
-      if (nextTask.length) {
-        highlights.push(
-          `Próxima pendência: ${String(nextTask[0].it.title || "(sem título)")} | ${formatShortDateTimeBR(new Date(nextTask[0].ts))}`
-        );
-      }
-    }
-    if (Array.isArray(upcomingLeadActions) && upcomingLeadActions.length > 0) {
-      const a = upcomingLeadActions
-        .map((x) => {
-          const d = new Date(x.when);
-          return Number.isNaN(d.getTime()) ? null : { x, ts: d.getTime() };
-        })
-        .filter(Boolean)
-        .sort((aa: any, bb: any) => aa.ts - bb.ts)[0];
-      if (a) {
-        highlights.push(
-          `Próximo follow-up: ${formatShortDateTimeBR(new Date(a.ts))} | ${a.x.contactName || "(sem nome)"} | leadId=${a.x.leadId}`
-        );
-      }
-    }
-    if (highlights.length === 0) {
-      highlights.push(`Leads em atendimento: ${inAttendance}`);
-    }
-
-    const suggestedActions =
-      pendingReply > 0
-        ? [makeOpenPageAction("/broker/chats", "Abrir chats", "Responder rapidamente clientes que já estão esperando")]
-        : [makeOpenPageAction("/broker/crm", "Abrir Assistente", "Ver pendências e priorizar seus próximos passos")];
-
-    return {
-      answer: "Aqui vai um resumo prático do seu foco agora. Quer que eu abra a tela mais relevante?",
-      highlights: highlights.slice(0, 6),
-      suggestedActions,
-    };
-  }
-
-  if (leadMetrics && (asksHowMany || asksList) && asksPendingReply) {
-    const count = Number(leadMetrics.pendingReplyTotal || 0);
-    const highlights = (leadMetrics.pendingReplyLeads || [])
-      .slice(0, 10)
-      .map((l) => {
-        const who = l.contactName || "(sem nome)";
-        const prop = l.propertyTitle ? ` | ${l.propertyTitle}` : "";
-        const stage = l.pipelineStage ? ` | stage=${l.pipelineStage}` : "";
-        return `leadId=${l.leadId} | ${who}${prop}${stage}`;
-      });
-
-    const answer = asksList
-      ? `Aqui estão leads com conversa aguardando sua resposta (última mensagem do cliente). Total: ${count}. Quer que eu abra a tela de chats agora?`
-      : `Você tem ${count} conversas aguardando sua resposta (última mensagem do cliente). Quer que eu abra a tela de chats agora?`;
-
-    return {
-      answer,
-      highlights: highlights.length ? highlights : undefined,
-      suggestedActions: [
-        makeOpenPageAction(
-          "/broker/chats",
-          "Abrir chats",
-          "Ver as conversas e responder as últimas mensagens do cliente"
-        ),
-      ],
+      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver pendências e próximos passos")],
     };
   }
 
@@ -459,18 +343,18 @@ function tryAnswerDeterministic(input: {
   if (leadMetrics && asksHowMany && asksInAttendance) {
     const count = Number(leadMetrics.inAttendanceTotal || 0);
     return {
-      answer: `Você tem ${count} leads em atendimento (CONTACT/VISIT/PROPOSAL/DOCUMENTS). Quer que eu abra a lista de leads?`,
+      answer: `Você tem ${count} leads em atendimento (CONTACT/VISIT/PROPOSAL/DOCUMENTS). Quer que eu abra o CRM?`,
       highlights: undefined,
-      suggestedActions: [makeOpenPageAction("/broker/leads", "Abrir leads", "Ver os leads em atendimento e definir o próximo passo")],
+      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver os leads em atendimento e definir o próximo passo")],
     };
   }
 
   if (leadMetrics && asksHowMany && asksActive) {
     const count = Number(leadMetrics.activeTotal || 0);
     return {
-      answer: `Você tem ${count} leads ativos (exclui WON/LOST e status fechados). Quer que eu abra a lista de leads?`,
+      answer: `Você tem ${count} leads ativos (exclui WON/LOST e status fechados). Quer que eu abra o CRM?`,
       highlights: undefined,
-      suggestedActions: [makeOpenPageAction("/broker/leads", "Abrir leads", "Ver e priorizar seus leads ativos")],
+      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver e priorizar seus leads ativos")],
     };
   }
 
@@ -482,9 +366,9 @@ function tryAnswerDeterministic(input: {
     const highlights = entries.slice(0, 12).map(([k, v]) => `${k}: ${v}`);
     const total = Number(leadMetrics.activeTotal || 0);
     return {
-      answer: `Distribuição de leads ativos por etapa (total ${total}). Quer que eu abra a lista de leads para você filtrar por etapa?`,
+      answer: `Distribuição de leads ativos por etapa (total ${total}). Quer que eu abra o CRM?`,
       highlights: highlights.length ? highlights : undefined,
-      suggestedActions: [makeOpenPageAction("/broker/leads", "Abrir leads", "Filtrar por etapa e agir nos maiores gargalos")],
+      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir CRM", "Filtrar por etapa e agir nos maiores gargalos")],
     };
   }
 
@@ -517,71 +401,23 @@ function tryAnswerDeterministic(input: {
       return `propertyId=${p.id} | ${p.title} | ${perf}${stale}`;
     });
 
-    const properties = filtered.map((p) => ({
-      id: p.id,
-      title: p.title,
-      status: p.status,
-      city: p.city,
-      state: p.state,
-      neighborhood: p.neighborhood,
-      views: p.views,
-      leads: p.leads,
-      conversionRatePct: p.conversionRatePct,
-      daysSinceLastLead: p.daysSinceLastLead,
-    }));
-
     const suggestedActions = filtered.length
-      ? [
-          makePropertyAction(
-            filtered[0].id,
-            "Diagnosticar 1º imóvel da lista",
-            "Ver rapidamente ajustes que podem destravar conversão"
-          ),
-        ]
+      ? [makeOpenPageAction("/broker/properties", "Abrir imóveis", "Abrir o estoque e agir nos imóveis com pior desempenho")]
       : undefined;
 
     const answer = asksList
-      ? `${label} (top ${highlights.length}):${filtered.length ? " Quer que eu abra o 1º imóvel da lista para diagnóstico?" : ""}`
-      : `${label}: encontrei ${highlights.length} no seu estoque.${filtered.length ? " Quer que eu abra o 1º imóvel da lista para diagnóstico?" : ""}`;
+      ? `${label} (top ${highlights.length}):${filtered.length ? " Quer que eu abra a tela de imóveis?" : ""}`
+      : `${label}: encontrei ${highlights.length} no seu estoque.${filtered.length ? " Quer que eu abra a tela de imóveis?" : ""}`;
 
     return {
       answer,
       highlights: highlights.length ? highlights : undefined,
       suggestedActions,
-      properties,
     };
   }
 
   return null;
 }
-
-type PropertySummary = {
-  id: string;
-  title: string;
-  status: string;
-  city: string;
-  state: string;
-  neighborhood: string | null;
-  createdAt: string;
-  views: number;
-  leads: number;
-  favorites: number;
-  daysSinceLastLead: number | null;
-  conversionRatePct: number;
-};
-
-type LeadMetrics = {
-  activeTotal: number;
-  byStage: Record<string, number>;
-  inAttendanceTotal: number;
-  pendingReplyTotal: number;
-  pendingReplyLeads: Array<{
-    leadId: string;
-    contactName: string | null;
-    propertyTitle: string | null;
-    pipelineStage: string | null;
-  }>;
-};
 
 const QuerySchema = z
   .object({
@@ -618,7 +454,6 @@ const OutputSchema = z
 const AllowedOpenPagePaths = new Set([
   "/broker/dashboard",
   "/broker/crm",
-  "/broker/leads",
   "/broker/chats",
   "/broker/properties",
   "/broker/queue",
@@ -638,7 +473,7 @@ function buildFallbackSuggestedActions(params: { message: string; leadId: string
     return [makeOpenPageAction("/broker/properties", "Abrir imóveis", "Ver e agir no seu estoque")];
   }
   if (/\blead\b|\bleads\b|\bfunil\b|\bpipeline\b|\batendimento\b/.test(q)) {
-    return [makeOpenPageAction("/broker/leads", "Abrir leads", "Ver, filtrar e priorizar leads")];
+    return [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver, filtrar e priorizar leads")];
   }
   if (/\bchat\b|\bchats\b|\bmensagem\b|\bresponder\b/.test(q)) {
     return [makeOpenPageAction("/broker/chats", "Abrir chats", "Ver conversas e responder clientes")];
@@ -743,7 +578,7 @@ function buildSystemPrompt(leadMode: boolean) {
     "- SET_REMINDER: payload = { leadId: string, date: string|null (ISO), note: string|null }\n" +
     "- PROPERTY_DIAGNOSIS: payload = { propertyId?: string, checklist: string[] } (checklist obrigatório com 3 a 6 itens curtos; se não conseguir, NÃO sugira essa ação)\n" +
     "- LISTING_IMPROVEMENT: payload = { propertyId?: string, checklist: string[] } (checklist obrigatório com 3 a 6 itens curtos; se não conseguir, NÃO sugira essa ação)\n" +
-    "- OPEN_PAGE: payload = { path: string } (deve ser um path interno permitido, ex: /broker/leads, /broker/chats, /broker/properties)\n";
+    "- OPEN_PAGE: payload = { path: string } (deve ser um path interno permitido, ex: /broker/crm, /broker/chats, /broker/properties)\n";
 
   return leadMode
     ? `${base}\nContexto: chat ligado a um lead. Você pode sugerir rascunho de mensagem ao cliente e lembretes internos.`
@@ -832,7 +667,7 @@ function buildUserPrompt(input: {
   out.push("\nInstrução:");
   out.push(
     "Responda com diagnóstico curto, sugestão prática e próximo passo acionável.\n" +
-      "Se a pergunta pedir informação que NÃO está nas seções acima, diga: 'Não tenho essa informação no momento (não aparece no contexto disponível)' e sugira qual tela o corretor pode abrir (ex: /broker/leads, /broker/chats, /broker/properties, /broker/agenda)."
+      "Se a pergunta pedir informação que NÃO está nas seções acima, diga: 'Não tenho essa informação no momento (não aparece no contexto disponível)' e sugira qual tela o corretor pode abrir (ex: /broker/crm, /broker/chats, /broker/properties, /broker/agenda)."
   );
   return out.join("\n");
 }

@@ -20,8 +20,6 @@ import {
   ClipboardCheck,
   AlertTriangle,
 } from "lucide-react";
-import CountdownTimer from "@/components/queue/CountdownTimer";
-import StatusIndicator from "@/components/queue/StatusIndicator";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -32,7 +30,7 @@ import { buildPropertyPath } from "@/lib/slug";
 
 interface Lead {
   id: string;
-  status: "RESERVED" | "ACCEPTED" | "COMPLETED";
+  status: string;
   createdAt: string;
   reservedUntil?: string | null;
   respondedAt?: string | null;
@@ -66,6 +64,16 @@ interface Lead {
   };
   clientChatToken?: string | null;
 }
+
+const STAGE_BADGE = {
+  NEW: { label: "Novo", className: "bg-blue-50 text-blue-700 border-blue-100" },
+  CONTACT: { label: "Contato", className: "bg-amber-50 text-amber-700 border-amber-100" },
+  VISIT: { label: "Visita", className: "bg-teal-50 text-teal-700 border-teal-100" },
+  PROPOSAL: { label: "Proposta", className: "bg-orange-50 text-orange-700 border-orange-100" },
+  DOCUMENTS: { label: "Documentos", className: "bg-pink-50 text-pink-700 border-pink-100" },
+  WON: { label: "Ganho", className: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+  LOST: { label: "Perdido", className: "bg-gray-50 text-gray-700 border-gray-200" },
+} as const;
 
 interface LeadNote {
   id: string;
@@ -451,9 +459,13 @@ export default function LeadDetailPage() {
 
   const handleCompleteLead = async () => {
     if (!leadId) return;
-    if (!realtorId) return;
-    if (lead?.status !== "ACCEPTED") {
-      toast.warning("Não disponível", "Você só pode concluir leads em atendimento (aceitos). ");
+    if (lead?.pipelineStage === "WON") {
+      toast.info("Já concluído", "Este lead já está marcado como ganho.");
+      return;
+    }
+
+    if (lead?.pipelineStage === "LOST") {
+      toast.warning("Não disponível", "Este lead já está marcado como perdido.");
       return;
     }
 
@@ -469,10 +481,10 @@ export default function LeadDetailPage() {
 
     try {
       setCompletingLead(true);
-      const response = await fetch(`/api/leads/${leadId}/complete`, {
-        method: "POST",
+      const response = await fetch(`/api/leads/${leadId}/pipeline`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ realtorId }),
+        body: JSON.stringify({ stage: "WON" }),
       });
       const data = await response.json().catch(() => null);
 
@@ -480,7 +492,7 @@ export default function LeadDetailPage() {
         throw new Error(data?.error || data?.message || "Não conseguimos concluir este atendimento agora.");
       }
 
-      toast.success("Atendimento concluído", "Lead marcado como resolvido.");
+      toast.success("Atendimento concluído", "Lead movido para Fechado (ganho).");
       await fetchLead();
     } catch (err: any) {
       console.error("Error completing lead:", err);
@@ -528,7 +540,7 @@ export default function LeadDetailPage() {
 
       toast.info("Lead arquivado", "Movido para Fechado como perdido.");
       await fetchLead();
-      router.push("/broker/leads");
+      router.push("/broker/crm");
     } catch (err: any) {
       console.error("Error archiving lead:", err);
       toast.error("Erro ao arquivar lead", err?.message || "Tente novamente.");
@@ -689,7 +701,7 @@ export default function LeadDetailPage() {
         breadcrumbs={[
           { label: "Home", href: "/" },
           { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Leads", href: "/broker/leads" },
+          { label: "CRM", href: "/broker/crm" },
           { label: "Detalhes" },
         ]}
       >
@@ -706,7 +718,7 @@ export default function LeadDetailPage() {
         breadcrumbs={[
           { label: "Home", href: "/" },
           { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Leads", href: "/broker/leads" },
+          { label: "CRM", href: "/broker/crm" },
           { label: "Detalhes" },
         ]}
       >
@@ -735,7 +747,7 @@ export default function LeadDetailPage() {
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Corretor", href: "/broker/dashboard" },
-        { label: "Leads", href: "/broker/leads" },
+        { label: "CRM", href: "/broker/crm" },
         { label: "Detalhes" },
       ]}
     >
@@ -815,7 +827,14 @@ export default function LeadDetailPage() {
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <StatusIndicator status={lead.status as any} />
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold ${
+                      (STAGE_BADGE as any)[(lead.pipelineStage || "NEW") as any]?.className ||
+                      "bg-gray-50 text-gray-700 border-gray-200"
+                    }`}
+                  >
+                    {(STAGE_BADGE as any)[(lead.pipelineStage || "NEW") as any]?.label || (lead.pipelineStage || "Novo")}
+                  </span>
                 </div>
               </div>
 
@@ -832,13 +851,10 @@ export default function LeadDetailPage() {
                   </div>
                 )}
                 {lead.completedAt && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span>Concluído {getTimeAgo(lead.completedAt)}</span>
                   </div>
-                )}
-                {lead.reservedUntil && lead.status === "RESERVED" && (
-                  <CountdownTimer targetDate={new Date(lead.reservedUntil)} />
                 )}
               </div>
 
@@ -861,7 +877,7 @@ export default function LeadDetailPage() {
               <div className="mt-4">
                 <p className="text-[11px] text-gray-500 mb-1">Gestão do lead</p>
                 <div className="flex flex-wrap gap-2">
-                  {lead.status === "ACCEPTED" && (
+                  {lead.pipelineStage !== "WON" && lead.pipelineStage !== "LOST" && (
                     <button
                       type="button"
                       onClick={handleCompleteLead}

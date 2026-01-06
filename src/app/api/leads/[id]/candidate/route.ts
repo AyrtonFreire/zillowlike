@@ -1,44 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { LeadDistributionService } from "@/lib/lead-distribution-service";
+import { NextResponse } from "next/server";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const body = await request.json();
-    const { realtorId } = body;
-
-    if (!realtorId) {
-      return NextResponse.json(
-        { error: "realtorId is required" },
-        { status: 400 }
-      );
-    }
-
-    const candidature = await LeadDistributionService.candidateToLead(
-      id,
-      realtorId
-    );
-
-    // Contar candidaturas diretamente
-    const { prisma } = await import("@/lib/prisma");
-    const totalCandidates = await prisma.leadCandidature.count({
-      where: { leadId: id },
-    });
-
-    return NextResponse.json({
-      success: true,
-      candidature,
-      totalCandidates,
-      message: "Candidatura enviada com sucesso!",
-    });
-  } catch (error: any) {
-    console.error("Error candidating to lead:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to candidate" },
-      { status: 400 }
-    );
-  }
+export async function POST() {
+  return NextResponse.json({ error: "Not found" }, { status: 404 });
 }

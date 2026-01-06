@@ -43,8 +43,7 @@ type ContactCardProps = {
   ownerPublicPhoneOptIn?: boolean;
   hideOwnerContact?: boolean;
   
-  // Lead board control
-  allowRealtorBoard: boolean; // true = vai para mural de leads, false = contato direto
+  // Contact settings
 };
 
 export default function PropertyContactCard({
@@ -57,7 +56,6 @@ export default function PropertyContactCard({
   ownerPublicSlug,
   ownerPublicPhoneOptIn,
   hideOwnerContact,
-  allowRealtorBoard,
 }: ContactCardProps) {
   const [loading, setLoading] = useState(false);
   const toast = useToast();
@@ -68,7 +66,6 @@ export default function PropertyContactCard({
 
   // Determinar cenário
   const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
-  const isLeadBoard = (ownerRole === "OWNER" || ownerRole === "USER") && allowRealtorBoard;
   const hasPublicProfile =
     (isRealtorOrAgency && !!ownerPublicSlug) ||
     (!isRealtorOrAgency && !!ownerPublicProfileEnabled && !!ownerPublicSlug);
@@ -110,8 +107,7 @@ export default function PropertyContactCard({
   };
 
   const getChatCallbackUrl = () => {
-    const direct = !isLeadBoard;
-    return `/chats?openChat=1&propertyId=${encodeURIComponent(propertyId)}&direct=${direct ? "1" : "0"}`;
+    return `/chats?openChat=1&propertyId=${encodeURIComponent(propertyId)}&direct=1`;
   };
 
   const createLeadAndOpenChat = async () => {
@@ -136,7 +132,7 @@ export default function PropertyContactCard({
         name,
         email,
         phone: String(s?.user?.phone || "").trim() || undefined,
-        isDirect: !isLeadBoard,
+        isDirect: true,
       };
 
       const res = await fetch("/api/leads", {

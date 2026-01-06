@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const leads = await prisma.lead.findMany({
       where: {
         realtorId: userId,
-        status: { in: ["RESERVED", "ACCEPTED"] },
+        pipelineStage: { notIn: ["WON", "LOST"] },
         OR: [
           {
             property: {

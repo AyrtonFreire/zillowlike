@@ -64,8 +64,8 @@ export default function ComoAnunciarPage() {
                 <div className="flex items-start gap-3">
                   <span className="mt-1 h-6 w-0.5 rounded-full bg-accent/70" />
                   <div>
-                    <p className="font-semibold">3. Distribuição inteligente dos leads</p>
-                    <p className="text-teal-50/90">Compradores interessados são organizados em filas e funis, facilitando o acompanhamento.</p>
+                    <p className="font-semibold">3. Organização de contatos</p>
+                    <p className="text-teal-50/90">Os contatos ficam registrados por imóvel para facilitar o acompanhamento e o histórico.</p>
                   </div>
                 </div>
               </div>
@@ -127,11 +127,11 @@ export default function ComoAnunciarPage() {
             <ul className="space-y-3 text-sm text-gray-700">
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-indigo-600 mt-0.5" />
-                <span>Receba leads qualificados de anúncios do site, incluindo imóveis publicados por pessoas físicas.</span>
+                <span>Organize leads e negociações com um CRM simples, com histórico por imóvel e por cliente.</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-indigo-600 mt-0.5" />
-                <span>Use dashboards e filas inteligentes para organizar visitas, retornos e negociações.</span>
+                <span>Use dashboards para acompanhar visitas, retornos e etapas do funil comercial.</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-indigo-600 mt-0.5" />
@@ -201,8 +201,8 @@ export default function ComoAnunciarPage() {
             <p className="text-sm text-gray-700 mb-4 flex-1">
               Acesse o site, crie seu login, cadastre e valide seu telefone para contato via SMS em Meu Perfil e informe se é corretor(a) ou pessoa física. Ao anunciar um imóvel grátis como pessoa física, seu perfil é atualizado automaticamente para Proprietário(a), desbloqueando os fluxos corretos para cada tipo de usuário.
             </p>
-            <Link href="/become-realtor" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
-              Ver fluxo completo para corretores parceiros
+            <Link href="/realtor/register" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
+              Criar conta de corretor(a)
               <ArrowRightCircle className="w-4 h-4 ml-1" />
             </Link>
           </div>
@@ -249,7 +249,7 @@ export default function ComoAnunciarPage() {
               Anunciar como pessoa física
             </Link>
             <Link
-              href="/become-realtor"
+              href="/realtor/register"
               className="inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-white/80 text-white hover:bg-white/10 transition-all"
             >
               <Briefcase className="w-4 h-4 mr-2" />

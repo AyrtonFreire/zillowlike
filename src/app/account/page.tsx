@@ -185,9 +185,9 @@ export default function AccountPage() {
           icon: <LayoutDashboard className="w-5 h-5" />,
         },
         {
-          title: "Leads",
+          title: "CRM",
           description: "Gerencie leads e histórico de contatos.",
-          href: "/broker/leads",
+          href: "/broker/crm",
           icon: <MessageSquare className="w-5 h-5" />,
         },
         {

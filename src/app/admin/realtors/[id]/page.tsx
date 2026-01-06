@@ -370,9 +370,6 @@ export default function AdminRealtorDetailPage() {
                   <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                     {realtor.name || "Corretor sem nome"}
                   </h1>
-                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
-                    Corretor parceiro
-                  </span>
                   {typeLabel && (
                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
                       {typeLabel}
@@ -726,8 +723,8 @@ export default function AdminRealtorDetailPage() {
                 </div>
               ) : (
                 <p className="text-sm text-gray-500">
-                  Este corretor ainda não está na fila inteligente de leads. Você pode ativá-lo a partir da tela de usuários ou da
-                  fila.
+                  Este corretor ainda não está configurado para receber leads automaticamente. Você pode ajustar isso pela tela de
+                  usuários.
                 </p>
               )}
             </div>

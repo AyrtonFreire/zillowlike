@@ -34,8 +34,6 @@ export function getRedisConnection(): ConnectionOptions | null {
  * Nomes das queues
  */
 export const QUEUE_NAMES = {
-  LEAD_DISTRIBUTION: "lead-distribution",
-  RESERVATION_EXPIRY: "reservation-expiry",
   LEAD_EXPIRY: "lead-expiry",
   QUEUE_RECALCULATION: "queue-recalculation",
   CLEANUP: "cleanup",

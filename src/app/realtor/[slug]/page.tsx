@@ -63,7 +63,6 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
     },
     include: {
       stats: true,
-      queue: true,
       ratings: {
         orderBy: { createdAt: "desc" },
         take: 10,
@@ -162,8 +161,8 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
   const name = realtor.name || (isAgency ? "Imobiliária" : "Corretor");
   const headline = realtor.publicHeadline ||
     (isAgency
-      ? "Imobiliária parceira da Zillowlike"
-      : "Corretor parceiro da Zillowlike");
+      ? "Imobiliária na Zillowlike"
+      : "Corretor na Zillowlike");
   const city = realtor.publicCity;
   const state = realtor.publicState;
   const locationLabel = city && state ? `${city}, ${state}` : undefined;
@@ -174,8 +173,6 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
   const avgRating = stats?.avgRating || 0;
   const totalRatings = stats?.totalRatings || 0;
   const avgResponseTime = stats?.avgResponseTime || null;
-
-  const participatesInLeadBoard = Boolean(realtor.queue);
 
   const lastProResponseAt = ([] as any[]).reduce(
     (max: Date | null, row: any) => {
@@ -369,7 +366,6 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
           linkedin={linkedin}
           facebook={facebook}
           whatsapp={whatsapp}
-          participatesInLeadBoard={participatesInLeadBoard}
           creci={app?.creci || null}
           creciState={app?.creciState || null}
           isTopProducer={isTopProducer}

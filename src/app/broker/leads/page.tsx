@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { 
   Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock, RefreshCw, 
   MessageCircle, AlertCircle, ChevronDown, ChevronRight, Filter, User,
@@ -282,6 +283,14 @@ function DraggableCard({
 }
 
 export default function MyLeadsPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/broker/crm");
+  }, [router]);
+
+  return null;
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1122,7 +1131,7 @@ export default function MyLeadsPage() {
         {error ? (
           <EmptyState
             title="Não foi possível carregar seus leads"
-            description={error}
+            description={error || ""}
             action={
               <button
                 onClick={() => fetchLeads()}
@@ -1135,15 +1144,7 @@ export default function MyLeadsPage() {
         ) : leads.length === 0 ? (
           <EmptyState
             title="Nenhum lead ativo no momento"
-            description="Quando você assumir ou receber novos leads, eles aparecem aqui."
-            action={
-              <Link
-                href="/broker/leads/mural"
-                className="inline-block mt-4 px-6 py-3 glass-teal text-white font-medium rounded-lg transition-colors"
-              >
-                Ver Mural de Leads
-              </Link>
-            }
+            description="Quando novos leads surgirem, eles aparecem aqui automaticamente."
           />
         ) : viewMode === "pipeline" ? (
           /* ===== MODO PIPELINE ===== */
@@ -1273,9 +1274,9 @@ export default function MyLeadsPage() {
             <DragOverlay>
               {activeLead ? (
                 <div className="bg-white rounded-lg border-2 border-teal-400 px-3 py-2 shadow-xl text-xs rotate-2 scale-105">
-                  <p className="font-semibold line-clamp-2">{activeLead.property.title}</p>
+                  <p className="font-semibold line-clamp-2">{activeLead?.property?.title}</p>
                   <p className="text-gray-500 text-[10px]">
-                    {activeLead.property.city}-{activeLead.property.state}
+                    {activeLead?.property?.city}-{activeLead?.property?.state}
                   </p>
                 </div>
               ) : null}
@@ -1310,7 +1311,7 @@ export default function MyLeadsPage() {
                           </div>
                           <div className="text-[12px] text-gray-500 mt-0.5">
                             {moveSheetLead
-                              ? `Etapa atual: ${PIPELINE_STAGES.find((s) => s.id === getLeadPipelineStage(moveSheetLead))?.label || "-"}`
+                              ? `Etapa atual: ${PIPELINE_STAGES.find((s) => s.id === getLeadPipelineStage(moveSheetLead as Lead))?.label || "-"}`
                               : ""}
                           </div>
                         </div>
@@ -1326,7 +1327,7 @@ export default function MyLeadsPage() {
 
                       <div className="mt-4 grid grid-cols-2 gap-2">
                         {PIPELINE_STAGES.map((stage) => {
-                          const isCurrent = moveSheetLead ? getLeadPipelineStage(moveSheetLead) === stage.id : false;
+                          const isCurrent = moveSheetLead ? getLeadPipelineStage(moveSheetLead as Lead) === stage.id : false;
                           const Icon = stage.icon;
 
                           return (

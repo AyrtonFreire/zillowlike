@@ -282,10 +282,10 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  Mural de Leads
+                  Leads
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Monitorar leads e filas de corretores
+                  Monitorar leads e atendimentos
                 </p>
               </div>
             </div>
@@ -387,7 +387,7 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="font-semibold text-gray-900">Configurações Globais</h3>
                 <p className="text-sm text-gray-600">
-                  Parâmetros da fila, mural e regras gerais
+                  Parâmetros do sistema e regras gerais
                 </p>
               </div>
             </div>

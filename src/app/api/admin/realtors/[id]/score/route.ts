@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     if (!queue) {
       return NextResponse.json(
-        { success: false, error: "Este corretor ainda não está na fila inteligente de leads." },
+        { success: false, error: "Este corretor ainda não está na fila de corretores." },
         { status: 404 },
       );
     }

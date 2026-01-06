@@ -44,7 +44,6 @@ type PropertyDetails = {
   furnished: boolean;
   petFriendly: boolean;
   images: { url: string }[];
-  allowRealtorBoard?: boolean;
   hideOwnerContact?: boolean | null;
   privateOwnerName?: string | null;
   privateOwnerPhone?: string | null;
@@ -1239,7 +1238,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                       ownerPublicSlug={property.owner?.publicSlug || null}
                       ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
                       hideOwnerContact={!!(property as any)?.hideOwnerContact}
-                      allowRealtorBoard={property.allowRealtorBoard || false}
                     />
                   </div>
                 )}
@@ -1302,7 +1300,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                         ownerPublicSlug={property.owner?.publicSlug || null}
                         ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
                         hideOwnerContact={!!(property as any)?.hideOwnerContact}
-                        allowRealtorBoard={property.allowRealtorBoard || false}
                       />
                     </div>
 
@@ -1806,7 +1803,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               ownerPublicSlug={property.owner?.publicSlug || null}
               ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
               hideOwnerContact={!!(property as any)?.hideOwnerContact}
-              allowRealtorBoard={property.allowRealtorBoard || false}
             />
           </div>
         </div>
