@@ -36,22 +36,21 @@ export default function PriceRangeSlider({
     return Math.min(Math.max(value, min), max);
   };
 
+  const commit = (nextMin: number, nextMax: number) => {
+    onChange({
+      min: nextMin <= min ? null : nextMin,
+      max: nextMax >= max ? null : nextMax,
+    });
+  };
+
   const handleMinChange = (value: number) => {
     const clamped = clamp(Math.min(value, internalMax));
     setInternalMin(clamped);
-    onChange({
-      min: clamped <= min ? null : clamped,
-      max: internalMax >= max ? null : internalMax,
-    });
   };
 
   const handleMaxChange = (value: number) => {
     const clamped = clamp(Math.max(value, internalMin));
     setInternalMax(clamped);
-    onChange({
-      min: internalMin <= min ? null : internalMin,
-      max: clamped >= max ? null : clamped,
-    });
   };
 
   const range = max - min || 1;
@@ -59,7 +58,13 @@ export default function PriceRangeSlider({
   const maxPercent = ((internalMax - min) / range) * 100;
 
   return (
-    <div className="relative w-full py-4">
+    <div
+      className="relative w-full py-4"
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* Trilho base */}
       <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-gray-200/80" />
 
@@ -77,6 +82,9 @@ export default function PriceRangeSlider({
         step={step}
         value={internalMin}
         onChange={(e) => handleMinChange(Number(e.target.value))}
+        onMouseUp={() => commit(internalMin, internalMax)}
+        onTouchEnd={() => commit(internalMin, internalMax)}
+        onKeyUp={() => commit(internalMin, internalMax)}
         className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 w-full appearance-none bg-transparent
           [&::-webkit-slider-thumb]:pointer-events-auto
           [&::-webkit-slider-thumb]:appearance-none
@@ -106,6 +114,9 @@ export default function PriceRangeSlider({
         step={step}
         value={internalMax}
         onChange={(e) => handleMaxChange(Number(e.target.value))}
+        onMouseUp={() => commit(internalMin, internalMax)}
+        onTouchEnd={() => commit(internalMin, internalMax)}
+        onKeyUp={() => commit(internalMin, internalMax)}
         className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 w-full appearance-none bg-transparent
           [&::-webkit-slider-thumb]:pointer-events-auto
           [&::-webkit-slider-thumb]:appearance-none

@@ -101,10 +101,8 @@ export default function Home() {
       const target = e.target as HTMLElement | null;
       if (!target) return;
       // Verifica se o clique foi fora do dropdown ativo
-      const dropdown = target.closest('.relative');
-      if (!dropdown || !dropdown.querySelector(`[data-dropdown="${activeFilterDropdown}"]`)) {
-        setActiveFilterDropdown(null);
-      }
+      const root = target.closest(`[data-filter-root="${activeFilterDropdown}"]`);
+      if (!root) setActiveFilterDropdown(null);
     };
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setActiveFilterDropdown(null);
@@ -458,6 +456,8 @@ export default function Home() {
     setSearch(suggestion.neighborhood || '');
     setSearchInput(suggestion.neighborhood || '');
     setShowSearchSuggestions(false);
+    const effectivePurpose = (purpose || "SALE") as any;
+    setPurpose(effectivePurpose);
     
     // Fazer a busca imediatamente
     const params = buildSearchParams({ 
@@ -470,7 +470,7 @@ export default function Home() {
       bedroomsMin, 
       bathroomsMin, 
       areaMin, 
-      purpose,
+      purpose: effectivePurpose,
       sort, 
       page: 1 
     });
@@ -483,6 +483,9 @@ export default function Home() {
     // Atualiza o termo aplicado para acionar a busca de imóveis
     setSearch(query);
 
+    const effectivePurpose = (purpose || "SALE") as any;
+    setPurpose(effectivePurpose);
+
     const params = buildSearchParams({
       q: query,
       city,
@@ -493,7 +496,7 @@ export default function Home() {
       bedroomsMin,
       bathroomsMin,
       areaMin,
-      purpose,
+      purpose: effectivePurpose,
       sort,
       page: 1
     });
@@ -1233,7 +1236,7 @@ export default function Home() {
                   </select>
 
                   {/* Price */}
-                  <div className="relative">
+                  <div className="relative" data-filter-root="price">
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'price' ? null : 'price')}
                       data-dropdown="price"
@@ -1315,7 +1318,7 @@ export default function Home() {
                   </div>
 
                   {/* Beds & Baths */}
-                  <div className="relative">
+                  <div className="relative" data-filter-root="beds">
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'beds' ? null : 'beds')}
                       data-dropdown="beds"
