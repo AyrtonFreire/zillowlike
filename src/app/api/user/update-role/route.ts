@@ -5,12 +5,17 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { validateCRECI } from "@/lib/validators/creci";
 
-const updateRoleSchema = z.object({
-  role: z.enum(["OWNER", "REALTOR"]),
-  creci: z.string().optional(),
-  creciState: z.string().optional(),
-  realtorType: z.enum(["AUTONOMO", "IMOBILIARIA"]).optional(),
-});
+const updateRoleSchema = z.discriminatedUnion("role", [
+  z.object({
+    role: z.literal("OWNER"),
+  }),
+  z.object({
+    role: z.literal("REALTOR"),
+    creci: z.string().trim().min(1),
+    creciState: z.string().trim().toUpperCase().min(2).max(2),
+    realtorType: z.enum(["AUTONOMO", "IMOBILIARIA"]),
+  }),
+]);
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,7 +38,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { role, creci, creciState, realtorType } = updateRoleSchema.parse(body);
+    const parsed = updateRoleSchema.parse(body);
+
+    const role = parsed.role;
+    const creci = role === "REALTOR" ? parsed.creci.trim() : undefined;
+    const creciState = role === "REALTOR" ? parsed.creciState.trim().toUpperCase() : undefined;
+    const realtorType = role === "REALTOR" ? parsed.realtorType : undefined;
 
     const current = await prisma.user.findUnique({
       where: { id: userId as string },
@@ -49,14 +59,7 @@ export async function POST(request: NextRequest) {
 
     // Se for promoção para REALTOR, exigir dados mínimos de identificação profissional
     if (role === "REALTOR") {
-      if (!creci || !creciState || !realtorType) {
-        return NextResponse.json(
-          { error: "Para atuar como corretor, informe CRECI, estado do CRECI e se é autônomo ou imobiliária." },
-          { status: 400 }
-        );
-      }
-
-      const validation = validateCRECI(creci, creciState);
+      const validation = validateCRECI(creci!, creciState!);
       if (!validation.valid) {
         return NextResponse.json(
           { error: validation.message || "CRECI inválido" },

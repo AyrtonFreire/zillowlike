@@ -16,7 +16,7 @@ import SiteFooter from "@/components/Footer";
 import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
-import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search, X } from "lucide-react";
+import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search, X, ArrowRight } from "lucide-react";
 
 const PropertyDetailsModalJames = dynamic(() => import("@/components/PropertyDetailsModalJames"), { ssr: false });
 import SearchFiltersBarZillow from "@/components/SearchFiltersBarZillow";
@@ -1028,124 +1028,100 @@ export default function Home() {
                 Três formas de usar a plataforma
               </h2>
               <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-xl text-left">
-                Um lugar único para quem busca um lar, para quem quer anunciar com agilidade
-                e para corretores que desejem um hub para seus negócios
+                Escolha seu caminho e comece em poucos minutos.
               </p>
             </div>
 
             <div className="grid gap-6 md:gap-8 md:grid-cols-3 items-stretch">
-              {/* Comprador / locatário */}
-              <div className="relative flex">
-                <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
-                  {/* Faixa colorida + foto circular recortada */}
-                  <div className="relative h-40 bg-teal-700">
-                    <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-teal-500">
-                      <Image
-                        src="https://images.unsplash.com/photo-1600585154340-0ef3c08c0632?auto=format&fit=crop&w=800&q=80"
-                        alt="Casal feliz comemorando novo imóvel"
-                        fill
-                        sizes="160px"
-                        className="object-cover"
-                      />
-                    </div>
-                  </div>
-                  {/* Conteúdo */}
-                  <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
-                      Quero encontrar um imóvel
-                    </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Explore casas e apartamentos com informações claras, facilidade de busca e agenda de visitas simples.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (typeof window !== "undefined") {
-                          const el = document.getElementById("explorar");
-                          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                        }
-                      }}
-                      className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-teal-600 text-teal-700 hover:bg-teal-50 transition-all"
-                    >
-                      Explorar imóveis
-                    </button>
+              <Link
+                href="/#explorar"
+                className="group relative flex flex-col rounded-2xl bg-white border border-gray-200 p-6 sm:p-7 shadow-sm hover:shadow-md hover:border-gray-300 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center rounded-full bg-teal-50 text-teal-700 border border-teal-100 px-3 py-1 text-xs font-semibold">
+                    Comprar/Alugar
+                  </span>
+                  <div className="h-10 w-10 rounded-xl bg-teal-600/10 flex items-center justify-center">
+                    <Search className="h-5 w-5 text-teal-700" />
                   </div>
                 </div>
-              </div>
 
-              {/* Proprietário */}
-              <div className="relative flex">
-                <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
-                  {/* Faixa colorida + foto circular recortada */}
-                  <div className="relative h-40 bg-amber-700">
-                    <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-amber-500">
-                      <Image
-                        src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80"
-                        alt="Fachada de uma casa moderna e bem iluminada"
-                        fill
-                        sizes="160px"
-                        className="object-cover"
-                      />
-                    </div>
-                  </div>
-                  {/* Conteúdo */}
-                  <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
-                      Quero vender ou alugar meu imóvel
-                    </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Anuncie seu imóvel com enorme visibilidade para toda região e acompanhe interessados com ferramentas de comunicação e organização.
-                    </p>
-                    <Link
-                      href="/owner"
-                      className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-amber-600 text-amber-700 hover:bg-amber-50 transition-all"
-                    >
-                      Acessar área do proprietário
-                    </Link>
-                  </div>
+                <div className="mt-5">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+                    Encontrar um imóvel
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                    Busque por cidade/bairro, compare e agende visita.
+                  </p>
                 </div>
-              </div>
 
-              {/* Corretor */}
-              <div className="relative flex">
-                <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
-                  {/* Faixa colorida + foto circular recortada */}
-                  <div className="relative h-40 bg-indigo-900">
-                    <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-indigo-600">
-                      <Image
-                        src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=800&q=80"
-                        alt="Corretor de imóveis sorrindo em frente a um fundo roxo"
-                        fill
-                        sizes="160px"
-                        className="object-cover"
-                      />
-                    </div>
-                  </div>
-                  {/* Conteúdo */}
-                  <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
-                      Sou corretor(a)
-                    </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Organize imóveis, leads e visitas em um dashboard pensado em qualidade de atendimento e, se optar, indicaremos interessados em imóveis postados por pessoa física
-                    </p>
-                    <Link
-                      href="/realtor/register"
-                      className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-indigo-600 text-indigo-700 hover:bg-indigo-50 transition-all"
-                    >
-                      Cadastre-se como corretor(a) no site
-                    </Link>
+                <div className="mt-auto pt-6 inline-flex items-center text-sm font-semibold text-teal-700 group-hover:text-teal-800">
+                  Explorar imóveis
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </div>
+              </Link>
+
+              <Link
+                href="/owner"
+                className="group relative flex flex-col rounded-2xl bg-white border border-gray-200 p-6 sm:p-7 shadow-sm hover:shadow-md hover:border-gray-300 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center rounded-full bg-amber-50 text-amber-800 border border-amber-100 px-3 py-1 text-xs font-semibold">
+                    Anunciar
+                  </span>
+                  <div className="h-10 w-10 rounded-xl bg-amber-600/10 flex items-center justify-center">
+                    <Building2 className="h-5 w-5 text-amber-800" />
                   </div>
                 </div>
-              </div>
+
+                <div className="mt-5">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+                    Sou proprietário(a)
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                    Anuncie e acompanhe contatos por imóvel no seu painel.
+                  </p>
+                </div>
+
+                <div className="mt-auto pt-6 inline-flex items-center text-sm font-semibold text-amber-800 group-hover:text-amber-900">
+                  Acessar painel do proprietário
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </div>
+              </Link>
+
+              <Link
+                href="/realtor/register"
+                className="group relative flex flex-col rounded-2xl bg-white border border-gray-200 p-6 sm:p-7 shadow-sm hover:shadow-md hover:border-gray-300 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 px-3 py-1 text-xs font-semibold">
+                    CRM do corretor
+                  </span>
+                  <div className="h-10 w-10 rounded-xl bg-indigo-600/10 flex items-center justify-center">
+                    <Briefcase className="h-5 w-5 text-indigo-700" />
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+                    Sou corretor(a)
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                    CRM com funil, agenda e IA para follow-up e próximos passos.
+                  </p>
+                </div>
+
+                <div className="mt-auto pt-6 inline-flex items-center text-sm font-semibold text-indigo-700 group-hover:text-indigo-800">
+                  Criar conta de corretor(a)
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </div>
+              </Link>
             </div>
           </div>
         </div>
       )}
 
       {/* Continue Searching removido */}
-
-
       {/* Search Results - Split Screen Layout */}
       {hasSearched && (
         <>

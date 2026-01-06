@@ -167,8 +167,8 @@ export default function RealtorRegisterPage() {
 
             {creci && (
               <p className="text-[11px] text-gray-500">
-                Validamos apenas o formato do CRECI (quantidade de dígitos e sufixo). A conferência oficial do registro continua
-                sendo feita no fluxo de parceria.
+                Validamos o formato do CRECI (quantidade de dígitos e sufixo). Para atuar como corretor(a), é necessário informar
+                CRECI, UF e tipo de atuação.
               </p>
             )}
 
