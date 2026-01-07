@@ -577,7 +577,7 @@ export default function BrokerDashboard() {
           </Link>
 
           <Link
-            href="/broker/crm"
+            href="/broker/leads"
             className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
           >
             <div className="flex items-center gap-4">
@@ -729,7 +729,7 @@ export default function BrokerDashboard() {
               >
                 <button
                   type="button"
-                  onClick={() => router.push("/broker/crm")}
+                  onClick={() => router.push("/broker/leads")}
                   className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 text-left hover:shadow-sm transition-shadow"
                 >
                   <div className="flex items-center justify-between">
@@ -799,7 +799,7 @@ export default function BrokerDashboard() {
                   <motion.div
                     whileHover={{ y: -2 }}
                     className="rounded-2xl border border-gray-100 bg-white p-4 cursor-pointer"
-                    onClick={() => router.push("/broker/crm")}
+                    onClick={() => router.push("/broker/leads")}
                     role="button"
                     tabIndex={0}
                   >
@@ -827,7 +827,7 @@ export default function BrokerDashboard() {
                   <motion.div
                     whileHover={{ y: -2 }}
                     className="rounded-2xl border border-gray-100 bg-white p-4 cursor-pointer"
-                    onClick={() => router.push("/broker/crm")}
+                    onClick={() => router.push("/broker/leads")}
                     role="button"
                     tabIndex={0}
                   >
@@ -1147,7 +1147,7 @@ export default function BrokerDashboard() {
             title="Leads Recentes"
             action={
               <Link
-                href="/broker/crm"
+                href="/broker/leads"
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 Ver todos

@@ -230,8 +230,8 @@ export default function ComoAnunciarPage() {
                 Ver painel do proprietário
                 <ArrowRightCircle className="w-4 h-4 ml-1" />
               </Link>
-              <Link href="/broker/crm" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
-                Abrir CRM do corretor(a)
+              <Link href="/broker/leads" className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800">
+                Abrir painel de leads do corretor(a)
                 <ArrowRightCircle className="w-4 h-4 ml-1" />
               </Link>
             </div>

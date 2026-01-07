@@ -1025,7 +1025,7 @@ export default function RealtorAssistantFeed(props: {
         router.push(`/broker/leads/${targetLeadId}`);
         return;
       }
-      router.push("/broker/crm");
+      router.push("/broker/leads");
       return;
     }
 

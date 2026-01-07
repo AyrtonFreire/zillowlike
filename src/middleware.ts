@@ -29,13 +29,10 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(request, response);
   }
 
-  if (pathname === "/broker/leads" || pathname === "/broker/leads/") {
-    const response = NextResponse.redirect(new URL("/broker/crm", request.url));
-    return applySecurityHeaders(request, response);
-  }
-
-  if (pathname.startsWith("/broker/leads/mural")) {
-    const response = NextResponse.redirect(new URL("/broker/crm", request.url));
+  if (pathname === "/broker/crm" || pathname === "/broker/crm/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/broker/leads";
+    const response = NextResponse.redirect(url);
     return applySecurityHeaders(request, response);
   }
 

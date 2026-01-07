@@ -285,12 +285,6 @@ function DraggableCard({
 export default function MyLeadsPage() {
   const router = useRouter();
 
-  useEffect(() => {
-    router.replace("/broker/crm");
-  }, [router]);
-
-  return null;
-
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -258,7 +258,7 @@ export default function BrokerPropertyDetailPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900">Leads & negociação deste imóvel</h2>
             <Link
-              href="/broker/crm"
+              href="/broker/leads"
               className="text-xs text-blue-600 hover:text-blue-700 font-medium"
             >
               Ver lista completa de leads

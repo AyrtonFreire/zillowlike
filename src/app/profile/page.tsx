@@ -808,7 +808,7 @@ export default function ProfilePage() {
 
                 {profile.role === "REALTOR" && (
                   <Link
-                    href="/broker/crm"
+                    href="/broker/leads"
                     className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <MessageSquare className="w-5 h-5 text-purple-600" />

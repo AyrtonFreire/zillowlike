@@ -540,7 +540,7 @@ export default function LeadDetailPage() {
 
       toast.info("Lead arquivado", "Movido para Fechado como perdido.");
       await fetchLead();
-      router.push("/broker/crm");
+      router.push("/broker/leads");
     } catch (err: any) {
       console.error("Error archiving lead:", err);
       toast.error("Erro ao arquivar lead", err?.message || "Tente novamente.");
@@ -550,6 +550,7 @@ export default function LeadDetailPage() {
   };
 
   const handleGenerateSimilarLink = async () => {
+    if (!leadId) return;
     try {
       setShareGenerating(true);
 
@@ -701,7 +702,7 @@ export default function LeadDetailPage() {
         breadcrumbs={[
           { label: "Home", href: "/" },
           { label: "Corretor", href: "/broker/dashboard" },
-          { label: "CRM", href: "/broker/crm" },
+          { label: "Leads", href: "/broker/leads" },
           { label: "Detalhes" },
         ]}
       >
@@ -718,7 +719,7 @@ export default function LeadDetailPage() {
         breadcrumbs={[
           { label: "Home", href: "/" },
           { label: "Corretor", href: "/broker/dashboard" },
-          { label: "CRM", href: "/broker/crm" },
+          { label: "Leads", href: "/broker/leads" },
           { label: "Detalhes" },
         ]}
       >
@@ -747,7 +748,7 @@ export default function LeadDetailPage() {
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Corretor", href: "/broker/dashboard" },
-        { label: "CRM", href: "/broker/crm" },
+        { label: "Leads", href: "/broker/leads" },
         { label: "Detalhes" },
       ]}
     >
