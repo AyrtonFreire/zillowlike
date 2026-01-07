@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
 import { getRealtorAssistantCategory, getRealtorAssistantTaskLabel } from "@/lib/realtor-assistant-ai";
-import RealtorAssistantChat from "@/components/crm/RealtorAssistantChat";
 
 type AssistantAction = {
   type: string;
@@ -211,7 +210,7 @@ export default function RealtorAssistantFeed(props: {
   const router = useRouter();
   const realtorId = props.realtorId;
   const leadId = props.leadId;
-  const [activeTab, setActiveTab] = useState<"TASKS" | "CHAT">("TASKS");
+  const activeTab = "TASKS" as const;
   const [items, setItems] = useState<AssistantItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -249,7 +248,6 @@ export default function RealtorAssistantFeed(props: {
   const [justSnoozedId, setJustSnoozedId] = useState<string | null>(null);
   const resolvedTimerRef = useRef<any>(null);
 
-  const showChatTab = props.showChatTab !== false;
   const showCategoryHeadings = props.showCategoryHeadings !== false;
   const infiniteScrollEnabled = !!props.categoryFilter && props.categoryFilter !== "ALL";
 
@@ -1109,43 +1107,8 @@ export default function RealtorAssistantFeed(props: {
     ];
   }, []);
 
-  const tabSelector = (
-    <div className={props.embedded ? "mb-3" : "mt-4"}>
-      <div className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
-        <button
-          type="button"
-          onClick={() => setActiveTab("TASKS")}
-          className={
-            activeTab === "TASKS"
-              ? "px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-[11px] font-semibold text-gray-900"
-              : "px-3 py-1.5 rounded-lg text-[11px] font-semibold text-gray-600 hover:text-gray-800"
-          }
-        >
-          Pendências
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("CHAT")}
-          className={
-            activeTab === "CHAT"
-              ? "px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-[11px] font-semibold text-gray-900"
-              : "px-3 py-1.5 rounded-lg text-[11px] font-semibold text-gray-600 hover:text-gray-800"
-          }
-        >
-          Chat IA
-        </button>
-      </div>
-    </div>
-  );
-
   const content = (
     <>
-      {showChatTab && tabSelector}
-
-      {showChatTab && activeTab === "CHAT" ? (
-        <RealtorAssistantChat leadId={leadId} />
-      ) : (
-        <>
       {error && <p className={props.embedded ? "text-xs text-red-600" : "mt-3 text-xs text-red-600"}>{error}</p>}
 
       {loading && (
@@ -1925,8 +1888,6 @@ export default function RealtorAssistantFeed(props: {
           )}
         </div>
       )}
-        </>
-      )}
     </>
   );
 
@@ -1941,24 +1902,18 @@ export default function RealtorAssistantFeed(props: {
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Assistente do Corretor</h2>
             <p className="text-xs text-gray-500 mt-1">
-              {activeTab === "TASKS"
-                ? activeCount > 0
-                  ? `${activeCount} pendência${activeCount > 1 ? "s" : ""} para você agir agora.`
-                  : "Sem pendências no momento."
-                : leadId
-                  ? "Chat IA com contexto do lead."
-                  : "Chat IA com contexto geral."}
+              {activeCount > 0
+                ? `${activeCount} pendência${activeCount > 1 ? "s" : ""} para você agir agora.`
+                : "Sem pendências no momento."}
             </p>
           </div>
-          {activeTab === "TASKS" && (
-            <button
-              type="button"
-              onClick={fetchItems}
-              className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
-            >
-              Atualizar
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={fetchItems}
+            className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
+          >
+            Atualizar
+          </button>
         </div>
 
         {content}
