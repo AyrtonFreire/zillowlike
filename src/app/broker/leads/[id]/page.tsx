@@ -18,7 +18,6 @@ import {
   Copy,
   CheckCircle2,
   ClipboardCheck,
-  AlertTriangle,
 } from "lucide-react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
@@ -120,10 +119,6 @@ export default function LeadDetailPage() {
   const { data: session } = useSession();
   const realtorId = (session?.user as any)?.id || "";
 
-  const advancedDetailsRef = useCallback((node: HTMLDivElement | null) => {
-    (advancedDetailsRef as any).current = node;
-  }, []);
-
   const [lead, setLead] = useState<Lead | null>(null);
   const [notes, setNotes] = useState<LeadNote[]>([]);
   const [noteDraft, setNoteDraft] = useState("");
@@ -140,15 +135,7 @@ export default function LeadDetailPage() {
   const [reminderNote, setReminderNote] = useState("");
   const [reminderSaving, setReminderSaving] = useState(false);
 
-  const [resultReason, setResultReason] = useState<
-    | "CLIENT_DESISTIU"
-    | "FECHOU_OUTRO_IMOVEL"
-    | "CONDICAO_FINANCEIRA"
-    | "NAO_RESPONDEU"
-    | "OUTRO"
-    | ""
-  >("");
-  const [resultSaving, setResultSaving] = useState(false);
+  const [aiSuggestionLoading, setAiSuggestionLoading] = useState(false);
 
   const [similarItems, setSimilarItems] = useState<SimilarPropertyItem[]>([]);
   const [similarLoading, setSimilarLoading] = useState(false);
@@ -161,8 +148,6 @@ export default function LeadDetailPage() {
 
   const [showNotes, setShowNotes] = useState(false);
   const [showSimilar, setShowSimilar] = useState(false);
-
-  const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
 
   const [completingLead, setCompletingLead] = useState(false);
   const [clearingReminder, setClearingReminder] = useState(false);
@@ -240,10 +225,6 @@ export default function LeadDetailPage() {
       }
       if (data.lead.nextActionNote) {
         setReminderNote(data.lead.nextActionNote);
-      }
-
-      if (data.lead.lostReason) {
-        setResultReason(data.lead.lostReason);
       }
     } catch (err: any) {
       console.error("Error fetching lead detail:", err);
@@ -427,36 +408,6 @@ export default function LeadDetailPage() {
     router.push(`/broker/chats?lead=${leadId}`);
   };
 
-  const handleSaveResult = async () => {
-    try {
-      setResultSaving(true);
-      const body: any = {};
-      if (resultReason) {
-        body.reason = resultReason;
-      }
-
-      const response = await fetch(`/api/leads/${leadId}/lost`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.error || "Não conseguimos salvar este resultado agora.");
-      }
-
-      setLead((prev) => (prev ? { ...prev, pipelineStage: "LOST", lostReason: resultReason || null } : prev));
-      toast.info("Lead marcado como perdido", "O registro foi atualizado.");
-    } catch (err: any) {
-      console.error("Error saving lead result:", err);
-      toast.error("Erro ao salvar resultado", err?.message || "Não conseguimos salvar este resultado agora.");
-    } finally {
-      setResultSaving(false);
-    }
-  };
-
   const handleCompleteLead = async () => {
     if (!leadId) return;
     if (lead?.pipelineStage === "WON") {
@@ -502,15 +453,38 @@ export default function LeadDetailPage() {
     }
   };
 
-  const handleOpenLostShortcut = () => {
-    setShowAdvancedDetails(true);
+  const handleGenerateNextStepSuggestion = async () => {
+    if (!leadId) return;
     try {
-      const node = (advancedDetailsRef as any).current as HTMLDivElement | null;
-      if (node) {
-        node.scrollIntoView({ behavior: "smooth", block: "start" });
+      setAiSuggestionLoading(true);
+      const response = await fetch(`/api/assistant/leads/${leadId}/coach?ai=1`);
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || "Não conseguimos gerar uma sugestão agora.");
       }
-    } catch {
-      // ignore
+
+      const payload = data?.data;
+      const nextStep =
+        (Array.isArray(payload?.nextSteps) && payload.nextSteps.length ? String(payload.nextSteps[0]) : "") ||
+        String(payload?.draft || "");
+
+      if (nextStep) {
+        setReminderNote(nextStep.trim());
+      }
+
+      if (!reminderDate) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        setReminderDate(tomorrow.toISOString().split("T")[0]);
+      }
+
+      toast.success("Sugestão gerada", "Revise se quiser e clique em salvar.");
+    } catch (err: any) {
+      console.error("Error generating next step suggestion:", err);
+      toast.error("Erro ao gerar sugestão", err?.message || "Tente novamente em alguns instantes.");
+    } finally {
+      setAiSuggestionLoading(false);
     }
   };
 
@@ -906,16 +880,6 @@ export default function LeadDetailPage() {
 
                   <button
                     type="button"
-                    onClick={handleOpenLostShortcut}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 text-xs sm:text-sm font-semibold hover:bg-red-100"
-                    title="Marcar lead como perdido"
-                  >
-                    <AlertTriangle className="w-4 h-4" />
-                    Marcar como perdido
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={handleArchiveLead}
                     disabled={archivingLead}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs sm:text-sm font-semibold hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -1023,9 +987,9 @@ export default function LeadDetailPage() {
           </div>
 
           {/* Corpo principal */}
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="mt-8 space-y-6">
             {/* Coluna esquerda: atividades + interação */}
-            <div className="lg:col-span-8 space-y-6">
+            <div className="space-y-6">
               {/* Timeline de atividades */}
               <LeadTimeline
                 leadId={leadId}
@@ -1131,69 +1095,101 @@ export default function LeadDetailPage() {
             </div>
 
             {/* Coluna direita: contexto e próximos passos */}
-            <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
-              {/* Lembrete de próximo passo */}
-              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/80">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <h2 className="text-sm font-semibold text-gray-900">Próximo passo</h2>
-                  <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                      hasReminderActive
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                        : "bg-gray-100 text-gray-500 border border-gray-200"
-                    }`}
-                  >
-                    {hasReminderActive ? "Definido" : "Não definido"}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 mb-4">
-                  Marque um dia e um resumo curto para lembrar o que precisa fazer com este lead (ex: ligar, enviar mensagem,
-                  combinar visita).
-                </p>
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-semibold text-gray-900">Próximo passo</h2>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                          hasReminderActive
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                            : "bg-gray-100 text-gray-500 border border-gray-200"
+                        }`}
+                      >
+                        {hasReminderActive ? "Definido" : "Não definido"}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-600">
+                      Defina a próxima ação deste lead (data + resumo). Use a IA para sugerir um caminho baseado no histórico.
+                    </p>
+                  </div>
 
-                <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                    <button
+                      type="button"
+                      onClick={handleGenerateNextStepSuggestion}
+                      disabled={aiSuggestionLoading}
+                      className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {aiSuggestionLoading ? "Gerando..." : "Gerar sugestão com IA"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveReminder}
+                      disabled={reminderSaving}
+                      className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {reminderSaving ? "Salvando..." : "Salvar"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
                   <span className="text-gray-500">Atalhos:</span>
                   <button
                     type="button"
                     onClick={() => handleQuickReminder("CALL_TOMORROW")}
-                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    className="px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                   >
                     Ligar amanhã
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickReminder("WAITING_RESPONSE")}
-                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    className="px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                   >
                     Aguardando resposta
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickReminder("SCHEDULE_VISIT")}
-                    className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    className="px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                   >
                     Agendar visita
                   </button>
+                  {hasReminderActive && (
+                    <button
+                      type="button"
+                      onClick={handleClearReminder}
+                      disabled={clearingReminder}
+                      className="px-2.5 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                      title="Marcar próximo passo como feito"
+                    >
+                      {clearingReminder ? "Concluindo..." : "Próximo passo feito"}
+                    </button>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="sm:col-span-1">
                     <label className="block text-gray-700 mb-1">Dia</label>
                     <input
                       type="date"
                       value={reminderDate}
                       onChange={(e) => setReminderDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                     />
                   </div>
-                  <div className="sm:col-span-2">
+                  <div className="sm:col-span-3">
                     <label className="block text-gray-700 mb-1">Resumo</label>
-                    <input
-                      type="text"
+                    <textarea
                       value={reminderNote}
                       onChange={(e) => setReminderNote(e.target.value)}
-                      placeholder="Ex: Ligar depois das 18h para saber decisão."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      rows={2}
+                      placeholder="Ex: Sugerir 2 horários de visita e confirmar se é compra ou locação."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                     />
                   </div>
                 </div>
@@ -1201,17 +1197,6 @@ export default function LeadDetailPage() {
                 <p className="mt-2 text-[11px] text-gray-500">
                   Se você apagar a data e o texto e salvar, o lembrete é removido para este lead.
                 </p>
-
-                <div className="mt-3 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleSaveReminder}
-                    disabled={reminderSaving}
-                    className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {reminderSaving ? "Salvando..." : "Salvar"}
-                  </button>
-                </div>
               </div>
 
               {/* Resumo do imóvel */}
@@ -1395,78 +1380,6 @@ export default function LeadDetailPage() {
                           )}
                         </div>
                       )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Seção avançada: mais detalhes da negociação */}
-              <div ref={advancedDetailsRef} className="bg-white rounded-xl border border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvancedDetails((prev) => !prev)}
-                  className="w-full flex items-center justify-between px-4 py-3"
-                >
-                  <span className="text-sm font-semibold text-gray-900">Mais detalhes da negociação</span>
-                  <span className="text-xs text-gray-500">
-                    {showAdvancedDetails ? "Recolher" : "Ver opções"}
-                  </span>
-                </button>
-
-                {showAdvancedDetails && (
-                  <div className="px-4 pb-4 pt-1 border-t border-gray-100 text-xs text-gray-600 space-y-4">
-                    <div>
-                      <p className="mb-2">
-                        Se este lead não for adiante, marque um motivo simples. Isso ajuda você (e, no futuro, o sistema) a
-                        entender por que alguns negócios não avançam.
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                        <div className="sm:col-span-2">
-                          <label className="block text-gray-700 mb-1">Motivo da perda (opcional)</label>
-                          <select
-                            value={resultReason}
-                            onChange={(e) => setResultReason(e.target.value as any)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
-                            <option value="">Selecione um motivo (se aplicável)</option>
-                            <option value="CLIENT_DESISTIU">Cliente desistiu / mudou de ideia</option>
-                            <option value="FECHOU_OUTRO_IMOVEL">Fechou com outro imóvel</option>
-                            <option value="CONDICAO_FINANCEIRA">Condição financeira / crédito</option>
-                            <option value="NAO_RESPONDEU">Cliente não respondeu mais</option>
-                            <option value="OUTRO">Outro motivo</option>
-                          </select>
-                        </div>
-                        <div className="flex justify-end sm:justify-start">
-                          <button
-                            type="button"
-                            onClick={handleSaveResult}
-                            disabled={resultSaving || !resultReason}
-                            className="inline-flex items-center px-3 py-2 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                          >
-                            {resultSaving ? "Salvando..." : "Marcar como perdido"}
-                          </button>
-                        </div>
-                      </div>
-
-                      {lead.pipelineStage === "LOST" && lead.lostReason && (
-                        <p className="mt-2 text-[11px] text-gray-500">
-                          Este lead está marcado como perdido ( {" "}
-                          {resultReason === "CLIENT_DESISTIU"
-                            ? "cliente desistiu/mudou de ideia"
-                            : resultReason === "FECHOU_OUTRO_IMOVEL"
-                            ? "fechou com outro imóvel"
-                            : resultReason === "CONDICAO_FINANCEIRA"
-                            ? "condição financeira/crédito"
-                            : resultReason === "NAO_RESPONDEU"
-                            ? "cliente não respondeu mais"
-                            : "outro motivo"}
-                          ).
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="pt-2 border-t border-gray-100 text-[11px] text-gray-500">
-                      Em breve, esta área poderá reunir também documentos do cliente, visitas agendadas e preferências de contato.
                     </div>
                   </div>
                 )}
