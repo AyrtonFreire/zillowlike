@@ -26,7 +26,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const { scrollY } = useScroll();
   const pathname = usePathname();
   
-  const role = (session as any)?.user?.role || "USER";
+  const role = (session as any)?.user?.role || (session as any)?.role || "USER";
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [hasUnreadUserChats, setHasUnreadUserChats] = useState(false);
   const [assistantActiveCount, setAssistantActiveCount] = useState(0);
@@ -759,12 +759,31 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       {role === 'OWNER' && (
                         <>
                           <li><Link href="/owner/dashboard" className="block px-4 py-2 hover:bg-gray-50">Dashboard</Link></li>
+                          <li><Link href="/owner/properties" className="block px-4 py-2 hover:bg-gray-50">Meus anúncios</Link></li>
+                          <li><Link href="/owner/leads" className="block px-4 py-2 hover:bg-gray-50">Meus leads</Link></li>
+                          <li><hr className="my-1" /></li>
+                        </>
+                      )}
+
+                      {(role === 'REALTOR' || role === 'AGENCY') && (
+                        <>
+                          <li><Link href="/broker/dashboard" className="block px-4 py-2 hover:bg-gray-50">Painel</Link></li>
+                          <li><Link href="/broker/crm" className="block px-4 py-2 hover:bg-gray-50">CRM</Link></li>
+                          <li><Link href="/broker/properties" className="block px-4 py-2 hover:bg-gray-50">Imóveis</Link></li>
+                          <li><Link href="/broker/assistant" className="block px-4 py-2 hover:bg-gray-50">Assistente</Link></li>
+                          <li><hr className="my-1" /></li>
+                        </>
+                      )}
+
+                      {role === 'ADMIN' && (
+                        <>
                           <li><Link href="/admin" className="block px-4 py-2 hover:bg-gray-50">Painel Admin</Link></li>
                           <li><Link href="/admin/properties" className="block px-4 py-2 hover:bg-gray-50">Gerenciar imóveis</Link></li>
                           <li><Link href="/admin/users" className="block px-4 py-2 hover:bg-gray-50">Usuários</Link></li>
                           <li><hr className="my-1" /></li>
                         </>
                       )}
+
                       {role === 'USER' && (
                         <>
                           <li>

@@ -18,7 +18,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const role = (session as any)?.user?.role || "USER";
+  const role = (session as any)?.user?.role || (session as any)?.role || "USER";
   const [hasUnreadUserChats, setHasUnreadUserChats] = useState(false);
   const [assistantActiveCount, setAssistantActiveCount] = useState(0);
 
