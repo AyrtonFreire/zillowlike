@@ -113,6 +113,70 @@ interface SimilarPropertyItem {
   matchReasons: string[];
 }
 
+type LeadChannel = "WHATSAPP" | "CHAT";
+
+type ChecklistItem = {
+  id: string;
+  text: string;
+  done: boolean;
+};
+
+function makeId() {
+  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function parseChecklistNote(note: string | null | undefined): ChecklistItem[] {
+  const raw = String(note || "").trim();
+  if (!raw) return [];
+
+  const lines = raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const checklist = lines
+    .map((line) => {
+      const m = line.match(/^\[(x|\s)\]\s*(.+)$/i);
+      if (!m) return null;
+      return {
+        id: makeId(),
+        done: String(m[1]).toLowerCase() === "x",
+        text: String(m[2] || "").trim(),
+      } satisfies ChecklistItem;
+    })
+    .filter((x): x is ChecklistItem => Boolean(x && x.text));
+
+  if (checklist.length >= 2) return checklist;
+
+  // fallback: treat as single-item plan
+  return [
+    {
+      id: makeId(),
+      done: false,
+      text: raw,
+    },
+  ];
+}
+
+function serializeChecklistNote(items: ChecklistItem[]) {
+  return items
+    .map((it) => it.text.trim())
+    .filter(Boolean)
+    .map((text, idx) => {
+      const done = Boolean(items[idx]?.done);
+      return `[${done ? "x" : " "}] ${text}`;
+    })
+    .join("\n");
+}
+
+function getChecklistSummary(items: ChecklistItem[]) {
+  const clean = items.map((x) => x.text.trim()).filter(Boolean);
+  if (clean.length === 0) return "rever este lead";
+  const firstOpen = items.find((x) => !x.done && x.text.trim());
+  if (firstOpen) return firstOpen.text.trim();
+  return `${clean.length} tarefa(s) concluída(s)`;
+}
+
 export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -135,7 +199,17 @@ export default function LeadDetailPage() {
   const [reminderNote, setReminderNote] = useState("");
   const [reminderSaving, setReminderSaving] = useState(false);
 
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [newChecklistItem, setNewChecklistItem] = useState("");
+
+  const [activeTab, setActiveTab] = useState<"ATIVIDADES" | "NOTAS" | "IMOVEL" | "SIMILARES">("ATIVIDADES");
+
   const [aiSuggestionLoading, setAiSuggestionLoading] = useState(false);
+  const [aiDraftMessage, setAiDraftMessage] = useState("");
+  const [messageDraft, setMessageDraft] = useState("");
+
+  const [leadChannelDetected, setLeadChannelDetected] = useState<LeadChannel | null>(null);
+  const [leadChannelOverride, setLeadChannelOverride] = useState<LeadChannel | null>(null);
 
   const [similarItems, setSimilarItems] = useState<SimilarPropertyItem[]>([]);
   const [similarLoading, setSimilarLoading] = useState(false);
@@ -225,6 +299,9 @@ export default function LeadDetailPage() {
       }
       if (data.lead.nextActionNote) {
         setReminderNote(data.lead.nextActionNote);
+        setChecklistItems(parseChecklistNote(data.lead.nextActionNote));
+      } else {
+        setChecklistItems([]);
       }
     } catch (err: any) {
       console.error("Error fetching lead detail:", err);
@@ -233,6 +310,34 @@ export default function LeadDetailPage() {
       setLoading(false);
     }
   }, [leadId]);
+
+  const fetchLeadChannel = useCallback(async () => {
+    if (!leadId) return;
+    try {
+      const response = await fetch(`/api/leads/${leadId}/events`);
+      const data = await response.json().catch(() => null);
+      const events = Array.isArray(data?.events) ? data.events : [];
+      const hasWhatsapp = events.some((e: any) => {
+        const source = e?.metadata?.source;
+        return String(source || "").toUpperCase() === "WHATSAPP";
+      });
+      if (hasWhatsapp) {
+        setLeadChannelDetected("WHATSAPP");
+        return;
+      }
+
+      // If the lead supports client chat, prefer CHAT.
+      if (lead?.clientChatToken) {
+        setLeadChannelDetected("CHAT");
+        return;
+      }
+
+      setLeadChannelDetected(null);
+    } catch (err) {
+      console.error("Error fetching lead channel via events:", err);
+      setLeadChannelDetected(null);
+    }
+  }, [leadId, lead?.clientChatToken]);
 
   const fetchLeadNotes = useCallback(async () => {
     try {
@@ -309,13 +414,20 @@ export default function LeadDetailPage() {
     fetchSimilar();
   }, [realtorId, leadId, fetchLead, fetchLeadNotes, fetchMessages, fetchSimilar]);
 
+  useEffect(() => {
+    if (!leadId) return;
+    fetchLeadChannel();
+  }, [leadId, fetchLeadChannel]);
+
   const handleSaveReminder = async () => {
     try {
       setReminderSaving(true);
       const body: any = {};
       if (reminderDate) body.date = reminderDate;
-      if (reminderNote) body.note = reminderNote;
-      if (!reminderDate && !reminderNote) {
+      const serializedChecklist = serializeChecklistNote(checklistItems);
+      if (serializedChecklist) body.note = serializedChecklist;
+      else if (reminderNote) body.note = reminderNote;
+      if (!reminderDate && !reminderNote && !serializedChecklist) {
         // Se nada for preenchido, limpa o lembrete
         body.date = null;
         body.note = null;
@@ -332,7 +444,7 @@ export default function LeadDetailPage() {
       if (!response.ok || !data?.success) {
         throw new Error(data?.error || "Não conseguimos salvar este lembrete agora.");
       }
-    toast.success("Lembrete salvo!", "O próximo passo foi registrado.");
+      toast.success("Lembrete salvo!", "O próximo passo foi registrado.");
     } catch (err: any) {
       console.error("Error saving lead reminder:", err);
       toast.error("Erro ao salvar lembrete", err?.message || "Não conseguimos salvar este lembrete agora.");
@@ -465,6 +577,22 @@ export default function LeadDetailPage() {
       }
 
       const payload = data?.data;
+      const draft = payload?.draft ? String(payload.draft).trim() : "";
+      setAiDraftMessage(draft);
+      if (draft) setMessageDraft(draft);
+
+      const planSteps: string[] = Array.isArray(payload?.nextSteps)
+        ? payload.nextSteps
+            .map((x: unknown) => String(x))
+            .filter((x: string) => Boolean(x && x.trim()))
+            .slice(0, 6)
+        : [];
+      if (planSteps.length > 0) {
+        setChecklistItems(planSteps.map((text: string) => ({ id: makeId(), text: text.trim(), done: false })));
+      } else if (draft) {
+        setChecklistItems([{ id: makeId(), text: draft, done: false }]);
+      }
+
       const nextStep =
         (Array.isArray(payload?.nextSteps) && payload.nextSteps.length ? String(payload.nextSteps[0]) : "") ||
         String(payload?.draft || "");
@@ -656,17 +784,33 @@ export default function LeadDetailPage() {
     setNoteDraft((prev) => (prev ? `${prev}\n${prefix}` : prefix));
   };
 
-  const getWhatsAppUrl = (phone?: string | null) => {
+  const getWhatsAppUrl = (phone?: string | null, text?: string) => {
     if (!phone) return "";
     const digits = phone.replace(/\D/g, "");
     if (!digits) return "";
     const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
-    return `https://wa.me/${withCountry}`;
+    const base = `https://wa.me/${withCountry}`;
+    if (text && String(text).trim()) {
+      return `${base}?text=${encodeURIComponent(String(text).trim())}`;
+    }
+    return base;
   };
 
-  const hasReminderActive = Boolean(reminderDate || reminderNote);
+  const hasReminderActive = Boolean(reminderDate || reminderNote || checklistItems.some((x) => x.text.trim()));
   const whatsappUrl = lead?.contact?.phone ? getWhatsAppUrl(lead.contact.phone) : "";
   const hasWhatsApp = Boolean(whatsappUrl);
+
+  const channelAuto: LeadChannel =
+    leadChannelDetected === "WHATSAPP"
+      ? "WHATSAPP"
+      : lead?.clientChatToken
+      ? "CHAT"
+      : hasWhatsApp
+      ? "WHATSAPP"
+      : "CHAT";
+  const activeChannel = leadChannelOverride || channelAuto;
+
+  const messageText = (messageDraft || aiDraftMessage || "").trim();
 
   if (loading) {
     return (
@@ -726,95 +870,53 @@ export default function LeadDetailPage() {
         { label: "Detalhes" },
       ]}
     >
-      <div className="max-w-5xl mx-auto py-8">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Imagem do imóvel */}
-            <div className="lg:col-span-4 flex flex-col gap-3">
-              <div className="relative w-full h-56 rounded-xl overflow-hidden bg-gray-100 shadow-sm">
-                <Image
-                  src={lead.property.images[selectedImageIndex]?.url || lead.property.images[0]?.url || "/placeholder.jpg"}
-                  alt={lead.property.title}
-                  fill
-                  className="object-cover"
-                />
+      <div className="max-w-5xl mx-auto py-6 space-y-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
+                  {lead.contact?.name || "Lead sem nome"}
+                </h1>
+                <span
+                  className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold ${
+                    (STAGE_BADGE as any)[(lead.pipelineStage || "NEW") as any]?.className || "bg-gray-50 text-gray-700 border-gray-200"
+                  }`}
+                >
+                  {(STAGE_BADGE as any)[(lead.pipelineStage || "NEW") as any]?.label || (lead.pipelineStage || "Novo")}
+                </span>
               </div>
 
-              {lead.property.images.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {lead.property.images.slice(0, 8).map((img, idx) => {
-                    const isActive = idx === selectedImageIndex;
-                    return (
-                      <button
-                        key={`${img.url}-${idx}`}
-                        type="button"
-                        onClick={() => setSelectedImageIndex(idx)}
-                        className={`relative h-12 w-16 flex-shrink-0 overflow-hidden rounded-lg border ${
-                          isActive ? "border-teal-500 ring-2 ring-teal-200" : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <Image
-                          src={img.url || "/placeholder.jpg"}
-                          alt={lead.property.title}
-                          fill
-                          className="object-cover"
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+              <p className="mt-1 text-xs sm:text-sm text-gray-600 truncate">
+                Interessado em: <span className="font-semibold text-gray-900">{lead.property.title}</span>
+              </p>
 
-            {/* Informações principais / Cabeçalho do lead */}
-            <div className="lg:col-span-8 space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    {lead.contact?.name || "Lead sem nome"}
-                  </h1>
-                  <p className="text-sm text-gray-600">
-                    Interessado em: {" "}
-                    <span className="font-semibold text-gray-900">{lead.property.title}</span>
-                  </p>
-                  <p className="mt-1 text-sm text-gray-600 flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    <span>
-                      {lead.property.street}, {lead.property.neighborhood && `${lead.property.neighborhood}, `}
-                      {lead.property.city} - {lead.property.state}
+              <p className="mt-1 text-xs sm:text-sm text-gray-600 flex items-center gap-1">
+                <MapPin className="w-4 h-4" />
+                <span className="truncate">
+                  {lead.property.street}, {lead.property.neighborhood && `${lead.property.neighborhood}, `}
+                  {lead.property.city} - {lead.property.state}
+                </span>
+              </p>
+
+              {lead.contact && (
+                <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-gray-600">
+                  {lead.contact.phone && (
+                    <span className="inline-flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5" />
+                      {lead.contact.phone}
                     </span>
-                  </p>
-                  {lead.contact && (
-                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
-                      {lead.contact.phone && (
-                        <span className="inline-flex items-center gap-1">
-                          <Phone className="w-3.5 h-3.5" />
-                          {lead.contact.phone}
-                        </span>
-                      )}
-                      {lead.contact.email && (
-                        <span className="inline-flex items-center gap-1">
-                          <Mail className="w-3.5 h-3.5" />
-                          {lead.contact.email}
-                        </span>
-                      )}
-                    </div>
+                  )}
+                  {lead.contact.email && (
+                    <span className="inline-flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5" />
+                      {lead.contact.email}
+                    </span>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold ${
-                      (STAGE_BADGE as any)[(lead.pipelineStage || "NEW") as any]?.className ||
-                      "bg-gray-50 text-gray-700 border-gray-200"
-                    }`}
-                  >
-                    {(STAGE_BADGE as any)[(lead.pipelineStage || "NEW") as any]?.label || (lead.pipelineStage || "Novo")}
-                  </span>
-                </div>
-              </div>
+              )}
 
-              {/* Linha do tempo simples */}
-              <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+              <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-gray-600">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   <span>Criado {getTimeAgo(lead.createdAt)}</span>
@@ -826,7 +928,7 @@ export default function LeadDetailPage() {
                   </div>
                 )}
                 {lead.completedAt && (
-                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span>Concluído {getTimeAgo(lead.completedAt)}</span>
                   </div>
@@ -834,12 +936,10 @@ export default function LeadDetailPage() {
               </div>
 
               {hasReminderActive && (
-                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-xs text-emerald-800">
+                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-xs text-emerald-800">
                   <Clock className="w-3 h-3" />
                   <span>
-                    Próximo passo:
-                    {" "}
-                    {reminderNote || "rever este lead"}
+                    Próximo passo: {getChecklistSummary(checklistItems) || reminderNote || "rever este lead"}
                     {reminderDate &&
                       ` · ${new Date(reminderDate).toLocaleDateString("pt-BR", {
                         day: "2-digit",
@@ -848,149 +948,370 @@ export default function LeadDetailPage() {
                   </span>
                 </div>
               )}
+            </div>
 
-              <div className="mt-4">
-                <p className="text-[11px] text-gray-500 mb-1">Gestão do lead</p>
-                <div className="flex flex-wrap gap-2">
-                  {lead.pipelineStage !== "WON" && lead.pipelineStage !== "LOST" && (
-                    <button
-                      type="button"
-                      onClick={handleCompleteLead}
-                      disabled={completingLead}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs sm:text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
-                      title="Marcar como resolvido"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      {completingLead ? "Concluindo..." : "Concluir atendimento"}
-                    </button>
-                  )}
+            <div className="flex flex-col gap-2 sm:items-end">
+              {activeChannel === "WHATSAPP" && hasWhatsApp ? (
+                <a
+                  href={getWhatsAppUrl(lead.contact?.phone || "", messageText)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs sm:text-sm font-semibold hover:bg-emerald-700"
+                  title="Abrir WhatsApp com texto pronto (você pode editar antes de enviar)"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Abrir WhatsApp
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleOpenClientChat}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl glass-teal text-white text-xs sm:text-sm font-semibold"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Abrir conversa
+                </button>
+              )}
 
-                  {hasReminderActive && (
-                    <button
-                      type="button"
-                      onClick={handleClearReminder}
-                      disabled={clearingReminder}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs sm:text-sm font-semibold hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed"
-                      title="Marcar próximo passo como feito"
-                    >
-                      <ClipboardCheck className="w-4 h-4" />
-                      {clearingReminder ? "Concluindo..." : "Próximo passo feito"}
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleArchiveLead}
-                    disabled={archivingLead}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs sm:text-sm font-semibold hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-                    title="Arquivar (remover da lista)"
-                  >
-                    {archivingLead ? "Arquivando..." : "Arquivar lead"}
-                  </button>
-                </div>
-              </div>
-
-              {/* Ações rápidas */}
-              <div className="mt-4">
-                <p className="text-[11px] text-gray-500 mb-1">Ações rápidas</p>
-                <div className="flex flex-wrap gap-2">
-                  {hasWhatsApp ? (
-                    <a
-                      href={whatsappUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs sm:text-sm font-semibold hover:bg-emerald-700"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      WhatsApp
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleOpenClientChat}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl glass-teal text-white text-xs sm:text-sm font-semibold"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      Abrir conversa
-                    </button>
-                  )}
-
-                  {lead.contact?.phone && (
-                    <a
-                      href={`tel:${lead.contact.phone}`}
-                      className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      <Phone className="w-3.5 h-3.5" />
-                      Ligar
-                    </a>
-                  )}
-
-                  {lead.contact?.email && (
-                    <a
-                      href={`mailto:${lead.contact.email}`}
-                      className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      <Mail className="w-3.5 h-3.5" />
-                      E-mail
-                    </a>
-                  )}
-
-                  {hasWhatsApp && (
-                    <button
-                      type="button"
-                      onClick={handleOpenClientChat}
-                      className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      Abrir conversa
-                    </button>
-                  )}
-
-                  <Link
-                    href={buildPropertyPath(lead.property.id, lead.property.title)}
+              <div className="flex flex-wrap justify-end gap-2">
+                {lead.contact?.phone && (
+                  <a
+                    href={`tel:${lead.contact.phone}`}
                     className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
                   >
-                    Ver anúncio
-                  </Link>
-                </div>
+                    <Phone className="w-3.5 h-3.5" />
+                    Ligar
+                  </a>
+                )}
+                {lead.contact?.email && (
+                  <a
+                    href={`mailto:${lead.contact.email}`}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    E-mail
+                  </a>
+                )}
+                <Link
+                  href={buildPropertyPath(lead.property.id, lead.property.title)}
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Ver anúncio
+                </Link>
               </div>
 
-              {showLeadHelp && (
-                <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-700">
-                  <p className="font-semibold text-gray-900 text-sm mb-2">Roteiro rápido para este lead</p>
-                  <ol className="space-y-1 list-decimal list-inside">
-                    <li>
-                      Falar com o cliente pelo canal que você preferir (telefone, WhatsApp ou e-mail).
-                    </li>
-                    <li>
-                      Registrar uma nota rápida com o que foi combinado, para não depender só da memória.
-                    </li>
-                    <li>
-                      Definir um próximo passo simples no lembrete na lateral (dia e um pequeno resumo).
-                    </li>
-                  </ol>
-                  <p className="mt-2 text-[11px] text-gray-500">
-                    Use apenas o que fizer sentido para você neste momento. O painel é um apoio, não uma obrigação.
-                  </p>
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleDismissLeadHelp}
-                      className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
-                    >
-                      Entendi
-                    </button>
-                  </div>
-                </div>
-              )}
+              <div className="flex flex-wrap justify-end gap-2">
+                {lead.pipelineStage !== "WON" && lead.pipelineStage !== "LOST" && (
+                  <button
+                    type="button"
+                    onClick={handleCompleteLead}
+                    disabled={completingLead}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                    title="Marcar como resolvido"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {completingLead ? "Concluindo..." : "Concluir atendimento"}
+                  </button>
+                )}
+
+                {hasReminderActive && (
+                  <button
+                    type="button"
+                    onClick={handleClearReminder}
+                    disabled={clearingReminder}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                    title="Marcar próximo passo como feito"
+                  >
+                    <ClipboardCheck className="w-4 h-4" />
+                    {clearingReminder ? "Concluindo..." : "Próximo passo feito"}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleArchiveLead}
+                  disabled={archivingLead}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs font-semibold hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                  title="Arquivar (remover da lista)"
+                >
+                  {archivingLead ? "Arquivando..." : "Arquivar lead"}
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Corpo principal */}
-          <div className="mt-8 space-y-6">
-            {/* Coluna esquerda: atividades + interação */}
-            <div className="space-y-6">
-              {/* Timeline de atividades */}
+          {showLeadHelp && (
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-700">
+              <p className="font-semibold text-gray-900 text-sm mb-2">Roteiro rápido para este lead</p>
+              <ol className="space-y-1 list-decimal list-inside">
+                <li>Falar com o cliente pelo canal principal (WhatsApp ou chat).</li>
+                <li>Aplicar o plano (checklist) e mandar a mensagem.</li>
+                <li>Registrar uma nota curta com o combinado.</li>
+              </ol>
+              <p className="mt-2 text-[11px] text-gray-500">
+                A ideia é manter tudo acima da dobra: ação, contexto e histórico.
+              </p>
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleDismissLeadHelp}
+                  className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
+                >
+                  Entendi
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold text-gray-900">Central de ações</h2>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                    hasReminderActive
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                      : "bg-gray-100 text-gray-500 border border-gray-200"
+                  }`}
+                >
+                  {hasReminderActive ? "Plano definido" : "Sem plano"}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-gray-600">
+                Gere um plano e uma mensagem com IA, ajuste e aplique. Salve para persistir no lead.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+              <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-2 py-1">
+                <button
+                  type="button"
+                  onClick={() => setLeadChannelOverride("CHAT")}
+                  className={`px-2 py-1 rounded-lg text-[11px] font-semibold ${
+                    activeChannel === "CHAT" ? "bg-gray-900 text-white" : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  title="Canal padrão: Chat"
+                >
+                  Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeadChannelOverride("WHATSAPP")}
+                  className={`px-2 py-1 rounded-lg text-[11px] font-semibold ${
+                    activeChannel === "WHATSAPP" ? "bg-emerald-600 text-white" : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  title="Canal padrão: WhatsApp"
+                >
+                  WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeadChannelOverride(null)}
+                  className="px-2 py-1 rounded-lg text-[11px] font-semibold text-gray-500 hover:text-gray-700"
+                  title="Voltar para detecção automática"
+                >
+                  Auto
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGenerateNextStepSuggestion}
+                disabled={aiSuggestionLoading}
+                className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {aiSuggestionLoading ? "Gerando..." : "Gerar com IA"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveReminder}
+                disabled={reminderSaving}
+                className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {reminderSaving ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div className="lg:col-span-5">
+              <label className="block text-gray-700 text-xs mb-1">Mensagem (você pode editar antes de enviar)</label>
+              <textarea
+                value={messageDraft}
+                onChange={(e) => setMessageDraft(e.target.value)}
+                rows={6}
+                placeholder="Escreva ou gere com IA..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+
+              <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard("Mensagem", messageText)}
+                  disabled={!messageText}
+                  className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Copiar
+                </button>
+                {activeChannel === "WHATSAPP" && hasWhatsApp && (
+                  <a
+                    href={getWhatsAppUrl(lead.contact?.phone || "", messageText)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 text-center"
+                  >
+                    Abrir no WhatsApp
+                  </a>
+                )}
+                {activeChannel === "CHAT" && (
+                  <button
+                    type="button"
+                    onClick={handleOpenClientChat}
+                    className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    Abrir chat
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="text-gray-500">Atalhos:</span>
+                <button
+                  type="button"
+                  onClick={() => handleQuickReminder("CALL_TOMORROW")}
+                  className="px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                >
+                  Ligar amanhã
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickReminder("WAITING_RESPONSE")}
+                  className="px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                >
+                  Aguardando resposta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickReminder("SCHEDULE_VISIT")}
+                  className="px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                >
+                  Agendar visita
+                </button>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                <div className="sm:col-span-1">
+                  <label className="block text-gray-700 mb-1">Dia</label>
+                  <input
+                    type="date"
+                    value={reminderDate}
+                    onChange={(e) => setReminderDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="block text-gray-700 mb-1">Plano (checklist)</label>
+                  <div className="rounded-xl border border-gray-200 bg-white p-3">
+                    <div className="space-y-2">
+                      {checklistItems.length === 0 ? (
+                        <p className="text-[11px] text-gray-500">Nenhuma tarefa ainda. Adicione abaixo ou gere com IA.</p>
+                      ) : (
+                        checklistItems.map((item) => (
+                          <label key={item.id} className="flex items-start gap-2 text-xs text-gray-800">
+                            <input
+                              type="checkbox"
+                              checked={item.done}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setChecklistItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, done: checked } : x)));
+                              }}
+                              className="mt-0.5"
+                            />
+                            <span className={item.done ? "line-through text-gray-400" : ""}>{item.text}</span>
+                          </label>
+                        ))
+                      )}
+
+                      <div className="flex items-center gap-2 pt-2">
+                        <input
+                          type="text"
+                          value={newChecklistItem}
+                          onChange={(e) => setNewChecklistItem(e.target.value)}
+                          placeholder="Adicionar tarefa..."
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const text = newChecklistItem.trim();
+                            if (!text) return;
+                            setChecklistItems((prev) => [...prev, { id: makeId(), text, done: false }]);
+                            setNewChecklistItem("");
+                          }}
+                          className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                        >
+                          Adicionar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <p className="mt-2 text-[11px] text-gray-500">
+                Se você apagar a data e o texto e salvar, o lembrete é removido para este lead.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setActiveTab("ATIVIDADES")}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                activeTab === "ATIVIDADES" ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              Atividades
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("NOTAS")}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                activeTab === "NOTAS" ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              Notas
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("IMOVEL")}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                activeTab === "IMOVEL" ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              Imóvel
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("SIMILARES")}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                activeTab === "SIMILARES" ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              Similares
+            </button>
+          </div>
+
+          <div className="p-4">
+            {activeTab === "ATIVIDADES" && (
               <LeadTimeline
                 leadId={leadId}
                 createdAt={lead.createdAt}
@@ -1000,391 +1321,294 @@ export default function LeadDetailPage() {
                 notes={notes}
                 messages={messages}
               />
+            )}
 
-              {/* Notas rápidas */}
-              <div className="bg-white rounded-xl border border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setShowNotes((prev) => !prev)}
-                  className="w-full flex items-center justify-between px-4 py-3"
-                >
-                  <span className="text-sm font-semibold text-gray-900">Notas</span>
-                  <span className="text-xs text-gray-500 inline-flex items-center gap-2">
-                    {notes.length ? `${notes.length} nota(s)` : "Nenhuma nota"}
-                    {showNotes ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </span>
-                </button>
+            {activeTab === "NOTAS" && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">
+                  Anote com suas próprias palavras os pontos combinados, dúvidas do cliente ou próximos passos. Essas notas ficam visíveis
+                  apenas para você e também aparecem no histórico de atividades.
+                </p>
 
-                {showNotes && (
-                  <div className="px-4 pb-4 pt-1 border-t border-gray-100">
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs text-gray-500">
-                        Anote com suas próprias palavras os pontos combinados, dúvidas do cliente ou próximos passos. Essas notas ficam
-                        visíveis apenas para você e também aparecem no histórico de atividades.
-                      </p>
+                {notes.length === 0 && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-700">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span>Sem notas ainda. Registre o que combinou no primeiro contato para não esquecer.</span>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickNote("WHATSAPP")}
+                        className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
+                      >
+                        Registrar primeiro contato
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {notesError && <p className="text-xs text-red-600">{notesError}</p>}
+
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2 justify-between items-center">
+                    <p className="text-[11px] text-gray-500">
+                      Se preferir, use os botões abaixo para marcar rapidamente uma conversa por WhatsApp, ligação ou e-mail e depois
+                      complemente com seus detalhes.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickNote("WHATSAPP")}
+                        className="text-[11px] text-green-700 hover:text-green-800 font-medium"
+                      >
+                        WhatsApp
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickNote("LIGACAO")}
+                        className="text-[11px] text-gray-700 hover:text-gray-900 font-medium"
+                      >
+                        Ligação
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickNote("EMAIL")}
+                        className="text-[11px] text-blue-700 hover:text-blue-800 font-medium"
+                      >
+                        E-mail
+                      </button>
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={noteDraft}
+                    onChange={(e) => setNoteDraft(e.target.value)}
+                    rows={3}
+                    placeholder="Ex: Cliente pediu retorno depois das 18h; está avaliando financiamento; prefere contato por WhatsApp."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleAddNote}
+                      disabled={notesLoading}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {notesLoading ? "Salvando..." : "Salvar nota"}
+                    </button>
+                  </div>
+                </div>
+
+                {notes.length > 0 && (
+                  <div className="border-t border-gray-100 pt-3 space-y-2">
+                    {notes
+                      .slice()
+                      .reverse()
+                      .slice(0, 10)
+                      .map((note) => (
+                        <div key={note.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                          <p className="text-xs text-gray-800 whitespace-pre-wrap">{note.content}</p>
+                          <p className="mt-1 text-[10px] text-gray-500">{getTimeAgo(note.createdAt)}</p>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "IMOVEL" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                  <div className="lg:col-span-5 flex flex-col gap-3">
+                    <div className="relative w-full h-56 rounded-xl overflow-hidden bg-gray-100 shadow-sm">
+                      <Image
+                        src={lead.property.images[selectedImageIndex]?.url || lead.property.images[0]?.url || "/placeholder.jpg"}
+                        alt={lead.property.title}
+                        fill
+                        className="object-cover"
+                      />
                     </div>
 
-                    {notes.length === 0 && (
-                      <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-700">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span>Sem notas ainda. Registre o que combinou no primeiro contato para não esquecer.</span>
-                          <button
-                            type="button"
-                            onClick={() => handleQuickNote("WHATSAPP")}
-                            className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
-                          >
-                            Registrar primeiro contato
-                          </button>
-                        </div>
+                    {lead.property.images.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {lead.property.images.slice(0, 10).map((img, idx) => {
+                          const isActive = idx === selectedImageIndex;
+                          return (
+                            <button
+                              key={`${img.url}-${idx}`}
+                              type="button"
+                              onClick={() => setSelectedImageIndex(idx)}
+                              className={`relative h-12 w-16 flex-shrink-0 overflow-hidden rounded-lg border ${
+                                isActive ? "border-teal-500 ring-2 ring-teal-200" : "border-gray-200 hover:border-gray-300"
+                              }`}
+                            >
+                              <Image src={img.url || "/placeholder.jpg"} alt={lead.property.title} fill className="object-cover" />
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
+                  </div>
 
-                    {notesError && <p className="text-xs text-red-600 mb-2">{notesError}</p>}
-
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2 justify-between items-center">
-                        <p className="text-[11px] text-gray-500">
-                          Se preferir, use os botões abaixo para marcar rapidamente uma conversa por WhatsApp, ligação ou e-mail e depois
-                          complemente com seus detalhes.
-                        </p>
+                  <div className="lg:col-span-7">
+                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                      <h2 className="text-sm font-semibold text-gray-900 mb-3">Resumo do imóvel</h2>
+                      <div className="mb-3">
+                        <span className="text-gray-500 block text-xs">Preço</span>
+                        <span className="font-semibold text-gray-900">{formatPrice(lead.property.price)}</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-700">
+                        <div>
+                          <span className="text-gray-500 block text-xs">Tipo</span>
+                          <span className="font-medium">{lead.property.type}</span>
+                        </div>
+                        {lead.property.bedrooms && (
+                          <div>
+                            <span className="text-gray-500 block text-xs">Quartos</span>
+                            <span className="font-medium">{lead.property.bedrooms}</span>
+                          </div>
+                        )}
+                        {lead.property.bathrooms && (
+                          <div>
+                            <span className="text-gray-500 block text-xs">Banheiros</span>
+                            <span className="font-medium">{lead.property.bathrooms}</span>
+                          </div>
+                        )}
+                        {lead.property.areaM2 && (
+                          <div>
+                            <span className="text-gray-500 block text-xs">Área</span>
+                            <span className="font-medium">{lead.property.areaM2}m²</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-3 space-y-2">
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => handleQuickNote("WHATSAPP")}
-                            className="text-[11px] text-green-700 hover:text-green-800 font-medium"
+                            onClick={() => {
+                              const value = `${lead.property.street}${lead.property.neighborhood ? `, ${lead.property.neighborhood}` : ""}, ${lead.property.city} - ${lead.property.state}`;
+                              copyToClipboard("Endereço", value);
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50"
                           >
-                            WhatsApp
+                            <Copy className="w-3.5 h-3.5" />
+                            Copiar endereço
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleQuickNote("LIGACAO")}
-                            className="text-[11px] text-gray-700 hover:text-gray-900 font-medium"
+                            onClick={() => {
+                              const origin = typeof window !== "undefined" ? window.location.origin : "";
+                              const value = `${origin}${buildPropertyPath(lead.property.id, lead.property.title)}`;
+                              copyToClipboard("Link", value);
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50"
                           >
-                            Ligação
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleQuickNote("EMAIL")}
-                            className="text-[11px] text-blue-700 hover:text-blue-800 font-medium"
-                          >
-                            E-mail
+                            <Copy className="w-3.5 h-3.5" />
+                            Copiar link
                           </button>
                         </div>
-                      </div>
-                      <textarea
-                        value={noteDraft}
-                        onChange={(e) => setNoteDraft(e.target.value)}
-                        rows={3}
-                        placeholder="Ex: Cliente pediu retorno depois das 18h; está avaliando financiamento; prefere contato por WhatsApp."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          onClick={handleAddNote}
-                          disabled={notesLoading}
-                          className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          {notesLoading ? "Salvando..." : "Salvar nota"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Coluna direita: contexto e próximos passos */}
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-gray-200 bg-white p-5">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-base font-semibold text-gray-900">Próximo passo</h2>
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                          hasReminderActive
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                            : "bg-gray-100 text-gray-500 border border-gray-200"
-                        }`}
-                      >
-                        {hasReminderActive ? "Definido" : "Não definido"}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-600">
-                      Defina a próxima ação deste lead (data + resumo). Use a IA para sugerir um caminho baseado no histórico.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                    <button
-                      type="button"
-                      onClick={handleGenerateNextStepSuggestion}
-                      disabled={aiSuggestionLoading}
-                      className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {aiSuggestionLoading ? "Gerando..." : "Gerar sugestão com IA"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveReminder}
-                      disabled={reminderSaving}
-                      className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {reminderSaving ? "Salvando..." : "Salvar"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
-                  <span className="text-gray-500">Atalhos:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickReminder("CALL_TOMORROW")}
-                    className="px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  >
-                    Ligar amanhã
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickReminder("WAITING_RESPONSE")}
-                    className="px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  >
-                    Aguardando resposta
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickReminder("SCHEDULE_VISIT")}
-                    className="px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  >
-                    Agendar visita
-                  </button>
-                  {hasReminderActive && (
-                    <button
-                      type="button"
-                      onClick={handleClearReminder}
-                      disabled={clearingReminder}
-                      className="px-2.5 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed"
-                      title="Marcar próximo passo como feito"
-                    >
-                      {clearingReminder ? "Concluindo..." : "Próximo passo feito"}
-                    </button>
-                  )}
-                </div>
-
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-                  <div className="sm:col-span-1">
-                    <label className="block text-gray-700 mb-1">Dia</label>
-                    <input
-                      type="date"
-                      value={reminderDate}
-                      onChange={(e) => setReminderDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                    />
-                  </div>
-                  <div className="sm:col-span-3">
-                    <label className="block text-gray-700 mb-1">Resumo</label>
-                    <textarea
-                      value={reminderNote}
-                      onChange={(e) => setReminderNote(e.target.value)}
-                      rows={2}
-                      placeholder="Ex: Sugerir 2 horários de visita e confirmar se é compra ou locação."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                    />
-                  </div>
-                </div>
-
-                <p className="mt-2 text-[11px] text-gray-500">
-                  Se você apagar a data e o texto e salvar, o lembrete é removido para este lead.
-                </p>
-              </div>
-
-              {/* Resumo do imóvel */}
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">Resumo do imóvel</h2>
-                <div className="mb-3">
-                  <span className="text-gray-500 block text-xs">Preço</span>
-                  <span className="font-semibold text-gray-900">{formatPrice(lead.property.price)}</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-700">
-                  <div>
-                    <span className="text-gray-500 block text-xs">Tipo</span>
-                    <span className="font-medium">{lead.property.type}</span>
-                  </div>
-                  {lead.property.bedrooms && (
-                    <div>
-                      <span className="text-gray-500 block text-xs">Quartos</span>
-                      <span className="font-medium">{lead.property.bedrooms}</span>
-                    </div>
-                  )}
-                  {lead.property.bathrooms && (
-                    <div>
-                      <span className="text-gray-500 block text-xs">Banheiros</span>
-                      <span className="font-medium">{lead.property.bathrooms}</span>
-                    </div>
-                  )}
-                  {lead.property.areaM2 && (
-                    <div>
-                      <span className="text-gray-500 block text-xs">Área</span>
-                      <span className="font-medium">{lead.property.areaM2}m²</span>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-3 space-y-2">
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const value = `${lead.property.street}${lead.property.neighborhood ? `, ${lead.property.neighborhood}` : ""}, ${lead.property.city} - ${lead.property.state}`;
-                        copyToClipboard("Endereço", value);
-                      }}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      Copiar endereço
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const origin = typeof window !== "undefined" ? window.location.origin : "";
-                        const value = `${origin}${buildPropertyPath(lead.property.id, lead.property.title)}`;
-                        copyToClipboard("Link", value);
-                      }}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      Copiar link
-                    </button>
-                  </div>
-
-                  <div className="flex justify-between items-center gap-2">
-                    <p className="text-xs text-gray-500">
-                      Abra o anúncio completo se precisar de mais detalhes, fotos ou descrição completa.
-                    </p>
-                    <Link
-                      href={buildPropertyPath(lead.property.id, lead.property.title)}
-                      className="inline-flex items-center px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
-                    >
-                      Ver anúncio
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Imóveis similares do seu estoque */}
-              <div className="bg-white rounded-xl border border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setShowSimilar((prev) => !prev)}
-                  className="w-full flex items-center justify-between px-4 py-3"
-                >
-                  <span className="text-sm font-semibold text-gray-900">Imóveis similares</span>
-                  <span className="text-xs text-gray-500 inline-flex items-center gap-2">
-                    {similarItems.length ? `${similarItems.length} sugestão(ões)` : "Sem sugestões"}
-                    {showSimilar ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </span>
-                </button>
-
-                {showSimilar && (
-                  <div className="px-4 pb-4 pt-1 border-t border-gray-100">
-                    <p className="text-xs text-gray-500 mb-3">
-                      Sugestões de imóveis seus parecidos com este (tipo, região e faixa de preço). Use como apoio na conversa ou
-                      gere um link para o cliente.
-                    </p>
-
-                    {similarError && (
-                      <p className="text-[11px] text-red-600 mb-2">{similarError}</p>
-                    )}
-
-                    {similarLoading && !similarItems.length ? (
-                      <p className="text-xs text-gray-500">Buscando imóveis do seu estoque...</p>
-                    ) : similarItems.length === 0 ? (
-                      <p className="text-xs text-gray-500 mb-3">
-                        Ainda não encontramos imóveis seus parecidos com este. Assim que você tiver mais imóveis na mesma região e
-                        faixa de preço, eles aparecem aqui.
-                      </p>
-                    ) : (
-                      <div className="space-y-2 mb-3">
-                        {similarItems.map((item) => (
+                        <div className="flex justify-between items-center gap-2">
+                          <p className="text-xs text-gray-500">Abra o anúncio completo se precisar de mais detalhes.</p>
                           <Link
-                            key={item.property.id}
-                            href={buildPropertyPath(item.property.id, item.property.title)}
-                            className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 hover:bg-white hover:border-gray-200 transition-colors"
+                            href={buildPropertyPath(lead.property.id, lead.property.title)}
+                            className="inline-flex items-center px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
                           >
-                            <div className="relative h-12 w-16 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
-                              {item.property.images?.[0]?.url && (
-                                <Image
-                                  src={item.property.images[0].url}
-                                  alt={item.property.title}
-                                  fill
-                                  className="object-cover"
-                                />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-gray-900 truncate">
-                                {item.property.title}
-                              </p>
-                              <p className="text-[11px] text-gray-500 truncate">
-                                {item.property.neighborhood ? `${item.property.neighborhood}, ` : ""}
-                                {item.property.city}/{item.property.state}
-                              </p>
-                              <p className="text-[11px] text-gray-900 font-semibold">
-                                {formatPrice(item.property.price)}
-                              </p>
-                            </div>
+                            Ver anúncio
                           </Link>
-                        ))}
+                        </div>
                       </div>
-                    )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
-                    <div className="mt-3 space-y-2">
-                      <button
-                        type="button"
-                        onClick={handleGenerateSimilarLink}
-                        disabled={shareGenerating}
-                        className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
+            {activeTab === "SIMILARES" && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">
+                  Sugestões de imóveis seus parecidos com este (tipo, região e faixa de preço). Use como apoio na conversa ou gere um link
+                  para o cliente.
+                </p>
+
+                {similarError && <p className="text-[11px] text-red-600">{similarError}</p>}
+
+                {similarLoading && !similarItems.length ? (
+                  <p className="text-xs text-gray-500">Buscando imóveis do seu estoque...</p>
+                ) : similarItems.length === 0 ? (
+                  <p className="text-xs text-gray-500">
+                    Ainda não encontramos imóveis seus parecidos com este. Assim que você tiver mais imóveis na mesma região e faixa de
+                    preço, eles aparecem aqui.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {similarItems.map((item) => (
+                      <Link
+                        key={item.property.id}
+                        href={buildPropertyPath(item.property.id, item.property.title)}
+                        className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 hover:bg-white hover:border-gray-200 transition-colors"
                       >
-                        {shareGenerating ? (
-                          "Gerando link..."
-                        ) : (
-                          <>
-                            <LinkIcon className="w-3.5 h-3.5" />
-                            Gerar link para enviar ao cliente
-                          </>
-                        )}
-                      </button>
-
-                      {shareUrl && (
-                        <div className="text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                          <p className="font-medium mb-1">Link gerado:</p>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              readOnly
-                              value={shareUrl}
-                              className="flex-1 px-2 py-1 rounded border border-gray-200 bg-white text-[11px] text-gray-700"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => copyToClipboard("Link", shareUrl)}
-                              className="px-2 py-1 rounded bg-gray-900 text-white text-[11px] font-semibold"
-                            >
-                              Copiar
-                            </button>
-                          </div>
-                          {shareExpiresAt && (
-                            <p className="mt-1 text-[10px] text-gray-500">
-                              Válido até {new Date(shareExpiresAt).toLocaleDateString("pt-BR")}.
-                            </p>
+                        <div className="relative h-12 w-16 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
+                          {item.property.images?.[0]?.url && (
+                            <Image src={item.property.images[0].url} alt={item.property.title} fill className="object-cover" />
                           )}
                         </div>
-                      )}
-                    </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-900 truncate">{item.property.title}</p>
+                          <p className="text-[11px] text-gray-500 truncate">
+                            {item.property.neighborhood ? `${item.property.neighborhood}, ` : ""}
+                            {item.property.city}/{item.property.state}
+                          </p>
+                          <p className="text-[11px] text-gray-900 font-semibold">{formatPrice(item.property.price)}</p>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 )}
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleGenerateSimilarLink}
+                    disabled={shareGenerating}
+                    className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg text-xs font-semibold glass-teal text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {shareGenerating ? (
+                      "Gerando link..."
+                    ) : (
+                      <>
+                        <LinkIcon className="w-3.5 h-3.5" />
+                        Gerar link para enviar ao cliente
+                      </>
+                    )}
+                  </button>
+
+                  {shareUrl && (
+                    <div className="mt-2 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                      <p className="font-medium mb-1">Link gerado:</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={shareUrl}
+                          className="flex-1 px-2 py-1 rounded border border-gray-200 bg-white text-[11px] text-gray-700"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard("Link", shareUrl)}
+                          className="px-2 py-1 rounded bg-gray-900 text-white text-[11px] font-semibold"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                      {shareExpiresAt && (
+                        <p className="mt-1 text-[10px] text-gray-500">
+                          Válido até {new Date(shareExpiresAt).toLocaleDateString("pt-BR")}.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
