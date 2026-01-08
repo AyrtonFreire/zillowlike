@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Users,
   Home,
@@ -51,7 +50,6 @@ interface DashboardStats {
 }
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -273,53 +271,19 @@ export default function AdminDashboard() {
           </Link>
 
           <Link
-            href="/admin/leads"
+            href="/admin/analytics"
             className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
           >
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <MessageSquare className="w-6 h-6 text-orange-600" />
+              <div className="p-3 bg-emerald-100 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-emerald-700" />
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  Leads
+                  Analytics
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Monitorar leads e atendimentos
-                </p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href="/admin/queue"
-            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-indigo-100 rounded-lg">
-                <Users className="w-6 h-6 text-indigo-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Controle de Fila</h3>
-                <p className="text-sm text-gray-600">
-                  Gerenciar ordem dos corretores
-                </p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href="/admin/realtor-applications"
-            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <Users className="w-6 h-6 text-orange-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Aplicações de Corretores</h3>
-                <p className="text-sm text-gray-600">
-                  Aprovar novos corretores
+                  Performance por corretor e anúncios
                 </p>
               </div>
             </div>
