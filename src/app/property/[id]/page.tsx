@@ -26,10 +26,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://oggahub.com";
   const canonicalPath = buildPropertyPath(id, property.title);
   const url = `${base}${canonicalPath}`;
-  const title = `${property.title} | Zillowlike`;
+  const title = `${property.title} | OggaHub`;
   const description = `${String(property.description || "").slice(0, 160)}${String(property.description || "").length > 160 ? "..." : ""}`;
 
   return {

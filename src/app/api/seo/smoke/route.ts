@@ -12,7 +12,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
+    const base = process.env.NEXT_PUBLIC_SITE_URL || "https://oggahub.com";
 
     const property = await (prisma as any).property.findFirst({
       where: { status: "ACTIVE" },
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 
     const title = property.metaTitle && String(property.metaTitle).trim()
       ? String(property.metaTitle).trim()
-      : `${property.title} | Zillowlike`;
+      : `${property.title} | OggaHub`;
 
     const description = property.metaDescription && String(property.metaDescription).trim()
       ? String(property.metaDescription).trim()

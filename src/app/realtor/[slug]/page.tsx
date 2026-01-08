@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!realtor) {
     return {
-      title: "Profissional não encontrado | Zillowlike",
+      title: "Profissional não encontrado | OggaHub",
       description: "O perfil solicitado não está disponível.",
     };
   }
@@ -44,12 +44,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     : undefined;
 
   return {
-    title: `${name} | Perfil de corretor Zillowlike`,
+    title: `${name} | Perfil de corretor OggaHub`,
     description:
       realtor.publicHeadline ||
       (location
-        ? `Veja o perfil, imóveis e desempenho de ${name} em ${location} na Zillowlike.`
-        : `Veja o perfil, imóveis e desempenho de ${name} na Zillowlike.`),
+        ? `Veja o perfil, imóveis e desempenho de ${name} em ${location} no OggaHub.`
+        : `Veja o perfil, imóveis e desempenho de ${name} no OggaHub.`),
   };
 }
 
@@ -161,8 +161,8 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
   const name = realtor.name || (isAgency ? "Imobiliária" : "Corretor");
   const headline = realtor.publicHeadline ||
     (isAgency
-      ? "Imobiliária na Zillowlike"
-      : "Corretor na Zillowlike");
+      ? "Imobiliária no OggaHub"
+      : "Corretor no OggaHub");
   const city = realtor.publicCity;
   const state = realtor.publicState;
   const locationLabel = city && state ? `${city}, ${state}` : undefined;

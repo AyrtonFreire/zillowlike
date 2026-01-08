@@ -18,7 +18,7 @@ async function geocodeArea(area: string, city?: string, state?: string): Promise
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
     
     const res = await fetch(url, {
-      headers: { "User-Agent": "ZillowLike/1.0" },
+      headers: { "User-Agent": "OggaHub/1.0" },
     });
     
     if (!res.ok) return null;

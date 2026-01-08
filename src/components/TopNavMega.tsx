@@ -140,7 +140,7 @@ export default function TopNavMega() {
               </svg>
             </div>
             <span className="hidden sm:block text-xl font-bold text-gray-900 group-hover:text-primary-600 transition-colors">
-              Zillowlike
+              OggaHub
             </span>
           </Link>
 

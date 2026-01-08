@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!owner) {
     return {
-      title: "Anunciante não encontrado | Zillowlike",
+      title: "Anunciante não encontrado | OggaHub",
       description: "O perfil solicitado não está disponível.",
     };
   }
@@ -39,11 +39,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     : undefined;
 
   return {
-    title: `${displayName} | Anunciante Zillowlike`,
+    title: `${displayName} | Anunciante OggaHub`,
     description:
       location
-        ? `Veja outros imóveis anunciados por ${displayName} em ${location} na Zillowlike.`
-        : `Veja outros imóveis anunciados por este proprietário na Zillowlike.`,
+        ? `Veja outros imóveis anunciados por ${displayName} em ${location} no OggaHub.`
+        : `Veja outros imóveis anunciados por este proprietário no OggaHub.`,
   };
 }
 

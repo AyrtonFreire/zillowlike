@@ -66,10 +66,10 @@ export default function RegisterPage() {
         <div className="w-full max-w-md">
           <Link href="/" className="inline-flex items-center gap-2 mb-10">
             <div className="w-9 h-9 rounded-2xl bg-brand-gradient flex items-center justify-center shadow-lg">
-              <span className="text-white font-semibold text-lg">Z</span>
+              <span className="text-white font-semibold text-lg">O</span>
             </div>
             <span className="text-sm font-semibold tracking-[0.18em] uppercase text-gray-700">
-              ZillowLike
+              OggaHub
             </span>
           </Link>
 

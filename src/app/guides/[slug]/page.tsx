@@ -45,9 +45,9 @@ const GUIDE_META: Record<
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const meta = GUIDE_META[slug];
-  if (!meta) return { title: "Guia | ZillowLike" };
+  if (!meta) return { title: "Guia | OggaHub" };
   return {
-    title: `${meta.title} | ZillowLike`,
+    title: `${meta.title} | OggaHub`,
     description: meta.description,
     alternates: { canonical: `/guides/${slug}` },
   };

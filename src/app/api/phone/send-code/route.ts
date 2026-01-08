@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const body = `Seu código de verificação do ZillowLike é ${code}. Ele expira em 10 minutos.`;
+    const body = `Seu código de verificação do OggaHub é ${code}. Ele expira em 10 minutos.`;
 
     try {
       await sendSms(user.phone, body);

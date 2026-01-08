@@ -21,24 +21,24 @@ const fontDisplay = Playfair_Display({
   display: "swap",
 });
 export const metadata: Metadata = {
-  title: "Zillowlike - Petrolina e Juazeiro",
-  description: "Busca e cadastro de imóveis com mapa, inspirado no Zillow",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"),
+  title: "OggaHub - Petrolina e Juazeiro",
+  description: "Seu hub imobiliário para buscar e anunciar imóveis com mapa em Petrolina e Juazeiro.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://oggahub.com"),
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Zillowlike - Encontre imóveis em Petrolina e Juazeiro",
+    title: "OggaHub - Encontre imóveis em Petrolina e Juazeiro",
     description: "Busque por cidade, bairro ou endereço e explore no mapa.",
     url: "/",
-    siteName: "Zillowlike",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    siteName: "OggaHub",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
     locale: "pt_BR",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Zillowlike - Encontre imóveis em Petrolina e Juazeiro",
+    title: "OggaHub - Encontre imóveis em Petrolina e Juazeiro",
     description: "Busque por cidade, bairro ou endereço e explore no mapa.",
-    images: ["/og-image.png"],
+    images: ["/opengraph-image"],
   },
   robots: {
     index: true,

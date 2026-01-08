@@ -196,14 +196,14 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
           {/* Center: Logo */}
           <Link href="/" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-full bg-brand-teal flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-base">Z</span>
+              <span className="text-white font-bold text-base">O</span>
             </div>
             <span
               className={`text-lg font-semibold tracking-tight ${
                 isOverlay ? "text-white" : "text-slate-900"
               }`}
             >
-              ZillowLike
+              OggaHub
             </span>
           </Link>
 

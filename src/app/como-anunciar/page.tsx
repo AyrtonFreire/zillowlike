@@ -15,7 +15,7 @@ export default function ComoAnunciarPage() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-semibold uppercase tracking-[0.16em] mb-4">
               <Sparkles className="w-4 h-4" />
-              <span>Como anunciar no ZillowLike</span>
+              <span>Como anunciar no OggaHub</span>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-4">
               Anuncie seus imóveis com uma experiência pensada para pessoas físicas e corretores.
@@ -158,7 +158,7 @@ export default function ComoAnunciarPage() {
               <Sparkles className="w-5 h-5 text-teal-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Diferenciais do ZillowLike</h2>
+              <h2 className="text-xl font-bold text-gray-900">Diferenciais do OggaHub</h2>
               <p className="text-sm text-gray-600">Não somos apenas um classificado de imóveis. Nosso foco é fluxo, organização e experiência.</p>
             </div>
           </div>

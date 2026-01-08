@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { buildPropertyPath } from "@/lib/slug";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://zillowlike.vercel.app";
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://oggahub.com";
   const now = new Date();
   
   // Static pages

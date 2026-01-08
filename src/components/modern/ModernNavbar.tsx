@@ -627,11 +627,11 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xl transition-colors ${
                 forceLight ? 'bg-teal-600 text-white' : 'bg-white/20 backdrop-blur text-white'
               }`}>
-                Z
+                O
               </div>
               <span className={`hidden lg:block text-xl font-bold transition-colors ${
                 forceLight ? 'text-gray-900' : 'text-white'
-              }`}>ZillowLike</span>
+              }`}>OggaHub</span>
             </Link>
           </div>
           

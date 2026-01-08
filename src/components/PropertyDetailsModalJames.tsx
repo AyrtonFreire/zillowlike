@@ -639,10 +639,10 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 aria-label="Ir para a página principal"
               >
                 <div className="w-9 h-9 rounded-full bg-brand-teal flex items-center justify-center shadow-sm">
-                  <span className="text-white font-bold text-base">Z</span>
+                  <span className="text-white font-bold text-base">O</span>
                 </div>
                 <span className="text-lg font-semibold tracking-tight text-slate-900">
-                  ZillowLike
+                  OggaHub
                 </span>
               </Link>
 

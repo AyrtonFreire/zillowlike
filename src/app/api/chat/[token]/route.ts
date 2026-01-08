@@ -338,7 +338,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
               const preview = parsed.data.content.trim().substring(0, 120);
 
               const body = [
-                `Novo contato no ZillowLike`,
+                `Novo contato no OggaHub`,
                 `Imóvel: ${leadWithDetails.property?.title || "Imóvel"}`,
                 leadWithDetails.contact?.name ? `Cliente: ${leadWithDetails.contact.name}` : null,
                 `Mensagem: ${preview}`,

@@ -187,7 +187,7 @@ export default function HomeClient() {
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center space-x-8">
               <Link href="/" className="text-3xl font-bold text-blue-600">
-                Zillowlike
+                OggaHub
               </Link>
               <nav className="hidden lg:flex space-x-8">
                 <Link href="/" className="text-gray-700 hover:text-blue-600 font-medium text-base">Comprar</Link>

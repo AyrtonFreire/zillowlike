@@ -518,7 +518,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               {/* Watermark (preview only) */}
               {watermark && (
                 <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-2">
-                  <span className="text-[10px] font-semibold text-white/80 bg-black/30 px-2 py-1 rounded-md">Zillowlike</span>
+                  <span className="text-[10px] font-semibold text-white/80 bg-black/30 px-2 py-1 rounded-md">OggaHub</span>
                 </div>
               )}
 

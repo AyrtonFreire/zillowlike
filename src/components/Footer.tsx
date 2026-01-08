@@ -10,8 +10,8 @@ export default function SiteFooter() {
       <div className="mx-auto max-w-7xl px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-8">
           <div className="md:col-span-2">
-            <h3 className="text-white font-display text-2xl font-bold mb-3">ZillowLike</h3>
-            <p className="text-sm mb-4">Encontre imóveis de luxo com facilidade e segurança.</p>
+            <h3 className="text-white font-display text-2xl font-bold mb-3">OggaHub</h3>
+            <p className="text-sm mb-4">Seu hub imobiliário para comprar, alugar e anunciar.</p>
             <form onSubmit={(e)=>{e.preventDefault();alert('Newsletter subscribed!');setEmail('');}} className="flex gap-2">
               <input value={email} onChange={(e)=>setEmail(e.target.value)} type="email" placeholder="Seu e-mail" required className="flex-1 px-3 py-2 rounded-md bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500" />
               <Button type="submit" size="sm">Assinar</Button>
@@ -46,7 +46,7 @@ export default function SiteFooter() {
           </div>
         </div>
         <div className="border-t border-neutral-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm">© {new Date().getFullYear()} ZillowLike. Todos os direitos reservados.</p>
+          <p className="text-sm">© {new Date().getFullYear()} OggaHub. Todos os direitos reservados.</p>
           <div className="flex gap-4">
             <a href="https://facebook.com" target="_blank" rel="noopener" className="hover:text-white transition" aria-label="Facebook">FB</a>
             <a href="https://instagram.com" target="_blank" rel="noopener" className="hover:text-white transition" aria-label="Instagram">IG</a>

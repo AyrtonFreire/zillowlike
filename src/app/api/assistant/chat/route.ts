@@ -558,7 +558,7 @@ function getScopeKey(leadId: string | null | undefined) {
 
 function buildSystemPrompt(leadMode: boolean) {
   const base =
-    "Você é o ASSISTENTE INTELIGENTE DO CORRETOR da plataforma ZillowLike (pt-BR).\n" +
+    "Você é o ASSISTENTE INTELIGENTE DO CORRETOR da plataforma OggaHub (pt-BR).\n" +
     "Regras obrigatórias:\n" +
     "- Nunca invente dados. Se algo não estiver no contexto, diga claramente.\n" +
     "- Nunca chute números. Só informe contagens (ex: leads pendentes / em atendimento) quando o contexto trouxer as métricas.\n" +

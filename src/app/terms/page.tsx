@@ -36,14 +36,14 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Aceitação dos Termos</h2>
             <p className="text-gray-700 leading-relaxed">
-              Ao acessar e usar a plataforma ZillowLike, você concorda em cumprir e estar vinculado aos seguintes termos e condições de uso. Se você não concorda com qualquer parte destes termos, não deve usar nossa plataforma.
+              Ao acessar e usar a plataforma OggaHub, você concorda em cumprir e estar vinculado aos seguintes termos e condições de uso. Se você não concorda com qualquer parte destes termos, não deve usar nossa plataforma.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Definições</h2>
             <ul className="list-disc pl-6 space-y-2 text-gray-700">
-              <li><strong>Plataforma:</strong> Refere-se ao site e aplicações ZillowLike</li>
+              <li><strong>Plataforma:</strong> Refere-se ao site e aplicações OggaHub</li>
               <li><strong>Usuário:</strong> Qualquer pessoa que acesse a plataforma</li>
               <li><strong>Proprietário:</strong> Usuário que anuncia imóveis na plataforma</li>
               <li><strong>Corretor:</strong> Profissional imobiliário com CRECI ativo</li>
@@ -116,7 +116,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">6. Propriedade Intelectual</h2>
             <p className="text-gray-700 leading-relaxed">
-              Todo o conteúdo da plataforma, incluindo design, código, marca, logos e textos, é de propriedade da ZillowLike ou de seus licenciadores. Você pode usar a plataforma para fins pessoais e não comerciais, mas não pode copiar, modificar ou distribuir nosso conteúdo sem autorização.
+              Todo o conteúdo da plataforma, incluindo design, código, marca, logos e textos, é de propriedade da OggaHub ou de seus licenciadores. Você pode usar a plataforma para fins pessoais e não comerciais, mas não pode copiar, modificar ou distribuir nosso conteúdo sem autorização.
             </p>
           </section>
 
@@ -134,7 +134,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">8. Limitação de Responsabilidade</h2>
             <p className="text-gray-700 leading-relaxed">
-              A ZillowLike não será responsável por danos diretos, indiretos, incidentais, especiais ou consequenciais resultantes do uso ou impossibilidade de uso da plataforma, incluindo perda de dados, lucros cessantes ou danos à reputação.
+              A OggaHub não será responsável por danos diretos, indiretos, incidentais, especiais ou consequenciais resultantes do uso ou impossibilidade de uso da plataforma, incluindo perda de dados, lucros cessantes ou danos à reputação.
             </p>
           </section>
 
@@ -171,7 +171,7 @@ export default function TermsPage() {
               Para dúvidas sobre estes termos, entre em contato:
             </p>
             <ul className="list-none pl-0 space-y-2 text-gray-700 mt-3">
-              <li><strong>Email:</strong> legal@zillowlike.com</li>
+              <li><strong>Email:</strong> legal@oggahub.com</li>
               <li><strong>Telefone:</strong> (11) 0000-0000</li>
               <li><strong>Endereço:</strong> [Endereço completo]</li>
             </ul>

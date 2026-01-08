@@ -126,11 +126,12 @@ export default function ShowcasePage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
             viewport={{ once: true }}
             className="text-center mb-12"
           >
             <h2 className="text-4xl font-bold mb-4">
-              Por que escolher a <span className="gradient-text">ZillowLike</span>?
+              Por que escolher a <span className="gradient-text">OggaHub</span>?
             </h2>
           </motion.div>
 

@@ -36,7 +36,7 @@ export default function PrivacyPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Introdução</h2>
             <p className="text-gray-700 leading-relaxed">
-              A ZillowLike respeita a privacidade de seus usuários e está comprometida em proteger seus dados pessoais. Esta Política de Privacidade explica como coletamos, usamos, compartilhamos e protegemos suas informações pessoais, em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei 13.709/2018).
+              A OggaHub respeita a privacidade de seus usuários e está comprometida em proteger seus dados pessoais. Esta Política de Privacidade explica como coletamos, usamos, compartilhamos e protegemos suas informações pessoais, em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei 13.709/2018).
             </p>
           </section>
 
@@ -155,7 +155,7 @@ export default function PrivacyPage() {
               <li><strong>Oposição:</strong> opor-se ao processamento em certas situações</li>
             </ul>
             <p className="text-gray-700 mt-3">
-              Para exercer seus direitos, entre em contato através do email: <strong>privacidade@zillowlike.com</strong>
+              Para exercer seus direitos, entre em contato através do email: <strong>privacidade@oggahub.com</strong>
             </p>
           </section>
 
@@ -203,7 +203,7 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-none pl-0 space-y-2 text-gray-700">
               <li><strong>Nome:</strong> [Nome do DPO]</li>
-              <li><strong>Email:</strong> dpo@zillowlike.com</li>
+              <li><strong>Email:</strong> dpo@oggahub.com</li>
               <li><strong>Endereço:</strong> [Endereço completo]</li>
             </ul>
           </section>

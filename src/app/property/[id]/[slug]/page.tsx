@@ -31,14 +31,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://oggahub.com";
   const canonicalPath = buildPropertyPath(id, property.title);
   const url = `${base}${canonicalPath}`;
   const image = property.images?.[0]?.url;
 
   const title = property.metaTitle && String(property.metaTitle).trim()
     ? String(property.metaTitle).trim()
-    : `${property.title} | Zillowlike`;
+    : `${property.title} | OggaHub`;
 
   const description = property.metaDescription && String(property.metaDescription).trim()
     ? String(property.metaDescription).trim()
@@ -94,7 +94,7 @@ export default async function PropertyCanonicalPage({ params }: PageProps) {
     permanentRedirect(canonicalPath);
   }
 
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://oggahub.com";
 
   const jsonLdProduct = {
     "@context": "https://schema.org",

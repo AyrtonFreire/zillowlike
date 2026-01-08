@@ -1071,7 +1071,7 @@ export default function Home() {
                   {isDefaultProfiles ? (
                     <>
                       <p className="text-xs sm:text-sm font-semibold tracking-[0.18em] text-teal-600 uppercase text-left">
-                        Para quem é o Zillowlike
+                        Para quem é o OggaHub
                       </p>
                       <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-display text-gray-900 text-left">
                         Três formas de usar a plataforma

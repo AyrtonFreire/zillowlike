@@ -21,7 +21,7 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
     return true;
   }
 
-  const from = process.env.EMAIL_FROM || "ZillowLike <onboarding@resend.dev>";
+  const from = process.env.EMAIL_FROM || "OggaHub <onboarding@resend.dev>";
   console.log("[EMAIL] Enviando de:", from);
 
   try {
@@ -126,7 +126,7 @@ export function getLeadNotificationEmail(data: {
               </center>
             </div>
             <div class="footer">
-              <p>© 2025 Zillow. Todos os direitos reservados.</p>
+              <p>© 2025 OggaHub. Todos os direitos reservados.</p>
               <p>Você está recebendo este email porque um usuário demonstrou interesse em seu imóvel.</p>
             </div>
           </div>
@@ -141,7 +141,7 @@ export function getAuthVerifyEmailEmail(data: {
   verifyUrl: string;
 }) {
   return {
-    subject: "Confirme seu e-mail no ZillowLike",
+    subject: "Confirme seu e-mail no OggaHub",
     html: `
       <!DOCTYPE html>
       <html>
@@ -172,8 +172,8 @@ export function getAuthVerifyEmailEmail(data: {
             <div class="container">
               <div class="header">
                 <div class="logo">
-                  <div class="logo-badge">Z</div>
-                  <div class="logo-text">ZillowLike</div>
+                  <div class="logo-badge">O</div>
+                  <div class="logo-text">OggaHub</div>
                 </div>
                 <h1 class="title">Confirme seu e-mail</h1>
                 <p class="subtitle">Só falta um passo para ativar sua conta e liberar todos os recursos da plataforma.</p>
@@ -181,7 +181,7 @@ export function getAuthVerifyEmailEmail(data: {
               <div class="content">
                 <div class="card">
                   <p class="paragraph">Olá${data.name ? `, <strong>${data.name}</strong>` : ""}! 👋</p>
-                  <p class="paragraph">Obrigado por se cadastrar no <strong>ZillowLike</strong>. Para manter sua conta segura e garantir que este e-mail é realmente seu, precisamos que você confirme o endereço abaixo.</p>
+                  <p class="paragraph">Obrigado por se cadastrar no <strong>OggaHub</strong>. Para manter sua conta segura e garantir que este e-mail é realmente seu, precisamos que você confirme o endereço abaixo.</p>
                   <div class="button-wrapper">
                     <a href="${data.verifyUrl}" class="button">Confirmar meu e-mail</a>
                   </div>
@@ -191,7 +191,7 @@ export function getAuthVerifyEmailEmail(data: {
                 </div>
               </div>
               <div class="footer">
-                <p>Você recebeu este e-mail porque se cadastrou no <strong>ZillowLike</strong> usando este endereço. Se não foi você, pode simplesmente ignorar esta mensagem.</p>
+                <p>Você recebeu este e-mail porque se cadastrou no <strong>OggaHub</strong> usando este endereço. Se não foi você, pode simplesmente ignorar esta mensagem.</p>
               </div>
             </div>
           </div>
@@ -205,7 +205,7 @@ export function getAuthForgotPasswordEmail(data: {
   resetUrl: string;
 }) {
   return {
-    subject: "Redefinir senha - ZillowLike",
+    subject: "Redefinir senha - OggaHub",
     html: `
       <!DOCTYPE html>
       <html>
@@ -236,8 +236,8 @@ export function getAuthForgotPasswordEmail(data: {
             <div class="container">
               <div class="header">
                 <div class="logo">
-                  <div class="logo-badge">Z</div>
-                  <div class="logo-text">ZillowLike</div>
+                  <div class="logo-badge">O</div>
+                  <div class="logo-text">OggaHub</div>
                 </div>
                 <h1 class="title">Redefinir sua senha</h1>
                 <p class="subtitle">Recebemos um pedido para redefinir a senha da sua conta.</p>
@@ -255,7 +255,7 @@ export function getAuthForgotPasswordEmail(data: {
                 </div>
               </div>
               <div class="footer">
-                <p>Para manter sua conta segura, nunca compartilhe sua senha com ninguém. O time do <strong>ZillowLike</strong> nunca irá pedir sua senha por e-mail ou mensagem.</p>
+                <p>Para manter sua conta segura, nunca compartilhe sua senha com ninguém. O time do <strong>OggaHub</strong> nunca irá pedir sua senha por e-mail ou mensagem.</p>
               </div>
             </div>
           </div>
@@ -269,7 +269,7 @@ export function getAuthResendVerificationEmail(data: {
   verifyUrl: string;
 }) {
   return {
-    subject: "Novo link de confirmação - ZillowLike",
+    subject: "Novo link de confirmação - OggaHub",
     html: `
       <!DOCTYPE html>
       <html>
@@ -300,8 +300,8 @@ export function getAuthResendVerificationEmail(data: {
             <div class="container">
               <div class="header">
                 <div class="logo">
-                  <div class="logo-badge">Z</div>
-                  <div class="logo-text">ZillowLike</div>
+                  <div class="logo-badge">O</div>
+                  <div class="logo-text">OggaHub</div>
                 </div>
                 <h1 class="title">Novo link de confirmação</h1>
                 <p class="subtitle">Aqui está um novo acesso para você finalizar a ativação da sua conta.</p>
@@ -318,7 +318,7 @@ export function getAuthResendVerificationEmail(data: {
                 </div>
               </div>
               <div class="footer">
-                <p>Se você já confirmou seu e-mail recentemente, pode desconsiderar este aviso. Ele não altera o status atual da sua conta no <strong>ZillowLike</strong>.</p>
+                <p>Se você já confirmou seu e-mail recentemente, pode desconsiderar este aviso. Ele não altera o status atual da sua conta no <strong>OggaHub</strong>.</p>
               </div>
             </div>
           </div>
@@ -405,7 +405,7 @@ export function getRealtorApplicationApprovedEmail(data: {
             <div class="card">
               <div class="header">
                 <h1>Parabéns, ${data.name}!</h1>
-                <p style="margin-top:8px; opacity:0.9;">Sua aplicação para atuar como corretor(a) no ZillowLike foi aprovada.</p>
+                <p style="margin-top:8px; opacity:0.9;">Sua aplicação para atuar como corretor(a) no OggaHub foi aprovada.</p>
               </div>
               <div class="content">
                 <p>Seu perfil agora está habilitado como <strong>Corretor(a)</strong> na plataforma.</p>
@@ -454,7 +454,7 @@ export function getRealtorApplicationRejectedEmail(data: {
               </div>
               <div class="content">
                 <p>
-                  Analisamos sua aplicação para atuar como corretor(a) no ZillowLike, mas no momento ela não pôde ser aprovada.
+                  Analisamos sua aplicação para atuar como corretor(a) no OggaHub, mas no momento ela não pôde ser aprovada.
                 </p>
                 ${data.reason ? `
                   <p><strong>Motivo informado:</strong></p>
@@ -507,7 +507,7 @@ export function getPropertyFavoritedEmail(data: {
               </center>
             </div>
             <div class="footer">
-              <p>© 2025 Zillow. Todos os direitos reservados.</p>
+              <p>© 2025 OggaHub. Todos os direitos reservados.</p>
             </div>
           </div>
         </body>
@@ -566,7 +566,7 @@ export function getClientMessageNotificationEmail(data: {
               </div>
             </div>
             <div class="footer">
-              <p>© 2025 ZillowLike. Todos os direitos reservados.</p>
+              <p>© 2025 OggaHub. Todos os direitos reservados.</p>
             </div>
           </div>
         </body>
@@ -620,7 +620,7 @@ export function getRealtorReplyNotificationEmail(data: {
               </p>
             </div>
             <div class="footer">
-              <p>© 2025 ZillowLike. Todos os direitos reservados.</p>
+              <p>© 2025 OggaHub. Todos os direitos reservados.</p>
             </div>
           </div>
         </body>
@@ -733,7 +733,7 @@ export function getClientConfirmationEmail(data: {
               </div>
             </div>
             <div class="footer">
-              <p>© 2025 ZillowLike. Todos os direitos reservados.</p>
+              <p>© 2025 OggaHub. Todos os direitos reservados.</p>
               <p>
                 <a href="${data.propertyUrl}">Ver imóvel</a> · 
                 <a href="${data.chatUrl}">Abrir chat</a>
