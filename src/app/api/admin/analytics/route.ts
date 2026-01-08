@@ -110,7 +110,15 @@ export async function GET(req: NextRequest) {
     const [totalRealtors, totalProperties, totalViews, totalLeads, totalFavorites] = await Promise.all([
       realtorId
         ? 1
-        : prisma.user.count({ where: { role: { in: ["REALTOR", "AGENCY"] } } }),
+        : city
+          ? prisma.user.count({
+              where: {
+                role: { in: ["REALTOR", "AGENCY"] },
+                publicCity: city,
+                ...(state ? { publicState: state } : {}),
+              },
+            })
+          : prisma.user.count({ where: { role: { in: ["REALTOR", "AGENCY"] } } }),
       prisma.property.count({ where: propertyWhere }),
       prisma.propertyView.count({
         where: {
