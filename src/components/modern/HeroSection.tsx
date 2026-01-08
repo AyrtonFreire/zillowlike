@@ -328,7 +328,7 @@ export default function HeroSection() {
                     whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={isLoading}
-                    className="bg-teal-700 hover:bg-teal-800 text-white px-6 sm:px-8 text-sm font-semibold flex items-center justify-center whitespace-nowrap disabled:opacity-60"
+                    className="glass-teal text-white px-6 sm:px-8 text-sm font-semibold flex items-center justify-center whitespace-nowrap disabled:opacity-60"
                   >
                     {isLoading ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -355,7 +355,8 @@ export default function HeroSection() {
                       onFocus={() => setShowSuggestions(true)}
                       className="flex-1 outline-none text-gray-800 placeholder:text-gray-400 text-sm bg-transparent min-w-0"
                     />
-                    {searchQuery ? (
+
+                    {searchQuery && (
                       <button
                         type="button"
                         onClick={() => {
@@ -367,20 +368,43 @@ export default function HeroSection() {
                       >
                         <X className="w-4 h-4 text-gray-400" />
                       </button>
-                    ) : (
-                      <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="flex items-center justify-center w-9 h-9 rounded-lg bg-teal-600 hover:bg-teal-700 transition-colors disabled:opacity-60"
-                        aria-label="Buscar"
-                      >
-                        {isLoading ? (
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Search className="w-4 h-4 text-white" />
-                        )}
-                      </button>
                     )}
+
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="flex items-center justify-center w-9 h-9 rounded-lg glass-teal disabled:opacity-60"
+                      aria-label="Buscar"
+                    >
+                      {isLoading ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Search className="w-4 h-4 text-white" />
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="px-4 pb-3">
+                    <div className="flex items-center rounded-full bg-gray-100 p-1 w-fit">
+                      <button
+                        type="button"
+                        onClick={() => setPurpose('SALE')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                          purpose === 'SALE' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Comprar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPurpose('RENT')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                          purpose === 'RENT' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Alugar
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
