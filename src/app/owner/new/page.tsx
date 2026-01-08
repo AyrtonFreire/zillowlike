@@ -405,7 +405,7 @@ export default function NewPropertyPage() {
     }
     // Create map once
     if (!leafletMap.current) {
-      const center = geo ? [geo.lat, geo.lng] : [-9.3986, -40.5017]; // Petrolina as default
+      const center: [number, number] = geo ? [geo.lat, geo.lng] : [-9.3986, -40.5017]; // Petrolina as default
       leafletMap.current = L.map(container).setView(center, 14);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' }).addTo(leafletMap.current);
       // Ensure correct sizing after render
@@ -417,10 +417,11 @@ export default function NewPropertyPage() {
     }
     // Create/update marker when geo exists
     if (geo && leafletMap.current) {
+      const geoTuple = [geo.lat, geo.lng] as [number, number];
       if (!leafletMarker.current) {
         // Create marker
         try {
-          leafletMarker.current = L.marker([geo.lat, geo.lng], { draggable: true }).addTo(leafletMap.current);
+          leafletMarker.current = L.marker(geoTuple, { draggable: true }).addTo(leafletMap.current);
           leafletMarker.current.on('dragend', () => {
             const p = leafletMarker.current.getLatLng();
             setGeo({ lat: p.lat, lng: p.lng });
@@ -431,14 +432,14 @@ export default function NewPropertyPage() {
       } else {
         // Update existing marker position
         try {
-          leafletMarker.current.setLatLng([geo.lat, geo.lng]);
+          leafletMarker.current.setLatLng(geoTuple);
         } catch (e) {
           console.error('Error updating marker:', e);
         }
       }
       // Center map
       try {
-        leafletMap.current.setView([geo.lat, geo.lng]);
+        leafletMap.current.setView(geoTuple);
       } catch (e) {
         console.error('Error centering map:', e);
       }
