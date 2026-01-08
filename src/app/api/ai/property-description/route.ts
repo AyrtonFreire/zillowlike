@@ -29,6 +29,73 @@ function clampText(s: string, max: number) {
   return t.slice(0, max).trim();
 }
 
+function wrapText(input: string, maxLen: number) {
+  const text = String(input || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\s+\n/g, "\n")
+    .replace(/\n\s+/g, "\n")
+    .trim();
+  if (!text) return "";
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const w of words) {
+    if (!line) {
+      line = w;
+      continue;
+    }
+    if (line.length + 1 + w.length <= maxLen) {
+      line = `${line} ${w}`;
+      continue;
+    }
+    lines.push(line);
+    line = w;
+  }
+  if (line) lines.push(line);
+  return lines.join("\n");
+}
+
+function formatListingDescription(raw: string) {
+  const t = String(raw || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  if (!t) return "";
+
+  const alreadyHasParagraphs = /\n\n/.test(t);
+  const base = t
+    .split("\n")
+    .map((l) => l.replace(/^\s*[-•]\s+/, "").trim())
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  if (alreadyHasParagraphs) {
+    const paras = t
+      .split(/\n\n+/)
+      .map((p) => p.replace(/^\s*[-•]\s+/gm, "").trim())
+      .filter(Boolean)
+      .slice(0, 4);
+    return paras.map((p) => wrapText(p, 88)).join("\n\n");
+  }
+
+  const sentences = base
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (sentences.length < 3) {
+    return wrapText(base, 88);
+  }
+
+  const p1 = sentences.slice(0, Math.min(3, sentences.length)).join(" ");
+  const p2 = sentences.slice(Math.min(3, sentences.length), Math.min(6, sentences.length)).join(" ");
+  const p3 = sentences.slice(Math.min(6, sentences.length)).join(" ");
+  const paragraphs = [p1, p2, p3].map((p) => p.trim()).filter(Boolean);
+  return paragraphs.map((p) => wrapText(p, 88)).join("\n\n");
+}
+
 function defaultTitleFromInput(b: z.infer<typeof BodySchema>) {
   const base = String(b.title || "").trim();
   if (base.length >= 3) return clampText(base, 70);
@@ -71,6 +138,11 @@ const BodySchema = z.object({
   bedrooms: z.number().int().min(0).max(50).optional().nullable(),
   bathrooms: z.number().min(0).max(50).optional().nullable(),
   areaM2: z.number().int().min(0).max(100000).optional().nullable(),
+  suites: z.number().int().min(0).max(50).optional().nullable(),
+  parkingSpots: z.number().int().min(0).max(50).optional().nullable(),
+  floor: z.number().int().min(0).max(300).optional().nullable(),
+  yearBuilt: z.number().int().min(0).max(3000).optional().nullable(),
+  yearRenovated: z.number().int().min(0).max(3000).optional().nullable(),
   conditionTags: z.array(z.string().max(80)).max(20).optional().nullable(),
   amenities: z
     .object({
@@ -194,7 +266,12 @@ async function handler(req: NextRequest) {
     location ? `Localização: ${location}` : null,
     typeof b.areaM2 === "number" && b.areaM2 > 0 ? `Área: ${b.areaM2} m²` : null,
     typeof b.bedrooms === "number" && b.bedrooms >= 0 ? `Quartos: ${b.bedrooms}` : null,
+    typeof b.suites === "number" && b.suites >= 0 ? `Suítes: ${b.suites}` : null,
     typeof b.bathrooms === "number" && b.bathrooms >= 0 ? `Banheiros: ${b.bathrooms}` : null,
+    typeof b.parkingSpots === "number" && b.parkingSpots >= 0 ? `Vagas: ${b.parkingSpots}` : null,
+    typeof b.floor === "number" && b.floor > 0 ? `Andar: ${b.floor}` : null,
+    typeof b.yearBuilt === "number" && b.yearBuilt > 0 ? `Ano de construção: ${b.yearBuilt}` : null,
+    typeof b.yearRenovated === "number" && b.yearRenovated > 0 ? `Ano de reforma: ${b.yearRenovated}` : null,
     b.conditionTags?.length ? `Diferenciais: ${b.conditionTags.join(", ")}` : null,
     amenitiesList.length ? `Comodidades: ${amenitiesList.join(", ")}` : null,
   ].filter(Boolean);
@@ -219,13 +296,15 @@ async function handler(req: NextRequest) {
     "   - Prova: mencionar que há fotos/detalhes ou que o valor está atualizado, sem inventar.\n" +
     "   - CTA leve: 'Veja fotos', 'Saiba mais', 'Agende uma visita', 'Fale com um corretor'.\n" +
     "   - Proibido: telefone, e-mail, links, emojis, urgência/agressividade, superlativos.\n" +
-    "4) description (Texto do anúncio): 14 a 18 linhas, separadas por quebras de linha (\\n).\n" +
+    "4) description (Texto do anúncio): pelo menos 3 parágrafos, separados por uma linha em branco (\\n\\n).\n" +
+    "   - Cada parágrafo deve ter 2 a 4 frases.\n" +
+    "   - Use quebras de linha (\\n) dentro dos parágrafos para deixar o texto agradável de ler.\n" +
     "5) Não invente fatos. Não inferir: vista, metragem não informada, mobília, vagas, andar, condomínio/IPTU, reforma, alto padrão, proximidade de pontos de interesse, orientação solar, etc., a menos que esteja nos dados ou claramente visível nas fotos.\n" +
     "6) Use apenas o que estiver nos dados fornecidos e o que for visível nas fotos.\n" +
     "7) Se faltar informação, escreva de forma neutra (sem suposições).\n" +
     "8) Não inclua emojis.\n" +
     "9) Não inclua telefone, e-mail, links, preço parcelado, ou chamada agressiva.\n" +
-    "10) A description não deve ter bullets, títulos, ou seções; apenas frases/linhas corridas (sem marcadores).\n" +
+    "10) A description não deve ter bullets/marcadores (ex.: '-' ou '•') nem títulos; apenas parágrafos.\n" +
     "11) Copywriting do Texto do anúncio: comece com uma abertura clara (tipo + ação + local) e depois detalhe (ambientes, metragem se tiver, diferenciais reais). Feche com CTA leve (ex.: 'Agende sua visita e conheça de perto.').\n" +
     "12) Seja específico e útil, mas só com dados fornecidos: quartos/banheiros/área, diferenciais, comodidades e contexto de localização (bairro/cidade/UF).\n" +
     "13) Validação final obrigatória antes de responder: metaTitle <= 65 caracteres e metaDescription <= 155 caracteres. Se passar, reescreva mais curto mantendo o formato exigido.\n" +
@@ -361,7 +440,7 @@ async function handler(req: NextRequest) {
   const metaDescription = String(parsed.metaDescription || "").trim();
 
   const safeTitle = title.length >= 3 ? clampText(title, 70) : defaultTitleFromInput(b);
-  const safeDescription = description || "";
+  const safeDescription = description ? formatListingDescription(description) : "";
   const safeMetaTitle = metaTitle ? clampText(metaTitle, 65) : defaultMetaTitleFromInput(b);
   const safeMetaDescription = metaDescription ? clampText(metaDescription, 155) : defaultMetaDescriptionFromInput(b);
 

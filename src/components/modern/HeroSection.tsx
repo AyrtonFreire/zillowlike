@@ -258,28 +258,19 @@ export default function HeroSection() {
           className="text-center text-white max-w-3xl mx-auto"
         >
           <motion.h1
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-normal mb-4 px-2 leading-tight"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-normal mb-6 px-2 leading-tight"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            Explore os Melhores Imóveis do Brasil
+            Explore os Melhores Imóveis da Região
           </motion.h1>
-
-          <motion.p
-            className="text-xs sm:text-sm md:text-base tracking-wider mb-8 md:mb-10 text-white/90 px-3 font-medium uppercase"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-          >
-            Explore milhares de casas, mansões e imóveis de luxo em todo o Brasil em uma simples busca
-          </motion.p>
 
           {/* Search Bar - estilo mais simples/high-end tipo JamesEdition */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.4 }}
             className="w-full max-w-3xl mx-auto relative"
           >
             <form onSubmit={handleSearch} className="bg-transparent">
@@ -525,6 +516,15 @@ export default function HeroSection() {
               )}
             </AnimatePresence>
           </motion.div>
+
+          <motion.p
+            className="text-[10px] sm:text-xs md:text-sm tracking-wider mt-4 text-white/90 px-3 font-medium uppercase"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+          >
+            Explore milhares de casas, mansões e imóveis de luxo em todo o Brasil em uma simples busca
+          </motion.p>
 
           {/* Remover stats - JamesEdition não tem */}
         </motion.div>

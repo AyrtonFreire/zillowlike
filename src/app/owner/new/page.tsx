@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft } from "lucide-react";
-import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis, restrictToParentElement, restrictToWindowEdges } from "@dnd-kit/modifiers";
@@ -309,20 +311,8 @@ export default function NewPropertyPage() {
       const pref = localStorage.getItem("owner_post_tips");
       if (pref !== null) setShowTips(pref === "1");
     } catch {}
-    // Load Leaflet once
-    (async () => {
-      if (typeof window === 'undefined') return;
-      if ((window as any).L) { setLeafletLoaded(true); return; }
-      const css = document.createElement('link');
-      css.rel = 'stylesheet';
-      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(css);
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.async = true;
-      script.onload = () => setLeafletLoaded(true);
-      document.body.appendChild(script);
-    })();
+    // Leaflet é carregado via bundle/import (sem CDN) para evitar bloqueio por CSP
+    setLeafletLoaded(true);
     if (!lightbox.open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeLightbox();
@@ -405,8 +395,7 @@ export default function NewPropertyPage() {
   // Initialize/Update Leaflet map when on Step 2 and geo available
   useEffect(() => {
     if (!leafletLoaded || currentStep !== 1) return;
-    const L = (window as any).L;
-    if (!L || !mapContainerRef.current) return;
+    if (!mapContainerRef.current) return;
     const container = mapContainerRef.current;
     const existingContainer = leafletMap.current?.getContainer?.() || leafletMap.current?._container;
     if (leafletMap.current && existingContainer && existingContainer !== container) {
@@ -750,8 +739,7 @@ export default function NewPropertyPage() {
 
   // dnd-kit: sensors e item ordenável
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
-    useSensor(TouchSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -847,9 +835,18 @@ export default function NewPropertyPage() {
       boxShadow: isDragging ? '0 12px 30px rgba(0,0,0,0.2)' : undefined,
       borderRadius: '0.75rem',
       cursor: isDragging ? 'grabbing' : 'grab',
+      userSelect: 'none',
+      WebkitUserSelect: 'none',
+      touchAction: 'none',
     };
     return (
-      <div ref={setNodeRef} style={style} className={isDragging ? 'ring-2 ring-teal-500 shadow-lg scale-105' : ''} {...attributes} {...listeners}>
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`${isDragging ? 'ring-2 ring-teal-500 shadow-lg scale-105' : ''} select-none`}
+        {...attributes}
+        {...listeners}
+      >
         {children}
       </div>
     );
@@ -2637,9 +2634,7 @@ export default function NewPropertyPage() {
                                       src={img.url}
                                       alt={img.alt || `Imagem ${idx + 1}`}
                                       className="w-full h-full object-cover"
-                                      onPointerDown={(e) => e.stopPropagation()}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                      onTouchStart={(e) => e.stopPropagation()}
+                                      draggable={false}
                                       onClick={(e) => { e.stopPropagation(); openLightbox(idx); }}
                                     />
                                   ) : (
