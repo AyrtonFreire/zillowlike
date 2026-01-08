@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Resend verification error", error);
+    console.error("Email verification resend error", error);
     return NextResponse.json({ success: false, error: "Erro ao reenviar confirmação." }, { status: 500 });
   }
 }

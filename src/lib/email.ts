@@ -10,10 +10,10 @@ interface EmailOptions {
 }
 
 export async function sendEmail({ to, subject, html }: EmailOptions) {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY;
 
   console.log("[EMAIL] Tentando enviar email para:", to);
-  console.log("[EMAIL] RESEND_API_KEY presente?", !!apiKey);
+  console.log("[EMAIL] BREVO_API_KEY presente?", !!apiKey);
 
   // Se não houver API key configurada, apenas loga (modo desenvolvimento)
   if (!apiKey) {
@@ -21,21 +21,28 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
     return true;
   }
 
-  const from = process.env.EMAIL_FROM || "OggaHub <onboarding@resend.dev>";
+  const from = process.env.EMAIL_FROM || "OggaHub <no-reply@oggahub.com>";
   console.log("[EMAIL] Enviando de:", from);
 
+  const fromMatch = String(from).match(/^(.*)<([^>]+)>\s*$/);
+  const senderName = (fromMatch?.[1] || "OggaHub").trim();
+  const senderEmail = (fromMatch?.[2] || from).trim();
+
   try {
-    const response = await fetch("https://api.resend.com/emails", {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        "api-key": apiKey,
       },
       body: JSON.stringify({
-        from,
-        to,
+        sender: {
+          name: senderName,
+          email: senderEmail,
+        },
+        to: [{ email: to }],
         subject,
-        html,
+        htmlContent: html,
       }),
     });
 
@@ -43,7 +50,7 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      console.error("[EMAIL ERROR] Resend API retornou erro:", {
+      console.error("[EMAIL ERROR] Brevo API retornou erro:", {
         status: response.status,
         statusText: response.statusText,
         body: text,
@@ -52,10 +59,10 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
     }
 
     const data = await response.json().catch(() => null);
-    console.log("[EMAIL] ✅ Email enviado com sucesso via Resend:", data);
+    console.log("[EMAIL] ✅ Email enviado com sucesso via Brevo:", data);
     return true;
   } catch (error) {
-    console.error("[EMAIL ERROR] Exceção ao chamar Resend:", error);
+    console.error("[EMAIL ERROR] Exceção ao chamar Brevo:", error);
     return false;
   }
 }

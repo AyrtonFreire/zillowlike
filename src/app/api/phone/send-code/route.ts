@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     try {
       await sendSms(user.phone, body);
     } catch (error) {
-      console.error("Twilio SMS error:", error);
+      console.error("Brevo SMS error:", error);
       return NextResponse.json(
         { error: "Falha ao enviar SMS. Tente novamente em instantes." },
         { status: 500 }
