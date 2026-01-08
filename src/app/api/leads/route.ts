@@ -271,6 +271,20 @@ export async function POST(req: NextRequest) {
       const { sendEmail, getLeadNotificationEmail, getClientConfirmationEmail } = await import("@/lib/email");
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zillowlike.vercel.app';
 
+      const nowMs = Date.now();
+      const wasRecentlyNotified = async (title: string, windowMs: number) => {
+        const rec = await (prisma as any).leadEvent.findFirst({
+          where: {
+            leadId: lead.id,
+            type: "INTERNAL_MESSAGE",
+            title,
+            createdAt: { gte: new Date(nowMs - windowMs) },
+          },
+          select: { id: true },
+        });
+        return !!rec?.id;
+      };
+
       // 1. Email para o proprietário/corretor
       const owner = propertyWithOwner?.owner;
       console.log("[EMAIL] Dados do owner:", {
@@ -281,6 +295,11 @@ export async function POST(req: NextRequest) {
       });
 
       if (owner?.email) {
+        const dedupeTitle = `EMAIL:LEAD_CREATED:${lead.id}:${owner.email}`;
+        const alreadyNotified = await wasRecentlyNotified(dedupeTitle, 10 * 60 * 1000);
+        if (alreadyNotified) {
+          console.log("[EMAIL] Suprimindo notificação duplicada (lead created):", owner.email);
+        } else {
         const emailData = getLeadNotificationEmail({
           propertyTitle: propertyWithOwner?.title || "Imóvel",
           userName: name,
@@ -298,8 +317,20 @@ export async function POST(req: NextRequest) {
         
         if (sent) {
           console.log("✅ Lead notification email sent to owner:", owner.email);
+          await LeadEventService.record({
+            leadId: lead.id,
+            type: "INTERNAL_MESSAGE",
+            title: dedupeTitle,
+            description: emailData.subject,
+            metadata: {
+              channel: "EMAIL",
+              to: owner.email,
+              template: "LEAD_CREATED",
+            },
+          });
         } else {
           console.error("❌ Falha ao enviar email para owner:", owner.email);
+        }
         }
       } else {
         console.warn("⚠️ Owner não tem email cadastrado, pulando notificação");
@@ -307,6 +338,12 @@ export async function POST(req: NextRequest) {
 
       // 2. Email de confirmação para o cliente com link do chat
       if (email) {
+        const dedupeTitle = `EMAIL:LEAD_CONFIRMATION:${lead.id}:${email}`;
+        const alreadyNotified = await wasRecentlyNotified(dedupeTitle, 10 * 60 * 1000);
+        if (alreadyNotified) {
+          console.log("[EMAIL] Suprimindo confirmação duplicada para cliente:", email);
+          return;
+        }
         const clientEmailData = getClientConfirmationEmail({
           clientName: name,
           propertyTitle: propertyWithOwner?.title || "Imóvel",
@@ -320,6 +357,18 @@ export async function POST(req: NextRequest) {
         });
         
         console.log("✅ Confirmation email sent to client:", email);
+
+        await LeadEventService.record({
+          leadId: lead.id,
+          type: "INTERNAL_MESSAGE",
+          title: dedupeTitle,
+          description: clientEmailData.subject,
+          metadata: {
+            channel: "EMAIL",
+            to: email,
+            template: "LEAD_CONFIRMATION",
+          },
+        });
       }
     } catch (err) {
       console.error("❌ Error sending emails:", err);

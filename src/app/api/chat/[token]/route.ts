@@ -214,6 +214,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       },
     });
 
+    const nowMs = Date.now();
+    const wasRecentlyNotified = async (title: string, windowMs: number) => {
+      const rec = await (prisma as any).leadEvent.findFirst({
+        where: {
+          leadId: lead.id,
+          type: "INTERNAL_MESSAGE",
+          title,
+          createdAt: { gte: new Date(nowMs - windowMs) },
+        },
+        select: { id: true },
+      });
+      return !!rec?.id;
+    };
+
     if (!fromClient) {
       try {
         const currentStage = previousStage;
@@ -307,6 +321,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         if (leadWithDetails?.realtor?.email) {
           const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
           const chatUrl = `${siteUrl}/broker/leads/${lead.id}`;
+
+          const recipientEmail = leadWithDetails.realtor.email;
+          const leadCreatedDedupeTitle = `EMAIL:LEAD_CREATED:${lead.id}:${recipientEmail}`;
+          const chatDedupeTitle = `EMAIL:CLIENT_MESSAGE_TO_REALTOR:${lead.id}:${recipientEmail}`;
+          const isDuplicate =
+            (await wasRecentlyNotified(chatDedupeTitle, 10 * 60 * 1000)) ||
+            (await wasRecentlyNotified(leadCreatedDedupeTitle, 10 * 60 * 1000));
+
+          if (isDuplicate) {
+            logger.info("[EMAIL] Suprimindo notificação duplicada de chat para corretor", {
+              leadId: lead.id,
+              to: recipientEmail,
+            });
+          } else {
           
           const emailData = getClientMessageNotificationEmail({
             realtorName: leadWithDetails.realtor.name || "Corretor",
@@ -316,14 +344,30 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
             chatUrl,
           });
 
-          // Enviar email em background (não bloqueia a resposta)
-          sendEmail({
-            to: leadWithDetails.realtor.email,
-            subject: emailData.subject,
-            html: emailData.html,
-          }).catch((err) => {
+          void (async () => {
+            const sent = await sendEmail({
+              to: recipientEmail,
+              subject: emailData.subject,
+              html: emailData.html,
+            });
+
+            if (sent) {
+              await LeadEventService.record({
+                leadId: lead.id,
+                type: "INTERNAL_MESSAGE",
+                title: chatDedupeTitle,
+                description: emailData.subject,
+                metadata: {
+                  channel: "EMAIL",
+                  to: recipientEmail,
+                  template: "CLIENT_MESSAGE_TO_REALTOR",
+                },
+              });
+            }
+          })().catch((err) => {
             console.error("Error sending client message notification email:", err);
           });
+          }
         }
 
         // Enviar WhatsApp apenas na "primeira" mensagem nova do cliente, para evitar spam
@@ -388,6 +432,17 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
           const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
           const chatUrl = `${siteUrl}/chat/${leadWithDetails.clientChatToken}`;
 
+          const recipientEmail = leadWithDetails.contact.email;
+          const replyDedupeTitle = `EMAIL:REALTOR_REPLY_TO_CLIENT:${lead.id}:${recipientEmail}`;
+          const isDuplicate = await wasRecentlyNotified(replyDedupeTitle, 10 * 60 * 1000);
+          if (isDuplicate) {
+            logger.info("[EMAIL] Suprimindo notificação duplicada de resposta para cliente", {
+              leadId: lead.id,
+              to: recipientEmail,
+            });
+            return NextResponse.json({ success: true, message });
+          }
+
           const emailData = getRealtorReplyNotificationEmail({
             clientName: leadWithDetails.contact.name || "Cliente",
             propertyTitle: leadWithDetails.property?.title || "Imóvel",
@@ -395,11 +450,27 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
             chatUrl,
           });
 
-          sendEmail({
-            to: leadWithDetails.contact.email,
-            subject: emailData.subject,
-            html: emailData.html,
-          }).catch((err) => {
+          void (async () => {
+            const sent = await sendEmail({
+              to: recipientEmail,
+              subject: emailData.subject,
+              html: emailData.html,
+            });
+
+            if (sent) {
+              await LeadEventService.record({
+                leadId: lead.id,
+                type: "INTERNAL_MESSAGE",
+                title: replyDedupeTitle,
+                description: emailData.subject,
+                metadata: {
+                  channel: "EMAIL",
+                  to: recipientEmail,
+                  template: "REALTOR_REPLY_TO_CLIENT",
+                },
+              });
+            }
+          })().catch((err) => {
             console.error("Error sending realtor reply notification email to client:", err);
           });
         }

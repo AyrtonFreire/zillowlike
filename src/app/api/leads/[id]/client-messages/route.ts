@@ -156,6 +156,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       },
     });
 
+    const nowMs = Date.now();
+    const wasRecentlyNotified = async (title: string, windowMs: number) => {
+      const rec = await (prisma as any).leadEvent.findFirst({
+        where: {
+          leadId: id,
+          type: "INTERNAL_MESSAGE",
+          title,
+          createdAt: { gte: new Date(nowMs - windowMs) },
+        },
+        select: { id: true },
+      });
+      return !!rec?.id;
+    };
+
     try {
       const isProfessional = role === "REALTOR" || role === "AGENCY" || role === "ADMIN" || role === "OWNER";
       const currentStage = previousStage;
@@ -235,6 +249,23 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       if (fullLead?.contact?.email && fullLead.clientChatToken) {
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://zillowlike.vercel.app";
         const chatUrl = `${siteUrl}/chat/${fullLead.clientChatToken}`;
+
+        const recipientEmail = fullLead.contact.email;
+        const dedupeTitle = `EMAIL:REALTOR_REPLY_TO_CLIENT:${id}:${recipientEmail}`;
+        const isDuplicate = await wasRecentlyNotified(dedupeTitle, 10 * 60 * 1000);
+        if (isDuplicate) {
+          return NextResponse.json({
+            message: {
+              id: message.id,
+              content: message.content,
+              senderId: userId,
+              senderType: role || "REALTOR",
+              createdAt: message.createdAt,
+              read: true,
+            },
+          });
+        }
+
         const emailData = getRealtorReplyNotificationEmail({
           clientName: fullLead.contact.name || "Cliente",
           propertyTitle: fullLead.property?.title || "Imóvel",
@@ -242,11 +273,27 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           chatUrl,
         });
 
-        sendEmail({
-          to: fullLead.contact.email,
-          subject: emailData.subject,
-          html: emailData.html,
-        }).catch((err) => {
+        void (async () => {
+          const sent = await sendEmail({
+            to: recipientEmail,
+            subject: emailData.subject,
+            html: emailData.html,
+          });
+
+          if (sent) {
+            await LeadEventService.record({
+              leadId: id,
+              type: "INTERNAL_MESSAGE",
+              title: dedupeTitle,
+              description: emailData.subject,
+              metadata: {
+                channel: "EMAIL",
+                to: recipientEmail,
+                template: "REALTOR_REPLY_TO_CLIENT",
+              },
+            });
+          }
+        })().catch((err) => {
           console.error("Error sending realtor reply notification email to client:", err);
         });
       }

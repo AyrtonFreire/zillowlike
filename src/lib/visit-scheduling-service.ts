@@ -182,8 +182,25 @@ export class VisitSchedulingService {
       try {
         const { sendEmail, getClientConfirmationEmail, getLeadNotificationEmail } = await import("@/lib/email");
 
+        const nowMs = Date.now();
+        const wasRecentlyNotified = async (title: string, windowMs: number) => {
+          const rec = await (prisma as any).leadEvent.findFirst({
+            where: {
+              leadId: lead.id,
+              type: "INTERNAL_MESSAGE",
+              title,
+              createdAt: { gte: new Date(nowMs - windowMs) },
+            },
+            select: { id: true },
+          });
+          return !!rec?.id;
+        };
+
         // Email para o cliente
         if (clientEmail) {
+          const dedupeTitle = `EMAIL:LEAD_CONFIRMATION:${lead.id}:${clientEmail}`;
+          const isDuplicate = await wasRecentlyNotified(dedupeTitle, 10 * 60 * 1000);
+          if (!isDuplicate) {
           const clientEmailData = getClientConfirmationEmail({
             clientName,
             propertyTitle: lead.property?.title || "Imóvel",
@@ -191,12 +208,27 @@ export class VisitSchedulingService {
             propertyUrl: `${siteUrl}/property/${propertyId}`,
           });
           
-          await sendEmail({
+          const sent = await sendEmail({
             to: clientEmail,
             ...clientEmailData,
           });
           
+          if (sent) {
+            await LeadEventService.record({
+              leadId: lead.id,
+              type: "INTERNAL_MESSAGE",
+              title: dedupeTitle,
+              description: clientEmailData.subject,
+              metadata: {
+                channel: "EMAIL",
+                to: clientEmail,
+                template: "LEAD_CONFIRMATION",
+              },
+            });
+          }
+
           logger.info("✅ Confirmation email sent to client", { email: clientEmail });
+          }
         }
 
         // Email para o proprietário
@@ -207,6 +239,9 @@ export class VisitSchedulingService {
           });
 
           if (owner?.email) {
+            const dedupeTitle = `EMAIL:LEAD_CREATED:${lead.id}:${owner.email}`;
+            const isDuplicate = await wasRecentlyNotified(dedupeTitle, 10 * 60 * 1000);
+            if (!isDuplicate) {
             const ownerEmailData = getLeadNotificationEmail({
               propertyTitle: lead.property.title,
               userName: clientName,
@@ -216,12 +251,27 @@ export class VisitSchedulingService {
               propertyUrl: `${siteUrl}/property/${propertyId}`,
             });
             
-            await sendEmail({
+            const sent = await sendEmail({
               to: owner.email,
               ...ownerEmailData,
             });
             
+            if (sent) {
+              await LeadEventService.record({
+                leadId: lead.id,
+                type: "INTERNAL_MESSAGE",
+                title: dedupeTitle,
+                description: ownerEmailData.subject,
+                metadata: {
+                  channel: "EMAIL",
+                  to: owner.email,
+                  template: "LEAD_CREATED",
+                },
+              });
+            }
+
             logger.info("✅ Lead notification sent to owner", { email: owner.email });
+            }
           }
         }
       } catch (err) {
