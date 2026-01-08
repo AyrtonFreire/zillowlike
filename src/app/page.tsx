@@ -16,7 +16,7 @@ import SiteFooter from "@/components/Footer";
 import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
-import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search, X } from "lucide-react";
+import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search, X, BarChart3, Users, Plus, ArrowRight } from "lucide-react";
 
 const PropertyDetailsModalJames = dynamic(() => import("@/components/PropertyDetailsModalJames"), { ssr: false });
 import SearchFiltersBarZillow from "@/components/SearchFiltersBarZillow";
@@ -28,6 +28,14 @@ import type { ApiProperty } from "@/types/api";
 
 type Property = ApiProperty;
 const MapWithPriceBubbles = dynamic(() => import("@/components/MapWithPriceBubbles"), { ssr: false });
+
+type OnboardingStatus = {
+  authenticated: boolean;
+  role: string;
+  hasProperties: boolean;
+  propertyCount: number;
+  realtorApplication?: string | null;
+};
 
 export default function Home() {
   const router = useRouter();
@@ -298,6 +306,33 @@ export default function Home() {
   const hasSearched = useMemo(() => {
     return !!(search || city || type || minPrice || maxPrice || bedroomsMin || bathroomsMin || areaMin);
   }, [search, city, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin]);
+
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    if (hasSearched) return;
+
+    let alive = true;
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const res = await fetch("/api/user/onboarding-status", { signal: controller.signal });
+        if (!res.ok) return;
+        const data = (await res.json()) as OnboardingStatus;
+        if (!alive) return;
+        setOnboardingStatus(data);
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      alive = false;
+      controller.abort();
+    };
+  }, [user, hasSearched]);
 
   // Contar filtros avançados ativos (para o chip "Mais")
   const advancedFiltersCount = useMemo(() => {
@@ -1021,130 +1056,390 @@ export default function Home() {
 
       {/* Perfis principais: comprador, proprietário, corretor */}
       {!hasSearched && (
-        <div className="bg-gradient-to-b from-gray-100 via-gray-100 to-gray-200">
-          <div className="mx-auto max-w-7xl px-4 py-8 sm:py-10">
-            <div className="max-w-4xl mx-auto mb-10 sm:mb-12 px-1 sm:px-0">
-              <p className="text-xs sm:text-sm font-semibold tracking-[0.18em] text-teal-600 uppercase text-left">
-                Para quem é o Zillowlike
-              </p>
-              <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-display text-gray-900 text-left">
-                Três formas de usar a plataforma
-              </h2>
-              <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-xl text-left">
-                Um lugar único para quem busca um lar, para quem quer anunciar com agilidade
-                e para corretores que desejem um hub para seus negócios
-              </p>
+        (() => {
+          const role = (((user as any)?.role as string | undefined) || onboardingStatus?.role || "USER").toUpperCase();
+          const isDefaultProfiles = !user || role === "USER" || role === "ADMIN";
+          const isBroker = role === "REALTOR" || role === "AGENCY";
+          const isOwner = role === "OWNER";
+          const ownerHasProperties = Boolean(onboardingStatus?.hasProperties);
+          const ownerPropertyCount = onboardingStatus?.propertyCount ?? 0;
+
+          return (
+            <div className="bg-gradient-to-b from-gray-100 via-gray-100 to-gray-200">
+              <div className="mx-auto max-w-7xl px-4 py-8 sm:py-10">
+                <div className="max-w-4xl mx-auto mb-10 sm:mb-12 px-1 sm:px-0">
+                  {isDefaultProfiles ? (
+                    <>
+                      <p className="text-xs sm:text-sm font-semibold tracking-[0.18em] text-teal-600 uppercase text-left">
+                        Para quem é o Zillowlike
+                      </p>
+                      <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-display text-gray-900 text-left">
+                        Três formas de usar a plataforma
+                      </h2>
+                      <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-xl text-left">
+                        Um lugar único para quem busca um lar, para quem quer anunciar com agilidade e para corretores
+                        que desejem um hub para seus negócios
+                      </p>
+                    </>
+                  ) : isBroker ? (
+                    <>
+                      <p className="text-xs sm:text-sm font-semibold tracking-[0.18em] text-indigo-700 uppercase text-left">
+                        Área do corretor
+                      </p>
+                      <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-display text-gray-900 text-left">
+                        Seu painel de trabalho
+                      </h2>
+                      <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-2xl text-left">
+                        Visão geral do seu negócio e acesso rápido às áreas mais usadas.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs sm:text-sm font-semibold tracking-[0.18em] text-amber-700 uppercase text-left">
+                        Área do proprietário
+                      </p>
+                      <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-display text-gray-900 text-left">
+                        Seus anúncios em um só lugar
+                      </h2>
+                      <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-2xl text-left">
+                        Gerencie seus imóveis, publique novos anúncios e acompanhe o desempenho.
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {isDefaultProfiles ? (
+                  <div className="grid gap-6 md:gap-8 md:grid-cols-3 items-stretch">
+                    <div className="relative flex">
+                      <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
+                        <div className="relative h-40 bg-teal-700">
+                          <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-teal-500">
+                            <Image
+                              src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80"
+                              alt="Casal avaliando um imóvel com ajuda de uma corretora"
+                              fill
+                              sizes="160px"
+                              className="object-cover"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
+                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
+                            Quero encontrar um imóvel
+                          </h3>
+                          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
+                            Explore casas e apartamentos com informações claras, filtros rápidos e favoritos para comparar com calma.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (typeof window !== "undefined") {
+                                const el = document.getElementById("explorar");
+                                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                              }
+                            }}
+                            className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-teal-600 text-teal-700 hover:bg-teal-50 transition-all"
+                          >
+                            Explorar imóveis
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative flex">
+                      <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
+                        <div className="relative h-40 bg-amber-700">
+                          <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-amber-500">
+                            <Image
+                              src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80"
+                              alt="Fachada de uma casa moderna e bem iluminada"
+                              fill
+                              sizes="160px"
+                              className="object-cover"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
+                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
+                            Quero vender ou alugar meu imóvel
+                          </h3>
+                          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
+                            Anuncie seu imóvel com enorme visibilidade para toda região e acompanhe interessados com ferramentas de comunicação e organização.
+                          </p>
+                          <Link
+                            href="/start"
+                            className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-amber-600 text-amber-700 hover:bg-amber-50 transition-all"
+                          >
+                            Poste seu primeiro imóvel sem custo
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative flex">
+                      <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
+                        <div className="relative h-40 bg-indigo-900">
+                          <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-indigo-600">
+                            <Image
+                              src="https://images.unsplash.com/photo-1521791055366-0d553872125f?auto=format&fit=crop&w=800&q=80"
+                              alt="Homem e mulher em contexto de negócios"
+                              fill
+                              sizes="160px"
+                              className="object-cover"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
+                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
+                            Sou corretor(a)
+                          </h3>
+                          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
+                            Centralize seus leads, acompanhe o funil e responda mais rápido com nosso CRM. Se optar, você também pode receber interessados
+                            vindos de anúncios de proprietários.
+                          </p>
+                          <Link
+                            href="/realtor/register"
+                            className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-indigo-600 text-indigo-700 hover:bg-indigo-50 transition-all"
+                          >
+                            Cadastre-se como corretor(a) no site
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : isBroker ? (
+                  <div className="grid gap-6 md:gap-8 md:grid-cols-12 items-stretch">
+                    <div className="relative md:col-span-7 overflow-hidden rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] bg-[#0b1220]">
+                      <div className="absolute inset-0">
+                        <Image
+                          src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1800&q=80"
+                          alt="Equipe em reunião de negócios"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 60vw"
+                          className="object-cover opacity-60"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#0b1220]/95 via-[#0b1220]/75 to-transparent" />
+                      </div>
+
+                      <div className="relative z-10 h-full p-8 sm:p-10 flex flex-col justify-between">
+                        <div>
+                          <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-indigo-200">
+                            Visão geral
+                          </p>
+                          <h3 className="mt-3 text-2xl sm:text-3xl font-display text-white">
+                            Acompanhe suas oportunidades
+                          </h3>
+                          <p className="mt-3 text-sm sm:text-base text-white/80 max-w-lg">
+                            Abra seu dashboard para ver métricas, leads ativos e próximos passos.
+                          </p>
+                        </div>
+
+                        <div className="mt-7 flex flex-wrap items-center gap-3">
+                          <Link
+                            href="/broker/dashboard"
+                            className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold bg-white text-gray-900 hover:bg-white/90 transition-all"
+                          >
+                            Abrir dashboard
+                            <ArrowRight className="w-4 h-4" />
+                          </Link>
+                          <Link
+                            href="/broker/leads"
+                            className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold border border-white/30 text-white hover:bg-white/10 transition-all"
+                          >
+                            Ver leads
+                            <Users className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-5 grid gap-6">
+                      <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.18)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.24)]">
+                        <div className="p-7 sm:p-8">
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg">
+                            <BarChart3 className="w-6 h-6 text-white" />
+                          </div>
+                          <h4 className="mt-5 text-lg font-semibold text-gray-900">Seu estoque de imóveis</h4>
+                          <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                            Veja seus anúncios, qualidade e performance por imóvel.
+                          </p>
+                          <div className="mt-5">
+                            <Link
+                              href="/broker/properties"
+                              className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:text-indigo-800"
+                            >
+                              Ver imóveis
+                              <ArrowRight className="w-4 h-4" />
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.18)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.24)]">
+                          <div className="p-7 sm:p-8">
+                            <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg">
+                              <Plus className="w-6 h-6 text-white" />
+                            </div>
+                            <h4 className="mt-5 text-lg font-semibold text-gray-900">Criar anúncio</h4>
+                            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                              Publique um novo imóvel em poucos minutos.
+                            </p>
+                            <div className="mt-5">
+                              <Link
+                                href="/owner/new"
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800"
+                              >
+                                Postar imóvel
+                                <ArrowRight className="w-4 h-4" />
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.18)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.24)]">
+                          <div className="p-7 sm:p-8">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-600 flex items-center justify-center shadow-lg">
+                              <Users className="w-6 h-6 text-white" />
+                            </div>
+                            <h4 className="mt-5 text-lg font-semibold text-gray-900">Leads</h4>
+                            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                              Organize e acompanhe cada interessado.
+                            </p>
+                            <div className="mt-5">
+                              <Link
+                                href="/broker/leads"
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-amber-700 hover:text-amber-800"
+                              >
+                                Abrir leads
+                                <ArrowRight className="w-4 h-4" />
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : isOwner ? (
+                  <div className="grid gap-6 md:gap-8 md:grid-cols-12 items-stretch">
+                    <div className="relative md:col-span-7 overflow-hidden rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] bg-[#231a0e]">
+                      <div className="absolute inset-0">
+                        <Image
+                          src="https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1800&q=80"
+                          alt="Interior de imóvel bem iluminado"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 60vw"
+                          className="object-cover opacity-60"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#231a0e]/95 via-[#231a0e]/75 to-transparent" />
+                      </div>
+
+                      <div className="relative z-10 h-full p-8 sm:p-10 flex flex-col justify-between">
+                        <div>
+                          <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-amber-200">
+                            Central do proprietário
+                          </p>
+                          <h3 className="mt-3 text-2xl sm:text-3xl font-display text-white">
+                            {ownerHasProperties ? "Gerencie seus imóveis" : "Comece seu primeiro anúncio"}
+                          </h3>
+                          <p className="mt-3 text-sm sm:text-base text-white/80 max-w-lg">
+                            {ownerHasProperties
+                              ? `Você tem ${ownerPropertyCount} ${ownerPropertyCount === 1 ? "imóvel" : "imóveis"} cadastrado(s). Veja, edite e publique novos anúncios quando quiser.`
+                              : "Publique seu primeiro imóvel e acompanhe tudo por aqui."}
+                          </p>
+                        </div>
+
+                        <div className="mt-7 flex flex-wrap items-center gap-3">
+                          <Link
+                            href="/owner/properties"
+                            className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold bg-white text-gray-900 hover:bg-white/90 transition-all"
+                          >
+                            Meus imóveis
+                            <ArrowRight className="w-4 h-4" />
+                          </Link>
+                          <Link
+                            href="/owner/new"
+                            className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold border border-white/30 text-white hover:bg-white/10 transition-all"
+                          >
+                            Novo imóvel
+                            <Plus className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-5 grid gap-6">
+                      <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.18)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.24)]">
+                        <div className="p-7 sm:p-8">
+                          <div className="w-12 h-12 rounded-2xl bg-amber-600 flex items-center justify-center shadow-lg">
+                            <Building2 className="w-6 h-6 text-white" />
+                          </div>
+                          <h4 className="mt-5 text-lg font-semibold text-gray-900">Publicar novo anúncio</h4>
+                          <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                            Atualize fotos, detalhes e publique quando estiver pronto.
+                          </p>
+                          <div className="mt-5">
+                            <Link
+                              href="/owner/new"
+                              className="inline-flex items-center gap-2 text-sm font-semibold text-amber-700 hover:text-amber-800"
+                            >
+                              Criar anúncio
+                              <ArrowRight className="w-4 h-4" />
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.18)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.24)]">
+                          <div className="p-7 sm:p-8">
+                            <div className="w-12 h-12 rounded-2xl bg-teal-600 flex items-center justify-center shadow-lg">
+                              <BarChart3 className="w-6 h-6 text-white" />
+                            </div>
+                            <h4 className="mt-5 text-lg font-semibold text-gray-900">Desempenho</h4>
+                            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                              Veja como seus anúncios estão performando.
+                            </p>
+                            <div className="mt-5">
+                              <Link
+                                href="/owner/dashboard"
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-800"
+                              >
+                                Abrir dashboard
+                                <ArrowRight className="w-4 h-4" />
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.18)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.24)]">
+                          <div className="p-7 sm:p-8">
+                            <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg">
+                              <Users className="w-6 h-6 text-white" />
+                            </div>
+                            <h4 className="mt-5 text-lg font-semibold text-gray-900">Interessados</h4>
+                            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                              Acompanhe contatos e próximos passos.
+                            </p>
+                            <div className="mt-5">
+                              <Link
+                                href="/owner/leads"
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:text-indigo-800"
+                              >
+                                Ver interessados
+                                <ArrowRight className="w-4 h-4" />
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
-
-            <div className="grid gap-6 md:gap-8 md:grid-cols-3 items-stretch">
-              {/* Comprador / locatário */}
-              <div className="relative flex">
-                <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
-                  {/* Faixa colorida + foto circular recortada */}
-                  <div className="relative h-40 bg-teal-700">
-                    <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-teal-500">
-                      <Image
-                        src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80"
-                        alt="Casal avaliando um imóvel com ajuda de uma corretora"
-                        fill
-                        sizes="160px"
-                        className="object-cover"
-                      />
-                    </div>
-                  </div>
-                  {/* Conteúdo */}
-                  <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
-                      Quero encontrar um imóvel
-                    </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Explore casas e apartamentos com informações claras, filtros rápidos e favoritos para comparar com calma.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (typeof window !== "undefined") {
-                          const el = document.getElementById("explorar");
-                          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                        }
-                      }}
-                      className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-teal-600 text-teal-700 hover:bg-teal-50 transition-all"
-                    >
-                      Explorar imóveis
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Proprietário */}
-              <div className="relative flex">
-                <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
-                  {/* Faixa colorida + foto circular recortada */}
-                  <div className="relative h-40 bg-amber-700">
-                    <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-amber-500">
-                      <Image
-                        src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80"
-                        alt="Fachada de uma casa moderna e bem iluminada"
-                        fill
-                        sizes="160px"
-                        className="object-cover"
-                      />
-                    </div>
-                  </div>
-                  {/* Conteúdo */}
-                  <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
-                      Quero vender ou alugar meu imóvel
-                    </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Anuncie seu imóvel com enorme visibilidade para toda região e acompanhe interessados com ferramentas de comunicação e organização.
-                    </p>
-                    <Link
-                      href="/start"
-                      className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-amber-600 text-amber-700 hover:bg-amber-50 transition-all"
-                    >
-                      Poste seu primeiro imóvel sem custo
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Corretor */}
-              <div className="relative flex">
-                <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
-                  {/* Faixa colorida + foto circular recortada */}
-                  <div className="relative h-40 bg-indigo-900">
-                    <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-indigo-600">
-                      <Image
-                        src="https://images.unsplash.com/photo-1521791055366-0d553872125f?auto=format&fit=crop&w=800&q=80"
-                        alt="Homem e mulher em contexto de negócios"
-                        fill
-                        sizes="160px"
-                        className="object-cover"
-                      />
-                    </div>
-                  </div>
-                  {/* Conteúdo */}
-                  <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
-                      Sou corretor(a)
-                    </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Centralize seus leads, acompanhe o funil e responda mais rápido com nosso CRM.
-                      Se optar, você também pode receber interessados vindos de anúncios de proprietários.
-                    </p>
-                    <Link
-                      href="/realtor/register"
-                      className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-indigo-600 text-indigo-700 hover:bg-indigo-50 transition-all"
-                    >
-                      Cadastre-se como corretor(a) no site
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+          );
+        })()
       )}
 
       {/* Continue Searching removido */}
