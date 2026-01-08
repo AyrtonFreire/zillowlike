@@ -179,6 +179,8 @@ export default function HeroSection() {
       if (bedrooms) {
         params.set('bedroomsMin', bedrooms);
       }
+
+      params.set('purpose', purpose);
       
       router.push(`/?${params.toString()}`);
     }
@@ -187,29 +189,13 @@ export default function HeroSection() {
   const handleSuggestionClick = (suggestion: LocationSuggestion) => {
     setSearchQuery(suggestion.label);
     setShowSuggestions(false);
-    
-    // Navegar para a busca imediatamente (mobile e desktop)
-    const params = new URLSearchParams();
-    if (suggestion.city && suggestion.state) {
-      params.set('city', suggestion.city);
-      params.set('state', suggestion.state);
-    } else {
-      params.set('q', suggestion.label);
-    }
-    
-    if (suggestion.neighborhood) {
-      params.set('neighborhood', suggestion.neighborhood);
-    }
-    
-    // Persist last searched location
+
     if (typeof window !== 'undefined' && suggestion.city && suggestion.state) {
       try {
         localStorage.setItem('lastCity', suggestion.city);
         localStorage.setItem('lastState', suggestion.state);
       } catch {}
     }
-    
-    router.push(`/?${params.toString()}`);
   };
 
   return (
@@ -311,6 +297,29 @@ export default function HeroSection() {
                       onFocus={() => setShowSuggestions(true)}
                       className="flex-1 outline-none text-gray-800 placeholder:text-gray-500 text-sm bg-transparent"
                     />
+                  </div>
+
+                  <div className="flex items-center px-2">
+                    <div className="flex items-center rounded-full bg-gray-100 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setPurpose('SALE')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                          purpose === 'SALE' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Comprar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPurpose('RENT')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                          purpose === 'RENT' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Alugar
+                      </button>
+                    </div>
                   </div>
 
                   {/* Botão Buscar */}
