@@ -1044,8 +1044,8 @@ export default function Home() {
                   <div className="relative h-40 bg-teal-700">
                     <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-teal-500">
                       <Image
-                        src="https://images.unsplash.com/photo-1600585154340-0ef3c08c0632?auto=format&fit=crop&w=800&q=80"
-                        alt="Casal feliz comemorando novo imóvel"
+                        src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80"
+                        alt="Casal avaliando um imóvel com ajuda de uma corretora"
                         fill
                         sizes="160px"
                         className="object-cover"
@@ -1058,7 +1058,7 @@ export default function Home() {
                       Quero encontrar um imóvel
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Explore casas e apartamentos com informações claras, facilidade de busca e agenda de visitas simples.
+                      Explore casas e apartamentos com informações claras, filtros rápidos e favoritos para comparar com calma.
                     </p>
                     <button
                       type="button"
@@ -1100,10 +1100,10 @@ export default function Home() {
                       Anuncie seu imóvel com enorme visibilidade para toda região e acompanhe interessados com ferramentas de comunicação e organização.
                     </p>
                     <Link
-                      href="/owner"
+                      href="/start"
                       className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-amber-600 text-amber-700 hover:bg-amber-50 transition-all"
                     >
-                      Acessar área do proprietário
+                      Poste seu primeiro imóvel sem custo
                     </Link>
                   </div>
                 </div>
@@ -1116,8 +1116,8 @@ export default function Home() {
                   <div className="relative h-40 bg-indigo-900">
                     <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-indigo-600">
                       <Image
-                        src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=800&q=80"
-                        alt="Corretor de imóveis sorrindo em frente a um fundo roxo"
+                        src="https://images.unsplash.com/photo-1521791055366-0d553872125f?auto=format&fit=crop&w=800&q=80"
+                        alt="Homem e mulher em contexto de negócios"
                         fill
                         sizes="160px"
                         className="object-cover"
@@ -1130,7 +1130,8 @@ export default function Home() {
                       Sou corretor(a)
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-                      Organize imóveis, leads e visitas com ajuda do nosso CRM integrado pensado exclusivamenteem qualidade de atendimento e, se optar, indicaremos interessados em imóveis postados por pessoa física
+                      Centralize seus leads, acompanhe o funil e responda mais rápido com nosso CRM.
+                      Se optar, você também pode receber interessados vindos de anúncios de proprietários.
                     </p>
                     <Link
                       href="/realtor/register"
