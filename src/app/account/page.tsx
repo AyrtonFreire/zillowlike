@@ -20,6 +20,7 @@ import {
   MessageSquare,
   LogOut,
   Settings,
+  Building2,
 } from "lucide-react";
 
 type UserProfile = {
@@ -153,8 +154,16 @@ export default function AccountPage() {
   };
 
   const roleActions = (() => {
+    const canBecomeAgency = role !== "AGENCY" && role !== "ADMIN";
+    const becomeAgencyAction = {
+      title: "Virar Agência",
+      description: "Crie um workspace para monitorar leads e organizar corretores.",
+      href: "/agency/register",
+      icon: <Building2 className="w-5 h-5" />,
+    };
+
     if (role === "OWNER") {
-      return [
+      const actions = [
         {
           title: "Dashboard",
           description: "Acompanhe desempenho, leads e qualidade dos anúncios.",
@@ -174,10 +183,13 @@ export default function AccountPage() {
           icon: <MessageSquare className="w-5 h-5" />,
         },
       ];
+
+      if (canBecomeAgency) actions.push(becomeAgencyAction);
+      return actions;
     }
 
     if (role === "REALTOR" || role === "AGENCY") {
-      return [
+      const actions = [
         {
           title: "Painel",
           description: "Visão geral do seu funil e atividades.",
@@ -197,6 +209,9 @@ export default function AccountPage() {
           icon: <Home className="w-5 h-5" />,
         },
       ];
+
+      if (canBecomeAgency) actions.push(becomeAgencyAction);
+      return actions;
     }
 
     if (role === "ADMIN") {
@@ -214,6 +229,10 @@ export default function AccountPage() {
           icon: <Settings className="w-5 h-5" />,
         },
       ];
+    }
+
+    if (role === "USER") {
+      return canBecomeAgency ? [becomeAgencyAction] : [];
     }
 
     return [];

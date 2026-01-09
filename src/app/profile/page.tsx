@@ -263,6 +263,7 @@ export default function ProfilePage() {
     const config = {
       ADMIN: { label: "Administrador", color: "bg-purple-100 text-purple-800" },
       REALTOR: { label: "Corretor", color: "bg-blue-100 text-blue-800" },
+      AGENCY: { label: "Agência", color: "bg-teal-100 text-teal-800" },
       OWNER: { label: "Proprietário", color: "bg-green-100 text-green-800" },
       USER: { label: "Usuário", color: "bg-gray-100 text-gray-800" },
     };

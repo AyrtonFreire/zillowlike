@@ -457,6 +457,7 @@ model User {
   ownerRatingsAuthored OwnerRating[]   @relation("OwnerRatingAuthor")
   teamMemberships      TeamMember[]
   ownedTeams           Team[]
+  agencyProfile        AgencyProfile?
   phone                String?
   phoneVerifiedAt      DateTime?
   realtorApplication   RealtorApplication?
@@ -1070,6 +1071,7 @@ model Team {
   owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId   String
   members   TeamMember[]
+  agencyProfile AgencyProfile?
   properties Property[]
   leads      Lead[]
   createdAt DateTime @default(now())
@@ -1092,6 +1094,26 @@ model TeamMember {
   @@unique([teamId, userId])
   @@index([userId])
   @@map("team_members")
+}
+
+model AgencyProfile {
+  id      String @id @default(cuid())
+  name    String
+  cnpj    String @unique
+  phone   String?
+
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String @unique
+
+  team    Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId  String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([teamId])
+  @@map("agency_profiles")
 }
 
 // ============================================

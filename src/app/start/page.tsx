@@ -57,8 +57,13 @@ export default function StartPage() {
 
       // Corretores e imobiliárias que clicam em "Anunciar imóvel" devem ir direto
       // para a página de criação de anúncio, assim como proprietários.
-      if (data.role === "REALTOR" || data.role === "AGENCY") {
+      if (data.role === "REALTOR") {
         router.push("/owner/new");
+        return;
+      }
+
+      if (data.role === "AGENCY") {
+        router.push("/agency/dashboard");
         return;
       }
 

@@ -4,7 +4,7 @@ import { getToken } from "next-auth/jwt";
 import { applySecurityHeaders } from "@/lib/security-headers";
 
 // Rotas que requerem autenticação
-const protectedPaths = ["/admin", "/owner", "/dashboard", "/realtor", "/broker"];
+const protectedPaths = ["/admin", "/owner", "/dashboard", "/realtor", "/broker", "/agency"];
 
 // Mapeamento de paths para roles permitidos
 const roleBasedPaths: Record<string, string[]> = {
@@ -12,6 +12,7 @@ const roleBasedPaths: Record<string, string[]> = {
   "/realtor": ["REALTOR", "AGENCY", "ADMIN"],
   "/broker": ["REALTOR", "AGENCY", "ADMIN"],
   "/owner": ["OWNER", "REALTOR", "AGENCY", "ADMIN"],
+  "/agency": ["AGENCY", "ADMIN"],
   "/dashboard": ["USER", "REALTOR", "AGENCY", "OWNER", "ADMIN"], // Todos autenticados
 };
 
@@ -76,6 +77,11 @@ export async function middleware(request: NextRequest) {
     const url = new URL("/api/auth/signin", request.url);
     url.searchParams.set("callbackUrl", pathname);
     const response = NextResponse.redirect(url);
+    return applySecurityHeaders(request, response);
+  }
+
+  if (pathname.startsWith("/agency/register")) {
+    const response = NextResponse.next();
     return applySecurityHeaders(request, response);
   }
 
