@@ -143,6 +143,78 @@ export function getLeadNotificationEmail(data: {
   };
 }
 
+export function getRealtorRatingRequestEmail(data: {
+  userName?: string | null;
+  realtorName: string;
+  propertyTitle?: string | null;
+  profileUrl: string;
+}) {
+  const greetingName = data.userName?.trim() ? `, ${data.userName.trim()}` : "";
+  const propertyLine = data.propertyTitle?.trim()
+    ? `<p style="margin: 10px 0 0; font-size: 13px; color: rgba(226,232,240,0.85);">Imóvel: <strong>${data.propertyTitle}</strong></p>`
+    : "";
+
+  return {
+    subject: `Avalie seu atendimento com ${data.realtorName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #020617; color: #e5e7eb; }
+            .wrapper { padding: 24px 12px; }
+            .container { max-width: 640px; margin: 0 auto; background: radial-gradient(circle at top, rgba(0,255,200,0.06), transparent 55%), #020617; border-radius: 24px; border: 1px solid rgba(15,118,110,0.45); box-shadow: 0 32px 80px rgba(15,23,42,0.9); overflow: hidden; }
+            .header { padding: 24px 28px 20px; background: linear-gradient(135deg, #00736E 0%, #021616 100%); border-bottom: 1px solid rgba(15,118,110,0.6); }
+            .logo { display: inline-flex; align-items: center; gap: 10px; }
+            .logo-badge { width: 32px; height: 32px; border-radius: 999px; background: radial-gradient(circle at 30% 0%, #5ef2d6 0%, #00736E 45%, #021616 100%); display:flex; align-items:center; justify-content:center; box-shadow: 0 0 0 1px rgba(34,211,238,0.35), 0 16px 40px rgba(15,23,42,0.9); color: #fff; font-weight: 600; }
+            .logo-text { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(226,232,240,0.85); font-weight: 600; }
+            .title { margin: 18px 0 4px; font-size: 20px; font-weight: 650; color: #f9fafb; }
+            .subtitle { margin: 0; font-size: 13px; color: rgba(226,232,240,0.85); line-height: 1.5; }
+            .content { padding: 22px 24px 24px; background: radial-gradient(circle at top, rgba(15,118,110,0.21), transparent 60%); }
+            .card { background: rgba(15,23,42,0.88); border-radius: 18px; padding: 18px 18px 20px; border: 1px solid rgba(15,118,110,0.45); box-shadow: 0 18px 38px rgba(15,23,42,0.9); }
+            .paragraph { font-size: 13px; line-height: 1.6; color: #e5e7eb; margin: 0 0 10px; }
+            .button-wrapper { text-align: center; margin: 18px 0 8px; }
+            .button { display: inline-block; padding: 11px 28px; border-radius: 999px; background: linear-gradient(135deg, #10b981 0%, #059669 45%, #0f766e 100%); color: #ecfeff; text-decoration: none; font-size: 13px; font-weight: 650; box-shadow: 0 18px 35px rgba(5,150,105,0.65); border: 1px solid rgba(45,212,191,0.85); }
+            .hint { font-size: 11px; color: #9ca3af; margin-top: 10px; text-align: center; }
+            .footer { padding: 18px 24px 22px; border-top: 1px solid rgba(30,64,175,0.15); font-size: 11px; color: #6b7280; }
+            .footer strong { color: #e5e7eb; }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <div class="logo">
+                  <div class="logo-badge">O</div>
+                  <div class="logo-text">OggaHub</div>
+                </div>
+                <h1 class="title">Como foi seu atendimento${greetingName}?</h1>
+                <p class="subtitle">Sua avaliação ajuda outros clientes e também melhora a qualidade dos atendimentos.</p>
+                ${propertyLine}
+              </div>
+              <div class="content">
+                <div class="card">
+                  <p class="paragraph">Você falou com <strong>${data.realtorName}</strong> recentemente. Pode avaliar em 10 segundos:</p>
+                  <div class="button-wrapper">
+                    <a href="${data.profileUrl}" class="button">Avaliar agora</a>
+                  </div>
+                  <p class="hint">Se o botão não funcionar, copie e cole este link no navegador:<br />
+                    <span style="word-break: break-all; color: #e5e7eb;">${data.profileUrl}</span>
+                  </p>
+                </div>
+              </div>
+              <div class="footer">
+                <p>Você recebeu este e-mail porque entrou em contato com um profissional pelo <strong>OggaHub</strong>.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+}
+
 export function getAuthVerifyEmailEmail(data: {
   name?: string | null;
   verifyUrl: string;

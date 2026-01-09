@@ -531,6 +531,8 @@ model Lead {
   completedAt DateTime? // Quando visita foi realizada
   cancelledAt DateTime?
 
+  ratingRequestEmailSentAt DateTime?
+
   // Controle de tempo
   reservedUntil DateTime? // Prazo de reserva para corretor prioritário (10min)
   expiresAt     DateTime? // Prazo de expiração do lead
