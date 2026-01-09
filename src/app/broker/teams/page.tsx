@@ -126,7 +126,8 @@ export default function BrokerTeamsPage() {
     );
   }
 
-  const canCreateTeam = userRole === "REALTOR" || userRole === "AGENCY" || userRole === "ADMIN";
+  const hasTeam = teams.length > 0;
+  const canCreateTeam = userRole === "ADMIN" || (userRole === "REALTOR" && !hasTeam);
 
   return (
     <DashboardLayout

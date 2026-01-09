@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { LeadDistributionService } from "@/lib/lead-distribution-service";
 
 // Gera um token único para chat do cliente
 function generateChatToken(): string {
@@ -196,7 +197,8 @@ export async function POST(req: NextRequest) {
 
   // Determinar se o owner é corretor/imobiliária para atribuir automaticamente como realtor do lead
   const ownerIsRealtor = propertyWithOwner?.owner?.role === "REALTOR" || propertyWithOwner?.owner?.role === "AGENCY";
-  const autoRealtorId = ownerIsRealtor ? propertyWithOwner?.owner?.id : undefined;
+  const shouldAutoAssignOwner = ownerIsRealtor && isDirectFlag;
+  const autoRealtorId = shouldAutoAssignOwner ? propertyWithOwner?.owner?.id : undefined;
 
   console.log("[LEAD] Criando lead:", {
     propertyId,
@@ -218,9 +220,9 @@ export async function POST(req: NextRequest) {
       teamId: (prop as any)?.teamId ?? undefined,
       clientChatToken, // Token para o cliente acessar o chat
       // Se o owner é REALTOR/AGENCY, atribuir automaticamente como corretor responsável
-      realtorId: autoRealtorId,
+      realtorId: (prop as any)?.teamId && !isDirectFlag ? undefined : autoRealtorId,
       // Se tem realtorId, já marca como ACCEPTED; caso contrário, segue fluxo padrão PENDING
-      status: autoRealtorId ? "ACCEPTED" : "PENDING",
+      status: (prop as any)?.teamId && !isDirectFlag ? "PENDING" : autoRealtorId ? "ACCEPTED" : "PENDING",
     },
   });
 
@@ -262,6 +264,15 @@ export async function POST(req: NextRequest) {
       isDirect: isDirect ?? false,
     },
   });
+  if (!lead.realtorId && !isDirectFlag) {
+    (async () => {
+      try {
+        await LeadDistributionService.distributeNewLead(String(lead.id));
+      } catch (err) {
+        console.error("[LEAD] Error distributing new lead:", err);
+      }
+    })();
+  }
 
   const chatUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://zillowlike.vercel.app'}/chat/${clientChatToken}`;
 

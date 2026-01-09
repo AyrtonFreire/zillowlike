@@ -75,9 +75,14 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     const leads = await prisma.lead.findMany({
       where: {
-        realtorId: {
-          in: memberIds,
-        },
+        OR: [
+          { teamId: id },
+          {
+            realtorId: {
+              in: memberIds,
+            },
+          },
+        ],
       },
       include: {
         property: {

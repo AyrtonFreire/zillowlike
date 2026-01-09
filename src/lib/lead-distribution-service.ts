@@ -8,11 +8,63 @@ const prisma = new PrismaClient();
 
 // Tempo de reserva em minutos
 const RESERVATION_TIME_MINUTES = 10;
+const MAX_ACTIVE_LEADS_PER_REALTOR = 3;
+
+type TeamLeadDistributionMode = "ROUND_ROBIN" | "CAPTURER_FIRST" | "MANUAL";
+
+function normalizeTeamLeadDistributionMode(raw: unknown): TeamLeadDistributionMode | null {
+  const value = String(raw || "")
+    .trim()
+    .toUpperCase();
+  if (value === "ROUND_ROBIN" || value === "CAPTURER_FIRST" || value === "MANUAL") {
+    return value as TeamLeadDistributionMode;
+  }
+  return null;
+}
 
 /**
  * Serviço de distribuição de leads
  */
 export class LeadDistributionService {
+  private static async getSystemIntSetting(key: string, fallback: number): Promise<number> {
+    try {
+      const rec = await (prisma as any).systemSetting.findUnique({
+        where: { key },
+        select: { value: true },
+      });
+      const parsed = Number.parseInt(String(rec?.value ?? ""), 10);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    } catch (e) {
+      void e;
+    }
+
+    return fallback;
+  }
+
+  private static async getLeadReservationMinutes(): Promise<number> {
+    return await this.getSystemIntSetting("leadReservationMinutes", RESERVATION_TIME_MINUTES);
+  }
+
+  private static async getMaxActiveLeadsPerRealtor(): Promise<number> {
+    return await this.getSystemIntSetting("maxActiveLeadsPerRealtor", MAX_ACTIVE_LEADS_PER_REALTOR);
+  }
+
+  private static async getTeamLeadDistributionMode(teamId: string): Promise<TeamLeadDistributionMode> {
+    try {
+      const rec = await (prisma as any).systemSetting.findUnique({
+        where: { key: `team:${teamId}:leadDistributionMode` },
+        select: { value: true },
+      });
+
+      const normalized = normalizeTeamLeadDistributionMode(rec?.value);
+      if (normalized) return normalized;
+    } catch (e) {
+      void e;
+    }
+
+    return "ROUND_ROBIN";
+  }
+
   /**
    * Distribui novo lead para o próximo corretor da fila
    */
@@ -24,6 +76,172 @@ export class LeadDistributionService {
 
     if (!lead) {
       throw new Error("Lead não encontrado");
+    }
+
+    if (lead.status !== "PENDING" && lead.status !== "AVAILABLE") {
+      return null;
+    }
+
+    if ((lead as any).teamId) {
+      const teamId = String((lead as any).teamId);
+      const reservationMinutes = await this.getLeadReservationMinutes();
+
+      const distributionMode = await this.getTeamLeadDistributionMode(teamId);
+      if (distributionMode === "MANUAL") {
+        await prisma.lead.update({
+          where: { id: leadId },
+          data: {
+            status: "PENDING",
+            realtorId: null,
+            reservedUntil: null,
+          },
+        });
+        return null;
+      }
+
+      const members = await (prisma as any).teamMember.findMany({
+        where: {
+          teamId,
+          role: {
+            in: ["OWNER", "AGENT"],
+          },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              role: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: [{ queuePosition: "asc" }, { createdAt: "asc" }],
+      });
+
+      const eligible = (members as any[]).filter((m) => m.user?.role === "REALTOR");
+
+      if (eligible.length === 0) {
+        await prisma.lead.update({
+          where: { id: leadId },
+          data: {
+            status: "PENDING",
+          },
+        });
+        return null;
+      }
+
+      const eligibleIds = eligible.map((m) => String(m.userId));
+
+      const preferredRealtorId =
+        distributionMode === "CAPTURER_FIRST" && (lead as any)?.property?.ownerId
+          ? String((lead as any).property.ownerId)
+          : null;
+
+      let effectivePreferredRealtorId = preferredRealtorId;
+      if (effectivePreferredRealtorId && eligibleIds.includes(effectivePreferredRealtorId)) {
+        const hadChance = await (prisma as any).leadAssignmentLog.findFirst({
+          where: {
+            leadId,
+            toRealtorId: effectivePreferredRealtorId,
+          },
+          select: { id: true },
+        });
+        if (hadChance) {
+          effectivePreferredRealtorId = null;
+        }
+      }
+
+      const activeStatus = [
+        "RESERVED",
+        "WAITING_REALTOR_ACCEPT",
+        "WAITING_OWNER_APPROVAL",
+        "CONFIRMED",
+        "ACCEPTED",
+      ] as any;
+
+      const grouped = await prisma.lead.groupBy({
+        by: ["realtorId"],
+        where: {
+          teamId,
+          realtorId: { in: eligibleIds },
+          status: { in: activeStatus },
+        },
+        _count: { _all: true },
+      });
+
+      const counts = new Map<string, number>();
+      for (const row of grouped as any[]) {
+        if (!row?.realtorId) continue;
+        counts.set(String(row.realtorId), Number(row._count?._all || 0));
+      }
+
+      const maxActiveLeads = Math.max(1, await this.getMaxActiveLeadsPerRealtor());
+      const preferredCandidate =
+        effectivePreferredRealtorId && eligibleIds.includes(effectivePreferredRealtorId)
+          ? eligible.find((m) => String(m.userId) === effectivePreferredRealtorId) || null
+          : null;
+
+      const picked =
+        (preferredCandidate && (counts.get(String(preferredCandidate.userId)) || 0) < maxActiveLeads
+          ? preferredCandidate
+          : null) ||
+        eligible.find((m) => (counts.get(String(m.userId)) || 0) < maxActiveLeads) ||
+        eligible[0];
+
+      const reservedUntil = new Date();
+      reservedUntil.setMinutes(reservedUntil.getMinutes() + reservationMinutes);
+
+      const pickedMemberId = String(picked.id);
+      const pickedUserId = String(picked.userId);
+      const previousRealtorId = (lead as any)?.realtorId ? String((lead as any).realtorId) : null;
+      const oldPos = typeof picked.queuePosition === "number" ? picked.queuePosition : 0;
+      const maxPos = Math.max(
+        ...eligible.map((m) => (typeof m.queuePosition === "number" ? m.queuePosition : 0))
+      );
+      const newPos = maxPos + 1;
+
+      await prisma.$transaction(async (tx) => {
+        await (tx as any).lead.update({
+          where: { id: leadId },
+          data: {
+            status: "RESERVED",
+            realtorId: pickedUserId,
+            reservedUntil,
+          },
+        });
+
+        await (tx as any).leadAssignmentLog.create({
+          data: {
+            leadId,
+            fromRealtorId: previousRealtorId,
+            toRealtorId: pickedUserId,
+            changedByUserId: "SYSTEM",
+            teamId,
+          },
+        });
+
+        await (tx as any).teamMember.update({
+          where: { id: pickedMemberId },
+          data: { queuePosition: newPos },
+        });
+
+        await (tx as any).teamMember.updateMany({
+          where: {
+            teamId,
+            queuePosition: { gt: oldPos, lt: newPos },
+          },
+          data: { queuePosition: { decrement: 1 } },
+        });
+      });
+
+      try {
+        await RealtorAssistantService.recalculateForRealtor(pickedUserId);
+      } catch (e) {
+        void e;
+      }
+
+      return { realtorId: pickedUserId, realtor: picked.user };
     }
 
     // Pega próximo corretor da fila
@@ -41,22 +259,35 @@ export class LeadDistributionService {
     }
 
     // Reserva lead para o corretor
+    const reservationMinutes = await this.getLeadReservationMinutes();
     const reservedUntil = new Date();
-    reservedUntil.setMinutes(reservedUntil.getMinutes() + RESERVATION_TIME_MINUTES);
+    reservedUntil.setMinutes(reservedUntil.getMinutes() + reservationMinutes);
 
-    await prisma.lead.update({
-      where: { id: leadId },
-      data: {
-        status: "RESERVED",
-        realtorId: nextRealtor.realtorId,
-        reservedUntil,
-      },
+    await prisma.$transaction(async (tx) => {
+      await (tx as any).lead.update({
+        where: { id: leadId },
+        data: {
+          status: "RESERVED",
+          realtorId: nextRealtor.realtorId,
+          reservedUntil,
+        },
+      });
+
+      await (tx as any).leadAssignmentLog.create({
+        data: {
+          leadId,
+          fromRealtorId: (lead as any)?.realtorId ? String((lead as any).realtorId) : null,
+          toRealtorId: nextRealtor.realtorId,
+          changedByUserId: "SYSTEM",
+          teamId: (lead as any)?.teamId ? String((lead as any).teamId) : null,
+        },
+      });
     });
 
     try {
       await RealtorAssistantService.recalculateForRealtor(nextRealtor.realtorId);
-    } catch {
-      // ignore
+    } catch (e) {
+      void e;
     }
 
     return nextRealtor;
@@ -82,9 +313,10 @@ export class LeadDistributionService {
     }
 
     // Calcula tempo de resposta
+    const reservationMinutes = await this.getLeadReservationMinutes();
     let referenceStart = lead.createdAt;
     if (lead.reservedUntil) {
-      const reservedAt = new Date(lead.reservedUntil.getTime() - RESERVATION_TIME_MINUTES * 60000);
+      const reservedAt = new Date(lead.reservedUntil.getTime() - reservationMinutes * 60000);
       referenceStart = reservedAt;
     }
     const responseTime = Math.floor((Date.now() - referenceStart.getTime()) / 60000);
@@ -186,8 +418,8 @@ export class LeadDistributionService {
 
     try {
       await RealtorAssistantService.recalculateForRealtor(realtorId);
-    } catch {
-      // ignore
+    } catch (e) {
+      void e;
     }
 
     return result;
@@ -207,19 +439,82 @@ export class LeadDistributionService {
       throw new Error("Lead não encontrado");
     }
 
-    // Usa transação para garantir consistência
-    await prisma.$transaction(async (tx) => {
-      // Atualiza lead para disponível
-      await tx.lead.update({
-        where: { id: leadId },
-        data: {
-          status: "AVAILABLE",
-          realtorId: null,
-          reservedUntil: null,
-        },
-      });
+    const fromStatus = lead.status as any;
+    let toStatus: any = "AVAILABLE";
+    let shouldRedistribute = true;
+    const reservationMinutes = await this.getLeadReservationMinutes();
 
-      // Atualiza estatísticas (garante criação se ainda não existir)
+    await prisma.$transaction(async (tx) => {
+      if (lead.status === "WAITING_REALTOR_ACCEPT" && lead.realtorId) {
+        const now = new Date();
+
+        await (tx as any).leadCandidature.updateMany({
+          where: {
+            leadId,
+            status: "PENDING",
+            queue: {
+              realtorId,
+            },
+          },
+          data: {
+            status: "REJECTED",
+            respondedAt: now,
+          },
+        });
+
+        const nextCandidate = await (tx as any).leadCandidature.findFirst({
+          where: {
+            leadId,
+            status: "PENDING",
+          },
+          include: {
+            queue: {
+              select: {
+                realtorId: true,
+              },
+            },
+          },
+          orderBy: {
+            queuePosition: "asc",
+          },
+        });
+
+        if (nextCandidate?.queue?.realtorId) {
+          const reservedUntil = new Date();
+          reservedUntil.setMinutes(reservedUntil.getMinutes() + reservationMinutes);
+
+          await tx.lead.update({
+            where: { id: leadId },
+            data: {
+              status: "WAITING_REALTOR_ACCEPT",
+              realtorId: String(nextCandidate.queue.realtorId),
+              reservedUntil,
+            },
+          });
+
+          toStatus = "WAITING_REALTOR_ACCEPT";
+          shouldRedistribute = false;
+        } else {
+          await tx.lead.update({
+            where: { id: leadId },
+            data: {
+              status: "AVAILABLE",
+              realtorId: null,
+              reservedUntil: null,
+            },
+          });
+        }
+      } else {
+        await tx.lead.update({
+          where: { id: leadId },
+          data: {
+            status: "AVAILABLE",
+            realtorId: null,
+            reservedUntil: null,
+          },
+        });
+      }
+
       await tx.realtorStats.upsert({
         where: { realtorId },
         create: {
@@ -248,9 +543,64 @@ export class LeadDistributionService {
       type: "LEAD_REJECTED",
       actorId: realtorId,
       actorRole: "REALTOR",
-      fromStatus: lead.status as any,
-      toStatus: "AVAILABLE",
+      fromStatus,
+      toStatus,
     });
+
+    if ((lead as any).teamId) {
+      const teamId = String((lead as any).teamId);
+      try {
+        const member: any = await (prisma as any).teamMember.findFirst({
+          where: { teamId, userId: realtorId },
+          select: { id: true, queuePosition: true },
+        });
+
+        if (member?.id) {
+          const peers: any[] = await (prisma as any).teamMember.findMany({
+            where: {
+              teamId,
+              role: { in: ["OWNER", "AGENT"] },
+            },
+            select: { queuePosition: true },
+          });
+
+          const oldPos = typeof member.queuePosition === "number" ? member.queuePosition : 0;
+          const maxPos = Math.max(...peers.map((m) => (typeof m.queuePosition === "number" ? m.queuePosition : 0)));
+          const newPos = maxPos + 1;
+
+          await prisma.$transaction(async (tx) => {
+            await (tx as any).teamMember.update({
+              where: { id: String(member.id) },
+              data: { queuePosition: newPos },
+            });
+
+            await (tx as any).teamMember.updateMany({
+              where: {
+                teamId,
+                queuePosition: { gt: oldPos, lt: newPos },
+              },
+              data: { queuePosition: { decrement: 1 } },
+            });
+          });
+        }
+      } catch (e) {
+        void e;
+      }
+    } else {
+      try {
+        await QueueService.moveToEnd(realtorId);
+      } catch (e) {
+        void e;
+      }
+    }
+
+    if (shouldRedistribute) {
+      try {
+        await this.distributeNewLead(leadId);
+      } catch (e) {
+        void e;
+      }
+    }
 
     logger.info("Lead rejected successfully", { leadId, realtorId });
     return lead;
@@ -359,8 +709,9 @@ export class LeadDistributionService {
     const priority = candidatures[0];
 
     // Reserva lead para este corretor (10 minutos)
+    const reservationMinutes = await this.getLeadReservationMinutes();
     const reservedUntil = new Date();
-    reservedUntil.setMinutes(reservedUntil.getMinutes() + 10);
+    reservedUntil.setMinutes(reservedUntil.getMinutes() + reservationMinutes);
 
     await prisma.lead.update({
       where: { id: leadId },
@@ -445,8 +796,9 @@ export class LeadDistributionService {
     }
 
     // Reserva para próximo candidato
+    const reservationMinutes = await this.getLeadReservationMinutes();
     const reservedUntil = new Date();
-    reservedUntil.setMinutes(reservedUntil.getMinutes() + 10);
+    reservedUntil.setMinutes(reservedUntil.getMinutes() + reservationMinutes);
 
     await prisma.lead.update({
       where: { id: leadId },
@@ -766,6 +1118,12 @@ export class LeadDistributionService {
         logger.info("No more candidates", {
           leadId: lead.id,
         });
+
+        try {
+          await this.distributeNewLead(lead.id);
+        } catch (e) {
+          void e;
+        }
       }
     }
 

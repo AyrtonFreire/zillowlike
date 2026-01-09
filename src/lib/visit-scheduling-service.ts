@@ -3,6 +3,7 @@ import { logger } from "./logger";
 import { LeadEventService } from "./lead-event-service";
 import { RealtorAssistantService } from "./realtor-assistant-service";
 import { randomBytes } from "crypto";
+import { LeadDistributionService } from "./lead-distribution-service";
 
 // Gera um token único para chat do cliente
 function generateChatToken(): string {
@@ -54,7 +55,8 @@ export class VisitSchedulingService {
     const isOwnerRealtor = (property as any).owner?.role === "REALTOR" || (property as any).owner?.role === "AGENCY";
     
     // Se o owner é REALTOR/AGENCY, atribuir automaticamente como corretor responsável
-    const effectiveRealtorId = realtorId || (isOwnerRealtor ? (property as any).ownerId : undefined);
+    const hasTeam = !!(property as any)?.teamId;
+    const effectiveRealtorId = realtorId || (!hasTeam && isOwnerRealtor ? (property as any).ownerId : undefined);
     const isDirect = !!effectiveRealtorId;
     
     logger.info("Visit request owner check", { 
@@ -171,6 +173,15 @@ export class VisitSchedulingService {
         visitTime,
       },
     });
+    if (!(lead as any).realtorId && !isDirect) {
+      (async () => {
+        try {
+          await LeadDistributionService.distributeNewLead(String(lead.id));
+        } catch (err) {
+          logger.error("Error distributing new visit lead", { error: err, leadId: lead.id });
+        }
+      })();
+    }
 
     logger.info("Visit request created successfully", { leadId: lead.id });
 

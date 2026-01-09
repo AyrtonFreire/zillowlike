@@ -25,7 +25,10 @@ export default function AgencyDashboardPage() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    if (role !== "AGENCY") return;
+    if (role !== "AGENCY" && role !== "ADMIN") {
+      setLoading(false);
+      return;
+    }
 
     const load = async () => {
       try {
@@ -78,7 +81,7 @@ export default function AgencyDashboardPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link
-            href="/broker/teams"
+            href="/agency/team"
             className="group bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
           >
             <div className="flex items-start gap-3">

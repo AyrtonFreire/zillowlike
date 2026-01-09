@@ -105,6 +105,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (role !== "ADMIN") {
+      const existingMembership = await (prisma as any).teamMember.findFirst({
+        where: { userId },
+        select: { teamId: true },
+      });
+
+      if (existingMembership?.teamId) {
+        return NextResponse.json(
+          { error: "Você já faz parte de um time. No momento, não é possível participar de múltiplos times." },
+          { status: 400 },
+        );
+      }
+    }
+
     const json = await req.json().catch(() => null);
     const parsed = createTeamSchema.safeParse(json);
 

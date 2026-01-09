@@ -457,6 +457,8 @@ model User {
   ownerRatingsAuthored OwnerRating[]   @relation("OwnerRatingAuthor")
   teamMemberships      TeamMember[]
   ownedTeams           Team[]
+  teamInvitesSent      TeamInvite[]    @relation("TeamInvitesSent")
+  teamInvitesAccepted  TeamInvite[]    @relation("TeamInvitesAccepted")
   agencyProfile        AgencyProfile?
   phone                String?
   phoneVerifiedAt      DateTime?
@@ -1013,6 +1015,13 @@ enum TeamMemberRole {
   ASSISTANT
 }
 
+enum TeamInviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
 // Status de aplicação de corretor
 enum ApplicationStatus {
   PENDING
@@ -1071,6 +1080,7 @@ model Team {
   owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId   String
   members   TeamMember[]
+  invites   TeamInvite[]
   agencyProfile AgencyProfile?
   properties Property[]
   leads      Lead[]
@@ -1094,6 +1104,34 @@ model TeamMember {
   @@unique([teamId, userId])
   @@index([userId])
   @@map("team_members")
+}
+
+model TeamInvite {
+  id      String @id @default(cuid())
+
+  team    Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId  String
+
+  email   String
+  role    TeamMemberRole   @default(AGENT)
+  status  TeamInviteStatus @default(PENDING)
+  token   String @unique
+
+  invitedBy       User   @relation("TeamInvitesSent", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  invitedByUserId String
+
+  acceptedBy       User?   @relation("TeamInvitesAccepted", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  acceptedByUserId String?
+
+  expiresAt DateTime
+  acceptedAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, email])
+  @@index([email])
+  @@index([teamId, status])
+  @@map("team_invites")
 }
 
 model AgencyProfile {
