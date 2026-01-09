@@ -16,7 +16,7 @@ import SiteFooter from "@/components/Footer";
 import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
-import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search, X, BarChart3, Users, Plus, ArrowRight } from "lucide-react";
+import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search, X, BarChart3, Users, Plus, ArrowRight, Kanban } from "lucide-react";
 
 const PropertyDetailsModalJames = dynamic(() => import("@/components/PropertyDetailsModalJames"), { ssr: false });
 import SearchFiltersBarZillow from "@/components/SearchFiltersBarZillow";
@@ -1059,7 +1059,8 @@ export default function Home() {
         (() => {
           const role = (((user as any)?.role as string | undefined) || onboardingStatus?.role || "USER").toUpperCase();
           const isDefaultProfiles = !user || role === "USER" || role === "ADMIN";
-          const isBroker = role === "REALTOR" || role === "AGENCY";
+          const isAgency = role === "AGENCY";
+          const isBroker = role === "REALTOR";
           const isOwner = role === "OWNER";
           const ownerHasProperties = Boolean(onboardingStatus?.hasProperties);
           const ownerPropertyCount = onboardingStatus?.propertyCount ?? 0;
@@ -1091,6 +1092,18 @@ export default function Home() {
                       </h2>
                       <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-2xl text-left">
                         Visão geral do seu negócio e acesso rápido às áreas mais usadas.
+                      </p>
+                    </>
+                  ) : isAgency ? (
+                    <>
+                      <p className="text-xs sm:text-sm font-semibold tracking-[0.18em] text-teal-700 uppercase text-left">
+                        Área da imobiliária
+                      </p>
+                      <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-display text-gray-900 text-left">
+                        Painel da agência
+                      </h2>
+                      <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-2xl text-left">
+                        CRM do time, corretores e desempenho em um só lugar.
                       </p>
                     </>
                   ) : (
@@ -1203,6 +1216,119 @@ export default function Home() {
                           >
                             Cadastre-se como corretor(a) no site
                           </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : isAgency ? (
+                  <div className="grid gap-6 md:gap-8 md:grid-cols-12 items-stretch">
+                    <div className="relative md:col-span-7 overflow-hidden rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] bg-[#04161a]">
+                      <div className="absolute inset-0">
+                        <Image
+                          src="https://images.unsplash.com/photo-1521791055366-0d553872125f?auto=format&fit=crop&w=1800&q=80"
+                          alt="Equipe de imobiliária em reunião"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 60vw"
+                          className="object-cover opacity-60"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#04161a]/95 via-[#04161a]/75 to-transparent" />
+                      </div>
+
+                      <div className="relative z-10 h-full p-8 sm:p-10 flex flex-col justify-between">
+                        <div>
+                          <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-teal-200">
+                            CRM da agência
+                          </p>
+                          <h3 className="mt-3 text-2xl sm:text-3xl font-display text-white">
+                            Acompanhe o funil do time
+                          </h3>
+                          <p className="mt-3 text-sm sm:text-base text-white/80 max-w-lg">
+                            Veja leads, pipeline e produtividade dos corretores em um só lugar.
+                          </p>
+                        </div>
+
+                        <div className="mt-7 flex flex-wrap items-center gap-3">
+                          <Link
+                            href="/agency/dashboard"
+                            className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold bg-white text-gray-900 hover:bg-white/90 transition-all"
+                          >
+                            Abrir painel
+                            <ArrowRight className="w-4 h-4" />
+                          </Link>
+                          <Link
+                            href="/agency/team"
+                            className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold border border-white/30 text-white hover:bg-white/10 transition-all"
+                          >
+                            Gerenciar time
+                            <Users className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-5 grid gap-6">
+                      <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.18)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.24)]">
+                        <div className="p-7 sm:p-8">
+                          <div className="w-12 h-12 rounded-2xl bg-teal-600 flex items-center justify-center shadow-lg">
+                            <Kanban className="w-6 h-6 text-white" />
+                          </div>
+                          <h4 className="mt-5 text-lg font-semibold text-gray-900">CRM do time</h4>
+                          <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                            Acesse o funil e organize os leads da equipe.
+                          </p>
+                          <div className="mt-5">
+                            <Link
+                              href="/agency/dashboard"
+                              className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-800"
+                            >
+                              Abrir CRM
+                              <ArrowRight className="w-4 h-4" />
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.18)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.24)]">
+                          <div className="p-7 sm:p-8">
+                            <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg">
+                              <Users className="w-6 h-6 text-white" />
+                            </div>
+                            <h4 className="mt-5 text-lg font-semibold text-gray-900">Corretores</h4>
+                            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                              Convide, defina papéis e acompanhe o time.
+                            </p>
+                            <div className="mt-5">
+                              <Link
+                                href="/agency/team"
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:text-indigo-800"
+                              >
+                                Abrir time
+                                <ArrowRight className="w-4 h-4" />
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.18)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.24)]">
+                          <div className="p-7 sm:p-8">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-600 flex items-center justify-center shadow-lg">
+                              <BarChart3 className="w-6 h-6 text-white" />
+                            </div>
+                            <h4 className="mt-5 text-lg font-semibold text-gray-900">Visão geral</h4>
+                            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                              Acesse os próximos passos e o workspace.
+                            </p>
+                            <div className="mt-5">
+                              <Link
+                                href="/agency/dashboard"
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-amber-700 hover:text-amber-800"
+                              >
+                                Ver painel
+                                <ArrowRight className="w-4 h-4" />
+                              </Link>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
