@@ -52,6 +52,27 @@ interface Metrics {
   leadsWithReminders: number;
 }
 
+ interface AutoReplyMetrics {
+   range: "24h" | "7d";
+   since: string;
+   enabled: boolean;
+   counts: {
+     sent: number;
+     skipped: number;
+     failed: number;
+   };
+   skippedByReason: Array<{ reason: string; count: number }>;
+   recent: Array<{
+     id: string;
+     leadId: string;
+     decision: string;
+     reason: string | null;
+     createdAt: string;
+     propertyTitle: string | null;
+     contactName: string | null;
+   }>;
+ }
+
 function formatMinutesCompact(totalMinutes: number) {
   const minutes = Math.max(0, Math.round(totalMinutes || 0));
   if (minutes < 60) return `${minutes}min`;
@@ -169,6 +190,10 @@ export default function BrokerDashboard() {
   const [myLeadsError, setMyLeadsError] = useState<string | null>(null);
   const [leadFilter, setLeadFilter] = useState<"ALL" | "NEW" | "IN_SERVICE">("ALL");
 
+  const [autoReplyMetrics, setAutoReplyMetrics] = useState<AutoReplyMetrics | null>(null);
+  const [autoReplyLoading, setAutoReplyLoading] = useState(true);
+  const [autoReplyError, setAutoReplyError] = useState<string | null>(null);
+
   const searchParams = useSearchParams();
   const previewUserId = searchParams.get("previewUserId");
 
@@ -219,6 +244,12 @@ export default function BrokerDashboard() {
   }, [userId]);
 
   useEffect(() => {
+    if (userId) {
+      fetchAutoReplyMetrics();
+    }
+  }, [userId]);
+
+  useEffect(() => {
     if (!userId) return;
     const onFocus = () => fetchUnreadMessages();
     const onVisibility = () => {
@@ -245,6 +276,27 @@ export default function BrokerDashboard() {
       }
     } catch (err) {
       console.error("Error fetching unread messages:", err);
+    }
+  };
+
+  const fetchAutoReplyMetrics = async () => {
+    try {
+      setAutoReplyError(null);
+      setAutoReplyLoading(true);
+      const response = await fetch("/api/broker/auto-reply-metrics?range=24h");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || `API error: ${response.status}`);
+      }
+
+      setAutoReplyMetrics(data || null);
+    } catch (error) {
+      console.error("Error fetching auto-reply metrics:", error);
+      setAutoReplyMetrics(null);
+      setAutoReplyError("Não conseguimos carregar o resumo do assistente offline agora.");
+    } finally {
+      setAutoReplyLoading(false);
     }
   };
 
@@ -668,6 +720,140 @@ export default function BrokerDashboard() {
             iconColor="text-orange-600"
             iconBgColor="bg-orange-50"
           />
+        </div>
+
+        <div className="mb-8">
+          <StatCard
+            title="Assistente offline (últimas 24h)"
+            action={
+              <Link href="/broker/profile" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                Configurar
+              </Link>
+            }
+          >
+            {autoReplyError ? (
+              <div className="text-sm text-gray-600">{autoReplyError}</div>
+            ) : autoReplyLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div className="md:col-span-4 grid grid-cols-1 sm:grid-cols-3 md:grid-cols-1 gap-3">
+                  <Skeleton className="h-24" />
+                  <Skeleton className="h-24" />
+                  <Skeleton className="h-24" />
+                </div>
+                <div className="md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Skeleton className="h-60" />
+                  <Skeleton className="h-60" />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {!autoReplyMetrics?.enabled ? (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                    O assistente offline está desativado.
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <MetricCard
+                    title="Respostas enviadas"
+                    value={autoReplyMetrics?.counts?.sent || 0}
+                    icon={MessageSquare}
+                    subtitle="IA respondeu por você"
+                    iconColor="text-emerald-700"
+                    iconBgColor="bg-emerald-50"
+                    className="p-4"
+                  />
+                  <MetricCard
+                    title="Puladas"
+                    value={autoReplyMetrics?.counts?.skipped || 0}
+                    icon={Clock}
+                    subtitle="Decisões de skip"
+                    iconColor="text-amber-700"
+                    iconBgColor="bg-amber-50"
+                    className="p-4"
+                  />
+                  <MetricCard
+                    title="Falhas"
+                    value={autoReplyMetrics?.counts?.failed || 0}
+                    icon={Activity}
+                    subtitle="Erros/saídas vazias"
+                    iconColor="text-rose-700"
+                    iconBgColor="bg-rose-50"
+                    className="p-4"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-gray-900">Principais motivos de skip</p>
+                      <p className="text-xs text-gray-500">24h</p>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {(autoReplyMetrics?.skippedByReason || []).length === 0 ? (
+                        <p className="text-sm text-gray-600">Nenhum skip registrado no período.</p>
+                      ) : (
+                        (autoReplyMetrics?.skippedByReason || []).map((row) => (
+                          <div key={row.reason} className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-medium text-gray-700 truncate">{row.reason}</span>
+                            <span className="text-xs font-semibold text-gray-900 tabular-nums">{row.count}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-gray-900">Últimos eventos</p>
+                      <p className="text-xs text-gray-500">24h</p>
+                    </div>
+                    <div className="mt-3 space-y-3">
+                      {(autoReplyMetrics?.recent || []).length === 0 ? (
+                        <p className="text-sm text-gray-600">Nenhum evento registrado no período.</p>
+                      ) : (
+                        (autoReplyMetrics?.recent || []).map((row) => {
+                          const decision = String(row.decision || "");
+                          const badge =
+                            decision === "SENT"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : decision === "FAILED"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200";
+                          const title = row.propertyTitle || "Lead";
+                          const subtitle = [row.contactName || null, row.reason || null].filter(Boolean).join(" · ");
+                          return (
+                            <Link
+                              key={row.id}
+                              href={`/broker/leads/${row.leadId}`}
+                              className="block rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors p-3"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-gray-900 line-clamp-1">{title}</p>
+                                  {subtitle ? (
+                                    <p className="mt-0.5 text-xs text-gray-600 line-clamp-1">{subtitle}</p>
+                                  ) : (
+                                    <p className="mt-0.5 text-xs text-gray-500">&nbsp;</p>
+                                  )}
+                                  <p className="mt-1 text-[10px] text-gray-400">
+                                    {row.createdAt ? new Date(row.createdAt).toLocaleString("pt-BR") : ""}
+                                  </p>
+                                </div>
+                                <span className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badge}`}>
+                                  {decision || "—"}
+                                </span>
+                              </div>
+                            </Link>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </StatCard>
         </div>
 
         {/* Resumo dos Leads */}
