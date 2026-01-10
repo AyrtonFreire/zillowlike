@@ -137,6 +137,28 @@ enum LeadEventType {
   OWNER_APPROVAL_REQUESTED
   SIMILAR_LIST_SHARED
   SIMILAR_PROPERTY_INTEREST
+  AUTO_REPLY_SENT
+  AUTO_REPLY_SKIPPED
+  AUTO_REPLY_FAILED
+}
+
+enum LeadClientMessageSource {
+  HUMAN
+  AUTO_REPLY_AI
+}
+
+enum LeadAutoReplyJobStatus {
+  PENDING
+  PROCESSING
+  SENT
+  SKIPPED
+  FAILED
+}
+
+enum LeadAutoReplyDecision {
+  SENT
+  SKIPPED
+  FAILED
 }
 
 // Status do corretor na fila
@@ -482,6 +504,9 @@ model User {
   realtorAssistantItems   RealtorAssistantItem[] @relation("RealtorAssistantItems")
   leadChatReadReceipts    LeadChatReadReceipt[]
 
+  autoReplySettings RealtorAutoReplySettings?
+  leadAutoReplyLogs LeadAutoReplyLog[]
+
   realtorAssistantChatThreads RealtorAssistantChatThread[]
 }
 
@@ -557,6 +582,9 @@ model Lead {
   ownerRating  OwnerRating?
   reports      Report[]
   clientMessages LeadClientMessage[]
+
+  autoReplyJobs LeadAutoReplyJob[]
+  autoReplyLogs LeadAutoReplyLog[]
 
   notes LeadNote[]
 
@@ -692,6 +720,7 @@ model LeadClientMessage {
   leadId     String
   fromClient Boolean
   content    String
+  source     LeadClientMessageSource @default(HUMAN)
   createdAt  DateTime @default(now())
 
   @@index([leadId])
@@ -732,6 +761,58 @@ model LeadEvent {
 
   @@index([leadId, createdAt])
   @@map("lead_events")
+}
+
+model RealtorAutoReplySettings {
+  id                   String   @id @default(cuid())
+  realtor              User     @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+  realtorId             String   @unique
+  enabled              Boolean  @default(false)
+  timezone             String   @default("America/Sao_Paulo")
+  weekSchedule         Json?
+  cooldownMinutes      Int      @default(3)
+  maxRepliesPerLeadPer24h Int   @default(6)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("realtor_auto_reply_settings")
+}
+
+model LeadAutoReplyJob {
+  id              String               @id @default(cuid())
+  lead            Lead                 @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId          String
+  clientMessageId String               @unique
+  status          LeadAutoReplyJobStatus @default(PENDING)
+  attempts        Int                  @default(0)
+  skipReason      String?
+  lastError       String?
+  processedAt     DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([leadId, createdAt])
+  @@index([status, createdAt])
+  @@map("lead_auto_reply_jobs")
+}
+
+model LeadAutoReplyLog {
+  id               String              @id @default(cuid())
+  lead             Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId           String
+  realtor          User                @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+  realtorId        String
+  clientMessageId  String
+  assistantMessageId String?
+  decision         LeadAutoReplyDecision
+  reason           String?
+  model            String?
+  promptVersion    String?
+  createdAt        DateTime            @default(now())
+
+  @@index([leadId, createdAt])
+  @@index([realtorId, createdAt])
+  @@map("lead_auto_reply_logs")
 }
 
 model LeadRecommendationList {

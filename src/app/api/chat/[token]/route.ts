@@ -9,6 +9,7 @@ import { getPusherServer, PUSHER_EVENTS, PUSHER_CHANNELS } from "@/lib/pusher-se
 import { logger } from "@/lib/logger";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
 
 const messageSchema = z.object({
   content: z
@@ -261,6 +262,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         title: "Mensagem do cliente",
         description: parsed.data.content.trim().slice(0, 200),
       });
+
+      void LeadAutoReplyService.enqueueForClientMessage({
+        leadId: lead.id,
+        clientMessageId: message.id,
+      }).catch(() => null);
     }
 
     // Enviar notificação em tempo real via Pusher

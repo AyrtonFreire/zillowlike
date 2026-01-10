@@ -38,6 +38,7 @@ export const QUEUE_NAMES = {
   QUEUE_RECALCULATION: "queue-recalculation",
   CLEANUP: "cleanup",
   ASSISTANT_RECALCULATION: "assistant-recalculation",
+  LEAD_AUTO_REPLY: "lead-auto-reply",
 } as const;
 
 /**

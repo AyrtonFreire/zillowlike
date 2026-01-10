@@ -31,6 +31,8 @@ export const cleanupQueue = maybeQueue(QUEUE_NAMES.CLEANUP);
  */
 export const assistantRecalculationQueue = maybeQueue(QUEUE_NAMES.ASSISTANT_RECALCULATION);
 
+export const leadAutoReplyQueue = maybeQueue(QUEUE_NAMES.LEAD_AUTO_REPLY);
+
 /**
  * Adicionar job recorrente para recalcular itens do Assistente
  */
@@ -121,5 +123,6 @@ export function getQueues() {
     [QUEUE_NAMES.QUEUE_RECALCULATION]: queueRecalculationQueue,
     [QUEUE_NAMES.CLEANUP]: cleanupQueue,
     [QUEUE_NAMES.ASSISTANT_RECALCULATION]: assistantRecalculationQueue,
+    [QUEUE_NAMES.LEAD_AUTO_REPLY]: leadAutoReplyQueue,
   };
 }

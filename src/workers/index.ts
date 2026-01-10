@@ -1,6 +1,7 @@
 import { Worker } from "bullmq";
 import { QUEUE_NAMES, getRedisConnection } from "@/lib/queue/config";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
 import { PrismaClient } from "@prisma/client";
 import { QueueService } from "@/lib/queue-service";
 
@@ -92,6 +93,16 @@ new Worker(
     }
   },
   { connection, concurrency: 1 }
+);
+
+new Worker(
+  QUEUE_NAMES.LEAD_AUTO_REPLY,
+  async (job) => {
+    const clientMessageId = (job.data as any)?.clientMessageId;
+    if (!clientMessageId || typeof clientMessageId !== "string") return;
+    await LeadAutoReplyService.processByClientMessageId(clientMessageId);
+  },
+  { connection, concurrency: 2 }
 );
 
 }
