@@ -10,13 +10,58 @@ import { Users, Kanban } from "lucide-react";
 type Team = {
   id: string;
   name: string;
-  role: string;
+};
+
+type AgencyInsight = {
+  title: string;
+  detail: string;
+  severity: "info" | "warning" | "critical";
+  href?: string;
+  hrefLabel?: string;
+};
+
+type AgencyInsightsResponse = {
+  success: boolean;
+  generatedAt: string;
+  team: Team | null;
+  summary: string;
+  funnel: {
+    total: number;
+    activeTotal: number;
+    newLast24h: number;
+    unassigned: number;
+    byStage: Record<string, number>;
+  };
+  sla: {
+    pendingReplyTotal: number;
+    pendingReplyLeads: Array<{
+      leadId: string;
+      contactName: string | null;
+      propertyTitle: string | null;
+      pipelineStage: string | null;
+      realtorId: string | null;
+      realtorName: string | null;
+      lastClientAt: string;
+    }>;
+  };
+  members: Array<{
+    userId: string;
+    name: string | null;
+    email: string | null;
+    role: string;
+    activeLeads: number;
+    pendingReply: number;
+    stalledLeads: number;
+  }>;
+  highlights: AgencyInsight[];
 };
 
 export default function AgencyDashboardPage() {
   const { data: session, status } = useSession();
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
+  const [insights, setInsights] = useState<AgencyInsightsResponse | null>(null);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
 
   const role = useMemo(() => {
     const s: any = session as any;
@@ -33,10 +78,14 @@ export default function AgencyDashboardPage() {
     const load = async () => {
       try {
         setLoading(true);
-        const r = await fetch("/api/teams");
-        const j = await r.json().catch(() => null);
-        const teams = Array.isArray(j?.teams) ? j.teams : [];
-        setTeam(teams[0] || null);
+        setInsightsError(null);
+        const r = await fetch("/api/agency/insights", { cache: "no-store" });
+        const j = (await r.json().catch(() => null)) as AgencyInsightsResponse | null;
+        if (!r.ok || !j?.success) {
+          throw new Error((j as any)?.error || "Não conseguimos carregar o briefing agora.");
+        }
+        setInsights(j);
+        setTeam(j.team || null);
       } finally {
         setLoading(false);
       }
@@ -44,6 +93,12 @@ export default function AgencyDashboardPage() {
 
     load();
   }, [role, status]);
+
+  const briefingToneClasses = (severity: AgencyInsight["severity"]) => {
+    if (severity === "critical") return "border-red-200 bg-red-50";
+    if (severity === "warning") return "border-amber-200 bg-amber-50";
+    return "border-gray-200 bg-white";
+  };
 
   if (status === "loading" || loading) {
     return (
@@ -78,6 +133,72 @@ export default function AgencyDashboardPage() {
             )}
           </p>
         </div>
+
+        {insightsError && (
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
+            {insightsError}
+          </div>
+        )}
+
+        {insights?.team && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-gray-900">Briefing do time</div>
+                <div className="mt-1 text-sm text-gray-600">{insights.summary}</div>
+              </div>
+              <Link
+                href={`/broker/teams/${insights.team.id}/crm`}
+                className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold"
+              >
+                Abrir CRM
+              </Link>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
+                <div className="text-[11px] text-gray-500">Ativos</div>
+                <div className="text-lg font-semibold text-gray-900">{insights.funnel.activeTotal}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
+                <div className="text-[11px] text-gray-500">Sem responsável</div>
+                <div className="text-lg font-semibold text-gray-900">{insights.funnel.unassigned}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
+                <div className="text-[11px] text-gray-500">Pendentes (SLA)</div>
+                <div className="text-lg font-semibold text-gray-900">{insights.sla.pendingReplyTotal}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
+                <div className="text-[11px] text-gray-500">Novos 24h</div>
+                <div className="text-lg font-semibold text-gray-900">{insights.funnel.newLast24h}</div>
+              </div>
+            </div>
+
+            {Array.isArray(insights.highlights) && insights.highlights.length > 0 && (
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                {insights.highlights.map((h, idx) => (
+                  <div
+                    key={`${h.title}-${idx}`}
+                    className={`rounded-2xl border p-4 ${briefingToneClasses(h.severity)}`}
+                  >
+                    <div className="text-xs font-semibold text-gray-900">{h.title}</div>
+                    <div className="mt-1 text-sm text-gray-700">{h.detail}</div>
+                    {h.href && (
+                      <div className="mt-2">
+                        <Link
+                          href={h.href}
+                          className="inline-flex items-center text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+                        >
+                          {h.hrefLabel || "Abrir"}
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link

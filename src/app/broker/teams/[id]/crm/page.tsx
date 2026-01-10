@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { MapPin, ArrowLeft, ChevronRight, Loader2, Users } from "lucide-react";
@@ -89,6 +89,13 @@ export default function TeamCrmPage() {
 
   const params = useParams();
   const teamId = params?.id as string;
+
+  const searchParams = useSearchParams();
+  const stageParam = searchParams.get("stage");
+  const realtorParam = searchParams.get("realtorId");
+
+  const stageFilter = stageParam ? stageParam.toUpperCase() : null;
+  const realtorFilter = realtorParam ? String(realtorParam) : null;
 
   const [teamName, setTeamName] = useState<string>("Time");
   const [leads, setLeads] = useState<TeamPipelineLead[]>([]);
@@ -240,13 +247,56 @@ export default function TeamCrmPage() {
       LOST: [],
     };
 
-    for (const lead of leads) {
+    const stageValid = !!(stageFilter && (STAGE_ORDER as string[]).includes(stageFilter));
+
+    let filtered = leads;
+
+    if (realtorFilter) {
+      if (realtorFilter === "unassigned") {
+        filtered = filtered.filter((l) => !l.realtor?.id);
+      } else {
+        filtered = filtered.filter((l) => l.realtor?.id === realtorFilter);
+      }
+    }
+
+    if (stageValid) {
+      filtered = filtered.filter((l) => l.pipelineStage === (stageFilter as any));
+    }
+
+    for (const lead of filtered) {
       const stage = lead.pipelineStage || "NEW";
       map[stage].push(lead);
     }
 
     return map;
-  }, [leads]);
+  }, [leads, realtorFilter, stageFilter]);
+
+  const stagesToRender = useMemo(() => {
+    const stageValid = !!(stageFilter && (STAGE_ORDER as string[]).includes(stageFilter));
+    if (stageValid) return [stageFilter as TeamPipelineLead["pipelineStage"]];
+    return STAGE_ORDER;
+  }, [stageFilter]);
+
+  const filterLabel = useMemo(() => {
+    const parts: string[] = [];
+
+    const stageValid = !!(stageFilter && (STAGE_ORDER as string[]).includes(stageFilter));
+    if (stageValid) {
+      parts.push(`Etapa: ${STAGE_CONFIG[stageFilter as TeamPipelineLead["pipelineStage"]].label}`);
+    }
+
+    if (realtorFilter) {
+      if (realtorFilter === "unassigned") {
+        parts.push("Responsável: sem atribuição");
+      } else {
+        const member = members.find((m) => m.userId === realtorFilter);
+        const name = member?.name || member?.email || realtorFilter;
+        parts.push(`Responsável: ${name}`);
+      }
+    }
+
+    return parts.join(" • ");
+  }, [members, realtorFilter, stageFilter]);
 
   const isTeamOwner = !!(
     currentUserId && members.some((member) => member.userId === currentUserId && member.role === "OWNER")
@@ -305,6 +355,21 @@ export default function TeamCrmPage() {
             >
               Entendi
             </button>
+          </div>
+        )}
+
+        {(stageFilter || realtorFilter) && (
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-xs text-gray-700">
+            <div className="min-w-0">
+              <div className="font-semibold text-gray-900">Filtros ativos</div>
+              <div className="text-[11px] text-gray-500 truncate">{filterLabel || "Filtrando leads"}</div>
+            </div>
+            <Link
+              href={`/broker/teams/${teamId}/crm`}
+              className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Limpar filtros
+            </Link>
           </div>
         )}
 
@@ -372,7 +437,7 @@ export default function TeamCrmPage() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-x-auto md:overflow-visible">
-          {STAGE_ORDER.map((stage) => {
+          {stagesToRender.map((stage) => {
             const config = STAGE_CONFIG[stage];
             const stageLeads = leadsByStage[stage];
 

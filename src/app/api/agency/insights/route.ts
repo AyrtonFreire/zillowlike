@@ -1,0 +1,390 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { Prisma, LeadPipelineStage, LeadStatus } from "@prisma/client";
+import { z } from "zod";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export const runtime = "nodejs";
+
+const CLOSED_STATUSES: LeadStatus[] = ["COMPLETED", "CANCELLED", "EXPIRED", "OWNER_REJECTED"];
+const CLOSED_STAGES: LeadPipelineStage[] = ["WON", "LOST"];
+
+type InsightSeverity = "info" | "warning" | "critical";
+
+type AgencyInsight = {
+  title: string;
+  detail: string;
+  severity: InsightSeverity;
+  href?: string;
+  hrefLabel?: string;
+};
+
+async function getSessionContext() {
+  const session: any = await getServerSession(authOptions);
+  if (!session?.user && !session?.userId) {
+    return { userId: null, role: null };
+  }
+
+  const userId = session.userId || session.user?.id || null;
+  const role = session.role || session.user?.role || null;
+
+  return { userId: userId ? String(userId) : null, role: role ? String(role) : null };
+}
+
+const QuerySchema = z.object({
+  teamId: z.string().trim().min(1).optional(),
+});
+
+function addDays(d: Date, days: number) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + days);
+  return x;
+}
+
+function normalizeStage(pipelineStage: LeadPipelineStage | null, status: LeadStatus): LeadPipelineStage {
+  if (pipelineStage) return pipelineStage;
+  if (status === "ACCEPTED") return "CONTACT";
+  if (status === "CONFIRMED") return "VISIT";
+  if (status === "COMPLETED") return "WON";
+  if (status === "CANCELLED" || status === "EXPIRED" || status === "OWNER_REJECTED") return "LOST";
+  return "NEW";
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const { userId, role } = await getSessionContext();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    }
+
+    if (role !== "AGENCY" && role !== "ADMIN") {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
+    const url = new URL(req.url);
+    const parsedQuery = QuerySchema.safeParse({ teamId: url.searchParams.get("teamId") || undefined });
+    if (!parsedQuery.success) {
+      return NextResponse.json({ error: "Parâmetros inválidos", issues: parsedQuery.error.issues }, { status: 400 });
+    }
+
+    let teamId = parsedQuery.data.teamId || null;
+
+    if (!teamId && role === "AGENCY") {
+      const agencyProfile = await (prisma as any).agencyProfile.findUnique({
+        where: { userId: String(userId) },
+        select: { teamId: true },
+      });
+      teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+    }
+
+    if (!teamId && role === "ADMIN") {
+      const membership = await (prisma as any).teamMember.findFirst({
+        where: { userId: String(userId) },
+        select: { teamId: true },
+        orderBy: { createdAt: "asc" },
+      });
+      teamId = membership?.teamId ? String(membership.teamId) : null;
+    }
+
+    if (!teamId) {
+      return NextResponse.json({
+        success: true,
+        generatedAt: new Date().toISOString(),
+        team: null,
+        summary: "Não encontramos um time associado a esta agência ainda.",
+        funnel: {
+          total: 0,
+          activeTotal: 0,
+          newLast24h: 0,
+          unassigned: 0,
+          byStage: {},
+        },
+        sla: {
+          pendingReplyTotal: 0,
+          pendingReplyLeads: [],
+        },
+        members: [],
+        highlights: [],
+      });
+    }
+
+    const team = await (prisma as any).team.findUnique({
+      where: { id: String(teamId) },
+      include: {
+        owner: { select: { id: true, name: true, email: true } },
+        members: {
+          include: {
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
+      },
+    });
+
+    if (!team) {
+      return NextResponse.json({ error: "Time não encontrado" }, { status: 404 });
+    }
+
+    if (role !== "ADMIN") {
+      const isMember = (team.members as any[]).some((m) => String(m.userId) === String(userId));
+      const isOwner = String(team.ownerId) === String(userId);
+      if (!isMember && !isOwner) {
+        return NextResponse.json({ error: "Você não tem acesso a este time." }, { status: 403 });
+      }
+    }
+
+    const members = Array.isArray(team.members) ? (team.members as any[]) : [];
+    const memberIds = members.map((m) => String(m.userId));
+
+    const baseWhere: Prisma.LeadWhereInput = {
+      OR: [{ teamId: String(teamId) }, { realtorId: { in: memberIds } }],
+    };
+
+    const leads = await prisma.lead.findMany({
+      where: baseWhere,
+      select: {
+        id: true,
+        status: true,
+        pipelineStage: true,
+        createdAt: true,
+        updatedAt: true,
+        realtorId: true,
+        contact: { select: { name: true } },
+        property: { select: { title: true } },
+        realtor: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 2500,
+    });
+
+    const now = new Date();
+    const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const activeLeadIds = new Set<string>();
+    const byStageActive: Record<string, number> = {};
+
+    let activeTotal = 0;
+    let newLast24h = 0;
+    let unassigned = 0;
+
+    for (const lead of leads) {
+      const stage = normalizeStage((lead.pipelineStage as LeadPipelineStage | null) ?? null, lead.status as LeadStatus);
+
+      const isActive = !CLOSED_STATUSES.includes(lead.status as LeadStatus) && !CLOSED_STAGES.includes(stage);
+
+      if (isActive) {
+        activeTotal += 1;
+        activeLeadIds.add(String(lead.id));
+        byStageActive[String(stage)] = Number(byStageActive[String(stage)] || 0) + 1;
+        if (!lead.realtorId) unassigned += 1;
+        if (lead.createdAt && new Date(lead.createdAt).getTime() >= last24h.getTime()) newLast24h += 1;
+      }
+    }
+
+    const activeLeadIdsList = Array.from(activeLeadIds);
+
+    let pendingReplyLeadIds: Array<{ leadId: string; lastClientAt: string }> = [];
+    let pendingReplyTotal = 0;
+
+    if (activeLeadIdsList.length > 0) {
+      const leadIdsSql = Prisma.join(activeLeadIdsList.map((id) => Prisma.sql`${id}`));
+
+      const cte = Prisma.sql`
+        WITH m AS (
+          SELECT cm."leadId" AS "leadId", cm."fromClient" AS "fromClient", cm."createdAt" AS "createdAt"
+          FROM "lead_client_messages" cm
+          WHERE cm."leadId" IN (${leadIdsSql})
+
+          UNION ALL
+
+          SELECT im."leadId" AS "leadId", false AS "fromClient", im."createdAt" AS "createdAt"
+          FROM "lead_messages" im
+          WHERE im."leadId" IN (${leadIdsSql})
+        ),
+        last_msg AS (
+          SELECT DISTINCT ON (m."leadId")
+            m."leadId" AS "leadId",
+            m."fromClient" AS "fromClient",
+            m."createdAt" AS "createdAt"
+          FROM m
+          ORDER BY m."leadId", m."createdAt" DESC
+        )
+      `;
+
+      const countRows = (await prisma.$queryRaw(
+        Prisma.sql`${cte}
+          SELECT COUNT(*)::int AS "pendingReplyTotal"
+          FROM last_msg
+          WHERE "fromClient" = true;
+        `
+      )) as any[];
+
+      pendingReplyTotal = Number(countRows?.[0]?.pendingReplyTotal || 0);
+
+      const leadRows = (await prisma.$queryRaw(
+        Prisma.sql`${cte}
+          SELECT "leadId", "createdAt" AS "lastClientAt"
+          FROM last_msg
+          WHERE "fromClient" = true
+          ORDER BY "createdAt" DESC
+          LIMIT 25;
+        `
+      )) as any[];
+
+      pendingReplyLeadIds = (leadRows || []).map((r: any) => ({
+        leadId: String(r.leadId),
+        lastClientAt: r.lastClientAt ? new Date(r.lastClientAt).toISOString() : new Date().toISOString(),
+      }));
+    }
+
+    const pendingIdSet = new Set(pendingReplyLeadIds.map((x) => x.leadId));
+    const leadById = new Map(leads.map((l) => [String(l.id), l]));
+
+    const pendingReplyLeads = pendingReplyLeadIds
+      .map((row) => {
+        const lead = leadById.get(String(row.leadId));
+        if (!lead) return null;
+        return {
+          leadId: String(lead.id),
+          contactName: lead.contact?.name ? String(lead.contact.name) : null,
+          propertyTitle: lead.property?.title ? String(lead.property.title) : null,
+          pipelineStage: lead.pipelineStage ? String(lead.pipelineStage) : null,
+          realtorId: lead.realtor?.id ? String(lead.realtor.id) : lead.realtorId ? String(lead.realtorId) : null,
+          realtorName: lead.realtor?.name ? String(lead.realtor.name) : null,
+          lastClientAt: row.lastClientAt,
+        };
+      })
+      .filter(Boolean) as Array<{
+      leadId: string;
+      contactName: string | null;
+      propertyTitle: string | null;
+      pipelineStage: string | null;
+      realtorId: string | null;
+      realtorName: string | null;
+      lastClientAt: string;
+    }>;
+
+    const staleThreshold = addDays(now, -3);
+
+    const memberStats = members
+      .filter((m) => String(m.role || "").toUpperCase() !== "ASSISTANT")
+      .map((m) => {
+        const mid = String(m.userId);
+        const activeLeads = leads.filter((l) => activeLeadIds.has(String(l.id)) && String(l.realtorId || "") === mid);
+        const pending = activeLeads.filter((l) => pendingIdSet.has(String(l.id)));
+        const stalled = activeLeads.filter((l) => {
+          const u = l.updatedAt ? new Date(l.updatedAt) : null;
+          if (!u || Number.isNaN(u.getTime())) return false;
+          return u < staleThreshold;
+        });
+
+        return {
+          userId: mid,
+          name: m.user?.name ? String(m.user.name) : null,
+          email: m.user?.email ? String(m.user.email) : null,
+          role: String(m.role || ""),
+          activeLeads: activeLeads.length,
+          pendingReply: pending.length,
+          stalledLeads: stalled.length,
+        };
+      })
+      .sort((a, b) => {
+        if (b.pendingReply !== a.pendingReply) return b.pendingReply - a.pendingReply;
+        if (b.stalledLeads !== a.stalledLeads) return b.stalledLeads - a.stalledLeads;
+        return b.activeLeads - a.activeLeads;
+      });
+
+    const highlights: AgencyInsight[] = [];
+
+    if (pendingReplyTotal > 0) {
+      highlights.push({
+        title: "Clientes aguardando resposta",
+        detail: `${pendingReplyTotal} lead${pendingReplyTotal === 1 ? "" : "s"} com última mensagem do cliente sem retorno.`,
+        severity: pendingReplyTotal >= 10 ? "critical" : "warning",
+        href: `/broker/teams/${encodeURIComponent(String(teamId))}/crm`,
+        hrefLabel: "Abrir CRM do time",
+      });
+    }
+
+    if (unassigned > 0) {
+      highlights.push({
+        title: "Leads sem responsável",
+        detail: `${unassigned} lead${unassigned === 1 ? "" : "s"} ativo${unassigned === 1 ? "" : "s"} sem corretor atribuído.`,
+        severity: unassigned >= 5 ? "warning" : "info",
+        href: `/broker/teams/${encodeURIComponent(String(teamId))}/crm?realtorId=unassigned`,
+        hrefLabel: "Ver no CRM",
+      });
+    }
+
+    if (newLast24h > 0) {
+      highlights.push({
+        title: "Entradas nas últimas 24h",
+        detail: `${newLast24h} lead${newLast24h === 1 ? "" : "s"} novo${newLast24h === 1 ? "" : "s"} nas últimas 24 horas.`,
+        severity: "info",
+        href: `/broker/teams/${encodeURIComponent(String(teamId))}/crm?stage=NEW`,
+        hrefLabel: "Ver etapa Novo",
+      });
+    }
+
+    const worstMember = memberStats.find((m) => m.pendingReply > 0) || null;
+    if (worstMember) {
+      highlights.push({
+        title: "SLA do time (atenção)",
+        detail: `${worstMember.name || worstMember.email || "Um corretor"} está com ${worstMember.pendingReply} conversa${worstMember.pendingReply === 1 ? "" : "s"} aguardando resposta.`,
+        severity: worstMember.pendingReply >= 5 ? "critical" : "warning",
+        href: `/broker/teams/${encodeURIComponent(String(teamId))}/crm?realtorId=${encodeURIComponent(worstMember.userId)}`,
+        hrefLabel: "Ver leads do corretor",
+      });
+    }
+
+    const activeByStage = Object.entries(byStageActive)
+      .filter(([k]) => k !== "WON" && k !== "LOST")
+      .sort((a, b) => Number(b[1]) - Number(a[1]));
+
+    const topStage = activeByStage[0]?.[0] || null;
+    if (topStage && Number(activeByStage[0]?.[1] || 0) > 0) {
+      highlights.push({
+        title: "Maior acúmulo no funil",
+        detail: `Etapa ${topStage}: ${Number(activeByStage[0]?.[1] || 0)} lead${Number(activeByStage[0]?.[1] || 0) === 1 ? "" : "s"}.`,
+        severity: "info",
+        href: `/broker/teams/${encodeURIComponent(String(teamId))}/crm?stage=${encodeURIComponent(topStage)}`,
+        hrefLabel: "Abrir etapa",
+      });
+    }
+
+    const summary = (() => {
+      const parts: string[] = [];
+      parts.push(`Leads ativos: ${activeTotal}`);
+      if (pendingReplyTotal > 0) parts.push(`pendentes de resposta: ${pendingReplyTotal}`);
+      if (unassigned > 0) parts.push(`sem responsável: ${unassigned}`);
+      if (newLast24h > 0) parts.push(`novos 24h: ${newLast24h}`);
+      return parts.join(" • ");
+    })();
+
+    return NextResponse.json({
+      success: true,
+      generatedAt: now.toISOString(),
+      team: {
+        id: String(team.id),
+        name: String(team.name || "Time"),
+      },
+      summary,
+      funnel: {
+        total: leads.length,
+        activeTotal,
+        newLast24h,
+        unassigned,
+        byStage: byStageActive,
+      },
+      sla: {
+        pendingReplyTotal,
+        pendingReplyLeads,
+      },
+      members: memberStats,
+      highlights: highlights.slice(0, 6),
+    });
+  } catch (error) {
+    console.error("Error fetching agency insights:", error);
+    return NextResponse.json({ error: "Não conseguimos carregar os insights agora." }, { status: 500 });
+  }
+}

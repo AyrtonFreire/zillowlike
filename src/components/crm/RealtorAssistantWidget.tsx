@@ -24,7 +24,7 @@ export default function RealtorAssistantWidget() {
   const canRender =
     isBrokerContext &&
     !!realtorId &&
-    (role === "REALTOR" || role === "AGENCY" || role === "ADMIN");
+    (role === "REALTOR" || role === "ADMIN");
 
   useEffect(() => {
     setMounted(true);

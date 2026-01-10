@@ -78,7 +78,7 @@ export default function BrokerAssistantPage() {
     ];
   }, [counts]);
 
-  const canAccess = role === "REALTOR" || role === "AGENCY" || role === "ADMIN";
+  const canAccess = role === "REALTOR" || role === "ADMIN";
 
   useEffect(() => {
     if (!realtorId || !canAccess) return;

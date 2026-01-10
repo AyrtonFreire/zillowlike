@@ -53,6 +53,48 @@ type AgencyProfile = {
 
 type TeamLeadDistributionMode = "ROUND_ROBIN" | "CAPTURER_FIRST" | "MANUAL";
 
+type AgencyInsights = {
+  success: boolean;
+  generatedAt: string;
+  team: { id: string; name: string } | null;
+  summary: string;
+  funnel: {
+    total: number;
+    activeTotal: number;
+    newLast24h: number;
+    unassigned: number;
+    byStage: Record<string, number>;
+  };
+  sla: {
+    pendingReplyTotal: number;
+    pendingReplyLeads: Array<{
+      leadId: string;
+      contactName: string | null;
+      propertyTitle: string | null;
+      pipelineStage: string | null;
+      realtorId: string | null;
+      realtorName: string | null;
+      lastClientAt: string;
+    }>;
+  };
+  members: Array<{
+    userId: string;
+    name: string | null;
+    email: string | null;
+    role: string;
+    activeLeads: number;
+    pendingReply: number;
+    stalledLeads: number;
+  }>;
+  highlights: Array<{
+    title: string;
+    detail: string;
+    severity: "info" | "warning" | "critical";
+    href?: string;
+    hrefLabel?: string;
+  }>;
+};
+
 export default function AgencyTeamPage() {
   const { data: session, status } = useSession();
 
@@ -82,6 +124,9 @@ export default function AgencyTeamPage() {
 
   const [leadDistributionMode, setLeadDistributionMode] = useState<TeamLeadDistributionMode>("ROUND_ROBIN");
   const [savingSettings, setSavingSettings] = useState(false);
+
+  const [insights, setInsights] = useState<AgencyInsights | null>(null);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -139,6 +184,28 @@ export default function AgencyTeamPage() {
 
     load();
   }, [role, status]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (role !== "AGENCY" && role !== "ADMIN") return;
+
+    const run = async () => {
+      try {
+        setInsightsError(null);
+        const r = await fetch("/api/agency/insights", { cache: "no-store" });
+        const j = (await r.json().catch(() => null)) as AgencyInsights | null;
+        if (!r.ok || !j?.success) {
+          throw new Error((j as any)?.error || "Não conseguimos carregar os insights agora.");
+        }
+        setInsights(j);
+      } catch (e: any) {
+        setInsights(null);
+        setInsightsError(e?.message || "Não conseguimos carregar os insights agora.");
+      }
+    };
+
+    run();
+  }, [role, status, team?.id]);
 
   async function refreshInvites(teamId: string) {
     const invRes = await fetch(`/api/teams/${teamId}/invites`);
@@ -393,6 +460,96 @@ export default function AgencyTeamPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">{error}</div>
+        )}
+
+        {insightsError && (
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
+            {insightsError}
+          </div>
+        )}
+
+        {insights?.team && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-gray-900">Qualidade / SLA do time</div>
+                <div className="mt-1 text-sm text-gray-600">{insights.summary}</div>
+              </div>
+              <Link
+                href={`/broker/teams/${insights.team.id}/crm`}
+                className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold"
+              >
+                Abrir CRM
+              </Link>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
+                <div className="text-[11px] text-gray-500">Ativos</div>
+                <div className="text-lg font-semibold text-gray-900">{insights.funnel.activeTotal}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
+                <div className="text-[11px] text-gray-500">Pendentes (SLA)</div>
+                <div className="text-lg font-semibold text-gray-900">{insights.sla.pendingReplyTotal}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
+                <div className="text-[11px] text-gray-500">Sem responsável</div>
+                <div className="text-lg font-semibold text-gray-900">{insights.funnel.unassigned}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
+                <div className="text-[11px] text-gray-500">Novos 24h</div>
+                <div className="text-lg font-semibold text-gray-900">{insights.funnel.newLast24h}</div>
+              </div>
+            </div>
+
+            {Array.isArray(insights.members) && insights.members.length > 0 && (
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-[11px] text-gray-500 border-b border-gray-200">
+                      <th className="py-2 pr-4 text-left font-semibold">Corretor</th>
+                      <th className="py-2 pr-4 text-left font-semibold">Ativos</th>
+                      <th className="py-2 pr-4 text-left font-semibold">Pendentes</th>
+                      <th className="py-2 pr-4 text-left font-semibold">Parados (3d+)</th>
+                      <th className="py-2 text-left font-semibold">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {insights.members.map((m) => (
+                      <tr key={m.userId} className="border-b border-gray-100">
+                        <td className="py-2 pr-4">
+                          <div className="font-medium text-gray-900">{m.name || m.email || "Membro"}</div>
+                          <div className="text-[11px] text-gray-500">{m.email || ""}</div>
+                        </td>
+                        <td className="py-2 pr-4 text-gray-700">{m.activeLeads}</td>
+                        <td className="py-2 pr-4 text-gray-700">{m.pendingReply}</td>
+                        <td className="py-2 pr-4 text-gray-700">{m.stalledLeads}</td>
+                        <td className="py-2">
+                          <Link
+                            href={`/broker/teams/${insights.team?.id}/crm?realtorId=${encodeURIComponent(m.userId)}`}
+                            className="inline-flex items-center text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+                          >
+                            Ver no CRM
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {insights.funnel.unassigned > 0 && (
+              <div className="mt-3">
+                <Link
+                  href={`/broker/teams/${insights.team.id}/crm?realtorId=unassigned`}
+                  className="inline-flex items-center text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  Ver leads sem responsável
+                </Link>
+              </div>
+            )}
+          </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
