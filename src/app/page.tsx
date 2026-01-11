@@ -1075,11 +1075,11 @@ export default function Home() {
                         Para quem é o OggaHub
                       </p>
                       <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-display text-gray-900 text-left">
-                        Três formas de usar a plataforma
+                        4 formas de usar o OggaHub
                       </h2>
                       <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-xl text-left">
-                        Um lugar único para quem busca um lar, para quem quer anunciar com agilidade e para corretores
-                        que desejem um hub para seus negócios
+                        Um lugar único para quem busca um lar, para quem quer anunciar com agilidade, para corretores e
+                        para imobiliárias que querem um CRM completo.
                       </p>
                     </>
                   ) : isBroker ? (
@@ -1122,7 +1122,7 @@ export default function Home() {
                 </div>
 
                 {isDefaultProfiles ? (
-                  <div className="grid gap-6 md:gap-8 md:grid-cols-3 items-stretch">
+                  <div className="grid gap-6 md:gap-8 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
                     <div className="relative flex">
                       <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
                         <div className="relative h-40 bg-teal-700">
@@ -1215,6 +1215,36 @@ export default function Home() {
                             className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-indigo-600 text-indigo-700 hover:bg-indigo-50 transition-all"
                           >
                             Cadastre-se como corretor(a) no site
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative flex">
+                      <div className="relative bg-[#f5f2ec] rounded-[32px] shadow-[0_26px_70px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col h-full w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_90px_rgba(15,23,42,0.28)]">
+                        <div className="relative h-40 bg-slate-900">
+                          <div className="absolute left-1/2 bottom-0 translate-y-1/2 -translate-x-1/2 h-32 w-32 sm:h-36 sm:w-36 rounded-full overflow-hidden border-[6px] border-[#f5f2ec] shadow-[0_18px_45px_rgba(15,23,42,0.45)] bg-slate-600">
+                            <Image
+                              src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=800&q=80"
+                              alt="Equipe trabalhando em uma imobiliária"
+                              fill
+                              sizes="160px"
+                              className="object-cover"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-col flex-1 items-center text-center px-7 sm:px-8 pt-20 pb-9">
+                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
+                            Sou uma imobiliária
+                          </h3>
+                          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
+                            Tenha um CRM do time: pipeline, distribuição de leads, gestão de corretores e visão de desempenho em um só lugar.
+                          </p>
+                          <Link
+                            href="/agency/register"
+                            className="mt-2 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-slate-600 text-slate-700 hover:bg-slate-50 transition-all"
+                          >
+                            Conhecer CRM para imobiliárias
                           </Link>
                         </div>
                       </div>
