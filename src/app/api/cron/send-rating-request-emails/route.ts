@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, getRealtorRatingRequestEmail } from "@/lib/email";
+import { LeadDistributionService } from "@/lib/lead-distribution-service";
 
 function authorizeCron(req: NextRequest): { ok: true } | { ok: false; response: NextResponse } {
   const authHeader = req.headers.get("authorization");
@@ -32,6 +33,7 @@ function getSiteUrl() {
 }
 
 async function sendRatingRequestEmails() {
+  const releasedReservations = await LeadDistributionService.releaseExpiredReservations();
   const now = new Date();
   const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -114,6 +116,7 @@ async function sendRatingRequestEmails() {
 
   return {
     cutoff: cutoff.toISOString(),
+    releasedReservations,
     scanned,
     eligible,
     sent,
