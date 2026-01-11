@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Home, MapPin, Eye, Users, Target, Timer, Stars, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { Home, MapPin, Eye, Users, Target, Timer, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 
@@ -144,7 +144,6 @@ export default function PropertyCardV2({
   leads,
   conversionRatePct = null,
   daysSinceLastLead = null,
-  platformComparisonPct = null,
   timeseries14d = null,
   quickActions,
   favorites,
@@ -207,40 +206,6 @@ export default function PropertyCardV2({
     if (daysSinceLastLead === null || typeof daysSinceLastLead === "undefined") return "—";
     if (daysSinceLastLead === 0) return "hoje";
     return `${daysSinceLastLead}d`;
-  };
-
-  const comparisonDelta = () => {
-    if (platformComparisonPct === null || typeof platformComparisonPct === "undefined") return null;
-    const delta = Math.round(platformComparisonPct - 100);
-    return Number.isFinite(delta) ? delta : null;
-  };
-
-  const comparisonDeltaLabel = () => {
-    const delta = comparisonDelta();
-    if (delta === null) return "—";
-    if (delta === 0) return "0%";
-    return `${delta > 0 ? "+" : ""}${delta}%`;
-  };
-
-  const comparisonDeltaText = () => {
-    const delta = comparisonDelta();
-    if (delta === null) return "—";
-    if (delta === 0) return "na média";
-    return `${Math.abs(delta)}% ${delta > 0 ? "acima" : "abaixo"}`;
-  };
-
-  const comparisonTone = () => {
-    const delta = comparisonDelta();
-    if (delta === null) return "text-gray-700";
-    if (delta >= 10) return "text-emerald-700";
-    if (delta >= -10) return "text-amber-700";
-    return "text-rose-700";
-  };
-
-  const comparisonBarPct = () => {
-    if (platformComparisonPct === null || typeof platformComparisonPct === "undefined") return 0;
-    const v = Math.max(0, Math.min(200, platformComparisonPct));
-    return Math.round((v / 200) * 100);
   };
 
   const sparkline = useMemo(() => {
@@ -430,7 +395,7 @@ export default function PropertyCardV2({
               ) : null}
             </div>
 
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm text-gray-800">
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm text-gray-800">
               <TooltipMetric
                 id="views"
                 label="Views"
@@ -492,36 +457,6 @@ export default function PropertyCardV2({
                   <span className="font-semibold tabular-nums">{staleLabel()}</span>
                 </>
               </TooltipMetric>
-
-              <TooltipMetric
-                id="avg"
-                label="Média do site"
-                title="Comparação com anúncios parecidos"
-                description="Mostra quanto sua conversão (leads/views) está acima ou abaixo da média do site para anúncios com idade parecida. Quando há poucos dados, a comparação pode aparecer como “—”."
-                example="+20% = 20% acima da média para anúncios parecidos"
-                isTapMode={isTapMode}
-                activeTooltipId={activeTooltipId}
-                setActiveTooltipId={setActiveTooltipId}
-              >
-                <>
-                  <Stars className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                  <span className={`font-semibold tabular-nums ${comparisonTone()}`}>{comparisonDeltaLabel()}</span>
-                </>
-              </TooltipMetric>
-            </div>
-
-            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-              <div className="flex items-center justify-between text-sm">
-                <div className="text-gray-700 font-semibold">vs média do site</div>
-                <div className={`font-semibold ${comparisonTone()}`}>{comparisonDeltaText()}</div>
-              </div>
-              <div className="mt-2 h-2 w-full rounded-full bg-gray-200 overflow-hidden">
-                <div
-                  className={`h-full ${comparisonTone().includes("emerald") ? "bg-emerald-500" : comparisonTone().includes("rose") ? "bg-rose-500" : "bg-amber-500"}`}
-                  style={{ width: `${comparisonBarPct()}%` }}
-                />
-              </div>
-              <div className="mt-1 text-xs text-gray-500">0% (0x) - 200% (2x)</div>
             </div>
           </div>
         ) : null}

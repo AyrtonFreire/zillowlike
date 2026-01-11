@@ -20,6 +20,8 @@ interface PhoneVerificationModalProps {
   phone: string;
   /** Se true, permite editar/trocar o telefone */
   allowEdit?: boolean;
+  /** Se true, abre direto na etapa de editar telefone */
+  startInEdit?: boolean;
   /** Callback quando o telefone for alterado */
   onPhoneChange?: (newPhone: string) => void;
 }
@@ -30,6 +32,7 @@ export default function PhoneVerificationModal({
   onVerified,
   phone,
   allowEdit = false,
+  startInEdit = false,
   onPhoneChange,
 }: PhoneVerificationModalProps) {
   const [step, setStep] = useState<"sending" | "input" | "verifying" | "success" | "edit">("sending");
@@ -40,12 +43,22 @@ export default function PhoneVerificationModal({
   const [savingPhone, setSavingPhone] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Enviar SMS automaticamente ao abrir
   useEffect(() => {
-    if (isOpen && step === "sending") {
+    if (!isOpen) return;
+
+    setError(null);
+    setCountdown(0);
+    setCode(["", "", "", "", "", ""]);
+    setNewPhone(phone);
+
+    const initialStep: "sending" | "edit" =
+      startInEdit || (allowEdit && !String(phone || "").trim()) ? "edit" : "sending";
+
+    setStep(initialStep);
+    if (initialStep === "sending") {
       sendCode();
     }
-  }, [isOpen]);
+  }, [isOpen, phone, allowEdit, startInEdit]);
 
   // Countdown para re-envio
   useEffect(() => {

@@ -111,20 +111,6 @@ export async function PATCH(req: NextRequest) {
     const updateData: any = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.image !== undefined) updateData.image = body.image;
-    if (body.email !== undefined) {
-      const normalizedEmail = String(body.email || "").toLowerCase().trim();
-      if (!normalizedEmail) {
-        return NextResponse.json({ error: "Invalid email" }, { status: 400 });
-      }
-      if ((existing as any)?.email !== normalizedEmail) {
-        const conflict = await (prisma as any).user.findUnique({ where: { email: normalizedEmail }, select: { id: true } });
-        if (conflict && conflict.id !== userId) {
-          return NextResponse.json({ error: "Email already in use" }, { status: 400 });
-        }
-        updateData.email = normalizedEmail;
-        updateData.emailVerified = null;
-      }
-    }
     if (body.phone !== undefined) {
       updateData.phone = body.phone;
       if (existing && existing.phone !== body.phone) {
@@ -199,27 +185,6 @@ export async function PATCH(req: NextRequest) {
         realtorType: true,
       },
     });
-
-    if (body.email !== undefined && (updateData.email || updateData.emailVerified === null)) {
-      try {
-        const token = randomBytes(32).toString("hex");
-        const expires = new Date(Date.now() + 1000 * 60 * 60 * 24);
-
-        await prisma.verificationToken.create({
-          data: {
-            identifier: String(updated.email).toLowerCase(),
-            token,
-            expires,
-          },
-        });
-
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
-        const verifyUrl = `${baseUrl}/auth/verify-email?token=${token}`;
-        const emailData = getAuthResendVerificationEmail({ verifyUrl });
-        await sendEmail({ to: String(updated.email), subject: emailData.subject, html: emailData.html });
-      } catch {
-      }
-    }
 
     return NextResponse.json({
       success: true,

@@ -19,6 +19,8 @@ import {
   Phone,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import PhoneVerificationModal from "@/components/PhoneVerificationModal";
+import EmailChangeModal from "@/components/EmailChangeModal";
 
 interface UserProfile {
   id: string;
@@ -57,9 +59,9 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [phone, setPhone] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
-  const [sendingCode, setSendingCode] = useState(false);
-  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
+  const [phoneModalStartInEdit, setPhoneModalStartInEdit] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [publicProfileEnabled, setPublicProfileEnabled] = useState(false);
   const [publicHeadline, setPublicHeadline] = useState("");
   const [publicBio, setPublicBio] = useState("");
@@ -107,7 +109,6 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          phone,
           publicProfileEnabled,
           publicHeadline,
           publicBio,
@@ -137,78 +138,6 @@ export default function ProfilePage() {
       alert("Erro ao salvar perfil");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleSendVerificationCode = async () => {
-    if (!profile?.phone) {
-      alert("Preencha e salve seu telefone antes de solicitar o código por SMS.");
-      return;
-    }
-
-    if (phone !== (profile.phone || "")) {
-      alert("Você alterou o telefone. Clique em 'Salvar Alterações' antes de solicitar um novo código por SMS.");
-      return;
-    }
-
-    setSendingCode(true);
-    try {
-      const res = await fetch("/api/phone/send-code", {
-        method: "POST",
-      });
-
-      if (!res.ok) {
-        let msg = "Erro ao enviar código por SMS.";
-        try {
-          const data = await res.json();
-          if (data?.error) msg = data.error;
-        } catch {}
-        alert(msg);
-        return;
-      }
-
-      alert("Enviamos um SMS com o código de verificação para o seu telefone.");
-    } catch (error) {
-      console.error("Error sending SMS code:", error);
-      alert("Erro ao enviar código por SMS.");
-    } finally {
-      setSendingCode(false);
-    }
-  };
-
-  const handleVerifyCode = async () => {
-    const code = verificationCode.trim();
-    if (!code) {
-      alert("Digite o código que você recebeu por SMS.");
-      return;
-    }
-
-    setVerifyingCode(true);
-    try {
-      const res = await fetch("/api/phone/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
-
-      if (!res.ok) {
-        let msg = "Código inválido ou expirado.";
-        try {
-          const data = await res.json();
-          if (data?.error) msg = data.error;
-        } catch {}
-        alert(msg);
-        return;
-      }
-
-      setVerificationCode("");
-      await fetchProfile();
-      alert("Telefone verificado com sucesso!");
-    } catch (error) {
-      console.error("Error verifying SMS code:", error);
-      alert("Erro ao verificar código. Tente novamente.");
-    } finally {
-      setVerifyingCode(false);
     }
   };
 
@@ -455,7 +384,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Email (Read-only) */}
+                {/* Email */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Email
@@ -465,13 +394,22 @@ export default function ProfilePage() {
                     <input
                       type="email"
                       value={profile.email || ""}
-                      disabled
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                      readOnly
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Email não pode ser alterado
-                  </p>
+                  <div className="mt-2 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEmailModalOpen(true)}
+                      className="glass-teal text-white font-medium rounded-lg transition-colors"
+                    >
+                      Alterar e-mail
+                    </button>
+                    <p className="text-xs text-gray-500">
+                      Você receberá um código no novo e-mail para confirmar a troca.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Phone */}
@@ -484,50 +422,38 @@ export default function ProfilePage() {
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      readOnly
                       placeholder="(DDD) 9 9999-9999"
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
                     />
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     Este telefone pode ser usado para contatos sobre seus imóveis.
                   </p>
-                  {profile.phoneVerifiedAt && phone !== (profile.phone || "") && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      Você alterou o telefone. Salve as alterações para solicitar uma nova verificação.
-                    </p>
-                  )}
-                </div>
+                  <div className="mt-2 flex flex-col gap-2">
+                    {profile.phone ? (
+                      profile.phoneVerifiedAt ? (
+                        <p className="text-xs text-emerald-700 font-medium">Telefone verificado</p>
+                      ) : (
+                        <p className="text-xs text-amber-700 font-medium">Telefone ainda não verificado</p>
+                      )
+                    ) : (
+                      <p className="text-xs text-gray-600">Você ainda não adicionou um telefone.</p>
+                    )}
 
-                {/* Phone Verification */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Verificar Telefone
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value)}
-                      placeholder="Código de verificação"
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const hasPhone = Boolean((profile.phone || "").trim());
+                        const isVerified = Boolean(profile.phoneVerifiedAt);
+                        setPhoneModalStartInEdit(!hasPhone || isVerified);
+                        setPhoneModalOpen(true);
+                      }}
+                      className="glass-teal text-white font-medium rounded-lg transition-colors"
+                    >
+                      {profile.phone ? (profile.phoneVerifiedAt ? "Alterar telefone" : "Verificar telefone") : "Adicionar telefone"}
+                    </button>
                   </div>
-                  <button
-                    onClick={handleSendVerificationCode}
-                    disabled={sendingCode}
-                    className="mt-2 glass-teal text-white font-medium rounded-lg transition-colors"
-                  >
-                    {sendingCode ? "Enviando..." : "Enviar Código"}
-                  </button>
-                  <button
-                    onClick={handleVerifyCode}
-                    disabled={verifyingCode}
-                    className="mt-2 glass-teal text-white font-medium rounded-lg transition-colors"
-                  >
-                    {verifyingCode ? "Verificando..." : "Verificar Código"}
-                  </button>
                 </div>
 
                 {/* Role (Read-only) */}
@@ -759,7 +685,6 @@ export default function ProfilePage() {
               {(() => {
                 const unchanged =
                   name === (profile.name || "") &&
-                  phone === (profile.phone || "") &&
                   publicProfileEnabled === Boolean(profile.publicProfileEnabled) &&
                   publicHeadline === (profile.publicHeadline || "") &&
                   publicBio === (profile.publicBio || "") &&
@@ -778,6 +703,41 @@ export default function ProfilePage() {
                 );
               })()}
             </div>
+
+            <PhoneVerificationModal
+              isOpen={phoneModalOpen}
+              onClose={() => setPhoneModalOpen(false)}
+              onVerified={async () => {
+                await fetchProfile();
+                await update();
+              }}
+              phone={String(profile.phone || "")}
+              allowEdit
+              startInEdit={phoneModalStartInEdit}
+              onPhoneChange={(newPhone) => {
+                setPhone(newPhone || "");
+                setProfile((prev) =>
+                  prev
+                    ? ({
+                        ...prev,
+                        phone: newPhone,
+                        phoneVerifiedAt: null,
+                      } as any)
+                    : prev
+                );
+              }}
+            />
+
+            <EmailChangeModal
+              isOpen={emailModalOpen}
+              onClose={() => setEmailModalOpen(false)}
+              currentEmail={String(profile.email || "")}
+              onVerified={async (newEmail) => {
+                await fetchProfile();
+                await update();
+                setProfile((prev) => (prev ? ({ ...prev, email: newEmail } as any) : prev));
+              }}
+            />
 
             {/* Quick Links */}
             <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">

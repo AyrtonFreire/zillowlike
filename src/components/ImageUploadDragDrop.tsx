@@ -102,7 +102,7 @@ export default function ImageUploadDragDrop({
       return;
     }
 
-    const MAX_MB = 6;
+    const MAX_MB = 10;
 
     setUploading(true);
 

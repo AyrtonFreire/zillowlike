@@ -225,6 +225,9 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         // First sign in: role comes from user object
         token.role = (user as any).role ?? token.role ?? "USER";
+        token.email = (user as any).email ?? token.email;
+        token.name = (user as any).name ?? token.name;
+        token.picture = (user as any).image ?? (token as any).picture;
         (token as any).roleCheckedAt = nowMs;
         dbg("🔑 JWT Callback - Initial sign in, role:", token.role);
         return token;
@@ -237,10 +240,13 @@ export const authOptions: NextAuthOptions = {
           try {
             const dbUser = await prisma.user.findUnique({
               where: { id: token.sub },
-              select: { role: true },
+              select: { role: true, email: true, name: true, image: true },
             });
 
             token.role = dbUser?.role ?? token.role ?? "USER";
+            token.email = dbUser?.email ?? token.email;
+            token.name = dbUser?.name ?? token.name;
+            token.picture = dbUser?.image ?? (token as any).picture;
             (token as any).roleCheckedAt = nowMs;
           } catch (error) {
             console.error("❌ JWT Callback - Error fetching user role:", error);
@@ -274,6 +280,12 @@ export const authOptions: NextAuthOptions = {
           token,
           hasRole: !!token?.role,
         });
+      }
+
+      if (session.user) {
+        if (token?.email) session.user.email = token.email as string;
+        if (token?.name) session.user.name = token.name as string;
+        if ((token as any)?.picture) (session.user as any).image = (token as any).picture as string;
       }
       return session;
     },
