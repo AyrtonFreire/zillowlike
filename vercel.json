@@ -3,10 +3,6 @@
   "installCommand": "npm ci",
   "crons": [
     {
-      "path": "/api/cron/expire-leads",
-      "schedule": "0 0 * * *"
-    },
-    {
       "path": "/api/cron/archive-chats",
       "schedule": "0 1 * * *"
     },
