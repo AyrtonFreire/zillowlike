@@ -1246,7 +1246,7 @@ export default function NewPropertyPage() {
         ];
       case 3:
         return [
-          "Adicione ao menos 1 foto; 8–15 fotos boas geram mais visitas.",
+          "Adicione ao menos 1 foto; 8–15 fotos boas geram mais interesse.",
           "Prefira luz natural; mantenha os ambientes organizados.",
           "Arraste para ordenar; dá destaque às melhores fotos primeiro.",
         ];
@@ -2780,7 +2780,7 @@ export default function NewPropertyPage() {
                         label="Endereço do proprietário"
                         value={privateOwnerAddress}
                         onChange={(e) => setPrivateOwnerAddress(e.target.value)}
-                        placeholder="Para correspondência ou visitas"
+                        placeholder="Para correspondência"
                       />
                     </div>
                   </div>

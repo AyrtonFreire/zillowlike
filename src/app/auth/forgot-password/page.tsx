@@ -85,6 +85,18 @@ export default function ForgotPasswordPage() {
           </form>
         )}
 
+        <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
+          <p className="text-xs font-semibold text-slate-200">Outras formas de recuperar</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+            <Link href="/auth/recover-phone" className="text-teal-300 hover:text-teal-200 font-semibold">
+              Recuperar por telefone
+            </Link>
+            <Link href="/auth/recover-backup-code" className="text-teal-300 hover:text-teal-200 font-semibold">
+              Backup code
+            </Link>
+          </div>
+        </div>
+
         <p className="mt-4 text-xs text-slate-500">
           Lembrou a senha?{" "}
           <Link

@@ -13,7 +13,6 @@ import {
   RotateCcw,
   X,
   CheckCircle2,
-  XCircle,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
@@ -44,7 +43,7 @@ interface TeamPipelineLead {
   } | null;
 }
 
-type TeamLeadsTab = "active" | "won" | "lost";
+type TeamLeadsTab = "active" | "closed";
 
 interface TeamMember {
   userId: string;
@@ -107,8 +106,8 @@ const STAGE_CONFIG: Record<TeamPipelineLead["pipelineStage"], { label: string; d
     description: "Negócio concluído (vendido/alugado).",
   },
   LOST: {
-    label: "Perdido",
-    description: "Negócio não avançou.",
+    label: "Fechado",
+    description: "Lead encerrado.",
   },
 };
 
@@ -126,7 +125,7 @@ export default function AgencyTeamCrmPage() {
   const stageFilter = stageParam ? stageParam.toUpperCase() : null;
   const realtorFilter = realtorParam ? String(realtorParam) : null;
 
-  const tab: TeamLeadsTab = tabParam === "won" ? "won" : tabParam === "lost" ? "lost" : "active";
+  const tab: TeamLeadsTab = tabParam === "closed" || tabParam === "won" || tabParam === "lost" ? "closed" : "active";
 
   const [teamName, setTeamName] = useState<string>("Time");
   const [leads, setLeads] = useState<TeamPipelineLead[]>([]);
@@ -306,9 +305,8 @@ export default function AgencyTeamCrmPage() {
 
   const counts = useMemo(() => {
     const activeCount = leadsFilteredByRealtor.filter((l) => l.pipelineStage !== "WON" && l.pipelineStage !== "LOST").length;
-    const wonCount = leadsFilteredByRealtor.filter((l) => l.pipelineStage === "WON").length;
-    const lostCount = leadsFilteredByRealtor.filter((l) => l.pipelineStage === "LOST").length;
-    return { activeCount, wonCount, lostCount };
+    const closedCount = leadsFilteredByRealtor.filter((l) => l.pipelineStage === "WON" || l.pipelineStage === "LOST").length;
+    return { activeCount, closedCount };
   }, [leadsFilteredByRealtor]);
 
   const leadsForTab = useMemo(() => {
@@ -324,12 +322,8 @@ export default function AgencyTeamCrmPage() {
       }
     }
 
-    if (tab === "won") {
-      filtered = filtered.filter((l) => l.pipelineStage === "WON");
-    }
-
-    if (tab === "lost") {
-      filtered = filtered.filter((l) => l.pipelineStage === "LOST");
+    if (tab === "closed") {
+      filtered = filtered.filter((l) => l.pipelineStage === "WON" || l.pipelineStage === "LOST");
     }
 
     const sorted = [...filtered].sort((a, b) => {
@@ -351,8 +345,7 @@ export default function AgencyTeamCrmPage() {
     const parts: string[] = [];
 
     if (tab === "active") parts.push("Status: ativos");
-    if (tab === "won") parts.push("Status: fechados");
-    if (tab === "lost") parts.push("Status: perdidos");
+    if (tab === "closed") parts.push("Status: fechados");
 
     const stageValid = !!(stageFilter && (STAGE_ORDER as string[]).includes(stageFilter));
     if (tab === "active" && stageValid) {
@@ -514,29 +507,15 @@ export default function AgencyTeamCrmPage() {
 
           <button
             type="button"
-            onClick={() => setTabParam("won")}
+            onClick={() => setTabParam("closed")}
             className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${
-              tab === "won" ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+              tab === "closed" ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
             }`}
           >
             <CheckCircle2 className="w-4 h-4" />
             Fechados
-            <span className={`text-[11px] px-2 py-0.5 rounded-full ${tab === "won" ? "bg-white/15" : "bg-gray-100"}`}>
-              {counts.wonCount}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setTabParam("lost")}
-            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${
-              tab === "lost" ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            <XCircle className="w-4 h-4" />
-            Perdidos
-            <span className={`text-[11px] px-2 py-0.5 rounded-full ${tab === "lost" ? "bg-white/15" : "bg-gray-100"}`}>
-              {counts.lostCount}
+            <span className={`text-[11px] px-2 py-0.5 rounded-full ${tab === "closed" ? "bg-white/15" : "bg-gray-100"}`}>
+              {counts.closedCount}
             </span>
           </button>
         </div>
@@ -544,7 +523,7 @@ export default function AgencyTeamCrmPage() {
         {leadsForTab.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-10 text-center">
             <p className="text-sm font-semibold text-gray-900">
-              {tab === "active" ? "Nenhum lead ativo" : tab === "won" ? "Nenhum lead fechado" : "Nenhum lead perdido"}
+              {tab === "active" ? "Nenhum lead ativo" : "Nenhum lead fechado"}
             </p>
             <p className="mt-1 text-sm text-gray-600">Ajuste os filtros para encontrar resultados.</p>
           </div>
@@ -710,16 +689,6 @@ export default function AgencyTeamCrmPage() {
                         className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
                       >
                         Marcar como fechado
-                      </button>
-                    )}
-                    {selectedLead.pipelineStage !== "LOST" && (
-                      <button
-                        type="button"
-                        onClick={() => handleSetStage(selectedLead.id, "LOST")}
-                        disabled={!!updating[selectedLead.id]}
-                        className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                      >
-                        Marcar como perdido
                       </button>
                     )}
                   </div>

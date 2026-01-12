@@ -80,6 +80,11 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(request, response);
   }
 
+  if (pathname.startsWith("/realtor/register")) {
+    const response = NextResponse.next();
+    return applySecurityHeaders(request, response);
+  }
+
   if (pathname.startsWith("/agency/register")) {
     const response = NextResponse.next();
     return applySecurityHeaders(request, response);

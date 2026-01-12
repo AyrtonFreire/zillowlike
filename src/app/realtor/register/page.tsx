@@ -15,7 +15,7 @@ const BRAZILIAN_STATES = [
 ];
 
 export default function RealtorRegisterPage() {
-  const { status } = useSession();
+  const { status, update } = useSession();
   const router = useRouter();
 
   const [creci, setCreci] = useState("");
@@ -82,6 +82,7 @@ export default function RealtorRegisterPage() {
       }
 
       setSuccess("Cadastro como corretor realizado com sucesso. Agora você pode configurar seu perfil público.");
+      await update();
       setTimeout(() => {
         router.push("/profile");
       }, 2000);
