@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
-import { Users, Kanban } from "lucide-react";
+import { Activity, AlertTriangle, Kanban, Plus, Settings, Users } from "lucide-react";
+import MetricCard from "@/components/dashboard/MetricCard";
+import StatCard from "@/components/dashboard/StatCard";
 
 type Team = {
   id: string;
@@ -94,10 +96,32 @@ export default function AgencyDashboardPage() {
     load();
   }, [role, status]);
 
-  const briefingToneClasses = (severity: AgencyInsight["severity"]) => {
-    if (severity === "critical") return "border-red-200 bg-red-50";
-    if (severity === "warning") return "border-amber-200 bg-amber-50";
-    return "border-gray-200 bg-white";
+  const severityStyles = (severity: AgencyInsight["severity"]) => {
+    if (severity === "critical") {
+      return {
+        badge: "border-rose-200 bg-rose-50 text-rose-700",
+        card: "border-rose-100 bg-white",
+        icon: "text-rose-700",
+        iconBg: "bg-rose-50",
+        label: "Crítico",
+      };
+    }
+    if (severity === "warning") {
+      return {
+        badge: "border-amber-200 bg-amber-50 text-amber-700",
+        card: "border-amber-100 bg-white",
+        icon: "text-amber-700",
+        iconBg: "bg-amber-50",
+        label: "Atenção",
+      };
+    }
+    return {
+      badge: "border-slate-200 bg-slate-50 text-slate-700",
+      card: "border-slate-100 bg-white",
+      icon: "text-slate-700",
+      iconBg: "bg-slate-50",
+      label: "Info",
+    };
   };
 
   if (status === "loading" || loading) {
@@ -118,130 +142,208 @@ export default function AgencyDashboardPage() {
       description="Organize corretores, acompanhe leads e mantenha o funil em ordem."
       breadcrumbs={[{ label: "Home", href: "/" }, { label: "Agência" }]}
     >
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <p className="text-sm font-semibold text-gray-900">Workspace</p>
-          <p className="mt-1 text-sm text-gray-600">
-            {team ? (
-              <>
-                <span className="font-medium text-gray-900">{team.name}</span>
-                <span className="text-gray-500"> • </span>
-                <span className="text-gray-500">{team.id}</span>
-              </>
-            ) : (
-              "Não encontramos um time associado a esta agência ainda."
-            )}
-          </p>
-        </div>
-
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {insightsError && (
-          <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             {insightsError}
           </div>
         )}
 
-        {insights?.team && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-gray-900">Briefing do time</div>
-                <div className="mt-1 text-sm text-gray-600">{insights.summary}</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-500">Workspace</p>
+                <p className="mt-1 text-xl font-semibold text-gray-900 truncate">
+                  {team?.name || "Agência"}
+                </p>
+                <p className="mt-1 text-sm text-gray-600">
+                  {team?.id
+                    ? `Time vinculado: ${team.id}`
+                    : "Vincule seu time para começar a distribuir leads e acompanhar o funil."}
+                </p>
               </div>
-              <Link
-                href={`/agency/teams/${insights.team.id}/crm`}
-                className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold"
-              >
-                Abrir CRM
-              </Link>
-            </div>
 
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
-                <div className="text-[11px] text-gray-500">Ativos</div>
-                <div className="text-lg font-semibold text-gray-900">{insights.funnel.activeTotal}</div>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
-                <div className="text-[11px] text-gray-500">Sem responsável</div>
-                <div className="text-lg font-semibold text-gray-900">{insights.funnel.unassigned}</div>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
-                <div className="text-[11px] text-gray-500">Pendentes (SLA)</div>
-                <div className="text-lg font-semibold text-gray-900">{insights.sla.pendingReplyTotal}</div>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
-                <div className="text-[11px] text-gray-500">Novos 24h</div>
-                <div className="text-lg font-semibold text-gray-900">{insights.funnel.newLast24h}</div>
-              </div>
-            </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Link
+                  href="/agency/team"
+                  className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configurar
+                </Link>
 
-            {Array.isArray(insights.highlights) && insights.highlights.length > 0 && (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                {insights.highlights.map((h, idx) => (
-                  <div
-                    key={`${h.title}-${idx}`}
-                    className={`rounded-2xl border p-4 ${briefingToneClasses(h.severity)}`}
+                {team?.id && (
+                  <Link
+                    href={`/agency/teams/${team.id}/crm`}
+                    className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
                   >
-                    <div className="text-xs font-semibold text-gray-900">{h.title}</div>
-                    <div className="mt-1 text-sm text-gray-700">{h.detail}</div>
-                    {h.href && (
-                      <div className="mt-2">
-                        <Link
-                          href={h.href}
-                          className="inline-flex items-center text-[11px] font-semibold text-blue-600 hover:text-blue-700"
-                        >
-                          {h.hrefLabel || "Abrir"}
-                        </Link>
+                    <Kanban className="w-4 h-4 mr-2" />
+                    Abrir CRM
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <Link
+            href="/owner/new"
+            className="group bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all duration-300"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-blue-50 group-hover:bg-blue-100 transition-colors">
+                <Plus className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">Cadastrar imóvel</p>
+                <p className="text-sm text-gray-600 mt-1">Crie um novo anúncio</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        {insights?.team ? (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+              <MetricCard
+                title="Leads ativos"
+                value={insights.funnel.activeTotal}
+                icon={Activity}
+                subtitle="Em andamento no time"
+                iconColor="text-teal-700"
+                iconBgColor="bg-teal-50"
+              />
+              <MetricCard
+                title="Sem responsável"
+                value={insights.funnel.unassigned}
+                icon={Users}
+                subtitle="Distribuir para o time"
+                iconColor="text-amber-700"
+                iconBgColor="bg-amber-50"
+              />
+              <MetricCard
+                title="Pendentes (SLA)"
+                value={insights.sla.pendingReplyTotal}
+                icon={AlertTriangle}
+                subtitle="Cliente aguardando resposta"
+                iconColor="text-rose-700"
+                iconBgColor="bg-rose-50"
+              />
+              <MetricCard
+                title="Novos 24h"
+                value={insights.funnel.newLast24h}
+                icon={Plus}
+                subtitle="Entradas recentes"
+                iconColor="text-blue-700"
+                iconBgColor="bg-blue-50"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <StatCard
+                  title="Alertas do time"
+                  action={
+                    <Link
+                      href={`/agency/teams/${insights.team.id}/crm`}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Abrir CRM
+                    </Link>
+                  }
+                >
+                  {Array.isArray(insights.highlights) && insights.highlights.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {insights.highlights.map((h, idx) => {
+                        const s = severityStyles(h.severity);
+                        return (
+                          <div
+                            key={`${h.title}-${idx}`}
+                            className={`rounded-2xl border p-4 ${s.card} hover:bg-gray-50 transition-colors`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 line-clamp-1">{h.title}</p>
+                                <p className="mt-1 text-sm text-gray-600 line-clamp-2">{h.detail}</p>
+                              </div>
+                              <span
+                                className={`flex-shrink-0 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${s.badge}`}
+                              >
+                                {s.label}
+                              </span>
+                            </div>
+                            {h.href && (
+                              <div className="mt-3">
+                                <Link
+                                  href={h.href}
+                                  className="inline-flex items-center text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+                                >
+                                  {h.hrefLabel || "Abrir"}
+                                </Link>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-600">
+                      Nenhum alerta importante por enquanto. Conforme seu time receber e atender leads, os pontos de atenção aparecem aqui.
+                    </div>
+                  )}
+                </StatCard>
+              </div>
+
+              <div className="space-y-6">
+                <StatCard title="Atalhos rápidos">
+                  <div className="grid grid-cols-1 gap-3">
+                    <Link
+                      href="/agency/team"
+                      className="p-4 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-slate-50 rounded-xl group-hover:bg-slate-100 transition-colors">
+                          <Users className="w-6 h-6 text-slate-700" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">Meu time</p>
+                          <p className="text-sm text-gray-600 mt-1">Convites, regras e perfil</p>
+                        </div>
                       </div>
-                    )}
+                    </Link>
+
+                    <Link
+                      href={team?.id ? `/agency/teams/${team.id}/crm` : "/agency/team"}
+                      className="p-4 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-teal-50 rounded-xl group-hover:bg-teal-100 transition-colors">
+                          <Kanban className="w-6 h-6 text-teal-700" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">Funil (CRM)</p>
+                          <p className="text-sm text-gray-600 mt-1">Etapas e distribuição</p>
+                        </div>
+                      </div>
+                    </Link>
                   </div>
-                ))}
+                </StatCard>
+
+                <StatCard title="Próximos passos">
+                  <div className="text-sm text-gray-600">
+                    Convide corretores para o time e defina a regra de distribuição de leads. Depois acompanhe o funil para identificar gargalos.
+                  </div>
+                </StatCard>
               </div>
-            )}
-          </div>
+            </div>
+          </>
+        ) : (
+          <StatCard title="Comece por aqui">
+            <div className="text-sm text-gray-600">
+              Não encontramos um time associado a esta agência ainda. Vá em <Link href="/agency/team" className="text-blue-600 hover:text-blue-700 font-semibold">Meu time</Link> para configurar membros, convites e preferências.
+            </div>
+          </StatCard>
         )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link
-            href="/agency/team"
-            className="group bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 rounded-xl bg-gray-50 p-2 text-gray-700 group-hover:bg-gray-100">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-semibold text-gray-900">Time</div>
-                <div className="mt-1 text-sm text-gray-600">
-                  Veja membros e acesse o CRM do time.
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href={team ? `/agency/teams/${team.id}/crm` : "/agency/team"}
-            className="group bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 rounded-xl bg-gray-50 p-2 text-gray-700 group-hover:bg-gray-100">
-                <Kanban className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-semibold text-gray-900">Funil (CRM)</div>
-                <div className="mt-1 text-sm text-gray-600">
-                  Acompanhe as etapas e gargalos do time.
-                </div>
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <div className="text-sm font-semibold text-gray-900">Próximos passos (MVP)</div>
-          <div className="mt-2 text-sm text-gray-600">
-            Configure seus corretores via convites por e-mail e acompanhe o funil do time.
-          </div>
-        </div>
       </div>
     </DashboardLayout>
   );

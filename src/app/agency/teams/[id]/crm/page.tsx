@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, ArrowLeft, ChevronRight, Loader2, Users } from "lucide-react";
+import { MapPin, ArrowLeft, ChevronRight, Loader2, Users, SlidersHorizontal, RotateCcw } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 
@@ -42,6 +42,32 @@ interface TeamMember {
   role: string;
   queuePosition?: number;
 }
+
+const currencyBRL = (value: number) => {
+  try {
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
+  } catch {
+    return String(value || 0);
+  }
+};
+
+const formatShortDate = (value: string) => {
+  try {
+    const date = new Date(value);
+    return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" }).format(date);
+  } catch {
+    return "";
+  }
+};
+
+const initials = (nameOrEmail: string) => {
+  const raw = String(nameOrEmail || "").trim();
+  if (!raw) return "?";
+  const parts = raw.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] || raw[0];
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] : "";
+  return `${String(first).toUpperCase()}${String(last).toUpperCase()}`.slice(0, 2);
+};
 
 const STAGE_ORDER: TeamPipelineLead["pipelineStage"][] = [
   "NEW",
@@ -91,6 +117,8 @@ export default function AgencyTeamCrmPage() {
   const params = useParams();
   const teamId = params?.id as string;
 
+  const router = useRouter();
+
   const searchParams = useSearchParams();
   const stageParam = searchParams.get("stage");
   const realtorParam = searchParams.get("realtorId");
@@ -101,6 +129,7 @@ export default function AgencyTeamCrmPage() {
   const [teamName, setTeamName] = useState<string>("Time");
   const [leads, setLeads] = useState<TeamPipelineLead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -127,10 +156,14 @@ export default function AgencyTeamCrmPage() {
     }
   }, []);
 
-  const fetchLeads = async () => {
+  const fetchLeads = async (opts?: { silent?: boolean }) => {
     try {
       setError(null);
-      setLoading(true);
+      if (opts?.silent) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       const response = await fetch(`/api/teams/${teamId}/pipeline`);
       const data = await response.json();
 
@@ -155,8 +188,24 @@ export default function AgencyTeamCrmPage() {
       setError(err?.message || "Não conseguimos carregar o funil deste time agora.");
       setLeads([]);
     } finally {
+      setRefreshing(false);
       setLoading(false);
     }
+  };
+
+  const updateFilterParam = (key: "stage" | "realtorId", value: string) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (!value) {
+      next.delete(key);
+    } else {
+      next.set(key, value);
+    }
+    const qs = next.toString();
+    router.push(qs ? `/agency/teams/${teamId}/crm?${qs}` : `/agency/teams/${teamId}/crm`);
+  };
+
+  const clearFilters = () => {
+    router.push(`/agency/teams/${teamId}/crm`);
   };
 
   const handleDismissTeamHelp = () => {
@@ -299,6 +348,11 @@ export default function AgencyTeamCrmPage() {
     return parts.join(" • ");
   }, [members, realtorFilter, stageFilter]);
 
+  const stageSelectValue = useMemo(() => {
+    const stageValid = !!(stageFilter && (STAGE_ORDER as string[]).includes(stageFilter));
+    return stageValid ? String(stageFilter) : "";
+  }, [stageFilter]);
+
   const isTeamOwner = !!(
     currentUserId && members.some((member) => member.userId === currentUserId && member.role === "OWNER")
   );
@@ -319,19 +373,31 @@ export default function AgencyTeamCrmPage() {
       ]}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => history.back()}
+              className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </button>
+            <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500">
+              <Users className="w-4 h-4" />
+              <span>Leads de todos os corretores do time</span>
+            </div>
+          </div>
+
           <button
             type="button"
-            onClick={() => history.back()}
-            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
+            onClick={() => fetchLeads({ silent: true })}
+            disabled={refreshing}
+            className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
           >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Voltar
+            {refreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />}
+            Atualizar
           </button>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Users className="w-4 h-4" />
-            <span>Este quadro soma leads de todos os corretores membros do time.</span>
-          </div>
         </div>
 
         {showTeamHelp && (
@@ -351,39 +417,88 @@ export default function AgencyTeamCrmPage() {
           </div>
         )}
 
-        {(stageFilter || realtorFilter) && (
-          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-xs text-gray-700">
+        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="min-w-0">
-              <div className="font-semibold text-gray-900">Filtros ativos</div>
-              <div className="text-[11px] text-gray-500 truncate">{filterLabel || "Filtrando leads"}</div>
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                  <SlidersHorizontal className="w-4 h-4 text-slate-700" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Filtros</p>
+                  <p className="text-xs text-gray-500">Refine a visualização por etapa e responsável</p>
+                </div>
+              </div>
             </div>
-            <Link
-              href={`/agency/teams/${teamId}/crm`}
-              className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
+
+            <button
+              type="button"
+              onClick={clearFilters}
+              disabled={!stageFilter && !realtorFilter}
+              className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
             >
-              Limpar filtros
-            </Link>
+              Limpar
+            </button>
           </div>
-        )}
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Etapa</label>
+              <select
+                value={stageSelectValue}
+                onChange={(e) => updateFilterParam("stage", String(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Todas as etapas</option>
+                {STAGE_ORDER.map((stage) => (
+                  <option key={stage} value={stage}>
+                    {STAGE_CONFIG[stage].label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Responsável</label>
+              <select
+                value={realtorFilter || ""}
+                onChange={(e) => updateFilterParam("realtorId", String(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Todos</option>
+                <option value="unassigned">Sem responsável</option>
+                {members
+                  .filter((m) => m.role !== "ASSISTANT")
+                  .map((member) => (
+                    <option key={member.userId} value={member.userId}>
+                      {member.name || member.email || "Membro"}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-3 text-[11px] text-gray-500 truncate">{filterLabel || "Mostrando todos os leads do time."}</div>
+        </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             {error}
           </div>
         )}
         {assignError && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
+          <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {assignError}
           </div>
         )}
 
         {members.length > 0 && (
-          <div className="mb-4 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-[11px] text-gray-700 flex flex-col gap-1">
+          <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-[11px] text-gray-700 flex flex-col gap-1">
             <p className="font-semibold text-xs text-gray-900">Fila interna do time</p>
             <p className="text-[11px] text-gray-500 mb-1">
               {isTeamOwner
-                ? "Esta é a ordem de prioridade atual entre os corretores do time. Ela pode ser usada como referência para distribuição interna de novos leads."
-                : "Esta é apenas a ordem interna de prioridade entre os corretores do time, para você ter uma referência rápida."}
+                ? "Ordem de prioridade atual entre os corretores do time."
+                : "Ordem interna de prioridade entre os corretores do time."}
             </p>
             <div className="flex flex-wrap gap-2">
               {members
@@ -391,10 +506,13 @@ export default function AgencyTeamCrmPage() {
                 .map((member, index) => (
                   <span
                     key={member.userId}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-50 border border-gray-200"
+                    className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-gray-50 border border-gray-200"
                   >
                     <span className="text-[10px] font-semibold text-gray-500">#{index + 1}</span>
-                    <span className="text-[11px] font-medium text-gray-800">
+                    <span className="w-6 h-6 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-[10px] font-bold text-gray-700">
+                      {initials(member.name || member.email || "")}
+                    </span>
+                    <span className="text-[11px] font-semibold text-gray-800">
                       {member.name || member.email || "Membro"}
                     </span>
                   </span>
@@ -403,7 +521,7 @@ export default function AgencyTeamCrmPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-x-auto md:overflow-visible">
+        <div className="grid grid-flow-col auto-cols-[85%] gap-4 overflow-x-auto md:grid-flow-row md:auto-cols-auto md:grid-cols-3 lg:grid-cols-4 md:overflow-visible">
           {stagesToRender.map((stage) => {
             const config = STAGE_CONFIG[stage];
             const stageLeads = leadsByStage[stage];
@@ -411,9 +529,9 @@ export default function AgencyTeamCrmPage() {
             return (
               <div
                 key={stage}
-                className="bg-gray-50 rounded-2xl border border-gray-200 flex flex-col max-h-[70vh]"
+                className="rounded-2xl border border-gray-200 bg-white flex flex-col max-h-[70vh] shadow-sm"
               >
-                <div className="p-4 border-b border-gray-200">
+                <div className="p-4 border-b border-gray-200 bg-white rounded-t-2xl sticky top-0 z-10">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-semibold text-gray-900">{config.label}</p>
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-white text-gray-700 border border-gray-200">
@@ -423,17 +541,20 @@ export default function AgencyTeamCrmPage() {
                   <p className="text-[11px] text-gray-500 leading-snug">{config.description}</p>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50/60 rounded-b-2xl">
                   {stageLeads.length === 0 ? (
-                    <p className="text-[11px] text-gray-400 px-2 py-1">Nenhum lead nesta etapa por enquanto.</p>
+                    <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-6 text-center">
+                      <p className="text-sm font-semibold text-gray-900">Nenhum lead</p>
+                      <p className="mt-1 text-xs text-gray-500">Quando um lead entrar nesta etapa, ele aparece aqui.</p>
+                    </div>
                   ) : (
                     stageLeads.map((lead) => (
                       <div
                         key={lead.id}
-                        className="bg-white rounded-xl border border-gray-200 p-3 text-xs text-gray-800 flex flex-col gap-1"
+                        className="bg-white rounded-2xl border border-gray-200 p-4 text-sm text-gray-800 flex flex-col gap-3 shadow-sm"
                       >
-                        <div className="flex items-start gap-2">
-                          <div className="relative w-10 h-10 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
+                        <div className="flex items-start gap-3">
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
                             <Image
                               src={lead.property.images[0]?.url || "/placeholder.jpg"}
                               alt={lead.property.title}
@@ -442,28 +563,47 @@ export default function AgencyTeamCrmPage() {
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold line-clamp-2">{lead.property.title}</p>
-                            <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="font-semibold text-gray-900 line-clamp-2">{lead.property.title}</p>
+                              <span className="text-[11px] font-semibold text-gray-700 tabular-nums whitespace-nowrap">
+                                {currencyBRL(lead.property.price)}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                               <MapPin className="w-3 h-3" />
                               <span className="truncate">
                                 {lead.property.neighborhood && `${lead.property.neighborhood}, `}
                                 {lead.property.city} - {lead.property.state}
                               </span>
                             </p>
+
+                            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                              <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
+                                Lead: {lead.id.slice(0, 6)}
+                              </span>
+                              <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
+                                {formatShortDate(lead.createdAt)}
+                              </span>
+                            </div>
+
                             {lead.contact?.name && (
-                              <p className="text-[11px] text-gray-500 mt-0.5">Cliente: {lead.contact.name}</p>
+                              <p className="text-xs text-gray-600 mt-2">Cliente: {lead.contact.name}</p>
                             )}
-                            {lead.realtor?.name && (
-                              <p className="text-[11px] text-gray-500 mt-0.5">Corretor(a): {lead.realtor.name}</p>
-                            )}
+
                             {members.length > 0 && (
-                              <div className="mt-1 flex items-center gap-1">
-                                <span className="text-[10px] text-gray-400">Responsável:</span>
+                              <div className="mt-3 flex items-center gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-[11px] font-bold text-gray-700">
+                                    {initials(lead.realtor?.name || lead.realtor?.email || "")}
+                                  </div>
+                                  <span className="text-xs font-semibold text-gray-700">Responsável</span>
+                                </div>
                                 <select
                                   value={lead.realtor?.id || ""}
                                   onChange={(e) => handleAssignLead(lead.id, e.target.value)}
                                   disabled={!!assigning[lead.id]}
-                                  className="text-[11px] border border-gray-200 rounded-md px-1 py-0.5 bg-white max-w-[160px]"
+                                  className="ml-auto text-xs border border-gray-200 rounded-xl px-2 py-1.5 bg-white max-w-[200px]"
                                 >
                                   <option value="">Escolher corretor</option>
                                   {members
@@ -479,21 +619,21 @@ export default function AgencyTeamCrmPage() {
                           </div>
                         </div>
 
-                        <div className="mt-1 flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center text-[11px] text-gray-500">
-                            Lead: {lead.id.slice(0, 6)}
-                            <ChevronRight className="w-3 h-3 ml-0.5 opacity-40" />
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center text-xs text-gray-500">
+                            Detalhes
+                            <ChevronRight className="w-3 h-3 ml-1 opacity-40" />
                           </span>
                           {stage !== "WON" && stage !== "LOST" && (
                             <button
                               type="button"
                               onClick={() => handleAdvanceStage(lead.id)}
                               disabled={!!updating[lead.id]}
-                              className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                              className="inline-flex items-center px-3 py-2 rounded-xl text-xs font-semibold bg-neutral-900 hover:bg-neutral-800 text-white disabled:opacity-60 disabled:cursor-not-allowed"
                             >
                               {updating[lead.id] ? (
                                 <>
-                                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                  <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
                                   Movendo...
                                 </>
                               ) : (

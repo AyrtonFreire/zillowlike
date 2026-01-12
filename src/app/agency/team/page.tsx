@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
+import MetricCard from "@/components/dashboard/MetricCard";
+import StatCard from "@/components/dashboard/StatCard";
+import { Activity, AlertTriangle, Copy, Kanban, Mail, Plus, Settings, Trash2, Users } from "lucide-react";
 
 type TeamMember = {
   id: string;
@@ -443,135 +446,240 @@ export default function AgencyTeamPage() {
     );
   }
 
+  const canManageTeam = role === "ADMIN" || team?.role === "OWNER";
+
+  const distributionLabel = (mode: TeamLeadDistributionMode) => {
+    if (mode === "CAPTURER_FIRST") return "Prioridade do captador";
+    if (mode === "MANUAL") return "Manual";
+    return "Round-robin";
+  };
+
+  const distributionHint = (mode: TeamLeadDistributionMode) => {
+    if (mode === "MANUAL") return "Leads entram sem responsável. O time atribui no CRM.";
+    if (mode === "CAPTURER_FIRST") return "Quando existe captador/parceiro, ele recebe prioridade.";
+    return "Distribui entre corretores de forma equilibrada.";
+  };
+
+  const inviteStatusBadge = (status: string) => {
+    const s = String(status || "").toUpperCase();
+    if (s === "PENDING") return "border-amber-200 bg-amber-50 text-amber-700";
+    if (s === "ACCEPTED") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    if (s === "REVOKED") return "border-gray-200 bg-gray-50 text-gray-700";
+    if (s === "EXPIRED") return "border-rose-200 bg-rose-50 text-rose-700";
+    return "border-slate-200 bg-slate-50 text-slate-700";
+  };
+
+  const rolePill = (roleValue: string) => {
+    const r = String(roleValue || "").toUpperCase();
+    if (r === "OWNER") return "border-teal-200 bg-teal-50 text-teal-700";
+    if (r === "ASSISTANT") return "border-slate-200 bg-slate-50 text-slate-700";
+    return "border-blue-200 bg-blue-50 text-blue-700";
+  };
+
+  const initials = (nameOrEmail: string) => {
+    const raw = String(nameOrEmail || "").trim();
+    if (!raw) return "?";
+    const parts = raw.split(/\s+/).filter(Boolean);
+    const first = parts[0]?.[0] || raw[0];
+    const last = parts.length > 1 ? parts[parts.length - 1]?.[0] : "";
+    return `${String(first).toUpperCase()}${String(last).toUpperCase()}`.slice(0, 2);
+  };
+
   return (
     <DashboardLayout
       title="Time da Agência"
       description="Gerencie seu time, convites e preferências de distribuição."
       breadcrumbs={[{ label: "Home", href: "/" }, { label: "Agência", href: "/agency/dashboard" }, { label: "Time" }]}
       actions={
-        <Link
-          href={team?.id ? `/agency/teams/${team.id}/crm` : "/agency/dashboard"}
-          className="inline-flex items-center px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-semibold hover:bg-white/20"
-        >
-          Abrir CRM
-        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href="#invites"
+            className="hidden sm:inline-flex items-center px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-semibold hover:bg-white/20"
+          >
+            <Mail className="w-4 h-4 mr-2" />
+            Convidar
+          </a>
+          <Link
+            href={team?.id ? `/agency/teams/${team.id}/crm` : "/agency/dashboard"}
+            className="inline-flex items-center px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-semibold hover:bg-white/20"
+          >
+            <Kanban className="w-4 h-4 mr-2" />
+            Abrir CRM
+          </Link>
+        </div>
       }
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">{error}</div>
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
         )}
 
         {insightsError && (
-          <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             {insightsError}
           </div>
         )}
 
-        {insights?.team && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-gray-900">Qualidade / SLA do time</div>
-                <div className="mt-1 text-sm text-gray-600">{insights.summary}</div>
-              </div>
-              <Link
-                href={`/agency/teams/${insights.team.id}/crm`}
-                className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold"
+        <StatCard
+          title="Workspace"
+          action={
+            <Link href="/agency/dashboard" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              Voltar ao painel
+            </Link>
+          }
+        >
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{team?.name || "Time"}</p>
+              <p className="mt-1 text-sm text-gray-600">
+                {team?.owner?.name || team?.owner?.email
+                  ? `Titular: ${team.owner.name || team.owner.email}`
+                  : "Defina um titular para gerenciar o time."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <a
+                href="#distribution"
+                className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
-                Abrir CRM
-              </Link>
+                <Settings className="w-4 h-4 mr-2" />
+                Distribuição
+              </a>
+              <a
+                href="#invites"
+                className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Convidar
+              </a>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-gray-500">
+            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
+              Distribuição: {distributionLabel(leadDistributionMode)}
+            </span>
+            <span className="text-[11px]">{distributionHint(leadDistributionMode)}</span>
+          </div>
+        </StatCard>
+
+        {insights?.team && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+              <MetricCard
+                title="Leads ativos"
+                value={insights.funnel.activeTotal}
+                icon={Activity}
+                subtitle="Em andamento"
+                iconColor="text-teal-700"
+                iconBgColor="bg-teal-50"
+              />
+              <MetricCard
+                title="Sem responsável"
+                value={insights.funnel.unassigned}
+                icon={Users}
+                subtitle="Atribuir no CRM"
+                iconColor="text-amber-700"
+                iconBgColor="bg-amber-50"
+              />
+              <MetricCard
+                title="Pendentes (SLA)"
+                value={insights.sla.pendingReplyTotal}
+                icon={AlertTriangle}
+                subtitle="Cliente aguardando"
+                iconColor="text-rose-700"
+                iconBgColor="bg-rose-50"
+              />
+              <MetricCard
+                title="Novos 24h"
+                value={insights.funnel.newLast24h}
+                icon={Plus}
+                subtitle="Entradas recentes"
+                iconColor="text-blue-700"
+                iconBgColor="bg-blue-50"
+              />
             </div>
 
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
-                <div className="text-[11px] text-gray-500">Ativos</div>
-                <div className="text-lg font-semibold text-gray-900">{insights.funnel.activeTotal}</div>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
-                <div className="text-[11px] text-gray-500">Pendentes (SLA)</div>
-                <div className="text-lg font-semibold text-gray-900">{insights.sla.pendingReplyTotal}</div>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
-                <div className="text-[11px] text-gray-500">Sem responsável</div>
-                <div className="text-lg font-semibold text-gray-900">{insights.funnel.unassigned}</div>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2">
-                <div className="text-[11px] text-gray-500">Novos 24h</div>
-                <div className="text-lg font-semibold text-gray-900">{insights.funnel.newLast24h}</div>
-              </div>
-            </div>
-
-            {Array.isArray(insights.members) && insights.members.length > 0 && (
-              <div className="mt-4 overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-[11px] text-gray-500 border-b border-gray-200">
-                      <th className="py-2 pr-4 text-left font-semibold">Corretor</th>
-                      <th className="py-2 pr-4 text-left font-semibold">Ativos</th>
-                      <th className="py-2 pr-4 text-left font-semibold">Pendentes</th>
-                      <th className="py-2 pr-4 text-left font-semibold">Parados (3d+)</th>
-                      <th className="py-2 text-left font-semibold">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {insights.members.map((m) => (
-                      <tr key={m.userId} className="border-b border-gray-100">
-                        <td className="py-2 pr-4">
-                          <div className="font-medium text-gray-900">{m.name || m.email || "Membro"}</div>
-                          <div className="text-[11px] text-gray-500">{m.email || ""}</div>
-                        </td>
-                        <td className="py-2 pr-4 text-gray-700">{m.activeLeads}</td>
-                        <td className="py-2 pr-4 text-gray-700">{m.pendingReply}</td>
-                        <td className="py-2 pr-4 text-gray-700">{m.stalledLeads}</td>
-                        <td className="py-2">
-                          <Link
-                            href={`/agency/teams/${insights.team?.id}/crm?realtorId=${encodeURIComponent(m.userId)}`}
-                            className="inline-flex items-center text-[11px] font-semibold text-blue-600 hover:text-blue-700"
-                          >
-                            Ver no CRM
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {insights.funnel.unassigned > 0 && (
-              <div className="mt-3">
+            <StatCard
+              title="Qualidade do time"
+              action={
                 <Link
-                  href={`/agency/teams/${insights.team.id}/crm?realtorId=unassigned`}
-                  className="inline-flex items-center text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+                  href={`/agency/teams/${insights.team.id}/crm`}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  Ver leads sem responsável
+                  Abrir CRM
                 </Link>
-              </div>
-            )}
+              }
+            >
+              <p className="text-sm text-gray-600">{insights.summary}</p>
+
+              {Array.isArray(insights.members) && insights.members.length > 0 ? (
+                <div className="mt-4 space-y-2">
+                  {insights.members.map((m) => (
+                    <div
+                      key={m.userId}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-gray-100 bg-white p-4"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">{m.name || m.email || "Membro"}</p>
+                        <p className="text-xs text-gray-500 truncate">{m.email || ""}</p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                          <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
+                            Ativos: <span className="ml-1 tabular-nums text-gray-900">{m.activeLeads}</span>
+                          </span>
+                          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+                            Pendentes: <span className="ml-1 tabular-nums">{m.pendingReply}</span>
+                          </span>
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700">
+                            Parados: <span className="ml-1 tabular-nums">{m.stalledLeads}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <Link
+                        href={`/agency/teams/${insights.team?.id}/crm?realtorId=${encodeURIComponent(m.userId)}`}
+                        className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                      >
+                        Ver no CRM
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-4 text-sm text-gray-600">Sem dados por membro ainda.</div>
+              )}
+
+              {insights.funnel.unassigned > 0 && (
+                <div className="mt-4">
+                  <Link
+                    href={`/agency/teams/${insights.team.id}/crm?realtorId=unassigned`}
+                    className="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700"
+                  >
+                    Ver leads sem responsável
+                  </Link>
+                </div>
+              )}
+            </StatCard>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <div className="text-sm font-semibold text-gray-900 mb-4">Perfil da agência</div>
-
-            <div className="space-y-3">
+          <StatCard title="Perfil da agência">
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs text-gray-700 mb-1">Nome</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>
                 <input
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-gray-700 mb-1">Telefone</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone</label>
                 <input
                   value={profilePhone}
                   onChange={(e) => setProfilePhone(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
               </div>
 
@@ -579,62 +687,96 @@ export default function AgencyTeamPage() {
                 CNPJ: <span className="font-medium text-gray-700">{agencyProfile?.cnpj || "-"}</span>
               </div>
 
-              <button
-                type="button"
-                onClick={handleSaveProfile}
-                disabled={savingProfile}
-                className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold disabled:opacity-60"
-              >
-                {savingProfile ? "Salvando..." : "Salvar perfil"}
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <div className="text-sm font-semibold text-gray-900 mb-4">Distribuição de leads do time</div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs text-gray-700 mb-1">Modo</label>
-                <select
-                  value={leadDistributionMode}
-                  onChange={(e) => setLeadDistributionMode(e.target.value as TeamLeadDistributionMode)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveProfile}
+                  disabled={savingProfile}
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
                 >
-                  <option value="ROUND_ROBIN">Round-robin</option>
-                  <option value="CAPTURER_FIRST">Prioridade do captador/parceiro</option>
-                  <option value="MANUAL">Manual (sem responsável)</option>
-                </select>
+                  {savingProfile ? "Salvando..." : "Salvar perfil"}
+                </button>
               </div>
-
-              <div className="text-[11px] text-gray-500">
-                Padrão recomendado: round-robin. No modo manual, o lead aparece no CRM do time e vocês atribuem manualmente.
-              </div>
-
-              <button
-                type="button"
-                onClick={handleSaveSettings}
-                disabled={savingSettings}
-                className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold disabled:opacity-60"
-              >
-                {savingSettings ? "Salvando..." : "Salvar preferências"}
-              </button>
             </div>
+          </StatCard>
+
+          <div id="distribution">
+            <StatCard
+              title="Distribuição de leads do time"
+              action={
+                team?.id ? (
+                  <Link
+                    href={`/agency/teams/${team.id}/crm`}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Abrir CRM
+                  </Link>
+                ) : null
+              }
+            >
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Modo</label>
+                  <select
+                    value={leadDistributionMode}
+                    onChange={(e) => setLeadDistributionMode(e.target.value as TeamLeadDistributionMode)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
+                  >
+                    <option value="ROUND_ROBIN">Round-robin</option>
+                    <option value="CAPTURER_FIRST">Prioridade do captador/parceiro</option>
+                    <option value="MANUAL">Manual (sem responsável)</option>
+                  </select>
+                </div>
+
+                <div className="text-[11px] text-gray-500">{distributionHint(leadDistributionMode)}</div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveSettings}
+                  disabled={savingSettings}
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
+                >
+                  {savingSettings ? "Salvando..." : "Salvar preferências"}
+                </button>
+              </div>
+            </StatCard>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <div className="text-sm font-semibold text-gray-900 mb-4">Membros</div>
+        <StatCard
+          title="Membros"
+          action={
+            <a href="#invites" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              Convidar
+            </a>
+          }
+        >
           {team?.members?.length ? (
             <div className="space-y-2 text-sm text-gray-700">
               {team.members.map((m) => (
-                <div key={m.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-gray-100 bg-gray-50/60 px-3 py-2">
-                  <div className="min-w-0">
-                    <div className="font-medium text-gray-900 truncate">{m.name || m.email || "Membro"}</div>
-                    <div className="text-[11px] text-gray-500 truncate">{m.email || ""}</div>
+                <div
+                  key={m.id}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3"
+                >
+                  <div className="min-w-0 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 flex-shrink-0">
+                      {initials(m.name || m.email || "")}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="font-semibold text-gray-900 truncate">{m.name || m.email || "Membro"}</div>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${rolePill(String(m.role))}`}
+                        >
+                          {String(m.role).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-gray-500 truncate">{m.email || ""}</div>
+                    </div>
                   </div>
+
                   <div className="flex items-center gap-2 justify-end">
-                    {team?.id && (role === "ADMIN" || team.role === "OWNER") && String(m.role).toUpperCase() !== "OWNER" ? (
+                    {team?.id && canManageTeam && String(m.role).toUpperCase() !== "OWNER" ? (
                       <select
                         value={String(m.role).toUpperCase()}
                         onChange={(e) => {
@@ -644,7 +786,7 @@ export default function AgencyTeamPage() {
                           }
                         }}
                         disabled={memberBusyId === m.id}
-                        className="px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700"
+                        className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700"
                       >
                         <option value="AGENT">AGENTE</option>
                         <option value="ASSISTANT">ASSISTENTE</option>
@@ -653,13 +795,14 @@ export default function AgencyTeamPage() {
                       <div className="text-[11px] text-gray-500 uppercase">{m.role}</div>
                     )}
 
-                    {team?.id && (role === "ADMIN" || team.role === "OWNER") && String(m.role).toUpperCase() !== "OWNER" && (
+                    {team?.id && canManageTeam && String(m.role).toUpperCase() !== "OWNER" && (
                       <button
                         type="button"
                         onClick={() => handleRemoveMember(m.id)}
                         disabled={memberBusyId === m.id}
-                        className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                        className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                       >
+                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
                         Remover
                       </button>
                     )}
@@ -667,16 +810,17 @@ export default function AgencyTeamPage() {
                 </div>
               ))}
 
-              {(role === "ADMIN" || team?.role === "OWNER") && (
-                <div className="mt-4 rounded-xl border border-gray-100 bg-white p-3">
-                  <div className="text-xs font-semibold text-gray-900 mb-2">Transferir titularidade</div>
-                  <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+              {canManageTeam && (
+                <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-4">
+                  <div className="text-sm font-semibold text-gray-900">Transferir titularidade</div>
+                  <div className="mt-1 text-xs text-gray-500">Escolha um membro (não assistente) para virar titular do time.</div>
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2 sm:items-end">
                     <div className="flex-1">
-                      <label className="block text-[11px] text-gray-600 mb-1">Novo dono</label>
+                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">Novo dono</label>
                       <select
                         value={newOwnerId}
                         onChange={(e) => setNewOwnerId(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
                       >
                         <option value="">Selecione um membro</option>
                         {team.members
@@ -693,7 +837,7 @@ export default function AgencyTeamPage() {
                       type="button"
                       onClick={handleTransferOwner}
                       disabled={ownerTransferBusy || !newOwnerId}
-                      className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold disabled:opacity-60"
+                      className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
                     >
                       {ownerTransferBusy ? "Transferindo..." : "Transferir"}
                     </button>
@@ -702,90 +846,108 @@ export default function AgencyTeamPage() {
               )}
             </div>
           ) : (
-            <div className="text-xs text-gray-500">Nenhum membro encontrado.</div>
+            <div className="text-sm text-gray-600">Nenhum membro encontrado.</div>
           )}
-        </div>
+        </StatCard>
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <div className="text-sm font-semibold text-gray-900 mb-4">Convites</div>
+        <div id="invites">
+          <StatCard title="Convites">
 
-          <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end mb-4">
-            <div className="flex-1">
-              <label className="block text-xs text-gray-700 mb-1">E-mail do corretor</label>
-              <input
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="corretor@email.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-            </div>
-            <div className="sm:w-48">
-              <label className="block text-xs text-gray-700 mb-1">Papel no time</label>
-              <select
-                value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value as TeamMemberRole)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              >
-                <option value="AGENT">Agente</option>
-                <option value="ASSISTANT">Assistente</option>
-              </select>
-            </div>
-            <button
-              type="submit"
-              disabled={inviting || !team?.id}
-              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold disabled:opacity-60"
-            >
-              {inviting ? "Enviando..." : "Enviar convite"}
-            </button>
-          </form>
+            <form onSubmit={handleInvite} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end mb-4">
+              <div className="md:col-span-3">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail do corretor</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="corretor@email.com"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Papel no time</label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as TeamMemberRole)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
+                >
+                  <option value="AGENT">Agente</option>
+                  <option value="ASSISTANT">Assistente</option>
+                </select>
+              </div>
+              <div className="md:col-span-1">
+                <button
+                  type="submit"
+                  disabled={inviting || !team?.id}
+                  className="w-full inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  {inviting ? "Enviando..." : "Convidar"}
+                </button>
+              </div>
+            </form>
 
-          {invites.length ? (
-            <div className="space-y-2">
-              {invites.map((inv) => (
-                <div key={inv.id} className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 text-xs text-gray-700">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="font-semibold text-gray-900 truncate">{inv.email}</div>
-                      <div className="text-[11px] text-gray-500">Status: {inv.status} | Papel: {inv.role}</div>
+            {invites.length ? (
+              <div className="space-y-2">
+                {invites.map((inv) => (
+                  <div key={inv.id} className="rounded-2xl border border-gray-100 bg-white p-4 text-sm text-gray-700">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-gray-900 truncate">{inv.email}</div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-1 font-semibold ${inviteStatusBadge(String(inv.status))}`}
+                          >
+                            {String(inv.status).toUpperCase()}
+                          </span>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-1 font-semibold ${rolePill(String(inv.role))}`}
+                          >
+                            {String(inv.role).toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {inv.acceptUrl && inv.status === "PENDING" && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(String(inv.acceptUrl));
+                              } catch {}
+                            }}
+                            className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                          >
+                            <Copy className="w-3.5 h-3.5 mr-1.5" />
+                            Copiar link
+                          </button>
+                        )}
+                        {inv.status === "PENDING" && (
+                          <button
+                            type="button"
+                            onClick={() => handleRevokeInvite(inv.id)}
+                            className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                            Revogar
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {inv.acceptUrl && inv.status === "PENDING" && (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(String(inv.acceptUrl));
-                            } catch {}
-                          }}
-                          className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
-                        >
-                          Copiar link
-                        </button>
-                      )}
-                      {inv.status === "PENDING" && (
-                        <button
-                          type="button"
-                          onClick={() => handleRevokeInvite(inv.id)}
-                          className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
-                        >
-                          Revogar
-                        </button>
-                      )}
-                    </div>
+
+                    {inv.acceptUrl && inv.status === "PENDING" && (
+                      <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-[11px] text-gray-600 break-all">
+                        {inv.acceptUrl}
+                      </div>
+                    )}
                   </div>
-
-                  {inv.acceptUrl && inv.status === "PENDING" && (
-                    <div className="mt-2 text-[11px] text-gray-500 break-all">
-                      {inv.acceptUrl}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-xs text-gray-500">Nenhum convite enviado ainda.</div>
-          )}
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-600">Nenhum convite enviado ainda.</div>
+            )}
+          </StatCard>
         </div>
       </div>
     </DashboardLayout>
