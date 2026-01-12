@@ -131,6 +131,16 @@ export default function AgencyTeamPage() {
   const [insights, setInsights] = useState<AgencyInsights | null>(null);
   const [insightsError, setInsightsError] = useState<string | null>(null);
 
+  const [queueMembers, setQueueMembers] = useState<
+    Array<{
+      userId: string;
+      name: string | null;
+      email: string | null;
+      role: string;
+      queuePosition?: number;
+    }>
+  >([]);
+
   useEffect(() => {
     if (status !== "authenticated") return;
     if (role !== "AGENCY" && role !== "ADMIN") {
@@ -204,6 +214,47 @@ export default function AgencyTeamPage() {
       } catch (e: any) {
         setInsights(null);
         setInsightsError(e?.message || "Não conseguimos carregar os insights agora.");
+      }
+    };
+
+    run();
+  }, [role, status, team?.id]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (role !== "AGENCY" && role !== "ADMIN") return;
+
+    const id = team?.id;
+    if (!id) {
+      setQueueMembers([]);
+      return;
+    }
+
+    const run = async () => {
+      try {
+        const r = await fetch(`/api/teams/${id}/pipeline`, { cache: "no-store" });
+        const j = await r.json().catch(() => null);
+        const members = Array.isArray(j?.members) ? j.members : [];
+
+        const normalized = (members as any[])
+          .map((m) => ({
+            userId: String(m?.userId || ""),
+            name: m?.name ?? null,
+            email: m?.email ?? null,
+            role: String(m?.role || ""),
+            queuePosition: typeof m?.queuePosition === "number" ? m.queuePosition : undefined,
+          }))
+          .filter((m) => !!m.userId)
+          .filter((m) => String(m.role).toUpperCase() !== "ASSISTANT")
+          .sort((a, b) => {
+            const aPos = typeof a.queuePosition === "number" ? a.queuePosition : 0;
+            const bPos = typeof b.queuePosition === "number" ? b.queuePosition : 0;
+            return aPos - bPos;
+          });
+
+        setQueueMembers(normalized);
+      } catch {
+        setQueueMembers([]);
       }
     };
 
@@ -455,7 +506,7 @@ export default function AgencyTeamPage() {
   };
 
   const distributionHint = (mode: TeamLeadDistributionMode) => {
-    if (mode === "MANUAL") return "Leads entram sem responsável. O time atribui no CRM.";
+    if (mode === "MANUAL") return "Leads entram sem responsável. O time atribui nos leads do time.";
     if (mode === "CAPTURER_FIRST") return "Quando existe captador/parceiro, ele recebe prioridade.";
     return "Distribui entre corretores de forma equilibrada.";
   };
@@ -504,7 +555,7 @@ export default function AgencyTeamPage() {
             className="inline-flex items-center px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-semibold hover:bg-white/20"
           >
             <Kanban className="w-4 h-4 mr-2" />
-            Abrir CRM
+            Leads do time
           </Link>
         </div>
       }
@@ -562,6 +613,32 @@ export default function AgencyTeamPage() {
           </div>
         </StatCard>
 
+        {queueMembers.length > 0 && (
+          <StatCard title="Fila interna do time">
+            <p className="text-sm text-gray-600">
+              {canManageTeam
+                ? "Ordem de prioridade atual entre os corretores do time."
+                : "Ordem interna de prioridade entre os corretores do time."}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {queueMembers.map((member, index) => (
+                <span
+                  key={member.userId}
+                  className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-gray-50 border border-gray-200"
+                >
+                  <span className="text-[10px] font-semibold text-gray-500">#{index + 1}</span>
+                  <span className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-[10px] font-bold text-gray-700">
+                    {initials(member.name || member.email || "")}
+                  </span>
+                  <span className="text-[11px] font-semibold text-gray-800">
+                    {member.name || member.email || "Membro"}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </StatCard>
+        )}
+
         {insights?.team && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
@@ -577,7 +654,7 @@ export default function AgencyTeamPage() {
                 title="Sem responsável"
                 value={insights.funnel.unassigned}
                 icon={Users}
-                subtitle="Atribuir no CRM"
+                subtitle="Atribuir nos leads"
                 iconColor="text-amber-700"
                 iconBgColor="bg-amber-50"
               />
@@ -606,7 +683,7 @@ export default function AgencyTeamPage() {
                   href={`/agency/teams/${insights.team.id}/crm`}
                   className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  Abrir CRM
+                  Leads do time
                 </Link>
               }
             >
@@ -639,7 +716,7 @@ export default function AgencyTeamPage() {
                         href={`/agency/teams/${insights.team?.id}/crm?realtorId=${encodeURIComponent(m.userId)}`}
                         className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
                       >
-                        Ver no CRM
+                        Ver leads
                       </Link>
                     </div>
                   ))}
@@ -709,7 +786,7 @@ export default function AgencyTeamPage() {
                     href={`/agency/teams/${team.id}/crm`}
                     className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                   >
-                    Abrir CRM
+                    Leads do time
                   </Link>
                 ) : null
               }

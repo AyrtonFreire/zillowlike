@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
-import { MapPin, ArrowLeft, ChevronRight, Loader2, Users, SlidersHorizontal, RotateCcw } from "lucide-react";
+import {
+  MapPin,
+  ArrowLeft,
+  ChevronRight,
+  Loader2,
+  Users,
+  SlidersHorizontal,
+  RotateCcw,
+  X,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 
@@ -35,6 +44,8 @@ interface TeamPipelineLead {
   } | null;
 }
 
+type TeamLeadsTab = "active" | "won" | "lost";
+
 interface TeamMember {
   userId: string;
   name: string | null;
@@ -58,15 +69,6 @@ const formatShortDate = (value: string) => {
   } catch {
     return "";
   }
-};
-
-const initials = (nameOrEmail: string) => {
-  const raw = String(nameOrEmail || "").trim();
-  if (!raw) return "?";
-  const parts = raw.split(/\s+/).filter(Boolean);
-  const first = parts[0]?.[0] || raw[0];
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] : "";
-  return `${String(first).toUpperCase()}${String(last).toUpperCase()}`.slice(0, 2);
 };
 
 const STAGE_ORDER: TeamPipelineLead["pipelineStage"][] = [
@@ -111,9 +113,6 @@ const STAGE_CONFIG: Record<TeamPipelineLead["pipelineStage"], { label: string; d
 };
 
 export default function AgencyTeamCrmPage() {
-  const { data: session } = useSession();
-  const currentUserId = (session?.user as any)?.id as string | undefined;
-
   const params = useParams();
   const teamId = params?.id as string;
 
@@ -122,9 +121,12 @@ export default function AgencyTeamCrmPage() {
   const searchParams = useSearchParams();
   const stageParam = searchParams.get("stage");
   const realtorParam = searchParams.get("realtorId");
+  const tabParam = searchParams.get("tab");
 
   const stageFilter = stageParam ? stageParam.toUpperCase() : null;
   const realtorFilter = realtorParam ? String(realtorParam) : null;
+
+  const tab: TeamLeadsTab = tabParam === "won" ? "won" : tabParam === "lost" ? "lost" : "active";
 
   const [teamName, setTeamName] = useState<string>("Time");
   const [leads, setLeads] = useState<TeamPipelineLead[]>([]);
@@ -135,26 +137,13 @@ export default function AgencyTeamCrmPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [assigning, setAssigning] = useState<Record<string, boolean>>({});
   const [assignError, setAssignError] = useState<string | null>(null);
-  const [showTeamHelp, setShowTeamHelp] = useState(false);
+  const [openLeadId, setOpenLeadId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!teamId) return;
     void fetchLeads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId]);
-
-  useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-      const key = "zlw_help_team_crm_v1";
-      const stored = window.localStorage.getItem(key);
-      if (!stored) {
-        setShowTeamHelp(true);
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
 
   const fetchLeads = async (opts?: { silent?: boolean }) => {
     try {
@@ -168,7 +157,7 @@ export default function AgencyTeamCrmPage() {
       const data = await response.json();
 
       if (!response.ok || !data?.success) {
-        throw new Error(data?.error || "Não conseguimos carregar o funil deste time agora.");
+        throw new Error(data?.error || "Não conseguimos carregar os leads deste time agora.");
       }
 
       setTeamName(data.team?.name || "Time");
@@ -185,7 +174,7 @@ export default function AgencyTeamCrmPage() {
       }
     } catch (err: any) {
       console.error("Error fetching team pipeline:", err);
-      setError(err?.message || "Não conseguimos carregar o funil deste time agora.");
+      setError(err?.message || "Não conseguimos carregar os leads deste time agora.");
       setLeads([]);
     } finally {
       setRefreshing(false);
@@ -204,20 +193,41 @@ export default function AgencyTeamCrmPage() {
     router.push(qs ? `/agency/teams/${teamId}/crm?${qs}` : `/agency/teams/${teamId}/crm`);
   };
 
+  const setTabParam = (nextTab: TeamLeadsTab) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (nextTab === "active") {
+      next.delete("tab");
+    } else {
+      next.set("tab", nextTab);
+      next.delete("stage");
+    }
+    const qs = next.toString();
+    router.push(qs ? `/agency/teams/${teamId}/crm?${qs}` : `/agency/teams/${teamId}/crm`);
+  };
+
   const clearFilters = () => {
     router.push(`/agency/teams/${teamId}/crm`);
   };
 
-  const handleDismissTeamHelp = () => {
-    try {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("zlw_help_team_crm_v1", "dismissed");
-      }
-    } catch {
-      // ignore
-    }
-    setShowTeamHelp(false);
+  const closeDrawer = () => {
+    setOpenLeadId(null);
   };
+
+  useEffect(() => {
+    if (!openLeadId) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeDrawer();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [openLeadId]);
 
   const handleAssignLead = async (leadId: string, newRealtorId: string) => {
     if (!newRealtorId) return;
@@ -250,17 +260,11 @@ export default function AgencyTeamCrmPage() {
     }
   };
 
-  const handleAdvanceStage = async (leadId: string) => {
+  const handleSetStage = async (leadId: string, nextStage: TeamPipelineLead["pipelineStage"]) => {
     const lead = leads.find((l) => l.id === leadId);
     if (!lead) return;
 
-    const currentIndex = STAGE_ORDER.indexOf(lead.pipelineStage);
-    if (currentIndex === -1 || currentIndex >= STAGE_ORDER.length - 2) {
-      return;
-    }
-
-    const nextStage = STAGE_ORDER[currentIndex + 1];
-
+    if (lead.pipelineStage === nextStage) return;
     if (!confirm(`Mover este lead para a etapa "${STAGE_CONFIG[nextStage].label}"?`)) return;
 
     try {
@@ -286,19 +290,7 @@ export default function AgencyTeamCrmPage() {
     }
   };
 
-  const leadsByStage = useMemo(() => {
-    const map: Record<TeamPipelineLead["pipelineStage"], TeamPipelineLead[]> = {
-      NEW: [],
-      CONTACT: [],
-      VISIT: [],
-      PROPOSAL: [],
-      DOCUMENTS: [],
-      WON: [],
-      LOST: [],
-    };
-
-    const stageValid = !!(stageFilter && (STAGE_ORDER as string[]).includes(stageFilter));
-
+  const leadsFilteredByRealtor = useMemo(() => {
     let filtered = leads;
 
     if (realtorFilter) {
@@ -309,29 +301,61 @@ export default function AgencyTeamCrmPage() {
       }
     }
 
-    if (stageValid) {
-      filtered = filtered.filter((l) => l.pipelineStage === (stageFilter as any));
-    }
+    return filtered;
+  }, [leads, realtorFilter]);
 
-    for (const lead of filtered) {
-      const stage = lead.pipelineStage || "NEW";
-      map[stage].push(lead);
-    }
+  const counts = useMemo(() => {
+    const activeCount = leadsFilteredByRealtor.filter((l) => l.pipelineStage !== "WON" && l.pipelineStage !== "LOST").length;
+    const wonCount = leadsFilteredByRealtor.filter((l) => l.pipelineStage === "WON").length;
+    const lostCount = leadsFilteredByRealtor.filter((l) => l.pipelineStage === "LOST").length;
+    return { activeCount, wonCount, lostCount };
+  }, [leadsFilteredByRealtor]);
 
-    return map;
-  }, [leads, realtorFilter, stageFilter]);
-
-  const stagesToRender = useMemo(() => {
+  const leadsForTab = useMemo(() => {
     const stageValid = !!(stageFilter && (STAGE_ORDER as string[]).includes(stageFilter));
-    if (stageValid) return [stageFilter as TeamPipelineLead["pipelineStage"]];
-    return STAGE_ORDER;
-  }, [stageFilter]);
+
+    let filtered = leadsFilteredByRealtor;
+
+    if (tab === "active") {
+      filtered = filtered.filter((l) => l.pipelineStage !== "WON" && l.pipelineStage !== "LOST");
+      if (stageValid) {
+        const stage = stageFilter as TeamPipelineLead["pipelineStage"];
+        filtered = filtered.filter((l) => l.pipelineStage === stage);
+      }
+    }
+
+    if (tab === "won") {
+      filtered = filtered.filter((l) => l.pipelineStage === "WON");
+    }
+
+    if (tab === "lost") {
+      filtered = filtered.filter((l) => l.pipelineStage === "LOST");
+    }
+
+    const sorted = [...filtered].sort((a, b) => {
+      const aUnassigned = !a.realtor?.id;
+      const bUnassigned = !b.realtor?.id;
+      if (aUnassigned !== bUnassigned) return aUnassigned ? -1 : 1;
+      return String(b.createdAt).localeCompare(String(a.createdAt));
+    });
+
+    return sorted;
+  }, [leadsFilteredByRealtor, stageFilter, tab]);
+
+  const selectedLead = useMemo(() => {
+    if (!openLeadId) return null;
+    return leads.find((l) => l.id === openLeadId) || null;
+  }, [leads, openLeadId]);
 
   const filterLabel = useMemo(() => {
     const parts: string[] = [];
 
+    if (tab === "active") parts.push("Status: ativos");
+    if (tab === "won") parts.push("Status: fechados");
+    if (tab === "lost") parts.push("Status: perdidos");
+
     const stageValid = !!(stageFilter && (STAGE_ORDER as string[]).includes(stageFilter));
-    if (stageValid) {
+    if (tab === "active" && stageValid) {
       parts.push(`Etapa: ${STAGE_CONFIG[stageFilter as TeamPipelineLead["pipelineStage"]].label}`);
     }
 
@@ -346,25 +370,22 @@ export default function AgencyTeamCrmPage() {
     }
 
     return parts.join(" • ");
-  }, [members, realtorFilter, stageFilter]);
+  }, [members, realtorFilter, stageFilter, tab]);
 
   const stageSelectValue = useMemo(() => {
     const stageValid = !!(stageFilter && (STAGE_ORDER as string[]).includes(stageFilter));
+    if (tab !== "active") return "";
     return stageValid ? String(stageFilter) : "";
-  }, [stageFilter]);
-
-  const isTeamOwner = !!(
-    currentUserId && members.some((member) => member.userId === currentUserId && member.role === "OWNER")
-  );
+  }, [stageFilter, tab]);
 
   if (loading) {
-    return <CenteredSpinner message="Carregando funil do time..." />;
+    return <CenteredSpinner message="Carregando leads do time..." />;
   }
 
   return (
     <DashboardLayout
-      title={`Funil do time: ${teamName}`}
-      description="Veja em que etapa estão as oportunidades atendidas pela sua equipe."
+      title={`Leads do time: ${teamName}`}
+      description="Acompanhe os leads do time, reatribua responsáveis e atualize etapas."
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Agência", href: "/agency/dashboard" },
@@ -400,23 +421,6 @@ export default function AgencyTeamCrmPage() {
           </button>
         </div>
 
-        {showTeamHelp && (
-          <div className="mb-4 flex items-start justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-800">
-            <p className="pr-2">
-              {isTeamOwner
-                ? "Dica rápida: use este funil para enxergar como os leads do time estão distribuídos entre as etapas e entre os corretores."
-                : "Dica rápida: este funil mostra em que etapa estão os leads do time. Foque principalmente nos leads em que você aparece como responsável."}
-            </p>
-            <button
-              type="button"
-              onClick={handleDismissTeamHelp}
-              className="ml-2 flex-shrink-0 text-[11px] font-semibold text-blue-700 hover:text-blue-800"
-            >
-              Entendi
-            </button>
-          </div>
-        )}
-
         <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="min-w-0">
@@ -447,10 +451,11 @@ export default function AgencyTeamCrmPage() {
               <select
                 value={stageSelectValue}
                 onChange={(e) => updateFilterParam("stage", String(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                disabled={tab !== "active"}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm disabled:opacity-60"
               >
                 <option value="">Todas as etapas</option>
-                {STAGE_ORDER.map((stage) => (
+                {STAGE_ORDER.filter((s) => s !== "WON" && s !== "LOST").map((stage) => (
                   <option key={stage} value={stage}>
                     {STAGE_CONFIG[stage].label}
                   </option>
@@ -492,164 +497,237 @@ export default function AgencyTeamCrmPage() {
           </div>
         )}
 
-        {members.length > 0 && (
-          <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-[11px] text-gray-700 flex flex-col gap-1">
-            <p className="font-semibold text-xs text-gray-900">Fila interna do time</p>
-            <p className="text-[11px] text-gray-500 mb-1">
-              {isTeamOwner
-                ? "Ordem de prioridade atual entre os corretores do time."
-                : "Ordem interna de prioridade entre os corretores do time."}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setTabParam("active")}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+              tab === "active" ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Ativos
+            <span className={`text-[11px] px-2 py-0.5 rounded-full ${tab === "active" ? "bg-white/15" : "bg-gray-100"}`}>
+              {counts.activeCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTabParam("won")}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+              tab === "won" ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            Fechados
+            <span className={`text-[11px] px-2 py-0.5 rounded-full ${tab === "won" ? "bg-white/15" : "bg-gray-100"}`}>
+              {counts.wonCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTabParam("lost")}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+              tab === "lost" ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            <XCircle className="w-4 h-4" />
+            Perdidos
+            <span className={`text-[11px] px-2 py-0.5 rounded-full ${tab === "lost" ? "bg-white/15" : "bg-gray-100"}`}>
+              {counts.lostCount}
+            </span>
+          </button>
+        </div>
+
+        {leadsForTab.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-10 text-center">
+            <p className="text-sm font-semibold text-gray-900">
+              {tab === "active" ? "Nenhum lead ativo" : tab === "won" ? "Nenhum lead fechado" : "Nenhum lead perdido"}
             </p>
-            <div className="flex flex-wrap gap-2">
-              {members
-                .filter((m) => m.role !== "ASSISTANT")
-                .map((member, index) => (
-                  <span
-                    key={member.userId}
-                    className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-gray-50 border border-gray-200"
-                  >
-                    <span className="text-[10px] font-semibold text-gray-500">#{index + 1}</span>
-                    <span className="w-6 h-6 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-[10px] font-bold text-gray-700">
-                      {initials(member.name || member.email || "")}
-                    </span>
-                    <span className="text-[11px] font-semibold text-gray-800">
-                      {member.name || member.email || "Membro"}
-                    </span>
-                  </span>
-                ))}
-            </div>
+            <p className="mt-1 text-sm text-gray-600">Ajuste os filtros para encontrar resultados.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {leadsForTab.map((lead) => (
+              <button
+                key={lead.id}
+                type="button"
+                onClick={() => setOpenLeadId(lead.id)}
+                className="w-full text-left rounded-2xl border border-gray-200 bg-white p-4 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
+                    <Image
+                      src={lead.property.images[0]?.url || "/placeholder.jpg"}
+                      alt={lead.property.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 line-clamp-2">{lead.property.title}</p>
+                        <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          <span className="truncate">
+                            {lead.property.neighborhood && `${lead.property.neighborhood}, `}
+                            {lead.property.city} - {lead.property.state}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-[11px] font-semibold text-gray-900 tabular-nums">{currencyBRL(lead.property.price)}</p>
+                        <p className="mt-1 text-[11px] text-gray-500">{formatShortDate(lead.createdAt)}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
+                        {STAGE_CONFIG[lead.pipelineStage]?.label || lead.pipelineStage}
+                      </span>
+                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
+                        Lead: {lead.id.slice(0, 6)}
+                      </span>
+                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
+                        {lead.realtor?.name || lead.realtor?.email ? `Responsável: ${lead.realtor?.name || lead.realtor?.email}` : "Sem responsável"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-1 text-gray-400">
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </button>
+            ))}
           </div>
         )}
 
-        <div className="grid grid-flow-col auto-cols-[85%] gap-4 overflow-x-auto md:grid-flow-row md:auto-cols-auto md:grid-cols-3 lg:grid-cols-4 md:overflow-visible">
-          {stagesToRender.map((stage) => {
-            const config = STAGE_CONFIG[stage];
-            const stageLeads = leadsByStage[stage];
+        {selectedLead && (
+          <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black/40" onClick={closeDrawer} />
+            <div
+              className="absolute inset-y-0 right-0 w-full sm:max-w-xl bg-white shadow-2xl flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-gray-200 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">Detalhes do lead</p>
+                  <p className="text-xs text-gray-500 truncate">{selectedLead.property.title}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white hover:bg-gray-50"
+                >
+                  <X className="w-4 h-4 text-gray-700" />
+                </button>
+              </div>
 
-            return (
-              <div
-                key={stage}
-                className="rounded-2xl border border-gray-200 bg-white flex flex-col max-h-[70vh] shadow-sm"
-              >
-                <div className="p-4 border-b border-gray-200 bg-white rounded-t-2xl sticky top-0 z-10">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-semibold text-gray-900">{config.label}</p>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-white text-gray-700 border border-gray-200">
-                      {stageLeads.length}
-                    </span>
+              <div className="p-4 overflow-y-auto space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
+                    <Image
+                      src={selectedLead.property.images[0]?.url || "/placeholder.jpg"}
+                      alt={selectedLead.property.title}
+                      fill
+                      className="object-cover"
+                    />
                   </div>
-                  <p className="text-[11px] text-gray-500 leading-snug">{config.description}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-semibold text-gray-900 leading-snug">{selectedLead.property.title}</p>
+                    <p className="mt-1 text-sm text-gray-600">{currencyBRL(selectedLead.property.price)}</p>
+                    <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      <span className="truncate">
+                        {selectedLead.property.neighborhood && `${selectedLead.property.neighborhood}, `}
+                        {selectedLead.property.city} - {selectedLead.property.state}
+                      </span>
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
+                        {STAGE_CONFIG[selectedLead.pipelineStage]?.label || selectedLead.pipelineStage}
+                      </span>
+                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
+                        Lead: {selectedLead.id.slice(0, 6)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50/60 rounded-b-2xl">
-                  {stageLeads.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-6 text-center">
-                      <p className="text-sm font-semibold text-gray-900">Nenhum lead</p>
-                      <p className="mt-1 text-xs text-gray-500">Quando um lead entrar nesta etapa, ele aparece aqui.</p>
-                    </div>
-                  ) : (
-                    stageLeads.map((lead) => (
-                      <div
-                        key={lead.id}
-                        className="bg-white rounded-2xl border border-gray-200 p-4 text-sm text-gray-800 flex flex-col gap-3 shadow-sm"
+                <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
+                  <p className="text-sm font-semibold text-gray-900">Gestão</p>
+                  <p className="mt-1 text-xs text-gray-500">Atualize responsável e etapa (sem ações de contato).</p>
+
+                  <div className="mt-4 grid grid-cols-1 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Responsável</label>
+                      <select
+                        value={selectedLead.realtor?.id || ""}
+                        onChange={(e) => handleAssignLead(selectedLead.id, e.target.value)}
+                        disabled={!!assigning[selectedLead.id]}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
-                            <Image
-                              src={lead.property.images[0]?.url || "/placeholder.jpg"}
-                              alt={lead.property.title}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="font-semibold text-gray-900 line-clamp-2">{lead.property.title}</p>
-                              <span className="text-[11px] font-semibold text-gray-700 tabular-nums whitespace-nowrap">
-                                {currencyBRL(lead.property.price)}
-                              </span>
-                            </div>
+                        <option value="">Escolher corretor</option>
+                        {members
+                          .filter((m) => m.role !== "ASSISTANT")
+                          .map((member) => (
+                            <option key={member.userId} value={member.userId}>
+                              {member.name || member.email || "Membro"}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
 
-                            <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                              <MapPin className="w-3 h-3" />
-                              <span className="truncate">
-                                {lead.property.neighborhood && `${lead.property.neighborhood}, `}
-                                {lead.property.city} - {lead.property.state}
-                              </span>
-                            </p>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Etapa</label>
+                      <select
+                        value={selectedLead.pipelineStage}
+                        onChange={(e) => handleSetStage(selectedLead.id, e.target.value as TeamPipelineLead["pipelineStage"])}
+                        disabled={!!updating[selectedLead.id]}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                      >
+                        {STAGE_ORDER.map((stage) => (
+                          <option key={stage} value={stage}>
+                            {STAGE_CONFIG[stage].label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-                            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                              <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
-                                Lead: {lead.id.slice(0, 6)}
-                              </span>
-                              <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
-                                {formatShortDate(lead.createdAt)}
-                              </span>
-                            </div>
-
-                            {lead.contact?.name && (
-                              <p className="text-xs text-gray-600 mt-2">Cliente: {lead.contact.name}</p>
-                            )}
-
-                            {members.length > 0 && (
-                              <div className="mt-3 flex items-center gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <div className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-[11px] font-bold text-gray-700">
-                                    {initials(lead.realtor?.name || lead.realtor?.email || "")}
-                                  </div>
-                                  <span className="text-xs font-semibold text-gray-700">Responsável</span>
-                                </div>
-                                <select
-                                  value={lead.realtor?.id || ""}
-                                  onChange={(e) => handleAssignLead(lead.id, e.target.value)}
-                                  disabled={!!assigning[lead.id]}
-                                  className="ml-auto text-xs border border-gray-200 rounded-xl px-2 py-1.5 bg-white max-w-[200px]"
-                                >
-                                  <option value="">Escolher corretor</option>
-                                  {members
-                                    .filter((m) => m.role !== "ASSISTANT")
-                                    .map((member) => (
-                                      <option key={member.userId} value={member.userId}>
-                                        {member.name || member.email || "Membro"}
-                                      </option>
-                                    ))}
-                                </select>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center text-xs text-gray-500">
-                            Detalhes
-                            <ChevronRight className="w-3 h-3 ml-1 opacity-40" />
-                          </span>
-                          {stage !== "WON" && stage !== "LOST" && (
-                            <button
-                              type="button"
-                              onClick={() => handleAdvanceStage(lead.id)}
-                              disabled={!!updating[lead.id]}
-                              className="inline-flex items-center px-3 py-2 rounded-xl text-xs font-semibold bg-neutral-900 hover:bg-neutral-800 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
-                              {updating[lead.id] ? (
-                                <>
-                                  <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
-                                  Movendo...
-                                </>
-                              ) : (
-                                "Avançar etapa"
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    {selectedLead.pipelineStage !== "WON" && (
+                      <button
+                        type="button"
+                        onClick={() => handleSetStage(selectedLead.id, "WON")}
+                        disabled={!!updating[selectedLead.id]}
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
+                      >
+                        Marcar como fechado
+                      </button>
+                    )}
+                    {selectedLead.pipelineStage !== "LOST" && (
+                      <button
+                        type="button"
+                        onClick={() => handleSetStage(selectedLead.id, "LOST")}
+                        disabled={!!updating[selectedLead.id]}
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                      >
+                        Marcar como perdido
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

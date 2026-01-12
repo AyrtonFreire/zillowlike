@@ -22,7 +22,7 @@ const fontDisplay = Playfair_Display({
 });
 export const metadata: Metadata = {
   title: "OggaHub - Petrolina e Juazeiro",
-  description: "Seu hub imobiliário para buscar e anunciar imóveis com mapa em Petrolina e Juazeiro.",
+  description: "Seu hub imobiliário em Petrolina e Juazeiro.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://oggahub.com"),
   alternates: { canonical: "/" },
   openGraph: {

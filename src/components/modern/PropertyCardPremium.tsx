@@ -721,7 +721,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                   <Link
                     href={`/realtor/${property.owner.publicSlug}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-3 min-w-0"
+                    className="flex items-center gap-3 min-w-0 flex-1"
                     aria-label={`Ver perfil de ${property.owner.name}`}
                   >
                     <span className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
@@ -739,14 +739,14 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                         </span>
                       )}
                     </span>
-                    <span className="min-w-0">
+                    <span className="min-w-0 max-w-[180px] sm:max-w-[220px]">
                       <span className="block text-[12.5px] font-bold text-gray-900 leading-tight truncate">
                         {property.owner.name}
                       </span>
                     </span>
                   </Link>
                 ) : (
-                  <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-3 min-w-0">
+                  <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-3 min-w-0 flex-1">
                     <span className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
                       {property.owner?.image ? (
                         <Image
@@ -762,7 +762,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                         </span>
                       )}
                     </span>
-                    <span className="min-w-0">
+                    <span className="min-w-0 max-w-[180px] sm:max-w-[220px]">
                       <span className="block text-[12.5px] font-bold text-gray-900 leading-tight truncate">
                         {property.owner.name}
                       </span>

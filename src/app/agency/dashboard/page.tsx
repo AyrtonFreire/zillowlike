@@ -179,7 +179,7 @@ export default function AgencyDashboardPage() {
                     className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
                   >
                     <Kanban className="w-4 h-4 mr-2" />
-                    Abrir CRM
+                    Leads do time
                   </Link>
                 )}
               </div>
@@ -248,7 +248,7 @@ export default function AgencyDashboardPage() {
                       href={`/agency/teams/${insights.team.id}/crm`}
                       className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                     >
-                      Abrir CRM
+                      Leads do time
                     </Link>
                   }
                 >
@@ -321,8 +321,8 @@ export default function AgencyDashboardPage() {
                           <Kanban className="w-6 h-6 text-teal-700" />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">Funil (CRM)</p>
-                          <p className="text-sm text-gray-600 mt-1">Etapas e distribuição</p>
+                          <p className="font-semibold text-gray-900">Leads do time</p>
+                          <p className="text-sm text-gray-600 mt-1">Lista, etapas e responsáveis</p>
                         </div>
                       </div>
                     </Link>
