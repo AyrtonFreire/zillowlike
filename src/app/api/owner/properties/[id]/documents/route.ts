@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -21,6 +22,9 @@ export async function GET(req: NextRequest, context: RouteContext) {
 
     const userId = (session as any)?.userId || (session as any)?.user?.id;
     const { id } = await context.params;
+
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
 
     // Verify ownership of the property
     const property = await prisma.property.findUnique({
@@ -67,6 +71,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const userId = (session as any)?.userId || (session as any)?.user?.id;
     const { id } = await context.params;
     const body = await req.json();
+
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
 
     // Verify ownership of the property
     const property = await prisma.property.findUnique({
@@ -138,6 +145,9 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
     const body = await req.json();
     const { documentId } = body;
 
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
+
     if (!documentId) {
       return NextResponse.json({ error: "documentId is required" }, { status: 400 });
     }
@@ -197,6 +207,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const body = await req.json();
     const { documentId, ...updateFields } = body;
+
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
 
     if (!documentId) {
       return NextResponse.json({ error: "documentId is required" }, { status: 400 });

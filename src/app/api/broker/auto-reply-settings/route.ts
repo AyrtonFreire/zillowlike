@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 export async function GET() {
   try {
@@ -53,6 +54,9 @@ export async function PUT(req: NextRequest) {
     if (user.role !== "REALTOR" && user.role !== "AGENCY") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(user.id));
+    if (recoveryRes) return recoveryRes;
 
     const body = await req.json().catch(() => ({}));
 

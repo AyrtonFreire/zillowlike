@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 export async function GET() {
   try {
@@ -16,6 +17,9 @@ export async function GET() {
     if (role !== "ADMIN") {
       return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(session.userId || session.user?.id || ""));
+    if (recoveryRes) return recoveryRes;
 
     const settings = await (prisma as any).systemSetting.findMany({
       orderBy: { key: "asc" },
@@ -49,6 +53,9 @@ export async function PUT(req: NextRequest) {
     if (role !== "ADMIN") {
       return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(session.userId || session.user?.id || ""));
+    if (recoveryRes) return recoveryRes;
 
     const body = await req.json().catch(() => null);
     const key = typeof body?.key === "string" ? body.key.trim() : "";

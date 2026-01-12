@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 const updateStatusSchema = z.object({
   status: z.enum(["ACTIVE", "PAUSED", "DRAFT", "SOLD", "RENTED"]),
@@ -19,6 +20,11 @@ export async function PATCH(
     if (userRole !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(
+      String((session as any)?.userId || (session as any)?.user?.id || "")
+    );
+    if (recoveryRes) return recoveryRes;
 
     const { propertyId } = await params;
     const body = await request.json();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 // GET - Buscar perfil do corretor
 export async function GET() {
@@ -71,6 +72,9 @@ export async function PUT(req: NextRequest) {
     if (user.role !== "REALTOR" && user.role !== "AGENCY") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(user.id));
+    if (recoveryRes) return recoveryRes;
 
     const body = await req.json();
 

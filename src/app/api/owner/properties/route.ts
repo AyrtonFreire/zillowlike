@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 /**
  * GET /api/owner/properties
@@ -19,7 +20,8 @@ export async function GET(req: NextRequest) {
     const sessionUser = (session as any)?.user as any;
     const sessionRole = sessionUser?.role;
 
-    let userId = (session as any)?.userId || sessionUser?.id;
+    const actorId = (session as any)?.userId || sessionUser?.id;
+    let userId = actorId;
 
     if (impersonateId) {
       if (sessionRole !== "ADMIN") {
@@ -27,6 +29,9 @@ export async function GET(req: NextRequest) {
       }
       userId = impersonateId;
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(actorId));
+    if (recoveryRes) return recoveryRes;
 
     if (!userId) {
       return NextResponse.json({ error: "User ID not found" }, { status: 400 });

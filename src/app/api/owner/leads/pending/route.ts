@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { OwnerApprovalService } from "@/lib/owner-approval-service";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,7 +16,8 @@ export async function GET(req: NextRequest) {
     const sessionUser = session.user as any;
     const sessionRole = sessionUser?.role;
 
-    let userId = sessionUser.id as string;
+    const actorId = sessionUser.id as string;
+    let userId = actorId;
 
     if (impersonateId) {
       if (sessionRole !== "ADMIN") {
@@ -23,6 +25,9 @@ export async function GET(req: NextRequest) {
       }
       userId = impersonateId;
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(actorId));
+    if (recoveryRes) return recoveryRes;
 
     const pendingLeads = await OwnerApprovalService.getPendingApprovals(userId);
 

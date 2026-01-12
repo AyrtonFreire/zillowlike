@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 const unreadEtagByUser = new Map<string, string>();
 
@@ -26,6 +27,9 @@ export async function GET(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
 
     const { searchParams } = new URL(req.url);
     const mode = (searchParams.get("mode") || "").toLowerCase();

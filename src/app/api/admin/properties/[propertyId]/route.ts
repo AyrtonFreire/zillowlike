@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 export async function DELETE(
   request: NextRequest,
@@ -15,6 +16,11 @@ export async function DELETE(
     if (userRole !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(
+      String((session as any)?.userId || (session as any)?.user?.id || "")
+    );
+    if (recoveryRes) return recoveryRes;
 
     const { propertyId } = await params;
 

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 const Schema = z.object({
   reportId: z.string().min(1),
@@ -23,6 +24,9 @@ export async function PATCH(req: NextRequest) {
     if (role !== "ADMIN" || !adminId) {
       return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(adminId));
+    if (recoveryRes) return recoveryRes;
 
     const body = await req.json().catch(() => null);
     const parsed = Schema.safeParse(body);

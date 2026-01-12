@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -33,6 +34,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
         { status: 403 }
       );
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(adminId));
+    if (recoveryRes) return recoveryRes;
 
     const body = await req.json().catch(() => null);
     const parsed = UpdateReportSchema.safeParse(body);

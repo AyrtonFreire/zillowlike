@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { getQueues } from "@/lib/queue/queues";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,6 +9,9 @@ export async function POST(req: NextRequest) {
     if (!session || (session as any).user?.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(String((session as any).userId || (session as any).user?.id || ""));
+    if (recoveryRes) return recoveryRes;
 
     const body = await req.json();
     const { queue: queueName, jobId } = body;

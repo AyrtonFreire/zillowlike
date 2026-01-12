@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 const ALLOWED_STATUSES: LeadStatus[] = [
   "PENDING",
@@ -34,6 +35,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     if (role !== "ADMIN") {
       return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(
+      String(session.userId || session.user?.id || "")
+    );
+    if (recoveryRes) return recoveryRes;
 
     const { id } = await context.params;
     const body = await req.json().catch(() => null);

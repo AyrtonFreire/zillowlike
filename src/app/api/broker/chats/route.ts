@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 export async function GET(_req: NextRequest) {
   try {
@@ -25,6 +26,9 @@ export async function GET(_req: NextRequest) {
         { status: 403 }
       );
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
 
     console.log("[Broker Chats] userId:", userId, "role:", role);
 

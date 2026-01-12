@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
 import { z } from "zod";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 const updateRoleSchema = z.object({
   role: z.enum(["ADMIN", "REALTOR", "OWNER", "USER"]),
@@ -20,6 +21,11 @@ export async function PATCH(
     if (userRole !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(
+      String((session as any).userId || (session as any).user?.id || "")
+    );
+    if (recoveryRes) return recoveryRes;
 
     const { userId } = await params;
     const body = await request.json();

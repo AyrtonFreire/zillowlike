@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -46,6 +47,9 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     if (property.ownerId !== userId && role !== "ADMIN") {
       return NextResponse.json({ error: "Você não tem acesso aos leads deste imóvel." }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
 
     const leads = await prisma.lead.findMany({
       where: {

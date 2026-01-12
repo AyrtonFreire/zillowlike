@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -16,6 +17,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (role !== "ADMIN") {
       return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(session.userId || session.user?.id || ""));
+    if (recoveryRes) return recoveryRes;
 
     const { id } = await context.params;
     const realtorId = id;

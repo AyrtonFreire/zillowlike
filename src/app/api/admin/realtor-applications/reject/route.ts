@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AUDIT_LOG_ACTIONS, createAuditLog } from "@/lib/audit-log";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,6 +15,9 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    const recoveryRes = await requireRecoveryFactor(String((session.user as any).id || ""));
+    if (recoveryRes) return recoveryRes;
 
     const { applicationId, reason } = await req.json();
 

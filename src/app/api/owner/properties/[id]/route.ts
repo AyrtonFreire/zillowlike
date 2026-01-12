@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -62,6 +63,9 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
 
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
+
     return NextResponse.json({ success: true, property });
   } catch (error) {
     console.error("Error fetching property:", error);
@@ -110,6 +114,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     if (!existing) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
 
     // Update allowed fields
     const updateData: any = {};
@@ -295,6 +302,9 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
     if (!existing) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
+
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
 
     // Soft delete - just set status to DELETED or actually delete?
     // For now, hard delete. Can change to soft delete if needed.

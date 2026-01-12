@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { PropertyCreateSchema, PropertyQuerySchema } from "@/lib/schemas";
 import { Prisma } from "@prisma/client";
 import { createHash } from "crypto";
+import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
 // Simple in-memory rate limiter: allow 5 POSTs per IP per minute (best-effort, free)
 const rateMap = new Map<string, number[]>();
@@ -796,6 +797,10 @@ export async function PATCH(req: NextRequest) {
     const existing = await prisma.property.findUnique({ where: { id }, select: { ownerId: true } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (existing.ownerId && existing.ownerId !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
+
     // allow limited fields update
     const allowed: any = {};
     const fields = ["title","description","price","type","purpose","conditionTags","street","neighborhood","city","state","postalCode","latitude","longitude","bedrooms","bathrooms","areaM2"];
@@ -843,6 +848,10 @@ export async function DELETE(req: NextRequest) {
     const existing = await prisma.property.findUnique({ where: { id }, select: { ownerId: true } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (existing.ownerId && existing.ownerId !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const recoveryRes = await requireRecoveryFactor(String(userId));
+    if (recoveryRes) return recoveryRes;
+
     await prisma.image.deleteMany({ where: { propertyId: id } });
     await prisma.property.delete({ where: { id } });
     console.log("api/properties DELETE", { id, ownerId: existing.ownerId });
