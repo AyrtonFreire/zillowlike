@@ -626,7 +626,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                       </>
                     )}
 
-                    {(role === 'REALTOR' || role === 'AGENCY') && (
+                    {role === 'REALTOR' && (
                       <>
                         <Link href="/broker/dashboard" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                           Painel
@@ -636,6 +636,23 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         </Link>
                         <Link href="/broker/properties" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                           Imóveis
+                        </Link>
+                      </>
+                    )}
+
+                    {role === 'AGENCY' && (
+                      <>
+                        <Link href="/agency/dashboard" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                          Painel
+                        </Link>
+                        <Link href="/agency/team" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                          Meu time
+                        </Link>
+                        <Link href="/owner/properties" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                          Imóveis
+                        </Link>
+                        <Link href="/owner/new" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                          Cadastrar imóvel
                         </Link>
                       </>
                     )}

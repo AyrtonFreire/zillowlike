@@ -437,7 +437,11 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const megaMenuBaseClass =
     "absolute inset-x-0 top-full z-[300] mt-3 bg-white/95 backdrop-blur-xl border-t border-gray-100/80 shadow-[0_18px_45px_rgba(15,23,42,0.45)]";
 
-  const isDashboardContext = pathname?.startsWith("/admin") || pathname?.startsWith("/owner") || pathname?.startsWith("/broker");
+  const isDashboardContext =
+    pathname?.startsWith("/admin") ||
+    pathname?.startsWith("/owner") ||
+    pathname?.startsWith("/broker") ||
+    pathname?.startsWith("/agency");
 
   const isHome = pathname === "/";
   const mobileVariant = !isDashboardContext && isHome && !forceLight ? "overlay" : "solid";
@@ -713,7 +717,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 )}
               </Link>
             )}
-            {(role === 'REALTOR' || role === 'AGENCY' || role === 'ADMIN') && (
+            {(role === 'REALTOR' || role === 'ADMIN') && (
               <Link
                 href="/broker/dashboard?assistant=1"
                 className={`relative p-2 rounded-lg transition-colors ${
@@ -765,12 +769,22 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         </>
                       )}
 
-                      {(role === 'REALTOR' || role === 'AGENCY') && (
+                      {role === 'REALTOR' && (
                         <>
                           <li><Link href="/broker/dashboard" className="block px-4 py-2 hover:bg-gray-50">Painel</Link></li>
                           <li><Link href="/broker/leads" className="block px-4 py-2 hover:bg-gray-50">Leads</Link></li>
                           <li><Link href="/broker/properties" className="block px-4 py-2 hover:bg-gray-50">Imóveis</Link></li>
                           <li><Link href="/broker/assistant" className="block px-4 py-2 hover:bg-gray-50">Assistente</Link></li>
+                          <li><hr className="my-1" /></li>
+                        </>
+                      )}
+
+                      {role === 'AGENCY' && (
+                        <>
+                          <li><Link href="/agency/dashboard" className="block px-4 py-2 hover:bg-gray-50">Painel</Link></li>
+                          <li><Link href="/agency/team" className="block px-4 py-2 hover:bg-gray-50">Meu time</Link></li>
+                          <li><Link href="/owner/properties" className="block px-4 py-2 hover:bg-gray-50">Imóveis</Link></li>
+                          <li><Link href="/owner/new" className="block px-4 py-2 hover:bg-gray-50">Cadastrar imóvel</Link></li>
                           <li><hr className="my-1" /></li>
                         </>
                       )}

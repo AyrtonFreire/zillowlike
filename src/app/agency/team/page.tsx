@@ -450,7 +450,7 @@ export default function AgencyTeamPage() {
       breadcrumbs={[{ label: "Home", href: "/" }, { label: "Agência", href: "/agency/dashboard" }, { label: "Time" }]}
       actions={
         <Link
-          href={team?.id ? `/broker/teams/${team.id}/crm` : "/broker/teams"}
+          href={team?.id ? `/agency/teams/${team.id}/crm` : "/agency/dashboard"}
           className="inline-flex items-center px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-semibold hover:bg-white/20"
         >
           Abrir CRM
@@ -476,7 +476,7 @@ export default function AgencyTeamPage() {
                 <div className="mt-1 text-sm text-gray-600">{insights.summary}</div>
               </div>
               <Link
-                href={`/broker/teams/${insights.team.id}/crm`}
+                href={`/agency/teams/${insights.team.id}/crm`}
                 className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold"
               >
                 Abrir CRM
@@ -526,7 +526,7 @@ export default function AgencyTeamPage() {
                         <td className="py-2 pr-4 text-gray-700">{m.stalledLeads}</td>
                         <td className="py-2">
                           <Link
-                            href={`/broker/teams/${insights.team?.id}/crm?realtorId=${encodeURIComponent(m.userId)}`}
+                            href={`/agency/teams/${insights.team?.id}/crm?realtorId=${encodeURIComponent(m.userId)}`}
                             className="inline-flex items-center text-[11px] font-semibold text-blue-600 hover:text-blue-700"
                           >
                             Ver no CRM
@@ -542,7 +542,7 @@ export default function AgencyTeamPage() {
             {insights.funnel.unassigned > 0 && (
               <div className="mt-3">
                 <Link
-                  href={`/broker/teams/${insights.team.id}/crm?realtorId=unassigned`}
+                  href={`/agency/teams/${insights.team.id}/crm?realtorId=unassigned`}
                   className="inline-flex items-center text-[11px] font-semibold text-blue-600 hover:text-blue-700"
                 >
                   Ver leads sem responsável

@@ -301,7 +301,7 @@ export async function GET(req: NextRequest) {
         title: "Clientes aguardando resposta",
         detail: `${pendingReplyTotal} lead${pendingReplyTotal === 1 ? "" : "s"} com última mensagem do cliente sem retorno.`,
         severity: pendingReplyTotal >= 10 ? "critical" : "warning",
-        href: `/broker/teams/${encodeURIComponent(String(teamId))}/crm`,
+        href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm`,
         hrefLabel: "Abrir CRM do time",
       });
     }
@@ -311,7 +311,7 @@ export async function GET(req: NextRequest) {
         title: "Leads sem responsável",
         detail: `${unassigned} lead${unassigned === 1 ? "" : "s"} ativo${unassigned === 1 ? "" : "s"} sem corretor atribuído.`,
         severity: unassigned >= 5 ? "warning" : "info",
-        href: `/broker/teams/${encodeURIComponent(String(teamId))}/crm?realtorId=unassigned`,
+        href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?realtorId=unassigned`,
         hrefLabel: "Ver no CRM",
       });
     }
@@ -321,7 +321,7 @@ export async function GET(req: NextRequest) {
         title: "Entradas nas últimas 24h",
         detail: `${newLast24h} lead${newLast24h === 1 ? "" : "s"} novo${newLast24h === 1 ? "" : "s"} nas últimas 24 horas.`,
         severity: "info",
-        href: `/broker/teams/${encodeURIComponent(String(teamId))}/crm?stage=NEW`,
+        href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?stage=NEW`,
         hrefLabel: "Ver etapa Novo",
       });
     }
@@ -332,7 +332,7 @@ export async function GET(req: NextRequest) {
         title: "SLA do time (atenção)",
         detail: `${worstMember.name || worstMember.email || "Um corretor"} está com ${worstMember.pendingReply} conversa${worstMember.pendingReply === 1 ? "" : "s"} aguardando resposta.`,
         severity: worstMember.pendingReply >= 5 ? "critical" : "warning",
-        href: `/broker/teams/${encodeURIComponent(String(teamId))}/crm?realtorId=${encodeURIComponent(worstMember.userId)}`,
+        href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?realtorId=${encodeURIComponent(worstMember.userId)}`,
         hrefLabel: "Ver leads do corretor",
       });
     }
@@ -347,7 +347,7 @@ export async function GET(req: NextRequest) {
         title: "Maior acúmulo no funil",
         detail: `Etapa ${topStage}: ${Number(activeByStage[0]?.[1] || 0)} lead${Number(activeByStage[0]?.[1] || 0) === 1 ? "" : "s"}.`,
         severity: "info",
-        href: `/broker/teams/${encodeURIComponent(String(teamId))}/crm?stage=${encodeURIComponent(topStage)}`,
+        href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?stage=${encodeURIComponent(topStage)}`,
         hrefLabel: "Abrir etapa",
       });
     }
