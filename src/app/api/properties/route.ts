@@ -609,10 +609,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Require at least one verified contact channel before allowing property creation
-    const user = await prisma.user.findUnique({
+    // Require at least one verified recovery/contact channel before allowing property creation
+    const user = await (prisma as any).user.findUnique({
       where: { id: userId },
-      select: { role: true, phone: true, phoneVerifiedAt: true, emailVerified: true },
+      select: { role: true, phone: true, phoneVerifiedAt: true, emailVerified: true, recoveryEmailVerifiedAt: true },
     });
 
     if (!user) {
@@ -622,10 +622,15 @@ export async function POST(req: NextRequest) {
 
     const hasVerifiedPhone = !!(user.phone && user.phone.trim() && user.phoneVerifiedAt);
     const hasVerifiedEmail = !!user.emailVerified;
+    const hasVerifiedRecoveryEmail = !!(user as any).recoveryEmailVerifiedAt;
+    const backupCodesUnused = await (prisma as any).backupRecoveryCode.count({
+      where: { userId, usedAt: null },
+    });
+    const hasBackupCodes = backupCodesUnused > 0;
 
-    if (!hasVerifiedPhone && !hasVerifiedEmail) {
+    if (!hasVerifiedPhone && !hasVerifiedEmail && !hasVerifiedRecoveryEmail && !hasBackupCodes) {
       const res = NextResponse.json(
-        { error: "Para publicar um imóvel, verifique seu telefone ou e-mail em Meu Perfil." },
+        { error: "Para publicar um imóvel, configure pelo menos um método de recuperação (telefone verificado, e-mail verificado, e-mail de recuperação verificado ou backup codes) em Meu Perfil." },
         { status: 400 }
       );
       res.headers.set("x-request-id", requestId);

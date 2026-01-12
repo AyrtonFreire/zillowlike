@@ -445,6 +445,9 @@ model User {
   passwordHash  String?
   image         String?
   role          Role      @default(USER)
+  authVersion   Int       @default(0)
+  recoveryEmail String?   @unique
+  recoveryEmailVerifiedAt DateTime?
 
   // Perfil público
   publicSlug           String? @unique
@@ -466,6 +469,7 @@ model User {
 
   accounts             Account[]
   sessions             Session[]
+  backupRecoveryCodes  BackupRecoveryCode[]
   leads                Lead[]
   realtorLeads         Lead[]               @relation("RealtorLeads")
   leadMessages         LeadMessage[]
@@ -483,6 +487,7 @@ model User {
   teamInvitesAccepted  TeamInvite[]    @relation("TeamInvitesAccepted")
   agencyProfile        AgencyProfile?
   phone                String?
+  phoneNormalized      String?   @unique
   phoneVerifiedAt      DateTime?
   realtorApplication   RealtorApplication?
   reviewedApplications RealtorApplication[] @relation("ReviewedApplications")
@@ -516,6 +521,20 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model BackupRecoveryCode {
+  id            String   @id @default(cuid())
+  userId        String
+  codeHash      String   @unique
+  createdAt     DateTime @default(now())
+  usedAt        DateTime?
+  usedByIp      String?
+  usedByUserAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Leads submitted from property detail pages

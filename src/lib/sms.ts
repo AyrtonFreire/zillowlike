@@ -1,4 +1,4 @@
-function normalizePhoneE164(phone: string): string {
+export function normalizePhoneE164(phone: string): string {
   const trimmed = phone.trim();
   if (!trimmed) return trimmed;
 

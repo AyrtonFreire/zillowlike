@@ -25,13 +25,13 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       return NextResponse.json({ error: "Informe o código de verificação." }, { status: 400 });
     }
 
-    const salt = `email_change:${userId}`;
+    const salt = `recovery_email:${userId}`;
     const tokenHash = hashToken(code, salt);
 
     let token = await prisma.verificationToken.findFirst({
       where: {
         token: tokenHash,
-        identifier: { startsWith: `email_change:${userId}:` },
+        identifier: { startsWith: `recovery_email:${userId}:` },
       },
     });
 
@@ -39,7 +39,7 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       token = await prisma.verificationToken.findFirst({
         where: {
           token: code,
-          identifier: { startsWith: `email_change:${userId}:` },
+          identifier: { startsWith: `recovery_email:${userId}:` },
         },
       });
     }
@@ -55,46 +55,47 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       return NextResponse.json({ error: "Token inválido." }, { status: 400 });
     }
 
-    const conflict = await prisma.user.findUnique({ where: { email: newEmail }, select: { id: true } });
+    const conflict = await prisma.user.findFirst({ where: { recoveryEmail: newEmail } as any, select: { id: true } });
     if (conflict && conflict.id !== userId) {
-      return NextResponse.json({ error: "Já existe uma conta com este e-mail." }, { status: 400 });
+      return NextResponse.json({ error: "Este e-mail já está sendo usado como recuperação por outra conta." }, { status: 400 });
     }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        email: newEmail,
-        emailVerified: new Date(),
+        recoveryEmail: newEmail,
+        recoveryEmailVerifiedAt: new Date(),
         authVersion: { increment: 1 },
       } as any,
-      select: { id: true, email: true },
+      select: { id: true, email: true, recoveryEmail: true, recoveryEmailVerifiedAt: true },
     });
 
     await prisma.verificationToken.deleteMany({
       where: {
-        identifier: { startsWith: `email_change:${userId}:` },
+        identifier: { startsWith: `recovery_email:${userId}:` },
       },
     });
 
     await createAuditLog({
       level: "SUCCESS",
-      action: "AUTH_EMAIL_CHANGED",
+      action: "AUTH_RECOVERY_EMAIL_SET",
       actorId: updatedUser.id,
-      actorEmail: updatedUser.email,
+      actorEmail: updatedUser.email ?? null,
       targetType: "User",
       targetId: updatedUser.id,
       metadata: {
-        newEmail,
-        ip:
-          req.headers.get("x-forwarded-for")?.split(",")[0] ||
-          req.headers.get("x-real-ip") ||
-          "unknown",
+        recoveryEmail: updatedUser.recoveryEmail,
+        ip: req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "unknown",
       },
     });
 
-    return NextResponse.json({ success: true, email: newEmail });
+    return NextResponse.json({
+      success: true,
+      recoveryEmail: updatedUser.recoveryEmail,
+      recoveryEmailVerifiedAt: updatedUser.recoveryEmailVerifiedAt,
+    });
   } catch (error) {
-    console.error("/api/email/verify error", error);
+    console.error("/api/recovery-email/verify error", error);
     return NextResponse.json({ error: "Erro ao verificar código" }, { status: 500 });
   }
 }, "authVerify");

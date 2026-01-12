@@ -57,6 +57,7 @@ providers.push(
         name: user.name,
         image: user.image,
         role: user.role,
+        authVersion: (user as any).authVersion ?? 0,
       } as any;
     },
   })
@@ -132,6 +133,7 @@ export const authOptions: NextAuthOptions = {
           // CRITICAL: Set user properties that will be passed to JWT callback
           user.id = dbUser.id;
           (user as any).role = dbUser.role;
+          (user as any).authVersion = (dbUser as any).authVersion ?? 0;
           
           dbg("✅ SignIn - User object updated with DB role:", {
             "user.id": user.id,
@@ -161,6 +163,15 @@ export const authOptions: NextAuthOptions = {
                 session_state: account.session_state as string | null,
               },
             });
+
+            try {
+              const updated = await (prisma as any).user.update({
+                where: { id: dbUser.id },
+                data: { authVersion: { increment: 1 } },
+                select: { authVersion: true },
+              });
+              (user as any).authVersion = updated.authVersion;
+            } catch {}
             dbg("✅ SignIn - OAuth provider linked successfully");
           } else {
             dbg("✅ SignIn - OAuth account already linked");
@@ -198,6 +209,7 @@ export const authOptions: NextAuthOptions = {
 
           user.id = newUser.id;
           (user as any).role = "USER";
+          (user as any).authVersion = (newUser as any).authVersion ?? 0;
           
           dbg("✅ SignIn - New user created successfully:", {
             email: user.email,
@@ -228,6 +240,7 @@ export const authOptions: NextAuthOptions = {
         token.email = (user as any).email ?? token.email;
         token.name = (user as any).name ?? token.name;
         token.picture = (user as any).image ?? (token as any).picture;
+        (token as any).authVersion = (user as any).authVersion ?? (token as any).authVersion ?? 0;
         (token as any).roleCheckedAt = nowMs;
         dbg("🔑 JWT Callback - Initial sign in, role:", token.role);
         return token;
@@ -238,19 +251,48 @@ export const authOptions: NextAuthOptions = {
         const shouldRefresh = !lastCheckedAt || nowMs - lastCheckedAt > ROLE_REFRESH_MS || trigger === "update";
         if (shouldRefresh) {
           try {
-            const dbUser = await prisma.user.findUnique({
+            const dbUser = await (prisma as any).user.findUnique({
               where: { id: token.sub },
-              select: { role: true, email: true, name: true, image: true },
+              select: {
+                role: true,
+                email: true,
+                name: true,
+                image: true,
+                authVersion: true,
+                recoveryEmail: true,
+                recoveryEmailVerifiedAt: true,
+              },
             });
+
+            const dbAuthVersion = (dbUser as any)?.authVersion ?? 0;
+            const tokenAuthVersion = Number((token as any).authVersion ?? 0);
+
+            if (dbAuthVersion !== tokenAuthVersion) {
+              if (trigger === "update") {
+                delete (token as any).error;
+                (token as any).authVersion = dbAuthVersion;
+              } else {
+                (token as any).error = "SESSION_REVOKED";
+                (token as any).authVersion = dbAuthVersion;
+                (token as any).roleCheckedAt = nowMs;
+                return token;
+              }
+            }
 
             token.role = dbUser?.role ?? token.role ?? "USER";
             token.email = dbUser?.email ?? token.email;
             token.name = dbUser?.name ?? token.name;
             token.picture = dbUser?.image ?? (token as any).picture;
+            (token as any).authVersion = dbAuthVersion;
+            (token as any).recoveryEmail = (dbUser as any)?.recoveryEmail ?? null;
+            (token as any).recoveryEmailVerifiedAt = (dbUser as any)?.recoveryEmailVerifiedAt
+              ? new Date((dbUser as any).recoveryEmailVerifiedAt).toISOString()
+              : null;
             (token as any).roleCheckedAt = nowMs;
           } catch (error) {
             console.error("❌ JWT Callback - Error fetching user role:", error);
             token.role = token.role ?? "USER";
+            (token as any).authVersion = Number((token as any).authVersion ?? 0);
             (token as any).roleCheckedAt = nowMs;
           }
         }
@@ -258,6 +300,9 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
+      if ((token as any)?.error === "SESSION_REVOKED") {
+        return null as any;
+      }
       // CRITICAL: Must add role to BOTH session and session.user
       // NextAuth client reads from session.user
       if (token?.sub) {
@@ -286,6 +331,8 @@ export const authOptions: NextAuthOptions = {
         if (token?.email) session.user.email = token.email as string;
         if (token?.name) session.user.name = token.name as string;
         if ((token as any)?.picture) (session.user as any).image = (token as any).picture as string;
+        (session.user as any).recoveryEmail = (token as any)?.recoveryEmail ?? null;
+        (session.user as any).recoveryEmailVerifiedAt = (token as any)?.recoveryEmailVerifiedAt ?? null;
       }
       return session;
     },

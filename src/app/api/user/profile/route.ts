@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { randomBytes } from "crypto";
 import { getAuthResendVerificationEmail, sendEmail } from "@/lib/email";
+import { normalizePhoneE164 } from "@/lib/sms";
 
 /**
  * GET /api/user/profile
@@ -28,8 +29,11 @@ export async function GET(req: NextRequest) {
         image: true,
         role: true,
         emailVerified: true,
+        passwordHash: true,
         phone: true,
         phoneVerifiedAt: true,
+        recoveryEmail: true,
+        recoveryEmailVerifiedAt: true,
         publicSlug: true,
         publicProfileEnabled: true,
         publicHeadline: true,
@@ -66,10 +70,23 @@ export async function GET(req: NextRequest) {
       where: { userId },
     });
 
+    const backupCodesTotal = await (prisma as any).backupRecoveryCode.count({
+      where: { userId },
+    });
+    const backupCodesUnused = await (prisma as any).backupRecoveryCode.count({
+      where: { userId, usedAt: null },
+    });
+
     return NextResponse.json({
       success: true,
       user: {
         ...user,
+        hasPassword: Boolean((user as any).passwordHash),
+        passwordHash: undefined,
+        backupCodes: {
+          total: backupCodesTotal,
+          unused: backupCodesUnused,
+        },
         stats: {
           properties: propertyCount,
           favorites: favoritesCount,
@@ -102,9 +119,13 @@ export async function PATCH(req: NextRequest) {
     const userId = (session as any)?.userId || (session as any)?.user?.id;
     const body = await req.json();
 
+    if (body.recoveryEmail !== undefined || body.recoveryEmailVerifiedAt !== undefined) {
+      return NextResponse.json({ error: "Use o fluxo de e-mail de recuperação para alterar esse campo." }, { status: 400 });
+    }
+
     const existing = await (prisma as any).user.findUnique({
       where: { id: userId },
-      select: { phone: true, role: true, publicSlug: true, name: true, email: true },
+      select: { phone: true, phoneNormalized: true, role: true, publicSlug: true, name: true, email: true },
     });
 
     // Only allow updating certain fields
@@ -113,7 +134,24 @@ export async function PATCH(req: NextRequest) {
     if (body.image !== undefined) updateData.image = body.image;
     if (body.phone !== undefined) {
       updateData.phone = body.phone;
-      if (existing && existing.phone !== body.phone) {
+
+      const normalized = String(body.phone || "").trim() ? normalizePhoneE164(String(body.phone)) : "";
+      updateData.phoneNormalized = normalized ? normalized : null;
+
+      if (normalized) {
+        const conflict = await (prisma as any).user.findFirst({
+          where: {
+            phoneNormalized: normalized,
+            NOT: { id: userId },
+          },
+          select: { id: true },
+        });
+        if (conflict) {
+          return NextResponse.json({ error: "Este telefone já está sendo usado por outra conta." }, { status: 400 });
+        }
+      }
+
+      if (existing && (existing.phone !== body.phone || (existing as any).phoneNormalized !== updateData.phoneNormalized)) {
         updateData.phoneVerifiedAt = null;
       }
     }

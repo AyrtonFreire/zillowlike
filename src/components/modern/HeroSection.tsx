@@ -263,7 +263,7 @@ export default function HeroSection() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            Explore os Melhores Imóveis da Região
+            Explore os Melhores Imóveis da Região (Em Construção)
           </motion.h1>
 
           {/* Search Bar - estilo mais simples/high-end tipo JamesEdition */}

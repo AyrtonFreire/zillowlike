@@ -143,6 +143,66 @@ export function getLeadNotificationEmail(data: {
   };
 }
 
+export function getRecoveryEmailCodeEmail(data: {
+  name?: string | null;
+  code: string;
+}) {
+  return {
+    subject: "Confirme seu e-mail de recuperação no OggaHub",
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #020617; color: #e5e7eb; }
+            .wrapper { padding: 24px 12px; }
+            .container { max-width: 640px; margin: 0 auto; background: radial-gradient(circle at top, rgba(0,255,200,0.06), transparent 55%), #020617; border-radius: 24px; border: 1px solid rgba(15,118,110,0.45); box-shadow: 0 32px 80px rgba(15,23,42,0.9); overflow: hidden; }
+            .header { padding: 24px 28px 20px; background: linear-gradient(135deg, #00736E 0%, #021616 100%); border-bottom: 1px solid rgba(15,118,110,0.6); }
+            .logo { display: inline-flex; align-items: center; gap: 10px; }
+            .logo-badge { width: 32px; height: 32px; border-radius: 999px; background: radial-gradient(circle at 30% 0%, #5ef2d6 0%, #00736E 45%, #021616 100%); display:flex; align-items:center; justify-content:center; box-shadow: 0 0 0 1px rgba(34,211,238,0.35), 0 16px 40px rgba(15,23,42,0.9); color: #fff; font-weight: 600; }
+            .logo-text { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(226,232,240,0.85); font-weight: 600; }
+            .title { margin: 20px 0 4px; font-size: 20px; font-weight: 600; color: #f9fafb; }
+            .subtitle { margin: 0; font-size: 13px; color: rgba(226,232,240,0.85); }
+            .content { padding: 22px 24px 24px; background: radial-gradient(circle at top, rgba(15,118,110,0.21), transparent 60%); }
+            .card { background: rgba(15,23,42,0.88); border-radius: 18px; padding: 18px 18px 20px; border: 1px solid rgba(15,118,110,0.45); box-shadow: 0 18px 38px rgba(15,23,42,0.9); }
+            .paragraph { font-size: 13px; line-height: 1.6; color: #e5e7eb; margin: 0 0 10px; }
+            .code { font-size: 28px; letter-spacing: 0.2em; font-weight: 700; text-align: center; padding: 16px 12px; border-radius: 14px; background: rgba(15,23,42,0.95); border: 1px solid rgba(45,212,191,0.45); margin: 16px 0 10px; color: #ecfeff; }
+            .hint { font-size: 11px; color: #9ca3af; margin-top: 8px; text-align: center; }
+            .footer { padding: 18px 24px 22px; border-top: 1px solid rgba(30,64,175,0.15); font-size: 11px; color: #6b7280; }
+            .footer strong { color: #e5e7eb; }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <div class="logo">
+                  <div class="logo-badge">O</div>
+                  <div class="logo-text">OggaHub</div>
+                </div>
+                <h1 class="title">Confirmar e-mail de recuperação</h1>
+                <p class="subtitle">Use o código abaixo para confirmar seu e-mail de recuperação.</p>
+              </div>
+              <div class="content">
+                <div class="card">
+                  <p class="paragraph">Olá${data.name ? `, <strong>${data.name}</strong>` : ""}.</p>
+                  <p class="paragraph">Digite o código abaixo na tela de confirmação. Ele expira em <strong>10 minutos</strong>.</p>
+                  <div class="code">${data.code}</div>
+                  <p class="hint">Se você não solicitou essa ação, ignore este e-mail.</p>
+                </div>
+              </div>
+              <div class="footer">
+                <p>Para sua segurança, o <strong>OggaHub</strong> nunca pede sua senha por e-mail.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+}
+
 export function getEmailChangeCodeEmail(data: {
   name?: string | null;
   code: string;

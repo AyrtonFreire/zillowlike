@@ -17,10 +17,14 @@ import {
   Calendar,
   Check,
   Phone,
+  KeyRound,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 import EmailChangeModal from "@/components/EmailChangeModal";
+import RecoveryEmailModal from "@/components/RecoveryEmailModal";
+import SetPasswordModal from "@/components/SetPasswordModal";
+import BackupCodesModal from "@/components/BackupCodesModal";
 
 interface UserProfile {
   id: string;
@@ -31,6 +35,10 @@ interface UserProfile {
   emailVerified: Date | null;
   phone?: string | null;
   phoneVerifiedAt: Date | null;
+  recoveryEmail?: string | null;
+  recoveryEmailVerifiedAt?: Date | null;
+  backupCodes?: { total: number; unused: number };
+  hasPassword?: boolean;
   stats: {
     properties: number;
     favorites: number;
@@ -62,6 +70,9 @@ export default function ProfilePage() {
   const [phoneModalOpen, setPhoneModalOpen] = useState(false);
   const [phoneModalStartInEdit, setPhoneModalStartInEdit] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [recoveryEmailModalOpen, setRecoveryEmailModalOpen] = useState(false);
+  const [setPasswordModalOpen, setSetPasswordModalOpen] = useState(false);
+  const [backupCodesModalOpen, setBackupCodesModalOpen] = useState(false);
   const [publicProfileEnabled, setPublicProfileEnabled] = useState(false);
   const [publicHeadline, setPublicHeadline] = useState("");
   const [publicBio, setPublicBio] = useState("");
@@ -301,6 +312,21 @@ export default function ProfilePage() {
                     Telefone verificado
                   </div>
                 )}
+
+                {/* Recovery Email Verified */}
+                {profile.recoveryEmailVerifiedAt && (
+                  <div className="flex items-center justify-center gap-1 mt-3 text-sm text-green-600">
+                    <Check className="w-4 h-4" />
+                    E-mail de recuperação verificado
+                  </div>
+                )}
+
+                {profile.backupCodes?.unused && profile.backupCodes.unused > 0 && (
+                  <div className="flex items-center justify-center gap-1 mt-3 text-sm text-green-600">
+                    <Check className="w-4 h-4" />
+                    Backup codes configurados
+                  </div>
+                )}
               </div>
 
               {/* Stats Grid */}
@@ -384,6 +410,68 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
+                {/* Backup Codes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Backup codes
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={
+                        profile.backupCodes
+                          ? `${profile.backupCodes.unused} disponíveis (${profile.backupCodes.total} no total)`
+                          : "(carregando...)"
+                      }
+                      readOnly
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Códigos de uso único para recuperar a conta sem e-mail/telefone.
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2">
+                    {profile.backupCodes?.unused && profile.backupCodes.unused > 0 ? (
+                      <p className="text-xs text-emerald-700 font-medium">Você tem {profile.backupCodes.unused} backup codes disponíveis</p>
+                    ) : (
+                      <p className="text-xs text-gray-600">Você ainda não gerou backup codes.</p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setBackupCodesModalOpen(true)}
+                      className="glass-teal text-white font-medium rounded-lg transition-colors"
+                    >
+                      {profile.backupCodes?.total ? "Gerar novos backup codes" : "Gerar backup codes"}
+                    </button>
+                    <p className="text-xs text-gray-500">
+                      Para recuperar com backup code: <Link href="/auth/recover-backup-code" className="underline">/auth/recover-backup-code</Link>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Password (OAuth accounts) */}
+                {!profile.hasPassword && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Senha
+                    </label>
+                    <div className="text-xs text-gray-600">
+                      Sua conta ainda não tem senha (provavelmente você entrou via Google/GitHub). Defina uma senha para ter um método extra de acesso.
+                    </div>
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setSetPasswordModalOpen(true)}
+                        className="glass-teal text-white font-medium rounded-lg transition-colors"
+                      >
+                        Criar senha
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Email */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -452,6 +540,45 @@ export default function ProfilePage() {
                       className="glass-teal text-white font-medium rounded-lg transition-colors"
                     >
                       {profile.phone ? (profile.phoneVerifiedAt ? "Alterar telefone" : "Verificar telefone") : "Adicionar telefone"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Recovery Email */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    E-mail de recuperação
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={String(profile.recoveryEmail || "")}
+                      readOnly
+                      placeholder="(não configurado)"
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Use um e-mail alternativo para recuperar sua conta caso perca acesso ao e-mail principal.
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2">
+                    {profile.recoveryEmail ? (
+                      profile.recoveryEmailVerifiedAt ? (
+                        <p className="text-xs text-emerald-700 font-medium">E-mail de recuperação verificado</p>
+                      ) : (
+                        <p className="text-xs text-amber-700 font-medium">E-mail de recuperação ainda não verificado</p>
+                      )
+                    ) : (
+                      <p className="text-xs text-gray-600">Você ainda não configurou um e-mail de recuperação.</p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setRecoveryEmailModalOpen(true)}
+                      className="glass-teal text-white font-medium rounded-lg transition-colors"
+                    >
+                      {profile.recoveryEmail ? "Alterar e-mail de recuperação" : "Adicionar e-mail de recuperação"}
                     </button>
                   </div>
                 </div>
@@ -703,6 +830,43 @@ export default function ProfilePage() {
                 );
               })()}
             </div>
+
+            <RecoveryEmailModal
+              isOpen={recoveryEmailModalOpen}
+              onClose={() => setRecoveryEmailModalOpen(false)}
+              currentRecoveryEmail={profile.recoveryEmail || null}
+              onVerified={async (newEmail) => {
+                setProfile((prev) =>
+                  prev
+                    ? ({
+                        ...prev,
+                        recoveryEmail: newEmail,
+                        recoveryEmailVerifiedAt: new Date(),
+                      } as any)
+                    : prev
+                );
+                await fetchProfile();
+                await update();
+              }}
+            />
+
+            <SetPasswordModal
+              isOpen={setPasswordModalOpen}
+              onClose={() => setSetPasswordModalOpen(false)}
+              onSuccess={async () => {
+                await fetchProfile();
+                await update();
+              }}
+            />
+
+            <BackupCodesModal
+              isOpen={backupCodesModalOpen}
+              onClose={() => setBackupCodesModalOpen(false)}
+              onGenerated={async () => {
+                await fetchProfile();
+                await update();
+              }}
+            />
 
             <PhoneVerificationModal
               isOpen={phoneModalOpen}

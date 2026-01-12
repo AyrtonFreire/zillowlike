@@ -84,6 +84,12 @@ const rateLimiters = {
   leads: createLimiter({ points: 20, duration: 60, keyPrefix: "rl:leads" }),
 
   ai: createLimiter({ points: 5, duration: 60 * 60, keyPrefix: "rl:ai" }),
+
+  // Auth endpoints sensíveis (reset, register, envio de códigos)
+  auth: createLimiter({ points: 5, duration: 60, keyPrefix: "rl:auth" }),
+
+  // Verificações de código/token (permite mais tentativas, mas ainda limitado)
+  authVerify: createLimiter({ points: 20, duration: 60, keyPrefix: "rl:authVerify" }),
 };
 
 /**

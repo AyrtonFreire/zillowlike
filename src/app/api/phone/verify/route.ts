@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withRateLimit } from "@/lib/rate-limiter";
+import { hashToken } from "@/lib/token-hash";
+import { createAuditLog } from "@/lib/audit-log";
 
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -29,9 +32,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await (prisma as any).user.findUnique({
       where: { id: userId },
-      select: { phone: true },
+      select: { phone: true, phoneNormalized: true },
     });
 
     if (!user || !user.phone || !user.phone.trim()) {
@@ -41,15 +44,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const normalized = String((user as any).phoneNormalized || "").trim();
     const phoneDigits = String(user.phone).replace(/\D/g, "");
-    const identifier = `phone:${userId}:${phoneDigits}`;
+    const identifier = `phone:${userId}:${normalized || phoneDigits}`;
 
-    const token = await prisma.verificationToken.findFirst({
+    const tokenHash = hashToken(code, identifier);
+
+    let token = await prisma.verificationToken.findFirst({
       where: {
         identifier,
-        token: code,
+        token: tokenHash,
       },
     });
+
+    if (!token) {
+      token = await prisma.verificationToken.findFirst({
+        where: {
+          identifier,
+          token: code,
+        },
+      });
+    }
 
     if (!token || token.expires < new Date()) {
       return NextResponse.json(
@@ -60,12 +75,26 @@ export async function POST(req: NextRequest) {
 
     await prisma.user.update({
       where: { id: userId },
-      data: { phoneVerifiedAt: new Date() },
+      data: { phoneVerifiedAt: new Date(), authVersion: { increment: 1 } } as any,
     });
 
     await prisma.verificationToken.deleteMany({
       where: {
         identifier: { startsWith: `phone:${userId}:` },
+      },
+    });
+
+    await createAuditLog({
+      level: "SUCCESS",
+      action: "AUTH_PHONE_VERIFIED",
+      actorId: userId,
+      targetType: "User",
+      targetId: userId,
+      metadata: {
+        ip:
+          req.headers.get("x-forwarded-for")?.split(",")[0] ||
+          req.headers.get("x-real-ip") ||
+          "unknown",
       },
     });
 
@@ -77,4 +106,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, "authVerify");

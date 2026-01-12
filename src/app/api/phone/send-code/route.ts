@@ -3,13 +3,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendSms } from "@/lib/sms";
+import { withRateLimit } from "@/lib/rate-limiter";
+import { hashToken } from "@/lib/token-hash";
+import { createAuditLog } from "@/lib/audit-log";
 
 function generateCode(): string {
   const n = Math.floor(100000 + Math.random() * 900000);
   return String(n);
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withRateLimit(async (req: NextRequest) => {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -25,9 +28,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await (prisma as any).user.findUnique({
       where: { id: userId },
-      select: { phone: true, phoneVerifiedAt: true },
+      select: { phone: true, phoneNormalized: true, phoneVerifiedAt: true },
     });
 
     if (!user) {
@@ -48,8 +51,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const normalized = String((user as any).phoneNormalized || "").trim();
     const phoneDigits = String(user.phone).replace(/\D/g, "");
-    const identifier = `phone:${userId}:${phoneDigits}`;
+    const identifier = `phone:${userId}:${normalized || phoneDigits}`;
 
     // Remove códigos antigos para este usuário
     await prisma.verificationToken.deleteMany({
@@ -60,11 +64,12 @@ export async function POST(req: NextRequest) {
 
     const code = generateCode();
     const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutos
+    const tokenHash = hashToken(code, identifier);
 
     await prisma.verificationToken.create({
       data: {
         identifier,
-        token: code,
+        token: tokenHash,
         expires,
       },
     });
@@ -75,11 +80,32 @@ export async function POST(req: NextRequest) {
       await sendSms(user.phone, body);
     } catch (error) {
       console.error("Brevo SMS error:", error);
+
+      await prisma.verificationToken.deleteMany({
+        where: {
+          identifier: { startsWith: `phone:${userId}:` },
+        },
+      });
+
       return NextResponse.json(
         { error: "Falha ao enviar SMS. Tente novamente em instantes." },
         { status: 500 }
       );
     }
+
+    await createAuditLog({
+      level: "INFO",
+      action: "AUTH_PHONE_VERIFICATION_CODE_SENT",
+      actorId: userId,
+      targetType: "User",
+      targetId: userId,
+      metadata: {
+        ip:
+          req.headers.get("x-forwarded-for")?.split(",")[0] ||
+          req.headers.get("x-real-ip") ||
+          "unknown",
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -89,4 +115,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, "auth");
