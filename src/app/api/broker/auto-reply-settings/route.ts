@@ -22,7 +22,7 @@ export async function GET() {
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
-    if (user.role !== "REALTOR" && user.role !== "AGENCY") {
+    if (user.role !== "REALTOR") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
@@ -51,7 +51,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
-    if (user.role !== "REALTOR" && user.role !== "AGENCY") {
+    if (user.role !== "REALTOR") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 

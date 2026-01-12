@@ -101,6 +101,7 @@ export default function OwnerDashboard() {
   const [pendingError, setPendingError] = useState<string | null>(null);
 
   const { data: session, status } = useSession();
+  const role = (session as any)?.user?.role || (session as any)?.role || "USER";
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
@@ -116,13 +117,13 @@ export default function OwnerDashboard() {
     if (status === "authenticated") {
       fetchUpcomingVisits();
     }
-  }, [status]);
+  }, [status, role]);
 
   useEffect(() => {
     if (status === "authenticated") {
       fetchPendingLeads();
     }
-  }, [status]);
+  }, [status, role]);
 
   const fetchDashboardData = async () => {
     try {
@@ -158,6 +159,10 @@ export default function OwnerDashboard() {
 
   const fetchUpcomingVisits = async () => {
     try {
+      if (role === "AGENCY") {
+        setUpcomingVisits([]);
+        return;
+      }
       setVisitsError(null);
       setVisitsLoading(true);
       const params = previewUserId ? `?userId=${previewUserId}` : "";
@@ -181,6 +186,10 @@ export default function OwnerDashboard() {
 
   const fetchPendingLeads = async () => {
     try {
+      if (role === "AGENCY") {
+        setPendingLeads([]);
+        return;
+      }
       setPendingError(null);
       setPendingLoading(true);
       const params = previewUserId ? `?userId=${previewUserId}` : "";

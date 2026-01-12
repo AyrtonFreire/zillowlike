@@ -38,8 +38,8 @@ export async function GET() {
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
-    // Apenas REALTOR ou AGENCY podem acessar
-    if (user.role !== "REALTOR" && user.role !== "AGENCY") {
+    // Apenas REALTOR pode acessar
+    if (user.role !== "REALTOR") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
@@ -68,8 +68,8 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
-    // Apenas REALTOR ou AGENCY podem editar
-    if (user.role !== "REALTOR" && user.role !== "AGENCY") {
+    // Apenas REALTOR pode editar
+    if (user.role !== "REALTOR") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 

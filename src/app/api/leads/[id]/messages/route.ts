@@ -42,6 +42,13 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
+    if (role === "AGENCY") {
+      return NextResponse.json(
+        { error: "Você não tem permissão para atender leads." },
+        { status: 403 }
+      );
+    }
+
     const lead: any = await (prisma as any).lead.findUnique({
       where: { id },
       select: {
@@ -104,6 +111,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
+    if (role === "AGENCY") {
+      return NextResponse.json(
+        { error: "Você não tem permissão para atender leads." },
+        { status: 403 }
+      );
+    }
+
     const lead: any = await (prisma as any).lead.findUnique({
       where: { id },
       select: {
@@ -162,7 +176,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     // 🆕 Automatizar funil: primeira resposta profissional move de NEW para CONTACT
     try {
-      const isProfessional = role === "REALTOR" || role === "AGENCY" || role === "ADMIN";
+      const isProfessional = role === "REALTOR" || role === "ADMIN";
       const currentStage = previousStage;
       if (isProfessional && (!currentStage || currentStage === "NEW")) {
         await (prisma as any).lead.update({

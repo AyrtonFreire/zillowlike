@@ -16,6 +16,10 @@ export async function GET(req: NextRequest) {
     const sessionUser = session.user as any;
     const sessionRole = sessionUser?.role;
 
+    if (sessionRole !== "OWNER" && sessionRole !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const actorId = sessionUser.id as string;
     let userId = actorId;
 

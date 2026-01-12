@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Usuário não encontrado na sessão" }, { status: 400 });
     }
 
-    if (role !== "REALTOR" && role !== "AGENCY" && role !== "ADMIN") {
+    if (role !== "REALTOR" && role !== "ADMIN") {
       return NextResponse.json(
         { error: "Apenas corretores podem acessar esta caixa de mensagens." },
         { status: 403 }

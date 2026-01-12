@@ -63,7 +63,7 @@ export default function StartPage() {
       }
 
       if (data.role === "AGENCY") {
-        router.push("/agency/dashboard");
+        router.push("/owner/new");
         return;
       }
 

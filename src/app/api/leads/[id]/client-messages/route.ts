@@ -44,6 +44,13 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
+    if (role === "AGENCY") {
+      return NextResponse.json(
+        { error: "Você não tem permissão para atender leads." },
+        { status: 403 }
+      );
+    }
+
     const lead: any = await (prisma as any).lead.findUnique({
       where: { id },
       select: {
@@ -110,6 +117,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
+    if (role === "AGENCY") {
+      return NextResponse.json(
+        { error: "Você não tem permissão para atender leads." },
+        { status: 403 }
+      );
+    }
+
     const lead: any = await (prisma as any).lead.findUnique({
       where: { id },
       select: {
@@ -171,7 +185,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     };
 
     try {
-      const isProfessional = role === "REALTOR" || role === "AGENCY" || role === "ADMIN" || role === "OWNER";
+      const isProfessional = role === "REALTOR" || role === "ADMIN" || role === "OWNER";
       const currentStage = previousStage;
       if (isProfessional && (!currentStage || currentStage === "NEW")) {
         await (prisma as any).lead.update({

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (role !== "REALTOR" && role !== "ADMIN" && role !== "AGENCY") {
+    if (role !== "REALTOR" && role !== "ADMIN") {
       return NextResponse.json(
         { error: "Você não tem permissão para buscar leads." },
         { status: 403 }

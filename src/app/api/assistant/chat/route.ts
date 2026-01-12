@@ -165,7 +165,7 @@ function buildLeadAccessWhere(userId: string): Prisma.LeadWhereInput {
 async function deleteHandler(req: NextRequest) {
   const { userId, role } = await getSessionContext();
   if (!userId) return errorResponse("Não autenticado", 401);
-  if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
+  if (role !== "ADMIN" && role !== "REALTOR") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
 
   const url = new URL(req.url);
   const queryParsed = QuerySchema.safeParse({ leadId: url.searchParams.get("leadId") || undefined });
@@ -1058,7 +1058,7 @@ function parseAi(content: string, params?: { leadId?: string | null; allowedProp
 async function getHandler(req: NextRequest) {
   const { userId, role } = await getSessionContext();
   if (!userId) return errorResponse("Não autenticado", 401);
-  if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
+  if (role !== "ADMIN" && role !== "REALTOR") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
 
   const url = new URL(req.url);
   const queryParsed = QuerySchema.safeParse({ leadId: url.searchParams.get("leadId") || undefined });
@@ -1090,7 +1090,7 @@ async function getHandler(req: NextRequest) {
 async function postHandler(req: NextRequest) {
   const { userId, role } = await getSessionContext();
   if (!userId) return errorResponse("Não autenticado", 401);
-  if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
+  if (role !== "ADMIN" && role !== "REALTOR") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return errorResponse("AI is not configured", 500, null, "OPENAI_API_KEY_MISSING");

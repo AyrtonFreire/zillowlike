@@ -21,6 +21,15 @@ interface PropertyCardPremiumProps {
       publicSlug?: string | null;
       role?: string | null;
     } | null;
+    team?: {
+      id: string;
+      name: string;
+      owner?: {
+        id: string;
+        name?: string | null;
+        image?: string | null;
+      } | null;
+    } | null;
     city: string;
     state: string;
     bedrooms?: number | null;
@@ -77,6 +86,11 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     if (r === "OWNER") return "Anunciante";
     return "Profissional";
   }, [property]);
+
+  const showAgencyLogo = useMemo(() => {
+    const r = String(property.owner?.role || "").toUpperCase();
+    return r === "REALTOR" && !!property.team?.id;
+  }, [property.owner?.role, property.team?.id]);
 
   const intelligentBadges = useMemo(() => {
     const badges: Array<{
@@ -702,7 +716,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           {/* Footer area (reserved height to keep all cards equal) */}
           <div className="mt-auto pt-2 border-t border-gray-200/60 min-h-[36px] flex items-center">
             {property.owner?.name ? (
-              <div className="flex items-center gap-2.5 w-full">
+              <div className="flex items-center justify-between gap-3 w-full">
                 {property.owner?.publicSlug ? (
                   <Link
                     href={`/realtor/${property.owner.publicSlug}`}
@@ -755,6 +769,29 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     </span>
                   </div>
                 )}
+
+                {showAgencyLogo ? (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="relative w-20 h-8 rounded-md overflow-hidden bg-white border border-gray-200"
+                    title={property.team?.name || ""}
+                    aria-label={property.team?.name ? `Imobiliária ${property.team.name}` : "Imobiliária"}
+                  >
+                    {property.team?.owner?.image ? (
+                      <Image
+                        src={property.team.owner.image}
+                        alt={property.team?.name || "Imobiliária"}
+                        fill
+                        className="object-contain"
+                        sizes="80px"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-700 px-2">
+                        <span className="truncate">{String(property.team?.name || "")}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div aria-hidden="true" className="w-full" />

@@ -70,7 +70,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   // Inbox de mensagens internas para corretores - verifica se há conversas não lidas
   useEffect(() => {
     if (!session) return;
-    if (role !== 'REALTOR' && role !== 'AGENCY' && role !== 'ADMIN') return;
+    if (role !== 'REALTOR' && role !== 'ADMIN') return;
 
     let cancelled = false;
     let lastEtag: string | null = null;
@@ -231,7 +231,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
   useEffect(() => {
     if (!session) return;
-    if (role !== 'REALTOR' && role !== 'AGENCY' && role !== 'ADMIN') return;
+    if (role !== 'REALTOR' && role !== 'ADMIN') return;
 
     const userId = (session as any)?.user?.id || (session as any)?.userId;
     if (!userId) return;

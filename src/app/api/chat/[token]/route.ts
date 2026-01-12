@@ -161,6 +161,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       const userId = session.userId || session.user?.id;
       const role = session.role || session.user?.role;
 
+      if (role === "AGENCY") {
+        return NextResponse.json(
+          { error: "Você não tem permissão para atender leads." },
+          { status: 403 }
+        );
+      }
+
       console.log("[CHAT] Verificando permissão:", {
         userId,
         role,
@@ -178,7 +185,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         const isTeamOwner = lead.team?.ownerId && lead.team.ownerId === userId;
         const isAdmin = role === "ADMIN";
         // Qualquer role profissional que seja dono do imóvel pode responder
-        const isProfessionalOwner = isPropertyOwner && (role === "REALTOR" || role === "AGENCY" || role === "OWNER");
+        const isProfessionalOwner = isPropertyOwner && (role === "REALTOR" || role === "OWNER");
 
         console.log("[CHAT] Resultado verificação:", {
           isRealtor,

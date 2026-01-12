@@ -11,6 +11,15 @@ export type ApiProperty = {
     publicSlug?: string | null;
     role?: string | null;
   } | null;
+  team?: {
+    id: string;
+    name: string;
+    owner?: {
+      id: string;
+      name?: string | null;
+      image?: string | null;
+    } | null;
+  } | null;
   street: string;
   neighborhood?: string | null;
   city: string;

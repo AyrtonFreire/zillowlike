@@ -9,8 +9,8 @@ const protectedPaths = ["/admin", "/owner", "/dashboard", "/realtor", "/broker",
 // Mapeamento de paths para roles permitidos
 const roleBasedPaths: Record<string, string[]> = {
   "/admin": ["ADMIN"],
-  "/realtor": ["REALTOR", "AGENCY", "ADMIN"],
-  "/broker": ["REALTOR", "AGENCY", "ADMIN"],
+  "/realtor": ["REALTOR", "ADMIN"],
+  "/broker": ["REALTOR", "ADMIN"],
   "/owner": ["OWNER", "REALTOR", "AGENCY", "ADMIN"],
   "/agency": ["AGENCY", "ADMIN"],
   "/dashboard": ["USER", "REALTOR", "AGENCY", "OWNER", "ADMIN"], // Todos autenticados

@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
   const clientChatToken = generateChatToken();
 
   // Determinar se o owner é corretor/imobiliária para atribuir automaticamente como realtor do lead
-  const ownerIsRealtor = propertyWithOwner?.owner?.role === "REALTOR" || propertyWithOwner?.owner?.role === "AGENCY";
+  const ownerIsRealtor = propertyWithOwner?.owner?.role === "REALTOR";
   const shouldAutoAssignOwner = ownerIsRealtor && isDirectFlag;
   const autoRealtorId = shouldAutoAssignOwner ? propertyWithOwner?.owner?.id : undefined;
 

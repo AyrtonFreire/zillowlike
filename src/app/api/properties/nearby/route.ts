@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 // Função para calcular distância entre dois pontos (Haversine)
 function calculateDistance(
@@ -59,11 +57,34 @@ export async function GET(request: NextRequest) {
       where: {
         id: { not: propertyId },
         type: currentProperty.type,
+        status: "ACTIVE",
       },
-      include: {
-        images: {
-          take: 1,
-          orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        title: true,
+        price: true,
+        type: true,
+        purpose: true,
+        neighborhood: true,
+        city: true,
+        state: true,
+        latitude: true,
+        longitude: true,
+        bedrooms: true,
+        bathrooms: true,
+        areaM2: true,
+        parkingSpots: true,
+        conditionTags: true,
+        updatedAt: true,
+        createdAt: true,
+        images: { select: { id: true, url: true }, orderBy: { sortOrder: "asc" }, take: 6 },
+        owner: { select: { id: true, name: true, image: true, publicSlug: true, role: true } },
+        team: {
+          select: {
+            id: true,
+            name: true,
+            owner: { select: { id: true, name: true, image: true } },
+          },
         },
       },
     });

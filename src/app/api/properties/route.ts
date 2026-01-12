@@ -321,6 +321,13 @@ export async function GET(req: NextRequest) {
               updatedAt: true,
               images: { select: { id: true, url: true }, orderBy: { sortOrder: "asc" }, take: 6 },
               owner: { select: { id: true, name: true, image: true, publicSlug: true, role: true } },
+              team: {
+                select: {
+                  id: true,
+                  name: true,
+                  owner: { select: { id: true, name: true, image: true } },
+                },
+              },
             }
           : {
               id: true,

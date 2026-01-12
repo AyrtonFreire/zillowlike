@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
+    if (role !== "ADMIN" && role !== "REALTOR") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 

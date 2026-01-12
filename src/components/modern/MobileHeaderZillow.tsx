@@ -26,7 +26,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
   const canShowAssistant =
     !!session &&
     isBrokerContext &&
-    (role === "REALTOR" || role === "AGENCY" || role === "ADMIN");
+    (role === "REALTOR" || role === "ADMIN");
 
   const isOverlay = variant === "overlay";
 

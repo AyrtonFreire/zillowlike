@@ -19,6 +19,10 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Usuário não encontrado na sessão" }, { status: 400 });
     }
 
+    if (role === "AGENCY") {
+      return NextResponse.json({ error: "Você não tem permissão para atender leads." }, { status: 403 });
+    }
+
     const { id } = await context.params;
 
     const property = await prisma.property.findUnique({

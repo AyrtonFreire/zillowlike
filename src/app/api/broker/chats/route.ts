@@ -19,8 +19,8 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ error: "Usuário não encontrado na sessão" }, { status: 400 });
     }
 
-    // Aceita REALTOR, AGENCY, OWNER e ADMIN
-    if (!["REALTOR", "AGENCY", "OWNER", "ADMIN"].includes(role)) {
+    // Aceita REALTOR e ADMIN
+    if (!["REALTOR", "ADMIN"].includes(role)) {
       return NextResponse.json(
         { error: "Acesso não permitido." },
         { status: 403 }
