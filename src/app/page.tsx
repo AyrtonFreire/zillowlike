@@ -13,6 +13,7 @@ import NeighborhoodGrid from "@/components/NeighborhoodGrid";
 import ContinueSearching from "@/components/ContinueSearching";
 import Guides from "@/components/Guides";
 import SiteFooter from "@/components/Footer";
+import HomePremiumCards from "./_components/HomePremiumCards";
 import Carousel from "@/components/ui/Carousel";
 import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
@@ -1127,7 +1128,9 @@ export default function Home() {
 
                 {isDefaultProfiles ? (
                   <>
-                    <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:hidden">
+                    <HomePremiumCards />
+
+                    <div className="hidden">
                       <Link
                         href="/explore"
                         className="group w-full text-left rounded-2xl border border-teal-200 bg-white shadow-sm hover:shadow-md transition-all p-4"
@@ -1233,7 +1236,7 @@ export default function Home() {
                       </Link>
                     </div>
 
-                    <div className="hidden md:block space-y-5">
+                    <div className="hidden">
                       <div className="group relative overflow-hidden rounded-3xl border border-teal-200 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
                         <div className="h-2 bg-teal-700" />
                         <div className="grid gap-0 md:grid-cols-12">

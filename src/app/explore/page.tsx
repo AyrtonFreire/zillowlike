@@ -57,9 +57,7 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      <div className="-mt-6">
-        <ExploreCityGate mode={mode} />
-      </div>
+      <ExploreCityGate mode={mode} />
     </div>
   );
 }
