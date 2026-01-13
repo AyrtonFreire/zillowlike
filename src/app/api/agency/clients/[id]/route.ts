@@ -81,7 +81,10 @@ const UpdateClientSchema = z.object({
   notes: z.string().trim().max(5000).nullable().optional(),
 });
 
-export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { userId, role } = await getSessionContext();
 
@@ -103,7 +106,8 @@ export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
     const { error: teamError } = await assertTeamAccess({ userId, role, teamId });
     if (teamError) return teamError;
 
-    const clientId = String(ctx.params.id);
+    const { id } = await params;
+    const clientId = String(id);
 
     const client = await (prisma as any).client.findFirst({
       where: { id: clientId, teamId: String(teamId) },
@@ -131,7 +135,10 @@ export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
   }
 }
 
-export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { userId, role } = await getSessionContext();
 
@@ -153,7 +160,8 @@ export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) {
     const { error: teamError } = await assertTeamAccess({ userId, role, teamId });
     if (teamError) return teamError;
 
-    const clientId = String(ctx.params.id);
+    const { id } = await params;
+    const clientId = String(id);
 
     const existing = await (prisma as any).client.findFirst({
       where: { id: clientId, teamId: String(teamId) },
@@ -245,7 +253,10 @@ export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) {
   }
 }
 
-export async function DELETE(req: NextRequest, ctx: { params: { id: string } }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { userId, role } = await getSessionContext();
 
@@ -267,7 +278,8 @@ export async function DELETE(req: NextRequest, ctx: { params: { id: string } }) 
     const { error: teamError } = await assertTeamAccess({ userId, role, teamId });
     if (teamError) return teamError;
 
-    const clientId = String(ctx.params.id);
+    const { id } = await params;
+    const clientId = String(id);
 
     const existing = await (prisma as any).client.findFirst({
       where: { id: clientId, teamId: String(teamId) },

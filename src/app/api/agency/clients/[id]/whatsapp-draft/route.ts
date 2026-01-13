@@ -273,7 +273,10 @@ async function getOrCreateRecommendationList(input: {
   return created as any;
 }
 
-export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { userId, role } = await getSessionContext();
 
@@ -301,7 +304,8 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
     const { error: teamError } = await assertTeamAccess({ userId, role, teamId });
     if (teamError) return teamError;
 
-    const clientId = String(ctx.params.id);
+    const { id } = await params;
+    const clientId = String(id);
 
     const client = await (prisma as any).client.findFirst({
       where: { id: clientId, teamId: String(teamId) },

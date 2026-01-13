@@ -93,7 +93,10 @@ const UpsertPreferenceSchema = z
     }
   });
 
-export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { userId, role } = await getSessionContext();
 
@@ -115,7 +118,8 @@ export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
     const { error: teamError } = await assertTeamAccess({ userId, role, teamId });
     if (teamError) return teamError;
 
-    const clientId = String(ctx.params.id);
+    const { id } = await params;
+    const clientId = String(id);
 
     const client = await (prisma as any).client.findFirst({
       where: { id: clientId, teamId: String(teamId) },
@@ -141,7 +145,10 @@ export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
   }
 }
 
-export async function PUT(req: NextRequest, ctx: { params: { id: string } }) {
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { userId, role } = await getSessionContext();
 
@@ -163,7 +170,8 @@ export async function PUT(req: NextRequest, ctx: { params: { id: string } }) {
     const { error: teamError } = await assertTeamAccess({ userId, role, teamId });
     if (teamError) return teamError;
 
-    const clientId = String(ctx.params.id);
+    const { id } = await params;
+    const clientId = String(id);
 
     const client = await (prisma as any).client.findFirst({
       where: { id: clientId, teamId: String(teamId) },
