@@ -147,33 +147,37 @@ export default function NewPropertyPage() {
     setOpenAcc(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence]);
-  const TAG_OPTIONS: string[] = useMemo(() => [
-    "Novo",
-    "Condomínio",
-    "Aceita pets",
-    "Aceita permuta",
-    "Mobiliado",
-    "Semi-mobiliado",
-    "Em obras",
-    "Em construção",
-    "Na planta",
-    "Reformado",
-    "Pronto para morar",
-  ], []);
-
-  // Conflicts map (simple opposites)
-  const CONFLICTS: Record<string, string[]> = {
-    "Mobiliado": ["Não mobiliado", "Semi-mobiliado"],
-    "Não mobiliado": ["Mobiliado", "Semi-mobiliado"],
-    "Aceita pets": ["Não aceita pets"],
-    "Não aceita pets": ["Aceita pets"],
-  };
-
-  function hasConflict(tag: string, current: string[]): string | null {
-    const opps = CONFLICTS[tag] || [];
-    const found = current.find((t) => opps.includes(t));
-    return found || null;
-  }
+  const CONDITION_STATUS_OPTIONS: string[] = useMemo(
+    () => ["Novo", "Reformado", "Em obras", "Em construção", "Na planta", "Pronto para morar"],
+    []
+  );
+  const CONDITION_EXTRA_OPTIONS: string[] = useMemo(
+    () => ["Condomínio", "Mobiliado", "Semi-mobiliado", "Aceita permuta", "Aceita pets"],
+    []
+  );
+  const CONDITION_STATUS_SET = useMemo(
+    () => new Set(CONDITION_STATUS_OPTIONS),
+    [CONDITION_STATUS_OPTIONS]
+  );
+  const FURNISHING_SET = useMemo(() => new Set(["Mobiliado", "Semi-mobiliado"]), []);
+  const PROPERTY_FEATURE_TAG_OPTIONS: string[] = useMemo(
+    () => [
+      "Quintal",
+      "Churrasqueira",
+      "Área de serviço",
+      "Lavabo",
+      "Despensa",
+      "Depósito privativo",
+      "Closet",
+      "Home office",
+      "Piscina privativa",
+      "Energia solar",
+      "Gás encanado",
+      "Água individual",
+      "Automação residencial",
+    ],
+    []
+  );
 
   // Heurística: sugerir capa movendo imagem com nome/fachada
   function suggestCover() {
@@ -196,17 +200,20 @@ export default function NewPropertyPage() {
     }
   }
 
-  function toggleTag(tag: string) {
+  function toggleConditionTag(tag: string) {
     setConditionTags((prev) => {
       const has = prev.includes(tag);
-      if (has) return [];
-      // Limite: 1 tag selecionada
-      const conflict = hasConflict(tag, prev);
-      if (conflict) {
-        setToast({ message: `Conflito com "${conflict}". Remova o conflito ou escolha outra opção.`, type: 'error' });
-        return prev;
+      if (has) return prev.filter((t) => t !== tag);
+
+      let next = [...prev];
+      if (CONDITION_STATUS_SET.has(tag)) {
+        next = next.filter((t) => !CONDITION_STATUS_SET.has(t));
       }
-      return [tag];
+      if (FURNISHING_SET.has(tag)) {
+        next = next.filter((t) => !FURNISHING_SET.has(t));
+      }
+      next.push(tag);
+      return next;
     });
   }
 
@@ -417,11 +424,17 @@ export default function NewPropertyPage() {
     }
     // Create/update marker when geo exists
     if (geo && leafletMap.current) {
+      const addressPin = L.divIcon({
+        html: `<div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:#0f766e;color:#fff;border-radius:9999px;box-shadow:0 10px 30px rgba(0,0,0,.22);border:2px solid #ffffff"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.134 2 5 5.134 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></div>`,
+        className: "",
+        iconSize: [34, 34],
+        iconAnchor: [17, 34],
+      });
       const geoTuple = [geo.lat, geo.lng] as [number, number];
       if (!leafletMarker.current) {
         // Create marker
         try {
-          leafletMarker.current = L.marker(geoTuple, { draggable: true }).addTo(leafletMap.current);
+          leafletMarker.current = L.marker(geoTuple, { draggable: true, icon: addressPin }).addTo(leafletMap.current);
           leafletMarker.current.on('dragend', () => {
             const p = leafletMarker.current.getLatLng();
             setGeo({ lat: p.lat, lng: p.lng });
@@ -736,6 +749,10 @@ export default function NewPropertyPage() {
   const [bedrooms, setBedrooms] = useState<string>("");
   const [bathrooms, setBathrooms] = useState<string>("");
   const [areaM2, setAreaM2] = useState<string>("");
+  const [builtAreaM2, setBuiltAreaM2] = useState<string>("");
+  const [lotAreaM2, setLotAreaM2] = useState<string>("");
+  const [privateAreaM2, setPrivateAreaM2] = useState<string>("");
+  const [usableAreaM2, setUsableAreaM2] = useState<string>("");
   const SAVE_KEY = "owner_new_draft";
 
   // dnd-kit: sensors e item ordenável
@@ -768,6 +785,10 @@ export default function NewPropertyPage() {
     setBedrooms("");
     setBathrooms("");
     setAreaM2("");
+    setBuiltAreaM2("");
+    setLotAreaM2("");
+    setPrivateAreaM2("");
+    setUsableAreaM2("");
     setSuites("");
     setParkingSpots("");
     setFloor("");
@@ -899,6 +920,10 @@ export default function NewPropertyPage() {
       if (typeof d.bedrooms !== 'undefined') setBedrooms(d.bedrooms);
       if (typeof d.bathrooms !== 'undefined') setBathrooms(d.bathrooms);
       if (typeof d.areaM2 !== 'undefined') setAreaM2(d.areaM2);
+      if (typeof d.builtAreaM2 !== 'undefined') setBuiltAreaM2(d.builtAreaM2);
+      if (typeof d.lotAreaM2 !== 'undefined') setLotAreaM2(d.lotAreaM2);
+      if (typeof d.privateAreaM2 !== 'undefined') setPrivateAreaM2(d.privateAreaM2);
+      if (typeof d.usableAreaM2 !== 'undefined') setUsableAreaM2(d.usableAreaM2);
       if (typeof d.suites !== 'undefined') setSuites(d.suites);
       if (typeof d.parkingSpots !== 'undefined') setParkingSpots(d.parkingSpots);
       if (typeof d.floor !== 'undefined') setFloor(d.floor);
@@ -969,6 +994,10 @@ export default function NewPropertyPage() {
         if (typeof d.bedrooms !== "undefined") setBedrooms(d.bedrooms);
         if (typeof d.bathrooms !== "undefined") setBathrooms(d.bathrooms);
         if (typeof d.areaM2 !== "undefined") setAreaM2(d.areaM2);
+        if (typeof d.builtAreaM2 !== 'undefined') setBuiltAreaM2(d.builtAreaM2);
+        if (typeof d.lotAreaM2 !== 'undefined') setLotAreaM2(d.lotAreaM2);
+        if (typeof d.privateAreaM2 !== 'undefined') setPrivateAreaM2(d.privateAreaM2);
+        if (typeof d.usableAreaM2 !== 'undefined') setUsableAreaM2(d.usableAreaM2);
         if (typeof d.suites !== 'undefined') setSuites(d.suites);
         if (typeof d.parkingSpots !== 'undefined') setParkingSpots(d.parkingSpots);
         if (typeof d.floor !== 'undefined') setFloor(d.floor);
@@ -1038,6 +1067,10 @@ export default function NewPropertyPage() {
           bedrooms,
           bathrooms,
           areaM2,
+          builtAreaM2,
+          lotAreaM2,
+          privateAreaM2,
+          usableAreaM2,
           suites,
           parkingSpots,
           floor,
@@ -1082,7 +1115,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, isSubmitting, publishedProperty]);
+  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, isSubmitting, publishedProperty]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1363,6 +1396,10 @@ export default function NewPropertyPage() {
           bedrooms: bedrooms === "" ? null : Number(bedrooms),
           bathrooms: bathrooms === "" ? null : Number(bathrooms),
           areaM2: areaM2 === "" ? null : Number(areaM2),
+          builtAreaM2: builtAreaM2 === "" ? null : Number(builtAreaM2),
+          lotAreaM2: lotAreaM2 === "" ? null : Number(lotAreaM2),
+          privateAreaM2: privateAreaM2 === "" ? null : Number(privateAreaM2),
+          usableAreaM2: usableAreaM2 === "" ? null : Number(usableAreaM2),
           suites: suites === "" ? null : Number(suites as any),
           parkingSpots: parkingSpots === "" ? null : Number(parkingSpots as any),
           floor: floor === "" ? null : Number(floor as any),
@@ -1458,6 +1495,10 @@ export default function NewPropertyPage() {
           else if (p === "details.bedrooms") next.bedrooms = "Informe um número válido de quartos.";
           else if (p === "details.bathrooms") next.bathrooms = "Informe um número válido de banheiros.";
           else if (p === "details.areaM2") next.areaM2 = "Informe uma área válida.";
+          else if (p === "details.builtAreaM2") next.builtAreaM2 = "Informe uma área construída válida.";
+          else if (p === "details.lotAreaM2") next.lotAreaM2 = "Informe uma área de terreno válida.";
+          else if (p === "details.privateAreaM2") next.privateAreaM2 = "Informe uma área privativa válida.";
+          else if (p === "details.usableAreaM2") next.usableAreaM2 = "Informe uma área útil válida.";
           else if (p === "details.suites") next.suites = "Informe um número válido de suítes.";
           else if (p === "details.parkingSpots") next.parkingSpots = "Informe um número válido de vagas.";
           else if (p === "details.floor") next.floor = "Informe um andar válido.";
@@ -1596,6 +1637,10 @@ export default function NewPropertyPage() {
       checkNonNeg("bedrooms", "Quartos", bedrooms);
       checkNonNeg("bathrooms", "Banheiros", bathrooms);
       checkNonNeg("areaM2", "Área", areaM2);
+      checkNonNeg("builtAreaM2", "Área construída", builtAreaM2);
+      checkNonNeg("lotAreaM2", "Área do terreno", lotAreaM2);
+      checkNonNeg("privateAreaM2", "Área privativa", privateAreaM2);
+      checkNonNeg("usableAreaM2", "Área útil", usableAreaM2);
       checkNonNeg("suites", "Suítes", suites);
       checkNonNeg("parkingSpots", "Vagas", parkingSpots);
       checkNonNeg("floor", "Andar", floor);
@@ -1798,6 +1843,26 @@ export default function NewPropertyPage() {
                     </svg>
                     WhatsApp
                   </a>
+
+                  {/* Instagram */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        navigator.clipboard.writeText(publishedProperty.url);
+                      } catch {}
+                      try {
+                        window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
+                      } catch {}
+                      setToast({ message: "Link copiado! Cole no Instagram para compartilhar.", type: "success" });
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white font-medium hover:from-fuchsia-700 hover:to-pink-700 transition-colors"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3zm-5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5zM17.75 6.25a1 1 0 1 1-1 1 1 1 0 0 1 1-1z" />
+                    </svg>
+                    Instagram
+                  </button>
                   
                   {/* Facebook */}
                   <a
@@ -2371,11 +2436,47 @@ export default function NewPropertyPage() {
                     <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
                   </div>
 
+                  <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+                    <h3 className="text-sm font-semibold text-gray-800 mb-2">📐 Medidas do imóvel</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
+                      <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
+                      <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
+                      <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
+                    </div>
+                  </div>
+
                   {/* Características principais - sempre visível */}
                   <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
                     <h3 className="text-sm font-semibold text-gray-800 mb-3">🏠 Características do imóvel</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
+                    </div>
+
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold text-gray-700 mb-2">Outras características</p>
+                      <div className="flex flex-wrap gap-2">
+                        {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => toggleConditionTag(tag)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                              conditionTags.includes(tag)
+                                ? 'bg-teal-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+                    <h3 className="text-sm font-semibold text-gray-800 mb-3">🏢 Condomínio / áreas comuns</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
                       <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
                       <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
@@ -2510,22 +2611,51 @@ export default function NewPropertyPage() {
 
                   {/* Tags de condição */}
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-800 mb-2">Estado do imóvel</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {TAG_OPTIONS.map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => toggleTag(tag)}
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                            conditionTags.includes(tag)
-                              ? 'bg-teal-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {tag}
-                        </button>
-                      ))}
+                    <h3 className="text-sm font-semibold text-gray-800 mb-2">Condição e negociação</h3>
+                    <p className="text-xs text-gray-600 mb-2">
+                      Selecione o estado do imóvel e opções extras (ex: mobília, pets, permuta).
+                    </p>
+
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-700 mb-2">Estado do imóvel</p>
+                        <div className="flex flex-wrap gap-2">
+                          {CONDITION_STATUS_OPTIONS.map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => toggleConditionTag(tag)}
+                              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                conditionTags.includes(tag)
+                                  ? 'bg-teal-600 text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold text-gray-700 mb-2">Opções extras</p>
+                        <div className="flex flex-wrap gap-2">
+                          {CONDITION_EXTRA_OPTIONS.map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => toggleConditionTag(tag)}
+                              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                conditionTags.includes(tag)
+                                  ? 'bg-teal-600 text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2951,6 +3081,18 @@ export default function NewPropertyPage() {
                       <p><span className="font-medium">Endereço:</span> {addressString || "Não informado"}</p>
                       <p><span className="font-medium">Quartos/Banheiros:</span> {bedrooms || "-"} / {bathrooms || "-"}</p>
                       <p><span className="font-medium">Área:</span> {areaM2 || "-"} m²</p>
+                      {(builtAreaM2 || lotAreaM2 || privateAreaM2 || usableAreaM2) && (
+                        <p className="text-gray-600">
+                          <span className="font-medium">Medidas:</span>{" "}
+                          {builtAreaM2 ? `Construída ${builtAreaM2}m²` : ""}
+                          {builtAreaM2 && (lotAreaM2 || privateAreaM2 || usableAreaM2) ? " · " : ""}
+                          {lotAreaM2 ? `Terreno ${lotAreaM2}m²` : ""}
+                          {lotAreaM2 && (privateAreaM2 || usableAreaM2) ? " · " : ""}
+                          {privateAreaM2 ? `Privativa ${privateAreaM2}m²` : ""}
+                          {privateAreaM2 && usableAreaM2 ? " · " : ""}
+                          {usableAreaM2 ? `Útil ${usableAreaM2}m²` : ""}
+                        </p>
+                      )}
                     </div>
                   </div>
 

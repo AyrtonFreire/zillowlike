@@ -218,6 +218,10 @@ model Property {
   bedrooms      Int?
   bathrooms     Float?
   areaM2        Int?
+  builtAreaM2   Int?
+  lotAreaM2     Int?
+  privateAreaM2 Int?
+  usableAreaM2  Int?
   // Amenities/extra metadata
   suites        Int?
   parkingSpots  Int?

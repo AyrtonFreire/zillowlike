@@ -116,6 +116,10 @@ export default function EditPropertyPage() {
   const [bedrooms, setBedrooms] = useState("");
   const [bathrooms, setBathrooms] = useState("");
   const [areaM2, setAreaM2] = useState("");
+  const [builtAreaM2, setBuiltAreaM2] = useState("");
+  const [lotAreaM2, setLotAreaM2] = useState("");
+  const [privateAreaM2, setPrivateAreaM2] = useState("");
+  const [usableAreaM2, setUsableAreaM2] = useState("");
   const [suites, setSuites] = useState("");
   const [parkingSpots, setParkingSpots] = useState("");
   const [floor, setFloor] = useState("");
@@ -207,6 +211,10 @@ export default function EditPropertyPage() {
         setBedrooms(p.bedrooms !== null && p.bedrooms !== undefined ? String(p.bedrooms) : "");
         setBathrooms(p.bathrooms !== null && p.bathrooms !== undefined ? String(p.bathrooms) : "");
         setAreaM2(p.areaM2 !== null && p.areaM2 !== undefined ? String(p.areaM2) : "");
+        setBuiltAreaM2(p.builtAreaM2 !== null && p.builtAreaM2 !== undefined ? String(p.builtAreaM2) : "");
+        setLotAreaM2(p.lotAreaM2 !== null && p.lotAreaM2 !== undefined ? String(p.lotAreaM2) : "");
+        setPrivateAreaM2(p.privateAreaM2 !== null && p.privateAreaM2 !== undefined ? String(p.privateAreaM2) : "");
+        setUsableAreaM2(p.usableAreaM2 !== null && p.usableAreaM2 !== undefined ? String(p.usableAreaM2) : "");
         setSuites(p.suites !== null && p.suites !== undefined ? String(p.suites) : "");
         setParkingSpots(p.parkingSpots !== null && p.parkingSpots !== undefined ? String(p.parkingSpots) : "");
         setFloor(p.floor !== null && p.floor !== undefined ? String(p.floor) : "");
@@ -306,6 +314,10 @@ export default function EditPropertyPage() {
           bedrooms: bedrooms ? parseInt(bedrooms) : null,
           bathrooms: bathrooms ? parseFloat(bathrooms) : null,
           areaM2: areaM2 ? parseInt(areaM2) : null,
+          builtAreaM2: builtAreaM2 ? parseInt(builtAreaM2) : null,
+          lotAreaM2: lotAreaM2 ? parseInt(lotAreaM2) : null,
+          privateAreaM2: privateAreaM2 ? parseInt(privateAreaM2) : null,
+          usableAreaM2: usableAreaM2 ? parseInt(usableAreaM2) : null,
           suites: suites ? parseInt(suites) : null,
           parkingSpots: parkingSpots ? parseInt(parkingSpots) : null,
           floor: floor ? parseInt(floor) : null,
@@ -760,6 +772,50 @@ export default function EditPropertyPage() {
                     type="number"
                     value={areaM2}
                     onChange={(e) => setAreaM2(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Área construída (m²)
+                  </label>
+                  <input
+                    type="number"
+                    value={builtAreaM2}
+                    onChange={(e) => setBuiltAreaM2(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Área do terreno (m²)
+                  </label>
+                  <input
+                    type="number"
+                    value={lotAreaM2}
+                    onChange={(e) => setLotAreaM2(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Área privativa (m²)
+                  </label>
+                  <input
+                    type="number"
+                    value={privateAreaM2}
+                    onChange={(e) => setPrivateAreaM2(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Área útil (m²)
+                  </label>
+                  <input
+                    type="number"
+                    value={usableAreaM2}
+                    onChange={(e) => setUsableAreaM2(e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>

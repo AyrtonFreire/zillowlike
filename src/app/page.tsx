@@ -132,6 +132,10 @@ export default function Home() {
   // Detectar rascunho de anúncio salvo no fluxo /owner/new
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!session) {
+      setOwnerDraft(null);
+      return;
+    }
     try {
       const raw = window.localStorage.getItem('owner_new_draft');
       if (!raw) {
@@ -152,7 +156,7 @@ export default function Home() {
     } catch {
       setOwnerDraft(null);
     }
-  }, []);
+  }, [session]);
 
   const clearOwnerDraft = () => {
     if (typeof window !== 'undefined') {
@@ -1014,7 +1018,7 @@ export default function Home() {
       )}
 
       {/* Rascunho de anúncio em andamento */}
-      {!hasSearched && ownerDraft && (
+      {!hasSearched && user && ownerDraft && (
         <div className="border-b border-teal-100/60 bg-white/80 backdrop-blur-sm">
           <div className="mx-auto max-w-7xl px-4 py-4 sm:py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
@@ -1124,14 +1128,8 @@ export default function Home() {
                 {isDefaultProfiles ? (
                   <>
                     <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:hidden">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (typeof window !== "undefined") {
-                            const el = document.getElementById("explorar");
-                            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                          }
-                        }}
+                      <Link
+                        href="/explore"
                         className="group w-full text-left rounded-2xl border border-teal-200 bg-white shadow-sm hover:shadow-md transition-all p-4"
                       >
                         <div className="flex items-start gap-3">
@@ -1154,7 +1152,7 @@ export default function Home() {
                             </p>
                           </div>
                         </div>
-                      </button>
+                      </Link>
 
                       <Link
                         href="/start"
@@ -1255,18 +1253,12 @@ export default function Home() {
                               Explore casas e apartamentos com informações claras, filtros rápidos e favoritos para comparar com calma.
                             </p>
                             <div className="mt-5">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (typeof window !== "undefined") {
-                                    const el = document.getElementById("explorar");
-                                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                                  }
-                                }}
+                              <Link
+                                href="/explore"
                                 className="inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-teal-200 text-teal-700 hover:bg-teal-50 transition-all"
                               >
                                 Explorar imóveis
-                              </button>
+                              </Link>
                             </div>
                           </div>
                         </div>

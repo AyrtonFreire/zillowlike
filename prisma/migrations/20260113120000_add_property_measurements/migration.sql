@@ -1,0 +1,6 @@
+-- Add measurement fields to properties
+ALTER TABLE "properties"
+ADD COLUMN IF NOT EXISTS "builtAreaM2" INTEGER,
+ADD COLUMN IF NOT EXISTS "lotAreaM2" INTEGER,
+ADD COLUMN IF NOT EXISTS "privateAreaM2" INTEGER,
+ADD COLUMN IF NOT EXISTS "usableAreaM2" INTEGER;
