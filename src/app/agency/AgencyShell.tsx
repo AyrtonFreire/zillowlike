@@ -96,8 +96,8 @@ export default function AgencyShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-gray-50">
       <ModernNavbar />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col md:flex-row gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex flex-col md:flex-row gap-5">
           <aside className="md:w-64 flex-shrink-0">
             <nav className="rounded-2xl border border-gray-200 bg-white p-2 md:p-3 shadow-sm">
               <div className="grid grid-cols-4 md:grid-cols-1 gap-1">
@@ -124,8 +124,8 @@ export default function AgencyShell({ children }: { children: ReactNode }) {
           </aside>
 
           <div className="flex-1 min-w-0">
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-2">
+            <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+              <div className="flex flex-col gap-1.5">
                 <div className="text-xs text-gray-500">
                   <Link href="/" className="hover:text-gray-700 font-semibold">
                     Home
@@ -149,7 +149,7 @@ export default function AgencyShell({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            <div className="mt-6">{children}</div>
+            <div className="mt-5">{children}</div>
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Activity, AlertTriangle, Kanban, Plus, Settings, Users } from "lucide-react";
+import { Activity, AlertTriangle, Kanban, Settings, Users } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
 
@@ -136,67 +136,57 @@ export default function AgencyDashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {insightsError && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {insightsError}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-gray-500">Workspace</p>
-              <p className="mt-1 text-xl font-semibold text-gray-900 truncate">{team?.name || "Agência"}</p>
-              <p className="mt-1 text-sm text-gray-600">
-                {team?.id
-                  ? `Time vinculado: ${team.id}`
-                  : "Vincule seu time para começar a distribuir leads e acompanhar o funil."}
-              </p>
-            </div>
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-gray-500">Workspace</p>
+            <p className="mt-1 text-xl font-semibold text-gray-900 truncate">{team?.name || "Agência"}</p>
+            <p className="mt-1 text-sm text-gray-600">
+              {team?.id
+                ? "Acompanhe o funil do time e redistribua responsáveis sem perder o contexto."
+                : "Vincule seu time para começar a distribuir leads e acompanhar o funil."}
+            </p>
+          </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {team?.id ? (
+              <Link
+                href={`/agency/teams/${team.id}/crm`}
+                className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
+              >
+                <Kanban className="w-4 h-4 mr-2" />
+                Abrir leads
+              </Link>
+            ) : (
               <Link
                 href="/agency/team"
-                className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
               >
                 <Settings className="w-4 h-4 mr-2" />
-                Configurar
+                Configurar time
               </Link>
+            )}
 
-              {team?.id && (
-                <Link
-                  href={`/agency/teams/${team.id}/crm`}
-                  className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
-                >
-                  <Kanban className="w-4 h-4 mr-2" />
-                  Leads do time
-                </Link>
-              )}
-            </div>
+            <Link
+              href="/agency/team"
+              className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Ajustes
+            </Link>
           </div>
         </div>
-
-        <Link
-          href="/owner/new"
-          className="group bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all duration-300"
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-blue-50 group-hover:bg-blue-100 transition-colors">
-              <Plus className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900">Cadastrar imóvel</p>
-              <p className="text-sm text-gray-600 mt-1">Crie um novo anúncio</p>
-            </div>
-          </div>
-        </Link>
       </div>
 
       {insights?.team ? (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
             <MetricCard
               title="Leads ativos"
               value={insights.funnel.activeTotal}
@@ -221,14 +211,6 @@ export default function AgencyDashboardPage() {
               iconColor="text-rose-700"
               iconBgColor="bg-rose-50"
             />
-            <MetricCard
-              title="Novos 24h"
-              value={insights.funnel.newLast24h}
-              icon={Plus}
-              subtitle="Entradas recentes"
-              iconColor="text-blue-700"
-              iconBgColor="bg-blue-50"
-            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -240,40 +222,30 @@ export default function AgencyDashboardPage() {
                     href={`/agency/teams/${insights.team.id}/crm`}
                     className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                   >
-                    Leads do time
+                    Abrir leads
                   </Link>
                 }
               >
                 {Array.isArray(insights.highlights) && insights.highlights.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="divide-y divide-gray-100">
                     {insights.highlights.map((h, idx) => {
                       const s = severityStyles(h.severity);
                       return (
-                        <div
-                          key={`${h.title}-${idx}`}
-                          className={`rounded-2xl border p-4 ${s.card} hover:bg-gray-50 transition-colors`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 line-clamp-1">{h.title}</p>
-                              <p className="mt-1 text-sm text-gray-600 line-clamp-2">{h.detail}</p>
-                            </div>
-                            <span
-                              className={`flex-shrink-0 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${s.badge}`}
-                            >
-                              {s.label}
-                            </span>
+                        <div key={`${h.title}-${idx}`} className="py-3 flex items-start gap-3">
+                          <span
+                            className={`mt-0.5 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${s.badge}`}
+                          >
+                            {s.label}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-gray-900 line-clamp-1">{h.title}</p>
+                            <p className="mt-0.5 text-sm text-gray-600 line-clamp-2">{h.detail}</p>
                           </div>
-                          {h.href && (
-                            <div className="mt-3">
-                              <Link
-                                href={h.href}
-                                className="inline-flex items-center text-[11px] font-semibold text-blue-600 hover:text-blue-700"
-                              >
-                                {h.hrefLabel || "Abrir"}
-                              </Link>
-                            </div>
-                          )}
+                          {h.href ? (
+                            <Link href={h.href} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                              {h.hrefLabel || "Abrir"}
+                            </Link>
+                          ) : null}
                         </div>
                       );
                     })}
@@ -287,43 +259,55 @@ export default function AgencyDashboardPage() {
             </div>
 
             <div className="space-y-6">
-              <StatCard title="Atalhos rápidos">
-                <div className="grid grid-cols-1 gap-3">
-                  <Link
-                    href="/agency/team"
-                    className="p-4 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-slate-50 rounded-xl group-hover:bg-slate-100 transition-colors">
-                        <Users className="w-6 h-6 text-slate-700" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">Meu time</p>
-                        <p className="text-sm text-gray-600 mt-1">Convites, regras e perfil</p>
-                      </div>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href={team?.id ? `/agency/teams/${team.id}/crm` : "/agency/team"}
-                    className="p-4 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-teal-50 rounded-xl group-hover:bg-teal-100 transition-colors">
-                        <Kanban className="w-6 h-6 text-teal-700" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">Leads do time</p>
-                        <p className="text-sm text-gray-600 mt-1">Lista, etapas e responsáveis</p>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-              </StatCard>
-
               <StatCard title="Próximos passos">
-                <div className="text-sm text-gray-600">
-                  Convide corretores para o time e defina a regra de distribuição de leads. Depois acompanhe o funil para identificar gargalos.
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 w-6 h-6 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-[11px] font-bold text-gray-700">
+                      1
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">Convide corretores</p>
+                      <p className="mt-0.5 text-sm text-gray-600">
+                        Adicione membros ao time e defina papéis.
+                        <Link href="/agency/team#invites" className="ml-2 text-blue-600 hover:text-blue-700 font-semibold">
+                          Convidar
+                        </Link>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 w-6 h-6 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-[11px] font-bold text-gray-700">
+                      2
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">Defina a distribuição</p>
+                      <p className="mt-0.5 text-sm text-gray-600">
+                        Escolha a regra (fila, capturador primeiro ou manual).
+                        <Link href="/agency/team#distribution" className="ml-2 text-blue-600 hover:text-blue-700 font-semibold">
+                          Ajustar
+                        </Link>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 w-6 h-6 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-[11px] font-bold text-gray-700">
+                      3
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">Acompanhe o funil</p>
+                      <p className="mt-0.5 text-sm text-gray-600">
+                        Veja quem está com SLA pendente e leads sem responsável.
+                        <Link
+                          href={`/agency/teams/${insights.team.id}/crm`}
+                          className="ml-2 text-blue-600 hover:text-blue-700 font-semibold"
+                        >
+                          Abrir leads
+                        </Link>
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </StatCard>
             </div>

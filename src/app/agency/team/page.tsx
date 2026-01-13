@@ -3,10 +3,10 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
-import { Activity, AlertTriangle, Copy, Kanban, Mail, Plus, Settings, Trash2, Users } from "lucide-react";
+import Tabs from "@/components/ui/Tabs";
+import { Activity, AlertTriangle, Copy, Mail, Plus, Settings, Trash2, Users } from "lucide-react";
 
 type TeamMember = {
   id: string;
@@ -137,6 +137,47 @@ export default function AgencyTeamPage() {
 
   const [leadDistributionMode, setLeadDistributionMode] = useState<TeamLeadDistributionMode>("ROUND_ROBIN");
   const [savingSettings, setSavingSettings] = useState(false);
+
+  const tabFromHash = (hash: string) => {
+    const h = String(hash || "").toLowerCase();
+    if (h === "#members") return "members";
+    if (h === "#invites") return "invites";
+    if (h === "#distribution") return "distribution";
+    if (h === "#advanced") return "advanced";
+    return "general";
+  };
+
+  const hashFromTab = (tab: string) => {
+    const t = String(tab || "").toLowerCase();
+    if (t === "members") return "#members";
+    if (t === "invites") return "#invites";
+    if (t === "distribution") return "#distribution";
+    if (t === "advanced") return "#advanced";
+    return "";
+  };
+
+  const [activeTab, setActiveTab] = useState<string>("general");
+
+  const navigateTab = (nextTab: string) => {
+    setActiveTab(nextTab);
+    if (typeof window === "undefined") return;
+    const nextHash = hashFromTab(nextTab);
+    const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
+    window.history.replaceState(null, "", nextUrl);
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const apply = () => {
+      setActiveTab(tabFromHash(window.location.hash));
+    };
+
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [insights, setInsights] = useState<AgencyInsights | null>(null);
   const [insightsError, setInsightsError] = useState<string | null>(null);
@@ -531,472 +572,514 @@ export default function AgencyTeamPage() {
   };
 
   return (
-    <div className="space-y-8">
-        {error && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
-        )}
+    <div className="space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
+      )}
 
-        {insightsError && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {insightsError}
-          </div>
-        )}
+      {insightsError && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {insightsError}
+        </div>
+      )}
 
-        <StatCard
-          title="Workspace"
-          action={
-            <Link href="/agency" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-              Voltar ao painel
-            </Link>
-          }
-        >
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{team?.name || "Time"}</p>
-              <p className="mt-1 text-sm text-gray-600">
-                {team?.owner?.name || team?.owner?.email
-                  ? `Titular: ${team.owner.name || team.owner.email}`
-                  : "Defina um titular para gerenciar o time."}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <a
-                href="#distribution"
-                className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Distribuição
-              </a>
-              <a
-                href="#invites"
-                className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
-              >
-                <Mail className="w-4 h-4 mr-2" />
-                Convidar
-              </a>
-            </div>
-          </div>
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-gray-500">
-            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
-              Distribuição: {distributionLabel(leadDistributionMode)}
-            </span>
-            <span className="text-[11px]">{distributionHint(leadDistributionMode)}</span>
-          </div>
-        </StatCard>
-
-        {queueMembers.length > 0 && (
-          <StatCard title="Fila interna do time">
-            <p className="text-sm text-gray-600">
-              {canManageTeam
-                ? "Ordem de prioridade atual entre os corretores do time."
-                : "Ordem interna de prioridade entre os corretores do time."}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {queueMembers.map((member, index) => (
-                <span
-                  key={member.userId}
-                  className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-gray-50 border border-gray-200"
+      <Tabs
+        key={activeTab}
+        defaultKey={activeTab}
+        onChange={(k) => navigateTab(k)}
+        items={[
+          {
+            key: "general",
+            label: "Geral",
+            content: (
+              <div className="space-y-6">
+                <StatCard
+                  title="Workspace"
+                  action={
+                    <Link href="/agency" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                      Voltar ao painel
+                    </Link>
+                  }
                 >
-                  <span className="text-[10px] font-semibold text-gray-500">#{index + 1}</span>
-                  <span className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-[10px] font-bold text-gray-700">
-                    {initials(member.name || member.email || "")}
-                  </span>
-                  <span className="text-[11px] font-semibold text-gray-800">
-                    {member.name || member.email || "Membro"}
-                  </span>
-                </span>
-              ))}
-            </div>
-          </StatCard>
-        )}
-
-        {insights?.team && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-              <MetricCard
-                title="Leads ativos"
-                value={insights.funnel.activeTotal}
-                icon={Activity}
-                subtitle="Em andamento"
-                iconColor="text-teal-700"
-                iconBgColor="bg-teal-50"
-              />
-              <MetricCard
-                title="Sem responsável"
-                value={insights.funnel.unassigned}
-                icon={Users}
-                subtitle="Atribuir nos leads"
-                iconColor="text-amber-700"
-                iconBgColor="bg-amber-50"
-              />
-              <MetricCard
-                title="Pendentes (SLA)"
-                value={insights.sla.pendingReplyTotal}
-                icon={AlertTriangle}
-                subtitle="Cliente aguardando"
-                iconColor="text-rose-700"
-                iconBgColor="bg-rose-50"
-              />
-              <MetricCard
-                title="Novos 24h"
-                value={insights.funnel.newLast24h}
-                icon={Plus}
-                subtitle="Entradas recentes"
-                iconColor="text-blue-700"
-                iconBgColor="bg-blue-50"
-              />
-            </div>
-
-            <StatCard
-              title="Qualidade do time"
-              action={
-                <Link
-                  href={`/agency/teams/${insights.team.id}/crm`}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Leads do time
-                </Link>
-              }
-            >
-              <p className="text-sm text-gray-600">{insights.summary}</p>
-
-              {Array.isArray(insights.members) && insights.members.length > 0 ? (
-                <div className="mt-4 space-y-2">
-                  {insights.members.map((m) => (
-                    <div
-                      key={m.userId}
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-gray-100 bg-white p-4"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-semibold text-gray-900 truncate">{m.name || m.email || "Membro"}</p>
-                        <p className="text-xs text-gray-500 truncate">{m.email || ""}</p>
-                        <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                          <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
-                            Ativos: <span className="ml-1 tabular-nums text-gray-900">{m.activeLeads}</span>
-                          </span>
-                          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
-                            Pendentes: <span className="ml-1 tabular-nums">{m.pendingReply}</span>
-                          </span>
-                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700">
-                            Parados: <span className="ml-1 tabular-nums">{m.stalledLeads}</span>
-                          </span>
-                        </div>
-                      </div>
-
-                      <Link
-                        href={`/agency/teams/${insights.team?.id}/crm?realtorId=${encodeURIComponent(m.userId)}`}
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{team?.name || "Time"}</p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {team?.owner?.name || team?.owner?.email
+                          ? `Titular: ${team.owner.name || team.owner.email}`
+                          : "Defina um titular para gerenciar o time."}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <a
+                        href="#distribution"
                         className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
                       >
-                        Ver leads
-                      </Link>
+                        <Settings className="w-4 h-4 mr-2" />
+                        Distribuição
+                      </a>
+                      <a
+                        href="#invites"
+                        className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Convidar
+                      </a>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-4 text-sm text-gray-600">Sem dados por membro ainda.</div>
-              )}
+                  </div>
+                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-gray-500">
+                    <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
+                      Distribuição: {distributionLabel(leadDistributionMode)}
+                    </span>
+                    <span className="text-[11px]">{distributionHint(leadDistributionMode)}</span>
+                  </div>
+                </StatCard>
 
-              {insights.funnel.unassigned > 0 && (
-                <div className="mt-4">
-                  <Link
-                    href={`/agency/teams/${insights.team.id}/crm?realtorId=unassigned`}
-                    className="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700"
-                  >
-                    Ver leads sem responsável
-                  </Link>
-                </div>
-              )}
-            </StatCard>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <StatCard title="Perfil da agência">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>
-                <input
-                  value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone</label>
-                <input
-                  value={profilePhone}
-                  onChange={(e) => setProfilePhone(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
-              </div>
-
-              <div className="text-[11px] text-gray-500">
-                CNPJ: <span className="font-medium text-gray-700">{agencyProfile?.cnpj || "-"}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleSaveProfile}
-                  disabled={savingProfile}
-                  className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
-                >
-                  {savingProfile ? "Salvando..." : "Salvar perfil"}
-                </button>
-              </div>
-            </div>
-          </StatCard>
-
-          <div id="distribution">
-            <StatCard
-              title="Distribuição de leads do time"
-              action={
-                team?.id ? (
-                  <Link
-                    href={`/agency/teams/${team.id}/crm`}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    Leads do time
-                  </Link>
-                ) : null
-              }
-            >
-              <div className="flex flex-col gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Modo</label>
-                  <select
-                    value={leadDistributionMode}
-                    onChange={(e) => setLeadDistributionMode(e.target.value as TeamLeadDistributionMode)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
-                  >
-                    <option value="ROUND_ROBIN">Round-robin</option>
-                    <option value="CAPTURER_FIRST">Prioridade do captador/parceiro</option>
-                    <option value="MANUAL">Manual (sem responsável)</option>
-                  </select>
-                </div>
-
-                <div className="text-[11px] text-gray-500">{distributionHint(leadDistributionMode)}</div>
-
-                <button
-                  type="button"
-                  onClick={handleSaveSettings}
-                  disabled={savingSettings}
-                  className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
-                >
-                  {savingSettings ? "Salvando..." : "Salvar preferências"}
-                </button>
-              </div>
-            </StatCard>
-          </div>
-        </div>
-
-        <StatCard
-          title="Membros"
-          action={
-            <a href="#invites" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-              Convidar
-            </a>
-          }
-        >
-          {team?.members?.length ? (
-            <div className="space-y-2 text-sm text-gray-700">
-              {team.members.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3"
-                >
-                  <div className="min-w-0 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 flex-shrink-0">
-                      {initials(m.name || m.email || "")}
+                {insights?.team && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+                      <MetricCard
+                        title="Leads ativos"
+                        value={insights.funnel.activeTotal}
+                        icon={Activity}
+                        subtitle="Em andamento"
+                        iconColor="text-teal-700"
+                        iconBgColor="bg-teal-50"
+                      />
+                      <MetricCard
+                        title="Sem responsável"
+                        value={insights.funnel.unassigned}
+                        icon={Users}
+                        subtitle="Atribuir nos leads"
+                        iconColor="text-amber-700"
+                        iconBgColor="bg-amber-50"
+                      />
+                      <MetricCard
+                        title="Pendentes (SLA)"
+                        value={insights.sla.pendingReplyTotal}
+                        icon={AlertTriangle}
+                        subtitle="Cliente aguardando"
+                        iconColor="text-rose-700"
+                        iconBgColor="bg-rose-50"
+                      />
+                      <MetricCard
+                        title="Novos 24h"
+                        value={insights.funnel.newLast24h}
+                        icon={Plus}
+                        subtitle="Entradas recentes"
+                        iconColor="text-blue-700"
+                        iconBgColor="bg-blue-50"
+                      />
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="font-semibold text-gray-900 truncate">{m.name || m.email || "Membro"}</div>
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${rolePill(String(m.role))}`}
+
+                    <StatCard
+                      title="Qualidade do time"
+                      action={
+                        <Link
+                          href={`/agency/teams/${insights.team.id}/crm`}
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                         >
-                          {String(m.role).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-gray-500 truncate">{m.email || ""}</div>
+                          Leads do time
+                        </Link>
+                      }
+                    >
+                      <p className="text-sm text-gray-600">{insights.summary}</p>
+
+                      {Array.isArray(insights.members) && insights.members.length > 0 ? (
+                        <div className="mt-4 space-y-2">
+                          {insights.members.map((m) => (
+                            <div
+                              key={m.userId}
+                              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-gray-100 bg-white p-4"
+                            >
+                              <div className="min-w-0">
+                                <p className="font-semibold text-gray-900 truncate">{m.name || m.email || "Membro"}</p>
+                                <p className="text-xs text-gray-500 truncate">{m.email || ""}</p>
+                                <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
+                                    Ativos: <span className="ml-1 tabular-nums text-gray-900">{m.activeLeads}</span>
+                                  </span>
+                                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+                                    Pendentes: <span className="ml-1 tabular-nums">{m.pendingReply}</span>
+                                  </span>
+                                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700">
+                                    Parados: <span className="ml-1 tabular-nums">{m.stalledLeads}</span>
+                                  </span>
+                                </div>
+                              </div>
+
+                              <Link
+                                href={`/agency/teams/${insights.team?.id}/crm?realtorId=${encodeURIComponent(m.userId)}`}
+                                className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                              >
+                                Ver leads
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-4 text-sm text-gray-600">Sem dados por membro ainda.</div>
+                      )}
+
+                      {insights.funnel.unassigned > 0 && (
+                        <div className="mt-4">
+                          <Link
+                            href={`/agency/teams/${insights.team.id}/crm?realtorId=unassigned`}
+                            className="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700"
+                          >
+                            Ver leads sem responsável
+                          </Link>
+                        </div>
+                      )}
+                    </StatCard>
+                  </div>
+                )}
+              </div>
+            ),
+          },
+          {
+            key: "members",
+            label: "Membros",
+            content: (
+              <div id="members" className="space-y-6">
+                <StatCard
+                  title="Membros"
+                  action={
+                    <a href="#invites" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                      Convidar
+                    </a>
+                  }
+                >
+                  {team?.members?.length ? (
+                    <div className="space-y-2 text-sm text-gray-700">
+                      {team.members.map((m) => (
+                        <div
+                          key={m.id}
+                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3"
+                        >
+                          <div className="min-w-0 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 flex-shrink-0">
+                              {initials(m.name || m.email || "")}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="font-semibold text-gray-900 truncate">{m.name || m.email || "Membro"}</div>
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${rolePill(String(m.role))}`}
+                                >
+                                  {String(m.role).toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-gray-500 truncate">{m.email || ""}</div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 justify-end">
+                            {team?.id && canManageTeam && String(m.role).toUpperCase() !== "OWNER" ? (
+                              <select
+                                value={String(m.role).toUpperCase()}
+                                onChange={(e) => {
+                                  const next = String(e.target.value).toUpperCase() as TeamMemberRole;
+                                  if (next !== String(m.role).toUpperCase()) {
+                                    void handleUpdateMemberRole(m.id, next);
+                                  }
+                                }}
+                                disabled={memberBusyId === m.id}
+                                className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700"
+                              >
+                                <option value="AGENT">AGENTE</option>
+                                <option value="ASSISTANT">ASSISTENTE</option>
+                              </select>
+                            ) : (
+                              <div className="text-[11px] text-gray-500 uppercase">{m.role}</div>
+                            )}
+
+                            {team?.id && canManageTeam && String(m.role).toUpperCase() !== "OWNER" && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveMember(m.id)}
+                                disabled={memberBusyId === m.id}
+                                className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                Remover
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {canManageTeam && (
+                        <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-4">
+                          <div className="text-sm font-semibold text-gray-900">Transferir titularidade</div>
+                          <div className="mt-1 text-xs text-gray-500">Escolha um membro (não assistente) para virar titular do time.</div>
+                          <div className="mt-3 flex flex-col sm:flex-row gap-2 sm:items-end">
+                            <div className="flex-1">
+                              <label className="block text-[11px] font-semibold text-gray-600 mb-1">Novo dono</label>
+                              <select
+                                value={newOwnerId}
+                                onChange={(e) => setNewOwnerId(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
+                              >
+                                <option value="">Selecione um membro</option>
+                                {team.members
+                                  .filter((m) => String(m.role).toUpperCase() !== "ASSISTANT")
+                                  .filter((m) => String(m.id) !== String(team.owner?.id))
+                                  .map((m) => (
+                                    <option key={m.id} value={m.id}>
+                                      {m.name || m.email || m.id}
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleTransferOwner}
+                              disabled={ownerTransferBusy || !newOwnerId}
+                              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
+                            >
+                              {ownerTransferBusy ? "Transferindo..." : "Transferir"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 justify-end">
-                    {team?.id && canManageTeam && String(m.role).toUpperCase() !== "OWNER" ? (
+                  ) : (
+                    <div className="text-sm text-gray-600">Nenhum membro encontrado.</div>
+                  )}
+                </StatCard>
+              </div>
+            ),
+          },
+          {
+            key: "invites",
+            label: "Convites",
+            content: (
+              <div id="invites" className="space-y-6">
+                <StatCard title="Convites">
+                  <form onSubmit={handleInvite} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end mb-4">
+                    <div className="md:col-span-3">
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail do corretor</label>
+                      <input
+                        type="email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="corretor@email.com"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Papel no time</label>
                       <select
-                        value={String(m.role).toUpperCase()}
-                        onChange={(e) => {
-                          const next = String(e.target.value).toUpperCase() as TeamMemberRole;
-                          if (next !== String(m.role).toUpperCase()) {
-                            void handleUpdateMemberRole(m.id, next);
-                          }
-                        }}
-                        disabled={memberBusyId === m.id}
-                        className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700"
-                      >
-                        <option value="AGENT">AGENTE</option>
-                        <option value="ASSISTANT">ASSISTENTE</option>
-                      </select>
-                    ) : (
-                      <div className="text-[11px] text-gray-500 uppercase">{m.role}</div>
-                    )}
-
-                    {team?.id && canManageTeam && String(m.role).toUpperCase() !== "OWNER" && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMember(m.id)}
-                        disabled={memberBusyId === m.id}
-                        className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                        Remover
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {canManageTeam && (
-                <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-4">
-                  <div className="text-sm font-semibold text-gray-900">Transferir titularidade</div>
-                  <div className="mt-1 text-xs text-gray-500">Escolha um membro (não assistente) para virar titular do time.</div>
-                  <div className="mt-3 flex flex-col sm:flex-row gap-2 sm:items-end">
-                    <div className="flex-1">
-                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">Novo dono</label>
-                      <select
-                        value={newOwnerId}
-                        onChange={(e) => setNewOwnerId(e.target.value)}
+                        value={inviteRole}
+                        onChange={(e) => setInviteRole(e.target.value as TeamMemberRole)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
                       >
-                        <option value="">Selecione um membro</option>
-                        {team.members
-                          .filter((m) => String(m.role).toUpperCase() !== "ASSISTANT")
-                          .filter((m) => String(m.id) !== String(team.owner?.id))
-                          .map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.name || m.email || m.id}
-                            </option>
-                          ))}
+                        <option value="AGENT">Agente</option>
+                        <option value="ASSISTANT">Assistente</option>
                       </select>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleTransferOwner}
-                      disabled={ownerTransferBusy || !newOwnerId}
-                      className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
-                    >
-                      {ownerTransferBusy ? "Transferindo..." : "Transferir"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-sm text-gray-600">Nenhum membro encontrado.</div>
-          )}
-        </StatCard>
+                    <div className="md:col-span-1">
+                      <button
+                        type="submit"
+                        disabled={inviting || !team?.id}
+                        className="w-full inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        {inviting ? "Enviando..." : "Convidar"}
+                      </button>
+                    </div>
+                  </form>
 
-        <div id="invites">
-          <StatCard title="Convites">
+                  {invites.length ? (
+                    <div className="space-y-2">
+                      {invites.map((inv) => (
+                        <div key={inv.id} className="rounded-2xl border border-gray-100 bg-white p-4 text-sm text-gray-700">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="font-semibold text-gray-900 truncate">{inv.email}</div>
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-1 font-semibold ${inviteStatusBadge(String(inv.status))}`}
+                                >
+                                  {String(inv.status).toUpperCase()}
+                                </span>
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-1 font-semibold ${rolePill(String(inv.role))}`}
+                                >
+                                  {String(inv.role).toUpperCase()}
+                                </span>
+                              </div>
+                            </div>
 
-            <form onSubmit={handleInvite} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end mb-4">
-              <div className="md:col-span-3">
-                <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail do corretor</label>
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="corretor@email.com"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Papel no time</label>
-                <select
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as TeamMemberRole)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
-                >
-                  <option value="AGENT">Agente</option>
-                  <option value="ASSISTANT">Assistente</option>
-                </select>
-              </div>
-              <div className="md:col-span-1">
-                <button
-                  type="submit"
-                  disabled={inviting || !team?.id}
-                  className="w-full inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  {inviting ? "Enviando..." : "Convidar"}
-                </button>
-              </div>
-            </form>
+                            <div className="flex items-center gap-2">
+                              {inv.acceptUrl && inv.status === "PENDING" && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(String(inv.acceptUrl));
+                                    } catch {}
+                                  }}
+                                  className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                >
+                                  <Copy className="w-3.5 h-3.5 mr-1.5" />
+                                  Copiar link
+                                </button>
+                              )}
+                              {inv.status === "PENDING" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRevokeInvite(inv.id)}
+                                  className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                  Revogar
+                                </button>
+                              )}
+                            </div>
+                          </div>
 
-            {invites.length ? (
-              <div className="space-y-2">
-                {invites.map((inv) => (
-                  <div key={inv.id} className="rounded-2xl border border-gray-100 bg-white p-4 text-sm text-gray-700">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-semibold text-gray-900 truncate">{inv.email}</div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2.5 py-1 font-semibold ${inviteStatusBadge(String(inv.status))}`}
-                          >
-                            {String(inv.status).toUpperCase()}
-                          </span>
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2.5 py-1 font-semibold ${rolePill(String(inv.role))}`}
-                          >
-                            {String(inv.role).toUpperCase()}
-                          </span>
+                          {inv.acceptUrl && inv.status === "PENDING" && (
+                            <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-[11px] text-gray-600 break-all">
+                              {inv.acceptUrl}
+                            </div>
+                          )}
                         </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-600">Nenhum convite enviado ainda.</div>
+                  )}
+                </StatCard>
+              </div>
+            ),
+          },
+          {
+            key: "distribution",
+            label: "Distribuição",
+            content: (
+              <div id="distribution" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <StatCard
+                    title="Distribuição de leads do time"
+                    action={
+                      team?.id ? (
+                        <Link
+                          href={`/agency/teams/${team.id}/crm`}
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          Leads do time
+                        </Link>
+                      ) : null
+                    }
+                  >
+                    <div className="flex flex-col gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Modo</label>
+                        <select
+                          value={leadDistributionMode}
+                          onChange={(e) => setLeadDistributionMode(e.target.value as TeamLeadDistributionMode)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
+                        >
+                          <option value="ROUND_ROBIN">Round-robin</option>
+                          <option value="CAPTURER_FIRST">Prioridade do captador/parceiro</option>
+                          <option value="MANUAL">Manual (sem responsável)</option>
+                        </select>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        {inv.acceptUrl && inv.status === "PENDING" && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                await navigator.clipboard.writeText(String(inv.acceptUrl));
-                              } catch {}
-                            }}
-                            className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                          >
-                            <Copy className="w-3.5 h-3.5 mr-1.5" />
-                            Copiar link
-                          </button>
-                        )}
-                        {inv.status === "PENDING" && (
-                          <button
-                            type="button"
-                            onClick={() => handleRevokeInvite(inv.id)}
-                            className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                            Revogar
-                          </button>
-                        )}
-                      </div>
+                      <div className="text-[11px] text-gray-500">{distributionHint(leadDistributionMode)}</div>
+
+                      <button
+                        type="button"
+                        onClick={handleSaveSettings}
+                        disabled={savingSettings}
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
+                      >
+                        {savingSettings ? "Salvando..." : "Salvar preferências"}
+                      </button>
+                    </div>
+                  </StatCard>
+
+                  <StatCard title="Fila interna do time">
+                    {queueMembers.length > 0 ? (
+                      <>
+                        <p className="text-sm text-gray-600">
+                          {canManageTeam
+                            ? "Ordem de prioridade atual entre os corretores do time."
+                            : "Ordem interna de prioridade entre os corretores do time."}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {queueMembers.map((member, index) => (
+                            <span
+                              key={member.userId}
+                              className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-gray-50 border border-gray-200"
+                            >
+                              <span className="text-[10px] font-semibold text-gray-500">#{index + 1}</span>
+                              <span className="w-7 h-7 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-[10px] font-bold text-gray-700">
+                                {initials(member.name || member.email || "")}
+                              </span>
+                              <span className="text-[11px] font-semibold text-gray-800">
+                                {member.name || member.email || "Membro"}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-sm text-gray-600">Sem fila configurada para o time.</div>
+                    )}
+                  </StatCard>
+                </div>
+              </div>
+            ),
+          },
+          {
+            key: "advanced",
+            label: "Avançado",
+            content: (
+              <div id="advanced" className="space-y-6">
+                <StatCard title="Perfil da agência">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>
+                      <input
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      />
                     </div>
 
-                    {inv.acceptUrl && inv.status === "PENDING" && (
-                      <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-[11px] text-gray-600 break-all">
-                        {inv.acceptUrl}
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone</label>
+                      <input
+                        value={profilePhone}
+                        onChange={(e) => setProfilePhone(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      />
+                    </div>
+
+                    <div className="text-[11px] text-gray-500">
+                      CNPJ: <span className="font-medium text-gray-700">{agencyProfile?.cnpj || "-"}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSaveProfile}
+                        disabled={savingProfile}
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
+                      >
+                        {savingProfile ? "Salvando..." : "Salvar perfil"}
+                      </button>
+                    </div>
                   </div>
-                ))}
+                </StatCard>
               </div>
-            ) : (
-              <div className="text-sm text-gray-600">Nenhum convite enviado ainda.</div>
-            )}
-          </StatCard>
-        </div>
-      </div>
+            ),
+          },
+        ]}
+      />
+    </div>
   );
 }

@@ -3,18 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { useSession } from "next-auth/react";
 import {
   MapPin,
   ArrowLeft,
   ChevronRight,
   Loader2,
   Users,
-  SlidersHorizontal,
   RotateCcw,
   X,
   CheckCircle2,
 } from "lucide-react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
+import Tabs from "@/components/ui/Tabs";
+import LeadTimeline from "@/components/crm/LeadTimeline";
 
 interface TeamPipelineLead {
   id: string;
@@ -51,6 +53,26 @@ interface TeamMember {
   role: string;
   queuePosition?: number;
 }
+
+type LeadInternalMessage = {
+  id: string;
+  content: string;
+  createdAt: string;
+  senderRole?: string;
+  sender?: {
+    id: string;
+    name: string | null;
+    role: string;
+  } | null;
+};
+
+type LeadClientMessage = {
+  id: string;
+  content: string;
+  createdAt: string;
+  senderType?: string;
+  fromClient?: boolean;
+};
 
 const currencyBRL = (value: number) => {
   try {
@@ -116,13 +138,24 @@ export default function AgencyTeamCrmPage() {
 
   const router = useRouter();
 
+  const { data: session } = useSession();
+
+  const role = useMemo(() => {
+    const s: any = session as any;
+    return s?.user?.role || s?.role || "USER";
+  }, [session]);
+
+  const isAgency = role === "AGENCY";
+
   const searchParams = useSearchParams();
   const stageParam = searchParams.get("stage");
   const realtorParam = searchParams.get("realtorId");
   const tabParam = searchParams.get("tab");
+  const qParam = searchParams.get("q");
 
   const stageFilter = stageParam ? stageParam.toUpperCase() : null;
   const realtorFilter = realtorParam ? String(realtorParam) : null;
+  const queryFilter = qParam ? String(qParam) : "";
 
   const tab: TeamLeadsTab = tabParam === "closed" || tabParam === "won" || tabParam === "lost" ? "closed" : "active";
 
@@ -136,6 +169,30 @@ export default function AgencyTeamCrmPage() {
   const [assigning, setAssigning] = useState<Record<string, boolean>>({});
   const [assignError, setAssignError] = useState<string | null>(null);
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+
+  const [drawerTab, setDrawerTab] = useState<string>("summary");
+
+  const [internalMessages, setInternalMessages] = useState<LeadInternalMessage[]>([]);
+  const [clientMessages, setClientMessages] = useState<LeadClientMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
+
+  const [qDraft, setQDraft] = useState<string>(queryFilter);
+
+  useEffect(() => {
+    setQDraft(queryFilter);
+  }, [queryFilter]);
+
+  useEffect(() => {
+    const next = String(qDraft || "").trim();
+    const current = String(queryFilter || "").trim();
+    if (next === current) return;
+    const t = window.setTimeout(() => {
+      updateFilterParam("q", next);
+    }, 350);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qDraft]);
 
   useEffect(() => {
     if (!teamId) return;
@@ -180,7 +237,7 @@ export default function AgencyTeamCrmPage() {
     }
   };
 
-  const updateFilterParam = (key: "stage" | "realtorId", value: string) => {
+  const updateFilterParam = (key: "stage" | "realtorId" | "q", value: string) => {
     const next = new URLSearchParams(searchParams.toString());
     if (!value) {
       next.delete(key);
@@ -210,6 +267,14 @@ export default function AgencyTeamCrmPage() {
   const closeDrawer = () => {
     setOpenLeadId(null);
   };
+
+  useEffect(() => {
+    if (!openLeadId) return;
+    setDrawerTab("summary");
+    setInternalMessages([]);
+    setClientMessages([]);
+    setMessagesError(null);
+  }, [openLeadId]);
 
   useEffect(() => {
     if (!openLeadId) return;
@@ -261,6 +326,8 @@ export default function AgencyTeamCrmPage() {
   const handleSetStage = async (leadId: string, nextStage: TeamPipelineLead["pipelineStage"]) => {
     const lead = leads.find((l) => l.id === leadId);
     if (!lead) return;
+
+    if (isAgency) return;
 
     if (lead.pipelineStage === nextStage) return;
     if (!confirm(`Mover este lead para a etapa "${STAGE_CONFIG[nextStage].label}"?`)) return;
@@ -325,6 +392,27 @@ export default function AgencyTeamCrmPage() {
       filtered = filtered.filter((l) => l.pipelineStage === "WON" || l.pipelineStage === "LOST");
     }
 
+    const q = String(queryFilter || "").trim().toLowerCase();
+    if (q) {
+      filtered = filtered.filter((l) => {
+        const haystack = [
+          l.id,
+          l.property?.title,
+          l.property?.city,
+          l.property?.state,
+          l.property?.neighborhood,
+          l.contact?.name,
+          l.contact?.phone,
+          l.realtor?.name,
+          l.realtor?.email,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+
     const sorted = [...filtered].sort((a, b) => {
       const aUnassigned = !a.realtor?.id;
       const bUnassigned = !b.realtor?.id;
@@ -333,12 +421,73 @@ export default function AgencyTeamCrmPage() {
     });
 
     return sorted;
-  }, [leadsFilteredByRealtor, stageFilter, tab]);
+  }, [leadsFilteredByRealtor, queryFilter, stageFilter, tab]);
+
+  const summaryCounts = useMemo(() => {
+    const unassigned = leadsForTab.filter((l) => !l.realtor?.id).length;
+    const newCount = leadsForTab.filter((l) => l.pipelineStage === "NEW").length;
+    return { unassigned, newCount };
+  }, [leadsForTab]);
 
   const selectedLead = useMemo(() => {
     if (!openLeadId) return null;
     return leads.find((l) => l.id === openLeadId) || null;
   }, [leads, openLeadId]);
+
+  useEffect(() => {
+    if (!selectedLead?.id) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        setMessagesLoading(true);
+        setMessagesError(null);
+
+        const [internalRes, clientRes] = await Promise.all([
+          fetch(`/api/leads/${selectedLead.id}/messages`, { cache: "no-store" }),
+          fetch(`/api/leads/${selectedLead.id}/client-messages`, { cache: "no-store" }),
+        ]);
+
+        const internalJson = await internalRes.json().catch(() => null);
+        const clientJson = await clientRes.json().catch(() => null);
+
+        if (!cancelled) {
+          if (internalRes.ok && Array.isArray(internalJson?.messages)) {
+            setInternalMessages(internalJson.messages as LeadInternalMessage[]);
+          } else {
+            setInternalMessages([]);
+          }
+
+          if (clientRes.ok && Array.isArray(clientJson?.messages)) {
+            setClientMessages(clientJson.messages as LeadClientMessage[]);
+          } else {
+            setClientMessages([]);
+          }
+        }
+
+        if (!internalRes.ok || !clientRes.ok) {
+          const message =
+            internalJson?.error || clientJson?.error || "Não conseguimos carregar as mensagens deste lead agora.";
+          if (!cancelled) setMessagesError(String(message));
+        }
+      } catch (e: any) {
+        if (!cancelled) setMessagesError(e?.message || "Não conseguimos carregar as mensagens deste lead agora.");
+        if (!cancelled) {
+          setInternalMessages([]);
+          setClientMessages([]);
+        }
+      } finally {
+        if (!cancelled) setMessagesLoading(false);
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLead?.id]);
 
   const filterLabel = useMemo(() => {
     const parts: string[] = [];
@@ -361,8 +510,12 @@ export default function AgencyTeamCrmPage() {
       }
     }
 
+    if (String(queryFilter || "").trim()) {
+      parts.push(`Busca: ${String(queryFilter).trim()}`);
+    }
+
     return parts.join(" • ");
-  }, [members, realtorFilter, stageFilter, tab]);
+  }, [members, queryFilter, realtorFilter, stageFilter, tab]);
 
   const stageSelectValue = useMemo(() => {
     const stageValid = !!(stageFilter && (STAGE_ORDER as string[]).includes(stageFilter));
@@ -403,32 +556,49 @@ export default function AgencyTeamCrmPage() {
           </button>
         </div>
 
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <div className="text-[11px] font-semibold text-gray-500">Leads</div>
+            <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{leadsForTab.length}</div>
+            <div className="mt-1 text-xs text-gray-500">{tab === "active" ? "Ativos" : "Fechados"}</div>
+          </div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <div className="text-[11px] font-semibold text-gray-500">Novos</div>
+            <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{summaryCounts.newCount}</div>
+            <div className="mt-1 text-xs text-gray-500">Na seleção atual</div>
+          </div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <div className="text-[11px] font-semibold text-gray-500">Sem responsável</div>
+            <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{summaryCounts.unassigned}</div>
+            <div className="mt-1 text-xs text-gray-500">Atribuir quando possível</div>
+          </div>
+        </div>
+
         <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                  <SlidersHorizontal className="w-4 h-4 text-slate-700" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">Filtros</p>
-                  <p className="text-xs text-gray-500">Refine a visualização por etapa e responsável</p>
-                </div>
+          <div className="flex flex-col lg:flex-row lg:items-end gap-3">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Buscar</label>
+              <div className="relative">
+                <input
+                  value={qDraft}
+                  onChange={(e) => setQDraft(String(e.target.value))}
+                  placeholder="Nome, imóvel, cidade, id, corretor..."
+                  className="w-full pl-3 pr-10 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                />
+                {qDraft ? (
+                  <button
+                    type="button"
+                    onClick={() => setQDraft("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50"
+                    aria-label="Limpar busca"
+                  >
+                    <X className="w-4 h-4 text-gray-600" />
+                  </button>
+                ) : null}
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={clearFilters}
-              disabled={!stageFilter && !realtorFilter}
-              className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-            >
-              Limpar
-            </button>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
+            <div className="w-full lg:w-56">
               <label className="block text-xs font-semibold text-gray-700 mb-1">Etapa</label>
               <select
                 value={stageSelectValue}
@@ -436,7 +606,7 @@ export default function AgencyTeamCrmPage() {
                 disabled={tab !== "active"}
                 className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm disabled:opacity-60"
               >
-                <option value="">Todas as etapas</option>
+                <option value="">Todas</option>
                 {STAGE_ORDER.filter((s) => s !== "WON" && s !== "LOST").map((stage) => (
                   <option key={stage} value={stage}>
                     {STAGE_CONFIG[stage].label}
@@ -445,7 +615,7 @@ export default function AgencyTeamCrmPage() {
               </select>
             </div>
 
-            <div>
+            <div className="w-full lg:w-64">
               <label className="block text-xs font-semibold text-gray-700 mb-1">Responsável</label>
               <select
                 value={realtorFilter || ""}
@@ -463,6 +633,15 @@ export default function AgencyTeamCrmPage() {
                   ))}
               </select>
             </div>
+
+            <button
+              type="button"
+              onClick={clearFilters}
+              disabled={!stageFilter && !realtorFilter && !queryFilter}
+              className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              Limpar
+            </button>
           </div>
 
           <div className="mt-3 text-[11px] text-gray-500 truncate">{filterLabel || "Mostrando todos os leads do time."}</div>
@@ -597,7 +776,7 @@ export default function AgencyTeamCrmPage() {
                 </button>
               </div>
 
-              <div className="p-4 overflow-y-auto space-y-4">
+              <div className="p-4 border-b border-gray-200">
                 <div className="flex items-start gap-3">
                   <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
                     <Image
@@ -617,71 +796,230 @@ export default function AgencyTeamCrmPage() {
                         {selectedLead.property.city} - {selectedLead.property.state}
                       </span>
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
-                        {STAGE_CONFIG[selectedLead.pipelineStage]?.label || selectedLead.pipelineStage}
-                      </span>
-                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
-                        Lead: {selectedLead.id.slice(0, 6)}
-                      </span>
-                    </div>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
-                  <p className="text-sm font-semibold text-gray-900">Gestão</p>
-                  <p className="mt-1 text-xs text-gray-500">Atualize responsável e etapa (sem ações de contato).</p>
-
-                  <div className="mt-4 grid grid-cols-1 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">Responsável</label>
-                      <select
-                        value={selectedLead.realtor?.id || ""}
-                        onChange={(e) => handleAssignLead(selectedLead.id, e.target.value)}
-                        disabled={!!assigning[selectedLead.id]}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
-                      >
-                        <option value="">Escolher corretor</option>
-                        {members
-                          .filter((m) => m.role !== "ASSISTANT")
-                          .map((member) => (
-                            <option key={member.userId} value={member.userId}>
-                              {member.name || member.email || "Membro"}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">Etapa</label>
-                      <select
-                        value={selectedLead.pipelineStage}
-                        onChange={(e) => handleSetStage(selectedLead.id, e.target.value as TeamPipelineLead["pipelineStage"])}
-                        disabled={!!updating[selectedLead.id]}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
-                      >
-                        {STAGE_ORDER.map((stage) => (
-                          <option key={stage} value={stage}>
-                            {STAGE_CONFIG[stage].label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    {selectedLead.pipelineStage !== "WON" && (
-                      <button
-                        type="button"
-                        onClick={() => handleSetStage(selectedLead.id, "WON")}
-                        disabled={!!updating[selectedLead.id]}
-                        className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
-                      >
-                        Marcar como fechado
-                      </button>
-                    )}
-                  </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
+                    {STAGE_CONFIG[selectedLead.pipelineStage]?.label || selectedLead.pipelineStage}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
+                    Lead: {selectedLead.id.slice(0, 6)}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
+                    {selectedLead.realtor?.name || selectedLead.realtor?.email
+                      ? `Responsável: ${selectedLead.realtor?.name || selectedLead.realtor?.email}`
+                      : "Sem responsável"}
+                  </span>
                 </div>
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-y-auto p-4">
+                <Tabs
+                  key={openLeadId || "drawer"}
+                  defaultKey={drawerTab}
+                  onChange={(k) => setDrawerTab(k)}
+                  items={[
+                    {
+                      key: "summary",
+                      label: "Resumo",
+                      content: (
+                        <div className="space-y-4">
+                          {selectedLead.contact?.name || selectedLead.contact?.phone ? (
+                            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                              <p className="text-sm font-semibold text-gray-900">Contato</p>
+                              <div className="mt-2 text-sm text-gray-700">
+                                <div className="font-semibold text-gray-900">{selectedLead.contact?.name || "Cliente"}</div>
+                                {selectedLead.contact?.phone ? (
+                                  <div className="mt-1 text-xs text-gray-500">{selectedLead.contact.phone}</div>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-10 text-center">
+                              <p className="text-sm font-semibold text-gray-900">Contato não informado</p>
+                              <p className="mt-1 text-sm text-gray-600">Quando o lead tiver dados, eles aparecem aqui.</p>
+                            </div>
+                          )}
+
+                          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                            <p className="text-sm font-semibold text-gray-900">Atividade</p>
+                            <p className="mt-1 text-xs text-gray-500">Histórico do que aconteceu com este lead.</p>
+                            <div className="mt-3">
+                              <LeadTimeline leadId={selectedLead.id} createdAt={selectedLead.createdAt} pipelineStage={selectedLead.pipelineStage} />
+                            </div>
+                          </div>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: "manage",
+                      label: "Gestão",
+                      content: (
+                        <div className="space-y-4">
+                          {assignError && (
+                            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                              {assignError}
+                            </div>
+                          )}
+
+                          <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
+                            <p className="text-sm font-semibold text-gray-900">Atribuição</p>
+                            <p className="mt-1 text-xs text-gray-500">Atualize responsável (e etapa quando permitido).</p>
+
+                            <div className="mt-4 grid grid-cols-1 gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1">Responsável</label>
+                                <select
+                                  value={selectedLead.realtor?.id || ""}
+                                  onChange={(e) => handleAssignLead(selectedLead.id, e.target.value)}
+                                  disabled={!!assigning[selectedLead.id]}
+                                  className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                                >
+                                  <option value="">Escolher corretor</option>
+                                  {members
+                                    .filter((m) => m.role !== "ASSISTANT")
+                                    .map((member) => (
+                                      <option key={member.userId} value={member.userId}>
+                                        {member.name || member.email || "Membro"}
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
+
+                              {!isAgency ? (
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-700 mb-1">Etapa</label>
+                                  <select
+                                    value={selectedLead.pipelineStage}
+                                    onChange={(e) =>
+                                      handleSetStage(selectedLead.id, e.target.value as TeamPipelineLead["pipelineStage"])
+                                    }
+                                    disabled={!!updating[selectedLead.id]}
+                                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                                  >
+                                    {STAGE_ORDER.map((stage) => (
+                                      <option key={stage} value={stage}>
+                                        {STAGE_CONFIG[stage].label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : null}
+                            </div>
+
+                            {!isAgency ? (
+                              <div className="mt-4 flex flex-wrap items-center gap-2">
+                                {selectedLead.pipelineStage !== "WON" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetStage(selectedLead.id, "WON")}
+                                    disabled={!!updating[selectedLead.id]}
+                                    className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
+                                  >
+                                    Marcar como fechado
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                Como agência, você pode redistribuir responsáveis, mas não altera a etapa do funil.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: "activity",
+                      label: "Atividade",
+                      content: (
+                        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                          <p className="text-sm font-semibold text-gray-900">Linha do tempo</p>
+                          <p className="mt-1 text-xs text-gray-500">Eventos e mudanças do lead.</p>
+                          <div className="mt-3">
+                            <LeadTimeline leadId={selectedLead.id} createdAt={selectedLead.createdAt} pipelineStage={selectedLead.pipelineStage} />
+                          </div>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: "messages",
+                      label: "Mensagens",
+                      content: (
+                        <div className="space-y-4">
+                          {messagesError && (
+                            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                              {messagesError}
+                            </div>
+                          )}
+
+                          {messagesLoading ? (
+                            <div className="py-10">
+                              <CenteredSpinner message="Carregando mensagens..." />
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                                <p className="text-sm font-semibold text-gray-900">Cliente</p>
+                                <p className="mt-1 text-xs text-gray-500">Somente leitura.</p>
+                                <div className="mt-3 space-y-2">
+                                  {clientMessages.length === 0 ? (
+                                    <div className="text-sm text-gray-600">Sem mensagens.</div>
+                                  ) : (
+                                    clientMessages.map((m) => {
+                                      const fromClient = m.fromClient || m.senderType === "CLIENT";
+                                      return (
+                                        <div
+                                          key={m.id}
+                                          className={`rounded-2xl border px-4 py-3 text-sm ${
+                                            fromClient
+                                              ? "border-gray-200 bg-white text-gray-800"
+                                              : "border-blue-100 bg-blue-50 text-blue-900"
+                                          }`}
+                                        >
+                                          <div className="flex items-center justify-between gap-3">
+                                            <div className="text-[11px] font-semibold opacity-70">
+                                              {fromClient ? "Cliente" : "Time"}
+                                            </div>
+                                            <div className="text-[11px] opacity-60">{formatShortDate(String(m.createdAt))}</div>
+                                          </div>
+                                          <div className="mt-1 whitespace-pre-wrap">{m.content}</div>
+                                        </div>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                                <p className="text-sm font-semibold text-gray-900">Internas</p>
+                                <p className="mt-1 text-xs text-gray-500">Somente leitura.</p>
+                                <div className="mt-3 space-y-2">
+                                  {internalMessages.length === 0 ? (
+                                    <div className="text-sm text-gray-600">Sem mensagens internas.</div>
+                                  ) : (
+                                    internalMessages.map((m) => (
+                                      <div key={m.id} className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800">
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div className="text-[11px] font-semibold text-gray-600 truncate">
+                                            {m.sender?.name || m.sender?.role || m.senderRole || "Mensagem"}
+                                          </div>
+                                          <div className="text-[11px] text-gray-400">{formatShortDate(String(m.createdAt))}</div>
+                                        </div>
+                                        <div className="mt-1 whitespace-pre-wrap">{m.content}</div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ),
+                    },
+                  ]}
+                />
               </div>
             </div>
           </div>
