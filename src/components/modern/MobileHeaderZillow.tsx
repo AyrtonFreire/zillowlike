@@ -645,6 +645,9 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <Link href="/agency" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                           Painel
                         </Link>
+                        <Link href="/agency/leads" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                          Leads
+                        </Link>
                         <Link href="/agency/team" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                           Meu time
                         </Link>

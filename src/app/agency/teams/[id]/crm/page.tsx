@@ -6,7 +6,6 @@ import Image from "next/image";
 import { useSession } from "next-auth/react";
 import {
   MapPin,
-  ArrowLeft,
   ChevronRight,
   Loader2,
   Users,
@@ -531,14 +530,6 @@ export default function AgencyTeamCrmPage() {
     <div className="py-2">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => history.back()}
-              className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </button>
             <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500">
               <Users className="w-4 h-4" />
               <span>Leads de todos os corretores do time</span>
