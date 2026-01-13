@@ -31,7 +31,7 @@ export default function AgencyRegisterPage() {
     }
 
     if (status === "authenticated" && role === "AGENCY") {
-      router.replace("/agency/dashboard");
+      router.replace("/agency");
     }
   }, [role, router, status]);
 
@@ -79,7 +79,7 @@ export default function AgencyRegisterPage() {
       } catch {
       }
 
-      window.location.href = "/agency/dashboard";
+      window.location.href = "/agency";
     } catch {
       setError("Erro inesperado. Tente novamente.");
     } finally {

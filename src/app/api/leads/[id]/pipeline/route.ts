@@ -30,6 +30,13 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
+    if (role === "AGENCY") {
+      return NextResponse.json(
+        { error: "Perfil de agência não pode alterar etapas de leads. Você pode apenas distribuir/redistribuir." },
+        { status: 403 }
+      );
+    }
+
     const { id } = await context.params;
     const body = await req.json();
     const { stage } = updatePipelineStageSchema.parse(body);

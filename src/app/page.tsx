@@ -1387,7 +1387,7 @@ export default function Home() {
 
                         <div className="mt-7 flex flex-wrap items-center gap-3">
                           <Link
-                            href="/agency/dashboard"
+                            href="/agency"
                             className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold bg-white text-gray-900 hover:bg-white/90 transition-all"
                           >
                             Abrir painel
@@ -1416,7 +1416,7 @@ export default function Home() {
                           </p>
                           <div className="mt-5">
                             <Link
-                              href="/agency/dashboard"
+                              href="/agency"
                               className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-800"
                             >
                               Abrir CRM
@@ -1459,7 +1459,7 @@ export default function Home() {
                             </p>
                             <div className="mt-5">
                               <Link
-                                href="/agency/dashboard"
+                                href="/agency"
                                 className="inline-flex items-center gap-2 text-sm font-semibold text-amber-700 hover:text-amber-800"
                               >
                                 Ver painel

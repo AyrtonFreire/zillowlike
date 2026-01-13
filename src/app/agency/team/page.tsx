@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
@@ -97,6 +96,17 @@ type AgencyInsights = {
     hrefLabel?: string;
   }>;
 };
+
+ function InlineSpinner({ message }: { message: string }) {
+   return (
+     <div className="py-16 flex items-center justify-center">
+       <div className="text-center">
+         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+         <p className="text-gray-600 text-sm">{message}</p>
+       </div>
+     </div>
+   );
+ }
 
 export default function AgencyTeamPage() {
   const { data: session, status } = useSession();
@@ -470,30 +480,14 @@ export default function AgencyTeamPage() {
   }
 
   if (status === "loading" || loading) {
-    return (
-      <DashboardLayout
-        title="Time da Agência"
-        description="Gerencie seu time, convites e preferências de distribuição."
-        breadcrumbs={[{ label: "Home", href: "/" }, { label: "Agência", href: "/agency/dashboard" }, { label: "Time" }]}
-      >
-        <CenteredSpinner message="Carregando..." />
-      </DashboardLayout>
-    );
+    return <InlineSpinner message="Carregando..." />;
   }
 
   if (role !== "AGENCY" && role !== "ADMIN") {
     return (
-      <DashboardLayout
-        title="Time da Agência"
-        description="Você não tem permissão para acessar esta área."
-        breadcrumbs={[{ label: "Home", href: "/" }, { label: "Agência" }]}
-      >
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 text-sm text-gray-700">
-            Acesso negado.
-          </div>
-        </div>
-      </DashboardLayout>
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 text-sm text-gray-700">
+        Acesso negado.
+      </div>
     );
   }
 
@@ -537,30 +531,7 @@ export default function AgencyTeamPage() {
   };
 
   return (
-    <DashboardLayout
-      title="Time da Agência"
-      description="Gerencie seu time, convites e preferências de distribuição."
-      breadcrumbs={[{ label: "Home", href: "/" }, { label: "Agência", href: "/agency/dashboard" }, { label: "Time" }]}
-      actions={
-        <div className="flex items-center gap-2">
-          <a
-            href="#invites"
-            className="hidden sm:inline-flex items-center px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-semibold hover:bg-white/20"
-          >
-            <Mail className="w-4 h-4 mr-2" />
-            Convidar
-          </a>
-          <Link
-            href={team?.id ? `/agency/teams/${team.id}/crm` : "/agency/dashboard"}
-            className="inline-flex items-center px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-semibold hover:bg-white/20"
-          >
-            <Kanban className="w-4 h-4 mr-2" />
-            Leads do time
-          </Link>
-        </div>
-      }
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="space-y-8">
         {error && (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
         )}
@@ -574,7 +545,7 @@ export default function AgencyTeamPage() {
         <StatCard
           title="Workspace"
           action={
-            <Link href="/agency/dashboard" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+            <Link href="/agency" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
               Voltar ao painel
             </Link>
           }
@@ -1027,6 +998,5 @@ export default function AgencyTeamPage() {
           </StatCard>
         </div>
       </div>
-    </DashboardLayout>
   );
 }

@@ -14,7 +14,6 @@ import {
   X,
   CheckCircle2,
 } from "lucide-react";
-import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 
 interface TeamPipelineLead {
@@ -376,17 +375,7 @@ export default function AgencyTeamCrmPage() {
   }
 
   return (
-    <DashboardLayout
-      title={`Leads do time: ${teamName}`}
-      description="Acompanhe os leads do time, reatribua responsáveis e atualize etapas."
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Agência", href: "/agency/dashboard" },
-        { label: "Meu time", href: "/agency/team" },
-        { label: teamName },
-      ]}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="py-2">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
@@ -697,7 +686,6 @@ export default function AgencyTeamCrmPage() {
             </div>
           </div>
         )}
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }

@@ -642,13 +642,13 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
 
                     {role === 'AGENCY' && (
                       <>
-                        <Link href="/agency/dashboard" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                        <Link href="/agency" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                           Painel
                         </Link>
                         <Link href="/agency/team" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                           Meu time
                         </Link>
-                        <Link href="/owner/properties" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                        <Link href="/agency/properties" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                           Imóveis
                         </Link>
                         <Link href="/owner/new" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
