@@ -214,7 +214,7 @@ export default function AgencyDashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
               <StatCard
                 title="Alertas do time"
                 action={
@@ -255,60 +255,6 @@ export default function AgencyDashboardPage() {
                     Nenhum alerta importante por enquanto. Conforme seu time receber e atender leads, os pontos de atenção aparecem aqui.
                   </div>
                 )}
-              </StatCard>
-            </div>
-
-            <div className="space-y-6">
-              <StatCard title="Próximos passos">
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 w-6 h-6 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-[11px] font-bold text-gray-700">
-                      1
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">Convide corretores</p>
-                      <p className="mt-0.5 text-sm text-gray-600">
-                        Adicione membros ao time e defina papéis.
-                        <Link href="/agency/team#invites" className="ml-2 text-blue-600 hover:text-blue-700 font-semibold">
-                          Convidar
-                        </Link>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 w-6 h-6 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-[11px] font-bold text-gray-700">
-                      2
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">Defina a distribuição</p>
-                      <p className="mt-0.5 text-sm text-gray-600">
-                        Escolha a regra (fila, capturador primeiro ou manual).
-                        <Link href="/agency/team#distribution" className="ml-2 text-blue-600 hover:text-blue-700 font-semibold">
-                          Ajustar
-                        </Link>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 w-6 h-6 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-[11px] font-bold text-gray-700">
-                      3
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">Acompanhe o funil</p>
-                      <p className="mt-0.5 text-sm text-gray-600">
-                        Veja quem está com SLA pendente e leads sem responsável.
-                        <Link
-                          href={`/agency/teams/${insights.team.id}/crm`}
-                          className="ml-2 text-blue-600 hover:text-blue-700 font-semibold"
-                        >
-                          Abrir leads
-                        </Link>
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </StatCard>
             </div>
           </div>

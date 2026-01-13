@@ -16,6 +16,7 @@ import {
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import Tabs from "@/components/ui/Tabs";
 import LeadTimeline from "@/components/crm/LeadTimeline";
+import AgencyCrmOnboarding, { resetAgencyCrmOnboarding } from "@/components/onboarding/AgencyCrmOnboarding";
 
 interface TeamPipelineLead {
   id: string;
@@ -168,6 +169,9 @@ export default function AgencyTeamCrmPage() {
   const [assigning, setAssigning] = useState<Record<string, boolean>>({});
   const [assignError, setAssignError] = useState<string | null>(null);
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+
+  const [forceTour, setForceTour] = useState(false);
+  const [tourSeed, setTourSeed] = useState(0);
 
   const [drawerTab, setDrawerTab] = useState<string>("summary");
 
@@ -528,6 +532,13 @@ export default function AgencyTeamCrmPage() {
 
   return (
     <div className="py-2">
+      <AgencyCrmOnboarding
+        key={`agency-crm-tour-${tourSeed}`}
+        forceShow={forceTour}
+        onFinish={() => {
+          setForceTour(false);
+        }}
+      />
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500">
@@ -536,18 +547,32 @@ export default function AgencyTeamCrmPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => fetchLeads({ silent: true })}
-            disabled={refreshing}
-            className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-          >
-            {refreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />}
-            Atualizar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                resetAgencyCrmOnboarding();
+                setTourSeed((v) => v + 1);
+                setForceTour(true);
+              }}
+              className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Fazer tour
+            </button>
+
+            <button
+              type="button"
+              onClick={() => fetchLeads({ silent: true })}
+              disabled={refreshing}
+              className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              {refreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />}
+              Atualizar
+            </button>
+          </div>
         </div>
 
-        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3" data-onboarding="agency-crm-metrics">
           <div className="rounded-2xl border border-gray-200 bg-white p-4">
             <div className="text-[11px] font-semibold text-gray-500">Leads</div>
             <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{leadsForTab.length}</div>
@@ -565,7 +590,7 @@ export default function AgencyTeamCrmPage() {
           </div>
         </div>
 
-        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4">
+        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4" data-onboarding="agency-crm-filters">
           <div className="flex flex-col lg:flex-row lg:items-end gap-3">
             <div className="flex-1">
               <label className="block text-xs font-semibold text-gray-700 mb-1">Buscar</label>
@@ -649,7 +674,7 @@ export default function AgencyTeamCrmPage() {
           </div>
         )}
 
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2" data-onboarding="agency-crm-tabs">
           <button
             type="button"
             onClick={() => setTabParam("active")}
@@ -679,72 +704,76 @@ export default function AgencyTeamCrmPage() {
           </button>
         </div>
 
-        {leadsForTab.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-10 text-center">
-            <p className="text-sm font-semibold text-gray-900">
-              {tab === "active" ? "Nenhum lead ativo" : "Nenhum lead fechado"}
-            </p>
-            <p className="mt-1 text-sm text-gray-600">Ajuste os filtros para encontrar resultados.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {leadsForTab.map((lead) => (
-              <button
-                key={lead.id}
-                type="button"
-                onClick={() => setOpenLeadId(lead.id)}
-                className="w-full text-left rounded-2xl border border-gray-200 bg-white p-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
-                    <Image
-                      src={lead.property.images[0]?.url || "/placeholder.jpg"}
-                      alt={lead.property.title}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
+        <div data-onboarding="agency-crm-leads-list">
+          {leadsForTab.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-10 text-center">
+              <p className="text-sm font-semibold text-gray-900">
+                {tab === "active" ? "Nenhum lead ativo" : "Nenhum lead fechado"}
+              </p>
+              <p className="mt-1 text-sm text-gray-600">Ajuste os filtros para encontrar resultados.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {leadsForTab.map((lead) => (
+                <button
+                  key={lead.id}
+                  type="button"
+                  onClick={() => setOpenLeadId(lead.id)}
+                  className="w-full text-left rounded-2xl border border-gray-200 bg-white p-4 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
+                      <Image
+                        src={lead.property.images[0]?.url || "/placeholder.jpg"}
+                        alt={lead.property.title}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 line-clamp-2">{lead.property.title}</p>
-                        <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          <span className="truncate">
-                            {lead.property.neighborhood && `${lead.property.neighborhood}, `}
-                            {lead.property.city} - {lead.property.state}
-                          </span>
-                        </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 line-clamp-2">{lead.property.title}</p>
+                          <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            <span className="truncate">
+                              {lead.property.neighborhood && `${lead.property.neighborhood}, `}
+                              {lead.property.city} - {lead.property.state}
+                            </span>
+                          </p>
+                        </div>
+
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-[11px] font-semibold text-gray-900 tabular-nums">{currencyBRL(lead.property.price)}</p>
+                          <p className="mt-1 text-[11px] text-gray-500">{formatShortDate(lead.createdAt)}</p>
+                        </div>
                       </div>
 
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-[11px] font-semibold text-gray-900 tabular-nums">{currencyBRL(lead.property.price)}</p>
-                        <p className="mt-1 text-[11px] text-gray-500">{formatShortDate(lead.createdAt)}</p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
+                          {STAGE_CONFIG[lead.pipelineStage]?.label || lead.pipelineStage}
+                        </span>
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
+                          Lead: {lead.id.slice(0, 6)}
+                        </span>
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
+                          {lead.realtor?.name || lead.realtor?.email
+                            ? `Responsável: ${lead.realtor?.name || lead.realtor?.email}`
+                            : "Sem responsável"}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
-                        {STAGE_CONFIG[lead.pipelineStage]?.label || lead.pipelineStage}
-                      </span>
-                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
-                        Lead: {lead.id.slice(0, 6)}
-                      </span>
-                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
-                        {lead.realtor?.name || lead.realtor?.email ? `Responsável: ${lead.realtor?.name || lead.realtor?.email}` : "Sem responsável"}
-                      </span>
+                    <div className="pt-1 text-gray-400">
+                      <ChevronRight className="w-4 h-4" />
                     </div>
                   </div>
-
-                  <div className="pt-1 text-gray-400">
-                    <ChevronRight className="w-4 h-4" />
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {selectedLead && (
           <div className="fixed inset-0 z-50">

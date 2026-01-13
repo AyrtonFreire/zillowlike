@@ -12,7 +12,10 @@ async function getSessionContext() {
   return { userId: userId ? String(userId) : null, role: role ? String(role) : null };
 }
 
-export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { userId, role } = await getSessionContext();
 
@@ -24,7 +27,7 @@ export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
       return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
     }
 
-    const { id } = ctx.params;
+    const { id } = await params;
     const clientId = String(id);
 
     const url = new URL(req.url);

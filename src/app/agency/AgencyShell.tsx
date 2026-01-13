@@ -133,7 +133,7 @@ export default function AgencyShell({ children }: { children: ReactNode }) {
           </aside>
 
           <div className="flex-1 min-w-0">
-            <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+            <div className="pb-4 border-b border-gray-200">
               <div className="flex flex-col gap-1.5">
                 <div className="text-xs text-gray-500">
                   <Link href="/" className="hover:text-gray-700 font-semibold">
@@ -152,7 +152,7 @@ export default function AgencyShell({ children }: { children: ReactNode }) {
                 </div>
 
                 <div>
-                  <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">{section.title}</h1>
+                  <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">{section.title}</h1>
                   {section.description ? <p className="mt-1 text-sm text-gray-600">{section.description}</p> : null}
                 </div>
               </div>

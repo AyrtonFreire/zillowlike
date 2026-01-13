@@ -35,6 +35,7 @@ export default function OnboardingTour({
   storageKey,
   onComplete,
   onSkip,
+  forceShow,
 }: OnboardingTourProps) {
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -43,17 +44,20 @@ export default function OnboardingTour({
   // Verificar se já completou o onboarding
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (forceShow) {
+      setCurrentStep(0);
+      const timer = setTimeout(() => setIsActive(true), 50);
+      return () => clearTimeout(timer);
+    }
     try {
       const completed = localStorage.getItem(storageKey);
       if (!completed) {
-        // Pequeno delay para garantir que a página carregou
         const timer = setTimeout(() => setIsActive(true), 500);
         return () => clearTimeout(timer);
       }
     } catch {
-      // Ignore storage errors
     }
-  }, [storageKey]);
+  }, [storageKey, forceShow]);
 
   // Atualizar posição do elemento alvo
   useEffect(() => {
