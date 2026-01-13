@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Kanban, Home } from "lucide-react";
+import { LayoutDashboard, Users, Kanban, Home, UserRound } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 
 type NavItem = {
@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/agency", label: "Painel", icon: LayoutDashboard },
   { href: "/agency/team", label: "Time", icon: Users },
   { href: "/agency/leads", label: "Leads", icon: Kanban },
+  { href: "/agency/clients", label: "Clientes", icon: UserRound },
   { href: "/agency/properties", label: "Imóveis", icon: Home },
 ];
 
@@ -77,6 +78,14 @@ function sectionFromPath(pathname: string) {
       title: "Leads",
       description: "Acompanhe o funil do time e distribua responsáveis.",
       crumb: "Leads",
+    };
+  }
+
+  if (p === "/agency/clients" || p.startsWith("/agency/clients/")) {
+    return {
+      title: "Clientes",
+      description: "Preferências, matches e links para compartilhar imóveis.",
+      crumb: "Clientes",
     };
   }
 
