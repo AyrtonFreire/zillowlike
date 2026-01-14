@@ -1155,7 +1155,7 @@ export default function EditPropertyPage() {
                         onChange={(e) => setPositionFront(e.target.checked)}
                         className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span>Frente</span>
+                      <span>De frente (voltado para a rua)</span>
                     </label>
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                       <input
@@ -1164,7 +1164,7 @@ export default function EditPropertyPage() {
                         onChange={(e) => setPositionBack(e.target.checked)}
                         className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span>Fundos</span>
+                      <span>Fundos (mais silencioso)</span>
                     </label>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -47,6 +47,13 @@ export default function NewPropertyPage() {
   const [featureSuggestions, setFeatureSuggestions] = useState<string[]>([]);
   const [condoFeeBRL, setCondoFeeBRL] = useState("");
   const [iptuYearBRL, setIptuYearBRL] = useState("");
+  const [bedrooms, setBedrooms] = useState<string>("");
+  const [bathrooms, setBathrooms] = useState<string>("");
+  const [areaM2, setAreaM2] = useState<string>("");
+  const [builtAreaM2, setBuiltAreaM2] = useState<string>("");
+  const [lotAreaM2, setLotAreaM2] = useState<string>("");
+  const [privateAreaM2, setPrivateAreaM2] = useState<string>("");
+  const [usableAreaM2, setUsableAreaM2] = useState<string>("");
   // Optional extended details
   const [parkingSpots, setParkingSpots] = useState<string | number>("");
   const [suites, setSuites] = useState<string | number>("");
@@ -120,6 +127,61 @@ export default function NewPropertyPage() {
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }, [currentStep]);
+  const CONDITION_STATUS_OPTIONS: string[] = useMemo(
+    () => ["Novo", "Reformado", "Em obras", "Em construção", "Na planta", "Pronto para morar"],
+    []
+  );
+  const CONDITION_EXTRA_OPTIONS: string[] = useMemo(
+    () => ["Condomínio", "Mobiliado", "Semi-mobiliado", "Aceita permuta", "Aceita pets"],
+    []
+  );
+  const CONDITION_EXTRA_SET = useMemo(
+    () => new Set(CONDITION_EXTRA_OPTIONS),
+    [CONDITION_EXTRA_OPTIONS]
+  );
+  const CONDITION_STATUS_SET = useMemo(
+    () => new Set(CONDITION_STATUS_OPTIONS),
+    [CONDITION_STATUS_OPTIONS]
+  );
+  const FURNISHING_SET = useMemo(() => new Set(["Mobiliado", "Semi-mobiliado"]), []);
+  const PROPERTY_FEATURE_TAG_OPTIONS: string[] = useMemo(
+    () => [
+      "Quintal",
+      "Jardim",
+      "Jardim de inverno",
+      "Churrasqueira",
+      "Área gourmet",
+      "Varanda gourmet",
+      "Área de serviço",
+      "Lavanderia",
+      "Lavabo",
+      "Banheiro de serviço",
+      "Despensa",
+      "Depósito privativo",
+      "Closet",
+      "Home office",
+      "Cozinha americana",
+      "Cozinha planejada",
+      "Dependência de empregada",
+      "Piscina privativa",
+      "Hidromassagem",
+      "Sauna",
+      "Lareira",
+      "Pé-direito alto",
+      "Mezanino",
+      "Energia solar",
+      "Gás encanado",
+      "Aquecimento a gás",
+      "Água individual",
+      "Reúso de água",
+      "Automação residencial",
+    ],
+    []
+  );
+  const PROPERTY_FEATURE_TAG_SET = useMemo(
+    () => new Set(PROPERTY_FEATURE_TAG_OPTIONS),
+    [PROPERTY_FEATURE_TAG_OPTIONS]
+  );
 
   // Contadores para grupos de detalhes (usados nos headers dos accordions)
   const accAccessibilityCount = (accRamps ? 1 : 0) + (accWideDoors ? 1 : 0) + (accAccessibleElevator ? 1 : 0) + (accTactile ? 1 : 0);
@@ -128,6 +190,17 @@ export default function NewPropertyPage() {
   const accViewCount = (viewSea ? 1 : 0) + (viewCity ? 1 : 0) + (positionFront ? 1 : 0) + (positionBack ? 1 : 0) + (sunByRoomNote ? 1 : 0);
   const accPetsCount = (petsSmall ? 1 : 0) + (petsLarge ? 1 : 0) + (condoRules ? 1 : 0);
   const accSecurityCount = (secCCTV ? 1 : 0) + (secSallyPort ? 1 : 0) + (secNightGuard ? 1 : 0) + (secElectricFence ? 1 : 0);
+  const accMeasuresCount = [builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2].filter((v) => String(v || "").trim()).length;
+  const accFeaturesCount = (hasBalcony ? 1 : 0) + conditionTags.filter((t) => PROPERTY_FEATURE_TAG_SET.has(t)).length;
+  const accCondoCount =
+    (hasElevator ? 1 : 0) +
+    (hasPool ? 1 : 0) +
+    (hasGym ? 1 : 0) +
+    (hasGourmet ? 1 : 0) +
+    (hasPlayground ? 1 : 0) +
+    (hasPartyRoom ? 1 : 0) +
+    (hasConcierge24h ? 1 : 0);
+  const accConditionCount = conditionTags.filter((t) => CONDITION_STATUS_SET.has(t) || CONDITION_EXTRA_SET.has(t)).length;
 
   // Auto-open accordions if any inner field is filled
   useEffect(() => {
@@ -144,40 +217,19 @@ export default function NewPropertyPage() {
     if (petsFilled) next.acc_pets = true;
     const secFilled = secCCTV || secSallyPort || secNightGuard || secElectricFence;
     if (secFilled) next.acc_sec = true;
+
+    const measuresFilled = !!builtAreaM2 || !!lotAreaM2 || !!privateAreaM2 || !!usableAreaM2;
+    if (measuresFilled) next.acc_measures = true;
+    const featureTagsFilled = conditionTags.some((t) => PROPERTY_FEATURE_TAG_SET.has(t));
+    const featuresFilled = hasBalcony || featureTagsFilled;
+    if (featuresFilled) next.acc_features = true;
+    const condoFilled = hasElevator || hasPool || hasGym || hasGourmet || hasPlayground || hasPartyRoom || hasConcierge24h;
+    if (condoFilled) next.acc_condo = true;
+    const conditionFilled = conditionTags.some((t) => CONDITION_STATUS_SET.has(t) || CONDITION_EXTRA_SET.has(t));
+    if (conditionFilled) next.acc_condition = true;
     setOpenAcc(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence]);
-  const CONDITION_STATUS_OPTIONS: string[] = useMemo(
-    () => ["Novo", "Reformado", "Em obras", "Em construção", "Na planta", "Pronto para morar"],
-    []
-  );
-  const CONDITION_EXTRA_OPTIONS: string[] = useMemo(
-    () => ["Condomínio", "Mobiliado", "Semi-mobiliado", "Aceita permuta", "Aceita pets"],
-    []
-  );
-  const CONDITION_STATUS_SET = useMemo(
-    () => new Set(CONDITION_STATUS_OPTIONS),
-    [CONDITION_STATUS_OPTIONS]
-  );
-  const FURNISHING_SET = useMemo(() => new Set(["Mobiliado", "Semi-mobiliado"]), []);
-  const PROPERTY_FEATURE_TAG_OPTIONS: string[] = useMemo(
-    () => [
-      "Quintal",
-      "Churrasqueira",
-      "Área de serviço",
-      "Lavabo",
-      "Despensa",
-      "Depósito privativo",
-      "Closet",
-      "Home office",
-      "Piscina privativa",
-      "Energia solar",
-      "Gás encanado",
-      "Água individual",
-      "Automação residencial",
-    ],
-    []
-  );
+  }, [accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, hasBalcony, conditionTags, hasElevator, hasPool, hasGym, hasGourmet, hasPlayground, hasPartyRoom, hasConcierge24h]);
 
   // Heurística: sugerir capa movendo imagem com nome/fachada
   function suggestCover() {
@@ -746,13 +798,6 @@ export default function NewPropertyPage() {
     }
   }, [confirmDelete.open]);
 
-  const [bedrooms, setBedrooms] = useState<string>("");
-  const [bathrooms, setBathrooms] = useState<string>("");
-  const [areaM2, setAreaM2] = useState<string>("");
-  const [builtAreaM2, setBuiltAreaM2] = useState<string>("");
-  const [lotAreaM2, setLotAreaM2] = useState<string>("");
-  const [privateAreaM2, setPrivateAreaM2] = useState<string>("");
-  const [usableAreaM2, setUsableAreaM2] = useState<string>("");
   const SAVE_KEY = "owner_new_draft";
 
   // dnd-kit: sensors e item ordenável
@@ -2436,55 +2481,140 @@ export default function NewPropertyPage() {
                     <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
                   </div>
 
-                  <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
-                    <h3 className="text-sm font-semibold text-gray-800 mb-2">📐 Medidas do imóvel</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
-                      <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
-                      <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
-                      <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
-                    </div>
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenAcc((p) => ({ ...p, acc_condition: !p.acc_condition }))}
+                      className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-sm font-semibold text-gray-800">
+                        🤝 Condição e negociação
+                        {accConditionCount > 0 && (
+                          <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accConditionCount}</span>
+                        )}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condition ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openAcc.acc_condition && (
+                      <div className="p-4 pt-0 bg-gray-50/50">
+                        <div className="flex flex-wrap gap-2">
+                          {[...CONDITION_STATUS_OPTIONS, ...CONDITION_EXTRA_OPTIONS].map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => toggleConditionTag(tag)}
+                              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                conditionTags.includes(tag)
+                                  ? 'bg-teal-600 text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Características principais - sempre visível */}
-                  <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
-                    <h3 className="text-sm font-semibold text-gray-800 mb-3">🏠 Características do imóvel</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
-                    </div>
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenAcc((p) => ({ ...p, acc_measures: !p.acc_measures }))}
+                      className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-sm font-semibold text-gray-800">
+                        📐 Medidas do imóvel
+                        {accMeasuresCount > 0 && (
+                          <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accMeasuresCount}</span>
+                        )}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_measures ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openAcc.acc_measures && (
+                      <div className="p-4 pt-0 bg-gray-50/50">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
+                          <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
+                          <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
+                          <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-                    <div className="mt-4">
-                      <p className="text-xs font-semibold text-gray-700 mb-2">Outras características</p>
-                      <div className="flex flex-wrap gap-2">
-                        {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenAcc((p) => ({ ...p, acc_features: !p.acc_features }))}
+                      className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-sm font-semibold text-gray-800">
+                        🏠 Características do imóvel
+                        {accFeaturesCount > 0 && (
+                          <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFeaturesCount}</span>
+                        )}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_features ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openAcc.acc_features && (
+                      <div className="p-4 pt-0 bg-gray-50/50">
+                        <div className="flex flex-wrap gap-2">
                           <button
-                            key={tag}
                             type="button"
-                            onClick={() => toggleConditionTag(tag)}
+                            onClick={() => setHasBalcony((v) => !v)}
                             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                              conditionTags.includes(tag)
-                                ? 'bg-teal-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              hasBalcony ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
-                            {tag}
+                            Varanda
                           </button>
-                        ))}
+                          {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => toggleConditionTag(tag)}
+                              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                conditionTags.includes(tag)
+                                  ? 'bg-teal-600 text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
-                  <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
-                    <h3 className="text-sm font-semibold text-gray-800 mb-3">🏢 Condomínio / áreas comuns</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
-                      <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
-                      <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
-                      <Checkbox checked={hasGourmet} onChange={(e) => setHasGourmet(e.target.checked)} label="Espaço gourmet" />
-                      <Checkbox checked={hasPlayground} onChange={(e) => setHasPlayground(e.target.checked)} label="Playground" />
-                      <Checkbox checked={hasPartyRoom} onChange={(e) => setHasPartyRoom(e.target.checked)} label="Salão de festas" />
-                      <Checkbox checked={hasConcierge24h} onChange={(e) => setHasConcierge24h(e.target.checked)} label="Portaria 24h" />
-                    </div>
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenAcc((p) => ({ ...p, acc_condo: !p.acc_condo }))}
+                      className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-sm font-semibold text-gray-800">
+                        🏢 Condomínio / áreas comuns
+                        {accCondoCount > 0 && (
+                          <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accCondoCount}</span>
+                        )}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condo ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openAcc.acc_condo && (
+                      <div className="p-4 pt-0 bg-gray-50/50">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
+                          <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
+                          <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
+                          <Checkbox checked={hasGourmet} onChange={(e) => setHasGourmet(e.target.checked)} label="Espaço gourmet" />
+                          <Checkbox checked={hasPlayground} onChange={(e) => setHasPlayground(e.target.checked)} label="Playground" />
+                          <Checkbox checked={hasPartyRoom} onChange={(e) => setHasPartyRoom(e.target.checked)} label="Salão de festas" />
+                          <Checkbox checked={hasConcierge24h} onChange={(e) => setHasConcierge24h(e.target.checked)} label="Portaria 24h" />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Segurança */}
@@ -2555,8 +2685,8 @@ export default function NewPropertyPage() {
                         <div className="grid grid-cols-2 gap-3">
                           <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
                           <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
-                          <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="Frente" />
-                          <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Fundos" />
+                          <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="De frente (voltado para a rua)" />
+                          <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Fundos (mais silencioso)" />
                         </div>
                         <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
                           <option value="">Selecione</option>
@@ -2609,55 +2739,6 @@ export default function NewPropertyPage() {
                     <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
                   </div>
 
-                  {/* Tags de condição */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-800 mb-2">Condição e negociação</h3>
-                    <p className="text-xs text-gray-600 mb-2">
-                      Selecione o estado do imóvel e opções extras (ex: mobília, pets, permuta).
-                    </p>
-
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs font-semibold text-gray-700 mb-2">Estado do imóvel</p>
-                        <div className="flex flex-wrap gap-2">
-                          {CONDITION_STATUS_OPTIONS.map((tag) => (
-                            <button
-                              key={tag}
-                              type="button"
-                              onClick={() => toggleConditionTag(tag)}
-                              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                                conditionTags.includes(tag)
-                                  ? 'bg-teal-600 text-white'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {tag}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-semibold text-gray-700 mb-2">Opções extras</p>
-                        <div className="flex flex-wrap gap-2">
-                          {CONDITION_EXTRA_OPTIONS.map((tag) => (
-                            <button
-                              key={tag}
-                              type="button"
-                              onClick={() => toggleConditionTag(tag)}
-                              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                                conditionTags.includes(tag)
-                                  ? 'bg-teal-600 text-white'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {tag}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               )}
 
