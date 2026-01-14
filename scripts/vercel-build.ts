@@ -11,6 +11,14 @@ function run(cmd: string, args: string[], opts?: { allowFailure?: boolean }) {
   }
 }
 
+const isVercel = process.env.VERCEL === "1";
+const isProd = (process.env.VERCEL_ENV || "").toLowerCase() === "production";
+
+// 0) Apply migrations on Vercel (prod must succeed; preview can skip)
+if (isVercel && process.env.DATABASE_URL) {
+  run("npx", ["prisma", "migrate", "deploy"], { allowFailure: !isProd });
+}
+
 // 1) Prisma client
 run("npx", ["prisma", "generate"]);
 
