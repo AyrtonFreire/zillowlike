@@ -13,7 +13,6 @@ export type ClientPreferenceInput = {
   bedroomsMin: number | null;
   bathroomsMin: number | null;
   areaMin: number | null;
-  flags: Record<string, any> | null;
   scope: ClientMatchScope;
   updatedAt: Date;
 };
@@ -60,10 +59,6 @@ function includesInsensitive(list: string[], value: string) {
   return list.some((x) => normText(x) === n);
 }
 
-function safeBool(v: any) {
-  return v === true;
-}
-
 export class ClientMatchService {
   static readonly CACHE_TTL_MS = 1000 * 60 * 60 * 6;
 
@@ -76,7 +71,6 @@ export class ClientMatchService {
     const W_BEDROOMS = 14;
     const W_BATHROOMS = 10;
     const W_AREA = 12;
-    const W_AMENITIES = 16;
 
     let score = 0;
 
@@ -152,23 +146,6 @@ export class ClientMatchService {
       score += W_AREA * 0.2;
     }
 
-    const flags = pref.flags && typeof pref.flags === "object" ? pref.flags : null;
-    if (flags) {
-      const desiredTrueKeys = Object.keys(flags).filter((k) => safeBool((flags as any)[k]));
-      if (desiredTrueKeys.length > 0) {
-        const per = W_AMENITIES / desiredTrueKeys.length;
-        for (const k of desiredTrueKeys) {
-          const has = safeBool((property as any)[k]);
-          if (has) {
-            score += per;
-          }
-        }
-        if (score > 0 && desiredTrueKeys.length > 0) {
-          reasons.push("Atende preferências extras");
-        }
-      }
-    }
-
     const finalScore = clampInt(score, 0, 100);
     return { score: finalScore, reasons: reasons.slice(0, 6) };
   }
@@ -208,7 +185,6 @@ export class ClientMatchService {
       bedroomsMin: client.preference.bedroomsMin,
       bathroomsMin: client.preference.bathroomsMin,
       areaMin: client.preference.areaMin,
-      flags: client.preference.flags,
       scope: client.preference.scope,
       updatedAt: client.preference.updatedAt,
     };

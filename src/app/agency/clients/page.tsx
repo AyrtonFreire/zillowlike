@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import Drawer from "@/components/ui/Drawer";
 import { X, Plus, UserRound, Phone, Mail, MapPin } from "lucide-react";
 
 type ClientStatus = "ACTIVE" | "PAUSED";
@@ -71,6 +72,7 @@ export default function AgencyClientsPage() {
   const [statusFilter, setStatusFilter] = useState<ClientStatus | "ALL">("ALL");
 
   const [creating, setCreating] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
   const [createEmail, setCreateEmail] = useState("");
   const [createPhone, setCreatePhone] = useState("");
@@ -182,6 +184,7 @@ export default function AgencyClientsPage() {
       }
 
       resetCreate();
+      setCreateOpen(false);
       await fetchClients({ silent: true, page: 1 });
     } catch (e: any) {
       setCreateError(e?.message || "Não conseguimos criar o cliente agora.");
@@ -310,51 +313,15 @@ export default function AgencyClientsPage() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={submitCreate}
+              onClick={() => setCreateOpen(true)}
               disabled={creating}
               className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-70"
             >
               <Plus className="w-4 h-4 mr-2" />
-              {creating ? "Criando..." : "Novo cliente"}
+              + Cliente
             </button>
           </div>
         </div>
-
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>
-            <input
-              value={createName}
-              onChange={(e) => setCreateName(String(e.target.value))}
-              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
-              placeholder="Ex: Maria Silva"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail (opcional)</label>
-            <input
-              value={createEmail}
-              onChange={(e) => setCreateEmail(String(e.target.value))}
-              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
-              placeholder="maria@email.com"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone (opcional)</label>
-            <input
-              value={createPhone}
-              onChange={(e) => setCreatePhone(String(e.target.value))}
-              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
-              placeholder="(11) 99999-9999"
-            />
-          </div>
-        </div>
-
-        {createError ? (
-          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            {createError}
-          </div>
-        ) : null}
 
         <div className="mt-6">
           {clients.length === 0 ? (
@@ -451,6 +418,82 @@ export default function AgencyClientsPage() {
           )}
         </div>
       </div>
+
+      <Drawer
+        open={createOpen}
+        onClose={() => {
+          setCreateOpen(false);
+          resetCreate();
+        }}
+        title="Novo cliente"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submitCreate();
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>
+            <input
+              value={createName}
+              onChange={(e) => setCreateName(String(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+              placeholder="Ex: Maria Silva"
+              autoComplete="name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail (opcional)</label>
+            <input
+              value={createEmail}
+              onChange={(e) => setCreateEmail(String(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+              placeholder="maria@email.com"
+              autoComplete="email"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone (opcional)</label>
+            <input
+              value={createPhone}
+              onChange={(e) => setCreatePhone(String(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+              placeholder="(11) 99999-9999"
+              autoComplete="tel"
+            />
+          </div>
+
+          {createError ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              {createError}
+            </div>
+          ) : null}
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setCreateOpen(false);
+                resetCreate();
+              }}
+              className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={creating}
+              className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-70"
+            >
+              {creating ? "Criando..." : "Criar cliente"}
+            </button>
+          </div>
+        </form>
+      </Drawer>
     </div>
   );
 }

@@ -83,8 +83,6 @@ const UpsertPreferenceSchema = z
     bedroomsMin: z.number().int().nonnegative().nullable().optional(),
     bathroomsMin: z.number().nonnegative().nullable().optional(),
     areaMin: z.number().int().nonnegative().nullable().optional(),
-
-    flags: z.record(z.string(), z.any()).nullable().optional(),
     scope: MatchScopeEnum.optional(),
   })
   .superRefine((data, ctx) => {
@@ -192,9 +190,62 @@ export async function PUT(
       return NextResponse.json({ success: false, error: "Dados inválidos", issues: parsed.error.issues }, { status: 400 });
     }
 
+    const city = String(parsed.data.city || "").trim();
+    const state = String(parsed.data.state || "").trim();
+
+    const cityExists = await prisma.property.findFirst({
+      where: {
+        status: "ACTIVE",
+        city: { equals: city, mode: "insensitive" },
+        state: { equals: state, mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+
+    if (!cityExists) {
+      return NextResponse.json(
+        { success: false, error: "Cidade/estado inválidos. Selecione uma opção existente no banco." },
+        { status: 400 }
+      );
+    }
+
     const neighborhoods = Array.isArray(parsed.data.neighborhoods)
       ? parsed.data.neighborhoods.map((n) => n.trim()).filter(Boolean)
       : [];
+
+    if (neighborhoods.length > 0) {
+      const available = await prisma.property.findMany({
+        where: {
+          status: "ACTIVE",
+          city: { equals: city, mode: "insensitive" },
+          state: { equals: state, mode: "insensitive" },
+          neighborhood: { not: null },
+        },
+        distinct: ["neighborhood"],
+        select: { neighborhood: true },
+        take: 10000,
+      });
+
+      const set = new Set(
+        available
+          .map((a: any) => String(a.neighborhood || "").trim().toLowerCase())
+          .filter(Boolean)
+      );
+
+      const invalid = neighborhoods
+        .filter((n) => !set.has(String(n).trim().toLowerCase()))
+        .slice(0, 20);
+
+      if (invalid.length > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Bairros inválidos para ${city}/${state}: ${invalid.join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     const types = Array.isArray(parsed.data.types) ? parsed.data.types : [];
 
@@ -202,8 +253,8 @@ export async function PUT(
       where: { clientId: String(clientId) },
       create: {
         clientId: String(clientId),
-        city: parsed.data.city,
-        state: parsed.data.state,
+        city,
+        state,
         neighborhoods,
         purpose: parsed.data.purpose ?? null,
         types,
@@ -212,12 +263,11 @@ export async function PUT(
         bedroomsMin: parsed.data.bedroomsMin ?? null,
         bathroomsMin: parsed.data.bathroomsMin ?? null,
         areaMin: parsed.data.areaMin ?? null,
-        flags: parsed.data.flags ?? null,
         scope: parsed.data.scope || "PORTFOLIO",
       },
       update: {
-        city: parsed.data.city,
-        state: parsed.data.state,
+        city,
+        state,
         neighborhoods,
         purpose: parsed.data.purpose ?? null,
         types,
@@ -226,7 +276,6 @@ export async function PUT(
         bedroomsMin: parsed.data.bedroomsMin ?? null,
         bathroomsMin: parsed.data.bathroomsMin ?? null,
         areaMin: parsed.data.areaMin ?? null,
-        flags: parsed.data.flags ?? null,
         scope: parsed.data.scope || undefined,
       },
     });
