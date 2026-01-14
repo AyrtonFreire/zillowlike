@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { createPortal } from "react-dom";
 
 interface DrawerProps {
   open: boolean;
@@ -12,6 +13,11 @@ interface DrawerProps {
 export default function Drawer({ open, onClose, title, children, side = "right" }: DrawerProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
   const previouslyFocused = React.useRef<Element | null>(null);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   React.useEffect(() => {
     if (!open) return;
@@ -54,7 +60,9 @@ export default function Drawer({ open, onClose, title, children, side = "right" 
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div aria-hidden={!open} className={`fixed inset-0 z-50 ${open ? '' : 'pointer-events-none'}`}>
       {/* Backdrop */}
       <div onClick={onClose} className={`absolute inset-0 bg-black/40 transition-opacity ${open ? 'opacity-100' : 'opacity-0'}`} />
@@ -68,10 +76,9 @@ export default function Drawer({ open, onClose, title, children, side = "right" 
           <div className="text-sm font-semibold text-neutral-900">{title}</div>
           <button onClick={onClose} className="text-neutral-600 hover:text-neutral-900 text-sm">Fechar</button>
         </div>
-        <div className="p-4 overflow-y-auto h-[calc(100%-56px)]">
-          {children}
-        </div>
+        <div className="p-4 overflow-y-auto h-[calc(100%-56px)]">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

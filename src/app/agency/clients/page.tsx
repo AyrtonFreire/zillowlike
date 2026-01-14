@@ -7,6 +7,7 @@ import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import Drawer from "@/components/ui/Drawer";
 import { X, Plus, UserRound, Phone, Mail, MapPin } from "lucide-react";
+import PriceRangeSlider from "@/components/PriceRangeSlider";
 
 type ClientStatus = "ACTIVE" | "PAUSED";
 
@@ -36,6 +37,50 @@ type ApiResponse = {
   total: number;
   error?: string;
 };
+
+type LocationSuggestion = {
+  label: string;
+  city: string;
+  state: string;
+  neighborhood: string | null;
+  count?: number;
+};
+
+type LocationsResponse = {
+  success: boolean;
+  suggestions?: LocationSuggestion[];
+  error?: string;
+};
+
+type PreferencePutResponse = {
+  success: boolean;
+  preference?: any;
+  error?: string;
+  issues?: any;
+};
+
+const PROPERTY_TYPES = ["HOUSE", "APARTMENT", "CONDO", "TOWNHOUSE", "STUDIO", "LAND", "COMMERCIAL"] as const;
+
+const PROPERTY_TYPE_LABEL: Record<string, string> = {
+  HOUSE: "Casa",
+  APARTMENT: "Apartamento",
+  CONDO: "Condomínio",
+  TOWNHOUSE: "Casa em condomínio",
+  STUDIO: "Studio",
+  LAND: "Terreno",
+  COMMERCIAL: "Comercial",
+};
+
+function formatCurrency(value: string) {
+  if (!value) return "";
+  const num = parseInt(String(value).replace(/\D/g, ""), 10);
+  if (Number.isNaN(num)) return "";
+  return num.toLocaleString("pt-BR");
+}
+
+function parseCurrency(value: string) {
+  return String(value || "").replace(/\D/g, "");
+}
 
 type CreateResponse = {
   success: boolean;
@@ -76,6 +121,28 @@ export default function AgencyClientsPage() {
   const [createName, setCreateName] = useState("");
   const [createEmail, setCreateEmail] = useState("");
   const [createPhone, setCreatePhone] = useState("");
+  const [createNotes, setCreateNotes] = useState("");
+  const [prefCity, setPrefCity] = useState("");
+  const [prefState, setPrefState] = useState("");
+  const [selectedCity, setSelectedCity] = useState<{ city: string; state: string } | null>(null);
+  const [citySuggestions, setCitySuggestions] = useState<LocationSuggestion[]>([]);
+  const [citySuggestOpen, setCitySuggestOpen] = useState(false);
+
+  const [prefNeighborhoodDraft, setPrefNeighborhoodDraft] = useState("");
+  const [prefNeighborhoodTags, setPrefNeighborhoodTags] = useState<string[]>([]);
+  const [hoodSuggestions, setHoodSuggestions] = useState<LocationSuggestion[]>([]);
+  const [hoodSuggestOpen, setHoodSuggestOpen] = useState(false);
+
+  const [prefPurpose, setPrefPurpose] = useState<"SALE" | "RENT" | "">("");
+  const [prefScope, setPrefScope] = useState<"PORTFOLIO" | "MARKET">("PORTFOLIO");
+  const [prefTypes, setPrefTypes] = useState<string[]>([]);
+
+  const [prefMinPrice, setPrefMinPrice] = useState("");
+  const [prefMaxPrice, setPrefMaxPrice] = useState("");
+  const [prefBedroomsMin, setPrefBedroomsMin] = useState("");
+  const [prefBathroomsMin, setPrefBathroomsMin] = useState("");
+  const [prefAreaMin, setPrefAreaMin] = useState("");
+
   const [createError, setCreateError] = useState<string | null>(null);
 
   const canUse = role === "AGENCY" || role === "ADMIN";
@@ -154,8 +221,78 @@ export default function AgencyClientsPage() {
     setCreateName("");
     setCreateEmail("");
     setCreatePhone("");
+    setCreateNotes("");
+    setPrefCity("");
+    setPrefState("");
+    setSelectedCity(null);
+    setCitySuggestions([]);
+    setCitySuggestOpen(false);
+    setPrefNeighborhoodDraft("");
+    setPrefNeighborhoodTags([]);
+    setHoodSuggestions([]);
+    setHoodSuggestOpen(false);
+    setPrefPurpose("");
+    setPrefScope("PORTFOLIO");
+    setPrefTypes([]);
+    setPrefMinPrice("");
+    setPrefMaxPrice("");
+    setPrefBedroomsMin("");
+    setPrefBathroomsMin("");
+    setPrefAreaMin("");
     setCreateError(null);
   };
+
+  useEffect(() => {
+    if (!canUse) return;
+    const q = prefCity.trim();
+    if (!q) {
+      setCitySuggestions([]);
+      return;
+    }
+
+    const t = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/locations?q=${encodeURIComponent(q)}`, { cache: "no-store" });
+        const json = (await res.json().catch(() => null)) as LocationsResponse | null;
+        const suggestions = Array.isArray(json?.suggestions) ? json!.suggestions! : [];
+        const cityOnly = suggestions.filter((s) => !s.neighborhood);
+        setCitySuggestions(cityOnly.slice(0, 8));
+      } catch {
+        setCitySuggestions([]);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(t);
+  }, [prefCity, canUse]);
+
+  useEffect(() => {
+    if (!canUse) return;
+    if (!selectedCity) {
+      setHoodSuggestions([]);
+      return;
+    }
+
+    const query = prefNeighborhoodDraft.trim();
+    const q = query ? query : selectedCity.city;
+
+    const t = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/locations?q=${encodeURIComponent(q)}`, { cache: "no-store" });
+        const json = (await res.json().catch(() => null)) as LocationsResponse | null;
+        const suggestions = Array.isArray(json?.suggestions) ? json!.suggestions! : [];
+        const hoods = suggestions
+          .filter((s) => !!s.neighborhood)
+          .filter((s) => String(s.city) === selectedCity.city && String(s.state) === selectedCity.state)
+          .filter((s) => !prefNeighborhoodTags.includes(String(s.neighborhood)))
+          .slice(0, 10);
+        setHoodSuggestions(hoods);
+      } catch {
+        setHoodSuggestions([]);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(t);
+  }, [prefNeighborhoodDraft, selectedCity, canUse, prefNeighborhoodTags]);
 
   const submitCreate = async () => {
     try {
@@ -166,11 +303,19 @@ export default function AgencyClientsPage() {
         return;
       }
 
+      const city = prefCity.trim();
+      const state = prefState.trim();
+      if (!city || !state) {
+        setCreateError("Selecione uma cidade (com estado) nas preferências.");
+        return;
+      }
+
       setCreating(true);
 
       const payload: any = { name };
       if (createEmail.trim()) payload.email = createEmail.trim();
       if (createPhone.trim()) payload.phone = createPhone.trim();
+      if (createNotes.trim()) payload.notes = createNotes.trim();
 
       const res = await fetch("/api/agency/clients", {
         method: "POST",
@@ -181,6 +326,35 @@ export default function AgencyClientsPage() {
 
       if (!res.ok || !json?.success) {
         throw new Error(json?.error || "Não conseguimos criar o cliente agora.");
+      }
+
+      const createdId = String(json?.client?.id || "");
+      if (!createdId) {
+        throw new Error("Cliente criado, mas não recebemos o ID.");
+      }
+
+      const prefPayload: any = {
+        city,
+        state,
+        neighborhoods: prefNeighborhoodTags,
+        purpose: prefPurpose ? prefPurpose : null,
+        types: prefTypes,
+        minPrice: prefMinPrice.trim() ? Math.max(0, Math.round(Number(prefMinPrice))) * 100 : null,
+        maxPrice: prefMaxPrice.trim() ? Math.max(0, Math.round(Number(prefMaxPrice))) * 100 : null,
+        bedroomsMin: prefBedroomsMin.trim() ? Math.max(0, Math.round(Number(prefBedroomsMin))) : null,
+        bathroomsMin: prefBathroomsMin.trim() ? Math.max(0, Number(prefBathroomsMin)) : null,
+        areaMin: prefAreaMin.trim() ? Math.max(0, Math.round(Number(prefAreaMin))) : null,
+        scope: prefScope,
+      };
+
+      const prefRes = await fetch(`/api/agency/clients/${encodeURIComponent(createdId)}/preference`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(prefPayload),
+      });
+      const prefJson = (await prefRes.json().catch(() => null)) as PreferencePutResponse | null;
+      if (!prefRes.ok || !prefJson?.success) {
+        throw new Error(prefJson?.error || "Cliente criado, mas não conseguimos salvar as preferências.");
       }
 
       resetCreate();
@@ -318,7 +492,7 @@ export default function AgencyClientsPage() {
               className="inline-flex items-center justify-center px-3 py-2 rounded-xl glass-teal btn-modern text-white text-sm font-semibold disabled:opacity-70"
             >
               <Plus className="w-4 h-4 mr-2" />
-              + Cliente
+              Cliente
             </button>
           </div>
         </div>
@@ -434,37 +608,332 @@ export default function AgencyClientsPage() {
           }}
           className="space-y-4"
         >
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>
-            <input
-              value={createName}
-              onChange={(e) => setCreateName(String(e.target.value))}
-              className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
-              placeholder="Ex: Maria Silva"
-              autoComplete="name"
-            />
+          <div className="rounded-2xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
+            <div className="text-sm font-semibold text-gray-900">Dados do cliente</div>
+            <div className="mt-3 grid grid-cols-1 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>
+                <input
+                  value={createName}
+                  onChange={(e) => setCreateName(String(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                  placeholder="Ex: Maria Silva"
+                  autoComplete="name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail (opcional)</label>
+                <input
+                  value={createEmail}
+                  onChange={(e) => setCreateEmail(String(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                  placeholder="maria@email.com"
+                  autoComplete="email"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone (opcional)</label>
+                <input
+                  value={createPhone}
+                  onChange={(e) => setCreatePhone(String(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                  placeholder="(11) 99999-9999"
+                  autoComplete="tel"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Observações (opcional)</label>
+                <textarea
+                  value={createNotes}
+                  onChange={(e) => setCreateNotes(String(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm min-h-[90px]"
+                  placeholder="Preferências gerais, contexto do atendimento..."
+                />
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail (opcional)</label>
-            <input
-              value={createEmail}
-              onChange={(e) => setCreateEmail(String(e.target.value))}
-              className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
-              placeholder="maria@email.com"
-              autoComplete="email"
-            />
-          </div>
+          <div className="rounded-2xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
+            <div className="text-sm font-semibold text-gray-900">Preferências</div>
+            <div className="mt-3 grid grid-cols-1 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Cidade</label>
+                <div className="relative">
+                  <input
+                    value={prefCity}
+                    onChange={(e) => {
+                      setPrefCity(String(e.target.value));
+                      setCitySuggestOpen(true);
+                      setSelectedCity(null);
+                      setPrefState("");
+                      setPrefNeighborhoodTags([]);
+                      setPrefNeighborhoodDraft("");
+                    }}
+                    onFocus={() => setCitySuggestOpen(true)}
+                    onBlur={() => {
+                      window.setTimeout(() => setCitySuggestOpen(false), 160);
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                    placeholder="Ex: São Paulo"
+                  />
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone (opcional)</label>
-            <input
-              value={createPhone}
-              onChange={(e) => setCreatePhone(String(e.target.value))}
-              className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
-              placeholder="(11) 99999-9999"
-              autoComplete="tel"
-            />
+                  {citySuggestOpen && citySuggestions.length ? (
+                    <div className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+                      {citySuggestions.map((s) => {
+                        const key = `${s.city}__${s.state}`;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => {
+                              setPrefCity(String(s.city));
+                              setPrefState(String(s.state));
+                              setSelectedCity({ city: String(s.city), state: String(s.state) });
+                              setCitySuggestOpen(false);
+                              setPrefNeighborhoodTags([]);
+                              setPrefNeighborhoodDraft("");
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          >
+                            <div className="text-gray-900 font-medium">{s.city}</div>
+                            <div className="text-xs text-gray-500">{s.state}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Estado</label>
+                <input
+                  value={prefState}
+                  readOnly
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                  placeholder="Ex: SP"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Bairros</label>
+                <div className="relative">
+                  <input
+                    value={prefNeighborhoodDraft}
+                    onChange={(e) => {
+                      setPrefNeighborhoodDraft(String(e.target.value));
+                      setHoodSuggestOpen(true);
+                    }}
+                    onFocus={() => setHoodSuggestOpen(true)}
+                    onBlur={() => {
+                      window.setTimeout(() => setHoodSuggestOpen(false), 160);
+                    }}
+                    disabled={!selectedCity}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm disabled:bg-gray-50"
+                    placeholder={selectedCity ? "Digite para buscar bairros" : "Selecione uma cidade primeiro"}
+                  />
+
+                  {hoodSuggestOpen && hoodSuggestions.length ? (
+                    <div className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+                      {hoodSuggestions.map((s) => {
+                        const hood = String(s.neighborhood || "");
+                        if (!hood) return null;
+                        return (
+                          <button
+                            key={`${selectedCity?.city}__${selectedCity?.state}__${hood}`}
+                            type="button"
+                            onClick={() => {
+                              setPrefNeighborhoodTags((prev) => {
+                                const next = Array.isArray(prev) ? [...prev] : [];
+                                if (next.includes(hood)) return next;
+                                return [...next, hood].slice(0, 100);
+                              });
+                              setPrefNeighborhoodDraft("");
+                              setHoodSuggestOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          >
+                            <div className="text-gray-900 font-medium">{hood}</div>
+                            <div className="text-xs text-gray-500">
+                              {s.city}, {s.state}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+
+                {prefNeighborhoodTags.length ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {prefNeighborhoodTags.map((n) => (
+                      <div
+                        key={n}
+                        className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-700"
+                      >
+                        <span className="max-w-[220px] truncate">{n}</span>
+                        <button
+                          type="button"
+                          onClick={() => setPrefNeighborhoodTags((prev) => prev.filter((x) => x !== n))}
+                          className="inline-flex items-center justify-center rounded-md hover:bg-gray-100"
+                          aria-label={`Remover bairro ${n}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Finalidade</label>
+                <select
+                  value={prefPurpose}
+                  onChange={(e) => setPrefPurpose(e.target.value as any)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                >
+                  <option value="">Qualquer</option>
+                  <option value="SALE">Venda</option>
+                  <option value="RENT">Aluguel</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Scope</label>
+                <select
+                  value={prefScope}
+                  onChange={(e) => setPrefScope(e.target.value as any)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                >
+                  <option value="PORTFOLIO">PORTFOLIO</option>
+                  <option value="MARKET">MARKET</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Tipos</label>
+                <div className="flex flex-wrap gap-2">
+                  {PROPERTY_TYPES.map((t) => {
+                    const active = prefTypes.includes(t);
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => {
+                          setPrefTypes((prev) => {
+                            if (prev.includes(t)) return prev.filter((x) => x !== t);
+                            return [...prev, t];
+                          });
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                          active
+                            ? "glass-teal text-white border-transparent shadow-sm"
+                            : "border-gray-200/70 bg-white/80 text-gray-700 hover:bg-white hover:shadow-sm"
+                        }`}
+                      >
+                        {PROPERTY_TYPE_LABEL[t] || t}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-gray-700">Preço</label>
+                  <div className="text-[11px] text-gray-500">
+                    {prefMinPrice.trim() ? `De R$ ${formatCurrency(prefMinPrice)}` : "Sem mínimo"} ·{" "}
+                    {prefMaxPrice.trim() ? `Até R$ ${formatCurrency(prefMaxPrice)}` : "Sem máximo"}
+                  </div>
+                </div>
+
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-600 mb-1 block">Mínimo</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                      <input
+                        type="text"
+                        placeholder="0"
+                        value={formatCurrency(prefMinPrice)}
+                        onChange={(e) => setPrefMinPrice(parseCurrency(e.target.value))}
+                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                        inputMode="numeric"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 mb-1 block">Máximo</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                      <input
+                        type="text"
+                        placeholder="Sem limite"
+                        value={formatCurrency(prefMaxPrice)}
+                        onChange={(e) => setPrefMaxPrice(parseCurrency(e.target.value))}
+                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                        inputMode="numeric"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-2">
+                  <PriceRangeSlider
+                    min={0}
+                    max={5000000}
+                    step={50000}
+                    minValue={prefMinPrice.trim() ? Number(prefMinPrice) : null}
+                    maxValue={prefMaxPrice.trim() ? Number(prefMaxPrice) : null}
+                    onPreviewChange={({ min, max }) => {
+                      setPrefMinPrice(min == null ? "" : String(min));
+                      setPrefMaxPrice(max == null ? "" : String(max));
+                    }}
+                    onChange={({ min, max }) => {
+                      setPrefMinPrice(min == null ? "" : String(min));
+                      setPrefMaxPrice(max == null ? "" : String(max));
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Quartos mín.</label>
+                  <input
+                    value={prefBedroomsMin}
+                    onChange={(e) => setPrefBedroomsMin(String(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                    inputMode="numeric"
+                    placeholder="Ex: 2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Banheiros mín.</label>
+                  <input
+                    value={prefBathroomsMin}
+                    onChange={(e) => setPrefBathroomsMin(String(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                    inputMode="decimal"
+                    placeholder="Ex: 2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Área mín. (m²)</label>
+                  <input
+                    value={prefAreaMin}
+                    onChange={(e) => setPrefAreaMin(String(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                    inputMode="numeric"
+                    placeholder="Ex: 70"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           {createError ? (
