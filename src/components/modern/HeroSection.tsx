@@ -163,7 +163,7 @@ export default function HeroSection() {
           'Condomínio': 'CONDO',
           'Terreno': 'LAND',
           'Comercial': 'COMMERCIAL',
-          'Rural': 'LAND',
+          'Rural': 'RURAL',
           '': ''
         };
         const mapped = typeMap[propertyType] || '';

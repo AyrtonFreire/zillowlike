@@ -109,8 +109,10 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {}, cl
                       { value: 'HOUSE', label: 'Casa' },
                       { value: 'APARTMENT', label: 'Apartamento' },
                       { value: 'CONDO', label: 'Condomínio' },
+                      { value: 'TOWNHOUSE', label: 'Sobrado' },
                       { value: 'STUDIO', label: 'Studio' },
                       { value: 'LAND', label: 'Terreno' },
+                      { value: 'RURAL', label: 'Imóvel rural' },
                       { value: 'COMMERCIAL', label: 'Comercial' }
                     ].map((type) => (
                       <button

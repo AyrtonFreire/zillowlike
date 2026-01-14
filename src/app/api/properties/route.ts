@@ -661,7 +661,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Ensure type is a valid enum fallback
-    const validTypes = new Set(["HOUSE","APARTMENT","CONDO","LAND","COMMERCIAL","STUDIO"]);
+    const validTypes = new Set(["HOUSE","APARTMENT","CONDO","TOWNHOUSE","STUDIO","LAND","RURAL","COMMERCIAL"]);
     const safeType = validTypes.has(type as any) ? type : "HOUSE";
 
     const createData: any = {

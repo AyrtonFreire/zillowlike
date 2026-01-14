@@ -41,6 +41,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { buildPropertyPath } from "@/lib/slug";
 import PropertyAnalytics from "@/components/dashboard/PropertyAnalytics";
 import PropertyQualityIndicator from "@/components/dashboard/PropertyQualityIndicator";
+import { ptBR } from "@/lib/i18n/property";
 
 interface PropertyData {
   id: string;
@@ -502,7 +503,7 @@ export default function PropertyDetailPageNew() {
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Tipo</p>
-                      <p className="font-semibold text-gray-900">{property.type}</p>
+                      <p className="font-semibold text-gray-900">{ptBR.type(property.type)}</p>
                     </div>
                   </div>
 

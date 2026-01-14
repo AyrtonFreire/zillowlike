@@ -26,6 +26,7 @@ import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
 import { track } from "@/lib/analytics";
 import PriceRangeSlider from "@/components/PriceRangeSlider";
 import type { ApiProperty } from "@/types/api";
+import { ptBR } from "@/lib/i18n/property";
 
 type Property = ApiProperty;
 const MapWithPriceBubbles = dynamic(() => import("@/components/MapWithPriceBubbles"), { ssr: false });
@@ -431,13 +432,7 @@ export default function Home() {
 
   const getTypeSummary = () => {
     if (!type) return 'Tipo de Imóvel';
-    const typeMap: Record<string, string> = {
-      'HOUSE': 'Casa',
-      'APARTMENT': 'Apartamento',
-      'CONDO': 'Condomínio',
-      'LAND': 'Terreno'
-    };
-    return typeMap[type] || 'Tipo de Imóvel';
+    return ptBR.type(type);
   };
 
   const getAreaSummary = () => {
@@ -754,7 +749,7 @@ export default function Home() {
             const labelParts: string[] = [];
             if (city) labelParts.push(city);
             if (state) labelParts.push(state);
-            if (type) labelParts.push(type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type);
+            if (type) labelParts.push(ptBR.type(type));
             const label = labelParts.length ? labelParts.join(', ') : 'Sua última busca';
             localStorage.setItem('lastSearch', JSON.stringify({ label, params: params.toString() }));
           } catch {}
@@ -2239,7 +2234,7 @@ export default function Home() {
                   {/* Tipo de imóvel */}
                   {type && (
                     <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
-                      <span>{type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type === 'CONDO' ? 'Condomínio' : 'Terreno'}</span>
+                      <span>{ptBR.type(type)}</span>
                       <button
                         onClick={() => {
                           setType('');
@@ -2523,7 +2518,7 @@ export default function Home() {
                 {/* Tipo de imóvel */}
                 {type && (
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-300 rounded-full text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-colors">
-                    <span>{type === 'HOUSE' ? 'Casa' : type === 'APARTMENT' ? 'Apartamento' : type === 'CONDO' ? 'Condomínio' : 'Terreno'}</span>
+                    <span>{ptBR.type(type)}</span>
                     <button
                       onClick={() => {
                         setType('');

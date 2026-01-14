@@ -6,6 +6,7 @@ import { useState, useCallback } from "react";
 import type { ApiProperty } from "@/types/api";
 import { Heart, MapPin, Bed, Bath, Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
 import { buildPropertyPath } from "@/lib/slug";
+import { ptBR } from "@/lib/i18n/property";
 
 interface PropertyCardProps {
   property: ApiProperty;
@@ -165,12 +166,7 @@ export default function PropertyCard({
           {/* Tag Flutuante - Canto Superior Esquerdo */}
           <div className="absolute top-3 left-3 z-10">
             <span className="inline-flex items-center px-3 py-1 bg-white/95 backdrop-blur-sm text-gray-800 text-xs font-semibold rounded-full shadow-md">
-              {p.type === 'HOUSE' ? 'Casa' : 
-               p.type === 'APARTMENT' ? 'Apartamento' :
-               p.type === 'CONDO' ? 'Condomínio' :
-               p.type === 'STUDIO' ? 'Studio' :
-               p.type === 'LAND' ? 'Terreno' :
-               p.type === 'COMMERCIAL' ? 'Comercial' : 'Imóvel'}
+              {ptBR.type(p.type)}
             </span>
           </div>
 

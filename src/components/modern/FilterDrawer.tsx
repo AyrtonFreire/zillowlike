@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
+import { ptBR } from "@/lib/i18n/property";
 
 interface FilterDrawerProps {
   onApplyFilters?: (filters: any) => void;
@@ -20,7 +21,7 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
 
   const handleApply = () => {
     if (onApplyFilters) {
-      onApplyFilters(filters);
+      onApplyFilters({ ...filters, type: (filters as any).propertyType });
     }
     setIsOpen(false);
   };
@@ -111,7 +112,16 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
                     Tipo de Imóvel
                   </label>
                   <div className="grid grid-cols-2 gap-3">
-                    {["HOUSE", "APARTMENT", "LAND", "COMMERCIAL"].map((type) => (
+                    {[
+                      "HOUSE",
+                      "APARTMENT",
+                      "CONDO",
+                      "TOWNHOUSE",
+                      "STUDIO",
+                      "LAND",
+                      "RURAL",
+                      "COMMERCIAL",
+                    ].map((type) => (
                       <button
                         key={type}
                         onClick={() => setFilters({ ...filters, propertyType: type })}
@@ -121,10 +131,7 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
                             : "border-gray-200 hover:border-blue-600 hover:bg-blue-50"
                         }`}
                       >
-                        {type === "HOUSE" && "Casa"}
-                        {type === "APARTMENT" && "Apartamento"}
-                        {type === "LAND" && "Terreno"}
-                        {type === "COMMERCIAL" && "Comercial"}
+                        {ptBR.type(type)}
                       </button>
                     ))}
                   </div>

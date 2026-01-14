@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
+import { ptBR } from "@/lib/i18n/property";
 
 type AssistantAction = {
   type: string;
@@ -280,7 +281,7 @@ export function AgencyAssistantFeed(props: {
                   {item.type && (
                     <div className="ml-auto inline-flex items-center gap-2 text-[11px] font-semibold text-gray-500">
                       <Sparkles className="w-4 h-4" />
-                      {item.type}
+                      {ptBR.type(item.type)}
                     </div>
                   )}
                 </div>

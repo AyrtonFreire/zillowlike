@@ -220,6 +220,7 @@ export default function EditPropertyPage() {
                 <option value="TOWNHOUSE">Sobrado</option>
                 <option value="STUDIO">Studio</option>
                 <option value="LAND">Terreno</option>
+                <option value="RURAL">Imóvel rural</option>
                 <option value="COMMERCIAL">Comercial</option>
               </select>
             </div>

@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Bell, Plus, Trash2, Edit2, AlertCircle } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ptBR } from "@/lib/i18n/property";
 
 interface Alert {
   id: string;
@@ -258,7 +259,11 @@ export default function AlertsPage() {
                       <option value="HOUSE">Casa</option>
                       <option value="APARTMENT">Apartamento</option>
                       <option value="CONDO">Condomínio</option>
+                      <option value="TOWNHOUSE">Sobrado</option>
+                      <option value="STUDIO">Studio</option>
                       <option value="LAND">Terreno</option>
+                      <option value="RURAL">Imóvel rural</option>
+                      <option value="COMMERCIAL">Comercial</option>
                     </select>
                   </div>
 
@@ -375,7 +380,7 @@ export default function AlertsPage() {
                   {alert.filters.type && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Tipo:</span>
-                      <span className="font-medium text-gray-900">{alert.filters.type}</span>
+                      <span className="font-medium text-gray-900">{ptBR.type(alert.filters.type)}</span>
                     </div>
                   )}
                   {alert.filters.minBedrooms && (

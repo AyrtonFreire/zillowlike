@@ -6,6 +6,7 @@ export const ptBR = {
     t === 'TOWNHOUSE' ? 'Sobrado' :
     t === 'STUDIO' ? 'Studio' :
     t === 'LAND' ? 'Terreno' :
+    t === 'RURAL' ? 'Imóvel rural' :
     t === 'COMMERCIAL' ? 'Comercial' : 'Imóvel'
   ),
   purpose: (p?: string) => (p === 'RENT' ? 'Aluguel' : p === 'SALE' ? 'Venda' : ''),

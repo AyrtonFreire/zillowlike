@@ -44,6 +44,7 @@ export default function NewPropertyPage() {
   const [type, setType] = useState("HOUSE");
   const [purpose, setPurpose] = useState<"SALE"|"RENT"|"">("");
   const [conditionTags, setConditionTags] = useState<string[]>([]);
+  const [petFriendly, setPetFriendly] = useState(false);
   const [featureSuggestions, setFeatureSuggestions] = useState<string[]>([]);
   const [condoFeeBRL, setCondoFeeBRL] = useState("");
   const [iptuYearBRL, setIptuYearBRL] = useState("");
@@ -132,7 +133,7 @@ export default function NewPropertyPage() {
     []
   );
   const CONDITION_EXTRA_OPTIONS: string[] = useMemo(
-    () => ["Condomínio", "Mobiliado", "Semi-mobiliado", "Aceita permuta", "Aceita pets"],
+    () => ["Mobiliado", "Semi-mobiliado"],
     []
   );
   const CONDITION_EXTRA_SET = useMemo(
@@ -191,7 +192,7 @@ export default function NewPropertyPage() {
   const accPetsCount = (petsSmall ? 1 : 0) + (petsLarge ? 1 : 0) + (condoRules ? 1 : 0);
   const accSecurityCount = (secCCTV ? 1 : 0) + (secSallyPort ? 1 : 0) + (secNightGuard ? 1 : 0) + (secElectricFence ? 1 : 0);
   const accMeasuresCount = [builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2].filter((v) => String(v || "").trim()).length;
-  const accFeaturesCount = (hasBalcony ? 1 : 0) + conditionTags.filter((t) => PROPERTY_FEATURE_TAG_SET.has(t)).length;
+  const accFeaturesCount = (hasBalcony ? 1 : 0) + (petFriendly ? 1 : 0) + conditionTags.filter((t) => PROPERTY_FEATURE_TAG_SET.has(t)).length;
   const accCondoCount =
     (hasElevator ? 1 : 0) +
     (hasPool ? 1 : 0) +
@@ -221,7 +222,7 @@ export default function NewPropertyPage() {
     const measuresFilled = !!builtAreaM2 || !!lotAreaM2 || !!privateAreaM2 || !!usableAreaM2;
     if (measuresFilled) next.acc_measures = true;
     const featureTagsFilled = conditionTags.some((t) => PROPERTY_FEATURE_TAG_SET.has(t));
-    const featuresFilled = hasBalcony || featureTagsFilled;
+    const featuresFilled = hasBalcony || petFriendly || featureTagsFilled;
     if (featuresFilled) next.acc_features = true;
     const condoFilled = hasElevator || hasPool || hasGym || hasGourmet || hasPlayground || hasPartyRoom || hasConcierge24h;
     if (condoFilled) next.acc_condo = true;
@@ -229,7 +230,7 @@ export default function NewPropertyPage() {
     if (conditionFilled) next.acc_condition = true;
     setOpenAcc(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, hasBalcony, conditionTags, hasElevator, hasPool, hasGym, hasGourmet, hasPlayground, hasPartyRoom, hasConcierge24h]);
+  }, [accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, hasBalcony, petFriendly, conditionTags, hasElevator, hasPool, hasGym, hasGourmet, hasPlayground, hasPartyRoom, hasConcierge24h]);
 
   // Heurística: sugerir capa movendo imagem com nome/fachada
   function suggestCover() {
@@ -821,6 +822,7 @@ export default function NewPropertyPage() {
     setPriceBRL("");
     setType("HOUSE");
     setConditionTags([]);
+    setPetFriendly(false);
     setStreet("");
     setNeighborhood("");
     setCity("Petrolina");
@@ -978,6 +980,8 @@ export default function NewPropertyPage() {
       if (typeof d.aiDescriptionGenerations === 'number') setAiDescriptionGenerations(d.aiDescriptionGenerations);
       if (Array.isArray(d.images)) setImages(d.images);
       if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
+      if (typeof d.petFriendly === 'boolean') setPetFriendly(d.petFriendly);
+      else if (Array.isArray(d.conditionTags) && d.conditionTags.includes('Aceita pets')) setPetFriendly(true);
       if (typeof d.currentStep === 'number' && d.currentStep >= 1 && d.currentStep <= 7) {
         setCurrentStep(d.currentStep);
       }
@@ -1052,6 +1056,8 @@ export default function NewPropertyPage() {
         if (typeof d.aiDescriptionGenerations === 'number') setAiDescriptionGenerations(d.aiDescriptionGenerations);
         if (Array.isArray(d.images)) setImages(d.images);
         if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
+        if (typeof d.petFriendly === 'boolean') setPetFriendly(d.petFriendly);
+        else if (Array.isArray(d.conditionTags) && d.conditionTags.includes('Aceita pets')) setPetFriendly(true);
 
         const stepFromApi = typeof draft.currentStep === "number" ? draft.currentStep : d.currentStep;
         if (typeof stepFromApi === "number" && stepFromApi >= 1 && stepFromApi <= 7) {
@@ -1125,6 +1131,7 @@ export default function NewPropertyPage() {
           images,
           addressNumber,
           conditionTags,
+          petFriendly,
           currentStep,
           iptuYearBRL,
           condoFeeBRL,
@@ -1160,7 +1167,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, isSubmitting, publishedProperty]);
+  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, petFriendly, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, isSubmitting, publishedProperty]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1419,11 +1426,12 @@ export default function NewPropertyPage() {
         hasGourmet && 'Espaço gourmet',
         hasConcierge24h && 'Portaria 24h',
       ].filter(Boolean) as string[];
-      const mergedTags = Array.from(new Set([...(conditionTags || []), ...amenityTags]));
+      const filteredConditionTags = (conditionTags || []).filter((t) => t !== 'Condomínio' && t !== 'Aceita permuta' && t !== 'Aceita pets');
+      const mergedTags = Array.from(new Set([...(filteredConditionTags || []), ...amenityTags]));
 
       // Deriva flags usadas nos filtros de busca
       const isFurnished = mergedTags.includes('Mobiliado');
-      const isPetFriendly = mergedTags.includes('Aceita pets') || petsSmall || petsLarge;
+      const isPetFriendly = petFriendly || petsSmall || petsLarge;
 
       const payload = {
         title: finalTitle,
@@ -2117,8 +2125,10 @@ export default function NewPropertyPage() {
                         <option value="HOUSE">Casa</option>
                         <option value="APARTMENT">Apartamento</option>
                         <option value="CONDO">Condomínio</option>
+                        <option value="TOWNHOUSE">Sobrado</option>
                         <option value="STUDIO">Studio/Kitnet</option>
                         <option value="LAND">Terreno</option>
+                        <option value="RURAL">Imóvel rural</option>
                         <option value="COMMERCIAL">Comercial</option>
                       </Select>
                     </div>
@@ -2488,7 +2498,7 @@ export default function NewPropertyPage() {
                       className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors"
                     >
                       <span className="text-sm font-semibold text-gray-800">
-                        🤝 Condição e negociação
+                        🛠️ Condição do imóvel
                         {accConditionCount > 0 && (
                           <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accConditionCount}</span>
                         )}
@@ -2497,20 +2507,14 @@ export default function NewPropertyPage() {
                     </button>
                     {openAcc.acc_condition && (
                       <div className="p-4 pt-0 bg-gray-50/50">
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           {[...CONDITION_STATUS_OPTIONS, ...CONDITION_EXTRA_OPTIONS].map((tag) => (
-                            <button
+                            <Checkbox
                               key={tag}
-                              type="button"
-                              onClick={() => toggleConditionTag(tag)}
-                              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                                conditionTags.includes(tag)
-                                  ? 'bg-teal-600 text-white'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {tag}
-                            </button>
+                              checked={conditionTags.includes(tag)}
+                              onChange={() => toggleConditionTag(tag)}
+                              label={tag}
+                            />
                           ))}
                         </div>
                       </div>
@@ -2559,29 +2563,26 @@ export default function NewPropertyPage() {
                     </button>
                     {openAcc.acc_features && (
                       <div className="p-4 pt-0 bg-gray-50/50">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setHasBalcony((v) => !v)}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                              hasBalcony ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            Varanda
-                          </button>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
+                          <Checkbox
+                            checked={petFriendly}
+                            onChange={(e) => {
+                              const next = e.target.checked;
+                              setPetFriendly(next);
+                              if (!next) {
+                                setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
+                              }
+                            }}
+                            label="Aceita pets"
+                          />
                           {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
-                            <button
+                            <Checkbox
                               key={tag}
-                              type="button"
-                              onClick={() => toggleConditionTag(tag)}
-                              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                                conditionTags.includes(tag)
-                                  ? 'bg-teal-600 text-white'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {tag}
-                            </button>
+                              checked={conditionTags.includes(tag)}
+                              onChange={() => toggleConditionTag(tag)}
+                              label={tag}
+                            />
                           ))}
                         </div>
                       </div>

@@ -22,14 +22,17 @@ import EmptyState from "@/components/ui/EmptyState";
 import DashboardLayout from "@/components/DashboardLayout";
 import { canonicalToBoardGroup, boardGroupToCanonical } from "@/lib/lead-pipeline";
 import { getPusherClient } from "@/lib/pusher-client";
+import { ptBR } from "@/lib/i18n/property";
 
 // Tipo de imóvel traduzido
 const PROPERTY_TYPES: Record<string, string> = {
   HOUSE: "Casa",
   APARTMENT: "Apartamento",
   CONDO: "Condomínio",
+  TOWNHOUSE: "Sobrado",
   STUDIO: "Studio",
   LAND: "Terreno",
+  RURAL: "Imóvel rural",
   COMMERCIAL: "Comercial",
 };
 
@@ -1078,7 +1081,11 @@ export default function MyLeadsPage() {
                         <option value="HOUSE">Casa</option>
                         <option value="APARTMENT">Apartamento</option>
                         <option value="CONDO">Condomínio</option>
+                        <option value="TOWNHOUSE">Sobrado</option>
                         <option value="STUDIO">Studio</option>
+                        <option value="LAND">Terreno</option>
+                        <option value="RURAL">Imóvel rural</option>
+                        <option value="COMMERCIAL">Comercial</option>
                       </select>
                     </div>
                     <div className="flex gap-2">
@@ -1419,7 +1426,7 @@ export default function MyLeadsPage() {
                             {lead.property.city}
                           </span>
                           <span>•</span>
-                          <span>{PROPERTY_TYPES[lead.property.type] || lead.property.type}</span>
+                          <span>{ptBR.type(lead.property.type)}</span>
                           <span>•</span>
                           <span>{getTimeAgo(lead.createdAt)}</span>
                         </div>

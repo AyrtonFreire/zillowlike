@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Award, ChevronLeft, ChevronRight, X, Home, DollarSign, Calendar } from "lucide-react";
+import { ptBR } from "@/lib/i18n/property";
 
 interface SoldProperty {
   id: string;
@@ -25,7 +26,10 @@ const PROPERTY_TYPES: Record<string, string> = {
   HOUSE: "Casa",
   APARTMENT: "Apartamento",
   CONDO: "Condomínio",
+  TOWNHOUSE: "Sobrado",
+  STUDIO: "Studio",
   LAND: "Terreno",
+  RURAL: "Imóvel rural",
   COMMERCIAL: "Comercial",
   FARM: "Fazenda/Sítio",
 };
@@ -203,7 +207,7 @@ export default function RealtorSalesGallery({ properties }: RealtorSalesGalleryP
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                 <span className="flex items-center gap-1.5">
                   <Home className="w-4 h-4" />
-                  {PROPERTY_TYPES[currentProperty.type] || currentProperty.type}
+                  {ptBR.type(currentProperty.type)}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <DollarSign className="w-4 h-4" />

@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { Heart, Bed, Bath, Maximize2, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import type { ApiProperty } from "@/types/api";
+import { ptBR } from "@/lib/i18n/property";
 
 type PropertyGridProps = {
   title: string;
@@ -130,19 +131,7 @@ export default function PropertyGrid({
 
                 {/* Badge de Tipo - Top Left */}
                 <div className="absolute top-3 left-3 px-4 py-2 bg-white rounded-[20px] text-sm font-medium text-gray-900 shadow-sm">
-                  {property.type === "HOUSE"
-                    ? "Casa"
-                    : property.type === "APARTMENT"
-                    ? "Apartamento"
-                    : property.type === "CONDO"
-                    ? "Condomínio"
-                    : property.type === "STUDIO"
-                    ? "Studio"
-                    : property.type === "LAND"
-                    ? "Terreno"
-                    : property.type === "COMMERCIAL"
-                    ? "Comercial"
-                    : "Imóvel"}
+                  {ptBR.type(property.type)}
                 </div>
 
                 {/* Favorite Button - Top Right */}

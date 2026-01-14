@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Clock, MapPin, Calendar, ArrowRight, User, Users, Home, MessageCircle, CheckCircle, XCircle, AlertCircle, Star } from "lucide-react";
 import { buildPropertyPath } from "@/lib/slug";
 import Image from "next/image";
+import { ptBR } from "@/lib/i18n/property";
 
 interface LeadCardWithTimeProps {
   lead: {
@@ -140,7 +141,7 @@ export default function LeadCardWithTime({ lead, onCandidate }: LeadCardWithTime
 
             {/* Property Details */}
             <div className="flex gap-4 text-sm text-gray-600 mb-3">
-              <span>{lead.property.type}</span>
+              <span>{ptBR.type(lead.property.type)}</span>
               {lead.property.bedrooms && <span>• {lead.property.bedrooms} quartos</span>}
               {lead.property.bathrooms && <span>• {lead.property.bathrooms} banheiros</span>}
             </div>

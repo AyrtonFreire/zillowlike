@@ -7,6 +7,7 @@ export const PropertyTypeEnum = z.enum([
   "TOWNHOUSE",
   "STUDIO",
   "LAND",
+  "RURAL",
   "COMMERCIAL",
 ]);
 

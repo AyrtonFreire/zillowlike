@@ -10,6 +10,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
 import type { GetFavoritesResponse, GetPropertiesResponse, ApiProperty } from "@/types/api";
 import { buildPropertyPath } from "@/lib/slug";
+import { ptBR } from "@/lib/i18n/property";
 
 type Property = ApiProperty;
 
@@ -272,6 +273,7 @@ export default function HomeClient() {
                       <option value="TOWNHOUSE">Sobrado</option>
                       <option value="STUDIO">Studio</option>
                       <option value="LAND">Terreno</option>
+                      <option value="RURAL">Imóvel rural</option>
                       <option value="COMMERCIAL">Comercial</option>
                     </select>
                     <input
@@ -451,13 +453,7 @@ export default function HomeClient() {
                         {p.title}
                       </h3>
                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full ml-2 whitespace-nowrap">
-                        {p.type === 'HOUSE' ? 'Casa' : 
-                         p.type === 'APARTMENT' ? 'Apto' :
-                         p.type === 'CONDO' ? 'Condomínio' :
-                         p.type === 'TOWNHOUSE' ? 'Sobrado' :
-                         p.type === 'STUDIO' ? 'Studio' :
-                         p.type === 'LAND' ? 'Terreno' :
-                         p.type === 'COMMERCIAL' ? 'Comercial' : p.type}
+                        {ptBR.type(p.type)}
                       </span>
                     </div>
                     

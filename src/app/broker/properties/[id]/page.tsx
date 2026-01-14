@@ -7,6 +7,7 @@ import { Home, Users, Activity, AlertCircle, ChevronLeft, MapPin } from "lucide-
 import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import { ptBR } from "@/lib/i18n/property";
 
 interface PropertySummary {
   id: string;
@@ -194,7 +195,7 @@ export default function BrokerPropertyDetailPage() {
           <div className="text-right text-sm text-gray-700 space-y-1">
             <p>
               <span className="text-gray-500 mr-1">Tipo:</span>
-              <span className="font-medium">{property.type}</span>
+              <span className="font-medium">{ptBR.type(property.type)}</span>
             </p>
             {property.bedrooms && (
               <p>

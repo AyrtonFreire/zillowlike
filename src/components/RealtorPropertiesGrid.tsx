@@ -36,7 +36,10 @@ const PROPERTY_TYPES: Record<string, string> = {
   HOUSE: "Casa",
   APARTMENT: "Apartamento",
   CONDO: "Condomínio",
+  TOWNHOUSE: "Sobrado",
+  STUDIO: "Studio",
   LAND: "Terreno",
+  RURAL: "Imóvel rural",
   COMMERCIAL: "Comercial",
   FARM: "Fazenda/Sítio",
 };

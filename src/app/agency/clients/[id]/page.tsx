@@ -155,15 +155,16 @@ type WhatsAppDraftResponse = {
   error?: string;
 };
 
-const PROPERTY_TYPES = ["HOUSE", "APARTMENT", "CONDO", "TOWNHOUSE", "STUDIO", "LAND", "COMMERCIAL"] as const;
+const PROPERTY_TYPES = ["HOUSE", "APARTMENT", "CONDO", "TOWNHOUSE", "STUDIO", "LAND", "RURAL", "COMMERCIAL"] as const;
 
 const PROPERTY_TYPE_LABEL: Record<string, string> = {
   HOUSE: "Casa",
   APARTMENT: "Apartamento",
   CONDO: "Condomínio",
-  TOWNHOUSE: "Casa em condomínio",
+  TOWNHOUSE: "Sobrado",
   STUDIO: "Studio",
   LAND: "Terreno",
+  RURAL: "Imóvel rural",
   COMMERCIAL: "Comercial",
 };
 

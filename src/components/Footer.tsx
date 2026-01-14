@@ -20,17 +20,27 @@ export default function SiteFooter() {
           <div>
             <h4 className="text-white font-semibold mb-3 font-display">Comprar</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/?type=HOUSE" className="hover:text-white transition">Casas</Link></li>
-              <li><Link href="/?type=APARTMENT" className="hover:text-white transition">Apartamentos</Link></li>
-              <li><Link href="/?type=CONDO" className="hover:text-white transition">Condomínios</Link></li>
-              <li><Link href="/?type=LAND" className="hover:text-white transition">Terrenos</Link></li>
+              <li><Link href="/explore/buy?type=HOUSE" className="hover:text-white transition">Casas</Link></li>
+              <li><Link href="/explore/buy?type=APARTMENT" className="hover:text-white transition">Apartamentos</Link></li>
+              <li><Link href="/explore/buy?type=CONDO" className="hover:text-white transition">Condomínios</Link></li>
+              <li><Link href="/explore/buy?type=TOWNHOUSE" className="hover:text-white transition">Sobrados</Link></li>
+              <li><Link href="/explore/buy?type=STUDIO" className="hover:text-white transition">Studios</Link></li>
+              <li><Link href="/explore/buy?type=LAND" className="hover:text-white transition">Terrenos</Link></li>
+              <li><Link href="/explore/buy?type=RURAL" className="hover:text-white transition">Imóvel rural</Link></li>
+              <li><Link href="/explore/buy?type=COMMERCIAL" className="hover:text-white transition">Comercial</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="text-white font-semibold mb-3 font-display">Alugar</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/?purpose=RENT&type=HOUSE" className="hover:text-white transition">Casas para alugar</Link></li>
-              <li><Link href="/?purpose=RENT&type=APARTMENT" className="hover:text-white transition">Apartamentos</Link></li>
+              <li><Link href="/explore/rent?type=HOUSE" className="hover:text-white transition">Casas para alugar</Link></li>
+              <li><Link href="/explore/rent?type=APARTMENT" className="hover:text-white transition">Apartamentos</Link></li>
+              <li><Link href="/explore/rent?type=CONDO" className="hover:text-white transition">Condomínios</Link></li>
+              <li><Link href="/explore/rent?type=TOWNHOUSE" className="hover:text-white transition">Sobrados</Link></li>
+              <li><Link href="/explore/rent?type=STUDIO" className="hover:text-white transition">Studios</Link></li>
+              <li><Link href="/explore/rent?type=LAND" className="hover:text-white transition">Terrenos</Link></li>
+              <li><Link href="/explore/rent?type=RURAL" className="hover:text-white transition">Imóvel rural</Link></li>
+              <li><Link href="/explore/rent?type=COMMERCIAL" className="hover:text-white transition">Comercial</Link></li>
               <li><Link href="/calculadora-aluguel" prefetch={false} className="hover:text-white transition">Calculadora</Link></li>
             </ul>
           </div>

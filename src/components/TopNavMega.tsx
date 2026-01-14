@@ -259,7 +259,10 @@ export default function TopNavMega() {
                       <Item href="/explore/buy?type=HOUSE">Casas à venda</Item>
                       <Item href="/explore/buy?type=APARTMENT">Apartamentos à venda</Item>
                       <Item href="/explore/buy?type=CONDO">Condomínios</Item>
+                      <Item href="/explore/buy?type=TOWNHOUSE">Sobrados</Item>
+                      <Item href="/explore/buy?type=STUDIO">Studios</Item>
                       <Item href="/explore/buy?type=LAND">Terrenos</Item>
+                      <Item href="/explore/buy?type=RURAL">Imóvel rural</Item>
                       <Item href="/explore/buy?type=COMMERCIAL">Comercial</Item>
                       <Item href="/explore/buy">Todos os imóveis</Item>
                     </Section>
@@ -296,8 +299,12 @@ export default function TopNavMega() {
                       <Item href="/explore/rent">Escolher cidade</Item>
                       <Item href="/explore/rent?type=HOUSE">Casas para alugar</Item>
                       <Item href="/explore/rent?type=APARTMENT">Apartamentos para alugar</Item>
+                      <Item href="/explore/rent?type=TOWNHOUSE">Sobrados</Item>
                       <Item href="/explore/rent?type=CONDO">Condomínios</Item>
                       <Item href="/explore/rent?type=STUDIO">Studios</Item>
+                      <Item href="/explore/rent?type=LAND">Terrenos</Item>
+                      <Item href="/explore/rent?type=RURAL">Imóvel rural</Item>
+                      <Item href="/explore/rent?type=COMMERCIAL">Comercial</Item>
                       <Item href="/explore/rent">Todos para alugar</Item>
                     </Section>
                     <Divider />

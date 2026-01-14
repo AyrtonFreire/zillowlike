@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import { getLowestFinancing } from "@/lib/financing";
 import { normalizePOIs } from "@/lib/overpass";
 import { buildPropertyPath } from "@/lib/slug";
+import { ptBR } from "@/lib/i18n/property";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 const SimilarCarousel = dynamic(() => import("@/components/SimilarCarousel"), { ssr: false });
@@ -984,7 +985,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 {property.type && (
                   <div>
                     <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Tipo</div>
-                    <div className="font-medium text-gray-900">{property.type}</div>
+                    <div className="font-medium text-gray-900">{ptBR.type(property.type)}</div>
                   </div>
                 )}
                 {property.yearBuilt && (

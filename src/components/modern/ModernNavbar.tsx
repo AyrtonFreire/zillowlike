@@ -338,7 +338,10 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         { label: "Casas", href: "/explore/buy?type=HOUSE", description: "Casas unifamiliares" },
         { label: "Apartamentos", href: "/explore/buy?type=APARTMENT", description: "Apartamentos e flats" },
         { label: "Condomínios", href: "/explore/buy?type=CONDO", description: "Condomínios fechados" },
+        { label: "Sobrados", href: "/explore/buy?type=TOWNHOUSE", description: "Sobrados e duplex" },
+        { label: "Studios", href: "/explore/buy?type=STUDIO", description: "Studios e quitinetes" },
         { label: "Terrenos", href: "/explore/buy?type=LAND", description: "Lotes e terrenos" },
+        { label: "Imóvel rural", href: "/explore/buy?type=RURAL", description: "Fazendas e sítios" },
         { label: "Comercial", href: "/explore/buy?type=COMMERCIAL", description: "Imóveis comerciais" },
       ],
     },
@@ -371,8 +374,12 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       items: [
         { label: "Casas", href: "/explore/rent?type=HOUSE", description: "Casas para locação" },
         { label: "Apartamentos", href: "/explore/rent?type=APARTMENT", description: "Apartamentos para alugar" },
+        { label: "Sobrados", href: "/explore/rent?type=TOWNHOUSE", description: "Sobrados para alugar" },
         { label: "Studios", href: "/explore/rent?type=STUDIO", description: "Studios e quitinetes" },
         { label: "Condomínios", href: "/explore/rent?type=CONDO", description: "Condomínios fechados" },
+        { label: "Terrenos", href: "/explore/rent?type=LAND", description: "Lotes e terrenos" },
+        { label: "Imóvel rural", href: "/explore/rent?type=RURAL", description: "Fazendas e sítios" },
+        { label: "Comercial", href: "/explore/rent?type=COMMERCIAL", description: "Imóveis comerciais" },
       ],
     },
     {
