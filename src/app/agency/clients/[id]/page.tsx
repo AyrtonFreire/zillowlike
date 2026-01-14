@@ -157,6 +157,16 @@ type WhatsAppDraftResponse = {
 
 const PROPERTY_TYPES = ["HOUSE", "APARTMENT", "CONDO", "TOWNHOUSE", "STUDIO", "LAND", "COMMERCIAL"] as const;
 
+const PROPERTY_TYPE_LABEL: Record<string, string> = {
+  HOUSE: "Casa",
+  APARTMENT: "Apartamento",
+  CONDO: "Condomínio",
+  TOWNHOUSE: "Casa em condomínio",
+  STUDIO: "Studio",
+  LAND: "Terreno",
+  COMMERCIAL: "Comercial",
+};
+
 function roleFromSession(session: any) {
   return session?.user?.role || session?.role || "USER";
 }
@@ -181,6 +191,17 @@ function centsFromBrlInput(value: string) {
   const n = Number(cleaned.replace(/[^0-9]/g, ""));
   if (!Number.isFinite(n)) return null;
   return Math.max(0, Math.round(n) * 100);
+}
+
+function formatCurrency(value: string) {
+  if (!value) return "";
+  const num = parseInt(String(value).replace(/\D/g, ""), 10);
+  if (Number.isNaN(num)) return "";
+  return num.toLocaleString("pt-BR");
+}
+
+function parseCurrency(value: string) {
+  return String(value || "").replace(/\D/g, "");
 }
 
 async function copyToClipboard(text: string) {
@@ -656,7 +677,7 @@ export default function AgencyClientDetailPage() {
       label: "Preferências",
       content: (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+          <div className="rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <div className="text-sm font-semibold text-gray-900">Preferências de busca</div>
@@ -666,7 +687,7 @@ export default function AgencyClientDetailPage() {
                 type="button"
                 onClick={savePreference}
                 disabled={prefSaving}
-                className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-70"
+                className="inline-flex items-center justify-center px-3 py-2 rounded-xl glass-teal btn-modern text-white text-sm font-semibold disabled:opacity-70"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {prefSaving ? "Salvando..." : "Salvar"}
@@ -694,7 +715,7 @@ export default function AgencyClientDetailPage() {
                       onBlur={() => {
                         window.setTimeout(() => setCitySuggestOpen(false), 160);
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
                       placeholder="Ex: São Paulo"
                     />
 
@@ -730,7 +751,7 @@ export default function AgencyClientDetailPage() {
                   <input
                     value={prefState}
                     readOnly
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
                     placeholder="Ex: SP"
                   />
                 </div>
@@ -748,7 +769,7 @@ export default function AgencyClientDetailPage() {
                         window.setTimeout(() => setHoodSuggestOpen(false), 160);
                       }}
                       disabled={!selectedCity}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm disabled:bg-gray-50"
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm disabled:bg-gray-50"
                       placeholder={selectedCity ? "Digite para buscar bairros" : "Selecione uma cidade primeiro"}
                     />
 
@@ -810,7 +831,7 @@ export default function AgencyClientDetailPage() {
                   <select
                     value={prefPurpose || ""}
                     onChange={(e) => setPrefPurpose((e.target.value || null) as any)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
                   >
                     <option value="">Qualquer</option>
                     <option value="SALE">Venda</option>
@@ -823,7 +844,7 @@ export default function AgencyClientDetailPage() {
                   <select
                     value={prefScope}
                     onChange={(e) => setPrefScope(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
                   >
                     <option value="PORTFOLIO">PORTFOLIO</option>
                     <option value="MARKET">MARKET</option>
@@ -845,11 +866,13 @@ export default function AgencyClientDetailPage() {
                               return [...prev, t];
                             });
                           }}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border ${
-                            active ? "border-neutral-900 bg-neutral-900 text-white" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                            active
+                              ? "glass-teal text-white border-transparent shadow-sm"
+                              : "border-gray-200/70 bg-white/80 text-gray-700 hover:bg-white hover:shadow-sm"
                           }`}
                         >
-                          {t}
+                          {PROPERTY_TYPE_LABEL[t] || t}
                         </button>
                       );
                     })}
@@ -860,9 +883,42 @@ export default function AgencyClientDetailPage() {
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-semibold text-gray-700">Preço</label>
                     <div className="text-[11px] text-gray-500">
-                      {prefMinPrice.trim() ? `De R$ ${prefMinPrice}` : "Sem mínimo"} · {prefMaxPrice.trim() ? `Até R$ ${prefMaxPrice}` : "Sem máximo"}
+                      {prefMinPrice.trim() ? `De R$ ${formatCurrency(prefMinPrice)}` : "Sem mínimo"} ·{" "}
+                      {prefMaxPrice.trim() ? `Até R$ ${formatCurrency(prefMaxPrice)}` : "Sem máximo"}
                     </div>
                   </div>
+
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Mínimo</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                        <input
+                          type="text"
+                          placeholder="0"
+                          value={formatCurrency(prefMinPrice)}
+                          onChange={(e) => setPrefMinPrice(parseCurrency(e.target.value))}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                          inputMode="numeric"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Máximo</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                        <input
+                          type="text"
+                          placeholder="Sem limite"
+                          value={formatCurrency(prefMaxPrice)}
+                          onChange={(e) => setPrefMaxPrice(parseCurrency(e.target.value))}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                          inputMode="numeric"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="mt-2">
                     <PriceRangeSlider
                       min={0}
@@ -870,6 +926,10 @@ export default function AgencyClientDetailPage() {
                       step={50000}
                       minValue={prefMinPrice.trim() ? Number(prefMinPrice) : null}
                       maxValue={prefMaxPrice.trim() ? Number(prefMaxPrice) : null}
+                      onPreviewChange={({ min, max }) => {
+                        setPrefMinPrice(min == null ? "" : String(min));
+                        setPrefMaxPrice(max == null ? "" : String(max));
+                      }}
                       onChange={({ min, max }) => {
                         setPrefMinPrice(min == null ? "" : String(min));
                         setPrefMaxPrice(max == null ? "" : String(max));
@@ -883,7 +943,7 @@ export default function AgencyClientDetailPage() {
                   <input
                     value={prefBedroomsMin}
                     onChange={(e) => setPrefBedroomsMin(String(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
                     inputMode="numeric"
                     placeholder="Ex: 2"
                   />
@@ -893,7 +953,7 @@ export default function AgencyClientDetailPage() {
                   <input
                     value={prefBathroomsMin}
                     onChange={(e) => setPrefBathroomsMin(String(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
                     inputMode="decimal"
                     placeholder="Ex: 2"
                   />
@@ -904,7 +964,7 @@ export default function AgencyClientDetailPage() {
                   <input
                     value={prefAreaMin}
                     onChange={(e) => setPrefAreaMin(String(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
                     inputMode="numeric"
                     placeholder="Ex: 70"
                   />

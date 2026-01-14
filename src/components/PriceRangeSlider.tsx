@@ -25,18 +25,27 @@ export default function PriceRangeSlider({
   const [internalMin, setInternalMin] = useState<number>(minValue ?? min);
   const [internalMax, setInternalMax] = useState<number>(maxValue ?? max);
 
-  useEffect(() => {
-    setInternalMin(minValue ?? min);
-  }, [minValue, min]);
-
-  useEffect(() => {
-    setInternalMax(maxValue ?? max);
-  }, [maxValue, max]);
-
   const clamp = (value: number) => {
     if (Number.isNaN(value)) return min;
     return Math.min(Math.max(value, min), max);
   };
+
+  useEffect(() => {
+    const nextMinRaw = minValue ?? min;
+    const nextMaxRaw = maxValue ?? max;
+
+    let nextMin = clamp(nextMinRaw);
+    let nextMax = clamp(nextMaxRaw);
+
+    if (nextMin > nextMax) {
+      const mid = (nextMin + nextMax) / 2;
+      nextMin = clamp(Math.floor(mid));
+      nextMax = clamp(Math.ceil(mid));
+    }
+
+    setInternalMin(nextMin);
+    setInternalMax(nextMax);
+  }, [minValue, maxValue, min, max]);
 
   const preview = (nextMin: number, nextMax: number) => {
     onPreviewChange?.({
