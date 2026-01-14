@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
@@ -95,12 +96,21 @@ type CreateResponse = {
   error?: string;
 };
 
+type ClientDetailsResponse = {
+  success: boolean;
+  client?: ClientRow;
+  error?: string;
+};
+
 function roleFromSession(session: any) {
   return session?.user?.role || session?.role || "USER";
 }
 
 export default function AgencyClientsPage() {
   const { data: session, status } = useSession();
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const role = useMemo(() => roleFromSession(session as any), [session]);
 
@@ -145,7 +155,142 @@ export default function AgencyClientsPage() {
 
   const [createError, setCreateError] = useState<string | null>(null);
 
+  const [selectedOpen, setSelectedOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedLoading, setSelectedLoading] = useState(false);
+  const [selectedError, setSelectedError] = useState<string | null>(null);
+
+  const [editing, setEditing] = useState(false);
+
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+
+  const [editPrefCity, setEditPrefCity] = useState("");
+  const [editPrefState, setEditPrefState] = useState("");
+  const [editSelectedCity, setEditSelectedCity] = useState<{ city: string; state: string } | null>(null);
+  const [editCitySuggestions, setEditCitySuggestions] = useState<LocationSuggestion[]>([]);
+  const [editCitySuggestOpen, setEditCitySuggestOpen] = useState(false);
+
+  const [editPrefNeighborhoodDraft, setEditPrefNeighborhoodDraft] = useState("");
+  const [editPrefNeighborhoodTags, setEditPrefNeighborhoodTags] = useState<string[]>([]);
+  const [editHoodSuggestions, setEditHoodSuggestions] = useState<LocationSuggestion[]>([]);
+  const [editHoodSuggestOpen, setEditHoodSuggestOpen] = useState(false);
+
+  const [editPrefPurpose, setEditPrefPurpose] = useState<"SALE" | "RENT" | "">("");
+  const [editPrefScope, setEditPrefScope] = useState<"PORTFOLIO" | "MARKET">("PORTFOLIO");
+  const [editPrefTypes, setEditPrefTypes] = useState<string[]>([]);
+
+  const [editPrefMinPrice, setEditPrefMinPrice] = useState("");
+  const [editPrefMaxPrice, setEditPrefMaxPrice] = useState("");
+  const [editPrefBedroomsMin, setEditPrefBedroomsMin] = useState("");
+  const [editPrefBathroomsMin, setEditPrefBathroomsMin] = useState("");
+  const [editPrefAreaMin, setEditPrefAreaMin] = useState("");
+
   const canUse = role === "AGENCY" || role === "ADMIN";
+
+  const clearClientParam = () => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("client");
+    const qs = next.toString();
+    router.replace(qs ? `/agency/clients?${qs}` : `/agency/clients`);
+  };
+
+  const closeSelected = () => {
+    setSelectedOpen(false);
+    setSelectedClientId(null);
+    setSelectedLoading(false);
+    setSelectedError(null);
+
+    setEditing(false);
+
+    setEditName("");
+    setEditEmail("");
+    setEditPhone("");
+    setEditNotes("");
+
+    setEditPrefCity("");
+    setEditPrefState("");
+    setEditSelectedCity(null);
+    setEditCitySuggestions([]);
+    setEditCitySuggestOpen(false);
+
+    setEditPrefNeighborhoodDraft("");
+    setEditPrefNeighborhoodTags([]);
+    setEditHoodSuggestions([]);
+    setEditHoodSuggestOpen(false);
+
+    setEditPrefPurpose("");
+    setEditPrefScope("PORTFOLIO");
+    setEditPrefTypes([]);
+
+    setEditPrefMinPrice("");
+    setEditPrefMaxPrice("");
+    setEditPrefBedroomsMin("");
+    setEditPrefBathroomsMin("");
+    setEditPrefAreaMin("");
+
+    try {
+      clearClientParam();
+    } catch {
+    }
+  };
+
+  const openSelected = async (clientId: string, opts?: { pushUrl?: boolean }) => {
+    const id = String(clientId || "").trim();
+    if (!id) return;
+
+    setSelectedClientId(id);
+    setSelectedOpen(true);
+    setSelectedError(null);
+
+    if (opts?.pushUrl) {
+      const next = new URLSearchParams(searchParams.toString());
+      next.set("client", id);
+      const qs = next.toString();
+      router.replace(qs ? `/agency/clients?${qs}` : `/agency/clients`);
+    }
+
+    try {
+      setSelectedLoading(true);
+      const res = await fetch(`/api/agency/clients/${encodeURIComponent(id)}`, { cache: "no-store" });
+      const json = (await res.json().catch(() => null)) as ClientDetailsResponse | null;
+
+      if (!res.ok || !json?.success || !json?.client?.id) {
+        throw new Error(json?.error || "Não conseguimos carregar o cliente agora.");
+      }
+
+      const c: any = json.client;
+
+      setEditName(String(c.name || ""));
+      setEditEmail(String(c.email || ""));
+      setEditPhone(String(c.phone || ""));
+      setEditNotes(String(c.notes || ""));
+
+      const pref = c.preference || null;
+      const city = pref?.city ? String(pref.city) : "";
+      const state = pref?.state ? String(pref.state) : "";
+      setEditPrefCity(city);
+      setEditPrefState(state);
+      setEditSelectedCity(city && state ? { city, state } : null);
+
+      setEditPrefNeighborhoodTags(Array.isArray(pref?.neighborhoods) ? pref.neighborhoods.map((x: any) => String(x)) : []);
+      setEditPrefNeighborhoodDraft("");
+      setEditPrefPurpose(pref?.purpose === "SALE" || pref?.purpose === "RENT" ? pref.purpose : "");
+      setEditPrefScope(pref?.scope === "MARKET" ? "MARKET" : "PORTFOLIO");
+      setEditPrefTypes(Array.isArray(pref?.types) ? pref.types.map((x: any) => String(x)) : []);
+      setEditPrefMinPrice(pref?.minPrice != null ? String(Math.round(Number(pref.minPrice) / 100)) : "");
+      setEditPrefMaxPrice(pref?.maxPrice != null ? String(Math.round(Number(pref.maxPrice) / 100)) : "");
+      setEditPrefBedroomsMin(pref?.bedroomsMin != null ? String(pref.bedroomsMin) : "");
+      setEditPrefBathroomsMin(pref?.bathroomsMin != null ? String(pref.bathroomsMin) : "");
+      setEditPrefAreaMin(pref?.areaMin != null ? String(pref.areaMin) : "");
+    } catch (e: any) {
+      setSelectedError(e?.message || "Não conseguimos carregar o cliente agora.");
+    } finally {
+      setSelectedLoading(false);
+    }
+  };
 
   const fetchClients = async (opts?: { silent?: boolean; page?: number }) => {
     try {
@@ -189,6 +334,17 @@ export default function AgencyClientsPage() {
     void fetchClients();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, canUse]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (!canUse) return;
+    const raw = searchParams.get("client") ? String(searchParams.get("client")) : "";
+    const id = raw.trim();
+    if (!id) return;
+    if (selectedOpen && selectedClientId === id) return;
+    void openSelected(id, { pushUrl: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, canUse, searchParams]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -267,6 +423,29 @@ export default function AgencyClientsPage() {
 
   useEffect(() => {
     if (!canUse) return;
+    const q = editPrefCity.trim();
+    if (!q) {
+      setEditCitySuggestions([]);
+      return;
+    }
+
+    const t = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/locations?q=${encodeURIComponent(q)}`, { cache: "no-store" });
+        const json = (await res.json().catch(() => null)) as LocationsResponse | null;
+        const suggestions = Array.isArray(json?.suggestions) ? json!.suggestions! : [];
+        const cityOnly = suggestions.filter((s) => !s.neighborhood);
+        setEditCitySuggestions(cityOnly.slice(0, 8));
+      } catch {
+        setEditCitySuggestions([]);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(t);
+  }, [editPrefCity, canUse]);
+
+  useEffect(() => {
+    if (!canUse) return;
     if (!selectedCity) {
       setHoodSuggestions([]);
       return;
@@ -293,6 +472,35 @@ export default function AgencyClientsPage() {
 
     return () => window.clearTimeout(t);
   }, [prefNeighborhoodDraft, selectedCity, canUse, prefNeighborhoodTags]);
+
+  useEffect(() => {
+    if (!canUse) return;
+    if (!editSelectedCity) {
+      setEditHoodSuggestions([]);
+      return;
+    }
+
+    const query = editPrefNeighborhoodDraft.trim();
+    const q = query ? query : editSelectedCity.city;
+
+    const t = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/locations?q=${encodeURIComponent(q)}`, { cache: "no-store" });
+        const json = (await res.json().catch(() => null)) as LocationsResponse | null;
+        const suggestions = Array.isArray(json?.suggestions) ? json!.suggestions! : [];
+        const hoods = suggestions
+          .filter((s) => !!s.neighborhood)
+          .filter((s) => String(s.city) === editSelectedCity.city && String(s.state) === editSelectedCity.state)
+          .filter((s) => !editPrefNeighborhoodTags.includes(String(s.neighborhood)))
+          .slice(0, 10);
+        setEditHoodSuggestions(hoods);
+      } catch {
+        setEditHoodSuggestions([]);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(t);
+  }, [editPrefNeighborhoodDraft, editSelectedCity, canUse, editPrefNeighborhoodTags]);
 
   const submitCreate = async () => {
     try {
@@ -364,6 +572,75 @@ export default function AgencyClientsPage() {
       setCreateError(e?.message || "Não conseguimos criar o cliente agora.");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const submitEdit = async () => {
+    try {
+      setSelectedError(null);
+      const clientId = String(selectedClientId || "").trim();
+      if (!clientId) return;
+
+      const name = editName.trim();
+      if (!name) {
+        setSelectedError("Informe o nome do cliente.");
+        return;
+      }
+
+      const city = editPrefCity.trim();
+      const state = editPrefState.trim();
+      if (!city || !state) {
+        setSelectedError("Selecione uma cidade (com estado) nas preferências.");
+        return;
+      }
+
+      setEditing(true);
+
+      const updatePayload: any = { name };
+      updatePayload.email = editEmail.trim() ? editEmail.trim() : null;
+      updatePayload.phone = editPhone.trim() ? editPhone.trim() : null;
+      updatePayload.notes = editNotes.trim() ? editNotes.trim() : null;
+
+      const res = await fetch(`/api/agency/clients/${encodeURIComponent(clientId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatePayload),
+      });
+      const json = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || "Não conseguimos salvar o cliente agora.");
+      }
+
+      const prefPayload: any = {
+        city,
+        state,
+        neighborhoods: editPrefNeighborhoodTags,
+        purpose: editPrefPurpose ? editPrefPurpose : null,
+        types: editPrefTypes,
+        minPrice: editPrefMinPrice.trim() ? Math.max(0, Math.round(Number(editPrefMinPrice))) * 100 : null,
+        maxPrice: editPrefMaxPrice.trim() ? Math.max(0, Math.round(Number(editPrefMaxPrice))) * 100 : null,
+        bedroomsMin: editPrefBedroomsMin.trim() ? Math.max(0, Math.round(Number(editPrefBedroomsMin))) : null,
+        bathroomsMin: editPrefBathroomsMin.trim() ? Math.max(0, Number(editPrefBathroomsMin)) : null,
+        areaMin: editPrefAreaMin.trim() ? Math.max(0, Math.round(Number(editPrefAreaMin))) : null,
+        scope: editPrefScope,
+      };
+
+      const prefRes = await fetch(`/api/agency/clients/${encodeURIComponent(clientId)}/preference`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(prefPayload),
+      });
+      const prefJson = (await prefRes.json().catch(() => null)) as any;
+      if (!prefRes.ok || !prefJson?.success) {
+        throw new Error(prefJson?.error || "Não conseguimos salvar as preferências agora.");
+      }
+
+      await fetchClients({ silent: true });
+      closeSelected();
+    } catch (e: any) {
+      setSelectedError(e?.message || "Não conseguimos salvar o cliente agora.");
+    } finally {
+      setEditing(false);
     }
   };
 
@@ -541,10 +818,11 @@ export default function AgencyClientsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {clients.map((c) => (
-                  <Link
+                  <button
                     key={c.id}
-                    href={`/agency/clients/${encodeURIComponent(c.id)}`}
-                    className="block rounded-2xl border border-gray-200/70 bg-white/80 p-4 hover:bg-white hover:shadow-md transition-all"
+                    type="button"
+                    onClick={() => void openSelected(c.id, { pushUrl: true })}
+                    className="block w-full text-left rounded-2xl border border-gray-200/70 bg-white/80 p-4 hover:bg-white hover:shadow-md transition-all"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -585,7 +863,7 @@ export default function AgencyClientsPage() {
                     </div>
 
                     {c.notes ? <div className="mt-3 text-xs text-gray-500 line-clamp-2">{c.notes}</div> : null}
-                  </Link>
+                  </button>
                 ))}
               </div>
             </div>
@@ -962,6 +1240,373 @@ export default function AgencyClientsPage() {
             </button>
           </div>
         </form>
+      </Drawer>
+
+      <Drawer
+        open={selectedOpen}
+        onClose={closeSelected}
+        title={selectedClientId ? "Cliente" : "Cliente"}
+      >
+        {selectedLoading ? (
+          <div className="py-10">
+            <CenteredSpinner message="Carregando cliente..." />
+          </div>
+        ) : selectedError ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{selectedError}</div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submitEdit();
+            }}
+            className="space-y-4"
+          >
+            <div className="rounded-2xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
+              <div className="text-sm font-semibold text-gray-900">Dados do cliente</div>
+              <div className="mt-3 grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>
+                  <input
+                    value={editName}
+                    onChange={(e) => setEditName(String(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                    placeholder="Ex: Maria Silva"
+                    autoComplete="name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail (opcional)</label>
+                  <input
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(String(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                    placeholder="maria@email.com"
+                    autoComplete="email"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone (opcional)</label>
+                  <input
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(String(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                    placeholder="(11) 99999-9999"
+                    autoComplete="tel"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Observações (opcional)</label>
+                  <textarea
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(String(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm min-h-[90px]"
+                    placeholder="Preferências gerais, contexto do atendimento..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
+              <div className="text-sm font-semibold text-gray-900">Preferências</div>
+              <div className="mt-3 grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Cidade</label>
+                  <div className="relative">
+                    <input
+                      value={editPrefCity}
+                      onChange={(e) => {
+                        setEditPrefCity(String(e.target.value));
+                        setEditCitySuggestOpen(true);
+                        setEditSelectedCity(null);
+                        setEditPrefState("");
+                        setEditPrefNeighborhoodTags([]);
+                        setEditPrefNeighborhoodDraft("");
+                      }}
+                      onFocus={() => setEditCitySuggestOpen(true)}
+                      onBlur={() => {
+                        window.setTimeout(() => setEditCitySuggestOpen(false), 160);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                      placeholder="Ex: São Paulo"
+                    />
+
+                    {editCitySuggestOpen && editCitySuggestions.length ? (
+                      <div className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+                        {editCitySuggestions.map((s) => {
+                          const key = `${s.city}__${s.state}`;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => {
+                                setEditPrefCity(String(s.city));
+                                setEditPrefState(String(s.state));
+                                setEditSelectedCity({ city: String(s.city), state: String(s.state) });
+                                setEditCitySuggestOpen(false);
+                                setEditPrefNeighborhoodTags([]);
+                                setEditPrefNeighborhoodDraft("");
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                            >
+                              <div className="text-gray-900 font-medium">{s.city}</div>
+                              <div className="text-xs text-gray-500">{s.state}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Estado</label>
+                  <input
+                    value={editPrefState}
+                    readOnly
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                    placeholder="Ex: SP"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Bairros</label>
+                  <div className="relative">
+                    <input
+                      value={editPrefNeighborhoodDraft}
+                      onChange={(e) => {
+                        setEditPrefNeighborhoodDraft(String(e.target.value));
+                        setEditHoodSuggestOpen(true);
+                      }}
+                      onFocus={() => setEditHoodSuggestOpen(true)}
+                      onBlur={() => {
+                        window.setTimeout(() => setEditHoodSuggestOpen(false), 160);
+                      }}
+                      disabled={!editSelectedCity}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm disabled:bg-gray-50"
+                      placeholder={editSelectedCity ? "Digite para buscar bairros" : "Selecione uma cidade primeiro"}
+                    />
+
+                    {editHoodSuggestOpen && editHoodSuggestions.length ? (
+                      <div className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+                        {editHoodSuggestions.map((s) => {
+                          const hood = String(s.neighborhood || "");
+                          if (!hood) return null;
+                          return (
+                            <button
+                              key={`${editSelectedCity?.city}__${editSelectedCity?.state}__${hood}`}
+                              type="button"
+                              onClick={() => {
+                                setEditPrefNeighborhoodTags((prev) => {
+                                  const next = Array.isArray(prev) ? [...prev] : [];
+                                  if (next.includes(hood)) return next;
+                                  return [...next, hood].slice(0, 100);
+                                });
+                                setEditPrefNeighborhoodDraft("");
+                                setEditHoodSuggestOpen(false);
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                            >
+                              <div className="text-gray-900 font-medium">{hood}</div>
+                              <div className="text-xs text-gray-500">
+                                {s.city}, {s.state}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {editPrefNeighborhoodTags.length ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {editPrefNeighborhoodTags.map((n) => (
+                        <div
+                          key={n}
+                          className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-700"
+                        >
+                          <span className="max-w-[220px] truncate">{n}</span>
+                          <button
+                            type="button"
+                            onClick={() => setEditPrefNeighborhoodTags((prev) => prev.filter((x) => x !== n))}
+                            className="inline-flex items-center justify-center rounded-md hover:bg-gray-100"
+                            aria-label={`Remover bairro ${n}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Finalidade</label>
+                  <select
+                    value={editPrefPurpose}
+                    onChange={(e) => setEditPrefPurpose(e.target.value as any)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                  >
+                    <option value="">Qualquer</option>
+                    <option value="SALE">Venda</option>
+                    <option value="RENT">Aluguel</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Scope</label>
+                  <select
+                    value={editPrefScope}
+                    onChange={(e) => setEditPrefScope(e.target.value as any)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                  >
+                    <option value="PORTFOLIO">PORTFOLIO</option>
+                    <option value="MARKET">MARKET</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Tipos</label>
+                  <div className="flex flex-wrap gap-2">
+                    {PROPERTY_TYPES.map((t) => {
+                      const active = editPrefTypes.includes(t);
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => {
+                            setEditPrefTypes((prev) => {
+                              if (prev.includes(t)) return prev.filter((x) => x !== t);
+                              return [...prev, t];
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                            active
+                              ? "glass-teal text-white border-transparent shadow-sm"
+                              : "border-gray-200/70 bg-white/80 text-gray-700 hover:bg-white hover:shadow-sm"
+                          }`}
+                        >
+                          {PROPERTY_TYPE_LABEL[t] || t}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-gray-700">Preço</label>
+                    <div className="text-[11px] text-gray-500">
+                      {editPrefMinPrice.trim() ? `De R$ ${formatCurrency(editPrefMinPrice)}` : "Sem mínimo"} ·{" "}
+                      {editPrefMaxPrice.trim() ? `Até R$ ${formatCurrency(editPrefMaxPrice)}` : "Sem máximo"}
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Mínimo</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                        <input
+                          type="text"
+                          placeholder="0"
+                          value={formatCurrency(editPrefMinPrice)}
+                          onChange={(e) => setEditPrefMinPrice(parseCurrency(e.target.value))}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                          inputMode="numeric"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Máximo</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                        <input
+                          type="text"
+                          placeholder="Sem limite"
+                          value={formatCurrency(editPrefMaxPrice)}
+                          onChange={(e) => setEditPrefMaxPrice(parseCurrency(e.target.value))}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                          inputMode="numeric"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2">
+                    <PriceRangeSlider
+                      min={0}
+                      max={5000000}
+                      step={50000}
+                      minValue={editPrefMinPrice.trim() ? Number(editPrefMinPrice) : null}
+                      maxValue={editPrefMaxPrice.trim() ? Number(editPrefMaxPrice) : null}
+                      onPreviewChange={({ min, max }) => {
+                        setEditPrefMinPrice(min == null ? "" : String(min));
+                        setEditPrefMaxPrice(max == null ? "" : String(max));
+                      }}
+                      onChange={({ min, max }) => {
+                        setEditPrefMinPrice(min == null ? "" : String(min));
+                        setEditPrefMaxPrice(max == null ? "" : String(max));
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Quartos mín.</label>
+                    <input
+                      value={editPrefBedroomsMin}
+                      onChange={(e) => setEditPrefBedroomsMin(String(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                      inputMode="numeric"
+                      placeholder="Ex: 2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Banheiros mín.</label>
+                    <input
+                      value={editPrefBathroomsMin}
+                      onChange={(e) => setEditPrefBathroomsMin(String(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                      inputMode="decimal"
+                      placeholder="Ex: 2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Área mín. (m²)</label>
+                    <input
+                      value={editPrefAreaMin}
+                      onChange={(e) => setEditPrefAreaMin(String(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                      inputMode="numeric"
+                      placeholder="Ex: 70"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={closeSelected}
+                className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm font-semibold text-gray-700 hover:bg-white"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={editing}
+                className="inline-flex items-center justify-center px-3 py-2 rounded-xl glass-teal btn-modern text-white text-sm font-semibold disabled:opacity-70"
+              >
+                {editing ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
+          </form>
+        )}
       </Drawer>
     </div>
   );
