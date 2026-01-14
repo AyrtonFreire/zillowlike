@@ -1178,9 +1178,10 @@ async function postHandler(req: NextRequest) {
 
     try {
       const now = new Date();
-      const rows = await (prisma as any).realtorAssistantItem.findMany({
+      const rows = await (prisma as any).assistantItem.findMany({
         where: {
-          realtorId: String(userId),
+          context: "REALTOR",
+          ownerId: String(userId),
           status: { in: ["ACTIVE", "SNOOZED"] },
           OR: [{ dueAt: { not: null } }, { snoozedUntil: { not: null } }],
         },

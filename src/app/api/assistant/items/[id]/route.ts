@@ -35,6 +35,20 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const { id } = await context.params;
     const body = await req.json().catch(() => ({}));
 
+    const url = new URL(req.url);
+    const reqContext = (url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"))
+      .trim()
+      .toUpperCase();
+
+    let teamId: string | null = url.searchParams.get("teamId") || null;
+    if (!teamId && role === "AGENCY") {
+      const agencyProfile = await (prisma as any).agencyProfile.findUnique({
+        where: { userId: String(userId) },
+        select: { teamId: true },
+      });
+      teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+    }
+
     const parsed = PatchSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -45,10 +59,12 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     let item;
     if (parsed.data.action === "resolve") {
-      const previous: any = await (prisma as any).realtorAssistantItem.findFirst({
+      const previous: any = await (prisma as any).assistantItem.findFirst({
         where: {
           id: String(id),
-          realtorId: String(userId),
+          context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+          ownerId: String(userId),
+          ...(reqContext === "AGENCY" && teamId ? { teamId: String(teamId) } : {}),
         },
         select: {
           id: true,
@@ -57,14 +73,18 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         },
       });
 
-      item = await RealtorAssistantService.resolve(String(userId), id);
+      item = await RealtorAssistantService.resolve(String(userId), id, {
+        context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+        teamId: reqContext === "AGENCY" ? teamId || undefined : undefined,
+      });
 
       try {
         const meta = (previous as any)?.metadata || null;
         const leadId = (previous as any)?.leadId ? String((previous as any).leadId) : "";
         const source = String((meta as any)?.source || "").toUpperCase();
 
-        if (source === "WHATSAPP" && leadId) {
+        // Agency assistant: no side-effects on lead stage here.
+        if (role !== "AGENCY" && source === "WHATSAPP" && leadId) {
           const lead: any = await (prisma as any).lead.findFirst({
             where: {
               id: leadId,
@@ -115,10 +135,16 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         // ignore
       }
     } else if (parsed.data.action === "dismiss") {
-      item = await RealtorAssistantService.dismiss(String(userId), id);
+      item = await RealtorAssistantService.dismiss(String(userId), id, {
+        context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+        teamId: reqContext === "AGENCY" ? teamId || undefined : undefined,
+      });
     } else {
       const minutes = parsed.data.minutes ?? 60;
-      item = await RealtorAssistantService.snooze(String(userId), id, minutes);
+      item = await RealtorAssistantService.snooze(String(userId), id, minutes, {
+        context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+        teamId: reqContext === "AGENCY" ? teamId || undefined : undefined,
+      });
     }
 
     return NextResponse.json({ success: true, item });

@@ -326,8 +326,9 @@ model Property {
 
   images    Image[]
   documents PropertyDocument[]
-  favorites Favorite[]
-  leads     Lead[]
+  favorites     Favorite[]
+  leads         Lead[]
+  assistantItems AssistantItem[]
   views     PropertyView[]
   reports   Report[]
   clientMatches ClientPropertyMatch[]
@@ -521,7 +522,7 @@ model User {
   systemSettings    SystemSetting[] @relation("UserSystemSettings")
 
   leadRecommendationLists LeadRecommendationList[]
-  realtorAssistantItems   RealtorAssistantItem[] @relation("RealtorAssistantItems")
+  assistantItems          AssistantItem[] @relation("AssistantItems")
   leadChatReadReceipts    LeadChatReadReceipt[]
 
   clientsCreated Client[] @relation("ClientCreatedBy")
@@ -632,7 +633,7 @@ model Lead {
   events LeadEvent[]
 
   recommendationLists LeadRecommendationList[]
-  assistantItems       RealtorAssistantItem[]
+  assistantItems       AssistantItem[]
   assistantChatThreads  RealtorAssistantChatThread[]
 
   @@index([propertyId])
@@ -650,53 +651,30 @@ model Lead {
   @@map("leads")
 }
 
-enum RealtorAssistantItemType {
-  NEW_LEAD
-  UNANSWERED_CLIENT_MESSAGE
-  LEAD_NO_FIRST_CONTACT
-  LEAD_STUCK_STAGE
-  REMINDER_TODAY
-  REMINDER_OVERDUE
-  VISIT_TODAY
-  VISIT_TOMORROW
-  OWNER_APPROVAL_PENDING
-  SIMILAR_LIST_SHARED_FOLLOWUP
-  STALE_LEAD
-  PIPELINE_HYGIENE
-}
-
-enum RealtorAssistantItemPriority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum RealtorAssistantItemStatus {
-  ACTIVE
-  SNOOZED
-  RESOLVED
-  DISMISSED
-}
-
-enum RealtorAssistantItemSource {
-  RULE
-  EVENT
-  AI
-}
-
-model RealtorAssistantItem {
+model AssistantItem {
   id        String @id @default(cuid())
 
-  realtor   User   @relation("RealtorAssistantItems", fields: [realtorId], references: [id], onDelete: Cascade)
-  realtorId String
+  context   AssistantContext
 
-  lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  leadId String?
+  owner     User   @relation("AssistantItems", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId   String
 
-  type     RealtorAssistantItemType
-  priority RealtorAssistantItemPriority @default(MEDIUM)
-  status   RealtorAssistantItemStatus   @default(ACTIVE)
-  source   RealtorAssistantItemSource   @default(RULE)
+  team      Team?  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String?
+
+  lead      Lead?  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId    String?
+
+  client    Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId  String?
+
+  property  Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId String?
+
+  type     String
+  priority AssistantItemPriority @default(MEDIUM)
+  status   AssistantItemStatus   @default(ACTIVE)
+  source   AssistantItemSource   @default(RULE)
 
   title   String
   message String
@@ -706,21 +684,48 @@ model RealtorAssistantItem {
   resolvedAt   DateTime?
   dismissedAt  DateTime?
 
-  primaryAction Json?
+  primaryAction   Json?
   secondaryAction Json?
-  metadata Json?
+  metadata        Json?
 
   dedupeKey String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([realtorId, dedupeKey])
-  @@index([realtorId, status, priority])
+  @@unique([context, ownerId, dedupeKey])
+  @@index([context, ownerId, status, priority])
+  @@index([teamId, status])
   @@index([leadId, status])
+  @@index([clientId, status])
+  @@index([propertyId, status])
   @@index([dueAt])
   @@index([snoozedUntil])
-  @@map("realtor_assistant_items")
+  @@map("assistant_items")
+}
+
+enum AssistantContext {
+  REALTOR
+  AGENCY
+}
+
+enum AssistantItemPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AssistantItemStatus {
+  ACTIVE
+  SNOOZED
+  RESOLVED
+  DISMISSED
+}
+
+enum AssistantItemSource {
+  RULE
+  EVENT
+  AI
 }
 
 model LeadNote {
@@ -1205,6 +1210,7 @@ model Team {
   properties Property[]
   leads      Lead[]
   clients    Client[]
+  assistantItems AssistantItem[]
   clientRecommendationLists ClientRecommendationList[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1295,6 +1301,8 @@ model Client {
   preference ClientPreference?
   matches   ClientPropertyMatch[]
   recommendationLists ClientRecommendationList[]
+
+  assistantItems AssistantItem[]
 
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt

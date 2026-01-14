@@ -237,6 +237,28 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
     return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
   }
 
+  const url = new URL(req.url);
+  const reqContext = (url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"))
+    .trim()
+    .toUpperCase();
+
+  let teamId: string | null = url.searchParams.get("teamId") || null;
+  if (!teamId && role === "AGENCY" && reqContext === "AGENCY") {
+    const agencyProfile = await (prisma as any).agencyProfile.findUnique({
+      where: { userId: String(userId) },
+      select: { teamId: true },
+    });
+    teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+  }
+
+  if (role === "AGENCY" && reqContext !== "AGENCY") {
+    return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
+  }
+
+  if (reqContext === "AGENCY" && !teamId) {
+    return errorResponse("Não foi possível identificar o time da agência.", 400, null, "TEAM_ID_MISSING");
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return errorResponse("AI is not configured", 500, null, "OPENAI_API_KEY_MISSING");
@@ -244,11 +266,17 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
 
   const { id } = await context.params;
 
-  const item = await (prisma as any).realtorAssistantItem.findFirst({
-    where: { id: String(id), realtorId: String(userId) },
+  const item = await (prisma as any).assistantItem.findFirst({
+    where: {
+      id: String(id),
+      context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+      ownerId: String(userId),
+      ...(reqContext === "AGENCY" && teamId ? { teamId: String(teamId) } : {}),
+    },
     select: {
       id: true,
-      realtorId: true,
+      ownerId: true,
+      teamId: true,
       leadId: true,
       type: true,
       title: true,
@@ -266,7 +294,10 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
 
   if (item.leadId) {
     lead = await prisma.lead.findFirst({
-      where: { id: String(item.leadId), realtorId: String(userId) },
+      where:
+        reqContext === "AGENCY"
+          ? { id: String(item.leadId), teamId: String(teamId) }
+          : { id: String(item.leadId), realtorId: String(userId) },
       select: {
         id: true,
         status: true,

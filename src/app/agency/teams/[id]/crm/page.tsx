@@ -152,6 +152,7 @@ export default function AgencyTeamCrmPage() {
   const realtorParam = searchParams.get("realtorId");
   const tabParam = searchParams.get("tab");
   const qParam = searchParams.get("q");
+  const leadParam = searchParams.get("lead");
 
   const stageFilter = stageParam ? stageParam.toUpperCase() : null;
   const realtorFilter = realtorParam ? String(realtorParam) : null;
@@ -202,6 +203,23 @@ export default function AgencyTeamCrmPage() {
     void fetchLeads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId]);
+
+  useEffect(() => {
+    const raw = leadParam ? String(leadParam).trim() : "";
+    if (!raw) return;
+
+    setOpenLeadId(raw);
+
+    try {
+      const next = new URLSearchParams(searchParams.toString());
+      next.delete("lead");
+      const qs = next.toString();
+      router.replace(qs ? `/agency/teams/${teamId}/crm?${qs}` : `/agency/teams/${teamId}/crm`);
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadParam, teamId]);
 
   const fetchLeads = async (opts?: { silent?: boolean }) => {
     try {

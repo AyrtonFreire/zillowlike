@@ -34,6 +34,10 @@ export async function GET(req: NextRequest) {
 
     const url = new URL(req.url);
     const leadId = url.searchParams.get("leadId");
+    const context = (url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"))
+      .trim()
+      .toUpperCase();
+    const teamIdParam = url.searchParams.get("teamId");
     const limitRaw = url.searchParams.get("limit");
     const cursor = url.searchParams.get("cursor");
     const orderRaw = url.searchParams.get("order");
@@ -75,9 +79,20 @@ export async function GET(req: NextRequest) {
 
     const now = new Date();
 
+    let teamId: string | null = teamIdParam ? String(teamIdParam) : null;
+    if (!teamId && role === "AGENCY") {
+      const agencyProfile = await (prisma as any).agencyProfile.findUnique({
+        where: { userId: String(userId) },
+        select: { teamId: true },
+      });
+      teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+    }
+
     const baseWhere: any = {
-      realtorId: String(userId),
+      context: context === "AGENCY" ? "AGENCY" : "REALTOR",
+      ownerId: String(userId),
       ...(leadId ? { leadId } : {}),
+      ...(context === "AGENCY" && teamId ? { teamId } : {}),
     };
 
     baseWhere.status = includeSnoozed ? { in: ["ACTIVE", "SNOOZED"] } : "ACTIVE";
@@ -113,13 +128,13 @@ export async function GET(req: NextRequest) {
     }
 
     const [agg, effectiveActiveCount, snoozedFutureAgg] = await Promise.all([
-      (prisma as any).realtorAssistantItem.aggregate({
+      (prisma as any).assistantItem.aggregate({
         where: baseWhere,
         _count: { _all: true },
         _max: { updatedAt: true },
       }),
       includeSnoozed
-        ? (prisma as any).realtorAssistantItem.count({
+        ? (prisma as any).assistantItem.count({
             where: {
               ...baseWhere,
               OR: [
@@ -128,9 +143,9 @@ export async function GET(req: NextRequest) {
               ],
             },
           })
-        : (prisma as any).realtorAssistantItem.count({ where: baseWhere }),
+        : (prisma as any).assistantItem.count({ where: baseWhere }),
       includeSnoozed
-        ? (prisma as any).realtorAssistantItem.aggregate({
+        ? (prisma as any).assistantItem.aggregate({
             where: {
               ...baseWhere,
               status: "SNOOZED",
@@ -164,6 +179,8 @@ export async function GET(req: NextRequest) {
     }
 
     const items = await RealtorAssistantService.list(String(userId), {
+      context: context === "AGENCY" ? "AGENCY" : "REALTOR",
+      teamId: context === "AGENCY" ? teamId || undefined : undefined,
       leadId: leadId || undefined,
       limit,
       order,
@@ -217,7 +234,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
+    if (role !== "ADMIN" && role !== "REALTOR") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
@@ -270,7 +287,8 @@ export async function POST(req: NextRequest) {
     dueAt.setMinutes(dueAt.getMinutes() + 30);
 
     const item = await RealtorAssistantService.upsertFromRule({
-      realtorId: String(userId),
+      context: "REALTOR",
+      ownerId: String(userId),
       leadId,
       type: "UNANSWERED_CLIENT_MESSAGE",
       priority: "HIGH",

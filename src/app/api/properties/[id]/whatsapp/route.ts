@@ -204,7 +204,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       }
 
       const assistantItem = await RealtorAssistantService.upsertFromRule({
-        realtorId: payload.ownerId,
+        context: "REALTOR",
+        ownerId: payload.ownerId,
         leadId: String(lead.id),
         type: "LEAD_NO_FIRST_CONTACT",
         priority: "HIGH",

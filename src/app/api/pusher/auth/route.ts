@@ -36,6 +36,19 @@ export async function POST(request: NextRequest) {
       if (!isAdmin && channelRealtorId !== userId) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
+    } else if (channel.startsWith("private-agency-")) {
+      const channelTeamId = channel.replace("private-agency-", "");
+
+      if (!isAdmin) {
+        const agencyProfile: any = await (prisma as any).agencyProfile.findUnique({
+          where: { userId: String(userId) },
+          select: { teamId: true },
+        });
+        const teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+        if (!teamId || String(teamId) !== String(channelTeamId)) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+      }
     } else if (channel.startsWith("private-lead-") || channel.startsWith("presence-chat-")) {
       const leadId = channel.startsWith("private-lead-")
         ? channel.replace("private-lead-", "")

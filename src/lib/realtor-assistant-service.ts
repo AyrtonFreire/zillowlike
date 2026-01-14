@@ -6,6 +6,8 @@ type AssistantAction = {
   [key: string]: any;
 };
 
+type AssistantContext = "REALTOR" | "AGENCY";
+
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -174,177 +176,100 @@ export class RealtorAssistantService {
     }
   }
 
-  static async enrichItemForRealtime(item: any) {
-    const now = new Date();
-    const impactScore = impactScoreForItem(item, now);
+  static async emitItemUpdated(
+    realtorId: string,
+    item: any,
+    options?: { context?: AssistantContext | null; teamId?: string | null }
+  ) {
+    try {
+      const pusher = getPusherServer();
 
-    let lead: any = null;
-    const leadId = item?.leadId ? String(item.leadId) : null;
-    if (leadId) {
-      try {
-        const row = await prisma.lead.findUnique({
-          where: { id: leadId },
-          select: {
-            id: true,
-            status: true,
-            pipelineStage: true,
-            nextActionDate: true,
-            nextActionNote: true,
-            visitDate: true,
-            visitTime: true,
-            ownerApproved: true,
-            contact: { select: { name: true } },
-            property: {
-              select: {
-                id: true,
-                title: true,
-                price: true,
-                hidePrice: true,
-                neighborhood: true,
-                city: true,
-                state: true,
-                bedrooms: true,
-                bathrooms: true,
-                areaM2: true,
-                type: true,
-                purpose: true,
-              },
-            },
-          },
+      const context = (options?.context || "REALTOR") as AssistantContext;
+      const teamId = options?.teamId ? String(options.teamId) : null;
+
+      if (context === "AGENCY" && teamId) {
+        await pusher.trigger(PUSHER_CHANNELS.AGENCY(teamId), PUSHER_EVENTS.ASSISTANT_ITEM_UPDATED, {
+          teamId,
+          item,
+          ts: new Date().toISOString(),
         });
-
-        const lastClientMsg = await prisma.leadClientMessage.findFirst({
-          where: { leadId, fromClient: true },
-          orderBy: { createdAt: "desc" },
-          select: { createdAt: true, content: true },
+      } else {
+        await pusher.trigger(PUSHER_CHANNELS.REALTOR(realtorId), PUSHER_EVENTS.ASSISTANT_ITEM_UPDATED, {
+          realtorId,
+          item,
+          ts: new Date().toISOString(),
         });
-
-        const lastProMsg = await prisma.leadClientMessage.findFirst({
-          where: { leadId, fromClient: false },
-          orderBy: { createdAt: "desc" },
-          select: { createdAt: true },
-        });
-
-        const lastClientAt = lastClientMsg?.createdAt ? new Date(lastClientMsg.createdAt) : null;
-        const lastProAt = lastProMsg?.createdAt ? new Date(lastProMsg.createdAt) : null;
-        const lastClientMs = lastClientAt && !Number.isNaN(lastClientAt.getTime()) ? lastClientAt.getTime() : 0;
-        const lastProMs = lastProAt && !Number.isNaN(lastProAt.getTime()) ? lastProAt.getTime() : 0;
-        const lastInteractionMs = Math.max(lastClientMs, lastProMs);
-
-        const health = computeLeadHealthAndNba({
-          now,
-          lastClientAt,
-          lastProAt,
-          nextActionDate: safeDate(row?.nextActionDate),
-          visitDate: safeDate(row?.visitDate),
-          visitTime: row?.visitTime ? String(row.visitTime) : null,
-          ownerApproved: typeof row?.ownerApproved === "boolean" ? row.ownerApproved : row?.ownerApproved ?? null,
-          leadStatus: row?.status ? String(row.status) : null,
-        });
-
-        if (row) {
-          lead = {
-            id: String(row.id),
-            status: row.status || null,
-            pipelineStage: row.pipelineStage || null,
-            nextActionDate: row.nextActionDate || null,
-            nextActionNote: row.nextActionNote || null,
-            visitDate: row.visitDate || null,
-            visitTime: row.visitTime || null,
-            ownerApproved: typeof row.ownerApproved === "boolean" ? row.ownerApproved : row.ownerApproved ?? null,
-            lastClientAt: lastClientAt ? lastClientAt.toISOString() : null,
-            lastProAt: lastProAt ? lastProAt.toISOString() : null,
-            lastInteractionAt: lastInteractionMs ? new Date(lastInteractionMs).toISOString() : null,
-            lastInteractionFrom: lastInteractionMs ? (lastClientMs >= lastProMs ? "CLIENT" : "REALTOR") : null,
-            lastClientMessagePreview: lastClientMsg?.content
-              ? String(lastClientMsg.content).trim().slice(0, 160)
-              : null,
-            clientName: row?.contact?.name || null,
-            propertyTitle: row?.property?.title || null,
-            property: row?.property
-              ? {
-                  id: String((row as any).property.id),
-                  title: (row as any).property.title || null,
-                  price: typeof (row as any).property.price === "number" ? (row as any).property.price : null,
-                  hidePrice: typeof (row as any).property.hidePrice === "boolean" ? (row as any).property.hidePrice : null,
-                  neighborhood: (row as any).property.neighborhood || null,
-                  city: (row as any).property.city || null,
-                  state: (row as any).property.state || null,
-                  bedrooms: typeof (row as any).property.bedrooms === "number" ? (row as any).property.bedrooms : null,
-                  bathrooms: typeof (row as any).property.bathrooms === "number" ? (row as any).property.bathrooms : null,
-                  areaM2: typeof (row as any).property.areaM2 === "number" ? (row as any).property.areaM2 : null,
-                  type: (row as any).property.type || null,
-                  purpose: (row as any).property.purpose || null,
-                }
-              : null,
-            leadHealthScore: health.leadHealthScore,
-            nextBestAction: health.nextBestAction,
-          };
-        }
-      } catch {
-        // ignore
       }
-    }
-
-    return {
-      ...item,
-      impactScore,
-      lead,
-    };
-  }
-
-  static async emitItemUpdated(realtorId: string, item: any) {
-    try {
-      const pusher = getPusherServer();
-      const payloadItem = await this.enrichItemForRealtime(item);
-      await pusher.trigger(PUSHER_CHANNELS.REALTOR(realtorId), PUSHER_EVENTS.ASSISTANT_ITEM_UPDATED, {
-        realtorId,
-        item: payloadItem,
-        ts: new Date().toISOString(),
-      });
     } catch {
       // ignore
     }
 
     // backward compat
-    await this.emitUpdated(realtorId);
+    if ((options?.context || "REALTOR") !== "AGENCY") {
+      await this.emitUpdated(realtorId);
+    }
   }
 
-  static async emitItemsRecalculated(realtorId: string, meta?: { count?: number }) {
+  static async emitItemsRecalculated(
+    realtorId: string,
+    meta?: { count?: number },
+    options?: { context?: AssistantContext | null; teamId?: string | null }
+  ) {
     try {
       const pusher = getPusherServer();
-      await pusher.trigger(PUSHER_CHANNELS.REALTOR(realtorId), PUSHER_EVENTS.ASSISTANT_ITEMS_RECALCULATED, {
-        realtorId,
-        count: meta?.count ?? null,
-        ts: new Date().toISOString(),
-      });
+
+      const context = (options?.context || "REALTOR") as AssistantContext;
+      const teamId = options?.teamId ? String(options.teamId) : null;
+
+      if (context === "AGENCY" && teamId) {
+        await pusher.trigger(PUSHER_CHANNELS.AGENCY(teamId), PUSHER_EVENTS.ASSISTANT_ITEMS_RECALCULATED, {
+          teamId,
+          count: meta?.count ?? null,
+          ts: new Date().toISOString(),
+        });
+      } else {
+        await pusher.trigger(PUSHER_CHANNELS.REALTOR(realtorId), PUSHER_EVENTS.ASSISTANT_ITEMS_RECALCULATED, {
+          realtorId,
+          count: meta?.count ?? null,
+          ts: new Date().toISOString(),
+        });
+      }
     } catch {
       // ignore
     }
 
     // backward compat
-    await this.emitUpdated(realtorId);
+    if ((options?.context || "REALTOR") !== "AGENCY") {
+      await this.emitUpdated(realtorId);
+    }
   }
 
   static async list(
-    realtorId: string,
+    ownerId: string,
     options?: {
+      context?: AssistantContext | null;
+      teamId?: string | null;
       leadId?: string | null;
       limit?: number | null;
+      order?: "PRIORITY" | "CURSOR" | null;
+      cursor?: string | null;
+      query?: string | null;
+      priority?: "LOW" | "MEDIUM" | "HIGH" | null;
       typeIn?: string[] | null;
       typeNotIn?: string[] | null;
-      priority?: "LOW" | "MEDIUM" | "HIGH" | null;
-      query?: string | null;
-      cursor?: string | null;
-      order?: "PRIORITY" | "CURSOR" | null;
       includeSnoozed?: boolean | null;
     }
   ) {
     const now = new Date();
 
+    const context = (options?.context || "REALTOR") as AssistantContext;
+    const teamId = options?.teamId ? String(options.teamId) : null;
+
     const where: any = {
-      realtorId,
+      context,
+      ownerId,
       status: { in: ["ACTIVE", "SNOOZED"] },
+      ...(context === "AGENCY" && teamId ? { teamId } : {}),
     };
 
     if (options?.leadId) {
@@ -393,7 +318,7 @@ export class RealtorAssistantService {
     const orderMode = options?.order || "PRIORITY";
     const useCursorOrder = orderMode === "CURSOR";
 
-    const items = await (prisma as any).realtorAssistantItem.findMany(
+    const items = await (prisma as any).assistantItem.findMany(
       useCursorOrder
         ? {
             where,
@@ -431,10 +356,17 @@ export class RealtorAssistantService {
       )
     ) as string[];
 
+    const leadAccessWhere: any =
+      context === "AGENCY"
+        ? teamId
+          ? { teamId }
+          : { id: { in: [] } }
+        : { realtorId: ownerId };
+
     const [leadRows, lastClientMessages, lastProMessages] = await Promise.all([
       leadIds.length
         ? prisma.lead.findMany({
-            where: { id: { in: leadIds }, realtorId },
+            where: { id: { in: leadIds }, ...leadAccessWhere },
             select: {
               id: true,
               status: true,
@@ -567,9 +499,16 @@ export class RealtorAssistantService {
     );
 
     const enriched = normalized.map((item: any) => {
+      const leadId = item?.leadId ? String(item.leadId) : "";
+      const lead = leadId ? leadMap.get(leadId) || null : null;
       const impactScore = impactScoreForItem(item, now);
-      const lead = item?.leadId ? leadMap.get(String(item.leadId)) || null : null;
-      return { ...item, impactScore, lead };
+
+      return {
+        ...item,
+        realtorId: context === "REALTOR" ? String(ownerId) : undefined,
+        impactScore,
+        lead,
+      };
     });
 
     enriched.sort((a: any, b: any) => {
@@ -591,73 +530,84 @@ export class RealtorAssistantService {
     return enriched;
   }
 
-  static async resolve(realtorId: string, itemId: string) {
-    const existing = await (prisma as any).realtorAssistantItem.findFirst({
-      where: { id: itemId, realtorId },
+  static async resolve(ownerId: string, itemId: string, options?: { context?: AssistantContext | null; teamId?: string | null }) {
+    const context = (options?.context || "REALTOR") as AssistantContext;
+    const teamId = options?.teamId ? String(options.teamId) : null;
+
+    const existing = await (prisma as any).assistantItem.findFirst({
+      where: { id: itemId, context, ownerId, ...(context === "AGENCY" && teamId ? { teamId } : {}) },
       select: { id: true },
     });
     if (!existing) throw new Error("FORBIDDEN");
 
-    const updated = await (prisma as any).realtorAssistantItem.update({
+    const updated = await (prisma as any).assistantItem.update({
       where: { id: itemId },
       data: {
         status: "RESOLVED",
         resolvedAt: new Date(),
-        snoozedUntil: null,
       },
     });
-
-    await this.emitItemUpdated(realtorId, updated);
+    await this.emitItemUpdated(ownerId, updated, { context, teamId });
     return updated;
   }
 
-  static async dismiss(realtorId: string, itemId: string) {
-    const existing = await (prisma as any).realtorAssistantItem.findFirst({
-      where: { id: itemId, realtorId },
-      select: { id: true },
-    });
-    if (!existing) throw new Error("FORBIDDEN");
+  static async snooze(
+    ownerId: string,
+    itemId: string,
+    minutes: number,
+    options?: { context?: AssistantContext | null; teamId?: string | null }
+  ) {
+    const context = (options?.context || "REALTOR") as AssistantContext;
+    const teamId = options?.teamId ? String(options.teamId) : null;
 
-    const updated = await (prisma as any).realtorAssistantItem.update({
-      where: { id: itemId },
-      data: {
-        status: "DISMISSED",
-        dismissedAt: new Date(),
-        snoozedUntil: null,
-      },
-    });
-
-    await this.emitItemUpdated(realtorId, updated);
-    return updated;
-  }
-
-  static async snooze(realtorId: string, itemId: string, minutes: number) {
     const until = new Date();
     until.setMinutes(until.getMinutes() + Math.max(5, Math.min(7 * 24 * 60, minutes)));
 
-    const existing = await (prisma as any).realtorAssistantItem.findFirst({
-      where: { id: itemId, realtorId },
+    const existing = await (prisma as any).assistantItem.findFirst({
+      where: { id: itemId, context, ownerId, ...(context === "AGENCY" && teamId ? { teamId } : {}) },
       select: { id: true },
     });
     if (!existing) throw new Error("FORBIDDEN");
 
-    const updated = await (prisma as any).realtorAssistantItem.update({
+    const updated = await (prisma as any).assistantItem.update({
       where: { id: itemId },
       data: {
         status: "SNOOZED",
         snoozedUntil: until,
       },
     });
+    await this.emitItemUpdated(ownerId, updated, { context, teamId });
+    return updated;
+  }
 
-    await this.emitItemUpdated(realtorId, updated);
+  static async dismiss(ownerId: string, itemId: string, options?: { context?: AssistantContext | null; teamId?: string | null }) {
+    const context = (options?.context || "REALTOR") as AssistantContext;
+    const teamId = options?.teamId ? String(options.teamId) : null;
+
+    const existing = await (prisma as any).assistantItem.findFirst({
+      where: { id: itemId, context, ownerId, ...(context === "AGENCY" && teamId ? { teamId } : {}) },
+      select: { id: true },
+    });
+    if (!existing) throw new Error("FORBIDDEN");
+
+    const updated = await (prisma as any).assistantItem.update({
+      where: { id: itemId },
+      data: {
+        status: "DISMISSED",
+        dismissedAt: new Date(),
+      },
+    });
+    await this.emitItemUpdated(ownerId, updated, { context, teamId });
     return updated;
   }
 
   static async upsertFromRule(params: {
-    realtorId: string;
+    ownerId: string;
+    context?: AssistantContext | null;
+    teamId?: string | null;
     leadId?: string | null;
     type: any;
-    priority: any;
+    priority: "LOW" | "MEDIUM" | "HIGH";
     title: string;
     message: string;
     dueAt?: Date | null;
@@ -668,14 +618,17 @@ export class RealtorAssistantService {
   }) {
     const now = new Date();
 
+    const context = (params.context || "REALTOR") as AssistantContext;
+    const teamId = params.teamId ? String(params.teamId) : null;
+
     const fingerprint = JSON.stringify({
       type: params.type,
-      dueAt: params.dueAt ? params.dueAt.toISOString() : null,
       title: params.title,
       message: params.message,
-      primaryAction: (params.primaryAction as any) ?? null,
-      secondaryAction: (params.secondaryAction as any) ?? null,
-      metadata: (params.metadata as any) ?? null,
+      dueAt: params.dueAt ? new Date(params.dueAt).toISOString() : null,
+      primaryAction: params.primaryAction || null,
+      secondaryAction: params.secondaryAction || null,
+      metadata: params.metadata || null,
     });
 
     const nextMetadata: any = {
@@ -683,10 +636,11 @@ export class RealtorAssistantService {
       _fingerprint: fingerprint,
     };
 
-    const existing = await (prisma as any).realtorAssistantItem.findUnique({
+    const existing = await (prisma as any).assistantItem.findUnique({
       where: {
-        realtorId_dedupeKey: {
-          realtorId: params.realtorId,
+        context_ownerId_dedupeKey: {
+          context,
+          ownerId: params.ownerId,
           dedupeKey: params.dedupeKey,
         },
       },
@@ -699,9 +653,11 @@ export class RealtorAssistantService {
     });
 
     if (!existing) {
-      return await (prisma as any).realtorAssistantItem.create({
+      return await (prisma as any).assistantItem.create({
         data: {
-          realtorId: params.realtorId,
+          context,
+          ownerId: params.ownerId,
+          ...(context === "AGENCY" && teamId ? { teamId } : {}),
           leadId: params.leadId ?? null,
           type: params.type,
           priority: params.priority,
@@ -722,7 +678,9 @@ export class RealtorAssistantService {
     const isNewTrigger = prevFingerprint !== fingerprint;
 
     const snoozedUntil = existing.snoozedUntil ? new Date(existing.snoozedUntil) : null;
-    const isSnoozedInFuture = !!(snoozedUntil && !Number.isNaN(snoozedUntil.getTime()) && snoozedUntil.getTime() > now.getTime());
+    const isSnoozedInFuture = !!(
+      snoozedUntil && !Number.isNaN(snoozedUntil.getTime()) && snoozedUntil.getTime() > now.getTime()
+    );
 
     const shouldKeepSnoozed = existing.status === "SNOOZED" && isSnoozedInFuture && !isNewTrigger;
     const shouldKeepClosed = (existing.status === "RESOLVED" || existing.status === "DISMISSED") && !isNewTrigger;
@@ -735,22 +693,24 @@ export class RealtorAssistantService {
       statusUpdate.snoozedUntil = null;
     }
 
-    const updated = await (prisma as any).realtorAssistantItem.update({
+    const updated = await (prisma as any).assistantItem.update({
       where: { id: existing.id },
       data: {
         leadId: params.leadId ?? null,
+        ...(context === "AGENCY" ? { teamId } : { teamId: null }),
         type: params.type,
         priority: params.priority,
+        ...statusUpdate,
         title: params.title,
         message: params.message,
         dueAt: params.dueAt ?? null,
         primaryAction: (params.primaryAction as any) ?? null,
         secondaryAction: (params.secondaryAction as any) ?? null,
         metadata: nextMetadata,
-        ...statusUpdate,
       },
     });
 
+    await this.emitItemUpdated(params.ownerId, updated, { context, teamId });
     return updated;
   }
 
@@ -899,7 +859,8 @@ export class RealtorAssistantService {
         const key = `NEW_LEAD:${lead.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
-          realtorId,
+          context: "REALTOR",
+          ownerId: realtorId,
           leadId: lead.id,
           type: "NEW_LEAD",
           priority: "HIGH",
@@ -920,7 +881,8 @@ export class RealtorAssistantService {
             const key = `REMINDER_OVERDUE:${lead.id}:${startOfDay(d).toISOString().slice(0, 10)}`;
             dedupeKeys.add(key);
             await this.upsertFromRule({
-              realtorId,
+              context: "REALTOR",
+              ownerId: realtorId,
               leadId: lead.id,
               type: "REMINDER_OVERDUE",
               priority: "HIGH",
@@ -937,7 +899,8 @@ export class RealtorAssistantService {
             const key = `REMINDER_TODAY:${lead.id}:${startOfDay(d).toISOString().slice(0, 10)}`;
             dedupeKeys.add(key);
             await this.upsertFromRule({
-              realtorId,
+              context: "REALTOR",
+              ownerId: realtorId,
               leadId: lead.id,
               type: "REMINDER_TODAY",
               priority: "MEDIUM",
@@ -961,7 +924,8 @@ export class RealtorAssistantService {
             const key = `VISIT_TODAY:${lead.id}:${startOfDay(vd).toISOString().slice(0, 10)}`;
             dedupeKeys.add(key);
             await this.upsertFromRule({
-              realtorId,
+              context: "REALTOR",
+              ownerId: realtorId,
               leadId: lead.id,
               type: "VISIT_TODAY",
               priority: "HIGH",
@@ -976,7 +940,8 @@ export class RealtorAssistantService {
             const key = `VISIT_TOMORROW:${lead.id}:${startOfDay(vd).toISOString().slice(0, 10)}`;
             dedupeKeys.add(key);
             await this.upsertFromRule({
-              realtorId,
+              context: "REALTOR",
+              ownerId: realtorId,
               leadId: lead.id,
               type: "VISIT_TOMORROW",
               priority: "MEDIUM",
@@ -993,7 +958,8 @@ export class RealtorAssistantService {
             const key = `OWNER_APPROVAL_PENDING:${lead.id}`;
             dedupeKeys.add(key);
             await this.upsertFromRule({
-              realtorId,
+              context: "REALTOR",
+              ownerId: realtorId,
               leadId: lead.id,
               type: "OWNER_APPROVAL_PENDING",
               priority: "HIGH",
@@ -1107,7 +1073,8 @@ export class RealtorAssistantService {
         const key = `UNANSWERED_CLIENT_MESSAGE:${lead.id}:${channel}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
-          realtorId,
+          context: "REALTOR",
+          ownerId: realtorId,
           leadId: lead.id,
           type: "UNANSWERED_CLIENT_MESSAGE",
           priority,
@@ -1135,7 +1102,8 @@ export class RealtorAssistantService {
         const key = `LEAD_NO_FIRST_CONTACT:${lead.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
-          realtorId,
+          context: "REALTOR",
+          ownerId: realtorId,
           leadId: lead.id,
           type: "LEAD_NO_FIRST_CONTACT",
           priority: "HIGH",
@@ -1153,7 +1121,8 @@ export class RealtorAssistantService {
         const key = `STALE_LEAD:${lead.id}:${startOfDay(lastContactAt).toISOString().slice(0, 10)}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
-          realtorId,
+          context: "REALTOR",
+          ownerId: realtorId,
           leadId: lead.id,
           type: "STALE_LEAD",
           priority: "MEDIUM",
@@ -1182,7 +1151,8 @@ export class RealtorAssistantService {
     weeklyDueAt.setHours(9, 0, 0, 0);
 
     await this.upsertFromRule({
-      realtorId,
+      context: "REALTOR",
+      ownerId: realtorId,
       leadId: null,
       type: "WEEKLY_SUMMARY",
       priority: "LOW",
@@ -1198,21 +1168,263 @@ export class RealtorAssistantService {
     });
 
     // Auto-resolve items from RULE that are no longer applicable
-    await (prisma as any).realtorAssistantItem.updateMany({
+    await (prisma as any).assistantItem.updateMany({
       where: {
-        realtorId,
+        context: "REALTOR",
+        ownerId: realtorId,
         source: "RULE",
-        status: { in: ["ACTIVE", "SNOOZED"] },
         dedupeKey: { notIn: Array.from(dedupeKeys) },
+        status: { in: ["ACTIVE", "SNOOZED"] },
       },
       data: {
         status: "RESOLVED",
-        resolvedAt: now,
-        snoozedUntil: null,
+        resolvedAt: new Date(),
       },
     });
 
     await this.emitItemsRecalculated(realtorId, { count: dedupeKeys.size });
+
+    return { count: dedupeKeys.size };
+  }
+
+  static async recalculateForAgencyTeam(ownerId: string, teamId: string) {
+    const now = new Date();
+    const today = startOfDay(now);
+
+    const leads = await prisma.lead.findMany({
+      where: {
+        teamId,
+        OR: [
+          {
+            status: {
+              in: [
+                "RESERVED",
+                "ACCEPTED",
+                "WAITING_REALTOR_ACCEPT",
+                "WAITING_OWNER_APPROVAL",
+                "CONFIRMED",
+              ] as any,
+            },
+          },
+          {
+            // In agency context we still surface recent client messages as a pending task,
+            // but actions will be restricted to opening the CRM page.
+            clientMessages: {
+              some: {
+                fromClient: true,
+                createdAt: { gte: addDays(now, -14) },
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        nextActionDate: true,
+        nextActionNote: true,
+        visitDate: true,
+        visitTime: true,
+        ownerApproved: true,
+        property: {
+          select: {
+            title: true,
+          },
+        },
+        contact: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    const openLeadUrl = (leadId?: string | null) =>
+      leadId
+        ? `/agency/teams/${teamId}/crm?lead=${encodeURIComponent(String(leadId))}`
+        : `/agency/teams/${teamId}/crm`;
+
+    const dedupeKeys = new Set<string>();
+
+    for (const lead of leads) {
+      const propertyTitle = lead.property?.title || "Imóvel";
+      const clientName = lead.contact?.name || "Cliente";
+
+      if (lead.status === "RESERVED") {
+        const key = `NEW_LEAD:${lead.id}`;
+        dedupeKeys.add(key);
+        await this.upsertFromRule({
+          context: "AGENCY",
+          ownerId,
+          teamId,
+          leadId: lead.id,
+          type: "NEW_LEAD",
+          priority: "HIGH",
+          title: "Novo lead aguardando decisão",
+          message: `${clientName} pediu informações sobre ${propertyTitle}.`,
+          dueAt: null,
+          dedupeKey: key,
+          primaryAction: { type: "OPEN_PAGE", url: openLeadUrl(lead.id) },
+          secondaryAction: null,
+          metadata: { status: lead.status },
+        });
+      }
+
+      if (lead.nextActionDate) {
+        const d = new Date(lead.nextActionDate);
+        if (!Number.isNaN(d.getTime())) {
+          if (d < today) {
+            const key = `REMINDER_OVERDUE:${lead.id}:${startOfDay(d).toISOString().slice(0, 10)}`;
+            dedupeKeys.add(key);
+            await this.upsertFromRule({
+              context: "AGENCY",
+              ownerId,
+              teamId,
+              leadId: lead.id,
+              type: "REMINDER_OVERDUE",
+              priority: "HIGH",
+              title: "Lembrete vencido",
+              message: lead.nextActionNote
+                ? `Próximo passo: ${lead.nextActionNote}`
+                : `Você tinha um próximo passo marcado para ${clientName}.`,
+              dueAt: d,
+              dedupeKey: key,
+              primaryAction: { type: "OPEN_PAGE", url: openLeadUrl(lead.id) },
+              secondaryAction: null,
+            });
+          } else if (isSameDay(d, today)) {
+            const key = `REMINDER_TODAY:${lead.id}:${startOfDay(d).toISOString().slice(0, 10)}`;
+            dedupeKeys.add(key);
+            await this.upsertFromRule({
+              context: "AGENCY",
+              ownerId,
+              teamId,
+              leadId: lead.id,
+              type: "REMINDER_TODAY",
+              priority: "MEDIUM",
+              title: "Lembrete para hoje",
+              message: lead.nextActionNote
+                ? `Próximo passo: ${lead.nextActionNote}`
+                : `Você marcou um próximo passo para hoje com ${clientName}.`,
+              dueAt: d,
+              dedupeKey: key,
+              primaryAction: { type: "OPEN_PAGE", url: openLeadUrl(lead.id) },
+              secondaryAction: null,
+            });
+          }
+        }
+      }
+
+      if (lead.visitDate) {
+        const vd = new Date(lead.visitDate);
+        if (!Number.isNaN(vd.getTime())) {
+          if (isSameDay(vd, today)) {
+            const key = `VISIT_TODAY:${lead.id}:${startOfDay(vd).toISOString().slice(0, 10)}`;
+            dedupeKeys.add(key);
+            await this.upsertFromRule({
+              context: "AGENCY",
+              ownerId,
+              teamId,
+              leadId: lead.id,
+              type: "VISIT_TODAY",
+              priority: "HIGH",
+              title: "Visita hoje",
+              message: `Visita marcada para hoje${lead.visitTime ? ` às ${lead.visitTime}` : ""}.`,
+              dueAt: vd,
+              dedupeKey: key,
+              primaryAction: { type: "OPEN_PAGE", url: openLeadUrl(lead.id) },
+              secondaryAction: null,
+            });
+          } else if (isSameDay(vd, addDays(today, 1))) {
+            const key = `VISIT_TOMORROW:${lead.id}:${startOfDay(vd).toISOString().slice(0, 10)}`;
+            dedupeKeys.add(key);
+            await this.upsertFromRule({
+              context: "AGENCY",
+              ownerId,
+              teamId,
+              leadId: lead.id,
+              type: "VISIT_TOMORROW",
+              priority: "MEDIUM",
+              title: "Visita amanhã",
+              message: `Visita marcada para amanhã${lead.visitTime ? ` às ${lead.visitTime}` : ""}.`,
+              dueAt: vd,
+              dedupeKey: key,
+              primaryAction: { type: "OPEN_PAGE", url: openLeadUrl(lead.id) },
+              secondaryAction: null,
+            });
+          }
+
+          if (lead.visitTime && lead.ownerApproved === null) {
+            const key = `OWNER_APPROVAL_PENDING:${lead.id}`;
+            dedupeKeys.add(key);
+            await this.upsertFromRule({
+              context: "AGENCY",
+              ownerId,
+              teamId,
+              leadId: lead.id,
+              type: "OWNER_APPROVAL_PENDING",
+              priority: "HIGH",
+              title: "Aguardando aprovação do proprietário",
+              message: "A visita está pendente de aprovação do proprietário.",
+              dueAt: vd,
+              dedupeKey: key,
+              primaryAction: { type: "OPEN_PAGE", url: openLeadUrl(lead.id) },
+              secondaryAction: null,
+            });
+          }
+        }
+      }
+    }
+
+    const weekStart = (() => {
+      const d = startOfDay(now);
+      const day = d.getDay();
+      const diffToMonday = day === 0 ? 6 : day - 1;
+      d.setDate(d.getDate() - diffToMonday);
+      return d;
+    })();
+
+    const weekKey = `WEEKLY_SUMMARY:${weekStart.toISOString().slice(0, 10)}`;
+    dedupeKeys.add(weekKey);
+
+    const weeklyDueAt = new Date(weekStart);
+    weeklyDueAt.setHours(9, 0, 0, 0);
+
+    await this.upsertFromRule({
+      context: "AGENCY",
+      ownerId,
+      teamId,
+      leadId: null,
+      type: "WEEKLY_SUMMARY",
+      priority: "LOW",
+      title: "Resumo da semana",
+      message: "Quando tiver 3 minutos, revise o que merece atenção e defina os próximos passos.",
+      dueAt: weeklyDueAt,
+      dedupeKey: weekKey,
+      primaryAction: { type: "OPEN_PAGE", url: openLeadUrl(null) },
+      secondaryAction: null,
+      metadata: {
+        weekStart: weekStart.toISOString(),
+      },
+    });
+
+    await (prisma as any).assistantItem.updateMany({
+      where: {
+        context: "AGENCY",
+        ownerId,
+        teamId,
+        source: "RULE",
+        dedupeKey: { notIn: Array.from(dedupeKeys) },
+        status: { in: ["ACTIVE", "SNOOZED"] },
+      },
+      data: {
+        status: "RESOLVED",
+        resolvedAt: new Date(),
+      },
+    });
+
+    await this.emitItemsRecalculated(ownerId, { count: dedupeKeys.size }, { context: "AGENCY", teamId });
 
     return { count: dedupeKeys.size };
   }

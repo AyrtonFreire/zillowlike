@@ -27,18 +27,32 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    if (role !== "ADMIN" && role !== "REALTOR") {
+    if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
     const url = new URL(req.url);
     const leadId = url.searchParams.get("leadId") || null;
+    const context = (url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR"))
+      .trim()
+      .toUpperCase();
+    let teamId = url.searchParams.get("teamId") || null;
+
+    if (!teamId && role === "AGENCY" && context === "AGENCY") {
+      const agencyProfile = await (prisma as any).agencyProfile.findUnique({
+        where: { userId: String(userId) },
+        select: { teamId: true },
+      });
+      teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+    }
 
     const now = new Date();
 
     const baseWhere: any = {
-      realtorId: String(userId),
+      context: context === "AGENCY" ? "AGENCY" : "REALTOR",
+      ownerId: String(userId),
       ...(leadId ? { leadId } : {}),
+      ...(context === "AGENCY" && teamId ? { teamId: String(teamId) } : {}),
     };
 
     const activeWhere: any = {
@@ -47,17 +61,17 @@ export async function GET(req: NextRequest) {
     };
 
     const [byType, agg, snoozedCount] = await Promise.all([
-      (prisma as any).realtorAssistantItem.groupBy({
+      (prisma as any).assistantItem.groupBy({
         by: ["type"],
         where: activeWhere,
         _count: { _all: true },
       }),
-      (prisma as any).realtorAssistantItem.aggregate({
+      (prisma as any).assistantItem.aggregate({
         where: baseWhere,
         _max: { updatedAt: true },
         _count: { _all: true },
       }),
-      (prisma as any).realtorAssistantItem.count({
+      (prisma as any).assistantItem.count({
         where: {
           ...baseWhere,
           status: "SNOOZED",
@@ -84,7 +98,7 @@ export async function GET(req: NextRequest) {
 
     const newestMs = agg?._max?.updatedAt ? new Date(agg._max.updatedAt).getTime() : 0;
     const total = Number(agg?._count?._all || 0);
-    const key = `${String(userId)}:${leadId || "all"}`;
+    const key = `${String(userId)}:${context === "AGENCY" ? "AGENCY" : "REALTOR"}:${teamId || "-"}:${leadId || "all"}`;
     const etag = `W/\"assistant-stats:${key}:${newestMs}:${total}:${counts.ALL}:${counts.Leads}:${counts.Visitas}:${counts.Lembretes}:${counts.Outros}:${Number(snoozedCount || 0)}\"`;
 
     const ifNoneMatch = req.headers.get("if-none-match");

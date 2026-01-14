@@ -31,6 +31,7 @@ export const PUSHER_EVENTS = {
 // Canais disponíveis
 export const PUSHER_CHANNELS = {
   REALTOR: (realtorId: string) => `private-realtor-${realtorId}`,
+  AGENCY: (teamId: string) => `private-agency-${teamId}`,
   // Chat channels (público para clientes que só tem o token)
   CHAT: (leadId: string) => `chat-${leadId}`,
   PRESENCE_CHAT: (leadId: string) => `presence-chat-${leadId}`,
