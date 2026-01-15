@@ -1052,7 +1052,7 @@ export default function Home() {
         </div>
       )}
 
-      {!hasSearched && <ContinueSearching />}
+      {!hasSearched && user && <ContinueSearching />}
 
       {/* Perfis principais: comprador, proprietário, corretor */}
       {!hasSearched && (

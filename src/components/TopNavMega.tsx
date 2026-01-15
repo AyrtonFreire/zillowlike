@@ -440,10 +440,8 @@ function quickLinksByRole(role: string): QuickItem[] {
   }
   if (role === "AGENCY") {
     return [
-      { href: "/agency", label: "Painel da imobiliária", icon: ico("M3 3h18v4H3zM3 9h18v12H3z") },
-      { href: "/owner/new", label: "Cadastrar novo imóvel", icon: ico("M12 4v16m8-8H4") },
-      { href: "/agency/properties", label: "Meus anúncios", icon: ico("M4 6h16M4 10h16M4 14h10") },
-      { href: "/agency/team", label: "Meu time", icon: ico("M16 12a4 4 0 10-8 0 4 4 0 008 0z M12 14v7") },
+      { href: "/agency", label: "CRM", icon: ico("M3 3h18v4H3zM3 9h18v12H3z") },
+      { href: "/owner/new", label: "Cadastrar imóvel", icon: ico("M12 4v16m8-8H4") },
     ];
   }
   // USER (default)

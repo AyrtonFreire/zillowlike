@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent } from "lucide-react";
+import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent, ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -721,7 +721,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                   <Link
                     href={`/realtor/${property.owner.publicSlug}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-3 min-w-0 flex-1"
+                    className="group/realtor flex items-center gap-3 min-w-0 flex-1"
                     aria-label={`Ver perfil de ${property.owner.name}`}
                   >
                     <span className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
@@ -740,8 +740,11 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                       )}
                     </span>
                     <span className="min-w-0 max-w-[180px] sm:max-w-[220px]">
-                      <span className="block text-[12.5px] font-bold text-gray-900 leading-tight truncate">
-                        {property.owner.name}
+                      <span className="flex items-center gap-1 min-w-0">
+                        <span className="block text-[12.5px] font-bold text-gray-900 leading-tight truncate transition-colors group-hover/realtor:text-teal-700 group-hover/realtor:underline">
+                          {property.owner.name}
+                        </span>
+                        <ArrowUpRight className="w-3.5 h-3.5 flex-none text-gray-400 transition-transform group-hover/realtor:translate-x-0.5 group-hover/realtor:-translate-y-0.5" />
                       </span>
                     </span>
                   </Link>

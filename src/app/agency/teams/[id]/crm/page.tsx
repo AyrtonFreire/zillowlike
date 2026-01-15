@@ -573,7 +573,7 @@ export default function AgencyTeamCrmPage() {
                 setTourSeed((v) => v + 1);
                 setForceTour(true);
               }}
-              className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-50"
             >
               Fazer tour
             </button>

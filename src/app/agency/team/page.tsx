@@ -595,11 +595,6 @@ export default function AgencyTeamPage() {
               <div className="space-y-6">
                 <StatCard
                   title="Workspace"
-                  action={
-                    <Link href="/agency" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                      Voltar ao painel
-                    </Link>
-                  }
                 >
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div className="min-w-0">
@@ -674,14 +669,6 @@ export default function AgencyTeamPage() {
 
                     <StatCard
                       title="Qualidade do time"
-                      action={
-                        <Link
-                          href={`/agency/teams/${insights.team.id}/crm`}
-                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                          Leads do time
-                        </Link>
-                      }
                     >
                       <p className="text-sm text-gray-600">{insights.summary}</p>
 
@@ -963,16 +950,6 @@ export default function AgencyTeamPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <StatCard
                     title="Distribuição de leads do time"
-                    action={
-                      team?.id ? (
-                        <Link
-                          href={`/agency/teams/${team.id}/crm`}
-                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                          Leads do time
-                        </Link>
-                      ) : null
-                    }
                   >
                     <div className="flex flex-col gap-3">
                       <div>

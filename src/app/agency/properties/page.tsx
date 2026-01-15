@@ -8,6 +8,7 @@ import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import PropertyCardV2 from "@/components/dashboard/PropertyCardV2";
 import { X } from "lucide-react";
+import AgencyPropertiesOnboarding, { resetAgencyPropertiesOnboarding } from "@/components/onboarding/AgencyPropertiesOnboarding";
 
 type PropertyStatus = "ACTIVE" | "PAUSED" | "DRAFT";
 
@@ -61,6 +62,9 @@ export default function AgencyPropertiesPage() {
   const [qDraft, setQDraft] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<PropertyStatus | "ALL">("ALL");
   const [typeFilter, setTypeFilter] = useState<string>("");
+
+  const [forceTour, setForceTour] = useState(false);
+  const [tourSeed, setTourSeed] = useState(0);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -196,6 +200,13 @@ export default function AgencyPropertiesPage() {
 
   return (
     <div className="py-2">
+      <AgencyPropertiesOnboarding
+        key={`agency-properties-tour-${tourSeed}`}
+        forceShow={forceTour}
+        onFinish={() => {
+          setForceTour(false);
+        }}
+      />
         {properties.length === 0 ? (
           <EmptyState
             title="Nenhum imóvel no time"
@@ -226,15 +237,28 @@ export default function AgencyPropertiesPage() {
                   </div>
                 )}
               </div>
-              <Link
-                href="/owner/new"
-                className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
-              >
-                Cadastrar imóvel
-              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetAgencyPropertiesOnboarding();
+                    setTourSeed((v) => v + 1);
+                    setForceTour(true);
+                  }}
+                  className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                >
+                  Fazer tour
+                </button>
+                <Link
+                  href="/owner/new"
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
+                >
+                  Cadastrar imóvel
+                </Link>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" data-onboarding="agency-properties-summary">
               <div className="rounded-2xl border border-gray-200 bg-white p-4">
                 <div className="text-[11px] font-semibold text-gray-500">Imóveis</div>
                 <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{summary.total}</div>
@@ -252,7 +276,7 @@ export default function AgencyPropertiesPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4" data-onboarding="agency-properties-filters">
               <div className="flex flex-col lg:flex-row lg:items-end gap-3">
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Buscar</label>
@@ -340,7 +364,7 @@ export default function AgencyPropertiesPage() {
                 }
               />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" data-onboarding="agency-properties-list">
                 {filteredProperties.map((p) => (
                   <PropertyCardV2
                     key={p.id}
