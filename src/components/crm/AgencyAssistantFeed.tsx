@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
   Clock,
+  Copy,
   ExternalLink,
   Sparkles,
   Trash2,
+  X,
 } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
 import { ptBR } from "@/lib/i18n/property";
@@ -37,6 +39,39 @@ type AssistantItem = {
   updatedAt: string;
 };
 
+type AiAssistResult = {
+  itemId: string;
+  itemType: string;
+  taskLabel: string;
+  summary: string;
+  draft: string;
+  reasons: string[];
+  confidence: "low" | "medium" | "high";
+};
+
+async function copyText(text: string) {
+  const value = String(text || "");
+  try {
+    await navigator.clipboard.writeText(value);
+    return;
+  } catch {
+  }
+
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    textarea.style.top = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  } catch {
+  }
+}
+
 export function AgencyAssistantFeed(props: {
   teamId: string;
   embedded?: boolean;
@@ -49,9 +84,47 @@ export function AgencyAssistantFeed(props: {
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
 
+  const [aiForId, setAiForId] = useState<string | null>(null);
+  const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<AiAssistResult | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const aiAbortRef = useRef<AbortController | null>(null);
+
+  const [copiedForId, setCopiedForId] = useState<string | null>(null);
+  const copiedTimerRef = useRef<any>(null);
+
   const etagRef = useRef<string | null>(null);
   const delayedRefreshRef = useRef<any>(null);
   const lastRealtimeUpdateRef = useRef<Record<string, number>>({});
+
+  const recordAssistantEvent = useCallback(
+    (input: {
+      event: "DRAFT_COPIED" | "DRAFT_SENT" | "DRAFT_EDITED";
+      itemId: string;
+      leadId?: string | null;
+      itemType?: string | null;
+      metadata?: Record<string, any>;
+    }) => {
+      try {
+        fetch(`/api/assistant/events?context=AGENCY&teamId=${encodeURIComponent(props.teamId)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event: input.event,
+            itemId: String(input.itemId),
+            context: "AGENCY",
+            teamId: String(props.teamId),
+            leadId: input.leadId ? String(input.leadId) : undefined,
+            itemType: input.itemType ? String(input.itemType) : undefined,
+            metadata: input.metadata || undefined,
+          }),
+          keepalive: true,
+        }).catch(() => null);
+      } catch {
+      }
+    },
+    [props.teamId]
+  );
 
   const fetchItems = useCallback(async () => {
     try {
@@ -202,6 +275,66 @@ export function AgencyAssistantFeed(props: {
     }
   };
 
+  const generateAi = async (itemId: string) => {
+    try {
+      setAiError(null);
+      setAiResult(null);
+      setAiForId(itemId);
+      if (aiLoadingId === itemId) return;
+
+      try {
+        aiAbortRef.current?.abort();
+      } catch {
+      }
+
+      const controller = new AbortController();
+      aiAbortRef.current = controller;
+
+      setAiLoadingId(itemId);
+      const res = await fetch(
+        `/api/assistant/items/${encodeURIComponent(itemId)}/generate?context=AGENCY&teamId=${encodeURIComponent(props.teamId)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+        }
+      );
+
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        const msg =
+          json?.error ||
+          (res.status === 401
+            ? "Sua sessão expirou. Entre novamente e tente de novo."
+            : res.status === 403
+              ? "Você não tem permissão para gerar esta sugestão."
+              : res.status === 404
+                ? "Este item não existe mais (provavelmente já foi resolvido)."
+                : res.status === 429
+                  ? "Limite de uso atingido. Tente novamente em alguns instantes."
+                  : "Não conseguimos gerar uma sugestão agora.");
+        throw new Error(msg);
+      }
+
+      const data = json?.data as AiAssistResult | undefined;
+      if (!data?.itemId || !data?.draft) {
+        throw new Error("Não conseguimos gerar uma sugestão agora.");
+      }
+
+      setAiResult(data);
+      setAiForId(itemId);
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        return;
+      }
+      setAiResult(null);
+      setAiError(err?.message || "Não conseguimos gerar uma sugestão agora.");
+      setAiForId(itemId);
+    } finally {
+      setAiLoadingId(null);
+    }
+  };
+
   const visibleItems = useMemo(() => {
     return items.filter((it) => it.status === "ACTIVE" || it.status === "SNOOZED");
   }, [items]);
@@ -225,6 +358,9 @@ export function AgencyAssistantFeed(props: {
         <div className="mt-4 space-y-3">
           {visibleItems.map((item) => {
             const isBusy = actingId === item.id;
+            const isReminder =
+              item.type === "REMINDER_TODAY" || item.type === "REMINDER_OVERDUE" || item.type === "WEEKLY_SUMMARY";
+            const showAiBox = aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id));
             return (
               <div
                 key={item.id}
@@ -260,6 +396,16 @@ export function AgencyAssistantFeed(props: {
 
                   <button
                     type="button"
+                    disabled={isBusy || aiLoadingId === item.id}
+                    onClick={() => generateAi(item.id)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {aiLoadingId === item.id ? "Gerando..." : "Gerar com IA"}
+                  </button>
+
+                  <button
+                    type="button"
                     disabled={isBusy}
                     onClick={() => performAction(item.id, { action: "snooze", minutes: 60 })}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
@@ -285,6 +431,92 @@ export function AgencyAssistantFeed(props: {
                     </div>
                   )}
                 </div>
+
+                {showAiBox && (
+                  <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold text-gray-900">Sugestão do Assistente</p>
+                        {aiError ? (
+                          <p className="mt-1 text-[11px] text-red-600">{aiError}</p>
+                        ) : (
+                          <p className="mt-1 text-[11px] text-gray-700">{aiResult?.summary}</p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          try {
+                            if (aiLoadingId === item.id) {
+                              aiAbortRef.current?.abort();
+                            }
+                          } catch {
+                          }
+                          setAiForId(null);
+                          setAiError(null);
+                          setAiResult(null);
+                        }}
+                        className="p-1 rounded-lg hover:bg-gray-100 text-gray-600"
+                        title="Fechar"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {!aiError && aiResult?.draft && (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[11px] font-semibold text-gray-900">
+                            {isReminder ? "Checklist" : "Mensagem sugerida"}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await copyText(aiResult.draft);
+                              try {
+                                recordAssistantEvent({
+                                  event: "DRAFT_COPIED",
+                                  itemId: String(item.id),
+                                  leadId: item.leadId ?? null,
+                                  itemType: item.type ?? null,
+                                  metadata: { source: "agency_feed" },
+                                });
+                              } catch {
+                              }
+                              setCopiedForId(item.id);
+                              if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+                              copiedTimerRef.current = setTimeout(() => {
+                                setCopiedForId(null);
+                              }, 2000);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            {copiedForId === item.id ? "Copiado" : "Copiar"}
+                          </button>
+                        </div>
+
+                        <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] text-gray-800 whitespace-pre-wrap">
+                          {aiResult.draft}
+                        </div>
+                      </div>
+                    )}
+
+                    {aiError && (
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          disabled={aiLoadingId === item.id}
+                          onClick={() => generateAi(item.id)}
+                          className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 disabled:opacity-60"
+                        >
+                          Tentar novamente
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

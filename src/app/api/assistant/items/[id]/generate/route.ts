@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { errorResponse, successResponse, withErrorHandling } from "@/lib/api-response";
 import { withRateLimit } from "@/lib/rate-limiter";
 import { getRealtorAssistantAiSpec } from "@/lib/realtor-assistant-ai";
+import { sanitizeDraft, sanitizeReason, sanitizeSummary } from "@/lib/ai-guardrails";
+import { createAuditLog } from "@/lib/audit-log";
 
 export const runtime = "nodejs";
 
@@ -36,91 +38,6 @@ const OutputSchema = z
     confidence: z.enum(["low", "medium", "high"]),
   })
   .strict();
-
-function clampText(value: string, max: number) {
-  const s = String(value || "");
-  if (s.length <= max) return s;
-  return s.slice(0, max).trimEnd();
-}
-
-function stripUrls(text: string) {
-  return text.replace(/https?:\/\/\S+|www\.[^\s]+/gi, "");
-}
-
-function stripPhones(text: string) {
-  return text.replace(/(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?\d{4,5}[\s-]?\d{4}/g, "");
-}
-
-function stripEmojis(text: string) {
-  try {
-    return text.replace(/[\p{Extended_Pictographic}]/gu, "");
-  } catch {
-    return text;
-  }
-}
-
-function normalizeWhitespace(text: string) {
-  return text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-}
-
-function fixCommonPlaceholders(text: string, params?: { realtorName?: string | null }) {
-  let out = String(text || "");
-  const realtorName = String(params?.realtorName || "").trim();
-
-  const placeholderRegexes: RegExp[] = [
-    /\[(?:seu|sua)\s+nome\]/gi,
-    /\{(?:seu|sua)\s+nome\}/gi,
-    /<(?:seu|sua)\s+nome>/gi,
-    /\[(?:nome\s+do\s+corretor|nome\s+do\s+atendente|nome)\]/gi,
-    /\{(?:nome\s+do\s+corretor|nome\s+do\s+atendente|nome)\}/gi,
-    /<(?:nome\s+do\s+corretor|nome\s+do\s+atendente|nome)>/gi,
-  ];
-
-  if (realtorName) {
-    for (const rx of placeholderRegexes) {
-      out = out.replace(rx, realtorName);
-    }
-    out = out.replace(/\[Seu\s+Nome\]/gi, realtorName);
-    out = out.replace(/\{Seu\s+Nome\}/gi, realtorName);
-    out = out.replace(/<Seu\s+Nome>/gi, realtorName);
-  } else {
-    for (const rx of placeholderRegexes) {
-      out = out.replace(rx, "");
-    }
-    out = out.replace(/\[Seu\s+Nome\]/gi, "");
-    out = out.replace(/\{Seu\s+Nome\}/gi, "");
-    out = out.replace(/<Seu\s+Nome>/gi, "");
-  }
-
-  return normalizeWhitespace(out);
-}
-
-function sanitizeDraft(raw: string, params?: { realtorName?: string | null }) {
-  const base = String(raw || "");
-  const cleaned = normalizeWhitespace(stripEmojis(stripPhones(stripUrls(base))));
-  const limited = clampText(fixCommonPlaceholders(cleaned, params), 1200);
-  if (limited.length >= 5) return limited;
-  const fallback = clampText(fixCommonPlaceholders(normalizeWhitespace(stripEmojis(base)), params), 1200);
-  return fallback.length >= 5 ? fallback : clampText(base.trim(), 1200);
-}
-
-function sanitizeSummary(raw: string) {
-  const base = String(raw || "");
-  const cleaned = normalizeWhitespace(stripEmojis(stripPhones(stripUrls(base))));
-  const limited = clampText(cleaned, 240);
-  if (limited.length >= 10) return limited;
-  const fallback = clampText(normalizeWhitespace(stripEmojis(base)), 240);
-  return fallback.length >= 10 ? fallback : clampText(base.trim(), 240);
-}
-
-function sanitizeReason(raw: string) {
-  const base = String(raw || "");
-  const cleaned = normalizeWhitespace(stripEmojis(stripPhones(stripUrls(base))));
-  const limited = clampText(cleaned, 140);
-  if (limited.length >= 3) return limited;
-  const fallback = clampText(normalizeWhitespace(stripEmojis(base)), 140);
-  return fallback.length >= 3 ? fallback : clampText(base.trim(), 140);
-}
 
 function extractJsonObject(text: string): any | null {
   try {
@@ -215,6 +132,7 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
 
   const userId = session.userId || session.user?.id;
   const role = session.role || session.user?.role;
+  const actorEmail = (session as any)?.user?.email ? String((session as any).user.email) : null;
 
   if (!userId) return errorResponse("Não autenticado", 401, null, "UNAUTHORIZED");
 
@@ -362,6 +280,26 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
       confidence: "low" as const,
       ...(warning ? { _aiWarning: warning } : {}),
     };
+
+    void createAuditLog({
+      level: "WARN",
+      action: "ASSISTANT_DRAFT_FALLBACK",
+      message: "AI draft fallback used",
+      actorId: String(userId),
+      actorEmail,
+      actorRole: String(role || ""),
+      targetType: "AssistantItem",
+      targetId: String(item.id),
+      metadata: {
+        context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+        teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+        leadId: item.leadId ? String(item.leadId) : null,
+        itemType: String(item.type || ""),
+        model,
+        warning: warning || null,
+      },
+    });
+
     return successResponse(fallback as any, "OK");
   };
 
@@ -481,6 +419,25 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
   if (!parsedAttempt.ok) {
     return buildFallback({ code: "AI_INVALID_JSON", sample: content.slice(0, 2000), issues: parsedAttempt.issues });
   }
+
+  void createAuditLog({
+    level: "SUCCESS",
+    action: "ASSISTANT_DRAFT_GENERATED",
+    message: "AI draft generated",
+    actorId: String(userId),
+    actorEmail,
+    actorRole: String(role || ""),
+    targetType: "AssistantItem",
+    targetId: String(item.id),
+    metadata: {
+      context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+      teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+      leadId: item.leadId ? String(item.leadId) : null,
+      itemType: String(item.type || ""),
+      model,
+      confidence: (parsedAttempt as any)?.data?.confidence ?? null,
+    },
+  });
 
   return successResponse(
     {

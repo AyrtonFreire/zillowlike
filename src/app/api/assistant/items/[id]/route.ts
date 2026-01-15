@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
+import { createAuditLog } from "@/lib/audit-log";
 
 const PatchSchema = z
   .object({
@@ -23,6 +24,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     const userId = session.userId || session.user?.id;
     const role = session.role || session.user?.role;
+    const actorEmail = (session as any)?.user?.email ? String((session as any).user.email) : null;
 
     if (!userId) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
@@ -57,25 +59,51 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       );
     }
 
+    const previous: any = await (prisma as any).assistantItem.findFirst({
+      where: {
+        id: String(id),
+        context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+        ownerId: String(userId),
+        ...(reqContext === "AGENCY" && teamId ? { teamId: String(teamId) } : {}),
+      },
+      select: {
+        id: true,
+        leadId: true,
+        type: true,
+        status: true,
+        priority: true,
+        metadata: true,
+      },
+    });
+
+    if (!previous) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
     let item;
     if (parsed.data.action === "resolve") {
-      const previous: any = await (prisma as any).assistantItem.findFirst({
-        where: {
-          id: String(id),
-          context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
-          ownerId: String(userId),
-          ...(reqContext === "AGENCY" && teamId ? { teamId: String(teamId) } : {}),
-        },
-        select: {
-          id: true,
-          leadId: true,
-          metadata: true,
-        },
-      });
-
       item = await RealtorAssistantService.resolve(String(userId), id, {
         context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
         teamId: reqContext === "AGENCY" ? teamId || undefined : undefined,
+      });
+
+      void createAuditLog({
+        level: "SUCCESS",
+        action: "ASSISTANT_ITEM_RESOLVED",
+        message: "Assistant item resolved",
+        actorId: String(userId),
+        actorEmail,
+        actorRole: String(role || ""),
+        targetType: "AssistantItem",
+        targetId: String(previous.id),
+        metadata: {
+          context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+          teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+          leadId: previous.leadId ? String(previous.leadId) : null,
+          itemType: String(previous.type || ""),
+          previousStatus: String(previous.status || ""),
+          previousPriority: String(previous.priority || ""),
+        },
       });
 
       try {
@@ -139,11 +167,50 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
         teamId: reqContext === "AGENCY" ? teamId || undefined : undefined,
       });
+
+      void createAuditLog({
+        level: "INFO",
+        action: "ASSISTANT_ITEM_DISMISSED",
+        message: "Assistant item dismissed",
+        actorId: String(userId),
+        actorEmail,
+        actorRole: String(role || ""),
+        targetType: "AssistantItem",
+        targetId: String(previous.id),
+        metadata: {
+          context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+          teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+          leadId: previous.leadId ? String(previous.leadId) : null,
+          itemType: String(previous.type || ""),
+          previousStatus: String(previous.status || ""),
+          previousPriority: String(previous.priority || ""),
+        },
+      });
     } else {
       const minutes = parsed.data.minutes ?? 60;
       item = await RealtorAssistantService.snooze(String(userId), id, minutes, {
         context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
         teamId: reqContext === "AGENCY" ? teamId || undefined : undefined,
+      });
+
+      void createAuditLog({
+        level: "INFO",
+        action: "ASSISTANT_ITEM_SNOOZED",
+        message: "Assistant item snoozed",
+        actorId: String(userId),
+        actorEmail,
+        actorRole: String(role || ""),
+        targetType: "AssistantItem",
+        targetId: String(previous.id),
+        metadata: {
+          context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+          teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+          leadId: previous.leadId ? String(previous.leadId) : null,
+          itemType: String(previous.type || ""),
+          previousStatus: String(previous.status || ""),
+          previousPriority: String(previous.priority || ""),
+          minutes,
+        },
       });
     }
 

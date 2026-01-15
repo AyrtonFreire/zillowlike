@@ -123,6 +123,7 @@ interface PropertyCardV2Props {
   hasDescription?: boolean;
   hasMinPhotos?: boolean;
   missingFields?: string[];
+  badges?: Array<{ label: string; tone?: "info" | "warning" | "critical" }>;
 }
 
 export default function PropertyCardV2({
@@ -151,6 +152,7 @@ export default function PropertyCardV2({
   hasDescription = true,
   hasMinPhotos = true,
   missingFields = [],
+  badges = [],
 }: PropertyCardV2Props) {
   const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -242,6 +244,13 @@ export default function PropertyCardV2({
     setExpanded((v) => !v);
   };
 
+  const badgeStyle = (tone?: "info" | "warning" | "critical") => {
+    const t = String(tone || "info").toLowerCase();
+    if (t === "critical") return "border-rose-200 bg-rose-50 text-rose-700";
+    if (t === "warning") return "border-amber-200 bg-amber-50 text-amber-700";
+    return "border-slate-200 bg-slate-50 text-slate-700";
+  };
+
   return (
     <div className="block group h-full">
       <div className="bg-white rounded-2xl border border-gray-200 hover:shadow-lg transition-all h-full flex flex-col overflow-visible">
@@ -262,7 +271,21 @@ export default function PropertyCardV2({
           )}
 
           {/* Status Badge */}
-          <div className="absolute top-3 left-3">{getStatusBadge()}</div>
+          <div className="absolute top-3 left-3 flex flex-col items-start gap-1">
+            {getStatusBadge()}
+            {Array.isArray(badges) && badges.length > 0 ? (
+              <div className="flex flex-col items-start gap-1">
+                {badges.slice(0, 2).map((b, idx) => (
+                  <span
+                    key={`${b.label}-${idx}`}
+                    className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badgeStyle(b.tone)}`}
+                  >
+                    {b.label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
 
           {/* Quality Score */}
           <div className="absolute top-3 right-3">

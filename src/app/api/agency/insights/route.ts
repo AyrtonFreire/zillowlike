@@ -352,6 +352,117 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const start14d = new Date(now);
+    start14d.setHours(0, 0, 0, 0);
+    start14d.setDate(start14d.getDate() - 13);
+
+    try {
+      const properties = await prisma.property.findMany({
+        where: { teamId: String(teamId) },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+        },
+        take: 2000,
+      });
+
+      const activeProperties = (properties as any[]).filter((p) => String(p.status || "").toUpperCase() === "ACTIVE");
+      const propertyIds = activeProperties.map((p) => String(p.id)).filter(Boolean);
+
+      if (propertyIds.length > 0) {
+        const viewsRows = (await prisma.$queryRaw(
+          Prisma.sql`
+            SELECT "propertyId", COUNT(*)::int AS "count"
+            FROM "property_views"
+            WHERE "propertyId" = ANY(${propertyIds})
+              AND "viewedAt" >= ${start14d}
+            GROUP BY 1
+          `
+        )) as any[];
+
+        const leadsRows = (await prisma.$queryRaw(
+          Prisma.sql`
+            SELECT "propertyId", COUNT(*)::int AS "count"
+            FROM "leads"
+            WHERE "propertyId" = ANY(${propertyIds})
+              AND "createdAt" >= ${start14d}
+            GROUP BY 1
+          `
+        )) as any[];
+
+        const views14dByProperty = new Map<string, number>(
+          (viewsRows || []).map((r: any) => [String(r.propertyId), Number(r.count) || 0])
+        );
+        const leads14dByProperty = new Map<string, number>(
+          (leadsRows || []).map((r: any) => [String(r.propertyId), Number(r.count) || 0])
+        );
+
+        const withPerf = activeProperties
+          .map((p: any) => {
+            const id = String(p.id);
+            const views14d = views14dByProperty.get(id) || 0;
+            const leads14d = leads14dByProperty.get(id) || 0;
+            const conversion = views14d > 0 ? leads14d / views14d : 0;
+            return {
+              id,
+              title: String(p.title || "Imóvel"),
+              views14d,
+              leads14d,
+              conversion,
+            };
+          })
+          .sort((a, b) => b.views14d - a.views14d);
+
+        const noViews = withPerf.filter((p) => p.views14d === 0);
+        const noLeads = withPerf.filter((p) => p.views14d >= 50 && p.leads14d === 0);
+        const lowConversion = withPerf.filter((p) => p.views14d >= 200 && p.conversion > 0 && p.conversion < 0.005);
+
+        if (noViews.length > 0) {
+          const examples = noViews
+            .slice(0, 3)
+            .map((p) => p.title)
+            .join(" • ");
+          highlights.push({
+            title: "Imóveis sem visualizações (14d)",
+            detail: `${noViews.length} anúncio${noViews.length === 1 ? "" : "s"} ativo${noViews.length === 1 ? "" : "s"} sem views nos últimos 14 dias.${examples ? ` Exemplos: ${examples}` : ""}`,
+            severity: noViews.length >= 5 ? "warning" : "info",
+            href: "/agency/properties?insight=noViews14d",
+            hrefLabel: "Abrir imóveis",
+          });
+        }
+
+        if (noLeads.length > 0) {
+          const examples = noLeads
+            .slice(0, 3)
+            .map((p) => p.title)
+            .join(" • ");
+          highlights.push({
+            title: "Muitas views e zero leads (14d)",
+            detail: `${noLeads.length} anúncio${noLeads.length === 1 ? "" : "s"} com 50+ views e 0 leads nos últimos 14 dias.${examples ? ` Exemplos: ${examples}` : ""}`,
+            severity: noLeads.length >= 5 ? "critical" : "warning",
+            href: "/agency/properties?insight=noLeads14d",
+            hrefLabel: "Abrir imóveis",
+          });
+        }
+
+        if (lowConversion.length > 0) {
+          const examples = lowConversion
+            .slice(0, 3)
+            .map((p) => p.title)
+            .join(" • ");
+          highlights.push({
+            title: "Baixa conversão (14d)",
+            detail: `${lowConversion.length} anúncio${lowConversion.length === 1 ? "" : "s"} com 200+ views e conversão < 0,5% nos últimos 14 dias.${examples ? ` Exemplos: ${examples}` : ""}`,
+            severity: "warning",
+            href: "/agency/properties?insight=lowConversion14d",
+            hrefLabel: "Abrir imóveis",
+          });
+        }
+      }
+    } catch {
+    }
+
     const summary = (() => {
       const parts: string[] = [];
       parts.push(`Leads ativos: ${activeTotal}`);
@@ -381,7 +492,7 @@ export async function GET(req: NextRequest) {
         pendingReplyLeads,
       },
       members: memberStats,
-      highlights: highlights.slice(0, 6),
+      highlights: highlights.slice(0, 8),
     });
   } catch (error) {
     console.error("Error fetching agency insights:", error);

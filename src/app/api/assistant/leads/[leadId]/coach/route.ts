@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sanitizeDraft, sanitizeReason } from "@/lib/ai-guardrails";
 
 export const runtime = "nodejs";
 
@@ -74,12 +75,20 @@ function buildCoachPayload(input: {
         "Qual faixa de valor você tem em mente?",
         "Você busca compra ou locação?",
         "Tem alguma preferência de forma de pagamento (financiamento/à vista)?",
-      ],
-      nextSteps: ["Confirmar faixa e condições", "Oferecer 2 opções de próximo passo: visita ou envio de comparativos"],
+      ]
+        .map((q) => sanitizeReason(q))
+        .filter(Boolean)
+        .slice(0, 4),
+      nextSteps: ["Confirmar faixa e condições", "Oferecer 2 opções de próximo passo: visita ou envio de comparativos"]
+        .map((s) => sanitizeReason(s))
+        .filter(Boolean)
+        .slice(0, 4),
       draft:
-        `${greet}\n\n` +
-        `${about}me diz só para eu te passar a informação certinha: você está olhando compra ou locação, e qual faixa de valor você quer trabalhar?\n\n` +
-        `Se fizer sentido, eu já te envio um comparativo (valor + condomínio/IPTU) e também posso sugerir horários para uma visita.`,
+        sanitizeDraft(
+          `${greet}\n\n` +
+            `${about}me diz só para eu te passar a informação certinha: você está olhando compra ou locação, e qual faixa de valor você quer trabalhar?\n\n` +
+            `Se fizer sentido, eu já te envio um comparativo (valor + condomínio/IPTU) e também posso sugerir horários para uma visita.`
+        ),
     };
   }
 
@@ -91,13 +100,21 @@ function buildCoachPayload(input: {
         "Qual bairro/região é prioridade para você?",
         "Você precisa de proximidade com metrô/ônibus ou algum ponto específico?",
         "Tem alguma restrição de tempo de deslocamento?",
-      ],
-      nextSteps: ["Confirmar região e pontos de interesse", "Sugerir 2 alternativas próximas"],
+      ]
+        .map((q) => sanitizeReason(q))
+        .filter(Boolean)
+        .slice(0, 4),
+      nextSteps: ["Confirmar região e pontos de interesse", "Sugerir 2 alternativas próximas"]
+        .map((s) => sanitizeReason(s))
+        .filter(Boolean)
+        .slice(0, 4),
       draft:
-        `${greet}\n\n` +
-        `${about}me conta um pouco melhor sua preferência de localização: qual bairro/região você quer priorizar?\n` +
-        `E tem algum ponto de referência importante (metrô, trabalho, escola) para eu considerar?\n\n` +
-        `Com isso eu consigo te mandar opções bem alinhadas.`,
+        sanitizeDraft(
+          `${greet}\n\n` +
+            `${about}me conta um pouco melhor sua preferência de localização: qual bairro/região você quer priorizar?\n` +
+            `E tem algum ponto de referência importante (metrô, trabalho, escola) para eu considerar?\n\n` +
+            `Com isso eu consigo te mandar opções bem alinhadas.`
+        ),
     };
   }
 
@@ -109,13 +126,21 @@ function buildCoachPayload(input: {
         "Você já tem uma simulação aprovada ou ainda vai iniciar?",
         "Quanto você pretende dar de entrada (aprox.)?",
         "Você pretende usar FGTS?",
-      ],
-      nextSteps: ["Qualificar entrada/FGTS/situação", "Oferecer simulação ou indicar documentos básicos"],
+      ]
+        .map((q) => sanitizeReason(q))
+        .filter(Boolean)
+        .slice(0, 4),
+      nextSteps: ["Qualificar entrada/FGTS/situação", "Oferecer simulação ou indicar documentos básicos"]
+        .map((s) => sanitizeReason(s))
+        .filter(Boolean)
+        .slice(0, 4),
       draft:
-        `${greet}\n\n` +
-        `${about}sobre financiamento, para eu te orientar melhor: você já tem simulação aprovada ou ainda vai iniciar?\n` +
-        `Você pretende dar qual entrada (aprox.) e usar FGTS?\n\n` +
-        `Com essas infos eu te digo o melhor caminho e já alinho o próximo passo.`,
+        sanitizeDraft(
+          `${greet}\n\n` +
+            `${about}sobre financiamento, para eu te orientar melhor: você já tem simulação aprovada ou ainda vai iniciar?\n` +
+            `Você pretende dar qual entrada (aprox.) e usar FGTS?\n\n` +
+            `Com essas infos eu te digo o melhor caminho e já alinho o próximo passo.`
+        ),
     };
   }
 
@@ -127,12 +152,20 @@ function buildCoachPayload(input: {
         "Qual dia/horário fica melhor para você (manhã/tarde/noite)?",
         "Quantas pessoas irão na visita?",
         "Você quer ver só esse imóvel ou comparar com outras opções também?",
-      ],
-      nextSteps: ["Sugerir 2 a 3 janelas de horário", "Confirmar ponto de encontro"],
+      ]
+        .map((q) => sanitizeReason(q))
+        .filter(Boolean)
+        .slice(0, 4),
+      nextSteps: ["Sugerir 2 a 3 janelas de horário", "Confirmar ponto de encontro"]
+        .map((s) => sanitizeReason(s))
+        .filter(Boolean)
+        .slice(0, 4),
       draft:
-        `${greet}\n\n` +
-        `${about}vamos agendar uma visita sim. Qual dia e horário fica melhor para você (manhã/tarde/noite)?\n\n` +
-        `Se quiser, eu também posso separar 2 opções parecidas para você comparar no mesmo dia.`,
+        sanitizeDraft(
+          `${greet}\n\n` +
+            `${about}vamos agendar uma visita sim. Qual dia e horário fica melhor para você (manhã/tarde/noite)?\n\n` +
+            `Se quiser, eu também posso separar 2 opções parecidas para você comparar no mesmo dia.`
+        ),
     };
   }
 
@@ -143,13 +176,21 @@ function buildCoachPayload(input: {
       "Você está buscando compra ou locação?",
       "Qual faixa de valor e quantos quartos você precisa?",
       "Qual região/bairro você prefere?",
-    ],
-    nextSteps: ["Qualificar necessidade", "Propor visita ou envio de opções"],
+    ]
+      .map((q) => sanitizeReason(q))
+      .filter(Boolean)
+      .slice(0, 4),
+    nextSteps: ["Qualificar necessidade", "Propor visita ou envio de opções"]
+      .map((s) => sanitizeReason(s))
+      .filter(Boolean)
+      .slice(0, 4),
     draft:
-      `${greet}\n\n` +
-      `${about}me conta rapidinho: você busca compra ou locação, e qual faixa de valor/quartos você precisa?\n` +
-      `E qual região você prefere?\n\n` +
-      `Com isso eu já te mando as melhores opções e a gente alinha o próximo passo.`,
+      sanitizeDraft(
+        `${greet}\n\n` +
+          `${about}me conta rapidinho: você busca compra ou locação, e qual faixa de valor/quartos você precisa?\n` +
+          `E qual região você prefere?\n\n` +
+          `Com isso eu já te mando as melhores opções e a gente alinha o próximo passo.`
+      ),
   };
 }
 
@@ -224,9 +265,19 @@ async function callAi(params: {
 
     const intent = String(obj.intent || "").toUpperCase();
     const confidence = String(obj.confidence || "").toLowerCase();
-    const questions = Array.isArray(obj.questions) ? obj.questions.map((x: any) => String(x)).filter(Boolean).slice(0, 4) : [];
-    const nextSteps = Array.isArray(obj.nextSteps) ? obj.nextSteps.map((x: any) => String(x)).filter(Boolean).slice(0, 4) : [];
-    const draft = String(obj.draft || "").trim();
+    const questions = Array.isArray(obj.questions)
+      ? obj.questions
+          .map((x: any) => sanitizeReason(String(x)))
+          .filter(Boolean)
+          .slice(0, 4)
+      : [];
+    const nextSteps = Array.isArray(obj.nextSteps)
+      ? obj.nextSteps
+          .map((x: any) => sanitizeReason(String(x)))
+          .filter(Boolean)
+          .slice(0, 4)
+      : [];
+    const draft = sanitizeDraft(String(obj.draft || "").trim());
 
     const safeIntent = (intent === "PRICE" || intent === "LOCATION" || intent === "FINANCING" || intent === "VISIT" || intent === "GENERAL")
       ? (intent as Intent)

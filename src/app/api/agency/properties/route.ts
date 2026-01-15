@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 async function getSessionContext() {
   const session: any = await getServerSession(authOptions);
@@ -88,7 +89,55 @@ export async function GET(req: NextRequest) {
       take: 500,
     });
 
-    const formatted = (properties as any[]).map((p) => ({
+    const now = new Date();
+    const start14d = new Date(now);
+    start14d.setHours(0, 0, 0, 0);
+    start14d.setDate(start14d.getDate() - 13);
+
+    const propertyIds = (properties as any[]).map((p) => String(p.id)).filter(Boolean);
+    let views14dByProperty = new Map<string, number>();
+    let leads14dByProperty = new Map<string, number>();
+
+    if (propertyIds.length > 0) {
+      try {
+        const viewsRows = (await prisma.$queryRaw(
+          Prisma.sql`
+            SELECT "propertyId", COUNT(*)::int AS "count"
+            FROM "property_views"
+            WHERE "propertyId" = ANY(${propertyIds})
+              AND "viewedAt" >= ${start14d}
+            GROUP BY 1
+          `
+        )) as any[];
+
+        const leadsRows = (await prisma.$queryRaw(
+          Prisma.sql`
+            SELECT "propertyId", COUNT(*)::int AS "count"
+            FROM "leads"
+            WHERE "propertyId" = ANY(${propertyIds})
+              AND "createdAt" >= ${start14d}
+            GROUP BY 1
+          `
+        )) as any[];
+
+        views14dByProperty = new Map<string, number>(
+          (viewsRows || []).map((r: any) => [String(r.propertyId), Number(r.count) || 0])
+        );
+        leads14dByProperty = new Map<string, number>(
+          (leadsRows || []).map((r: any) => [String(r.propertyId), Number(r.count) || 0])
+        );
+      } catch {
+        views14dByProperty = new Map<string, number>();
+        leads14dByProperty = new Map<string, number>();
+      }
+    }
+
+    const formatted = (properties as any[]).map((p) => {
+      const id = String(p.id);
+      const views14d = views14dByProperty.get(id) || 0;
+      const leads14d = leads14dByProperty.get(id) || 0;
+      const conversion14dPct = views14d > 0 ? Math.round(((leads14d / views14d) * 100) * 10) / 10 : null;
+      return {
       id: String(p.id),
       title: String(p.title || "Imóvel"),
       price: Number(p.price || 0),
@@ -105,7 +154,11 @@ export async function GET(req: NextRequest) {
       views: Number(p._count?.views || 0),
       leads: Number(p._count?.leads || 0),
       favorites: Number(p._count?.favorites || 0),
-    }));
+      views14d,
+      leads14d,
+      conversion14dPct,
+    };
+    });
 
     return NextResponse.json({
       success: true,

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { leadAutoReplyQueue } from "@/lib/queue/queues";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
+import { applyOfflineAutoReplyGuardrails } from "@/lib/ai-guardrails";
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -116,36 +117,6 @@ export function isOutsideBusinessHours(params: { now: Date; timezone: string; sc
   }
 
   return local.minutes >= endMin && local.minutes < startMin;
-}
-
-function sanitizeDraft(text: string) {
-  let s = String(text || "").trim();
-  if (!s) return "";
-  s = s.replace(/https?:\/\/\S+/gi, "").trim();
-  s = s.replace(/\b\+?\d[\d\s().-]{7,}\b/g, "").trim();
-  s = s.replace(/\r\n/g, "\n");
-  s = s.replace(/[ \t]+/g, " ");
-  s = s.replace(/ *\n */g, "\n");
-  s = s.replace(/\n{3,}/g, "\n\n");
-  return s.slice(0, 800).trim();
-}
-
-function applyGuardrails(input: { draft: string; clientName: string; propertyTitle: string }) {
-  const draft = sanitizeDraft(input.draft);
-  if (!draft) return "";
-
-  const forbidden = /(agend|agenda|hor[aá]rio|visita|marcar|confirm|disponibil|amanh|hoje|sábado|domingo)/i;
-  if (!forbidden.test(draft)) return draft;
-
-  const greet = input.clientName ? `Olá ${input.clientName}, tudo bem?` : "Olá, tudo bem?";
-  const about = input.propertyTitle ? `Sobre o imóvel ${input.propertyTitle}, ` : "Sobre o imóvel, ";
-  const fallback =
-    `${greet}\n\n` +
-    `${about}posso te ajudar com informações básicas por aqui. ` +
-    `Você busca compra ou locação e qual faixa de valor/região?\n\n` +
-    `O corretor retorna no próximo horário comercial.`;
-
-  return sanitizeDraft(fallback);
 }
 
 async function callOpenAiText(params: { apiKey: string; systemPrompt: string; userPrompt: string }) {
@@ -573,7 +544,7 @@ export class LeadAutoReplyService {
 
       const ai = await callOpenAiText({ apiKey, systemPrompt, userPrompt });
       const draft = ai
-        ? applyGuardrails({
+        ? applyOfflineAutoReplyGuardrails({
             draft: ai.content,
             clientName,
             propertyTitle,

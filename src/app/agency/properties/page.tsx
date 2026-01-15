@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
@@ -27,7 +28,12 @@ type AgencyProperty = {
   views: number;
   leads: number;
   favorites: number;
+  views14d?: number;
+  leads14d?: number;
+  conversion14dPct?: number | null;
 };
+
+type InsightFilter = "noViews14d" | "noLeads14d" | "lowConversion14d" | null;
 
 type ApiResponse = {
   success: boolean;
@@ -38,6 +44,14 @@ type ApiResponse = {
 
 export default function AgencyPropertiesPage() {
   const { status } = useSession();
+
+  const searchParams = useSearchParams();
+  const insightParam = searchParams.get("insight");
+  const insightFilter = useMemo((): InsightFilter => {
+    const v = String(insightParam || "").trim();
+    if (v === "noViews14d" || v === "noLeads14d" || v === "lowConversion14d") return v;
+    return null;
+  }, [insightParam]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +102,7 @@ export default function AgencyPropertiesPage() {
 
   const filteredProperties = useMemo(() => {
     const q = String(qDraft || "").trim().toLowerCase();
-    return properties.filter((p) => {
+    const base = properties.filter((p) => {
       if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
       if (typeFilter && String(p.type) !== String(typeFilter)) return false;
       if (!q) return true;
@@ -100,7 +114,56 @@ export default function AgencyPropertiesPage() {
 
       return haystack.includes(q);
     });
-  }, [properties, qDraft, statusFilter, typeFilter]);
+
+    const byInsight = (() => {
+      if (!insightFilter) return base;
+
+      if (insightFilter === "noViews14d") {
+        return base.filter((p) => p.status === "ACTIVE" && Number(p.views14d || 0) === 0);
+      }
+      if (insightFilter === "noLeads14d") {
+        return base.filter((p) => p.status === "ACTIVE" && Number(p.views14d || 0) >= 50 && Number(p.leads14d || 0) === 0);
+      }
+      if (insightFilter === "lowConversion14d") {
+        return base.filter((p) => {
+          if (p.status !== "ACTIVE") return false;
+          const views14d = Number(p.views14d || 0);
+          const leads14d = Number(p.leads14d || 0);
+          if (views14d < 200) return false;
+          if (leads14d <= 0) return false;
+          const conversion = leads14d / views14d;
+          return conversion > 0 && conversion < 0.005;
+        });
+      }
+      return base;
+    })();
+
+    const sortPerf = (arr: AgencyProperty[]) => {
+      if (!insightFilter) return arr;
+      const copy = [...arr];
+      if (insightFilter === "noViews14d") {
+        return copy.sort((a, b) => Number(b.views || 0) - Number(a.views || 0));
+      }
+      if (insightFilter === "noLeads14d") {
+        return copy.sort((a, b) => Number(b.views14d || 0) - Number(a.views14d || 0));
+      }
+      if (insightFilter === "lowConversion14d") {
+        return copy.sort((a, b) => {
+          const aViews = Number(a.views14d || 0);
+          const bViews = Number(b.views14d || 0);
+          const aLeads = Number(a.leads14d || 0);
+          const bLeads = Number(b.leads14d || 0);
+          const aConv = aViews > 0 ? aLeads / aViews : 0;
+          const bConv = bViews > 0 ? bLeads / bViews : 0;
+          if (aConv !== bConv) return aConv - bConv;
+          return bViews - aViews;
+        });
+      }
+      return copy;
+    };
+
+    return sortPerf(byInsight);
+  }, [properties, qDraft, statusFilter, typeFilter, insightFilter]);
 
   const summary = useMemo(() => {
     const total = filteredProperties.length;
@@ -152,6 +215,16 @@ export default function AgencyPropertiesPage() {
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-gray-900 truncate">{title}</div>
                 <div className="mt-1 text-xs text-gray-500">Imóveis vinculados ao time (visão da agência).</div>
+                {insightFilter && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700">
+                      Filtro: {insightFilter}
+                      <Link href="/agency/properties" className="text-[11px] font-bold text-blue-700 underline">
+                        limpar
+                      </Link>
+                    </span>
+                  </div>
+                )}
               </div>
               <Link
                 href="/owner/new"
@@ -288,6 +361,24 @@ export default function AgencyPropertiesPage() {
                     views={p.views}
                     leads={p.leads}
                     favorites={p.favorites}
+                    badges={(() => {
+                      const badges: Array<{ label: string; tone?: "info" | "warning" | "critical" }> = [];
+                      const v14 = Number(p.views14d || 0);
+                      const l14 = Number(p.leads14d || 0);
+                      if (p.status === "ACTIVE" && v14 === 0) {
+                        badges.push({ label: "Sem views 14d", tone: "warning" });
+                      }
+                      if (p.status === "ACTIVE" && v14 >= 50 && l14 === 0) {
+                        badges.push({ label: "Views>50/0 leads", tone: "critical" });
+                      }
+                      if (p.status === "ACTIVE" && v14 >= 200 && l14 > 0) {
+                        const conv = l14 / v14;
+                        if (conv > 0 && conv < 0.005) {
+                          badges.push({ label: "Conv <0,5%", tone: "warning" });
+                        }
+                      }
+                      return badges;
+                    })()}
                   />
                 ))}
               </div>

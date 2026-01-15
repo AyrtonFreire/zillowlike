@@ -206,6 +206,10 @@ export default function RealtorAssistantFeed(props: {
   limit?: number;
   onItemsUpdated?: (items: AssistantItem[]) => void;
   onDidMutate?: () => void;
+
+  selectionEnabled?: boolean;
+  selectedIds?: string[];
+  onToggleSelected?: (itemId: string, selected: boolean) => void;
 }) {
   const router = useRouter();
   const realtorId = props.realtorId;
@@ -235,6 +239,34 @@ export default function RealtorAssistantFeed(props: {
   const repliedTimerRef = useRef<any>(null);
   const [aiItemSnapshot, setAiItemSnapshot] = useState<AiItemSnapshot | null>(null);
 
+  const recordAssistantEvent = useCallback(
+    (input: {
+      event: "DRAFT_COPIED" | "DRAFT_SENT" | "DRAFT_EDITED";
+      itemId: string;
+      leadId?: string | null;
+      itemType?: string | null;
+      metadata?: Record<string, any>;
+    }) => {
+      try {
+        fetch(`/api/assistant/events?context=REALTOR`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event: input.event,
+            itemId: String(input.itemId),
+            context: "REALTOR",
+            leadId: input.leadId ? String(input.leadId) : undefined,
+            itemType: input.itemType ? String(input.itemType) : undefined,
+            metadata: input.metadata || undefined,
+          }),
+          keepalive: true,
+        }).catch(() => null);
+      } catch {
+      }
+    },
+    []
+  );
+
   const [successById, setSuccessById] = useState<Record<string, { message: string }>>({});
   const successTimersRef = useRef<Record<string, any>>({});
   const delayedRefreshRef = useRef<any>(null);
@@ -250,6 +282,12 @@ export default function RealtorAssistantFeed(props: {
 
   const showCategoryHeadings = props.showCategoryHeadings !== false;
   const infiniteScrollEnabled = !!props.categoryFilter && props.categoryFilter !== "ALL";
+
+  const selectionEnabled = !!props.selectionEnabled;
+  const selectedIdSet = useMemo(() => {
+    const ids = Array.isArray(props.selectedIds) ? props.selectedIds : [];
+    return new Set(ids.map((x) => String(x)));
+  }, [props.selectedIds]);
 
   useEffect(() => {
     etagRef.current = null;
@@ -690,6 +728,18 @@ export default function RealtorAssistantFeed(props: {
           throw new Error(data?.error || "Não conseguimos enviar esta mensagem agora.");
         }
 
+        try {
+          const itemForEvent = items.find((it) => String(it.id) === String(params.ownerId)) || null;
+          recordAssistantEvent({
+            event: "DRAFT_SENT",
+            itemId: String(params.ownerId),
+            leadId: params.leadId,
+            itemType: itemForEvent?.type ? String(itemForEvent.type) : null,
+            metadata: { source: "realtor_feed" },
+          });
+        } catch {
+        }
+
         const idsToResolve = items
           .filter(
             (it) =>
@@ -721,7 +771,7 @@ export default function RealtorAssistantFeed(props: {
         setReplyingForId(null);
       }
     },
-    [fetchItems, items, props, resolveItemsOptimistically, showSuccess]
+    [fetchItems, items, props, recordAssistantEvent, resolveItemsOptimistically, showSuccess]
   );
 
   const sortAssistantItems = useCallback((list: AssistantItem[]) => {
@@ -1188,6 +1238,16 @@ export default function RealtorAssistantFeed(props: {
                         type="button"
                         onClick={async () => {
                           await copyText(aiResult.draft);
+                          try {
+                            recordAssistantEvent({
+                              event: "DRAFT_COPIED",
+                              itemId: String(aiForId),
+                              leadId: aiItemSnapshot?.leadId ?? null,
+                              itemType: aiItemSnapshot?.type ?? null,
+                              metadata: { source: "realtor_feed", location: "detached_ai_box" },
+                            });
+                          } catch {
+                          }
                           setCopiedForId(aiForId);
                           if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
                           copiedTimerRef.current = setTimeout(() => {
@@ -1397,6 +1457,20 @@ export default function RealtorAssistantFeed(props: {
                           <>
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex flex-wrap items-center gap-2">
+                                {selectionEnabled && (
+                                  <label className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-bold text-gray-700">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedIdSet.has(String(item.id))}
+                                      disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                      onChange={(e) => {
+                                        props.onToggleSelected?.(String(item.id), e.target.checked);
+                                      }}
+                                      className="h-4 w-4"
+                                    />
+                                    Selecionar
+                                  </label>
+                                )}
                                 <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border ${chipClasses}`}>
                                   <span className={`inline-block w-2 h-2 rounded-full ${priorityDotClass}`} />
                                   {chipText}
@@ -1809,6 +1883,16 @@ export default function RealtorAssistantFeed(props: {
                                       type="button"
                                       onClick={async () => {
                                         await copyText(aiResult.draft);
+                                        try {
+                                          recordAssistantEvent({
+                                            event: "DRAFT_COPIED",
+                                            itemId: String(item.id),
+                                            leadId: item.leadId ?? null,
+                                            itemType: item.type ?? null,
+                                            metadata: { source: "realtor_feed", location: "item_ai_box" },
+                                          });
+                                        } catch {
+                                        }
                                         setCopiedForId(item.id);
                                         if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
                                         copiedTimerRef.current = setTimeout(() => {
