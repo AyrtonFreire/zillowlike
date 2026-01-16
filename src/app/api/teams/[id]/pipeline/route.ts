@@ -30,7 +30,14 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         members: {
           include: {
             user: {
-              select: { id: true, name: true, email: true },
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                publicWhatsApp: true,
+                phoneNormalized: true,
+                phone: true,
+              },
             },
           },
         },
@@ -141,6 +148,9 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       userId: m.userId,
       name: m.user?.name ?? null,
       email: m.user?.email ?? null,
+      publicWhatsApp: (m.user as any)?.publicWhatsApp ?? null,
+      phoneNormalized: (m.user as any)?.phoneNormalized ?? null,
+      phone: (m.user as any)?.phone ?? null,
       role: m.role as string,
       queuePosition: typeof m.queuePosition === "number" ? m.queuePosition : 0,
     }));

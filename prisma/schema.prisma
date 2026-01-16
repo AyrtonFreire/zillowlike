@@ -465,6 +465,8 @@ model User {
   authVersion   Int       @default(0)
   recoveryEmail String?   @unique
   recoveryEmailVerifiedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   // Perfil público
   publicSlug           String? @unique

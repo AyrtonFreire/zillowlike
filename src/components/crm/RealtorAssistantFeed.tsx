@@ -1051,13 +1051,29 @@ export default function RealtorAssistantFeed(props: {
     const targetLeadId = action.leadId || item.leadId || undefined;
 
     const itemType = String(item.type || "").trim();
-    const shouldResolveOnOpen = itemType !== "UNANSWERED_CLIENT_MESSAGE" && !isReminderType(itemType);
+    const shouldResolveOnOpen =
+      itemType !== "UNANSWERED_CLIENT_MESSAGE" && itemType !== "AGENCY_NOTICE" && !isReminderType(itemType);
     if (shouldResolveOnOpen) {
       resolveItemsOptimistically([String(item.id)]);
       if (action.type === "OPEN_CHAT") {
-        showSuccess(String(item.id), "Abrindo conversa");
-      } else {
-        showSuccess(String(item.id), "Abrindo lead");
+        if (targetLeadId) {
+          router.push(`/broker/chats?lead=${targetLeadId}`);
+        } else {
+          router.push("/broker/chats");
+        }
+        return;
+      }
+      if (action.type === "OPEN_LEAD") {
+        if (targetLeadId) {
+          router.push(`/broker/leads/${targetLeadId}`);
+        } else {
+          router.push("/broker/leads");
+        }
+        return;
+      }
+      if (targetLeadId) {
+        router.push(`/broker/leads/${targetLeadId}`);
+        return;
       }
     }
 
@@ -1340,7 +1356,7 @@ export default function RealtorAssistantFeed(props: {
             return (
               <div key={`cat-${category}`} className="space-y-2">
                 {showCategoryHeadings && (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <p className="text-[11px] font-semibold text-gray-700">{category}</p>
                     <p className="text-[11px] font-semibold text-gray-500">{leadGroups.length}</p>
                   </div>
@@ -1362,6 +1378,7 @@ export default function RealtorAssistantFeed(props: {
                     const isReminder = isReminderType(item.type);
                     const isInternalChecklist = isInternalChecklistType(item.type);
                     const meta: any = (item as any)?.metadata || null;
+                    const isAgencyNotice = String(item.type || "").trim() === "AGENCY_NOTICE";
                     const isWhatsAppIntent = String(meta?.source || "").toUpperCase() === "WHATSAPP";
                     const resolveLabel = isWhatsAppIntent
                       ? "Estou em contato"
@@ -1526,6 +1543,57 @@ export default function RealtorAssistantFeed(props: {
                                 >
                                   {item.message}
                                 </p>
+
+                                {isAgencyNotice && Array.isArray(meta?.leads) && meta.leads.length > 0 && (
+                                  <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <p className="text-[11px] font-semibold text-gray-800">Leads deste aviso</p>
+                                      <p className="text-[11px] font-semibold text-gray-500">{meta.leads.length}</p>
+                                    </div>
+                                    <div className="mt-3 space-y-2">
+                                      {meta.leads.map((l: any) => {
+                                        const leadId = l?.id ? String(l.id) : "";
+                                        if (!leadId) return null;
+                                        const label =
+                                          String(l?.contactName || "").trim() ||
+                                          String(l?.propertyTitle || "").trim() ||
+                                          `Lead ${leadId}`;
+                                        return (
+                                          <div key={leadId} className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                            <div className="flex items-start justify-between gap-3">
+                                              <div className="min-w-0">
+                                                <p className="text-[12px] font-semibold text-gray-900 line-clamp-1">{label}</p>
+                                                {l?.propertyTitle ? (
+                                                  <p className="mt-0.5 text-[11px] text-gray-600 line-clamp-1">{String(l.propertyTitle)}</p>
+                                                ) : null}
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                <button
+                                                  type="button"
+                                                  disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                                  onClick={() => handleOpenAction({ type: "OPEN_LEAD", leadId }, item)}
+                                                  className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                                  title="Abrir lead"
+                                                >
+                                                  <Eye className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                                  onClick={() => handleOpenAction({ type: "OPEN_CHAT", leadId }, item)}
+                                                  className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                                  title="Abrir conversa"
+                                                >
+                                                  <MessageCircle className="w-4 h-4" />
+                                                </button>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                               {messageIsLong && (
                                 <button
@@ -1714,7 +1782,7 @@ export default function RealtorAssistantFeed(props: {
                               {isResolvedPreview ? "Feito" : isReminder ? "Concluir" : resolveLabel}
                             </button>
 
-                            {!!item.leadId && !isReminder && (
+                            {!!item.leadId && !isReminder && !isAgencyNotice && (
                               <button
                                 type="button"
                                 disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
@@ -1761,47 +1829,61 @@ export default function RealtorAssistantFeed(props: {
                                   </button>
                                 )}
 
-                                <button
-                                  type="button"
-                                  disabled={aiLoadingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
-                                  onClick={async () => {
-                                    setAiItemSnapshot({
-                                      id: item.id,
-                                      leadId: item.leadId ?? null,
-                                      type: item.type,
-                                      title: item.title,
-                                      message: item.message,
-                                    });
+                                {isAgencyNotice && openChatAction && (
+                                  <button
+                                    type="button"
+                                    disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                    onClick={() => handleOpenAction(openChatAction, item)}
+                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
+                                  >
+                                    <MessageCircle className="w-5 h-5" />
+                                    Abrir conversa
+                                  </button>
+                                )}
 
-                                    if (isWhatsAppIntent) {
-                                      const propertyTitle =
-                                        String(property?.title || "").trim() ||
-                                        String(meta?.propertyTitle || "").trim() ||
-                                        "o imóvel";
-                                      const propertyUrl = String(meta?.propertyUrl || "").trim();
+                                {!isAgencyNotice && (
+                                  <button
+                                    type="button"
+                                    disabled={aiLoadingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
+                                    onClick={async () => {
+                                      setAiItemSnapshot({
+                                        id: item.id,
+                                        leadId: item.leadId ?? null,
+                                        type: item.type,
+                                        title: item.title,
+                                        message: item.message,
+                                      });
 
-                                      const draft = await generateAi({ id: item.id });
-                                      const baseText =
-                                        String(draft || "").trim() ||
-                                        `Olá! Tudo bem? Vi seu interesse no imóvel “${propertyTitle}”. Posso te ajudar?`;
-                                      const text = propertyUrl ? `${baseText}\n\n${propertyUrl}` : baseText;
-                                      const url = buildWhatsAppShareUrl(text);
-                                      window.open(url, "_blank", "noopener,noreferrer");
-                                      return;
-                                    }
+                                      if (isWhatsAppIntent) {
+                                        const propertyTitle =
+                                          String(property?.title || "").trim() ||
+                                          String(meta?.propertyTitle || "").trim() ||
+                                          "o imóvel";
+                                        const propertyUrl = String(meta?.propertyUrl || "").trim();
 
-                                    await generateAi({ id: item.id });
-                                  }}
-                                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
-                                >
-                                  <Sparkles className="w-5 h-5" />
-                                  {aiLoadingId === item.id
-                                    ? "Gerando..."
-                                    : isWhatsAppIntent &&
-                                        (item.type === "NEW_LEAD" || item.type === "LEAD_NO_FIRST_CONTACT")
-                                      ? "Gerar primeiro contato via whatsapp"
-                                      : getAiButtonLabel(item.type)}
-                                </button>
+                                        const draft = await generateAi({ id: item.id });
+                                        const baseText =
+                                          String(draft || "").trim() ||
+                                          `Olá! Tudo bem? Vi seu interesse no imóvel “${propertyTitle}”. Posso te ajudar?`;
+                                        const text = propertyUrl ? `${baseText}\n\n${propertyUrl}` : baseText;
+                                        const url = buildWhatsAppShareUrl(text);
+                                        window.open(url, "_blank", "noopener,noreferrer");
+                                        return;
+                                      }
+
+                                      await generateAi({ id: item.id });
+                                    }}
+                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
+                                  >
+                                    <Sparkles className="w-5 h-5" />
+                                    {aiLoadingId === item.id
+                                      ? "Gerando..."
+                                      : isWhatsAppIntent &&
+                                          (item.type === "NEW_LEAD" || item.type === "LEAD_NO_FIRST_CONTACT")
+                                        ? "Gerar primeiro contato via whatsapp"
+                                        : getAiButtonLabel(item.type)}
+                                  </button>
+                                )}
 
                                 {!responderIsPrimary && primaryOpenAction && (
                                   <button

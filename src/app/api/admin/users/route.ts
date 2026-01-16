@@ -18,6 +18,7 @@ export async function GET() {
         name: true,
         email: true,
         role: true,
+        createdAt: true,
         emailVerified: true,
         realtorApplication: {
           select: {
@@ -45,7 +46,6 @@ export async function GET() {
         });
         return {
           ...user,
-          createdAt: new Date().toISOString(), // Placeholder since User doesn't have createdAt
           _count: {
             ...user._count,
             properties: propertyCount,

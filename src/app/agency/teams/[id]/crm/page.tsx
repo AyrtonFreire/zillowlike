@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
+import { createPortal } from "react-dom";
 import {
   MapPin,
   ChevronRight,
@@ -170,6 +171,8 @@ export default function AgencyTeamCrmPage() {
   const [assigning, setAssigning] = useState<Record<string, boolean>>({});
   const [assignError, setAssignError] = useState<string | null>(null);
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+  const [drawerMounted, setDrawerMounted] = useState(false);
+  const drawerScrollRef = useRef<HTMLDivElement | null>(null);
 
   const [forceTour, setForceTour] = useState(false);
   const [tourSeed, setTourSeed] = useState(0);
@@ -182,6 +185,10 @@ export default function AgencyTeamCrmPage() {
   const [messagesError, setMessagesError] = useState<string | null>(null);
 
   const [qDraft, setQDraft] = useState<string>(queryFilter);
+
+  useEffect(() => {
+    setDrawerMounted(true);
+  }, []);
 
   useEffect(() => {
     setQDraft(queryFilter);
@@ -295,6 +302,11 @@ export default function AgencyTeamCrmPage() {
     setInternalMessages([]);
     setClientMessages([]);
     setMessagesError(null);
+    try {
+      drawerScrollRef.current?.scrollTo({ top: 0, left: 0, behavior: "instant" as any });
+    } catch {
+      if (drawerScrollRef.current) drawerScrollRef.current.scrollTop = 0;
+    }
   }, [openLeadId]);
 
   useEffect(() => {
@@ -773,7 +785,7 @@ export default function AgencyTeamCrmPage() {
                           {STAGE_CONFIG[lead.pipelineStage]?.label || lead.pipelineStage}
                         </span>
                         <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
-                          Lead: {lead.id.slice(0, 6)}
+                          {lead.contact?.name ? lead.contact.name : `Lead: ${lead.id.slice(0, 6)} (Usuário sem conta no site)`}
                         </span>
                         <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
                           {lead.realtor?.name || lead.realtor?.email
@@ -793,13 +805,14 @@ export default function AgencyTeamCrmPage() {
           )}
         </div>
 
-        {selectedLead && (
-          <div className="fixed inset-0 z-50">
-            <div className="absolute inset-0 bg-black/40" onClick={closeDrawer} />
-            <div
-              className="absolute inset-y-0 right-0 w-full sm:max-w-xl bg-white shadow-2xl flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
+        {selectedLead && drawerMounted
+          ? createPortal(
+              <div className="fixed inset-0 z-50">
+                <div className="absolute inset-0 bg-black/40" onClick={closeDrawer} />
+                <div
+                  className="absolute inset-y-0 right-0 w-full sm:max-w-xl bg-white shadow-2xl flex flex-col"
+                  onClick={(e) => e.stopPropagation()}
+                >
               <div className="p-4 border-b border-gray-200 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-900">Detalhes do lead</p>
@@ -842,7 +855,9 @@ export default function AgencyTeamCrmPage() {
                     {STAGE_CONFIG[selectedLead.pipelineStage]?.label || selectedLead.pipelineStage}
                   </span>
                   <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
-                    Lead: {selectedLead.id.slice(0, 6)}
+                    {selectedLead.contact?.name
+                      ? selectedLead.contact.name
+                      : `Lead: ${selectedLead.id.slice(0, 6)} (Usuário sem conta no site)`}
                   </span>
                   <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
                     {selectedLead.realtor?.name || selectedLead.realtor?.email
@@ -852,7 +867,7 @@ export default function AgencyTeamCrmPage() {
                 </div>
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto p-4">
+              <div ref={drawerScrollRef} className="flex-1 min-h-0 overflow-y-auto p-4">
                 <Tabs
                   key={openLeadId || "drawer"}
                   defaultKey={drawerTab}
@@ -1059,9 +1074,11 @@ export default function AgencyTeamCrmPage() {
                   ]}
                 />
               </div>
-            </div>
-          </div>
-        )}
+                </div>
+              </div>,
+              document.body
+            )
+          : null}
     </div>
   );
 }
