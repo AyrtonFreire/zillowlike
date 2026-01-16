@@ -184,7 +184,7 @@ export default function HomeClient() {
       )}
       {/* Navigation Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="mx-auto max-w-[1440px] px-6 lg:px-10">
+        <div className="mx-auto max-w-[1760px] px-4 sm:px-8 lg:px-16 2xl:px-20">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center space-x-8">
               <Link href="/" className="text-3xl font-bold text-blue-600">
@@ -214,7 +214,7 @@ export default function HomeClient() {
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         {/* Content */}
         <div className="relative z-10 h-full flex items-center">
-          <div className="mx-auto max-w-[1440px] px-6 lg:px-10 w-full">
+          <div className="mx-auto max-w-[1760px] px-4 sm:px-8 lg:px-16 2xl:px-20 w-full">
             <div className="max-w-2xl">
               {/* Hero Text */}
               <div className="mb-8">
@@ -334,7 +334,7 @@ export default function HomeClient() {
       </div>
 
       {/* Results Section */}
-      <div className="mx-auto max-w-[1440px] px-6 lg:px-10 py-6">
+      <div className="mx-auto max-w-[1760px] px-4 sm:px-8 lg:px-16 2xl:px-20 py-10">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <h2 className="text-2xl font-bold text-gray-900">
@@ -396,7 +396,7 @@ export default function HomeClient() {
         </div>
 
         {viewMode === 'list' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {isLoading ? (
               [...Array(6)].map((_, i) => (
                 <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden animate-pulse">
