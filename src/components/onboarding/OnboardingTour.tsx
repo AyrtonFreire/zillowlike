@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
 
@@ -37,9 +38,14 @@ export default function OnboardingTour({
   onSkip,
   forceShow,
 }: OnboardingTourProps) {
+  const [mounted, setMounted] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Verificar se já completou o onboarding
   useEffect(() => {
@@ -133,7 +139,7 @@ export default function OnboardingTour({
     }
   };
 
-  if (!isActive) return null;
+  if (!mounted || !isActive) return null;
 
   const step = steps[currentStep];
   const isLast = currentStep === steps.length - 1;
@@ -219,16 +225,15 @@ export default function OnboardingTour({
     };
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isActive && (
         <>
-          {/* Overlay escuro com recorte para o elemento alvo */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70000] pointer-events-auto"
+            className="fixed inset-0 z-[999990] pointer-events-auto"
             style={{
               background: targetRect
                 ? `radial-gradient(ellipse 200px 150px at ${targetRect.left + targetRect.width / 2}px ${targetRect.top + targetRect.height / 2}px, transparent 0%, rgba(0,0,0,0.75) 100%)`
@@ -237,13 +242,12 @@ export default function OnboardingTour({
             onClick={handleSkip}
           />
 
-          {/* Highlight do elemento alvo */}
           {targetRect && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed z-[70001] pointer-events-none"
+              className="fixed z-[999991] pointer-events-none"
               style={{
                 top: targetRect.top - 4,
                 left: targetRect.left - 4,
@@ -255,20 +259,18 @@ export default function OnboardingTour({
             />
           )}
 
-          {/* Tooltip */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ type: "spring", damping: 25 }}
-            className="fixed z-[70002] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            className="fixed z-[999992] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             style={{
               ...getTooltipPosition(),
               maxHeight: "calc(100vh - 64px)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header - sempre visível */}
             <div className="flex items-start justify-between p-4 pb-2 shrink-0">
               <div className="flex items-center gap-2">
                 {step.icon || <Sparkles className="w-5 h-5 text-blue-500" />}
@@ -285,15 +287,12 @@ export default function OnboardingTour({
               </button>
             </div>
 
-            {/* Content - scrollável se necessário */}
             <div className="px-4 overflow-y-auto flex-1">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
               <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{step.description}</p>
             </div>
 
-            {/* Footer - sempre visível */}
             <div className="p-4 pt-3 shrink-0 border-t border-gray-100 mt-2">
-              {/* Progress dots */}
               <div className="flex items-center justify-center gap-1.5 mb-3">
                 {steps.map((_, index) => (
                   <div
@@ -305,7 +304,6 @@ export default function OnboardingTour({
                 ))}
               </div>
 
-              {/* Buttons */}
               <div className="flex items-center justify-between">
                 <button
                   type="button"
@@ -338,6 +336,7 @@ export default function OnboardingTour({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

@@ -2129,6 +2129,7 @@ export default function Home() {
                 </div>
 
                 {/* Mobile: Search bar + botão Filtros (finalidade fica dentro do drawer) */}
+                {!filtersOpen && (
                 <div className="md:hidden space-y-2">
                   <div className="flex items-center gap-2 relative">
                     {/* Search Bar com Autocomplete */}
@@ -2201,6 +2202,7 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
+                )}
               </div>
 
               {/* Active Filters Chips - Logo abaixo da barra de busca (desktop e mobile) - oculto, versão principal fica na sessão de resultados */}

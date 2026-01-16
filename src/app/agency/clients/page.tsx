@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import Drawer from "@/components/ui/Drawer";
-import { X, Plus, UserRound, Phone, Mail, MapPin } from "lucide-react";
+import { X, Plus, UserRound, Phone, Mail, MapPin, Trash2 } from "lucide-react";
 import PriceRangeSlider from "@/components/PriceRangeSlider";
 import AgencyClientsOnboarding, { resetAgencyClientsOnboarding } from "@/components/onboarding/AgencyClientsOnboarding";
 
@@ -164,6 +164,8 @@ export default function AgencyClientsPage() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedLoading, setSelectedLoading] = useState(false);
   const [selectedError, setSelectedError] = useState<string | null>(null);
+
+  const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
 
   const [editing, setEditing] = useState(false);
 
@@ -327,6 +329,37 @@ export default function AgencyClientsPage() {
       setTotal(0);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteClient = async (clientId: string) => {
+    const id = String(clientId || "").trim();
+    if (!id) return;
+
+    const ok = window.confirm("Excluir este cliente? Essa ação não pode ser desfeita.");
+    if (!ok) return;
+
+    try {
+      setDeletingClientId(id);
+
+      const res = await fetch(`/api/agency/clients/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      const json = (await res.json().catch(() => null)) as any;
+
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || "Não conseguimos excluir o cliente agora.");
+      }
+
+      if (selectedOpen && selectedClientId === id) {
+        closeSelected();
+      }
+
+      await fetchClients({ silent: true, page: 1 });
+    } catch (e: any) {
+      window.alert(e?.message || "Não conseguimos excluir o cliente agora.");
+    } finally {
+      setDeletingClientId(null);
     }
   };
 
@@ -879,14 +912,31 @@ export default function AgencyClientsPage() {
                         </div>
                       </div>
 
-                      <div
-                        className={`shrink-0 px-2 py-1 rounded-lg text-[11px] font-semibold border ${
-                          c.status === "ACTIVE"
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                            : "border-amber-200 bg-amber-50 text-amber-800"
-                        }`}
-                      >
-                        {c.status === "ACTIVE" ? "Ativo" : "Pausado"}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void deleteClient(c.id);
+                          }}
+                          disabled={deletingClientId === c.id}
+                          className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200/70 bg-white/80 hover:bg-white text-gray-600 hover:text-rose-700 disabled:opacity-60"
+                          aria-label="Excluir cliente"
+                          title="Excluir cliente"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+
+                        <div
+                          className={`px-2 py-1 rounded-lg text-[11px] font-semibold border ${
+                            c.status === "ACTIVE"
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                              : "border-amber-200 bg-amber-50 text-amber-800"
+                          }`}
+                        >
+                          {c.status === "ACTIVE" ? "Ativo" : "Pausado"}
+                        </div>
                       </div>
                     </div>
 
