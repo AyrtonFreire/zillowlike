@@ -233,14 +233,6 @@ export default function BrokerTeamsPage() {
                     </div>
                   )}
 
-                  <div className="mt-3 flex justify-end">
-                    <Link
-                      href={`/broker/teams/${team.id}/crm`}
-                      className="text-[11px] text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      Ver funil do time
-                    </Link>
-                  </div>
                 </div>
               ))}
             </div>

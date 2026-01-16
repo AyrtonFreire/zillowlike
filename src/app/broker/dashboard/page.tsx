@@ -13,6 +13,7 @@ import {
   Eye,
   Activity,
   MessageSquare,
+  MessageCircle,
   Sparkles,
 } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
@@ -202,11 +203,6 @@ export default function BrokerDashboard() {
   const [pipelineError, setPipelineError] = useState<string | null>(null);
   const [pipelineTrend, setPipelineTrend] = useState<{ value: number; isPositive: boolean } | null>(null);
   const [pipelineFilterStage, setPipelineFilterStage] = useState<PipelineStage | null>(null);
-  const [teamSummary, setTeamSummary] = useState<{
-    id: string;
-    name: string;
-    activeLeads: number;
-  } | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   const BROKER_CHAT_LAST_READ_PREFIX = "zlw_broker_chat_last_read_";
@@ -228,12 +224,6 @@ export default function BrokerDashboard() {
   useEffect(() => {
     if (userId) {
       fetchPipelineSummary();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (userId) {
-      fetchTeamsPreview();
     }
   }, [userId]);
 
@@ -419,45 +409,6 @@ export default function BrokerDashboard() {
     }
   };
 
-  const fetchTeamsPreview = async () => {
-    try {
-      const response = await fetch("/api/teams");
-      const data = await response.json();
-
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.error || `API error: ${response.status}`);
-      }
-
-      const teams = Array.isArray(data.teams) ? data.teams : [];
-      if (teams.length === 0) {
-        setTeamSummary(null);
-        return;
-      }
-
-      const firstTeam = teams[0];
-      const pipelineResponse = await fetch(`/api/teams/${firstTeam.id}/pipeline`);
-      const pipelineData = await pipelineResponse.json();
-
-      if (!pipelineResponse.ok || !pipelineData?.success) {
-        throw new Error(pipelineData?.error || `API error: ${pipelineResponse.status}`);
-      }
-
-      const leads = Array.isArray(pipelineData.leads) ? pipelineData.leads : [];
-      const activeLeads = leads.filter(
-        (lead: any) => lead.pipelineStage !== "WON" && lead.pipelineStage !== "LOST"
-      ).length;
-
-      setTeamSummary({
-        id: String(firstTeam.id),
-        name: firstTeam.name || "Time",
-        activeLeads,
-      });
-    } catch (error) {
-      console.error("Error fetching teams for dashboard:", error);
-      setTeamSummary(null);
-    }
-  };
-
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Bom dia";
@@ -612,7 +563,7 @@ export default function BrokerDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Link
             href="/broker/properties"
             className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
@@ -659,12 +610,27 @@ export default function BrokerDashboard() {
                 <MessageSquare className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Conversas</h3>
+                <h3 className="font-semibold text-gray-900">Conversas com clientes</h3>
                 <p className="text-sm text-gray-600">
                   {unreadMessages > 0
                     ? `${unreadMessages} mensagem${unreadMessages > 1 ? "s" : ""} não lida${unreadMessages > 1 ? "s" : ""}`
                     : "Responda clientes pelo chat"}
                 </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/broker/messages"
+            className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="relative p-3 bg-indigo-50 rounded-xl group-hover:bg-indigo-100 transition-colors">
+                <MessageCircle className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Conversas do time</h3>
+                <p className="text-sm text-gray-600">Chat interno com a imobiliária</p>
               </div>
             </div>
           </Link>
@@ -1387,30 +1353,6 @@ export default function BrokerDashboard() {
           </StatCard>
         </div>
 
-        {teamSummary && (
-          <div className="mt-8">
-            <Link
-              href={`/broker/teams/${teamSummary.id}/crm`}
-              className="p-6 bg-white rounded-2xl border border-teal-200 hover:border-teal-300 hover:shadow-md transition-all duration-300 group block"
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-teal-50 rounded-xl group-hover:bg-teal-100 transition-colors">
-                  <Users className="w-6 h-6 text-teal-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Seu time</h3>
-                  <p className="text-sm text-gray-600">
-                    {teamSummary.activeLeads === 0
-                      ? "Seu time está sem leads em andamento no momento."
-                      : `Seu time: ${teamSummary.activeLeads} ${
-                          teamSummary.activeLeads === 1 ? "lead em andamento" : "leads em andamento"
-                        }`}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          </div>
-        )}
 
         {/* Botão para ver tutorial novamente */}
         <div className="mt-8 text-center">
