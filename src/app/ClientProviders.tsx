@@ -1,9 +1,29 @@
 "use client";
 
-import { SessionProvider } from "next-auth/react";
+import { useEffect, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { SessionProvider, useSession } from "next-auth/react";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/modern";
 import { ToastProvider } from "@/contexts/ToastContext";
+
+function AuthRedirector() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { status } = useSession();
+  const prevStatusRef = useRef<typeof status>(status);
+
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    if (prev === "authenticated" && status === "unauthenticated" && pathname !== "/") {
+      router.replace("/");
+    }
+  }, [pathname, router, status]);
+
+  return null;
+}
 
 export default function ClientProviders({ children, session }: { children: React.ReactNode; session?: any }) {
   return (
@@ -15,6 +35,7 @@ export default function ClientProviders({ children, session }: { children: React
           refetchOnWindowFocus={false} // Refetch when user returns to tab
         >
           <ToastProvider>
+            <AuthRedirector />
             {children}
           </ToastProvider>
         </SessionProvider>
