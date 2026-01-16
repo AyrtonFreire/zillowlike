@@ -1900,14 +1900,41 @@ export default function NewPropertyPage() {
                   {/* Instagram */}
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
+                      const shareUrl = publishedProperty.url;
+                      const shareTitle = publishedProperty.title;
+
+                      if (typeof navigator !== "undefined" && "share" in navigator) {
+                        try {
+                          await navigator.share({
+                            title: shareTitle,
+                            text: `Confira este imóvel: ${shareTitle}`,
+                            url: shareUrl,
+                          });
+                          setToast({ message: "Compartilhamento iniciado.", type: "success" });
+                          return;
+                        } catch {
+                          // fallback to clipboard
+                        }
+                      }
+
+                      let copied = false;
                       try {
-                        navigator.clipboard.writeText(publishedProperty.url);
-                      } catch {}
+                        await navigator.clipboard.writeText(shareUrl);
+                        copied = true;
+                      } catch {
+                        copied = false;
+                      }
                       try {
                         window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
                       } catch {}
-                      setToast({ message: "Link copiado! Cole no Instagram para compartilhar.", type: "success" });
+
+                      setToast({
+                        message: copied
+                          ? "Link copiado! Cole no Instagram para compartilhar."
+                          : "Abra o Instagram e copie o link abaixo para compartilhar.",
+                        type: copied ? "success" : "info",
+                      });
                     }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white font-medium hover:from-fuchsia-700 hover:to-pink-700 transition-colors"
                   >
@@ -1932,9 +1959,13 @@ export default function NewPropertyPage() {
                   
                   {/* Copiar Link */}
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(publishedProperty.url);
-                      setToast({ message: "Link copiado!", type: "success" });
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(publishedProperty.url);
+                        setToast({ message: "Link copiado!", type: "success" });
+                      } catch {
+                        setToast({ message: "Não foi possível copiar automaticamente. Copie o link abaixo.", type: "info" });
+                      }
                     }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
                   >
