@@ -254,7 +254,7 @@ export default function AccountPage() {
             </Link>
             <button
               type="button"
-              onClick={() => signOut()}
+              onClick={() => signOut({ callbackUrl: "/" })}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
             >
               <LogOut className="w-4 h-4" />
@@ -367,7 +367,7 @@ export default function AccountPage() {
                 </Link>
                 <button
                   type="button"
-                  onClick={() => signOut()}
+                  onClick={() => signOut({ callbackUrl: "/" })}
                   className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
                 >
                   <LogOut className="w-4 h-4" />
