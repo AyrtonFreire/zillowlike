@@ -172,7 +172,7 @@ export default function OwnerPropertiesPage() {
       ]}
       actions={
         <Link
-          href="/owner/new"
+          href="/start"
           className="flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
         >
           <Plus className="w-5 h-5" />
@@ -258,7 +258,7 @@ export default function OwnerPropertiesPage() {
             </p>
             {!search && filter === "ALL" && (
               <Link
-                href="/owner/new"
+                href="/start"
                 className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
               >
                 <Plus className="w-5 h-5" />

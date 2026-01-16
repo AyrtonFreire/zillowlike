@@ -645,7 +645,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                         <Link href="/agency" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                           CRM
                         </Link>
-                        <Link href="/owner/new" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                        <Link href="/start" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                           Cadastrar imóvel
                         </Link>
                       </>

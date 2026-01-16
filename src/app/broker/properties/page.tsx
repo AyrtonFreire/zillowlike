@@ -178,7 +178,7 @@ export default function BrokerPropertiesPage() {
       ]}
       actions={
         <Link
-          href="/owner/new"
+          href="/start"
           className="flex items-center gap-2 px-4 py-2 rounded-xl border border-teal-200 bg-white text-teal-700 hover:bg-teal-50 text-sm font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -201,7 +201,7 @@ export default function BrokerPropertiesPage() {
               description="Assim que você criar seus anúncios, eles aparecem aqui para você acompanhar leads, visitas e negociações."
               action={
                 <Link
-                  href="/owner/new"
+                  href="/start"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-teal-200 bg-white text-teal-700 hover:bg-teal-50 font-medium transition-colors"
                 >
                   <Plus className="w-5 h-5" />

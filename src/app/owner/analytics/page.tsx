@@ -230,7 +230,7 @@ export default function AnalyticsPage() {
               Publique imóveis para começar a ver analytics
             </p>
             <Link
-              href="/owner/new"
+              href="/start"
               className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
             >
               Publicar Imóvel

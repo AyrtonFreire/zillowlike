@@ -213,7 +213,7 @@ export default function AgencyPropertiesPage() {
             description="Quando o time cadastrar imóveis, eles aparecerão aqui."
             action={
               <Link
-                href="/owner/new"
+                href="/start"
                 className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
               >
                 Cadastrar imóvel
@@ -250,7 +250,7 @@ export default function AgencyPropertiesPage() {
                   Fazer tour
                 </button>
                 <Link
-                  href="/owner/new"
+                  href="/start"
                   className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
                 >
                   Cadastrar imóvel

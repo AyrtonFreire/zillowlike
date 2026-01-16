@@ -1042,7 +1042,7 @@ export default function Home() {
                 Descartar rascunho
               </button>
               <Link
-                href="/owner/new"
+                href="/start"
                 className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-teal-600 text-white text-xs sm:text-sm font-semibold shadow hover:bg-teal-700"
               >
                 Finalizar anúncio
@@ -1546,7 +1546,7 @@ export default function Home() {
                             </p>
                             <div className="mt-5">
                               <Link
-                                href="/owner/new"
+                                href="/start"
                                 className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800"
                               >
                                 Postar imóvel
@@ -1617,7 +1617,7 @@ export default function Home() {
                             <ArrowRight className="w-4 h-4" />
                           </Link>
                           <Link
-                            href="/owner/new"
+                            href="/start"
                             className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold border border-white/30 text-white hover:bg-white/10 transition-all"
                           >
                             Novo imóvel
@@ -1639,7 +1639,7 @@ export default function Home() {
                           </p>
                           <div className="mt-5">
                             <Link
-                              href="/owner/new"
+                              href="/start"
                               className="inline-flex items-center gap-2 text-sm font-semibold text-amber-700 hover:text-amber-800"
                             >
                               Criar anúncio

@@ -433,7 +433,7 @@ function quickLinksByRole(role: string): QuickItem[] {
   if (role === "OWNER") {
     return [
       { href: "/owner/dashboard", label: "Painel do proprietário", icon: ico("M3 12l2-2 7-7 7 7-2 2v7a1 1 0 01-1 1H6a1 1 0 01-1-1v-7z") },
-      { href: "/owner/new", label: "Cadastrar novo imóvel", icon: ico("M12 4v16m8-8H4") },
+      { href: "/start", label: "Cadastrar novo imóvel", icon: ico("M12 4v16m8-8H4") },
       { href: "/owner/properties", label: "Meus anúncios", icon: ico("M4 6h16M4 10h16M4 14h10") },
       { href: "/owner/leads", label: "Leads recebidos", icon: ico("M16 12a4 4 0 10-8 0 4 4 0 008 0z M12 14v7") },
     ];
@@ -441,7 +441,7 @@ function quickLinksByRole(role: string): QuickItem[] {
   if (role === "AGENCY") {
     return [
       { href: "/agency", label: "CRM", icon: ico("M3 3h18v4H3zM3 9h18v12H3z") },
-      { href: "/owner/new", label: "Cadastrar imóvel", icon: ico("M12 4v16m8-8H4") },
+      { href: "/start", label: "Cadastrar imóvel", icon: ico("M12 4v16m8-8H4") },
     ];
   }
   // USER (default)

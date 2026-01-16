@@ -789,7 +789,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       {role === 'AGENCY' && (
                         <>
                           <li><Link href="/agency" className="block px-4 py-2 hover:bg-gray-50">CRM</Link></li>
-                          <li><Link href="/owner/new" className="block px-4 py-2 hover:bg-gray-50">Cadastrar imóvel</Link></li>
+                          <li><Link href="/start" className="block px-4 py-2 hover:bg-gray-50">Cadastrar imóvel</Link></li>
                           <li><hr className="my-1" /></li>
                         </>
                       )}
