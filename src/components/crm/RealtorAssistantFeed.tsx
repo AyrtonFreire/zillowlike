@@ -120,6 +120,17 @@ function buildWhatsAppShareUrl(text: string) {
   return `https://wa.me/?text=${encoded}`;
 }
 
+ function buildWhatsAppPhoneUrl(phone: string, text?: string) {
+   const digits = String(phone || "").replace(/\D/g, "");
+   if (!digits) return null;
+   const withCountry = digits.startsWith("55") ? digits : digits.length >= 10 ? `55${digits}` : digits;
+   const base = `https://wa.me/${withCountry}`;
+   if (text && String(text).trim()) {
+     return `${base}?text=${encodeURIComponent(String(text).trim())}`;
+   }
+   return base;
+ }
+
 function getActionLabel(action: AssistantAction, item?: AssistantItem | null) {
   if (action.type === "OPEN_CHAT") {
     if (item?.type === "UNANSWERED_CLIENT_MESSAGE") return "Responder";
@@ -1554,6 +1565,8 @@ export default function RealtorAssistantFeed(props: {
                                       {meta.leads.map((l: any) => {
                                         const leadId = l?.id ? String(l.id) : "";
                                         if (!leadId) return null;
+                                        const leadPhoneRaw = l?.contactPhone ? String(l.contactPhone) : "";
+                                        const leadWhatsAppUrl = leadPhoneRaw ? buildWhatsAppPhoneUrl(leadPhoneRaw) : null;
                                         const label =
                                           String(l?.contactName || "").trim() ||
                                           String(l?.propertyTitle || "").trim() ||
@@ -1568,6 +1581,18 @@ export default function RealtorAssistantFeed(props: {
                                                 ) : null}
                                               </div>
                                               <div className="flex items-center gap-2">
+                                                <button
+                                                  type="button"
+                                                  disabled={!leadWhatsAppUrl || isTransientPreview || item.status !== "ACTIVE"}
+                                                  onClick={() => {
+                                                    if (!leadWhatsAppUrl) return;
+                                                    window.open(leadWhatsAppUrl, "_blank", "noopener,noreferrer");
+                                                  }}
+                                                  className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 bg-white text-green-700 hover:bg-green-50 disabled:opacity-60"
+                                                  title="WhatsApp do cliente"
+                                                >
+                                                  <MessageCircle className="w-4 h-4" />
+                                                </button>
                                                 <button
                                                   type="button"
                                                   disabled={isTransientPreview || item.status !== "ACTIVE"}
