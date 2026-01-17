@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { Users, Plus } from "lucide-react";
+import { MessageCircle, Plus, Users } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 
@@ -209,9 +209,18 @@ export default function BrokerTeamsPage() {
                       <p className="font-semibold text-gray-900">{team.name}</p>
                       <p className="text-[11px] text-gray-500">{mapRoleLabel(team.role)}</p>
                     </div>
-                    <div className="text-[11px] text-gray-500">
-                      <span className="font-medium">Responsável:</span>{" "}
-                      {team.owner.name || team.owner.email || "Sem nome"}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                      <div className="text-[11px] text-gray-500">
+                        <span className="font-medium">Responsável:</span>{" "}
+                        {team.owner.name || team.owner.email || "Sem nome"}
+                      </div>
+                      <Link
+                        href={`/broker/teams/${team.id}/crm`}
+                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
+                        Conversas
+                      </Link>
                     </div>
                   </div>
 

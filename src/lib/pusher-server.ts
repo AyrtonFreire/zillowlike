@@ -26,6 +26,7 @@ export const PUSHER_EVENTS = {
   ASSISTANT_ITEMS_RECALCULATED: "assistant:items_recalculated",
   // Chat events
   NEW_CHAT_MESSAGE: "new-chat-message",
+  TEAM_CHAT_MESSAGE: "team-chat-message",
 } as const;
 
 // Canais disponíveis
@@ -35,4 +36,5 @@ export const PUSHER_CHANNELS = {
   // Chat channels (público para clientes que só tem o token)
   CHAT: (leadId: string) => `chat-${leadId}`,
   PRESENCE_CHAT: (leadId: string) => `presence-chat-${leadId}`,
+  TEAM_CHAT: (threadId: string) => `private-team-chat-${threadId}`,
 } as const;

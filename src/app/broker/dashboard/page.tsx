@@ -621,7 +621,7 @@ export default function BrokerDashboard() {
           </Link>
 
           <Link
-            href="/broker/messages"
+            href="/broker/teams"
             className="p-6 bg-white rounded-2xl border border-gray-100 hover:shadow-md transition-all duration-300 group"
           >
             <div className="flex items-center gap-4">

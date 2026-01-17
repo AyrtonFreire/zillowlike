@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Kanban, Home, UserRound } from "lucide-react";
+import { LayoutDashboard, Users, Kanban, Home, UserRound, MessageSquare } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 import { AgencyAssistantWidget } from "@/components/crm/AgencyAssistantWidget";
 
@@ -20,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/agency/leads", label: "Leads", icon: Kanban },
   { href: "/agency/clients", label: "Clientes", icon: UserRound },
   { href: "/agency/properties", label: "Imóveis", icon: Home },
+  { href: "/agency/team-chat", label: "Chat do time", icon: MessageSquare },
 ];
 
 function normalizePath(pathname: string) {
@@ -71,6 +72,14 @@ function sectionFromPath(pathname: string) {
       title: "Imóveis",
       description: "Estoque do time associado à sua agência.",
       crumb: "Imóveis",
+    };
+  }
+
+  if (p === "/agency/team-chat") {
+    return {
+      title: "Chat do time",
+      description: "Converse com cada integrante do time em canais dedicados.",
+      crumb: "Chat do time",
     };
   }
 

@@ -504,6 +504,8 @@ model User {
   ownedTeams           Team[]
   teamInvitesSent      TeamInvite[]    @relation("TeamInvitesSent")
   teamInvitesAccepted  TeamInvite[]    @relation("TeamInvitesAccepted")
+  teamChatThreadsOwned TeamChatThread[] @relation("TeamChatOwner")
+  teamChatThreadsRealtor TeamChatThread[] @relation("TeamChatRealtor")
   agencyProfile        AgencyProfile?
   phone                String?
   phoneNormalized      String?   @unique
@@ -527,6 +529,8 @@ model User {
   leadRecommendationLists LeadRecommendationList[]
   assistantItems          AssistantItem[] @relation("AssistantItems")
   leadChatReadReceipts    LeadChatReadReceipt[]
+  teamChatMessages         TeamChatMessage[]
+  teamChatReadReceipts     TeamChatReadReceipt[]
 
   clientsCreated Client[] @relation("ClientCreatedBy")
   clientRecommendationListsCreated ClientRecommendationList[] @relation("ClientRecommendationListCreatedBy")
@@ -786,6 +790,67 @@ model LeadChatReadReceipt {
   @@index([userId])
   @@index([leadId])
   @@map("lead_chat_read_receipts")
+}
+
+model TeamChatThread {
+  id        String @id @default(cuid())
+
+  team      Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String
+
+  owner     User   @relation("TeamChatOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId   String
+
+  realtor   User   @relation("TeamChatRealtor", fields: [realtorId], references: [id], onDelete: Cascade)
+  realtorId String
+
+  title     String?
+
+  messages  TeamChatMessage[]
+  readReceipts TeamChatReadReceipt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamId, realtorId])
+  @@index([teamId])
+  @@index([ownerId])
+  @@index([realtorId])
+  @@map("team_chat_threads")
+}
+
+model TeamChatMessage {
+  id        String @id @default(cuid())
+
+  thread    TeamChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  threadId  String
+
+  sender    User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId  String
+  senderRole Role
+  content   String
+
+  createdAt DateTime @default(now())
+
+  @@index([threadId])
+  @@index([senderId])
+  @@map("team_chat_messages")
+}
+
+model TeamChatReadReceipt {
+  id         String   @id @default(cuid())
+  thread     TeamChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  threadId   String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  lastReadAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([threadId, userId])
+  @@index([userId])
+  @@index([threadId])
+  @@map("team_chat_read_receipts")
 }
 
 model LeadEvent {
@@ -1215,6 +1280,7 @@ model Team {
   clients    Client[]
   assistantItems AssistantItem[]
   clientRecommendationLists ClientRecommendationList[]
+  teamChatThreads TeamChatThread[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

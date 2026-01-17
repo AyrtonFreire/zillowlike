@@ -49,6 +49,26 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
       }
+    } else if (channel.startsWith("private-team-chat-")) {
+      const threadId = channel.replace("private-team-chat-", "");
+
+      const thread: any = await (prisma as any).teamChatThread.findUnique({
+        where: { id: String(threadId) },
+        select: { id: true, ownerId: true, realtorId: true },
+      });
+
+      if (!thread) {
+        return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+      }
+
+      const canAccessThread =
+        isAdmin ||
+        String(thread.ownerId) === String(userId) ||
+        String(thread.realtorId) === String(userId);
+
+      if (!canAccessThread) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     } else if (channel.startsWith("private-lead-") || channel.startsWith("presence-chat-")) {
       const leadId = channel.startsWith("private-lead-")
         ? channel.replace("private-lead-", "")

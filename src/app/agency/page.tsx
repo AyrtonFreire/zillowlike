@@ -411,8 +411,8 @@ export default function AgencyDashboardPage() {
                 href={`/agency/teams/${team.id}/crm`}
                 className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
               >
-                <Kanban className="w-4 h-4 mr-2" />
-                Abrir leads
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Conversas do time
               </Link>
             ) : (
               <Link
