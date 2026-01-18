@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
-import { MessageCircle, Send, Wand2 } from "lucide-react";
+import { MessageCircle, Send } from "lucide-react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { getPusherClient } from "@/lib/pusher-client";
@@ -140,11 +140,8 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  const [suggesting, setSuggesting] = useState(false);
-  const [suggestError, setSuggestError] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const activeThread = useMemo(() => {
     return threads.find((thread) => thread.id === selectedThreadId) || null;
@@ -497,31 +494,6 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
     }
   };
 
-  const handleSuggest = async () => {
-    if (!activeThread?.id || suggesting) return;
-    setSuggesting(true);
-    setSuggestError(null);
-
-    try {
-      const response = await fetch("/api/team-chat/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ threadId: activeThread.id, prompt: draft.trim() || null }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.error || "Nao foi possivel gerar a sugestao.");
-      }
-      setDraft(data.suggestion || "");
-      setTimeout(() => inputRef.current?.focus(), 0);
-    } catch (err: any) {
-      console.error("Error generating suggestion:", err);
-      setSuggestError(err?.message || "Nao foi possivel gerar a sugestao.");
-    } finally {
-      setSuggesting(false);
-    }
-  };
-
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -710,11 +682,9 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
           </div>
 
           <div className="border-t border-gray-100 px-4 py-3">
-            {suggestError ? <p className="text-xs text-rose-600 mb-2">{suggestError}</p> : null}
             <div className="flex flex-col lg:flex-row gap-3">
               <div className="flex-1">
                 <textarea
-                  ref={inputRef}
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={handleKeyDown}
@@ -724,15 +694,6 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleSuggest}
-                  disabled={!activeThread || suggesting}
-                  className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                >
-                  <Wand2 className="w-4 h-4 mr-2" />
-                  {suggesting ? "Gerando" : "Sugerir"}
-                </button>
                 <button
                   type="button"
                   onClick={handleSend}
