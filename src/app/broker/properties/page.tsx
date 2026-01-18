@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Home, Plus, Search, Eye, Users, BarChart3 } from "lucide-react";
-import DashboardLayout from "@/components/DashboardLayout";
 import PropertyCardV2 from "@/components/dashboard/PropertyCardV2";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
@@ -152,31 +151,12 @@ export default function BrokerPropertiesPage() {
   });
 
   if (status === "loading" || loading) {
-    return (
-      <DashboardLayout
-        title="Meus imóveis"
-        description="Veja de forma simples os imóveis do seu estoque e os leads gerados em cada um."
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Meus imóveis" },
-        ]}
-      >
-        <CenteredSpinner message="Carregando seus imóveis..." />
-      </DashboardLayout>
-    );
+    return <CenteredSpinner message="Carregando seus imóveis..." />;
   }
 
   return (
-    <DashboardLayout
-      title="Meus imóveis"
-      description="Veja de forma simples os imóveis do seu estoque e os leads gerados em cada um."
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Corretor", href: "/broker/dashboard" },
-        { label: "Meus imóveis" },
-      ]}
-      actions={
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex justify-end mb-4">
         <Link
           href="/start"
           className="flex items-center gap-2 px-4 py-2 rounded-xl border border-teal-200 bg-white text-teal-700 hover:bg-teal-50 text-sm font-medium transition-colors"
@@ -184,35 +164,33 @@ export default function BrokerPropertiesPage() {
           <Plus className="w-4 h-4" />
           Novo anúncio
         </Link>
-      }
-    >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
-            {error}
-          </div>
-        )}
+      </div>
+      {error && (
+        <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
+          {error}
+        </div>
+      )}
 
-        {properties.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-8">
-            <EmptyState
-              icon={<Home className="w-12 h-12 mx-auto mb-3 text-gray-300" />}
-              title="Você ainda não tem imóveis cadastrados"
-              description="Assim que você criar seus anúncios, eles aparecem aqui para você acompanhar leads, visitas e negociações."
-              action={
-                <Link
-                  href="/start"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-teal-200 bg-white text-teal-700 hover:bg-teal-50 font-medium transition-colors"
-                >
-                  <Plus className="w-5 h-5" />
-                  Criar primeiro anúncio
-                </Link>
-              }
-            />
-          </div>
-        ) : (
-          <>
-            <div className="bg-gradient-to-r from-teal-600 to-emerald-500 rounded-2xl p-6 mb-8 text-white">
+      {properties.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-200 p-8">
+          <EmptyState
+            icon={<Home className="w-12 h-12 mx-auto mb-3 text-gray-300" />}
+            title="Você ainda não tem imóveis cadastrados"
+            description="Assim que você criar seus anúncios, eles aparecem aqui para você acompanhar leads, visitas e negociações."
+            action={
+              <Link
+                href="/start"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-teal-200 bg-white text-teal-700 hover:bg-teal-50 font-medium transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                Criar primeiro anúncio
+              </Link>
+            }
+          />
+        </div>
+      ) : (
+        <>
+          <div className="bg-gradient-to-r from-teal-600 to-emerald-500 rounded-2xl p-6 mb-8 text-white">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div>
                   <h2 className="text-lg md:text-2xl font-semibold mb-1">Visão geral do seu estoque</h2>
@@ -369,9 +347,8 @@ export default function BrokerPropertiesPage() {
                 ))}
               </div>
             )}
-          </>
-        )}
-      </div>
-    </DashboardLayout>
+        </>
+      )}
+    </div>
   );
 }

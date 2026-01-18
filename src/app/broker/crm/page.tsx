@@ -6,7 +6,6 @@ import { ArrowLeft, Users, Phone, Eye, FileText, FileCheck, Trophy, XCircle, Che
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, TouchSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/contexts/ToastContext";
-import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import DraggableLeadCard from "@/components/crm/DraggableLeadCard";
 import DroppableStageColumn from "@/components/crm/DroppableStageColumn";
@@ -293,40 +292,11 @@ export default function BrokerCrmPage() {
   const progressPercent = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
 
   if (loading) {
-    return (
-      <DashboardLayout
-        title="Jornada do Cliente"
-        description="Acompanhe a evolução dos seus leads."
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Jornada" },
-        ]}
-      >
-        <CenteredSpinner message="Carregando sua jornada de leads..." />
-      </DashboardLayout>
-    );
+    return <CenteredSpinner message="Carregando sua jornada de leads..." />;
   }
 
   return (
-    <DashboardLayout
-      title="Jornada do Cliente"
-      description="Acompanhe a evolução dos seus leads em cada etapa."
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Corretor", href: "/broker/dashboard" },
-        { label: "Jornada" },
-      ]}
-      actions={
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg border border-white/20">
-            <Trophy className="w-4 h-4 text-yellow-300" />
-            <span className="text-sm text-white font-medium">{wonLeads} fechados</span>
-          </div>
-        </div>
-      }
-    >
-      <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gray-50">
         {/* Stats bar mobile */}
         <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3">
           <div className="flex items-center justify-between mb-2">
@@ -560,7 +530,6 @@ export default function BrokerCrmPage() {
             ) : null}
           </DragOverlay>
         </DndContext>
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }

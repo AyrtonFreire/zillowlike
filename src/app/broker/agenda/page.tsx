@@ -5,7 +5,6 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { Calendar, Clock, MapPin, Phone } from "lucide-react";
-import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 
 interface VisitLead {
@@ -98,98 +97,86 @@ export default function BrokerAgendaPage() {
   }
 
   return (
-    <DashboardLayout
-      title="Agenda de visitas"
-      description="Veja, em uma lista simples, as visitas marcadas com seus clientes."
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Corretor", href: "/broker/dashboard" },
-        { label: "Agenda de visitas" },
-      ]}
-    >
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
-            {error}
-          </div>
-        )}
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {error && (
+        <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
+          {error}
+        </div>
+      )}
 
-        {leads.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 text-sm text-gray-600">
-            <p>
-              No momento, você não tem visitas marcadas com data e horário definidos. Assim que marcar visitas nos seus leads,
-              elas aparecem aqui em forma de lista simples, para você consultar durante o dia.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {leads.map((lead) => (
-              <div
-                key={lead.id}
-                className="bg-white rounded-2xl border border-gray-200 p-4 flex gap-4 items-start"
-              >
-                <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+      {leads.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 text-sm text-gray-600">
+          <p>
+            No momento, você não tem visitas marcadas com data e horário definidos. Assim que marcar visitas nos seus leads,
+            elas aparecem aqui.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {leads.map((lead) => (
+            <div key={lead.id} className="bg-white rounded-2xl border border-gray-200 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="relative w-full sm:w-36 h-24 rounded-xl overflow-hidden">
                   <Image
-                    src={lead.property.images[0]?.url || "/placeholder.jpg"}
+                    src={lead.property.images[0]?.url || "/placeholder.svg"}
                     alt={lead.property.title}
                     fill
                     className="object-cover"
                   />
                 </div>
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm font-semibold text-gray-900 line-clamp-2">
+
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                     {lead.property.title}
-                  </p>
-                  <p className="text-[11px] text-gray-500 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    <span>
-                      {lead.property.neighborhood && `${lead.property.neighborhood}, `}
-                      {lead.property.city} - {lead.property.state}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" />
+                    {lead.property.neighborhood ? `${lead.property.neighborhood}, ` : ""}{lead.property.city} - {lead.property.state}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-600">
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      {new Date(lead.visitDate).toLocaleDateString("pt-BR")}
                     </span>
-                  </p>
-                  <p className="text-[11px] text-gray-700 flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    <span>{formatVisitDateTime(lead.visitDate, lead.visitTime)}</span>
-                  </p>
-                  {lead.contact?.name && (
-                    <p className="text-[11px] text-gray-700 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      <span>
-                        Cliente: {lead.contact.name}
-                        {lead.contact.phone && ` · ${lead.contact.phone}`}
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {lead.visitTime}
+                    </span>
+                    {lead.contact?.name && (
+                      <span className="inline-flex items-center gap-1">
+                        <Phone className="w-4 h-4" />
+                        {lead.contact.name}
                       </span>
-                    </p>
-                  )}
+                    )}
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    {formatVisitDateTime(lead.visitDate, lead.visitTime)}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Link
+                    href={`/broker/leads/${lead.id}`}
+                    className="px-4 py-2 rounded-lg bg-teal-600 text-white text-xs font-semibold text-center hover:bg-teal-700"
+                  >
+                    Ver lead
+                  </Link>
                   {lead.contact?.phone && (
-                    <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-blue-600">
-                      <a href={`tel:${lead.contact.phone}`} className="hover:text-blue-700 flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        Ligar
-                      </a>
-                      {getWhatsAppUrl(lead.contact.phone) && (
-                        <a
-                          href={getWhatsAppUrl(lead.contact.phone)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-green-700 hover:text-green-800"
-                        >
-                          Abrir WhatsApp
-                        </a>
-                      )}
-                      <Link
-                        href={`/broker/leads/${lead.id}`}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
-                        Ver ficha do lead
-                      </Link>
-                    </div>
+                    <a
+                      href={getWhatsAppUrl(lead.contact.phone)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 rounded-lg border border-gray-200 text-xs font-semibold text-center text-gray-700 hover:bg-gray-50"
+                    >
+                      WhatsApp
+                    </a>
                   )}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </DashboardLayout>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

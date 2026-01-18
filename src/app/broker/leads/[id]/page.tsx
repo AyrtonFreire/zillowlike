@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
-import DashboardLayout from "@/components/DashboardLayout";
 import { getPusherClient } from "@/lib/pusher-client";
 import { useToast } from "@/contexts/ToastContext";
 import LeadTimeline from "@/components/crm/LeadTimeline";
@@ -811,64 +810,30 @@ export default function LeadDetailPage() {
   const activeChannel = leadChannelOverride || channelAuto;
 
   if (loading) {
-    return (
-      <DashboardLayout
-        title="Lead do imóvel"
-        description="Carregando detalhes..."
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Leads", href: "/broker/leads" },
-          { label: "Detalhes" },
-        ]}
-      >
-        <CenteredSpinner message="Carregando detalhes do lead..." />
-      </DashboardLayout>
-    );
+    return <CenteredSpinner message="Carregando detalhes do lead..." />;
   }
 
   if (error || !lead) {
     return (
-      <DashboardLayout
-        title="Lead do imóvel"
-        description="Erro ao carregar"
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Leads", href: "/broker/leads" },
-          { label: "Detalhes" },
-        ]}
-      >
-        <div className="max-w-4xl mx-auto py-10">
-          <EmptyState
-            title="Não conseguimos carregar este lead"
-            description={error || "Ele pode ter sido removido ou não está mais ativo na sua lista."}
-            action={
-              <button
-                onClick={fetchLead}
-                className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
-              >
-                Tentar novamente
-              </button>
-            }
-          />
-        </div>
-      </DashboardLayout>
+      <div className="max-w-4xl mx-auto py-10">
+        <EmptyState
+          title="Não conseguimos carregar este lead"
+          description={error || "Ele pode ter sido removido ou não está mais ativo na sua lista."}
+          action={
+            <button
+              onClick={fetchLead}
+              className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
+            >
+              Tentar novamente
+            </button>
+          }
+        />
+      </div>
     );
   }
 
   return (
-    <DashboardLayout
-      title="Lead do imóvel"
-      description={lead.property.title}
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Corretor", href: "/broker/dashboard" },
-        { label: "Leads", href: "/broker/leads" },
-        { label: "Detalhes" },
-      ]}
-    >
-      <div className="max-w-5xl mx-auto py-6 space-y-4">
+    <div className="max-w-5xl mx-auto py-6 space-y-4">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="min-w-0">
@@ -1157,7 +1122,6 @@ export default function LeadDetailPage() {
             )}
           </div>
         </div>
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }

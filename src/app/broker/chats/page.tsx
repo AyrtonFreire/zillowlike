@@ -22,8 +22,6 @@ import {
   User,
   ChevronLeft,
 } from "lucide-react";
-import DashboardLayout from "@/components/DashboardLayout";
-import RealtorAssistantWidget from "@/components/crm/RealtorAssistantWidget";
 import { buildPropertyPath } from "@/lib/slug";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
@@ -360,32 +358,11 @@ export default function BrokerChatsPage() {
   });
 
   if (loading) {
-    return (
-      <DashboardLayout
-        title="Conversas"
-        description="Gerencie suas conversas com clientes."
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Conversas" },
-        ]}
-      >
-        <CenteredSpinner message="Carregando conversas..." />
-      </DashboardLayout>
-    );
+    return <CenteredSpinner message="Carregando conversas..." />;
   }
 
   return (
-    <DashboardLayout
-      title="Conversas"
-      description="Gerencie suas conversas com clientes."
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Corretor", href: "/broker/dashboard" },
-        { label: "Conversas" },
-      ]}
-    >
-      <div className="h-[calc(100vh-200px)] min-h-[500px] bg-white rounded-xl border border-gray-200 overflow-hidden flex min-w-0 w-full max-w-full">
+    <div className="h-[calc(100vh-200px)] min-h-[500px] bg-white rounded-xl border border-gray-200 overflow-hidden flex min-w-0 w-full max-w-full">
         {/* Lista de conversas - Sidebar */}
         <div
           className={`w-full md:w-80 lg:w-96 border-r border-gray-200 flex flex-col bg-gray-50 ${
@@ -688,7 +665,6 @@ export default function BrokerChatsPage() {
             </div>
           )}
         </div>
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }

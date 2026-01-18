@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Home, Users, Activity, AlertCircle, ChevronLeft, MapPin } from "lucide-react";
-import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { ptBR } from "@/lib/i18n/property";
@@ -114,50 +113,26 @@ export default function BrokerPropertyDetailPage() {
   const pipelineCounts = summarizePipeline(leads);
 
   if (loading) {
-    return (
-      <DashboardLayout
-        title="Leads & negociação"
-        description="Veja como estão os leads e a negociação deste imóvel."
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Meus imóveis", href: "/broker/properties" },
-          { label: "Leads & negociação" },
-        ]}
-      >
-        <CenteredSpinner message="Carregando dados do imóvel..." />
-      </DashboardLayout>
-    );
+    return <CenteredSpinner message="Carregando dados do imóvel..." />;
   }
 
   if (error || !property) {
     return (
-      <DashboardLayout
-        title="Leads & negociação"
-        description="Veja como estão os leads e a negociação deste imóvel."
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Meus imóveis", href: "/broker/properties" },
-          { label: "Leads & negociação" },
-        ]}
-      >
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <button
-            type="button"
-            onClick={() => history.back()}
-            className="mb-4 inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
-          >
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Voltar
-          </button>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <button
+          type="button"
+          onClick={() => history.back()}
+          className="mb-4 inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
+        >
+          <ChevronLeft className="w-4 h-4 mr-1" />
+          Voltar
+        </button>
 
-          <EmptyState
-            title="Não conseguimos carregar este imóvel"
-            description={error || "Ele pode ter sido removido ou você não tem acesso a ele."}
-          />
-        </div>
-      </DashboardLayout>
+        <EmptyState
+          title="Não conseguimos carregar este imóvel"
+          description={error || "Ele pode ter sido removido ou você não tem acesso a ele."}
+        />
+      </div>
     );
   }
 
@@ -167,17 +142,7 @@ export default function BrokerPropertyDetailPage() {
   const resultCount = pipelineCounts.WON + pipelineCounts.LOST;
 
   return (
-    <DashboardLayout
-      title="Leads & negociação"
-      description="Veja como estão os leads e a negociação deste imóvel."
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Corretor", href: "/broker/dashboard" },
-        { label: "Meus imóveis", href: "/broker/properties" },
-        { label: property.title },
-      ]}
-    >
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Resumo do imóvel */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -336,7 +301,6 @@ export default function BrokerPropertyDetailPage() {
             </div>
           )}
         </div>
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { MessageCircle, Search } from "lucide-react";
-import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -238,37 +237,28 @@ export default function BrokerMessagesPage() {
   };
 
   return (
-    <DashboardLayout
-      title="Mensagens"
-      description="Veja, em um só lugar, as conversas internas relacionadas aos seus leads."
-      breadcrumbs={[
-        { label: "Painel do corretor", href: "/broker/dashboard" },
-        { label: "Mensagens" },
-      ]}
-    >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <p className="text-sm text-gray-600 max-w-xl">
-              Aqui você vê, de forma simples, os leads em que houve troca de mensagens internas recentemente. Use esta página
-              como um atalho para continuar atendimentos em andamento.
-            </p>
-          </div>
-
-          <div className="w-full sm:w-64 relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por imóvel, cidade ou contato"
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
-            />
-          </div>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-sm text-gray-600 max-w-xl">
+            Aqui você vê, de forma simples, os leads em que houve troca de mensagens internas recentemente. Use esta página
+            como um atalho para continuar atendimentos em andamento.
+          </p>
         </div>
 
-        {content()}
+        <div className="w-full sm:w-64 relative">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por imóvel, cidade ou contato"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
+          />
+        </div>
       </div>
-    </DashboardLayout>
+
+      {content()}
+    </div>
   );
 }

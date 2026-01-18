@@ -20,7 +20,6 @@ import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
 import PropertyListItem from "@/components/dashboard/PropertyListItem";
 import LeadListItem from "@/components/dashboard/LeadListItem";
-import DashboardLayout from "@/components/DashboardLayout";
 import BrokerOnboarding, { resetBrokerOnboarding } from "@/components/onboarding/BrokerOnboarding";
 import LeadSearchBar from "@/components/crm/LeadSearchBar";
 import { motion } from "framer-motion";
@@ -505,51 +504,17 @@ export default function BrokerDashboard() {
 
   if (loading) {
     return (
-      <DashboardLayout
-        title="Dashboard do Corretor"
-        description="Aqui está um resumo do seu desempenho"
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Dashboard" },
-        ]}
-      >
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Carregando dashboard...</p>
-          </div>
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Carregando dashboard...</p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout
-      title={
-        <>
-          <span className="md:hidden">{getGreeting()},</span>
-          <span className="hidden md:inline">
-            {getGreeting()}, {session?.user?.name ?? "Corretor"} 👋
-          </span>
-        </>
-      }
-      description="Aqui está um resumo do seu desempenho"
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Corretor", href: "/broker/dashboard" },
-        { label: "Dashboard" },
-      ]}
-      actions={
-        <Link
-          href="/broker/properties/new"
-          className="flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors shadow-sm"
-        >
-          <Plus className="w-5 h-5" />
-          Novo Imóvel
-        </Link>
-      }
-    >
+    <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {dashboardError && (
           <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
@@ -1368,9 +1333,7 @@ export default function BrokerDashboard() {
           </button>
         </div>
       </div>
-
-      {/* Onboarding Tour */}
       <BrokerOnboarding />
-    </DashboardLayout>
+    </>
   );
 }

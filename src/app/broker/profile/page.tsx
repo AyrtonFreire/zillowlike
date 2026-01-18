@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import DashboardLayout from "@/components/DashboardLayout";
 import Input from "@/components/ui/Input";
 import Toast from "@/components/Toast";
 import {
@@ -252,16 +251,14 @@ export default function BrokerProfilePage() {
 
   if (loading) {
     return (
-      <DashboardLayout title="Perfil Público">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-        </div>
-      </DashboardLayout>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+      </div>
     );
   }
 
   return (
-    <DashboardLayout title="Perfil Público" description="Configure seu perfil público para atrair mais clientes">
+    <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="max-w-4xl mx-auto space-y-8">
@@ -649,6 +646,6 @@ export default function BrokerProfilePage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

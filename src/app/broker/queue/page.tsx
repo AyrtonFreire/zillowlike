@@ -43,9 +43,6 @@ export default function QueuePage() {
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // TODO: Get from auth session
-  const realtorId = "demo-realtor-id";
-
   useEffect(() => {
     fetchData();
     // Atualiza a cada 30 segundos
@@ -56,13 +53,15 @@ export default function QueuePage() {
   const fetchData = async () => {
     try {
       const [positionRes, statsRes] = await Promise.all([
-        fetch(`/api/queue/position?realtorId=${realtorId}`),
-        fetch("/api/queue/stats"),
+        fetch("/api/broker/queue/position"),
+        fetch("/api/broker/queue/stats"),
       ]);
 
       if (positionRes.ok) {
         const positionData = await positionRes.json();
         setPosition(positionData);
+      } else if (positionRes.status === 404) {
+        setPosition(null);
       }
 
       if (statsRes.ok) {
@@ -78,10 +77,9 @@ export default function QueuePage() {
 
   const handleJoinQueue = async () => {
     try {
-      const response = await fetch("/api/queue/join", {
+      const response = await fetch("/api/broker/queue/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ realtorId }),
       });
 
       if (response.ok) {
@@ -98,7 +96,7 @@ export default function QueuePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="bg-gray-50 flex items-center justify-center py-20">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Carregando...</p>
@@ -109,7 +107,7 @@ export default function QueuePage() {
 
   if (!position) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="bg-gray-50 flex items-center justify-center py-20">
         <div className="text-center max-w-md">
           <div className="w-20 h-20 glass-teal rounded-full flex items-center justify-center mx-auto mb-4">
             <Activity className="w-10 h-10 text-white" />
@@ -132,7 +130,7 @@ export default function QueuePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

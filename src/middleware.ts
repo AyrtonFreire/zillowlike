@@ -30,9 +30,9 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(request, response);
   }
 
-  if (pathname === "/broker/crm" || pathname === "/broker/crm/") {
+  if (pathname === "/broker") {
     const url = request.nextUrl.clone();
-    url.pathname = "/broker/leads";
+    url.pathname = "/broker/dashboard";
     const response = NextResponse.redirect(url);
     return applySecurityHeaders(request, response);
   }

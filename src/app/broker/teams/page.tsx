@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { MessageCircle, Plus, Users } from "lucide-react";
-import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 
 interface TeamMember {
@@ -111,35 +110,14 @@ export default function BrokerTeamsPage() {
   };
 
   if (status === "loading" || loading) {
-    return (
-      <DashboardLayout
-        title="Meus times"
-        description="Veja os times/imobiliárias dos quais você faz parte."
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Meus times" },
-        ]}
-      >
-        <CenteredSpinner message="Carregando seus times..." />
-      </DashboardLayout>
-    );
+    return <CenteredSpinner message="Carregando seus times..." />;
   }
 
   const hasTeam = teams.length > 0;
   const canCreateTeam = userRole === "ADMIN" || (userRole === "REALTOR" && !hasTeam);
 
   return (
-    <DashboardLayout
-      title="Meus times"
-      description="Veja os times/imobiliárias dos quais você faz parte."
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Corretor", href: "/broker/dashboard" },
-        { label: "Meus times" },
-      ]}
-    >
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {error && (
           <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
             {error}
@@ -253,7 +231,6 @@ export default function BrokerTeamsPage() {
             ? "Esta área de times ainda é simples e está em construção. Aos poucos, deve facilitar o compartilhamento de leads e a visão do funil da equipe."
             : "Esta área de times ainda é simples e está em construção. Por enquanto, serve para você enxergar os times dos quais faz parte."}
         </p>
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }

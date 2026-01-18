@@ -19,7 +19,6 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import CountdownTimer from "@/components/queue/CountdownTimer";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
-import DashboardLayout from "@/components/DashboardLayout";
 import { canonicalToBoardGroup, boardGroupToCanonical } from "@/lib/lead-pipeline";
 import { getPusherClient } from "@/lib/pusher-client";
 import { ptBR } from "@/lib/i18n/property";
@@ -856,19 +855,7 @@ export default function MyLeadsPage() {
   }, [leadsBaseForView]);
 
   if (loading) {
-    return (
-      <DashboardLayout
-        title="Meus Leads em Atendimento"
-        description="Organize seus leads com calma, registre próximos passos e acompanhe cada oportunidade no seu ritmo."
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Corretor", href: "/broker/dashboard" },
-          { label: "Leads" },
-        ]}
-      >
-        <CenteredSpinner message="Carregando seus leads..." />
-      </DashboardLayout>
-    );
+    return <CenteredSpinner message="Carregando seus leads..." />;
   }
 
   const getPipelineStageBadge = (stageId: PipelineStage) => {
@@ -885,250 +872,212 @@ export default function MyLeadsPage() {
   };
 
   return (
-    <DashboardLayout
-      title="Meus Leads"
-      description="Gerencie seus leads de forma simples e eficiente."
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Corretor", href: "/broker/dashboard" },
-        { label: "Leads" },
-      ]}
-      actions={
-        <div className="flex items-center gap-2">
-          {/* Toggle Lista/Pipeline */}
-          <div className="hidden sm:flex items-center bg-white/10 rounded-lg p-0.5 border border-white/20">
-            <button
-              onClick={() => setViewMode("list")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === "list" ? "bg-white text-teal-700" : "text-white/80 hover:text-white"
-              }`}
-            >
-              <LayoutList className="w-4 h-4" />
-              Lista
-            </button>
-            <button
-              onClick={() => setViewMode("pipeline")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === "pipeline" ? "bg-white text-teal-700" : "text-white/80 hover:text-white"
-              }`}
-            >
-              <Columns3 className="w-4 h-4" />
-              Pipeline
-            </button>
+    <div className="bg-gray-50">
+      {/* Contadores inteligentes - visíveis quando tem algo relevante */}
+      {(smartCounters.awaitingResponse > 0 || smartCounters.noContact48h > 0) && (
+        <div className="bg-white border-b border-gray-200">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-2">
+            <div className="flex flex-wrap gap-3">
+              {smartCounters.awaitingResponse > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg text-xs whitespace-nowrap">
+                  <Bell className="w-3.5 h-3.5 text-rose-600" />
+                  <span className="text-rose-700 font-medium">{smartCounters.awaitingResponse} cliente(s) aguardando seu retorno</span>
+                </div>
+              )}
+              {smartCounters.taskToday > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs whitespace-nowrap">
+                  <CalendarClock className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-amber-700 font-medium">{smartCounters.taskToday} tarefa(s) hoje</span>
+                </div>
+              )}
+              {smartCounters.noContact48h > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-lg text-xs whitespace-nowrap">
+                  <PhoneOff className="w-3.5 h-3.5 text-gray-500" />
+                  <span className="text-gray-600 font-medium">{smartCounters.noContact48h} sem contato há 48h</span>
+                </div>
+              )}
+            </div>
           </div>
-          <button
-            onClick={() => fetchLeads()}
-            className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-colors border border-white/20"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
         </div>
-      }
-    >
-      <div className="bg-gray-50 min-h-screen">
-        {/* Contadores inteligentes - visíveis quando tem algo relevante */}
-        {(smartCounters.awaitingResponse > 0 || smartCounters.noContact48h > 0) && (
-          <div className="bg-white border-b border-gray-200">
-            <div className="w-full px-4 sm:px-6 lg:px-8 py-2">
-              <div className="flex flex-wrap gap-3">
-                {smartCounters.awaitingResponse > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg text-xs whitespace-nowrap">
-                    <Bell className="w-3.5 h-3.5 text-rose-600" />
-                    <span className="text-rose-700 font-medium">{smartCounters.awaitingResponse} cliente(s) aguardando seu retorno</span>
-                  </div>
-                )}
-                {smartCounters.taskToday > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs whitespace-nowrap">
-                    <CalendarClock className="w-3.5 h-3.5 text-amber-600" />
-                    <span className="text-amber-700 font-medium">{smartCounters.taskToday} tarefa(s) hoje</span>
-                  </div>
-                )}
-                {smartCounters.noContact48h > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-lg text-xs whitespace-nowrap">
-                    <PhoneOff className="w-3.5 h-3.5 text-gray-500" />
-                    <span className="text-gray-600 font-medium">{smartCounters.noContact48h} sem contato há 48h</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+      )}
 
-        {/* Barra de filtros e toggle de visualização */}
-        <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
-          <div className="w-full">
-            {/* Toggle mobile + Filtros */}
-            <div className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                {/* Toggle Lista/Pipeline - Mobile */}
-                <div className="sm:hidden flex items-center bg-gray-100 rounded-lg p-0.5">
-                  <button
-                    onClick={() => setViewMode("list")}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                      viewMode === "list" ? "bg-white text-teal-700 shadow-sm" : "text-gray-600"
-                    }`}
-                  >
-                    <LayoutList className="w-3.5 h-3.5" />
-                    Lista
-                  </button>
-                  <button
-                    onClick={() => setViewMode("pipeline")}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                      viewMode === "pipeline" ? "bg-white text-teal-700 shadow-sm" : "text-gray-600"
-                    }`}
-                  >
-                    <Columns3 className="w-3.5 h-3.5" />
-                    Pipeline
-                  </button>
-                </div>
-
-                {/* Filtros - scroll horizontal */}
-                <div className="flex-1">
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { key: "all" as const, label: "Todos", count: counts.all },
-                      { key: "NEW" as const, label: "Novos", count: counts.NEW },
-                      { key: "CONTACT" as const, label: "Contato", count: counts.CONTACT },
-                      { key: "NEGOTIATION" as const, label: "Negociação", count: counts.NEGOTIATION },
-                      { key: "CLOSED" as const, label: "Fechado", count: counts.CLOSED },
-                    ].map((item) => (
-                      item.key === "all" ? (
-                        <button
-                          key={item.key}
-                          onClick={() => setPipelineFilter(item.key)}
-                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                            pipelineFilter === item.key
-                              ? "bg-teal-600 text-white shadow-sm"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                          }`}
-                        >
-                          {item.label}
-                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                            pipelineFilter === item.key ? "bg-white/20" : "bg-gray-200"
-                          }`}>
-                            {item.count}
-                          </span>
-                        </button>
-                      ) : (
-                        <StageChip
-                          key={item.key}
-                          label={item.label}
-                          count={item.count}
-                          active={pipelineFilter === item.key}
-                          onClick={() => setPipelineFilter(item.key)}
-                        />
-                      )
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Botão de filtros avançados */}
-            <div className="px-4 pb-3 flex items-center gap-2">
+      {/* Barra de filtros e toggle de visualização */}
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+        <div className="w-full">
+          {/* Toggle mobile + Filtros */}
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-3">
+            {/* Toggle Lista/Pipeline - Mobile */}
+            <div className="sm:hidden flex items-center bg-gray-100 rounded-lg p-0.5">
               <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  showFilters || nameFilter || cityFilter || typeFilter || dateFilter !== "all"
-                    ? "bg-teal-50 text-teal-700 border border-teal-200"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                onClick={() => setViewMode("list")}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === "list" ? "bg-white text-teal-700 shadow-sm" : "text-gray-600"
                 }`}
               >
-                <Filter className="w-4 h-4" />
-                Filtros
-                {(nameFilter || cityFilter || typeFilter || dateFilter !== "all") && (
-                  <span className="w-2 h-2 rounded-full bg-teal-500" />
-                )}
+                <LayoutList className="w-3.5 h-3.5" />
+                Lista
               </button>
-              
-              {/* Quick stats */}
-              <div className="ml-auto text-sm text-gray-500">
-                {filteredLeads.length} {filteredLeads.length === 1 ? "lead" : "leads"}
+              <button
+                onClick={() => setViewMode("pipeline")}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === "pipeline" ? "bg-white text-teal-700 shadow-sm" : "text-gray-600"
+                }`}
+              >
+                <Columns3 className="w-3.5 h-3.5" />
+                Pipeline
+              </button>
+            </div>
+
+            {/* Filtros - scroll horizontal */}
+            <div className="flex-1">
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: "all" as const, label: "Todos", count: counts.all },
+                  { key: "NEW" as const, label: "Novos", count: counts.NEW },
+                  { key: "CONTACT" as const, label: "Contato", count: counts.CONTACT },
+                  { key: "NEGOTIATION" as const, label: "Negociação", count: counts.NEGOTIATION },
+                  { key: "CLOSED" as const, label: "Fechado", count: counts.CLOSED },
+                ].map((item) =>
+                  item.key === "all" ? (
+                    <button
+                      key={item.key}
+                      onClick={() => setPipelineFilter(item.key)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                        pipelineFilter === item.key
+                          ? "bg-teal-600 text-white shadow-sm"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      {item.label}
+                      <span
+                        className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                          pipelineFilter === item.key ? "bg-white/20" : "bg-gray-200"
+                        }`}
+                      >
+                        {item.count}
+                      </span>
+                    </button>
+                  ) : (
+                    <StageChip
+                      key={item.key}
+                      label={item.label}
+                      count={item.count}
+                      active={pipelineFilter === item.key}
+                      onClick={() => setPipelineFilter(item.key)}
+                    />
+                  )
+                )}
               </div>
             </div>
-            
-            {/* Filtros avançados colapsáveis */}
-            <AnimatePresence>
-              {showFilters && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden border-t border-gray-100"
-                >
-                  <div className="px-4 py-3 bg-gray-50 space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <input
-                        type="text"
-                        placeholder="Nome..."
-                        value={nameFilter}
-                        onChange={(e) => setNameFilter(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Cidade..."
-                        value={cityFilter}
-                        onChange={(e) => setCityFilter(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                      />
-                      <select
-                        value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
-                      >
-                        <option value="">Tipo</option>
-                        <option value="HOUSE">Casa</option>
-                        <option value="APARTMENT">Apartamento</option>
-                        <option value="CONDO">Condomínio</option>
-                        <option value="TOWNHOUSE">Sobrado</option>
-                        <option value="STUDIO">Studio</option>
-                        <option value="LAND">Terreno</option>
-                        <option value="RURAL">Imóvel rural</option>
-                        <option value="COMMERCIAL">Comercial</option>
-                      </select>
-                    </div>
-                    <div className="flex gap-2">
-                      {[
-                        { value: "all" as const, label: "Qualquer data" },
-                        { value: "today" as const, label: "Hoje" },
-                        { value: "last7" as const, label: "7 dias" },
-                      ].map((item) => (
-                        <button
-                          key={item.value}
-                          onClick={() => setDateFilter(item.value)}
-                          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                            dateFilter === item.value
-                              ? "bg-teal-600 text-white"
-                              : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                    {(nameFilter || cityFilter || typeFilter || dateFilter !== "all") && (
-                      <button
-                        onClick={() => {
-                          setNameFilter("");
-                          setCityFilter("");
-                          setTypeFilter("");
-                          setDateFilter("all");
-                        }}
-                        className="w-full py-2 text-sm text-gray-600 hover:text-gray-800"
-                      >
-                        Limpar filtros
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </div>
 
-        {/* Leads Content */}
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+        {/* Botão de filtros avançados */}
+        <div className="px-4 pb-3 flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              showFilters || nameFilter || cityFilter || typeFilter || dateFilter !== "all"
+                ? "bg-teal-50 text-teal-700 border border-teal-200"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            Filtros
+            {(nameFilter || cityFilter || typeFilter || dateFilter !== "all") && (
+              <span className="w-2 h-2 rounded-full bg-teal-500" />
+            )}
+          </button>
+
+          {/* Quick stats */}
+          <div className="ml-auto text-sm text-gray-500">
+            {filteredLeads.length} {filteredLeads.length === 1 ? "lead" : "leads"}
+          </div>
+        </div>
+
+        {/* Filtros avançados colapsáveis */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden border-t border-gray-100"
+            >
+              <div className="px-4 py-3 bg-gray-50 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Nome..."
+                    value={nameFilter}
+                    onChange={(e) => setNameFilter(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Cidade..."
+                    value={cityFilter}
+                    onChange={(e) => setCityFilter(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  />
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">Tipo</option>
+                    <option value="HOUSE">Casa</option>
+                    <option value="APARTMENT">Apartamento</option>
+                    <option value="CONDO">Condomínio</option>
+                    <option value="TOWNHOUSE">Sobrado</option>
+                    <option value="STUDIO">Studio</option>
+                    <option value="LAND">Terreno</option>
+                    <option value="RURAL">Imóvel rural</option>
+                    <option value="COMMERCIAL">Comercial</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  {[
+                    { value: "all" as const, label: "Qualquer data" },
+                    { value: "today" as const, label: "Hoje" },
+                    { value: "last7" as const, label: "7 dias" },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      onClick={() => setDateFilter(item.value)}
+                      className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                        dateFilter === item.value
+                          ? "bg-teal-600 text-white"
+                          : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+                {(nameFilter || cityFilter || typeFilter || dateFilter !== "all") && (
+                  <button
+                    onClick={() => {
+                      setNameFilter("");
+                      setCityFilter("");
+                      setTypeFilter("");
+                      setDateFilter("all");
+                    }}
+                    className="w-full py-2 text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+
+      {/* Leads Content */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {error ? (
           <EmptyState
             title="Não foi possível carregar seus leads"
@@ -1682,8 +1631,7 @@ export default function MyLeadsPage() {
             })}
           </div>
         )}
-        </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
