@@ -85,16 +85,6 @@ export default function BrokerAssistantPage() {
   const role = (session as any)?.user?.role || (session as any)?.role;
   const realtorId = (session as any)?.user?.id || (session as any)?.userId || "";
 
-  const [metricsDays, setMetricsDays] = useState<1 | 7 | 30 | 90>(7);
-  const [metricsLoading, setMetricsLoading] = useState(false);
-  const [metricsError, setMetricsError] = useState<string | null>(null);
-  const [metrics, setMetrics] = useState<null | {
-    days: number;
-    total: number;
-    counts: Record<string, number>;
-    newestAt: string | null;
-  }>(null);
-
   const [category, setCategory] = useState<CategoryKey>("ALL");
   const [query, setQuery] = useState<string>("");
   const [priority, setPriority] = useState<"" | "LOW" | "MEDIUM" | "HIGH">("");
@@ -410,33 +400,6 @@ export default function BrokerAssistantPage() {
     if (!realtorId || !canAccess) return;
     fetchStats();
 
-    try {
-      setMetricsLoading(true);
-      setMetricsError(null);
-      fetch(`/api/assistant/metrics?context=REALTOR&days=${metricsDays}`, { cache: "no-store" })
-        .then((r) => r.json().then((j) => ({ r, j })).catch(() => ({ r, j: null })))
-        .then(({ r, j }: any) => {
-          if (!r?.ok || !j?.success) {
-            throw new Error(j?.error || "Não conseguimos carregar métricas agora.");
-          }
-          setMetrics({
-            days: Number(j.days || metricsDays),
-            total: Number(j.total || 0),
-            counts: (j.counts && typeof j.counts === "object" ? j.counts : {}) as Record<string, number>,
-            newestAt: j.newestAt ? String(j.newestAt) : null,
-          });
-        })
-        .catch((e: any) => {
-          setMetrics(null);
-          setMetricsError(e?.message || "Não conseguimos carregar métricas agora.");
-        })
-        .finally(() => {
-          setMetricsLoading(false);
-        });
-    } catch {
-      setMetricsLoading(false);
-    }
-
     let cancelled = false;
     let interval: any;
     interval = setInterval(() => {
@@ -469,7 +432,7 @@ export default function BrokerAssistantPage() {
         clearInterval(interval);
       };
     }
-  }, [realtorId, canAccess, fetchStats, metricsDays]);
+  }, [realtorId, canAccess, fetchStats]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -535,50 +498,6 @@ export default function BrokerAssistantPage() {
                   </p>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-gray-200 bg-white px-3 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-[12px] font-extrabold text-gray-900">Uso da IA</p>
-                    <select
-                      value={metricsDays}
-                      onChange={(e) => setMetricsDays(Number(e.target.value) as any)}
-                      className="rounded-xl border border-gray-200 bg-white px-2 py-1 text-[12px] font-semibold text-gray-700"
-                      aria-label="Período"
-                    >
-                      <option value={1}>Hoje</option>
-                      <option value={7}>7 dias</option>
-                      <option value={30}>30 dias</option>
-                      <option value={90}>90 dias</option>
-                    </select>
-                  </div>
-
-                  {metricsError ? (
-                    <div className="mt-2 text-[12px] font-semibold text-amber-700">{metricsError}</div>
-                  ) : metricsLoading ? (
-                    <div className="mt-2 text-[12px] text-gray-600">Carregando métricas...</div>
-                  ) : (
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      {(() => {
-                        const c = metrics?.counts || {};
-                        const generated = Number(c.ASSISTANT_DRAFT_GENERATED || 0) + Number(c.ASSISTANT_DRAFT_FALLBACK || 0);
-                        const copied = Number(c.ASSISTANT_DRAFT_COPIED || 0);
-                        const sent = Number(c.ASSISTANT_DRAFT_SENT || 0);
-                        const resolved = Number(c.ASSISTANT_ITEM_RESOLVED || 0);
-                        const cells = [
-                          { label: "Gerados", value: generated },
-                          { label: "Copiados", value: copied },
-                          { label: "Enviados", value: sent },
-                          { label: "Resolvidos", value: resolved },
-                        ];
-                        return cells.map((it) => (
-                          <div key={it.label} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-                            <div className="text-[10px] font-semibold text-gray-600">{it.label}</div>
-                            <div className="mt-0.5 text-[14px] font-extrabold text-gray-900 tabular-nums">{it.value}</div>
-                          </div>
-                        ));
-                      })()}
-                    </div>
-                  )}
-                </div>
               </div>
           </aside>
 

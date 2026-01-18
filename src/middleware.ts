@@ -37,6 +37,18 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(request, response);
   }
 
+  if (
+    pathname === "/broker/agenda" ||
+    pathname === "/broker/agenda/" ||
+    pathname === "/broker/queue" ||
+    pathname === "/broker/queue/"
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/broker/dashboard";
+    const response = NextResponse.redirect(url);
+    return applySecurityHeaders(request, response);
+  }
+
   if (pathname.startsWith("/broker/apply")) {
     const response = NextResponse.redirect(new URL("/broker/dashboard", request.url));
     return applySecurityHeaders(request, response);

@@ -28,27 +28,7 @@ export async function GET(req: NextRequest) {
 
     const now = new Date();
 
-    const startOfDay = new Date(now);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(now);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const [agendaToday, queueReserved, assistantOpen, unreadChats] = await Promise.all([
-      prisma.lead.count({
-        where: {
-          realtorId: String(userId),
-          visitDate: { gte: startOfDay, lte: endOfDay },
-          visitTime: { not: null },
-          status: { notIn: ["CANCELLED", "EXPIRED"] },
-        },
-      }),
-      prisma.lead.count({
-        where: {
-          realtorId: String(userId),
-          status: "WAITING_REALTOR_ACCEPT",
-          reservedUntil: { gt: now },
-        },
-      }),
+    const [assistantOpen, unreadChats] = await Promise.all([
       (prisma as any).assistantItem.count({
         where: {
           context: "REALTOR",
@@ -119,8 +99,6 @@ export async function GET(req: NextRequest) {
       success: true,
       metrics: {
         unreadChats: Number(unreadChats || 0),
-        agendaToday: Number(agendaToday || 0),
-        queueReserved: Number(queueReserved || 0),
         assistantOpen: Number(assistantOpen || 0),
       },
     });

@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
-  Activity,
-  CalendarClock,
   Kanban,
   LayoutDashboard,
   MessageCircle,
@@ -29,8 +27,6 @@ type NavItem = {
 
 type BrokerNavMetrics = {
   unreadChats: number;
-  agendaToday: number;
-  queueReserved: number;
   assistantOpen: number;
 };
 
@@ -39,8 +35,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/broker/leads", label: "Leads", icon: ClipboardList },
   { href: "/broker/crm", label: "Funil", icon: Kanban },
   { href: "/broker/chats", label: "Chats", icon: MessageSquare, badgeKey: "unreadChats" },
-  { href: "/broker/agenda", label: "Agenda", icon: CalendarClock, badgeKey: "agendaToday" },
-  { href: "/broker/queue", label: "Fila", icon: Activity, badgeKey: "queueReserved" },
   { href: "/broker/assistant", label: "Assistente", icon: Sparkles, badgeKey: "assistantOpen" },
   { href: "/broker/teams", label: "Chat do time", icon: MessageCircle },
   { href: "/broker/properties", label: "Imóveis", icon: Home },
@@ -112,22 +106,6 @@ function sectionFromPath(pathname: string) {
     };
   }
 
-  if (p.startsWith("/broker/agenda")) {
-    return {
-      title: "Agenda de visitas",
-      description: "Visitas marcadas e próximos encontros com clientes.",
-      crumb: "Agenda",
-    };
-  }
-
-  if (p.startsWith("/broker/queue")) {
-    return {
-      title: "Fila de captação",
-      description: "Sua posição e performance dentro da fila de leads.",
-      crumb: "Fila",
-    };
-  }
-
   if (p.startsWith("/broker/assistant")) {
     return {
       title: "Assistente",
@@ -188,8 +166,6 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
       if (response.ok && data?.success && data.metrics) {
         setMetrics({
           unreadChats: Number(data.metrics.unreadChats || 0),
-          agendaToday: Number(data.metrics.agendaToday || 0),
-          queueReserved: Number(data.metrics.queueReserved || 0),
           assistantOpen: Number(data.metrics.assistantOpen || 0),
         });
       }
@@ -261,8 +237,17 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
     if (!item.badgeKey || !metrics) return null;
     const value = metrics[item.badgeKey] || 0;
     if (value <= 0) return null;
+
+    if (item.badgeKey === "unreadChats") {
+      return (
+        <span className="ml-1 text-[11px] font-extrabold text-red-600 tabular-nums">
+          {value > 99 ? "99+" : value}
+        </span>
+      );
+    }
+
     return (
-      <span className="absolute -top-1 -right-1 md:static md:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+      <span className="md:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
         {value > 99 ? "99+" : value}
       </span>
     );
@@ -274,8 +259,10 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
       <RealtorAssistantWidget />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div
-          className={`relative overflow-hidden rounded-3xl border border-gray-200/60 bg-white/60 backdrop-blur shadow-soft transition-[padding] duration-300 ease-in-out ${
-            assistantOpen ? "lg:pr-[420px]" : ""
+          className={`relative overflow-hidden rounded-3xl border border-gray-200/60 bg-white/60 backdrop-blur shadow-soft transition-transform duration-300 ease-in-out will-change-transform ${
+            assistantOpen
+              ? "lg:translate-x-[calc(-1*min(420px,max(0px,(100vw-80rem)/2)))]"
+              : ""
           }`}
         >
           <div className="absolute -top-28 -right-28 h-72 w-72 rounded-full bg-emerald-200/30 blur-3xl" />
