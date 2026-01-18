@@ -7,9 +7,9 @@
   --foreground: #171717;
   --color-background: #ffffff;
   --color-foreground: #171717;
-  --site-gutter: 12px;
-  --site-gutter-sm: 16px;
-  --site-gutter-lg: 24px;
+  --site-gutter: 6px;
+  --site-gutter-sm: 8px;
+  --site-gutter-lg: 12px;
   
   /* Paleta: Vidro Metálico Verde-Petróleo */
   --brand-teal: #00736E; /* Verde-petróleo brilhante */
