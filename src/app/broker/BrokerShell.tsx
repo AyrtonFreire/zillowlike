@@ -257,13 +257,9 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-gray-50">
       <ModernNavbar />
       <RealtorAssistantWidget />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pb-6">
         <div
-          className={`relative overflow-hidden rounded-3xl border border-gray-200/60 bg-white/60 backdrop-blur shadow-soft transition-transform duration-300 ease-in-out will-change-transform ${
-            assistantOpen
-              ? "lg:translate-x-[calc(-1*min(420px,max(0px,(100vw-80rem)/2)))]"
-              : ""
-          }`}
+          className="relative overflow-hidden rounded-3xl border border-gray-200/60 bg-white/60 backdrop-blur shadow-soft"
         >
           <div className="absolute -top-28 -right-28 h-72 w-72 rounded-full bg-emerald-200/30 blur-3xl" />
           <div className="absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-teal-200/30 blur-3xl" />
