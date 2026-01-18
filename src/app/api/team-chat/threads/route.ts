@@ -4,6 +4,8 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const runtime = "nodejs";
+
 const QuerySchema = z.object({
   teamId: z.string().trim().optional(),
 });
@@ -122,29 +124,63 @@ export async function GET(req: NextRequest) {
     const teamMembers = (team.members as any[]).filter((m) => m?.user?.role === "REALTOR");
 
     if (isRealtor) {
-      await (prisma as any).teamChatThread.upsert({
+      const existing: any = await (prisma as any).teamChatThread.findUnique({
         where: { teamId_realtorId: { teamId: String(team.id), realtorId: String(userId) } },
-        create: {
-          teamId: String(team.id),
-          ownerId: String(team.ownerId),
-          realtorId: String(userId),
-        },
-        update: { ownerId: String(team.ownerId) },
+        select: { id: true, ownerId: true },
       });
+
+      if (!existing) {
+        await (prisma as any).teamChatThread.create({
+          data: {
+            teamId: String(team.id),
+            ownerId: String(team.ownerId),
+            realtorId: String(userId),
+          },
+        });
+      } else if (String(existing.ownerId) !== String(team.ownerId)) {
+        await (prisma as any).teamChatThread.update({
+          where: { id: String(existing.id) },
+          data: { ownerId: String(team.ownerId) },
+        });
+      }
     } else {
-      await Promise.all(
-        teamMembers.map((member) =>
-          (prisma as any).teamChatThread.upsert({
-            where: { teamId_realtorId: { teamId: String(team.id), realtorId: String(member.userId) } },
-            create: {
+      const realtorIds = teamMembers.map((member) => String(member.userId));
+
+      if (realtorIds.length) {
+        const existingThreads: any[] = await (prisma as any).teamChatThread.findMany({
+          where: { teamId: String(team.id), realtorId: { in: realtorIds } },
+          select: { id: true, realtorId: true, ownerId: true },
+        });
+
+        const existingByRealtor = new Map<string, any>();
+        for (const thread of existingThreads) {
+          existingByRealtor.set(String(thread.realtorId), thread);
+        }
+
+        const missing = realtorIds.filter((rid) => !existingByRealtor.has(String(rid)));
+        if (missing.length) {
+          await (prisma as any).teamChatThread.createMany({
+            data: missing.map((rid) => ({
               teamId: String(team.id),
               ownerId: String(team.ownerId),
-              realtorId: String(member.userId),
-            },
-            update: { ownerId: String(team.ownerId) },
-          })
-        )
-      );
+              realtorId: String(rid),
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        const needsOwnerUpdate = existingThreads.filter((t) => String(t.ownerId) !== String(team.ownerId));
+        if (needsOwnerUpdate.length) {
+          await Promise.all(
+            needsOwnerUpdate.map((t) =>
+              (prisma as any).teamChatThread.update({
+                where: { id: String(t.id) },
+                data: { ownerId: String(team.ownerId) },
+              })
+            )
+          );
+        }
+      }
     }
 
     const rawThreads = await (prisma as any).teamChatThread.findMany({

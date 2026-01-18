@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit-log";
 import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
 
+export const runtime = "nodejs";
+
 const MessageSchema = z.object({
   content: z.string().trim().min(1, "Escreva uma mensagem antes de enviar.").max(2000, "A mensagem está muito longa."),
 });

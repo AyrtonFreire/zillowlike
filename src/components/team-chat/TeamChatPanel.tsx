@@ -113,7 +113,7 @@ function renderMessageContent(content: string) {
 }
 
 export default function TeamChatPanel({ teamId }: { teamId?: string }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const role = (session as any)?.user?.role || (session as any)?.role || null;
   const userId = (session as any)?.user?.id || (session as any)?.userId || "";
   const isRealtor = role === "REALTOR";
@@ -124,10 +124,19 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [realtimeError, setRealtimeError] = useState<string | null>(null);
+
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<TeamChatMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<{ hasMore: boolean; nextCursor: string | null }>({
+    hasMore: false,
+    nextCursor: null,
+  });
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const selectedThreadIdRef = useRef<string | null>(null);
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -168,11 +177,13 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
         const list: TeamChatThread[] = Array.isArray(data.threads) ? data.threads : [];
         setThreads(list);
 
-        if (!selectedThreadId && list.length > 0) {
-          setSelectedThreadId(String(list[0].id));
-        }
-        if (list.length === 0) {
-          setSelectedThreadId(null);
+        setSelectedThreadId((prev) => {
+          if (!list.length) return null;
+          if (prev && list.some((thread) => String(thread.id) === String(prev))) return prev;
+          return String(list[0].id);
+        });
+
+        if (!list.length) {
           setMessages([]);
         }
       } catch (err: any) {
@@ -182,7 +193,7 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
         if (!silent) setLoading(false);
       }
     },
-    [selectedThreadId, teamId]
+    [teamId]
   );
 
   const markThreadRead = useCallback(async (threadId: string) => {
@@ -195,52 +206,139 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
   }, []);
 
   const fetchMessages = useCallback(
-    async (threadId: string, silent = false) => {
+    async (
+      threadId: string,
+      options?: { silent?: boolean; cursor?: string | null; append?: boolean; markRead?: boolean }
+    ) => {
       if (!threadId) return;
+      const currentSelectionAtStart = selectedThreadIdRef.current;
+      const silent = options?.silent ?? false;
+      const append = options?.append ?? false;
+      const markRead = options?.markRead ?? !append;
+
       try {
         if (!silent) {
-          setMessagesLoading(true);
-          setMessagesError(null);
+          if (append) {
+            setLoadingMore(true);
+          } else {
+            setMessagesLoading(true);
+            setMessagesError(null);
+          }
         }
-        const response = await fetch(`/api/team-chat/threads/${threadId}`);
+
+        const params = new URLSearchParams();
+        if (options?.cursor) params.set("before", options.cursor);
+        params.set("limit", "40");
+        const query = params.toString();
+        const response = await fetch(`/api/team-chat/threads/${threadId}${query ? `?${query}` : ""}`);
         const data = await response.json();
         if (!response.ok || !data?.success) {
           throw new Error(data?.error || "Nao foi possivel carregar esta conversa.");
         }
+
         const list: TeamChatMessage[] = Array.isArray(data.messages) ? data.messages : [];
-        setMessages(list);
-        await markThreadRead(threadId);
-        setThreads((prev) =>
-          prev.map((thread) =>
-            thread.id === threadId ? { ...thread, unreadCount: 0 } : thread
-          )
-        );
+        const isStillSelected = selectedThreadIdRef.current === threadId;
+
+        if (isStillSelected) {
+          if (append) {
+            setMessages((prev) => {
+              const seen = new Set(prev.map((msg) => msg.id));
+              const older = list.filter((msg) => !seen.has(msg.id));
+              return [...older, ...prev];
+            });
+          } else {
+            setMessages(list);
+          }
+
+          const nextCursor = data?.pagination?.nextCursor ?? null;
+          const hasMore = Boolean(data?.pagination?.hasMore);
+          setPagination({ hasMore, nextCursor });
+
+          if (markRead) {
+            await markThreadRead(threadId);
+            setThreads((prev) =>
+              prev.map((thread) =>
+                thread.id === threadId ? { ...thread, unreadCount: 0 } : thread
+              )
+            );
+          }
+        }
       } catch (err: any) {
         console.error("Error loading team chat messages:", err);
-        if (!silent) {
+        const isStillSelected = selectedThreadIdRef.current === threadId;
+        if (!silent && isStillSelected && !append) {
           setMessagesError(err?.message || "Nao foi possivel carregar esta conversa.");
         }
       } finally {
-        if (!silent) setMessagesLoading(false);
+        const isStillSelected = selectedThreadIdRef.current === threadId;
+        const selectionDidNotChange = currentSelectionAtStart === selectedThreadIdRef.current;
+        if (!silent && isStillSelected && selectionDidNotChange) {
+          if (append) {
+            setLoadingMore(false);
+          } else {
+            setMessagesLoading(false);
+          }
+        }
       }
     },
     [markThreadRead]
   );
 
   useEffect(() => {
+    if (status !== "authenticated") return;
     fetchThreads();
-  }, [fetchThreads]);
+  }, [fetchThreads, status]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const interval = setInterval(() => {
+      fetchThreads(true);
+    }, 30_000);
+
+    return () => clearInterval(interval);
+  }, [fetchThreads, status]);
 
   useEffect(() => {
     if (selectedThreadId) {
+      selectedThreadIdRef.current = selectedThreadId;
       fetchMessages(selectedThreadId);
+    } else {
+      selectedThreadIdRef.current = null;
     }
   }, [selectedThreadId, fetchMessages]);
 
   useEffect(() => {
     if (!threadIdsKey) return;
+    if (!userId) return;
     const pusher = getPusherClient();
     const threadIds = threadIdsKey.split("|").filter(Boolean);
+
+    const connectionErrorHandler = (err: any) => {
+      const message = err?.error?.message || err?.message || "Falha na conexao em tempo real.";
+      setRealtimeError(String(message));
+    };
+
+    const connectionStateHandler = (states: any) => {
+      if (states?.current === "connected") {
+        setRealtimeError(null);
+      }
+    };
+
+    const subscriptionErrorHandler = (status: any) => {
+      const code = typeof status === "number" ? status : status?.status;
+      if (code === 401 || code === 403) {
+        setRealtimeError("Sem permissao para realtime (verifique login/permissoes).");
+        return;
+      }
+      if (code) {
+        setRealtimeError(`Realtime indisponivel (status ${String(code)}).`);
+        return;
+      }
+      setRealtimeError("Realtime indisponivel.");
+    };
+
+    pusher.connection.bind("error", connectionErrorHandler);
+    pusher.connection.bind("state_change", connectionStateHandler);
 
     const handler = (payload: { threadId: string; message: TeamChatMessage }) => {
       if (!payload?.threadId || !payload?.message) return;
@@ -264,6 +362,25 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
       if (payload.threadId === selectedThreadId) {
         setMessages((prev) => {
           if (prev.some((msg) => msg.id === incoming.id)) return prev;
+
+          const isMine = String(incoming.senderId) === String(userId);
+          if (isMine) {
+            const incomingTime = incoming.createdAt ? new Date(incoming.createdAt).getTime() : Date.now();
+            for (let i = prev.length - 1; i >= 0; i -= 1) {
+              const candidate = prev[i];
+              if (!String(candidate.id || "").startsWith("temp-")) continue;
+              if (String(candidate.senderId) !== String(incoming.senderId)) continue;
+              if (String(candidate.content || "") !== String(incoming.content || "")) continue;
+
+              const candidateTime = candidate.createdAt ? new Date(candidate.createdAt).getTime() : incomingTime;
+              if (Math.abs(incomingTime - candidateTime) > 60_000) continue;
+
+              const next = [...prev];
+              next[i] = { ...candidate, ...incoming };
+              return next;
+            }
+          }
+
           return [...prev, incoming];
         });
         markThreadRead(payload.threadId);
@@ -274,14 +391,18 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
       const channelName = `private-team-chat-${threadId}`;
       const channel = pusher.subscribe(channelName);
       channel.bind(PUSHER_EVENTS.TEAM_CHAT_MESSAGE, handler as any);
+      channel.bind("pusher:subscription_error", subscriptionErrorHandler as any);
     });
 
     return () => {
+      pusher.connection.unbind("error", connectionErrorHandler);
+      pusher.connection.unbind("state_change", connectionStateHandler);
       threadIds.forEach((threadId) => {
         try {
           const channelName = `private-team-chat-${threadId}`;
           const channel = pusher.channel(channelName);
           channel?.unbind(PUSHER_EVENTS.TEAM_CHAT_MESSAGE, handler as any);
+          channel?.unbind("pusher:subscription_error", subscriptionErrorHandler as any);
           pusher.unsubscribe(channelName);
         } catch {
           // ignore
@@ -297,9 +418,21 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
   }, [messages.length, selectedThreadId]);
 
   const handleSelectThread = (threadId: string) => {
+    selectedThreadIdRef.current = threadId;
     setSelectedThreadId(threadId);
     setMessages([]);
     setMessagesError(null);
+    setPagination({ hasMore: false, nextCursor: null });
+  };
+
+  const handleLoadMore = async () => {
+    if (!activeThread?.id || loadingMore || !pagination.hasMore || !pagination.nextCursor) return;
+    await fetchMessages(activeThread.id, {
+      cursor: pagination.nextCursor,
+      append: true,
+      silent: false,
+      markRead: false,
+    });
   };
 
   const handleSend = async () => {
@@ -424,6 +557,18 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
     );
   };
 
+  if (status === "loading") {
+    return (
+      <div className="py-12">
+        <CenteredSpinner message="Carregando sessao..." />
+      </div>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return <EmptyState title="Voce precisa entrar" description="Faca login para ver as conversas do time." />;
+  }
+
   if (loading) {
     return (
       <div className="py-12">
@@ -515,6 +660,7 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-900 truncate">{activeThread ? renderThreadLabel(activeThread) : ""}</p>
               <p className="text-xs text-gray-500">Somente texto e links.</p>
+              {realtimeError ? <p className="text-xs text-amber-600 mt-1">{realtimeError}</p> : null}
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <MessageCircle className="w-4 h-4" />
@@ -523,6 +669,18 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            {pagination.hasMore ? (
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                >
+                  {loadingMore ? "Carregando" : "Carregar mensagens anteriores"}
+                </button>
+              </div>
+            ) : null}
             {messagesLoading ? (
               <CenteredSpinner message="Carregando conversa..." />
             ) : messagesError ? (

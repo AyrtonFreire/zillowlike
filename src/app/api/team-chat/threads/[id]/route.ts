@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+export const runtime = "nodejs";
+
+const QuerySchema = z.object({
+  before: z.string().trim().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
 
 async function getSessionContext() {
   const session: any = await getServerSession(authOptions);
@@ -23,7 +31,7 @@ function canAccessThread(params: {
   return false;
 }
 
-export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
     const { userId, role } = await getSessionContext();
@@ -53,16 +61,39 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
     }
 
-    const [messages, receipt] = await Promise.all([
+    const url = new URL(req.url);
+    const parsed = QuerySchema.safeParse({
+      before: url.searchParams.get("before") || undefined,
+      limit: url.searchParams.get("limit") || undefined,
+    });
+
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: "Parâmetros inválidos" }, { status: 400 });
+    }
+
+    const limit = parsed.data.limit ?? 40;
+    const before = parsed.data.before ? new Date(parsed.data.before) : null;
+    const where: any = { threadId: String(thread.id) };
+    if (before && !Number.isNaN(before.getTime())) {
+      where.createdAt = { lt: before };
+    }
+
+    const [messagesDesc, receipt] = await Promise.all([
       (prisma as any).teamChatMessage.findMany({
-        where: { threadId: String(thread.id) },
-        orderBy: { createdAt: "asc" },
+        where,
+        orderBy: { createdAt: "desc" },
+        take: limit + 1,
         include: { sender: { select: { id: true, name: true, role: true, image: true } } },
       }),
       (prisma as any).teamChatReadReceipt.findUnique({
         where: { threadId_userId: { threadId: String(thread.id), userId: String(userId) } },
       }),
     ]);
+
+    const hasMore = messagesDesc.length > limit;
+    const sliced = hasMore ? messagesDesc.slice(0, limit) : messagesDesc;
+    const nextCursor = hasMore ? sliced[sliced.length - 1]?.createdAt : null;
+    const messages = [...sliced].reverse();
 
     return NextResponse.json({
       success: true,
@@ -104,6 +135,10 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
           : null,
         createdAt: message.createdAt ? new Date(message.createdAt).toISOString() : null,
       })),
+      pagination: {
+        hasMore,
+        nextCursor: nextCursor ? new Date(nextCursor).toISOString() : null,
+      },
     });
   } catch (error) {
     console.error("Error loading team chat thread:", error);

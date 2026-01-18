@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const runtime = "nodejs";
+
 async function getSessionContext() {
   const session: any = await getServerSession(authOptions);
   if (!session?.user && !session?.userId) return { userId: null as string | null, role: null as string | null };
