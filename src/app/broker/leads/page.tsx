@@ -7,19 +7,17 @@ import { useRouter } from "next/navigation";
 import { 
   Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock, RefreshCw, 
   MessageCircle, AlertCircle, ChevronDown, ChevronRight, Filter, User,
-  ExternalLink, LayoutList, Columns3, Users, Handshake, Trophy, X,
-  Bell, PhoneOff, CalendarClock, Sparkles, GripVertical
+  ExternalLink, Columns3, Users, Handshake, Trophy, X,
+  Bell, PhoneOff, CalendarClock
 } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, MouseSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
 import CountdownTimer from "@/components/queue/CountdownTimer";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
-import { canonicalToBoardGroup, boardGroupToCanonical } from "@/lib/lead-pipeline";
+import { canonicalToBoardGroup } from "@/lib/lead-pipeline";
 import { getPusherClient } from "@/lib/pusher-client";
 import { ptBR } from "@/lib/i18n/property";
 
@@ -56,12 +54,6 @@ function getLeadPipelineStage(lead: Lead): PipelineStage {
   return canonicalToBoardGroup(canonicalStage as any, lead.status) as PipelineStage;
 }
 
-// Mapeia a coluna do quadro (4 grupos) para um estágio canônico (7 etapas) ao salvar no backend
-function mapPipelineGroupToCanonicalStage(lead: Lead, newStage: PipelineStage): "NEW" | "CONTACT" | "VISIT" | "PROPOSAL" | "DOCUMENTS" | "WON" | "LOST" {
-  const currentStage = ((lead as any).pipelineStage as string | undefined) || null;
-  return boardGroupToCanonical(newStage as any, currentStage as any);
-}
-
 interface Lead {
   id: string;
   status: "RESERVED" | "ACCEPTED" | "COMPLETED";
@@ -73,6 +65,9 @@ interface Lead {
   nextActionNote?: string | null;
   lastContactAt?: string | null;
   hasUnreadMessages?: boolean;
+  lastMessageAt?: string | null;
+  lastMessagePreview?: string | null;
+  lastMessageFromClient?: boolean;
   clientChatToken?: string | null;
   chatUrl?: string | null;
   property: {
@@ -104,32 +99,6 @@ interface LeadNote {
   createdAt: string;
 }
 
-// Componente de coluna droppable para o pipeline
-function DroppableColumn({
-  stageId,
-  children,
-  className,
-}: {
-  stageId: PipelineStage;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  const { isOver, setNodeRef } = useDroppable({ id: stageId });
-  
-  return (
-    <div
-      ref={setNodeRef}
-      className={`flex flex-col rounded-xl border transition-colors w-full min-w-0 max-h-[70vh] ${
-        isOver
-          ? "border-teal-400 bg-teal-50/40 ring-2 ring-teal-200"
-          : "border-gray-200 bg-gray-50"
-      } ${className || ""}`}
-    >
-      {children}
-    </div>
-  );
-}
-
 function StageChip({
   label,
   count,
@@ -158,131 +127,6 @@ function StageChip({
   );
 }
 
-function DroppableStageChip({
-  stageId,
-  label,
-  count,
-  active,
-  onClick,
-}: {
-  stageId: PipelineStage;
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const { isOver, setNodeRef } = useDroppable({ id: stageId });
-
-  return (
-    <button
-      ref={setNodeRef}
-      onClick={onClick}
-      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-        active
-          ? "bg-teal-600 text-white shadow-sm"
-          : isOver
-            ? "bg-teal-50 text-teal-800 ring-2 ring-teal-200"
-            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-      }`}
-    >
-      {label}
-      <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${active ? "bg-white/20" : "bg-gray-200"}`}>
-        {count}
-      </span>
-    </button>
-  );
-}
-
-// Componente de card draggable para o pipeline (ultra-compacto)
-function DraggableCard({
-  lead,
-  formatPrice,
-  onOpenMoveSheet,
-  enableDrag,
-}: {
-  lead: Lead;
-  formatPrice: (n: number) => string;
-  onOpenMoveSheet?: (leadId: string) => void;
-  enableDrag?: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id });
-
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
-
-  const isClickable = enableDrag === false && !!onOpenMoveSheet;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...(enableDrag === false ? {} : listeners)}
-      {...(enableDrag === false ? {} : attributes)}
-      onClick={() => {
-        if (!isClickable) return;
-        onOpenMoveSheet?.(lead.id);
-      }}
-      className={`group bg-white rounded-lg border border-gray-200 px-3 py-2 transition-all ${
-        isDragging ? "opacity-60 shadow-lg" : "hover:shadow-md"
-      } ${isClickable ? "cursor-pointer" : ""} select-none`}
-    >
-      <div className="flex gap-2">
-        <div className="mt-0.5 -ml-1 p-1 text-gray-300 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-          <GripVertical className="w-4 h-4" />
-        </div>
-        {/* Mini thumbnail */}
-        <div className="relative w-10 h-10 rounded bg-gray-100 overflow-hidden flex-shrink-0">
-          {lead.property.images[0]?.url ? (
-            <Image
-              src={lead.property.images[0].url}
-              alt=""
-              fill
-              draggable={false}
-              className="object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
-              <MapPin className="w-4 h-4" />
-            </div>
-          )}
-        </div>
-        
-        {/* Info compacta */}
-        <div className="flex-1 min-w-0">
-          <p className="text-[12px] font-semibold text-gray-900 line-clamp-2 leading-snug">
-            {lead.property.title}
-          </p>
-          <p className="text-[10px] text-teal-700 font-semibold">
-            {formatPrice(lead.property.price)}
-          </p>
-          <div className="mt-1 flex items-center justify-between gap-2">
-            <p className="text-[10px] text-gray-500 truncate">
-              {lead.contact?.name || "Sem contato"}
-            </p>
-            <p className="text-[10px] text-gray-400 truncate">
-              {lead.property.city}-{lead.property.state}
-            </p>
-          </div>
-        </div>
-      </div>
-      
-      {/* Indicadores de alerta */}
-      {(lead.hasUnreadMessages || lead.nextActionDate) && (
-        <div className="flex gap-1 mt-1.5">
-          {lead.hasUnreadMessages && (
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" title="Mensagem não lida" />
-          )}
-          {lead.nextActionDate && new Date(lead.nextActionDate) <= new Date() && (
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" title="Tarefa pendente" />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function MyLeadsPage() {
   const router = useRouter();
@@ -290,12 +134,11 @@ export default function MyLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   // Toggle visualização Lista/Pipeline (lendo query param `view`)
   const searchParams = useSearchParams();
   const propertyIdFromUrl = searchParams.get("propertyId");
-  const initialView = (searchParams.get("view") === "pipeline" ? "pipeline" : "list") as
-    | "list"
-    | "pipeline";
 
   const normalizePipelineStageFromUrl = useCallback((value: string | null): "all" | PipelineStage => {
     const v = String(value || "").trim().toUpperCase();
@@ -315,11 +158,6 @@ export default function MyLeadsPage() {
   const [pipelineFilter, setPipelineFilter] = useState<"all" | PipelineStage>(
     () => normalizePipelineStageFromUrl(stageFromUrl)
   );
-  const [mobileActiveStage, setMobileActiveStage] = useState<PipelineStage>("NEW");
-  const [moveSheetLeadId, setMoveSheetLeadId] = useState<string | null>(null);
-  const moveLeadToStageRef = useRef<
-    ((leadId: string, newStage: PipelineStage) => Promise<void>) | null
-  >(null);
   const [nameFilter, setNameFilter] = useState("");
   const [cityFilter, setCityFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -336,14 +174,6 @@ export default function MyLeadsPage() {
   // Estados para UI mobile
   const [showFilters, setShowFilters] = useState(false);
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
-  
-  const [viewMode, setViewMode] = useState<"list" | "pipeline">(initialView);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  
-  // Sensors para drag-and-drop
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } })
-  );
 
   const { data: session } = useSession();
   const realtorId = (session?.user as any)?.id || "";
@@ -358,12 +188,6 @@ export default function MyLeadsPage() {
   }, [realtorId]);
 
   useEffect(() => {
-    if (pipelineFilter !== "all") {
-      setMobileActiveStage(pipelineFilter);
-    }
-  }, [pipelineFilter]);
-
-  useEffect(() => {
     setPipelineFilter(normalizePipelineStageFromUrl(stageFromUrl));
   }, [stageFromUrl, normalizePipelineStageFromUrl]);
 
@@ -371,14 +195,26 @@ export default function MyLeadsPage() {
     setDateFilter(normalizeDateFilterFromUrl(dateFromUrl));
   }, [dateFromUrl, normalizeDateFilterFromUrl]);
 
-  const fetchLeads = useCallback(async (options?: { isBackground?: boolean }) => {
+  const fetchLeads = useCallback(async (options?: { isBackground?: boolean; append?: boolean; cursor?: string | null }) => {
     try {
       if (!realtorId) return;
-      if (!options?.isBackground) {
+      const append = !!options?.append;
+
+      if (!options?.isBackground && !append) {
         setError(null);
         setLoading(true);
       }
-      const response = await fetch("/api/leads/my-leads");
+
+      if (append) {
+        setLoadingMore(true);
+      }
+
+      const params = new URLSearchParams();
+      params.set("paged", "1");
+      params.set("limit", "40");
+      if (options?.cursor) params.set("cursor", String(options.cursor));
+
+      const response = await fetch(`/api/leads/my-leads?${params.toString()}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -388,21 +224,44 @@ export default function MyLeadsPage() {
         );
       }
 
-      const nextLeads = Array.isArray(data) ? data : [];
+      const nextItems = Array.isArray((data as any)?.items) ? ((data as any).items as Lead[]) : [];
+      const newCursor = typeof (data as any)?.nextCursor === "string" ? (data as any).nextCursor : null;
 
-      // Só atualiza o estado se houver mudança real para evitar animações desnecessárias
+      if (append) {
+        setLeads((prev) => {
+          const seen = new Set(prev.map((l) => String(l.id)));
+          const merged = [...prev];
+          for (const item of nextItems) {
+            const id = String((item as any)?.id);
+            if (!id || seen.has(id)) continue;
+            seen.add(id);
+            merged.push(item);
+          }
+          return merged;
+        });
+        setNextCursor(newCursor);
+        return;
+      }
+
+      // Refresh/primeira página: só atualiza se houver mudança real para evitar animações desnecessárias
       setLeads((prev) => {
         try {
-          const prevJson = JSON.stringify(prev);
-          const nextJson = JSON.stringify(nextLeads);
+          const prevHead = prev.slice(0, nextItems.length);
+          const prevJson = JSON.stringify(prevHead);
+          const nextJson = JSON.stringify(nextItems);
           if (prevJson === nextJson) {
             return prev;
           }
         } catch {
-          // Se der algum erro na comparação, segue com a atualização normal
+          // ignore
         }
-        return nextLeads;
+
+        // Mantém itens já carregados depois da primeira página (para não "sumir" ao fazer refresh)
+        const seen = new Set(nextItems.map((l) => String((l as any)?.id)));
+        const tail = prev.filter((l) => !seen.has(String(l.id)));
+        return [...nextItems, ...tail];
       });
+      setNextCursor(newCursor);
     } catch (err: any) {
       console.error("Error fetching leads:", err);
       setError(
@@ -410,7 +269,10 @@ export default function MyLeadsPage() {
           "Não conseguimos carregar seus leads agora. Se quiser, tente novamente em alguns instantes."
       );
     } finally {
-      if (!options?.isBackground) {
+      if (options?.append) {
+        setLoadingMore(false);
+      }
+      if (!options?.isBackground && !options?.append) {
         setLoading(false);
       }
     }
@@ -692,91 +554,9 @@ export default function MyLeadsPage() {
     };
   }, [activeLeads, leadsWithTaskToday, now]);
 
-  // Função para mover lead de etapa no pipeline
-  const moveLeadToStage = async (leadId: string, newStage: PipelineStage) => {
-    const lead = leads.find((l) => l.id === leadId);
-    if (!lead) return;
-
-    const currentGroupStage = getLeadPipelineStage(lead);
-    if (currentGroupStage === newStage) return;
-
-    const currentCanonicalStage = ((lead as any).pipelineStage as string | undefined) || null;
-    const targetCanonicalStage = mapPipelineGroupToCanonicalStage(lead, newStage);
-
-    // Regra: mover para coluna "Fechado" com estágio canônico WON e status ACEITO encerra o lead de vez
-    if (newStage === "CLOSED" && targetCanonicalStage === "WON" && lead.status === "ACCEPTED") {
-      await handleComplete(leadId);
-      return;
-    }
-
-    try {
-      // Atualização otimista: atualiza o estágio canônico no array de leads
-      setLeads((prev) =>
-        prev.map((l) => (l.id === leadId ? ({ ...l, pipelineStage: targetCanonicalStage } as any) : l))
-      );
-
-      const response = await fetch(`/api/leads/${leadId}/pipeline`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: targetCanonicalStage }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data?.success) {
-        // Reverter se falhar
-        setLeads((prev) =>
-          prev.map((l) => (l.id === leadId ? ({ ...l, pipelineStage: currentCanonicalStage } as any) : l))
-        );
-        toast.error("Erro ao mover lead", data?.error || "Tente novamente.");
-      } else {
-        const stageLabel = PIPELINE_STAGES.find((s) => s.id === newStage)?.label || newStage;
-        toast.success("Lead atualizado!", `Movido para "${stageLabel}".`);
-      }
-    } catch (error) {
-      console.error("Error moving lead:", error);
-      // Reverte em caso de erro inesperado
-      setLeads((prev) =>
-        prev.map((l) => (l.id === leadId ? ({ ...l, pipelineStage: currentCanonicalStage } as any) : l))
-      );
-      toast.error("Erro ao mover lead", "Não foi possível atualizar.");
-    }
-  };
-
-  // Handlers para drag-and-drop
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveDragId(event.active.id as string);
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    setActiveDragId(null);
-    const { active, over } = event;
-    
-    if (!over) return;
-    
-    const leadId = active.id as string;
-    const newStage = over.id as PipelineStage;
-    
-    if (PIPELINE_STAGES.some(s => s.id === newStage)) {
-      await moveLeadToStage(leadId, newStage);
-    }
-  };
-
-  const activeLead = activeDragId ? leads.find(l => l.id === activeDragId) : null;
-  const moveSheetLead = moveSheetLeadId ? leads.find((l) => l.id === moveSheetLeadId) : null;
-
-  useEffect(() => {
-    moveLeadToStageRef.current = moveLeadToStage;
-  }, [moveLeadToStage]);
-
   const leadsBaseForView = useMemo(() => {
-    if (viewMode !== "pipeline") return activeLeads;
-    return leads.filter((lead) => {
-      if (lead.status !== "COMPLETED") return true;
-      if (!lead.completedAt) return false;
-      return new Date(lead.completedAt) >= sevenDaysAgo;
-    });
-  }, [viewMode, activeLeads, leads, sevenDaysAgo]);
+    return activeLeads;
+  }, [activeLeads]);
 
   const filteredLeads = leadsBaseForView.filter((lead) => {
     if (propertyIdFromUrl && lead.property?.id !== propertyIdFromUrl) return false;
@@ -816,22 +596,6 @@ export default function MyLeadsPage() {
 
     return true;
   });
-
-  const filteredLeadsByPipelineStage = useMemo(() => {
-    const grouped: Record<PipelineStage, Lead[]> = {
-      NEW: [],
-      CONTACT: [],
-      NEGOTIATION: [],
-      CLOSED: [],
-    };
-
-    filteredLeads.forEach((lead) => {
-      const stage = getLeadPipelineStage(lead);
-      grouped[stage].push(lead);
-    });
-
-    return grouped;
-  }, [filteredLeads]);
 
   const counts = useMemo(() => {
     const base = leadsBaseForView;
@@ -907,28 +671,6 @@ export default function MyLeadsPage() {
           {/* Toggle mobile + Filtros */}
           <div className="px-4 py-3">
             <div className="flex items-center gap-3">
-            {/* Toggle Lista/Pipeline - Mobile */}
-            <div className="sm:hidden flex items-center bg-gray-100 rounded-lg p-0.5">
-              <button
-                onClick={() => setViewMode("list")}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === "list" ? "bg-white text-teal-700 shadow-sm" : "text-gray-600"
-                }`}
-              >
-                <LayoutList className="w-3.5 h-3.5" />
-                Lista
-              </button>
-              <button
-                onClick={() => setViewMode("pipeline")}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === "pipeline" ? "bg-white text-teal-700 shadow-sm" : "text-gray-600"
-                }`}
-              >
-                <Columns3 className="w-3.5 h-3.5" />
-                Pipeline
-              </button>
-            </div>
-
             {/* Filtros - scroll horizontal */}
             <div className="flex-1">
               <div className="flex flex-wrap gap-2">
@@ -989,6 +731,14 @@ export default function MyLeadsPage() {
               <span className="w-2 h-2 rounded-full bg-teal-500" />
             )}
           </button>
+
+          <Link
+            href="/broker/crm"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+          >
+            <Columns3 className="w-4 h-4" />
+            Ver funil
+          </Link>
 
           {/* Quick stats */}
           <div className="ml-auto text-sm text-gray-500">
@@ -1096,221 +846,6 @@ export default function MyLeadsPage() {
             title="Nenhum lead ativo no momento"
             description="Quando novos leads surgirem, eles aparecem aqui automaticamente."
           />
-        ) : viewMode === "pipeline" ? (
-          /* ===== MODO PIPELINE ===== */
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            {/* Mobile: uma coluna por vez */}
-            <div className="md:hidden">
-              {(() => {
-                const activeStage = PIPELINE_STAGES.find((s) => s.id === mobileActiveStage) || PIPELINE_STAGES[0];
-                const Icon = activeStage.icon;
-                const stageLeads = filteredLeadsByPipelineStage[activeStage.id];
-
-                return (
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2 -mx-4 px-4 pb-1">
-                      <div className="flex flex-wrap gap-2">
-                        {(
-                          [
-                            { key: "NEW" as const, label: "Novos", count: counts.NEW },
-                            { key: "CONTACT" as const, label: "Contato", count: counts.CONTACT },
-                            { key: "NEGOTIATION" as const, label: "Negociação", count: counts.NEGOTIATION },
-                            { key: "CLOSED" as const, label: "Fechado", count: counts.CLOSED },
-                          ]
-                        ).map((item) => (
-                          <DroppableStageChip
-                            key={item.key}
-                            stageId={item.key}
-                            label={item.label}
-                            count={item.count}
-                            active={mobileActiveStage === item.key}
-                            onClick={() => {
-                              setMobileActiveStage(item.key);
-                              if (pipelineFilter !== "all") {
-                                setPipelineFilter("all");
-                              }
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <DroppableColumn stageId={activeStage.id} className="w-full max-h-[65vh]">
-                      <div className="px-3 pt-3">
-                        <div className="h-1 rounded-full bg-gradient-to-r from-teal-500/70 to-teal-400/30" />
-                      </div>
-                      <div className="px-3 py-2 flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg ${activeStage.bgColor} flex items-center justify-center border border-gray-200`}>
-                          <Icon className={`w-4 h-4 ${activeStage.color}`} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold text-gray-900 truncate">{activeStage.label}</div>
-                          <div className="text-[11px] text-gray-500 truncate">Toque no card para mover</div>
-                        </div>
-                        <span className="text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 rounded-full px-2 py-0.5">
-                          {stageLeads.length}
-                        </span>
-                      </div>
-                      <div className="px-3 pb-3 space-y-2 min-h-[240px] overflow-y-auto">
-                        {stageLeads.length === 0 ? (
-                          <div className="py-10 text-center">
-                            <p className="text-sm text-gray-500">Nenhum lead</p>
-                            <p className="text-[11px] text-gray-400 mt-1">Mova um lead de outra etapa para cá</p>
-                          </div>
-                        ) : (
-                          stageLeads.map((lead) => (
-                            <DraggableCard
-                              key={lead.id}
-                              lead={lead}
-                              formatPrice={formatPrice}
-                              onOpenMoveSheet={(leadId) => setMoveSheetLeadId(leadId)}
-                              enableDrag={false}
-                            />
-                          ))
-                        )}
-                      </div>
-                    </DroppableColumn>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Desktop: board completo */}
-            <div className="hidden md:block pb-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                {PIPELINE_STAGES.map((stage) => {
-                  const stageLeads = filteredLeadsByPipelineStage[stage.id];
-                  const Icon = stage.icon;
-                  
-                  return (
-                    <DroppableColumn key={stage.id} stageId={stage.id}>
-                      <div className="px-3 pt-3">
-                        <div className="h-1 rounded-full bg-gradient-to-r from-teal-500/70 to-teal-400/30" />
-                      </div>
-                      {/* Header da coluna */}
-                      <div className="px-3 py-2 flex items-center gap-2">
-                        <div className={`w-7 h-7 rounded-lg ${stage.bgColor} flex items-center justify-center border border-gray-200`}>
-                          <Icon className={`w-4 h-4 ${stage.color}`} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[12px] font-semibold text-gray-900 truncate">{stage.label}</div>
-                        </div>
-                        <span className="text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 rounded-full px-2 py-0.5">
-                          {stageLeads.length}
-                        </span>
-                      </div>
-                      
-                      {/* Cards da coluna */}
-                      <div className="px-3 pb-3 space-y-2 min-h-[160px] overflow-y-auto">
-                        {stageLeads.length === 0 ? (
-                          <p className="text-[11px] text-gray-400 text-center py-6">Nenhum lead</p>
-                        ) : (
-                          stageLeads.map((lead) => (
-                            <DraggableCard key={lead.id} lead={lead} formatPrice={formatPrice} />
-                          ))
-                        )}
-                      </div>
-                    </DroppableColumn>
-                  );
-                })}
-              </div>
-            </div>
-            
-            {/* Drag Overlay */}
-            <DragOverlay>
-              {activeLead ? (
-                <div className="bg-white rounded-lg border-2 border-teal-400 px-3 py-2 shadow-xl text-xs rotate-2 scale-105">
-                  <p className="font-semibold line-clamp-2">{activeLead?.property?.title}</p>
-                  <p className="text-gray-500 text-[10px]">
-                    {activeLead?.property?.city}-{activeLead?.property?.state}
-                  </p>
-                </div>
-              ) : null}
-            </DragOverlay>
-
-            <AnimatePresence>
-              {moveSheetLeadId && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 bg-black/40 z-[70]"
-                    onClick={() => setMoveSheetLeadId(null)}
-                  />
-                  <motion.div
-                    initial={{ y: 24, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 24, opacity: 0 }}
-                    transition={{ type: "spring", damping: 26, stiffness: 260 }}
-                    className="fixed left-0 right-0 bottom-0 z-[71] md:hidden bg-white rounded-t-2xl border-t border-gray-200 shadow-2xl"
-                    role="dialog"
-                    aria-modal="true"
-                  >
-                    <div className="px-4 pt-3 pb-4">
-                      <div className="w-10 h-1.5 bg-gray-200 rounded-full mx-auto" />
-
-                      <div className="mt-3 flex items-start gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-gray-900 line-clamp-2">
-                            {moveSheetLead?.property.title || "Mover lead"}
-                          </div>
-                          <div className="text-[12px] text-gray-500 mt-0.5">
-                            {moveSheetLead
-                              ? `Etapa atual: ${PIPELINE_STAGES.find((s) => s.id === getLeadPipelineStage(moveSheetLead as Lead))?.label || "-"}`
-                              : ""}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          className="p-2 -mr-2 text-gray-500"
-                          onClick={() => setMoveSheetLeadId(null)}
-                          aria-label="Fechar"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-2">
-                        {PIPELINE_STAGES.map((stage) => {
-                          const isCurrent = moveSheetLead ? getLeadPipelineStage(moveSheetLead as Lead) === stage.id : false;
-                          const Icon = stage.icon;
-
-                          return (
-                            <button
-                              key={stage.id}
-                              type="button"
-                              disabled={!moveSheetLeadId || isCurrent}
-                              onClick={async () => {
-                                if (!moveSheetLeadId) return;
-                                await moveLeadToStage(moveSheetLeadId, stage.id);
-                                setMoveSheetLeadId(null);
-                                setMobileActiveStage(stage.id);
-                              }}
-                              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${
-                                isCurrent
-                                  ? "bg-gray-100 border-gray-200 text-gray-400"
-                                  : "bg-white border-gray-200 hover:bg-gray-50 text-gray-800"
-                              }`}
-                            >
-                              <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${stage.bgColor} border border-gray-200`}>
-                                <Icon className={`w-4 h-4 ${stage.color}`} />
-                              </span>
-                              <span className="truncate">{stage.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </DndContext>
         ) : filteredLeads.length === 0 ? (
           <EmptyState
             title="Nenhum lead encontrado"
@@ -1318,16 +853,31 @@ export default function MyLeadsPage() {
           />
         ) : (
           /* ===== MODO LISTA ===== */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
-            {filteredLeads.map((lead) => {
-              const isExpanded = expandedLeadId === lead.id;
-              
-              return (
-                <motion.div
-                  key={lead.id}
-                  layout
-                  className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow self-start"
-                >
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
+              {[...filteredLeads]
+                .sort((a, b) => {
+                  const au = a.hasUnreadMessages ? 1 : 0;
+                  const bu = b.hasUnreadMessages ? 1 : 0;
+                  if (au !== bu) return bu - au;
+
+                  const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : new Date(a.createdAt).getTime();
+                  const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : new Date(b.createdAt).getTime();
+                  if (!Number.isNaN(aTime) && !Number.isNaN(bTime) && aTime !== bTime) {
+                    return bTime - aTime;
+                  }
+                  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                })
+                .map((lead) => {
+                const isExpanded = expandedLeadId === lead.id;
+                const lastActivityLabel = getTimeAgo((lead.lastMessageAt || lead.createdAt) as string);
+                
+                return (
+                  <motion.div
+                    key={lead.id}
+                    layout
+                    className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow self-start"
+                  >
                   {/* Card compacto - sempre visível */}
                   <div 
                     className="p-4 cursor-pointer"
@@ -1364,6 +914,12 @@ export default function MyLeadsPage() {
                                 <span className="truncate">{lead.contact.name}</span>
                               </p>
                             )}
+                            {lead.lastMessagePreview && (
+                              <p className={`mt-1 text-xs ${lead.hasUnreadMessages ? "font-semibold text-gray-900" : "text-gray-600"} line-clamp-2`}>
+                                {lead.lastMessageFromClient ? "Cliente: " : "Você: "}
+                                {lead.lastMessagePreview}
+                              </p>
+                            )}
                           </div>
                           {getPipelineStageBadge(getLeadPipelineStage(lead))}
                         </div>
@@ -1377,7 +933,7 @@ export default function MyLeadsPage() {
                           <span>•</span>
                           <span>{ptBR.type(lead.property.type)}</span>
                           <span>•</span>
-                          <span>{getTimeAgo(lead.createdAt)}</span>
+                          <span>{lastActivityLabel}</span>
                         </div>
 
                         {/* Alertas inline */}
@@ -1626,9 +1182,23 @@ export default function MyLeadsPage() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-                </motion.div>
-              );
-            })}
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {nextCursor && (
+              <div className="pt-4 flex justify-center">
+                <button
+                  type="button"
+                  disabled={loadingMore}
+                  onClick={() => fetchLeads({ append: true, cursor: nextCursor })}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                >
+                  {loadingMore ? "Carregando..." : "Carregar mais"}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
