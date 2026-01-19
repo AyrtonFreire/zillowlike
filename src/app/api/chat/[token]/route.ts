@@ -11,6 +11,8 @@ import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
 
+const jsonSafe = <T>(value: T): T | number => (typeof value === "bigint" ? Number(value) : value);
+
 const messageSchema = z.object({
   content: z
     .string()
@@ -91,6 +93,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
         createdAt: lead.createdAt,
         property: {
           ...lead.property,
+          price: lead.property?.price ? jsonSafe(lead.property.price) : lead.property?.price,
           image: lead.property?.images?.[0]?.url || null,
         },
         contact: lead.contact,
