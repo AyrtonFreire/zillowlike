@@ -507,6 +507,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                     className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
                     style={useCompactPopover ? { left: compactPopoverLeft } : undefined}
                   >
+                    <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
                     {useCompactPopover ? (
                       <div className="p-5">
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
@@ -614,6 +615,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                     className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
                     style={useCompactPopover ? { left: compactPopoverLeft } : undefined}
                   >
+                    <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
                     {useCompactPopover ? (
                       <div className="p-5">
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">

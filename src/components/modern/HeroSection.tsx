@@ -199,7 +199,7 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="relative min-h-[360px] sm:min-h-[55vh] md:min-h-[55vh] lg:min-h-[55vh] flex items-center justify-center overflow-visible pt-16 md:pt-0 pb-4 md:pb-0">
+    <div className="relative min-h-[450px] sm:min-h-[70vh] md:min-h-[70vh] lg:min-h-[70vh] flex items-center justify-center overflow-visible pt-16 md:pt-0 pb-4 md:pb-0">
       {/* Top Hero Nav removed to avoid conflict with ModernNavbar */}
       {/* Slideshow Background with Overlay */}
       <div className="absolute inset-0">
@@ -255,10 +255,10 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="text-center text-white max-w-4xl mx-auto"
+          className="text-center text-white max-w-5xl mx-auto"
         >
           <motion.h1
-            className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-normal mb-5 sm:mb-6 px-2 leading-[1.05] tracking-tight"
+            className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-normal mb-6 sm:mb-8 px-2 leading-[1.05] tracking-tight"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
