@@ -16,8 +16,6 @@ import {
   MessageCircle,
   Clock,
   ListChecks,
-  CheckSquare,
-  Square,
 } from "lucide-react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, TouchSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "framer-motion";
@@ -165,18 +163,17 @@ export default function BrokerCrmPage() {
     WON: 20,
     LOST: 20,
   });
-  const [confirmDragMoves, setConfirmDragMoves] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 4,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200,
-        tolerance: 5,
+        delay: 120,
+        tolerance: 6,
       },
     })
   );
@@ -194,19 +191,6 @@ export default function BrokerCrmPage() {
       }
     } catch {
       // ignore storage errors
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-      const key = "zlw_crm_confirm_drag_moves_v1";
-      const stored = window.localStorage.getItem(key);
-      if (stored === "0") {
-        setConfirmDragMoves(false);
-      }
-    } catch {
-      // ignore
     }
   }, []);
 
@@ -488,33 +472,15 @@ export default function BrokerCrmPage() {
     const current = leads.find((l) => String(l.id) === String(leadId));
     if (!current || current.pipelineStage === newStage) return;
 
-    if (confirmDragMoves) {
-      const confirmed = await toast.confirm({
-        title: "Mover lead de etapa?",
-        message: `Deseja mover este lead para a etapa "${STAGE_CONFIG[newStage].label}"?`,
-        confirmText: "Sim, mover",
-        cancelText: "Cancelar",
-        variant: "info",
-      });
+    const confirmed = await toast.confirm({
+      title: "Mover lead de etapa?",
+      message: `Deseja mover este lead para a etapa "${STAGE_CONFIG[newStage].label}"?`,
+      confirmText: "Sim, mover",
+      cancelText: "Cancelar",
+      variant: "info",
+    });
 
-      if (!confirmed) {
-        setLeads((prev) =>
-          prev.map((l) => (String(l.id) === String(leadId) ? { ...l, pipelineStage: current.pipelineStage } : l))
-        );
-        return;
-      }
-
-      try {
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem("zlw_crm_confirm_drag_moves_v1", "0");
-        }
-      } catch {
-        // ignore
-      }
-
-      setConfirmDragMoves(false);
-    }
-
+    if (!confirmed) return;
     await moveLeadToStage(leadId, newStage);
   };
 
@@ -633,28 +599,6 @@ export default function BrokerCrmPage() {
                   Selecionar
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !confirmDragMoves;
-                    setConfirmDragMoves(next);
-                    try {
-                      if (typeof window !== "undefined") {
-                        window.localStorage.setItem("zlw_crm_confirm_drag_moves_v1", next ? "1" : "0");
-                      }
-                    } catch {
-                      // ignore
-                    }
-                  }}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border ${
-                    confirmDragMoves
-                      ? "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                      : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
-                  }`}
-                >
-                  {confirmDragMoves ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                  Confirmar arrasto
-                </button>
               </div>
             </div>
 
@@ -1078,13 +1022,15 @@ export default function BrokerCrmPage() {
           </div>
 
           {/* Drag Overlay */}
-          <DragOverlay>
+          <DragOverlay zIndex={60000}>
             {activeLead ? (
-              <div className="bg-white rounded-xl border-2 border-teal-400 p-3 text-xs text-gray-800 shadow-2xl rotate-2 scale-105">
-                <p className="font-semibold line-clamp-1">{activeLead.property.title}</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">
-                  {activeLead.property.city} - {activeLead.property.state}
-                </p>
+              <div className="pointer-events-none w-[340px]">
+                <DraggableLeadCard
+                  lead={activeLead}
+                  dndDisabledOverride={true}
+                  showAdvanceButton={false}
+                  className="shadow-2xl border-teal-300"
+                />
               </div>
             ) : null}
           </DragOverlay>
