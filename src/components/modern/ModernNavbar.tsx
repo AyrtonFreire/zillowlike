@@ -5,7 +5,7 @@ import { Menu, X, User, Heart, Bell, MessageCircle, LogOut, ChevronDown, LayoutD
 import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import MobileHeaderZillow from "./MobileHeaderZillow";
 import HowItWorksModal from "./HowItWorksModal";
 import { getPusherClient } from "@/lib/pusher-client";
@@ -21,10 +21,13 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const [primary, setPrimary] = useState<"comprar" | "alugar" | "anunciar" | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const [openMenu, setOpenMenu] = useState<"comprar" | "alugar" | "recursos" | null>(null);
+  const buyButtonRef = useRef<HTMLButtonElement | null>(null);
+  const rentButtonRef = useRef<HTMLButtonElement | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
   const { scrollY } = useScroll();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   
   const role = (session as any)?.user?.role || (session as any)?.role || "USER";
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
@@ -33,6 +36,10 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const assistantEtagRef = useRef<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const navVariant = searchParams?.get("nav") ?? "3";
+  const enableDropdown = navVariant !== "2";
+  const useCompactPopover = navVariant === "3";
+  const [compactPopoverLeft, setCompactPopoverLeft] = useState(0);
   
   // Mantém sempre estilo JamesEdition (sem transformação ao rolar)
 
@@ -66,6 +73,25 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!useCompactPopover) return;
+    if (openMenu !== 'comprar' && openMenu !== 'alugar') return;
+
+    const updateLeft = () => {
+      const navEl = navRef.current;
+      const buttonEl = openMenu === 'comprar' ? buyButtonRef.current : rentButtonRef.current;
+      if (!navEl || !buttonEl) return;
+
+      const navRect = navEl.getBoundingClientRect();
+      const buttonRect = buttonEl.getBoundingClientRect();
+      setCompactPopoverLeft(Math.max(0, buttonRect.left - navRect.left));
+    };
+
+    updateLeft();
+    window.addEventListener('resize', updateLeft);
+    return () => window.removeEventListener('resize', updateLeft);
+  }, [openMenu, useCompactPopover]);
 
   // Inbox de mensagens internas para corretores - verifica se há conversas não lidas
   useEffect(() => {
@@ -345,26 +371,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         { label: "Comercial", href: "/explore/buy?type=COMMERCIAL", description: "Imóveis comerciais" },
       ],
     },
-    {
-      title: "Por faixa de preço",
-      items: [
-        { label: "Até R$ 300 mil", href: "/explore/buy?maxPrice=300000" },
-        { label: "R$ 300k - R$ 500k", href: "/explore/buy?minPrice=300000&maxPrice=500000" },
-        { label: "R$ 500k - R$ 1M", href: "/explore/buy?minPrice=500000&maxPrice=1000000" },
-        { label: "Acima de R$ 1M", href: "/explore/buy?minPrice=1000000" },
-        { label: "Imóveis de luxo", href: "/explore/buy?minPrice=1500000&sort=price_desc" },
-      ],
-    },
-    {
-      title: "Buscar por",
-      items: [
-        { label: "Novos no mercado", href: "/explore/buy?sort=recent" },
-        { label: "Menor preço", href: "/explore/buy?sort=price_asc" },
-        { label: "Maior área", href: "/explore/buy?sort=area_desc" },
-        { label: "Imóveis mobiliados", href: "/explore/buy?furnished=true" },
-        { label: "Aceita pets", href: "/explore/buy?petFriendly=true" },
-      ],
-    },
   ];
 
   // Mega menu Alugar - inspirado em Zillow/Daft/James Edition
@@ -380,25 +386,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         { label: "Terrenos", href: "/explore/rent?type=LAND", description: "Lotes e terrenos" },
         { label: "Imóvel rural", href: "/explore/rent?type=RURAL", description: "Fazendas e sítios" },
         { label: "Comercial", href: "/explore/rent?type=COMMERCIAL", description: "Imóveis comerciais" },
-      ],
-    },
-    {
-      title: "Por valor mensal",
-      items: [
-        { label: "Até R$ 1.500", href: "/explore/rent?maxPrice=1500" },
-        { label: "R$ 1.500 - R$ 3.000", href: "/explore/rent?minPrice=1500&maxPrice=3000" },
-        { label: "R$ 3.000 - R$ 5.000", href: "/explore/rent?minPrice=3000&maxPrice=5000" },
-        { label: "Acima de R$ 5.000", href: "/explore/rent?minPrice=5000" },
-      ],
-    },
-    {
-      title: "Buscar por",
-      items: [
-        { label: "Novos anúncios", href: "/explore/rent?sort=recent" },
-        { label: "Menor aluguel", href: "/explore/rent?sort=price_asc" },
-        { label: "Mobiliados", href: "/explore/rent?furnished=true" },
-        { label: "Aceita pets", href: "/explore/rent?petFriendly=true" },
-        { label: "Com academia", href: "/explore/rent?hasGym=true" },
       ],
     },
   ];
@@ -443,6 +430,8 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
   const megaMenuBaseClass =
     "absolute inset-x-0 top-full z-[300] mt-3 bg-white/95 backdrop-blur-xl border-t border-gray-100/80 shadow-[0_18px_45px_rgba(15,23,42,0.45)]";
+  const compactPopoverClass =
+    "absolute top-full z-[300] mt-3 w-[420px] max-w-[90vw] rounded-2xl border border-gray-200/80 bg-white/95 backdrop-blur-xl shadow-[0_18px_45px_rgba(15,23,42,0.20)]";
 
   const isDashboardContext =
     pathname?.startsWith("/admin") ||
@@ -479,10 +468,19 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               {/* Comprar */}
               <div
                 className=""
-                onMouseEnter={() => setOpenMenu("comprar")}
+                onMouseEnter={() => {
+                  if (!enableDropdown) return;
+                  setPrimary('comprar');
+                  setOpenMenu('comprar');
+                }}
+                onMouseLeave={() => {
+                  if (!enableDropdown) return;
+                  setOpenMenu(null);
+                }}
               >
                 <button
                   type="button"
+                  ref={buyButtonRef}
                   onClick={() => {
                     setOpenMenu(null);
                     setPrimary('comprar');
@@ -495,51 +493,81 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   }`}
                 >
                   <span>Comprar</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'comprar' ? 'rotate-180' : ''}`} />
+                  {enableDropdown && (
+                    <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'comprar' ? 'rotate-180' : ''}`} />
+                  )}
                   <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 ${
                     forceLight ? 'bg-teal-600' : 'bg-white'
                   } ${
                     primary === 'comprar' ? 'w-full' : 'w-0 group-hover:w-full'
                   }`} />
                 </button>
-                {openMenu === "comprar" && (
+                {enableDropdown && openMenu === "comprar" && (
                   <div
-                    className={megaMenuBaseClass}
-                    onMouseLeave={() => setOpenMenu(null)}
+                    className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
+                    style={useCompactPopover ? { left: compactPopoverLeft } : undefined}
                   >
-                    <div className="mx-auto max-w-7xl px-8 py-6">
-                      <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-                        Explorar para comprar
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                        {buyMenuSections.map((section) => (
-                          <div key={section.title}>
-                            <div className="flex items-center gap-2 px-1 pb-2">
-                              <span className="h-5 w-1 rounded-full bg-teal-500/80" />
-                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                                {section.title}
-                              </div>
-                            </div>
-                            <ul className="space-y-1.5">
-                              {section.items.map((item) => (
-                                <li key={item.href}>
-                                  <Link
-                                    href={item.href}
-                                    className="block px-2 py-2 rounded-lg text-sm text-gray-800 hover:bg-teal-50 group"
-                                    onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
-                                  >
-                                    <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
-                                    {'description' in item && (
-                                      <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
-                                    )}
-                                  </Link>
-                                </li>
-                              ))}
-                            </ul>
+                    {useCompactPopover ? (
+                      <div className="p-5">
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                          Explorar para comprar
+                        </div>
+                        <div className="mt-4">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                            {buyMenuSections[0]?.title}
                           </div>
-                        ))}
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            {buyMenuSections[0]?.items.map((item) => (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
+                                className="rounded-xl border border-gray-200 bg-white/80 px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-white hover:border-teal-300 hover:text-teal-700"
+                              >
+                                <div>{item.label}</div>
+                                {item.description ? (
+                                  <div className="text-[11px] font-normal text-gray-500 mt-0.5">{item.description}</div>
+                                ) : null}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="mx-auto max-w-7xl px-8 py-6">
+                        <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                          Explorar para comprar
+                        </div>
+                        <div className="grid grid-cols-1 gap-8">
+                          {buyMenuSections.map((section) => (
+                            <div key={section.title}>
+                              <div className="flex items-center gap-2 px-1 pb-2">
+                                <span className="h-5 w-1 rounded-full bg-teal-500/80" />
+                                <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                  {section.title}
+                                </div>
+                              </div>
+                              <ul className="space-y-1.5">
+                                {section.items.map((item) => (
+                                  <li key={item.href}>
+                                    <Link
+                                      href={item.href}
+                                      className="block px-2 py-2 rounded-lg text-sm text-gray-800 hover:bg-teal-50 group"
+                                      onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
+                                    >
+                                      <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
+                                      {'description' in item && (
+                                        <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
+                                      )}
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -547,10 +575,19 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               {/* Alugar */}
               <div
                 className=""
-                onMouseEnter={() => setOpenMenu("alugar")}
+                onMouseEnter={() => {
+                  if (!enableDropdown) return;
+                  setPrimary('alugar');
+                  setOpenMenu('alugar');
+                }}
+                onMouseLeave={() => {
+                  if (!enableDropdown) return;
+                  setOpenMenu(null);
+                }}
               >
                 <button
                   type="button"
+                  ref={rentButtonRef}
                   onClick={() => {
                     setOpenMenu(null);
                     setPrimary('alugar');
@@ -563,51 +600,81 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   }`}
                 >
                   <span>Alugar</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'alugar' ? 'rotate-180' : ''}`} />
+                  {enableDropdown && (
+                    <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'alugar' ? 'rotate-180' : ''}`} />
+                  )}
                   <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 ${
                     forceLight ? 'bg-teal-600' : 'bg-white'
                   } ${
                     primary === 'alugar' ? 'w-full' : 'w-0 group-hover:w-full'
                   }`} />
                 </button>
-                {openMenu === "alugar" && (
+                {enableDropdown && openMenu === "alugar" && (
                   <div
-                    className={megaMenuBaseClass}
-                    onMouseLeave={() => setOpenMenu(null)}
+                    className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
+                    style={useCompactPopover ? { left: compactPopoverLeft } : undefined}
                   >
-                    <div className="mx-auto max-w-7xl px-8 py-6">
-                      <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-                        Explorar para alugar
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                        {rentMenuSections.map((section) => (
-                          <div key={section.title}>
-                            <div className="flex items-center gap-2 px-1 pb-2">
-                              <span className="h-5 w-1 rounded-full bg-teal-500/80" />
-                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                                {section.title}
-                              </div>
-                            </div>
-                            <ul className="space-y-1.5">
-                              {section.items.map((item) => (
-                                <li key={item.href}>
-                                  <Link
-                                    href={item.href}
-                                    className="block px-2 py-2 rounded-lg text-sm text-gray-800 hover:bg-teal-50 group"
-                                    onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
-                                  >
-                                    <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
-                                    {'description' in item && (
-                                      <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
-                                    )}
-                                  </Link>
-                                </li>
-                              ))}
-                            </ul>
+                    {useCompactPopover ? (
+                      <div className="p-5">
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                          Explorar para alugar
+                        </div>
+                        <div className="mt-4">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                            {rentMenuSections[0]?.title}
                           </div>
-                        ))}
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            {rentMenuSections[0]?.items.map((item) => (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
+                                className="rounded-xl border border-gray-200 bg-white/80 px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-white hover:border-teal-300 hover:text-teal-700"
+                              >
+                                <div>{item.label}</div>
+                                {item.description ? (
+                                  <div className="text-[11px] font-normal text-gray-500 mt-0.5">{item.description}</div>
+                                ) : null}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="mx-auto max-w-7xl px-8 py-6">
+                        <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                          Explorar para alugar
+                        </div>
+                        <div className="grid grid-cols-1 gap-8">
+                          {rentMenuSections.map((section) => (
+                            <div key={section.title}>
+                              <div className="flex items-center gap-2 px-1 pb-2">
+                                <span className="h-5 w-1 rounded-full bg-teal-500/80" />
+                                <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                  {section.title}
+                                </div>
+                              </div>
+                              <ul className="space-y-1.5">
+                                {section.items.map((item) => (
+                                  <li key={item.href}>
+                                    <Link
+                                      href={item.href}
+                                      className="block px-2 py-2 rounded-lg text-sm text-gray-800 hover:bg-teal-50 group"
+                                      onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
+                                    >
+                                      <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
+                                      {'description' in item && (
+                                        <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
+                                      )}
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
