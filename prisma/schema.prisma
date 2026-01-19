@@ -843,7 +843,8 @@ model TeamChatReadReceipt {
   threadId   String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId     String
-  lastReadAt DateTime
+  lastDeliveredAt DateTime?
+  lastReadAt DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

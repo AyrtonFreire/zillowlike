@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
-import { MessageCircle, Send } from "lucide-react";
+import { Check, CheckCheck, MessageCircle, Send } from "lucide-react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { getPusherClient } from "@/lib/pusher-client";
@@ -42,6 +42,12 @@ interface TeamChatTeam {
   id: string;
   name: string;
   ownerId: string;
+}
+
+interface TeamChatReceipt {
+  userId: string;
+  lastDeliveredAt: string | null;
+  lastReadAt: string | null;
 }
 
 function initials(value: string) {
@@ -130,6 +136,7 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
   const [messages, setMessages] = useState<TeamChatMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
+  const [counterpartReceipt, setCounterpartReceipt] = useState<TeamChatReceipt | null>(null);
   const [pagination, setPagination] = useState<{ hasMore: boolean; nextCursor: string | null }>({
     hasMore: false,
     nextCursor: null,
@@ -202,6 +209,15 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
     }
   }, []);
 
+  const markThreadDelivered = useCallback(async (threadId: string) => {
+    if (!threadId) return;
+    try {
+      await fetch(`/api/team-chat/threads/${threadId}/delivered`, { method: "POST" });
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const fetchMessages = useCallback(
     async (
       threadId: string,
@@ -237,6 +253,7 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
         const isStillSelected = selectedThreadIdRef.current === threadId;
 
         if (isStillSelected) {
+          setCounterpartReceipt((data?.thread?.counterpartReceipt as TeamChatReceipt | null) || null);
           if (append) {
             setMessages((prev) => {
               const seen = new Set(prev.map((msg) => msg.id));
@@ -252,7 +269,12 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
           setPagination({ hasMore, nextCursor });
 
           if (markRead) {
-            await markThreadRead(threadId);
+            await markThreadDelivered(threadId);
+            setTimeout(() => {
+              if (selectedThreadIdRef.current === threadId) {
+                void markThreadRead(threadId);
+              }
+            }, 700);
             setThreads((prev) =>
               prev.map((thread) =>
                 thread.id === threadId ? { ...thread, unreadCount: 0 } : thread
@@ -279,6 +301,22 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
       }
     },
     [markThreadRead]
+  );
+
+  const statusForMessage = useCallback(
+    (message: TeamChatMessage) => {
+      if (!message?.createdAt) return "sent" as const;
+
+      const deliveredAt = counterpartReceipt?.lastDeliveredAt ? new Date(counterpartReceipt.lastDeliveredAt) : null;
+      const readAt = counterpartReceipt?.lastReadAt ? new Date(counterpartReceipt.lastReadAt) : null;
+      const msgAt = new Date(message.createdAt);
+      if (Number.isNaN(msgAt.getTime())) return "sent" as const;
+
+      if (readAt && !Number.isNaN(readAt.getTime()) && readAt >= msgAt) return "read" as const;
+      if (deliveredAt && !Number.isNaN(deliveredAt.getTime()) && deliveredAt >= msgAt) return "delivered" as const;
+      return "sent" as const;
+    },
+    [counterpartReceipt]
   );
 
   useEffect(() => {
@@ -384,10 +422,22 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
       }
     };
 
+    const receiptHandler = (payload: { threadId: string; userId: string; lastDeliveredAt: string | null; lastReadAt: string | null }) => {
+      if (!payload?.threadId || !payload?.userId) return;
+      if (String(payload.userId) === String(userId)) return;
+      if (selectedThreadIdRef.current !== payload.threadId) return;
+      setCounterpartReceipt({
+        userId: String(payload.userId),
+        lastDeliveredAt: payload.lastDeliveredAt ?? null,
+        lastReadAt: payload.lastReadAt ?? null,
+      });
+    };
+
     threadIds.forEach((threadId) => {
       const channelName = `private-team-chat-${threadId}`;
       const channel = pusher.subscribe(channelName);
       channel.bind(PUSHER_EVENTS.TEAM_CHAT_MESSAGE, handler as any);
+      channel.bind(PUSHER_EVENTS.TEAM_CHAT_RECEIPT, receiptHandler as any);
       channel.bind("pusher:subscription_error", subscriptionErrorHandler as any);
     });
 
@@ -399,6 +449,7 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
           const channelName = `private-team-chat-${threadId}`;
           const channel = pusher.channel(channelName);
           channel?.unbind(PUSHER_EVENTS.TEAM_CHAT_MESSAGE, handler as any);
+          channel?.unbind(PUSHER_EVENTS.TEAM_CHAT_RECEIPT, receiptHandler as any);
           channel?.unbind("pusher:subscription_error", subscriptionErrorHandler as any);
           pusher.unsubscribe(channelName);
         } catch {
@@ -662,6 +713,7 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
             ) : (
               messages.map((message) => {
                 const isMine = String(message.senderId) === String(userId);
+                const status = isMine ? statusForMessage(message) : null;
                 return (
                   <div key={message.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                     <div
@@ -670,9 +722,18 @@ export default function TeamChatPanel({ teamId }: { teamId?: string }) {
                       }`}
                     >
                       <p className="leading-relaxed">{renderMessageContent(message.content)}</p>
-                      <span className={`block text-[10px] mt-2 ${isMine ? "text-gray-300" : "text-gray-500"}`}>
-                        {formatTime(message.createdAt)}
-                      </span>
+                      <div className={`flex items-center justify-end gap-1 mt-2 text-[10px] ${isMine ? "text-gray-300" : "text-gray-500"}`}>
+                        <span>{formatTime(message.createdAt)}</span>
+                        {isMine && !String(message.id || "").startsWith("temp-") ? (
+                          status === "read" ? (
+                            <CheckCheck className="w-3.5 h-3.5 text-blue-400" />
+                          ) : status === "delivered" ? (
+                            <CheckCheck className="w-3.5 h-3.5" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 );

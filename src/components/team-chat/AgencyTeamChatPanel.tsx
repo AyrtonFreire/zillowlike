@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
-import { MessageCircle, Search, Send, User, ChevronLeft } from "lucide-react";
+import { Check, CheckCheck, MessageCircle, Search, Send, User, ChevronLeft } from "lucide-react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { getPusherClient } from "@/lib/pusher-client";
@@ -42,6 +42,12 @@ interface TeamChatTeam {
   id: string;
   name: string;
   ownerId: string;
+}
+
+interface TeamChatReceipt {
+  userId: string;
+  lastDeliveredAt: string | null;
+  lastReadAt: string | null;
 }
 
 function initials(value: string) {
@@ -109,6 +115,7 @@ export default function AgencyTeamChatPanel() {
   const [messages, setMessages] = useState<TeamChatMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
+  const [counterpartReceipt, setCounterpartReceipt] = useState<TeamChatReceipt | null>(null);
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -188,6 +195,15 @@ export default function AgencyTeamChatPanel() {
     }
   }, []);
 
+  const markThreadDelivered = useCallback(async (threadId: string) => {
+    if (!threadId) return;
+    try {
+      await fetch(`/api/team-chat/threads/${threadId}/delivered`, { method: "POST" });
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const fetchMessages = useCallback(async (threadId: string, silent = false) => {
     if (!threadId) return;
 
@@ -206,8 +222,14 @@ export default function AgencyTeamChatPanel() {
 
       const list: TeamChatMessage[] = Array.isArray(data.messages) ? data.messages : [];
       if (selectedThreadIdRef.current === threadId) {
+        setCounterpartReceipt((data?.thread?.counterpartReceipt as TeamChatReceipt | null) || null);
         setMessages(list);
-        await markThreadRead(threadId);
+        await markThreadDelivered(threadId);
+        setTimeout(() => {
+          if (selectedThreadIdRef.current === threadId) {
+            void markThreadRead(threadId);
+          }
+        }, 700);
         setThreads((prev) => prev.map((t) => (t.id === threadId ? { ...t, unreadCount: 0 } : t)));
       }
     } catch (err: any) {
@@ -220,7 +242,23 @@ export default function AgencyTeamChatPanel() {
         setMessagesLoading(false);
       }
     }
-  }, [markThreadRead]);
+  }, [markThreadRead, markThreadDelivered]);
+
+  const statusForMessage = useCallback(
+    (message: TeamChatMessage) => {
+      if (!message?.createdAt) return "sent" as const;
+
+      const deliveredAt = counterpartReceipt?.lastDeliveredAt ? new Date(counterpartReceipt.lastDeliveredAt) : null;
+      const readAt = counterpartReceipt?.lastReadAt ? new Date(counterpartReceipt.lastReadAt) : null;
+      const msgAt = new Date(message.createdAt);
+      if (Number.isNaN(msgAt.getTime())) return "sent" as const;
+
+      if (readAt && !Number.isNaN(readAt.getTime()) && readAt >= msgAt) return "read" as const;
+      if (deliveredAt && !Number.isNaN(deliveredAt.getTime()) && deliveredAt >= msgAt) return "delivered" as const;
+      return "sent" as const;
+    },
+    [counterpartReceipt]
+  );
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -281,10 +319,22 @@ export default function AgencyTeamChatPanel() {
       }
     };
 
+    const receiptHandler = (payload: { threadId: string; userId: string; lastDeliveredAt: string | null; lastReadAt: string | null }) => {
+      if (!payload?.threadId || !payload?.userId) return;
+      if (String(payload.userId) === String(userId)) return;
+      if (String(selectedThreadIdRef.current) !== String(payload.threadId)) return;
+      setCounterpartReceipt({
+        userId: String(payload.userId),
+        lastDeliveredAt: payload.lastDeliveredAt ?? null,
+        lastReadAt: payload.lastReadAt ?? null,
+      });
+    };
+
     threadIds.forEach((threadId) => {
       const channelName = `private-team-chat-${threadId}`;
       const channel = pusher.subscribe(channelName);
       channel.bind(PUSHER_EVENTS.TEAM_CHAT_MESSAGE, handler as any);
+      channel.bind(PUSHER_EVENTS.TEAM_CHAT_RECEIPT, receiptHandler as any);
     });
 
     return () => {
@@ -293,6 +343,7 @@ export default function AgencyTeamChatPanel() {
           const channelName = `private-team-chat-${threadId}`;
           const channel = pusher.channel(channelName);
           channel?.unbind(PUSHER_EVENTS.TEAM_CHAT_MESSAGE, handler as any);
+          channel?.unbind(PUSHER_EVENTS.TEAM_CHAT_RECEIPT, receiptHandler as any);
           pusher.unsubscribe(channelName);
         } catch {
           // ignore
@@ -560,6 +611,7 @@ export default function AgencyTeamChatPanel() {
               ) : (
                 messages.map((msg) => {
                   const isMe = String(msg.senderId) === String(userId);
+                  const status = isMe ? statusForMessage(msg) : null;
                   return (
                     <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                       <div
@@ -570,8 +622,21 @@ export default function AgencyTeamChatPanel() {
                         }`}
                       >
                         <p className="leading-relaxed">{renderMessageContent(msg.content)}</p>
-                        <div className={`mt-1 text-[10px] ${isMe ? "text-teal-100" : "text-gray-400"}`}>
-                          {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""}
+                        <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${isMe ? "text-teal-100" : "text-gray-400"}`}>
+                          <span>
+                            {msg.createdAt
+                              ? new Date(msg.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+                              : ""}
+                          </span>
+                          {isMe && !String(msg.id || "").startsWith("temp-") ? (
+                            status === "read" ? (
+                              <CheckCheck className="w-3.5 h-3.5 text-blue-300" />
+                            ) : status === "delivered" ? (
+                              <CheckCheck className="w-3.5 h-3.5" />
+                            ) : (
+                              <Check className="w-3.5 h-3.5" />
+                            )
+                          ) : null}
                         </div>
                       </div>
                     </div>

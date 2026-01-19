@@ -27,6 +27,7 @@ export const PUSHER_EVENTS = {
   // Chat events
   NEW_CHAT_MESSAGE: "new-chat-message",
   TEAM_CHAT_MESSAGE: "team-chat-message",
+  TEAM_CHAT_RECEIPT: "team-chat-receipt",
 } as const;
 
 // Canais disponíveis

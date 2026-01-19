@@ -90,6 +90,19 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       }),
     ]);
 
+    const counterpartId =
+      String(userId) === String(thread.ownerId)
+        ? String(thread.realtorId)
+        : String(userId) === String(thread.realtorId)
+          ? String(thread.ownerId)
+          : null;
+
+    const counterpartReceipt = counterpartId
+      ? await (prisma as any).teamChatReadReceipt.findUnique({
+          where: { threadId_userId: { threadId: String(thread.id), userId: String(counterpartId) } },
+        })
+      : null;
+
     const hasMore = messagesDesc.length > limit;
     const sliced = hasMore ? messagesDesc.slice(0, limit) : messagesDesc;
     const nextCursor = hasMore ? sliced[sliced.length - 1]?.createdAt : null;
@@ -117,7 +130,15 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
               image: thread.realtor.image || null,
             }
           : null,
+        lastDeliveredAt: receipt?.lastDeliveredAt ? new Date(receipt.lastDeliveredAt).toISOString() : null,
         lastReadAt: receipt?.lastReadAt ? new Date(receipt.lastReadAt).toISOString() : null,
+        counterpartReceipt: counterpartReceipt
+          ? {
+              userId: String(counterpartReceipt.userId),
+              lastDeliveredAt: counterpartReceipt.lastDeliveredAt ? new Date(counterpartReceipt.lastDeliveredAt).toISOString() : null,
+              lastReadAt: counterpartReceipt.lastReadAt ? new Date(counterpartReceipt.lastReadAt).toISOString() : null,
+            }
+          : null,
       },
       messages: (messages as any[]).map((message) => ({
         id: String(message.id),

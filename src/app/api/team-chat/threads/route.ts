@@ -209,7 +209,9 @@ export async function GET(req: NextRequest) {
 
     const receiptMap = new Map<string, Date>();
     for (const receipt of receipts || []) {
-      receiptMap.set(String(receipt.threadId), receipt.lastReadAt as Date);
+      if (receipt?.lastReadAt) {
+        receiptMap.set(String(receipt.threadId), receipt.lastReadAt as Date);
+      }
     }
 
     const threads = await Promise.all(

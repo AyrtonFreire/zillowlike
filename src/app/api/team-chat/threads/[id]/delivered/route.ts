@@ -57,8 +57,8 @@ export async function POST(_req: NextRequest, context: { params: Promise<{ id: s
     try {
       const receipt = await (prisma as any).teamChatReadReceipt.upsert({
         where: { threadId_userId: { threadId: String(thread.id), userId: String(userId) } },
-        create: { threadId: String(thread.id), userId: String(userId), lastDeliveredAt: now, lastReadAt: now },
-        update: { lastDeliveredAt: now, lastReadAt: now },
+        create: { threadId: String(thread.id), userId: String(userId), lastDeliveredAt: now },
+        update: { lastDeliveredAt: now },
       });
 
       try {
@@ -85,11 +85,11 @@ export async function POST(_req: NextRequest, context: { params: Promise<{ id: s
       if (error?.code === "P2021") {
         return NextResponse.json({ success: true, skipped: true });
       }
-      console.error("Error marking team chat as read:", error);
-      return NextResponse.json({ success: false, error: "Não foi possível marcar como lido." }, { status: 500 });
+      console.error("Error marking team chat as delivered:", error);
+      return NextResponse.json({ success: false, error: "Não foi possível marcar como entregue." }, { status: 500 });
     }
   } catch (error) {
-    console.error("Error marking team chat as read:", error);
-    return NextResponse.json({ success: false, error: "Não foi possível marcar como lido." }, { status: 500 });
+    console.error("Error marking team chat as delivered:", error);
+    return NextResponse.json({ success: false, error: "Não foi possível marcar como entregue." }, { status: 500 });
   }
 }
