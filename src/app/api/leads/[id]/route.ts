@@ -4,6 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 
+const jsonSafe = <T,>(value: T): T | number =>
+  typeof value === "bigint" ? Number(value) : value;
+
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session: any = await getServerSession(authOptions);
@@ -100,7 +103,17 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       );
     }
 
-    return NextResponse.json({ success: true, lead });
+    const normalized = {
+      ...lead,
+      property: lead.property
+        ? {
+            ...lead.property,
+            price: jsonSafe(lead.property.price),
+          }
+        : lead.property,
+    };
+
+    return NextResponse.json({ success: true, lead: normalized });
   } catch (error) {
     console.error("Error fetching lead by id:", error);
     return NextResponse.json(

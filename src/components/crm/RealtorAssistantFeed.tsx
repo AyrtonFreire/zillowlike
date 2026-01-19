@@ -80,6 +80,34 @@ type AiItemSnapshot = {
   message: string;
 };
 
+type WeeklyPreview = {
+  weekStart: string;
+  until: string;
+  topLeads: Array<{
+    leadId: string;
+    clientName: string;
+    propertyId: string | null;
+    propertyTitle: string;
+    status: string;
+    stage: string;
+    reason: "msg pendente" | "visita" | "próxima ação" | "priorizar";
+    lastClientAt: string | null;
+    lastClientSnippet: string | null;
+    nextActionDate: string | null;
+    nextActionNote: string | null;
+    visitDate: string | null;
+    visitTime: string | null;
+    views7d: number;
+  }>;
+  topProperties: Array<{
+    propertyId: string;
+    title: string;
+    city: string | null;
+    state: string | null;
+    views7d: number;
+  }>;
+};
+
 function formatShortDateTime(value?: string | null) {
   if (!value) return null;
   const d = new Date(value);
@@ -250,6 +278,15 @@ export default function RealtorAssistantFeed(props: {
   const repliedTimerRef = useRef<any>(null);
   const [aiItemSnapshot, setAiItemSnapshot] = useState<AiItemSnapshot | null>(null);
 
+  const [weeklyPreviewByItemId, setWeeklyPreviewByItemId] = useState<Record<string, WeeklyPreview | null>>({});
+  const [weeklyPreviewErrorByItemId, setWeeklyPreviewErrorByItemId] = useState<Record<string, string>>({});
+  const weeklyPreviewLoadingRef = useRef<Record<string, boolean>>({});
+
+  const [weeklyReminderLeadId, setWeeklyReminderLeadId] = useState<string | null>(null);
+  const [weeklyReminderDate, setWeeklyReminderDate] = useState<string>("");
+  const [weeklyReminderNote, setWeeklyReminderNote] = useState<string>("");
+  const [weeklyReminderSaving, setWeeklyReminderSaving] = useState(false);
+
   const recordAssistantEvent = useCallback(
     (input: {
       event: "DRAFT_COPIED" | "DRAFT_SENT" | "DRAFT_EDITED";
@@ -345,6 +382,51 @@ export default function RealtorAssistantFeed(props: {
         (justSnoozedId && i.id === justSnoozedId)
     );
   }, [items, justResolvedId, justSnoozedId, successById]);
+
+  useEffect(() => {
+    const weekly = visibleItems.filter((it) => String(it.type || "").trim() === "WEEKLY_SUMMARY");
+    if (weekly.length === 0) return;
+
+    weekly.forEach((it) => {
+      const itemId = String(it.id);
+      if (!itemId) return;
+      if (Object.prototype.hasOwnProperty.call(weeklyPreviewByItemId, itemId)) return;
+      if (weeklyPreviewLoadingRef.current[itemId]) return;
+
+      weeklyPreviewLoadingRef.current[itemId] = true;
+      setWeeklyPreviewErrorByItemId((prev) => {
+        if (!prev[itemId]) return prev;
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
+
+      fetch(`/api/assistant/items/${encodeURIComponent(itemId)}/weekly-preview`)
+        .then(async (res) => {
+          const json = await res.json().catch(() => null);
+          if (!res.ok || !json?.success) {
+            throw new Error(json?.error || "Não conseguimos carregar o resumo agora.");
+          }
+          setWeeklyPreviewByItemId((prev) => ({
+            ...prev,
+            [itemId]: {
+              weekStart: String(json.weekStart || ""),
+              until: String(json.until || ""),
+              topLeads: Array.isArray(json.topLeads) ? json.topLeads : [],
+              topProperties: Array.isArray(json.topProperties) ? json.topProperties : [],
+            },
+          }));
+        })
+        .catch((err: any) => {
+          const msg = err?.message || "Não conseguimos carregar o resumo agora.";
+          setWeeklyPreviewErrorByItemId((prev) => ({ ...prev, [itemId]: msg }));
+          setWeeklyPreviewByItemId((prev) => ({ ...prev, [itemId]: null }));
+        })
+        .finally(() => {
+          weeklyPreviewLoadingRef.current[itemId] = false;
+        });
+    });
+  }, [visibleItems, weeklyPreviewByItemId]);
 
   useEffect(() => {
     props.onItemsUpdated?.(items);
@@ -1407,6 +1489,19 @@ export default function RealtorAssistantFeed(props: {
                     const hasPropertySummary = !!property;
                     const isPropertySummaryExpanded = propertySummaryExpandedForId === item.id;
 
+                    const weeklyPreview =
+                      String(item.type || "").trim() === "WEEKLY_SUMMARY"
+                        ? weeklyPreviewByItemId[String(item.id)]
+                        : null;
+                    const weeklyPreviewError =
+                      String(item.type || "").trim() === "WEEKLY_SUMMARY"
+                        ? weeklyPreviewErrorByItemId[String(item.id)]
+                        : null;
+                    const weeklyPreviewLoading =
+                      String(item.type || "").trim() === "WEEKLY_SUMMARY" &&
+                      !!weeklyPreviewLoadingRef.current[String(item.id)] &&
+                      !weeklyPreview;
+
                     const draftForThisItem =
                       !aiError && aiResult?.itemId === item.id && typeof aiResult?.draft === "string"
                         ? String(aiResult.draft).trim()
@@ -1534,6 +1629,257 @@ export default function RealtorAssistantFeed(props: {
                                 >
                                   {item.message}
                                 </p>
+
+                                {String(item.type || "").trim() === "WEEKLY_SUMMARY" && (
+                                  <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <p className="text-[11px] font-semibold text-gray-800">Top 3 leads da semana</p>
+                                      <p className="text-[11px] font-semibold text-gray-500">
+                                        {weeklyPreview?.topLeads?.length ?? 0}
+                                      </p>
+                                    </div>
+
+                                    {weeklyPreviewLoading && (
+                                      <p className="mt-2 text-[11px] text-gray-500">Carregando resumo...</p>
+                                    )}
+
+                                    {!weeklyPreviewLoading && weeklyPreviewError && (
+                                      <p className="mt-2 text-[11px] text-red-600">{weeklyPreviewError}</p>
+                                    )}
+
+                                    {!weeklyPreviewLoading && !weeklyPreviewError && weeklyPreview?.topLeads?.length === 0 && (
+                                      <p className="mt-2 text-[11px] text-gray-600">Sem leads para priorizar nesta semana.</p>
+                                    )}
+
+                                    {!weeklyPreviewLoading && !weeklyPreviewError && (weeklyPreview?.topLeads?.length ?? 0) > 0 && (
+                                      <div className="mt-3 space-y-2">
+                                        {(weeklyPreview?.topLeads || []).map((l) => {
+                                          const leadId = String(l.leadId || "");
+                                          if (!leadId) return null;
+                                          const label = `${String(l.clientName || "Cliente")} · ${String(l.propertyTitle || "(sem imóvel)")}`;
+                                          const reason = String(l.reason || "priorizar");
+                                          const reasonClass =
+                                            reason === "msg pendente"
+                                              ? "bg-red-50 text-red-700 border-red-100"
+                                              : reason === "visita"
+                                                ? "bg-amber-50 text-amber-800 border-amber-100"
+                                                : reason === "próxima ação"
+                                                  ? "bg-blue-50 text-blue-800 border-blue-100"
+                                                  : "bg-gray-50 text-gray-700 border-gray-200";
+
+                                          const openLead = () => router.push(`/broker/leads/${encodeURIComponent(leadId)}`);
+                                          const openChat = () => router.push(`/broker/chats?lead=${encodeURIComponent(leadId)}`);
+                                          const openReminderEditor = () => {
+                                            const today = new Date();
+                                            setWeeklyReminderLeadId(leadId);
+                                            setWeeklyReminderDate(today.toISOString().split("T")[0]);
+                                            setWeeklyReminderNote(String(l.nextActionNote || ""));
+                                          };
+
+                                          const isEditing = weeklyReminderLeadId === leadId;
+
+                                          return (
+                                            <div key={`wk-lead-${leadId}`} className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                              <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                  <div className="flex flex-wrap items-center gap-2">
+                                                    <p className="text-[12px] font-semibold text-gray-900 line-clamp-1">
+                                                      {label}
+                                                    </p>
+                                                    <span
+                                                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${reasonClass}`}
+                                                    >
+                                                      {reason}
+                                                    </span>
+                                                  </div>
+                                                  {l.lastClientSnippet && (
+                                                    <p className="mt-0.5 text-[11px] text-gray-600 line-clamp-2">
+                                                      {String(l.lastClientSnippet)}
+                                                    </p>
+                                                  )}
+                                                  {(l.nextActionDate || l.nextActionNote) && (
+                                                    <p className="mt-1 text-[11px] text-gray-700">
+                                                      Próxima ação: {formatShortDateTime(l.nextActionDate) || "—"}
+                                                      {l.nextActionNote ? ` · ${String(l.nextActionNote)}` : ""}
+                                                    </p>
+                                                  )}
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                  <button
+                                                    type="button"
+                                                    onClick={openLead}
+                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                                    title="Abrir lead"
+                                                  >
+                                                    <Eye className="w-4 h-4" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={openChat}
+                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                                    title="Abrir chat"
+                                                  >
+                                                    <MessageCircle className="w-4 h-4" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={openReminderEditor}
+                                                    className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                                    title="Marcar próxima ação"
+                                                  >
+                                                    <Clock className="w-4 h-4" />
+                                                  </button>
+                                                </div>
+                                              </div>
+
+                                              {isEditing && (
+                                                <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                                                  <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-2">
+                                                    <div>
+                                                      <p className="text-[10px] font-semibold text-gray-500">Data</p>
+                                                      <input
+                                                        type="date"
+                                                        value={weeklyReminderDate}
+                                                        onChange={(e) => setWeeklyReminderDate(e.target.value)}
+                                                        className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-2 py-1 text-[12px] text-gray-900"
+                                                      />
+                                                    </div>
+                                                    <div>
+                                                      <p className="text-[10px] font-semibold text-gray-500">Anotação</p>
+                                                      <input
+                                                        value={weeklyReminderNote}
+                                                        onChange={(e) => setWeeklyReminderNote(e.target.value)}
+                                                        placeholder="Ex.: ligar 15h, confirmar visita, enviar opções"
+                                                        className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-2 py-1 text-[12px] text-gray-900"
+                                                      />
+                                                    </div>
+                                                  </div>
+
+                                                  <div className="mt-2 flex items-center justify-end gap-2">
+                                                    <button
+                                                      type="button"
+                                                      disabled={weeklyReminderSaving}
+                                                      onClick={() => {
+                                                        setWeeklyReminderLeadId(null);
+                                                        setWeeklyReminderDate("");
+                                                        setWeeklyReminderNote("");
+                                                      }}
+                                                      className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                                                    >
+                                                      Cancelar
+                                                    </button>
+                                                    <button
+                                                      type="button"
+                                                      disabled={weeklyReminderSaving}
+                                                      onClick={async () => {
+                                                        try {
+                                                          setWeeklyReminderSaving(true);
+                                                          const body: any = {
+                                                            date: weeklyReminderDate ? weeklyReminderDate : null,
+                                                            note: weeklyReminderNote ? weeklyReminderNote : null,
+                                                          };
+                                                          const res = await fetch(
+                                                            `/api/leads/${encodeURIComponent(leadId)}/reminder`,
+                                                            {
+                                                              method: "PATCH",
+                                                              headers: { "Content-Type": "application/json" },
+                                                              body: JSON.stringify(body),
+                                                            }
+                                                          );
+                                                          const json = await res.json().catch(() => null);
+                                                          if (!res.ok || !json?.success) {
+                                                            throw new Error(json?.error || "Não conseguimos salvar este lembrete agora.");
+                                                          }
+
+                                                          setWeeklyPreviewByItemId((prev) => {
+                                                            const cur = prev[String(item.id)];
+                                                            if (!cur) return prev;
+                                                            return {
+                                                              ...prev,
+                                                              [String(item.id)]: {
+                                                                ...cur,
+                                                                topLeads: cur.topLeads.map((x) =>
+                                                                  String(x.leadId) === leadId
+                                                                    ? {
+                                                                        ...x,
+                                                                        nextActionDate: weeklyReminderDate
+                                                                          ? new Date(weeklyReminderDate).toISOString()
+                                                                          : null,
+                                                                        nextActionNote: weeklyReminderNote ? weeklyReminderNote : null,
+                                                                      }
+                                                                    : x
+                                                                ),
+                                                              },
+                                                            };
+                                                          });
+
+                                                          setWeeklyReminderLeadId(null);
+                                                          setWeeklyReminderDate("");
+                                                          setWeeklyReminderNote("");
+                                                        } catch (err: any) {
+                                                          setError(err?.message || "Não conseguimos salvar este lembrete agora.");
+                                                        } finally {
+                                                          setWeeklyReminderSaving(false);
+                                                        }
+                                                      }}
+                                                      className="px-3 py-1.5 rounded-lg glass-teal text-white text-[11px] font-semibold disabled:opacity-60"
+                                                    >
+                                                      {weeklyReminderSaving ? "Salvando..." : "Salvar"}
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+
+                                    <div className="mt-4 flex items-center justify-between gap-3">
+                                      <p className="text-[11px] font-semibold text-gray-800">Top 3 imóveis mais vistos (7d)</p>
+                                      <p className="text-[11px] font-semibold text-gray-500">
+                                        {weeklyPreview?.topProperties?.length ?? 0}
+                                      </p>
+                                    </div>
+
+                                    {!weeklyPreviewLoading && !weeklyPreviewError && weeklyPreview?.topProperties?.length === 0 && (
+                                      <p className="mt-2 text-[11px] text-gray-600">Sem dados de visualizações nesta semana.</p>
+                                    )}
+
+                                    {!weeklyPreviewLoading && !weeklyPreviewError && (weeklyPreview?.topProperties?.length ?? 0) > 0 && (
+                                      <div className="mt-3 space-y-2">
+                                        {(weeklyPreview?.topProperties || []).map((p) => {
+                                          const propertyId = String(p.propertyId || "");
+                                          if (!propertyId) return null;
+                                          const openProperty = () => router.push(`/broker/properties/${encodeURIComponent(propertyId)}`);
+                                          const location = [p.city, p.state].filter(Boolean).join("/");
+
+                                          return (
+                                            <div key={`wk-prop-${propertyId}`} className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+                                              <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                  <p className="text-[12px] font-semibold text-gray-900 line-clamp-1">{String(p.title || "(sem título)")}</p>
+                                                  <p className="mt-0.5 text-[11px] text-gray-600">
+                                                    {location ? `${location} · ` : ""}{Number(p.views7d || 0)} views/7d
+                                                  </p>
+                                                </div>
+                                                <button
+                                                  type="button"
+                                                  onClick={openProperty}
+                                                  className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                                  title="Abrir imóvel"
+                                                >
+                                                  <Eye className="w-4 h-4" />
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
 
                                 {isAgencyNotice && Array.isArray(meta?.leads) && meta.leads.length > 0 && (
                                   <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">

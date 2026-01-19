@@ -32,9 +32,14 @@ const SPECS: Partial<Record<RealtorAssistantItemType, RealtorAssistantAiSpec>> =
     taskLabel: "Revisar a semana",
     typeInstructions:
       "Este item é um resumo interno semanal. NÃO escreva mensagem para cliente.\n" +
-      "- Gere um resumo curto do que merece atenção\n" +
-      "- Liste 3 a 6 próximos passos objetivos\n" +
-      "- Priorize pendências com maior chance de virar visita/proposta",
+      "- Use OBRIGATORIAMENTE os dados do 'Contexto adicional' (quando houver) e cite itens específicos (leadId/propertyId + cliente + imóvel).\n" +
+      "- PROIBIDO responder com conselhos genéricos (ex.: 'focar em clientes quentes', 'acompanhar propostas') sem citar quais leads/imóveis.\n" +
+      "- Se o contexto não trouxer leads/imóveis suficientes, diga explicitamente que faltam dados e o que você precisaria (ex.: últimos atendimentos, visitas, mensagens).\n" +
+      "- Estrutura obrigatória do draft (use exatamente estes títulos):\n" +
+      "  1) TOP OPORTUNIDADES (2-4 bullets) — cada bullet deve citar ao menos 1 leadId e 1 sinal (mensagem pendente, visita, próxima ação, aprovação).\n" +
+      "  2) RISCOS/ALERTAS (2-4 bullets) — cada bullet deve citar leadId e o risco concreto.\n" +
+      "  3) PLANO DE 3 DIAS (3-6 passos) — cada passo deve citar leadId e uma ação objetiva (ex.: 'ligar', 'agendar', 'confirmar visita', 'enviar opções') + uma janela de horário sugerida.\n" +
+      "- No summary (curto), cite pelo menos 1 leadId OU 1 propertyId como exemplo do foco da semana.",
   },
   UNANSWERED_CLIENT_MESSAGE: {
     category: "Leads",
