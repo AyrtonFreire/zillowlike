@@ -1,4 +1,5 @@
 import { ConnectionOptions } from "bullmq";
+import { Redis } from "ioredis";
 
 /**
  * Obtém a configuração de conexão Redis para BullMQ de forma segura.
@@ -6,7 +7,9 @@ import { ConnectionOptions } from "bullmq";
  * - Retorna null quando não configurado (desabilita filas)
  * - Não inicializa durante o build da Vercel
  */
-export function getRedisConnection(): ConnectionOptions | null {
+let bullRedisClient: Redis | null = null;
+
+export function getRedisConnection(): ConnectionOptions | Redis | null {
   if (process.env.NEXT_PHASE === 'phase-production-build') {
     return null;
   }
@@ -22,12 +25,27 @@ export function getRedisConnection(): ConnectionOptions | null {
   const port = parseInt(portStr, 10);
   if (!Number.isFinite(port)) return null;
 
-  return {
+  if (bullRedisClient) return bullRedisClient;
+
+  const client = new Redis({
     host,
     port,
     password,
     maxRetriesPerRequest: null, // Recomendado para BullMQ
-  } satisfies ConnectionOptions;
+    enableOfflineQueue: false,
+    retryStrategy: (times: number): number | null => {
+      if (times > 3) return null;
+      return Math.min(times * 100, 2000);
+    },
+  });
+
+  // Prevent ioredis from crashing the process when Redis is unavailable.
+  client.on("error", () => {
+    // swallow - queue operations should handle failures gracefully.
+  });
+
+  bullRedisClient = client;
+  return bullRedisClient;
 }
 
 /**

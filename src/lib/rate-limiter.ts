@@ -24,6 +24,7 @@ function getRedisClient(): Redis | null {
   try {
     if (hasUrl) {
       redisClient = new Redis(redisUrl!, {
+        enableOfflineQueue: false,
         maxRetriesPerRequest: 3,
         retryStrategy: (times: number): number | null => {
           if (times > 3) return null;
@@ -37,6 +38,7 @@ function getRedisClient(): Redis | null {
         host: host!,
         port,
         password,
+        enableOfflineQueue: false,
         maxRetriesPerRequest: 3,
         retryStrategy: (times: number): number | null => {
           if (times > 3) return null;
@@ -44,6 +46,11 @@ function getRedisClient(): Redis | null {
         },
       });
     }
+
+    // Avoid crashing the process if Redis is down (ioredis emits 'error').
+    redisClient.on("error", () => {
+      // swallow: fall back behavior happens at call-sites
+    });
 
     return redisClient;
   } catch {

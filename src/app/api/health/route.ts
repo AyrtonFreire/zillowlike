@@ -17,15 +17,20 @@ export async function GET() {
         const Redis = require("ioredis");
         const redis = hasUrl
           ? new Redis(process.env.REDIS_URL as string, {
+              enableOfflineQueue: false,
               maxRetriesPerRequest: 1,
               connectTimeout: 2000,
             })
           : new Redis({
               host: process.env.REDIS_HOST as string,
               port: parseInt(process.env.REDIS_PORT as string, 10),
+              enableOfflineQueue: false,
               maxRetriesPerRequest: 1,
               connectTimeout: 2000,
             });
+        redis.on("error", () => {
+          // swallow - health endpoint reports unhealthy
+        });
         await redis.ping();
         redis.disconnect();
         redisStatus = "healthy";
