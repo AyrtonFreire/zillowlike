@@ -5,6 +5,12 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+function jsonSafe<T>(data: T): any {
+  return JSON.parse(
+    JSON.stringify(data, (_k, v) => (typeof v === "bigint" ? Number(v) : v))
+  );
+}
+
 export async function GET(req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
@@ -105,7 +111,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const res = NextResponse.json({ item });
+    const res = NextResponse.json({ item: jsonSafe(item) });
     res.headers.set("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
     return res;
   } catch (e) {

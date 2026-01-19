@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+function jsonSafe<T>(data: T): any {
+  return JSON.parse(
+    JSON.stringify(data, (_k, v) => (typeof v === "bigint" ? Number(v) : v))
+  );
+}
+
 // Função para calcular distância entre dois pontos (Haversine)
 function calculateDistance(
   lat1: number,
@@ -106,7 +112,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      properties: nearbyProperties,
+      properties: jsonSafe(nearbyProperties),
       total: nearbyProperties.length,
     });
   } catch (error) {

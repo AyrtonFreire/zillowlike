@@ -4,6 +4,19 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
+function jsonSafe<T>(data: T): any {
+  return JSON.parse(
+    JSON.stringify(data, (_k, v) => (typeof v === "bigint" ? Number(v) : v))
+  );
+}
+
+function toBigIntOrNull(v: any): bigint | null {
+  if (v === null || typeof v === "undefined" || v === "") return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return BigInt(Math.trunc(n));
+}
+
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
@@ -66,7 +79,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const recoveryRes = await requireRecoveryFactor(String(userId));
     if (recoveryRes) return recoveryRes;
 
-    return NextResponse.json({ success: true, property });
+    return NextResponse.json({ success: true, property: jsonSafe(property) });
   } catch (error) {
     console.error("Error fetching property:", error);
     return NextResponse.json(
@@ -218,6 +231,13 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       }
     }
 
+    // Monetary fields are stored in cents as BigInt
+    if ("price" in updateData) updateData.price = toBigIntOrNull(updateData.price);
+    if ("condoFee" in updateData) updateData.condoFee = toBigIntOrNull(updateData.condoFee);
+    if ("privateOwnerPrice" in updateData) updateData.privateOwnerPrice = toBigIntOrNull(updateData.privateOwnerPrice);
+    if ("privateBrokerFeeFixed" in updateData) updateData.privateBrokerFeeFixed = toBigIntOrNull(updateData.privateBrokerFeeFixed);
+    if ("iptuYearly" in updateData) updateData.iptuYearly = toBigIntOrNull(updateData.iptuYearly);
+
     const updated = await prisma.property.update({
       where: { id },
       data: updateData,
@@ -259,7 +279,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       },
     });
 
-    return NextResponse.json({ success: true, property: result });
+    return NextResponse.json({ success: true, property: jsonSafe(result) });
   } catch (error) {
     console.error("Error updating property:", error);
     return NextResponse.json(

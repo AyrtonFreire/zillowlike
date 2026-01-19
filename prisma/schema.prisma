@@ -207,7 +207,7 @@ model Property {
   metaTitle   String?
   metaDescription String?
   description String
-  price       Int // price in BRL cents for precision
+  price       BigInt // price in BRL cents for precision
   type        PropertyType
   status      PropertyStatus @default(ACTIVE)
   purpose     Purpose?
@@ -239,7 +239,7 @@ model Property {
   floor         Int?
   furnished     Boolean?
   petFriendly   Boolean?
-  condoFee      Int? // in cents
+  condoFee      BigInt? // in cents
   yearBuilt     Int?
   conditionTags String[] @default([]) // Tags: Mobiliado, Novo, Em construção, etc.
 
@@ -301,9 +301,9 @@ model Property {
   privateOwnerPhone      String?   // Telefone do proprietário
   privateOwnerEmail      String?   // Email do proprietário
   privateOwnerAddress    String?   // Endereço do proprietário (para visitas, etc.)
-  privateOwnerPrice      Int?      // Valor que o proprietário quer (em centavos)
+  privateOwnerPrice      BigInt?   // Valor que o proprietário quer (em centavos)
   privateBrokerFeePercent Float?   // Taxa de corretagem em percentual (ex: 5.0 = 5%)
-  privateBrokerFeeFixed  Int?      // Taxa de corretagem fixa (em centavos)
+  privateBrokerFeeFixed  BigInt?   // Taxa de corretagem fixa (em centavos)
   privateExclusive       Boolean?  @default(false) // Exclusividade do corretor
   privateExclusiveUntil  DateTime? // Data limite da exclusividade
   privateOccupied        Boolean?  @default(false) // Imóvel está ocupado?
@@ -320,7 +320,7 @@ model Property {
   hideOwnerContact Boolean? @default(false) // Ocultar contato do proprietário
   hideCondoFee     Boolean? @default(false) // Ocultar taxa de condomínio
   hideIPTU         Boolean? @default(false) // Ocultar IPTU
-  iptuYearly       Int?                     // Valor anual do IPTU (em centavos)
+  iptuYearly       BigInt?                  // Valor anual do IPTU (em centavos)
 
   // 🆕 Controle de leads
   allowRealtorBoard Boolean? @default(false) // Se true, leads vão para o mural; se false, contato direto

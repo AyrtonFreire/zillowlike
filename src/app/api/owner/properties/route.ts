@@ -4,6 +4,12 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
+function jsonSafe<T>(data: T): any {
+  return JSON.parse(
+    JSON.stringify(data, (_k, v) => (typeof v === "bigint" ? Number(v) : v))
+  );
+}
+
 /**
  * GET /api/owner/properties
  * Returns all properties owned by the current user with stats
@@ -224,8 +230,9 @@ export async function GET(req: NextRequest) {
 
     // Format properties for frontend
     const formattedProperties = properties.map((p: any) => ({
-      ...((): any => {
-        const views = p._count.views as number;
+      // Add derived analytics fields (best-effort)
+      analytics: (() => {
+        const views = Number(p._count.views) || 0;
         const leads = p._count.leads as number;
         const conversionRate = views > 0 ? leads / views : 0;
         const conversionRatePct = Math.round(conversionRate * 1000) / 10;
@@ -291,7 +298,7 @@ export async function GET(req: NextRequest) {
       })(),
       id: p.id,
       title: p.title,
-      price: p.price,
+      price: typeof p.price === "bigint" ? Number(p.price) : p.price,
       status: p.status,
       type: p.type,
       city: p.city,
@@ -322,7 +329,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      properties: formattedProperties,
+      properties: jsonSafe(formattedProperties),
       metrics,
     });
   } catch (error) {

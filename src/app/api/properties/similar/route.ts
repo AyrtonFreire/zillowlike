@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+function jsonSafe<T>(data: T): any {
+  return JSON.parse(
+    JSON.stringify(data, (_k, v) => (typeof v === "bigint" ? Number(v) : v))
+  );
+}
+
 // Função para calcular similaridade entre dois imóveis
 function calculateSimilarity(
   current: any,
@@ -140,7 +146,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      properties: similarProperties,
+      properties: jsonSafe(similarProperties),
       total: similarProperties.length,
     });
   } catch (error) {

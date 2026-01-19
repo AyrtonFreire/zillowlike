@@ -88,6 +88,8 @@ export default async function PropertyCanonicalPage({ params }: PageProps) {
     notFound();
   }
 
+  const priceCents = typeof property.price === "bigint" ? Number(property.price) : property.price;
+
   const canonicalSlug = slugify(property.title);
   const canonicalPath = buildPropertyPath(property.id, property.title);
   if (slug !== canonicalSlug) {
@@ -104,7 +106,7 @@ export default async function PropertyCanonicalPage({ params }: PageProps) {
     image: (property.images || []).map((img: { url: string }) => img.url),
     offers: {
       "@type": "Offer",
-      price: typeof property.price === "number" && property.price > 0 ? (property.price / 100).toFixed(2) : undefined,
+      price: typeof priceCents === "number" && priceCents > 0 ? (priceCents / 100).toFixed(2) : undefined,
       priceCurrency: "BRL",
       availability: "https://schema.org/InStock",
       url: `${base}${canonicalPath}`,

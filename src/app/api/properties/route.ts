@@ -28,6 +28,24 @@ function checkRateLimit(req: NextRequest): boolean {
   return true;
 }
 
+function jsonSafe<T>(data: T): any {
+  return JSON.parse(
+    JSON.stringify(data, (_k, v) => (typeof v === "bigint" ? Number(v) : v))
+  );
+}
+
+function toBigIntOrNull(v: any): bigint | null {
+  if (v === null || typeof v === "undefined" || v === "") return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return BigInt(Math.trunc(n));
+}
+
+function toBigInt(v: any): bigint {
+  const out = toBigIntOrNull(v);
+  return out ?? BigInt(0);
+}
+
 function normalizeSearchParamsForCache(searchParams: URLSearchParams) {
   const entries = Array.from(searchParams.entries()).sort((a, b) => {
     const k = a[0].localeCompare(b[0]);
@@ -123,8 +141,8 @@ export async function GET(req: NextRequest) {
     if (purpose) where.purpose = purpose as any;
     if (minPrice || maxPrice) {
       where.price = {};
-      if (minPrice) where.price.gte = Number(minPrice);
-      if (maxPrice) where.price.lte = Number(maxPrice);
+      if (minPrice) where.price.gte = toBigInt(minPrice);
+      if (maxPrice) where.price.lte = toBigInt(maxPrice);
     }
     if (bedroomsMin) where.bedrooms = { gte: bedroomsMin };
     if (bathroomsMin) where.bathrooms = { gte: bathroomsMin };
@@ -216,7 +234,7 @@ export async function GET(req: NextRequest) {
     // Pets
     if (petsSmall === "true") where.petsSmall = true;
     if (petsLarge === "true") where.petsLarge = true;
-    if (condoFeeMax) where.condoFee = { lte: Number(condoFeeMax) };
+    if (condoFeeMax) where.condoFee = { lte: toBigInt(condoFeeMax) };
     if (iptuMax) {
       // IPTU não existe no schema atual, mas preparado para quando adicionar
       // where.iptu = { lte: Number(iptuMax) };
@@ -404,6 +422,8 @@ export async function GET(req: NextRequest) {
 
       const [total, nextItems] = await Promise.all([totalPromise, itemsPromise]);
       items = nextItems as any[];
+
+      items = jsonSafe(items);
 
       if (process.env.NODE_ENV !== "production") {
         console.log("api/properties GET", {
@@ -669,7 +689,7 @@ export async function POST(req: NextRequest) {
       metaTitle: metaTitle && metaTitle.trim() ? metaTitle.trim() : null,
       metaDescription: metaDescription && metaDescription.trim() ? metaDescription.trim() : null,
       description,
-      price,
+      price: BigInt(price),
       type: safeType,
       ...(purpose ? { purpose } : {}),
       ownerId: userId || undefined,
@@ -738,9 +758,9 @@ export async function POST(req: NextRequest) {
       privateOwnerPhone: (privateData as any)?.ownerPhone ?? null,
       privateOwnerEmail: (privateData as any)?.ownerEmail ?? null,
       privateOwnerAddress: (privateData as any)?.ownerAddress ?? null,
-      privateOwnerPrice: (privateData as any)?.ownerPrice ?? null,
+      privateOwnerPrice: toBigIntOrNull((privateData as any)?.ownerPrice),
       privateBrokerFeePercent: (privateData as any)?.brokerFeePercent ?? null,
-      privateBrokerFeeFixed: (privateData as any)?.brokerFeeFixed ?? null,
+      privateBrokerFeeFixed: toBigIntOrNull((privateData as any)?.brokerFeeFixed),
       privateExclusive: (privateData as any)?.exclusive ?? null,
       privateExclusiveUntil: (privateData as any)?.exclusiveUntil ? new Date((privateData as any).exclusiveUntil) : null,
       privateOccupied: (privateData as any)?.occupied ?? null,
@@ -753,7 +773,7 @@ export async function POST(req: NextRequest) {
       hideOwnerContact: (visibility as any)?.hideOwnerContact ?? null,
       hideCondoFee: (visibility as any)?.hideCondoFee ?? null,
       hideIPTU: (visibility as any)?.hideIPTU ?? null,
-      iptuYearly: (visibility as any)?.iptuYearly ?? null,
+      iptuYearly: toBigIntOrNull((visibility as any)?.iptuYearly),
       conditionTags: Array.isArray(conditionTags) ? conditionTags : undefined,
       images:
         Array.isArray(images) && images.length > 0
@@ -784,7 +804,7 @@ export async function POST(req: NextRequest) {
     }
     const created = await prisma.property.create({ data: createData, include: { images: true } });
     console.log("api/properties POST created", { id: created.id, ownerId: created.ownerId, city: created.city, state: created.state, status: created.status, requestId });
-    const res = NextResponse.json(created, { status: 201 });
+    const res = NextResponse.json(jsonSafe(created), { status: 201 });
     res.headers.set("x-request-id", requestId);
     return res;
   } catch (err: any) {
@@ -817,6 +837,10 @@ export async function PATCH(req: NextRequest) {
     const fields = ["title","description","price","type","purpose","conditionTags","street","neighborhood","city","state","postalCode","latitude","longitude","bedrooms","bathrooms","areaM2"];
     for (const k of fields) if (k in data) allowed[k] = data[k];
 
+    if ("price" in allowed) {
+      allowed.price = BigInt(Math.trunc(Number(allowed.price)));
+    }
+
     // Update property core fields first
     const updated = await prisma.property.update({ where: { id }, data: allowed });
     console.log("api/properties PATCH updated", { id, ownerId: existing.ownerId, fields: Object.keys(allowed) });
@@ -840,7 +864,7 @@ export async function PATCH(req: NextRequest) {
 
     // Return property with images
     const result = await prisma.property.findUnique({ where: { id }, include: { images: { orderBy: { sortOrder: 'asc' } } } });
-    return NextResponse.json(result);
+    return NextResponse.json(jsonSafe(result));
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });

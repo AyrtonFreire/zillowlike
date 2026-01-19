@@ -1904,14 +1904,26 @@ export default function NewPropertyPage() {
                       const shareUrl = publishedProperty.url;
                       const shareTitle = publishedProperty.title;
 
-                      if (typeof navigator !== "undefined" && "share" in navigator) {
+                      const ua =
+                        typeof navigator !== "undefined"
+                          ? String((navigator as any).userAgent || "")
+                          : "";
+                      const isMobileUa =
+                        (navigator as any)?.userAgentData?.mobile === true ||
+                        /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+
+                      if (isMobileUa && typeof navigator !== "undefined" && "share" in navigator) {
                         try {
-                          await navigator.share({
+                          await (navigator as any).share({
                             title: shareTitle,
                             text: `Confira este imóvel: ${shareTitle}`,
                             url: shareUrl,
                           });
-                          setToast({ message: "Compartilhamento iniciado.", type: "success" });
+                          setToast({
+                            message:
+                              "Compartilhamento iniciado. Selecione o Instagram no menu de compartilhamento.",
+                            type: "success",
+                          });
                           return;
                         } catch {
                           // fallback to clipboard
@@ -1931,8 +1943,8 @@ export default function NewPropertyPage() {
 
                       setToast({
                         message: copied
-                          ? "Link copiado! Cole no Instagram para compartilhar."
-                          : "Abra o Instagram e copie o link abaixo para compartilhar.",
+                          ? "Link copiado! O Instagram não permite compartilhamento automático no desktop — cole o link na legenda/Stories."
+                          : "O Instagram não permite compartilhamento automático no desktop — copie o link abaixo e cole na legenda/Stories.",
                         type: copied ? "success" : "info",
                       });
                     }}
@@ -1941,7 +1953,7 @@ export default function NewPropertyPage() {
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3zm-5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5zM17.75 6.25a1 1 0 1 1-1 1 1 1 0 0 1 1-1z" />
                     </svg>
-                    Instagram
+                    Instagram (copiar link)
                   </button>
                   
                   {/* Facebook */}
