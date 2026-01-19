@@ -37,57 +37,81 @@ export async function GET(req: NextRequest) {
 
     const settings = await LeadAutoReplyService.getSettings(user.id);
 
-    const counts = await (prisma as any).leadAutoReplyLog.groupBy({
-      by: ["decision"],
-      where: {
-        realtorId: user.id,
-        createdAt: { gte: since },
-      },
-      _count: { _all: true },
-    });
+    let counts: any[] = [];
+    try {
+      counts = await (prisma as any).leadAutoReplyLog.groupBy({
+        by: ["decision"],
+        where: {
+          realtorId: user.id,
+          createdAt: { gte: since },
+        },
+        _count: { _all: true },
+      });
+    } catch (error: any) {
+      if (error?.code !== "P2021") {
+        throw error;
+      }
+      counts = [];
+    }
 
     const sentCount = Number(counts.find((c: any) => c.decision === "SENT")?._count?._all || 0);
     const skippedCount = Number(counts.find((c: any) => c.decision === "SKIPPED")?._count?._all || 0);
     const failedCount = Number(counts.find((c: any) => c.decision === "FAILED")?._count?._all || 0);
 
-    const skippedByReasonRaw = await (prisma as any).leadAutoReplyLog.groupBy({
-      by: ["reason"],
-      where: {
-        realtorId: user.id,
-        createdAt: { gte: since },
-        decision: "SKIPPED",
-      },
-      _count: { _all: true },
-      orderBy: { _count: { _all: "desc" } },
-      take: 8,
-    });
+    let skippedByReasonRaw: any[] = [];
+    try {
+      skippedByReasonRaw = await (prisma as any).leadAutoReplyLog.groupBy({
+        by: ["reason"],
+        where: {
+          realtorId: user.id,
+          createdAt: { gte: since },
+          decision: "SKIPPED",
+        },
+        _count: { _all: true },
+        orderBy: { _count: { _all: "desc" } },
+        take: 8,
+      });
+    } catch (error: any) {
+      if (error?.code !== "P2021") {
+        throw error;
+      }
+      skippedByReasonRaw = [];
+    }
 
     const skippedByReason = (Array.isArray(skippedByReasonRaw) ? skippedByReasonRaw : []).map((row: any) => ({
       reason: row.reason ? String(row.reason) : "(sem motivo)",
       count: Number(row?._count?._all || 0),
     }));
 
-    const recent = await (prisma as any).leadAutoReplyLog.findMany({
-      where: {
-        realtorId: user.id,
-        createdAt: { gte: since },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: {
-        id: true,
-        leadId: true,
-        decision: true,
-        reason: true,
-        createdAt: true,
-        lead: {
-          select: {
-            property: { select: { title: true } },
-            contact: { select: { name: true } },
+    let recent: any[] = [];
+    try {
+      recent = await (prisma as any).leadAutoReplyLog.findMany({
+        where: {
+          realtorId: user.id,
+          createdAt: { gte: since },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          leadId: true,
+          decision: true,
+          reason: true,
+          createdAt: true,
+          lead: {
+            select: {
+              property: { select: { title: true } },
+              contact: { select: { name: true } },
+            },
           },
         },
-      },
-    });
+      });
+    } catch (error: any) {
+      if (error?.code !== "P2021") {
+        throw error;
+      }
+      recent = [];
+    }
 
     return NextResponse.json({
       range: label,

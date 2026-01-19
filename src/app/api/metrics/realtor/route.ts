@@ -3,6 +3,9 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+const jsonSafe = <T,>(value: T): T | number =>
+  typeof value === "bigint" ? Number(value) : value;
+
 function computeResponseMinutes(params: {
   createdAt: Date;
   respondedAt: Date;
@@ -241,7 +244,7 @@ export async function GET(request: NextRequest) {
       recentProperties: recentProperties.map((p) => ({
         id: p.id,
         title: p.title,
-        price: p.price,
+        price: jsonSafe(p.price),
         status: p.status,
         image: p.images[0]?.url || "/placeholder.jpg",
         views: p._count.views,

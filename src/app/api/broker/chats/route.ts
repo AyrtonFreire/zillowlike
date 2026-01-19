@@ -4,6 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
+const jsonSafe = <T,>(value: T): T | number =>
+  typeof value === "bigint" ? Number(value) : value;
+
 export async function GET(_req: NextRequest) {
   try {
     const session: any = await getServerSession(authOptions);
@@ -200,7 +203,7 @@ export async function GET(_req: NextRequest) {
           property: {
             id: lead.property.id,
             title: lead.property.title,
-            price: lead.property.price,
+            price: jsonSafe(lead.property.price),
             city: lead.property.city,
             state: lead.property.state,
             image: lead.property.images[0]?.url || null,
