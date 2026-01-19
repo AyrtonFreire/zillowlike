@@ -2,7 +2,23 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { ArrowLeft, Users, Phone, Eye, FileText, FileCheck, Trophy, XCircle, ChevronRight, Sparkles } from "lucide-react";
+import {
+  Users,
+  Phone,
+  Eye,
+  FileText,
+  FileCheck,
+  Trophy,
+  XCircle,
+  ChevronRight,
+  Sparkles,
+  Search,
+  MessageCircle,
+  Clock,
+  ListChecks,
+  CheckSquare,
+  Square,
+} from "lucide-react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, TouchSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/contexts/ToastContext";
@@ -15,6 +31,13 @@ interface PipelineLead {
   status: string;
   pipelineStage: "NEW" | "CONTACT" | "VISIT" | "PROPOSAL" | "DOCUMENTS" | "WON" | "LOST";
   createdAt: string;
+  nextActionDate?: string | null;
+  nextActionNote?: string | null;
+  lastContactAt?: string | null;
+  hasUnreadMessages?: boolean;
+  lastMessageAt?: string | null;
+  lastMessagePreview?: string | null;
+  lastMessageFromClient?: boolean;
   property: {
     id: string;
     title: string;
@@ -116,8 +139,33 @@ export default function BrokerCrmPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
+  const [reminderUpdating, setReminderUpdating] = useState<Record<string, boolean>>({});
   const [showCrmHelp, setShowCrmHelp] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  const [query, setQuery] = useState("");
+  const [quickFilter, setQuickFilter] = useState<"all" | "unread" | "sla" | "noContact">("all");
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const [collapsedByStage, setCollapsedByStage] = useState<Record<PipelineLead["pipelineStage"], boolean>>({
+    NEW: false,
+    CONTACT: false,
+    VISIT: false,
+    PROPOSAL: false,
+    DOCUMENTS: false,
+    WON: false,
+    LOST: false,
+  });
+  const [visibleCountByStage, setVisibleCountByStage] = useState<Record<PipelineLead["pipelineStage"], number>>({
+    NEW: 20,
+    CONTACT: 20,
+    VISIT: 20,
+    PROPOSAL: 20,
+    DOCUMENTS: 20,
+    WON: 20,
+    LOST: 20,
+  });
+  const [confirmDragMoves, setConfirmDragMoves] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -137,11 +185,6 @@ export default function BrokerCrmPage() {
   const [mobileActiveStage, setMobileActiveStage] = useState<PipelineLead["pipelineStage"]>("NEW");
 
   useEffect(() => {
-    if (!realtorId) return;
-    fetchLeads();
-  }, [realtorId]);
-
-  useEffect(() => {
     try {
       if (typeof window === "undefined") return;
       const key = "zlw_help_broker_crm_v1";
@@ -154,7 +197,20 @@ export default function BrokerCrmPage() {
     }
   }, []);
 
-  const fetchLeads = async () => {
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      const key = "zlw_crm_confirm_drag_moves_v1";
+      const stored = window.localStorage.getItem(key);
+      if (stored === "0") {
+        setConfirmDragMoves(false);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const fetchLeads = useCallback(async () => {
     try {
       if (!realtorId) return;
       setError(null);
@@ -173,7 +229,12 @@ export default function BrokerCrmPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [realtorId]);
+
+  useEffect(() => {
+    if (!realtorId) return;
+    fetchLeads();
+  }, [realtorId, fetchLeads]);
 
   const handleDismissCrmHelp = () => {
     try {
@@ -186,7 +247,138 @@ export default function BrokerCrmPage() {
     setShowCrmHelp(false);
   };
 
-  const moveLeadToStage = useCallback(async (leadId: string, newStage: PipelineLead["pipelineStage"]) => {
+  const now = new Date();
+  const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+  const isSameDay = (a: Date, b: Date) => {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  };
+
+  const isLeadSla = (lead: PipelineLead) => {
+    if (!lead.nextActionDate) return { overdue: false, today: false };
+    const d = new Date(lead.nextActionDate);
+    if (Number.isNaN(d.getTime())) return { overdue: false, today: false };
+    const today = isSameDay(d, now);
+    const overdue = d.getTime() < now.getTime() && !today;
+    return { overdue, today };
+  };
+
+  const leadMatchesQuery = (lead: PipelineLead, q: string) => {
+    const queryNorm = String(q || "").trim().toLowerCase();
+    if (!queryNorm) return true;
+
+    const hay = [
+      lead?.property?.title,
+      lead?.property?.city,
+      lead?.property?.state,
+      lead?.property?.neighborhood,
+      lead?.contact?.name,
+      lead?.lastMessagePreview,
+    ]
+      .map((s) => String(s || "").toLowerCase())
+      .join(" | ");
+
+    return hay.includes(queryNorm);
+  };
+
+  const leadPassesQuickFilter = (lead: PipelineLead) => {
+    if (quickFilter === "all") return true;
+    if (quickFilter === "unread") return !!lead.hasUnreadMessages;
+    if (quickFilter === "sla") {
+      const { overdue, today } = isLeadSla(lead);
+      return overdue || today;
+    }
+    if (quickFilter === "noContact") {
+      if (!lead.lastContactAt) return true;
+      const d = new Date(lead.lastContactAt);
+      if (Number.isNaN(d.getTime())) return true;
+      return d.getTime() < fortyEightHoursAgo.getTime();
+    }
+    return true;
+  };
+
+  const urgencySort = (a: PipelineLead, b: PipelineLead) => {
+    const au = a.hasUnreadMessages ? 1 : 0;
+    const bu = b.hasUnreadMessages ? 1 : 0;
+    if (au !== bu) return bu - au;
+
+    const aSla = isLeadSla(a);
+    const bSla = isLeadSla(b);
+    const aRank = aSla.overdue ? 2 : aSla.today ? 1 : 0;
+    const bRank = bSla.overdue ? 2 : bSla.today ? 1 : 0;
+    if (aRank !== bRank) return bRank - aRank;
+
+    const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : new Date(a.createdAt).getTime();
+    const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : new Date(b.createdAt).getTime();
+    if (!Number.isNaN(aTime) && !Number.isNaN(bTime) && aTime !== bTime) {
+      return bTime - aTime;
+    }
+
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  };
+
+  const filteredLeads = useMemo(() => {
+    return (leads || []).filter((lead) => leadMatchesQuery(lead, query)).filter((lead) => leadPassesQuickFilter(lead));
+  }, [leads, query, quickFilter]);
+
+  const toggleSelectLead = useCallback((leadId: string) => {
+    setSelectedLeadIds((prev) => {
+      const id = String(leadId);
+      if (!id) return prev;
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      return [...prev, id];
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedLeadIds([]);
+  }, []);
+
+  const selectAllVisible = useCallback(() => {
+    setSelectedLeadIds(filteredLeads.map((l) => String(l.id)));
+  }, [filteredLeads]);
+
+  const saveReminder = useCallback(
+    async (leadId: string, date: string | null, note: string | null) => {
+      try {
+        setReminderUpdating((prev) => ({ ...prev, [leadId]: true }));
+
+        setLeads((prev) =>
+          prev.map((l) =>
+            l.id === leadId
+              ? {
+                  ...l,
+                  nextActionDate: date,
+                  nextActionNote: note,
+                }
+              : l
+          )
+        );
+
+        const response = await fetch(`/api/leads/${leadId}/reminder`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ date, note }),
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data?.success) {
+          throw new Error(data?.error || "Não conseguimos salvar este lembrete agora.");
+        }
+
+        toast.success("Lembrete atualizado!", "Próxima ação registrada.");
+      } catch (err: any) {
+        console.error("Error saving reminder:", err);
+        toast.error("Erro ao salvar lembrete", err?.message || "Tente novamente.");
+        fetchLeads();
+      } finally {
+        setReminderUpdating((prev) => ({ ...prev, [leadId]: false }));
+      }
+    },
+    [toast, fetchLeads]
+  );
+
+  const moveLeadToStage = useCallback(async (leadId: string, newStage: PipelineLead["pipelineStage"], options?: { silent?: boolean }) => {
     const lead = leads.find((l) => l.id === leadId);
     if (!lead || lead.pipelineStage === newStage) return;
 
@@ -214,14 +406,43 @@ export default function BrokerCrmPage() {
         throw new Error(data?.error || "Não conseguimos atualizar a etapa deste lead agora.");
       }
 
-      toast.success("Etapa atualizada!", `Lead movido para "${STAGE_CONFIG[newStage].label}".`);
+      if (!options?.silent) {
+        toast.success("Etapa atualizada!", `Lead movido para "${STAGE_CONFIG[newStage].label}".`);
+      }
     } catch (err: any) {
       console.error("Error updating pipeline stage:", err);
-      toast.error("Erro ao mover lead", err?.message || "Não conseguimos atualizar a etapa deste lead agora.");
+      if (!options?.silent) {
+        toast.error("Erro ao mover lead", err?.message || "Não conseguimos atualizar a etapa deste lead agora.");
+      }
     } finally {
       setUpdating((prev) => ({ ...prev, [leadId]: false }));
     }
   }, [leads, toast]);
+
+  const bulkMoveSelected = useCallback(
+    async (newStage: PipelineLead["pipelineStage"]) => {
+      const ids = [...selectedLeadIds];
+      if (ids.length === 0) return;
+
+      const confirmed = await toast.confirm({
+        title: "Mover leads em lote?",
+        message: `Mover ${ids.length} lead(s) para "${STAGE_CONFIG[newStage].label}"?`,
+        confirmText: "Sim, mover",
+        cancelText: "Cancelar",
+        variant: "info",
+      });
+
+      if (!confirmed) return;
+
+      for (const id of ids) {
+        await moveLeadToStage(String(id), newStage, { silent: true });
+      }
+
+      toast.success("Leads atualizados!", `${ids.length} lead(s) movidos para "${STAGE_CONFIG[newStage].label}".`);
+      clearSelection();
+    },
+    [selectedLeadIds, toast, moveLeadToStage, clearSelection]
+  );
 
   const handleAdvanceStage = async (leadId: string) => {
     const lead = leads.find((l) => l.id === leadId);
@@ -262,6 +483,38 @@ export default function BrokerCrmPage() {
     // Verifica se é uma etapa válida
     if (!STAGE_ORDER.includes(newStage)) return;
 
+    if (selectionMode) return;
+
+    const current = leads.find((l) => String(l.id) === String(leadId));
+    if (!current || current.pipelineStage === newStage) return;
+
+    if (confirmDragMoves) {
+      const confirmed = await toast.confirm({
+        title: "Mover lead de etapa?",
+        message: `Deseja mover este lead para a etapa "${STAGE_CONFIG[newStage].label}"?`,
+        confirmText: "Sim, mover",
+        cancelText: "Cancelar",
+        variant: "info",
+      });
+
+      if (!confirmed) {
+        setLeads((prev) =>
+          prev.map((l) => (String(l.id) === String(leadId) ? { ...l, pipelineStage: current.pipelineStage } : l))
+        );
+        return;
+      }
+
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("zlw_crm_confirm_drag_moves_v1", "0");
+        }
+      } catch {
+        // ignore
+      }
+
+      setConfirmDragMoves(false);
+    }
+
     await moveLeadToStage(leadId, newStage);
   };
 
@@ -278,16 +531,20 @@ export default function BrokerCrmPage() {
       LOST: [],
     };
 
-    for (const lead of leads) {
+    for (const lead of filteredLeads) {
       const stage = lead.pipelineStage || "NEW";
       map[stage].push(lead);
     }
 
+    for (const stage of STAGE_ORDER) {
+      map[stage] = map[stage].sort(urgencySort);
+    }
+
     return map;
-  }, [leads]);
+  }, [filteredLeads]);
 
   // Total de leads para cálculo de progresso
-  const totalLeads = leads.length;
+  const totalLeads = filteredLeads.length;
   const wonLeads = leadsByStage["WON"].length;
   const progressPercent = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
 
@@ -297,6 +554,143 @@ export default function BrokerCrmPage() {
 
   return (
     <div className="bg-gray-50">
+        <div className="hidden md:block bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Buscar por cliente, imóvel, bairro, cidade ou mensagem…"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQuickFilter("all")}
+                  className={`px-3 py-2 rounded-xl text-sm font-semibold border ${
+                    quickFilter === "all"
+                      ? "bg-teal-600 text-white border-teal-600"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickFilter("unread")}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border ${
+                    quickFilter === "unread"
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Não lidas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickFilter("sla")}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border ${
+                    quickFilter === "sla"
+                      ? "bg-amber-600 text-white border-amber-600"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  Próxima ação
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickFilter("noContact")}
+                  className={`px-3 py-2 rounded-xl text-sm font-semibold border ${
+                    quickFilter === "noContact"
+                      ? "bg-gray-800 text-white border-gray-800"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  48h sem contato
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectionMode((v) => !v);
+                    setSelectedLeadIds([]);
+                  }}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border ${
+                    selectionMode
+                      ? "bg-purple-600 text-white border-purple-600"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  <ListChecks className="w-4 h-4" />
+                  Selecionar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !confirmDragMoves;
+                    setConfirmDragMoves(next);
+                    try {
+                      if (typeof window !== "undefined") {
+                        window.localStorage.setItem("zlw_crm_confirm_drag_moves_v1", next ? "1" : "0");
+                      }
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border ${
+                    confirmDragMoves
+                      ? "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                      : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
+                  }`}
+                >
+                  {confirmDragMoves ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                  Confirmar arrasto
+                </button>
+              </div>
+            </div>
+
+            {selectionMode && (
+              <div className="mt-3 flex items-center gap-3">
+                <div className="text-sm text-gray-600">
+                  Selecionados: <span className="font-semibold text-gray-900">{selectedLeadIds.length}</span>
+                </div>
+
+                <button type="button" onClick={selectAllVisible} className="text-sm font-semibold text-blue-600 hover:text-blue-700">
+                  Selecionar tudo (visível)
+                </button>
+
+                <button type="button" onClick={clearSelection} className="text-sm font-semibold text-gray-600 hover:text-gray-900">
+                  Limpar
+                </button>
+
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Mover para:</span>
+                  {STAGE_ORDER.map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      disabled={selectedLeadIds.length === 0}
+                      onClick={() => bulkMoveSelected(st)}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      {STAGE_CONFIG[st].label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Stats bar mobile */}
         <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3">
           <div className="flex items-center justify-between mb-2">
@@ -315,6 +709,61 @@ export default function BrokerCrmPage() {
 
         {/* Navegação de etapas no mobile */}
         <div className="md:hidden sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+          <div className="p-3 border-b border-gray-200">
+            <div className="relative">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar…"
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {[
+                { key: "all" as const, label: "Todos" },
+                { key: "unread" as const, label: "Não lidas" },
+                { key: "sla" as const, label: "Próxima ação" },
+                { key: "noContact" as const, label: "48h" },
+              ].map((it) => (
+                <button
+                  key={it.key}
+                  type="button"
+                  onClick={() => setQuickFilter(it.key)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                    quickFilter === it.key
+                      ? "bg-teal-600 text-white border-teal-600"
+                      : "bg-white text-gray-700 border-gray-200"
+                  }`}
+                >
+                  {it.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectionMode((v) => !v);
+                  setSelectedLeadIds([]);
+                }}
+                className={`ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                  selectionMode ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-700 border-gray-200"
+                }`}
+              >
+                <ListChecks className="w-4 h-4" />
+                Selecionar
+              </button>
+            </div>
+            {selectionMode && (
+              <div className="mt-2 flex items-center justify-between">
+                <div className="text-xs text-gray-600">
+                  Selecionados: <span className="font-semibold text-gray-900">{selectedLeadIds.length}</span>
+                </div>
+                <button type="button" onClick={selectAllVisible} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                  Selecionar tudo
+                </button>
+              </div>
+            )}
+          </div>
           <div className="overflow-x-auto scrollbar-hide">
             <div className="flex gap-1 p-2 min-w-max">
               {STAGE_ORDER.map((stage) => {
@@ -398,6 +847,10 @@ export default function BrokerCrmPage() {
                 const stageLeads = leadsByStage[stage];
                 const Icon = config.icon;
 
+                const isCollapsed = !!collapsedByStage[stage];
+                const visibleCount = visibleCountByStage[stage] || 20;
+                const visibleLeads = isCollapsed ? [] : stageLeads.slice(0, visibleCount);
+
                 return (
                   <DroppableStageColumn
                     key={stage}
@@ -405,6 +858,13 @@ export default function BrokerCrmPage() {
                     label={config.label}
                     description={config.description}
                     count={stageLeads.length}
+                    collapsed={isCollapsed}
+                    onToggleCollapsed={() =>
+                      setCollapsedByStage((prev) => ({
+                        ...prev,
+                        [stage]: !prev[stage],
+                      }))
+                    }
                   >
                     {stageLeads.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -414,15 +874,51 @@ export default function BrokerCrmPage() {
                         </p>
                       </div>
                     ) : (
-                      stageLeads.map((lead) => (
-                        <DraggableLeadCard
-                          key={lead.id}
-                          lead={lead}
-                          isUpdating={updating[lead.id]}
-                          showAdvanceButton={stage !== "WON" && stage !== "LOST"}
-                          onAdvance={() => handleAdvanceStage(lead.id)}
-                        />
-                      ))
+                      <>
+                        {visibleLeads.map((lead) => (
+                          <DraggableLeadCard
+                            key={lead.id}
+                            lead={lead}
+                            isUpdating={updating[lead.id]}
+                            selectionMode={selectionMode}
+                            selected={selectedLeadIds.includes(String(lead.id))}
+                            onToggleSelected={() => toggleSelectLead(String(lead.id))}
+                            onOpenChat={() => {
+                              if (typeof window !== "undefined") {
+                                window.location.href = `/broker/chats?lead=${lead.id}`;
+                              }
+                            }}
+                            onToggleReminder={() => {
+                              const hasReminder = !!lead.nextActionDate || !!lead.nextActionNote;
+                              if (hasReminder) {
+                                saveReminder(String(lead.id), null, null);
+                              } else {
+                                const d = new Date();
+                                d.setDate(d.getDate() + 1);
+                                d.setHours(10, 0, 0, 0);
+                                saveReminder(String(lead.id), d.toISOString(), null);
+                              }
+                            }}
+                            isReminderUpdating={reminderUpdating[lead.id]}
+                            showAdvanceButton={!selectionMode && stage !== "WON" && stage !== "LOST"}
+                            onAdvance={() => handleAdvanceStage(lead.id)}
+                          />
+                        ))}
+                        {stageLeads.length > visibleCount && !isCollapsed && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setVisibleCountByStage((prev) => ({
+                                ...prev,
+                                [stage]: (prev[stage] || 20) + 20,
+                              }))
+                            }
+                            className="w-full px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                          >
+                            Mostrar mais ({stageLeads.length - visibleCount})
+                          </button>
+                        )}
+                      </>
                     )}
                   </DroppableStageColumn>
                 );
@@ -477,15 +973,78 @@ export default function BrokerCrmPage() {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {stageLeads.map((lead) => (
+                          {stageLeads.slice(0, visibleCountByStage[mobileActiveStage] || 20).map((lead) => (
                             <DraggableLeadCard
                               key={lead.id}
                               lead={lead}
                               isUpdating={updating[lead.id]}
-                              showAdvanceButton={mobileActiveStage !== "WON" && mobileActiveStage !== "LOST"}
+                              selectionMode={selectionMode}
+                              selected={selectedLeadIds.includes(String(lead.id))}
+                              onToggleSelected={() => toggleSelectLead(String(lead.id))}
+                              onOpenChat={() => {
+                                if (typeof window !== "undefined") {
+                                  window.location.href = `/broker/chats?lead=${lead.id}`;
+                                }
+                              }}
+                              onToggleReminder={() => {
+                                const hasReminder = !!lead.nextActionDate || !!lead.nextActionNote;
+                                if (hasReminder) {
+                                  saveReminder(String(lead.id), null, null);
+                                } else {
+                                  const d = new Date();
+                                  d.setDate(d.getDate() + 1);
+                                  d.setHours(10, 0, 0, 0);
+                                  saveReminder(String(lead.id), d.toISOString(), null);
+                                }
+                              }}
+                              isReminderUpdating={reminderUpdating[lead.id]}
+                              showAdvanceButton={!selectionMode && mobileActiveStage !== "WON" && mobileActiveStage !== "LOST"}
                               onAdvance={() => handleAdvanceStage(lead.id)}
                             />
                           ))}
+                          {stageLeads.length > (visibleCountByStage[mobileActiveStage] || 20) && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setVisibleCountByStage((prev) => ({
+                                  ...prev,
+                                  [mobileActiveStage]: (prev[mobileActiveStage] || 20) + 20,
+                                }))
+                              }
+                              className="w-full px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                            >
+                              Mostrar mais ({stageLeads.length - (visibleCountByStage[mobileActiveStage] || 20)})
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {selectionMode && selectedLeadIds.length > 0 && (
+                        <div className="p-3 rounded-xl border border-purple-200 bg-purple-50">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs text-purple-800 font-semibold">
+                              Mover {selectedLeadIds.length} lead(s)
+                            </div>
+                            <button
+                              type="button"
+                              onClick={clearSelection}
+                              className="text-xs font-semibold text-purple-700 hover:text-purple-900"
+                            >
+                              Limpar
+                            </button>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {STAGE_ORDER.map((st) => (
+                              <button
+                                key={st}
+                                type="button"
+                                onClick={() => bulkMoveSelected(st)}
+                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-purple-200 bg-white text-purple-800 hover:bg-purple-100"
+                              >
+                                {STAGE_CONFIG[st].label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
 
