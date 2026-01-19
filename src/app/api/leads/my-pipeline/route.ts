@@ -72,7 +72,10 @@ export async function GET(_request: NextRequest) {
       property: lead.property
         ? {
             ...lead.property,
-            price: lead.property.price ? jsonSafe(lead.property.price) : lead.property.price,
+            price:
+              lead.property.price !== null && lead.property.price !== undefined
+                ? jsonSafe(lead.property.price)
+                : lead.property.price,
           }
         : lead.property,
     }));

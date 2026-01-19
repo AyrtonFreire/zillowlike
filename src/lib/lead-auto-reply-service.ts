@@ -163,7 +163,22 @@ export class LeadAutoReplyService {
   }
 
   static async getSettings(realtorId: string) {
-    const row = await (prisma as any).realtorAutoReplySettings.findUnique({ where: { realtorId } });
+    let row: any = null;
+    try {
+      row = await (prisma as any).realtorAutoReplySettings.findUnique({ where: { realtorId } });
+    } catch (error: any) {
+      if (error?.code === "P2021") {
+        return {
+          realtorId,
+          enabled: false,
+          timezone: "America/Sao_Paulo",
+          weekSchedule: this.defaultWeekSchedule(),
+          cooldownMinutes: 3,
+          maxRepliesPerLeadPer24h: 6,
+        };
+      }
+      throw error;
+    }
     if (!row) {
       return {
         realtorId,
