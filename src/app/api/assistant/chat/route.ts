@@ -81,6 +81,67 @@ type UpcomingVisitItem = {
   pipelineStage: string | null;
 };
 
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+async function getSystemIntSetting(key: string, fallback: number): Promise<number> {
+  try {
+    const rec = await (prisma as any).systemSetting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    const parsed = Number.parseInt(String(rec?.value ?? ""), 10);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  } catch {
+  }
+  return fallback;
+}
+
+async function checkAssistantAiChatQuota(params: { actorId: string; context: "REALTOR" | "AGENCY"; teamId?: string | null }) {
+  const since = startOfMonth(new Date());
+
+  const rawLogs = await (prisma as any).auditLog.findMany({
+    where: {
+      createdAt: { gte: since },
+      actorId: String(params.actorId),
+      action: { in: ["ASSISTANT_CHAT_AI_CALLED"] },
+      targetType: "AssistantChat",
+    },
+    select: { metadata: true },
+    orderBy: { createdAt: "desc" },
+    take: 5000,
+  });
+
+  const used = (Array.isArray(rawLogs) ? rawLogs : []).filter((log: any) => {
+    const meta = log?.metadata && typeof log.metadata === "object" ? (log.metadata as any) : null;
+    const metaContext = meta?.context ? String(meta.context).toUpperCase() : "";
+    if (params.context === "AGENCY") {
+      if (metaContext !== "AGENCY") return false;
+      if (params.teamId) {
+        const metaTeamId = meta?.teamId ? String(meta.teamId) : "";
+        if (metaTeamId !== String(params.teamId)) return false;
+      }
+    } else {
+      if (metaContext !== "REALTOR") return false;
+    }
+    return true;
+  }).length;
+
+  const defaultLimit = params.context === "AGENCY" ? 800 : 300;
+  const limit = params.context === "AGENCY" && params.teamId
+    ? await getSystemIntSetting(
+        `team:${String(params.teamId)}:assistantChatAiMonthlyLimit`,
+        await getSystemIntSetting("assistantChatAiMonthlyLimitAgency", defaultLimit)
+      )
+    : params.context === "AGENCY"
+      ? await getSystemIntSetting("assistantChatAiMonthlyLimitAgency", defaultLimit)
+      : await getSystemIntSetting("assistantChatAiMonthlyLimitRealtor", defaultLimit);
+
+  const remaining = Math.max(0, Number(limit || 0) - Number(used || 0));
+  return { ok: remaining > 0, used, limit, remaining, periodStart: since.toISOString() };
+}
+
 function normalizeQuery(text: string) {
   return String(text || "")
     .toLowerCase()
@@ -1058,7 +1119,7 @@ function parseAi(content: string, params?: { leadId?: string | null; allowedProp
 async function getHandler(req: NextRequest) {
   const { userId, role } = await getSessionContext();
   if (!userId) return errorResponse("Não autenticado", 401);
-  if (role !== "ADMIN" && role !== "REALTOR") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
+  if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
 
   const url = new URL(req.url);
   const queryParsed = QuerySchema.safeParse({ leadId: url.searchParams.get("leadId") || undefined });
@@ -1090,7 +1151,7 @@ async function getHandler(req: NextRequest) {
 async function postHandler(req: NextRequest) {
   const { userId, role } = await getSessionContext();
   if (!userId) return errorResponse("Não autenticado", 401);
-  if (role !== "ADMIN" && role !== "REALTOR") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
+  if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return errorResponse("AI is not configured", 500, null, "OPENAI_API_KEY_MISSING");
@@ -1128,6 +1189,7 @@ async function postHandler(req: NextRequest) {
         contact: { select: { name: true } },
         property: { select: { id: true, title: true, ownerId: true } },
         team: { select: { ownerId: true } },
+        teamId: true,
       },
     });
 
@@ -1387,6 +1449,40 @@ async function postHandler(req: NextRequest) {
     leadMetrics,
     propertyMetrics,
   });
+
+  const effectiveContext = role === "AGENCY" ? "AGENCY" : "REALTOR";
+  const effectiveTeamId = role === "AGENCY" ? String(lead?.teamId || "") || null : null;
+  if (role === "AGENCY" && !effectiveTeamId) {
+    return errorResponse("Não foi possível identificar o time da agência.", 400, null, "TEAM_ID_MISSING");
+  }
+
+  const quota = await checkAssistantAiChatQuota({ actorId: String(userId), context: effectiveContext as any, teamId: effectiveTeamId });
+  if (!quota.ok) {
+    return errorResponse("Limite mensal do Assistente IA atingido.", 429, { quota }, "AI_QUOTA_EXCEEDED");
+  }
+
+  void (async () => {
+    try {
+      await (prisma as any).auditLog.create({
+        data: {
+          level: "INFO",
+          action: "ASSISTANT_CHAT_AI_CALLED",
+          message: "Assistant chat AI call",
+          actorId: String(userId),
+          actorEmail: (session as any)?.user?.email ? String((session as any).user.email) : null,
+          actorRole: role || null,
+          targetType: "AssistantChat",
+          targetId: leadId ? String(leadId) : "global",
+          metadata: {
+            context: effectiveContext,
+            teamId: effectiveContext === "AGENCY" ? effectiveTeamId : null,
+            leadId: leadId ? String(leadId) : null,
+          },
+        },
+      });
+    } catch {
+    }
+  })();
 
   const attempt = await callOpenAi({ apiKey, systemPrompt, userPrompt });
   if (!attempt.ok) {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { Check, CheckCheck, MessageCircle, Search, Send, User, ChevronLeft } from "lucide-react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
@@ -101,8 +102,11 @@ function renderMessageContent(content: string) {
 
 export default function AgencyTeamChatPanel() {
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
   const role = (session as any)?.user?.role || (session as any)?.role || null;
   const userId = (session as any)?.user?.id || (session as any)?.userId || "";
+
+  const threadIdFromUrl = searchParams?.get("thread") || null;
 
   const [team, setTeam] = useState<TeamChatTeam | null>(null);
   const [threads, setThreads] = useState<TeamChatThread[]>([]);
@@ -264,6 +268,13 @@ export default function AgencyTeamChatPanel() {
     if (status !== "authenticated") return;
     fetchThreads();
   }, [fetchThreads, status]);
+
+  useEffect(() => {
+    if (!threadIdFromUrl) return;
+    if (!threads.length) return;
+    if (!threads.some((t) => String(t.id) === String(threadIdFromUrl))) return;
+    setSelectedThreadId(String(threadIdFromUrl));
+  }, [threadIdFromUrl, threads]);
 
   useEffect(() => {
     if (status !== "authenticated") return;

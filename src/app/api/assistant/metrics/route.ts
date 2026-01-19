@@ -16,6 +16,23 @@ const ACTIONS = [
   "ASSISTANT_ITEM_SNOOZED",
 ] as const;
 
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+async function getSystemIntSetting(key: string, fallback: number): Promise<number> {
+  try {
+    const rec = await (prisma as any).systemSetting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    const parsed = Number.parseInt(String(rec?.value ?? ""), 10);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  } catch {
+  }
+  return fallback;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session: any = await getServerSession(authOptions);
@@ -40,6 +57,8 @@ export async function GET(req: NextRequest) {
     const allowedDays = [1, 7, 30, 90];
     const days = allowedDays.includes(daysParam) ? daysParam : 7;
 
+    const period = String(url.searchParams.get("period") || "").trim().toLowerCase();
+
     const contextParam = (url.searchParams.get("context") || (role === "AGENCY" ? "AGENCY" : "REALTOR")).trim().toUpperCase();
     const context = contextParam === "AGENCY" ? "AGENCY" : "REALTOR";
 
@@ -52,8 +71,12 @@ export async function GET(req: NextRequest) {
       teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
     }
 
-    const since = new Date();
-    since.setDate(since.getDate() - days);
+    const now = new Date();
+    const since = period === "month" ? startOfMonth(now) : (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - days);
+      return d;
+    })();
 
     const actorIdParam = url.searchParams.get("actorId");
     const actorId = role === "ADMIN" && actorIdParam ? String(actorIdParam) : String(userId);
@@ -114,6 +137,31 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const quota = await (async () => {
+      if (period !== "month") return null;
+
+      const draftActions = new Set(["ASSISTANT_DRAFT_GENERATED", "ASSISTANT_DRAFT_FALLBACK"]);
+      const used = logs
+        .filter((log: any) => draftActions.has(String(log?.action || "")))
+        .length;
+
+      const defaultLimit = context === "AGENCY" ? 500 : 200;
+      const limit = context === "AGENCY" && teamId
+        ? await getSystemIntSetting(`team:${String(teamId)}:assistantAiMonthlyLimit`, await getSystemIntSetting("assistantAiMonthlyLimitAgency", defaultLimit))
+        : context === "AGENCY"
+          ? await getSystemIntSetting("assistantAiMonthlyLimitAgency", defaultLimit)
+          : await getSystemIntSetting("assistantAiMonthlyLimitRealtor", defaultLimit);
+
+      const remaining = Math.max(0, Number(limit || 0) - Number(used || 0));
+      return {
+        period: "month",
+        periodStart: startOfMonth(now).toISOString(),
+        used,
+        limit,
+        remaining,
+      };
+    })();
+
     return NextResponse.json({
       success: true,
       days,
@@ -123,6 +171,7 @@ export async function GET(req: NextRequest) {
       total: logs.length,
       newestAt: newestAt ? newestAt.toISOString() : null,
       counts,
+      quota,
     });
   } catch (error) {
     console.error("Error fetching assistant metrics:", error);

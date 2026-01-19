@@ -91,6 +91,45 @@ new Worker(
         // ignore
       }
     }
+
+    const teamRows = await prisma.lead.findMany({
+      where: {
+        teamId: { not: null },
+        OR: [
+          {
+            status: {
+              in: [
+                "WAITING_REALTOR_ACCEPT",
+                "WAITING_OWNER_APPROVAL",
+                "CONFIRMED",
+                "ACCEPTED",
+                "RESERVED",
+              ] as any,
+            },
+            updatedAt: { gte: since },
+          },
+          { nextActionDate: { lte: next24h } },
+        ],
+      },
+      select: { teamId: true },
+      distinct: ["teamId"],
+    });
+
+    for (const row of teamRows) {
+      const teamId = row.teamId;
+      if (!teamId) continue;
+      try {
+        const team = await (prisma as any).team.findUnique({
+          where: { id: String(teamId) },
+          select: { ownerId: true },
+        });
+        const ownerId = team?.ownerId ? String(team.ownerId) : "";
+        if (!ownerId) continue;
+        await RealtorAssistantService.recalculateForAgencyTeam(ownerId, String(teamId));
+      } catch {
+        // ignore
+      }
+    }
   },
   { connection, concurrency: 1 }
 );

@@ -98,13 +98,15 @@ export default function BrokerAssistantPage() {
         if (cancelled) return;
         fetchStats();
       };
-      channel.bind("assistant-updated", handler as any);
+      channel.bind("assistant:item_updated", handler as any);
+      channel.bind("assistant:items_recalculated", handler as any);
 
       return () => {
         cancelled = true;
         clearInterval(interval);
         try {
-          channel.unbind("assistant-updated", handler as any);
+          channel.unbind("assistant:item_updated", handler as any);
+          channel.unbind("assistant:items_recalculated", handler as any);
           pusher.unsubscribe(channelName);
         } catch {
         }

@@ -164,18 +164,6 @@ function computeLeadHealthAndNba(params: {
 }
 
 export class RealtorAssistantService {
-  static async emitUpdated(realtorId: string) {
-    try {
-      const pusher = getPusherServer();
-      await pusher.trigger(PUSHER_CHANNELS.REALTOR(realtorId), "assistant-updated", {
-        realtorId,
-        ts: new Date().toISOString(),
-      });
-    } catch {
-      // ignore
-    }
-  }
-
   static async emitItemUpdated(
     realtorId: string,
     item: any,
@@ -202,11 +190,6 @@ export class RealtorAssistantService {
       }
     } catch {
       // ignore
-    }
-
-    // backward compat
-    if ((options?.context || "REALTOR") !== "AGENCY") {
-      await this.emitUpdated(realtorId);
     }
   }
 
@@ -236,11 +219,6 @@ export class RealtorAssistantService {
       }
     } catch {
       // ignore
-    }
-
-    // backward compat
-    if ((options?.context || "REALTOR") !== "AGENCY") {
-      await this.emitUpdated(realtorId);
     }
   }
 
@@ -369,6 +347,7 @@ export class RealtorAssistantService {
             where: { id: { in: leadIds }, ...leadAccessWhere },
             select: {
               id: true,
+              realtorId: true,
               status: true,
               pipelineStage: true,
               nextActionDate: true,
@@ -458,6 +437,7 @@ export class RealtorAssistantService {
 
           return {
             id,
+            realtorId: l?.realtorId ? String(l.realtorId) : null,
             status: l.status || null,
             pipelineStage: l.pipelineStage || null,
             nextActionDate: l.nextActionDate || null,
@@ -807,6 +787,21 @@ export class RealtorAssistantService {
     });
     const lastProChatMap = new Map(lastProChat.map((m) => [m.leadId, m.createdAt]));
 
+    let readReceipts: any[] = [];
+    try {
+      readReceipts = await (prisma as any).leadChatReadReceipt.findMany({
+        where: { userId: String(realtorId), leadId: { in: leadIds } },
+        select: { leadId: true, lastReadAt: true },
+      });
+    } catch {
+      readReceipts = [];
+    }
+    const readMap = new Map<string, Date>(
+      (readReceipts || [])
+        .filter((r: any) => r?.leadId && r?.lastReadAt)
+        .map((r: any) => [String(r.leadId), new Date(r.lastReadAt)])
+    );
+
     const firstClientMessages = await prisma.leadClientMessage.findMany({
       where: { leadId: { in: leadIds }, fromClient: true },
       orderBy: { createdAt: "asc" },
@@ -1043,20 +1038,42 @@ export class RealtorAssistantService {
         const lastClientAt = new Date(lastClientInChannel.createdAt);
         if (Number.isNaN(lastClientAt.getTime())) continue;
 
-        const hasUnread = !lastReplyAt ? true : lastClientAt > lastReplyAt;
-        if (!hasUnread) continue;
+        const lastReadAt = readMap.get(String(lead.id)) || null;
+        const lastReadMs = lastReadAt && !Number.isNaN(lastReadAt.getTime()) ? lastReadAt.getTime() : 0;
+        const lastReplyMs = lastReplyAt && !Number.isNaN(new Date(lastReplyAt).getTime()) ? new Date(lastReplyAt).getTime() : 0;
 
         const unreadMsgs = clientMsgsInChannel.filter((m: any) => {
           const d = new Date(m.createdAt);
-          if (Number.isNaN(d.getTime())) return false;
-          return !lastReplyAt ? true : d > lastReplyAt;
+          const ms = d.getTime();
+          if (Number.isNaN(ms)) return false;
+          if (!lastReadMs) return true;
+          return ms > lastReadMs;
         });
 
-        const unreadCount = unreadMsgs.length || 1;
-        const firstUnreadAt = unreadMsgs.length > 0 ? new Date(unreadMsgs[0].createdAt) : lastClientAt;
+        const unansweredMsgs = clientMsgsInChannel.filter((m: any) => {
+          const d = new Date(m.createdAt);
+          const ms = d.getTime();
+          if (Number.isNaN(ms)) return false;
+          if (!lastReplyMs) return true;
+          return ms > lastReplyMs;
+        });
+
+        const unreadCount = unreadMsgs.length;
+        const unansweredCount = unansweredMsgs.length;
+        const hasUnread = unreadCount > 0;
+        const hasUnanswered = unansweredCount > 0;
+        if (!hasUnread && !hasUnanswered) continue;
+
+        const firstUnreadAt = hasUnread ? new Date(unreadMsgs[0].createdAt) : null;
+        const firstUnansweredAt = hasUnanswered ? new Date(unansweredMsgs[0].createdAt) : null;
+        const firstPendingAt = (() => {
+          const candidates = [firstUnreadAt, firstUnansweredAt].filter(Boolean) as Date[];
+          if (!candidates.length) return lastClientAt;
+          return new Date(Math.min(...candidates.map((d) => d.getTime())));
+        })();
 
         const slaMinutes = SLA_MINUTES_BY_CHANNEL[channel] ?? 30;
-        const dueAt = addMinutes(firstUnreadAt, slaMinutes);
+        const dueAt = addMinutes(firstPendingAt, slaMinutes);
 
         const msToDue = dueAt.getTime() - now.getTime();
         const isOverdue = msToDue <= 0;
@@ -1064,11 +1081,13 @@ export class RealtorAssistantService {
         const priority: "LOW" | "MEDIUM" | "HIGH" = isOverdue || msToDue <= 5 * 60 * 1000 ? "HIGH" : "MEDIUM";
 
         const lastPreview = String(lastClientInChannel.content || "").trim().slice(0, 140);
-        const countText = unreadCount === 1 ? "uma mensagem" : `${unreadCount} mensagens`;
-        const title = `Cliente aguardando resposta (${channelLabel[channel] || channel})`;
+        const countBase = hasUnread ? unreadCount : unansweredCount;
+        const countText = countBase === 1 ? "uma mensagem" : `${countBase} mensagens`;
+        const title = `Cliente aguardando ação (${channelLabel[channel] || channel})`;
+        const statusLabel = hasUnread && hasUnanswered ? "não lida e sem resposta" : hasUnread ? "não lida" : "sem resposta";
         const message = lastPreview
-          ? `${clientName} enviou ${countText} e ainda não recebeu retorno. Última: “${lastPreview}”`
-          : `${clientName} enviou ${countText} e ainda não recebeu retorno.`;
+          ? `${clientName} enviou ${countText} (${statusLabel}). Última: “${lastPreview}”`
+          : `${clientName} enviou ${countText} (${statusLabel}).`;
 
         const key = `UNANSWERED_CLIENT_MESSAGE:${lead.id}:${channel}`;
         dedupeKeys.add(key);
@@ -1087,8 +1106,13 @@ export class RealtorAssistantService {
           metadata: {
             channel,
             unreadCount,
+            unansweredCount,
+            hasUnread,
+            hasUnanswered,
+            lastReadAt: lastReadAt ? lastReadAt.toISOString() : null,
+            lastReplyAt: lastReplyAt ? new Date(lastReplyAt).toISOString() : null,
             lastClientAt: lastClientAt.toISOString(),
-            firstUnreadAt: firstUnreadAt.toISOString(),
+            firstPendingAt: firstPendingAt.toISOString(),
             slaMinutes,
             leadSource,
           },
@@ -1308,6 +1332,149 @@ export class RealtorAssistantService {
         : `/agency/teams/${teamId}/crm`;
 
     const dedupeKeys = new Set<string>();
+
+    const openTeamChatUrl = (threadId: string) => `/agency/team-chat?thread=${encodeURIComponent(String(threadId))}`;
+
+    try {
+      const teamRow: any = await (prisma as any).team.findUnique({
+        where: { id: String(teamId) },
+        select: {
+          members: {
+            select: {
+              userId: true,
+              user: { select: { name: true, email: true } },
+            },
+          },
+        },
+      });
+
+      const realtorLabelById = new Map<string, string>();
+      for (const m of (teamRow?.members || []) as any[]) {
+        const rid = m?.userId ? String(m.userId) : "";
+        if (!rid) continue;
+        const label = (m?.user?.name || m?.user?.email || "Corretor") as string;
+        realtorLabelById.set(rid, String(label));
+      }
+
+      const threads: any[] = await (prisma as any).teamChatThread.findMany({
+        where: { teamId: String(teamId) },
+        select: { id: true, realtorId: true },
+      });
+
+      const threadIds = (threads || []).map((t) => String(t.id)).filter(Boolean);
+      if (threadIds.length) {
+        const receipts = await (prisma as any).teamChatReadReceipt.findMany({
+          where: { userId: String(ownerId), threadId: { in: threadIds } },
+          select: { threadId: true, lastReadAt: true },
+        });
+
+        const lastReadByThread = new Map<string, Date>();
+        for (const r of receipts || []) {
+          if (r?.threadId && r?.lastReadAt) lastReadByThread.set(String(r.threadId), new Date(r.lastReadAt));
+        }
+
+        const lastMessages = await (prisma as any).teamChatMessage.findMany({
+          where: { threadId: { in: threadIds } },
+          orderBy: { createdAt: "desc" },
+          distinct: ["threadId"],
+          select: { threadId: true, senderId: true, createdAt: true },
+        });
+        const lastMsgByThread = new Map<string, any>();
+        for (const m of lastMessages || []) {
+          if (m?.threadId) lastMsgByThread.set(String(m.threadId), m);
+        }
+
+        const lastOwnerMessages = await (prisma as any).teamChatMessage.findMany({
+          where: { threadId: { in: threadIds }, senderId: String(ownerId) },
+          orderBy: { createdAt: "desc" },
+          distinct: ["threadId"],
+          select: { threadId: true, createdAt: true },
+        });
+        const lastOwnerByThread = new Map<string, Date>();
+        for (const m of lastOwnerMessages || []) {
+          if (m?.threadId && m?.createdAt) lastOwnerByThread.set(String(m.threadId), new Date(m.createdAt));
+        }
+
+        const SLA_AWAITING_RESPONSE_MINUTES = 30;
+
+        for (const t of threads || []) {
+          const threadId = String(t.id);
+          const realtorId = t?.realtorId ? String(t.realtorId) : null;
+
+          const realtorLabel = realtorId ? realtorLabelById.get(String(realtorId)) || "Corretor" : "Corretor";
+
+          const lastReadAt = lastReadByThread.get(threadId) || null;
+          const lastReadMs = lastReadAt && !Number.isNaN(lastReadAt.getTime()) ? lastReadAt.getTime() : 0;
+
+          const unreadCount = await (prisma as any).teamChatMessage.count({
+            where: {
+              threadId,
+              senderId: { not: String(ownerId) },
+              ...(lastReadMs ? { createdAt: { gt: new Date(lastReadMs) } } : {}),
+            },
+          });
+
+          if (Number(unreadCount || 0) > 0) {
+            const key = `TEAM_CHAT_UNREAD:${threadId}`;
+            dedupeKeys.add(key);
+            await this.upsertFromRule({
+              context: "AGENCY",
+              ownerId,
+              teamId,
+              leadId: null,
+              type: "TEAM_CHAT_UNREAD",
+              priority: "HIGH",
+              title: `Chat do time: mensagens não lidas`,
+              message: `${realtorLabel}: ${unreadCount === 1 ? "1 mensagem" : `${unreadCount} mensagens`} pendente${unreadCount === 1 ? "" : "s"}.`,
+              dueAt: null,
+              dedupeKey: key,
+              primaryAction: { type: "OPEN_PAGE", url: openTeamChatUrl(threadId) },
+              secondaryAction: null,
+              metadata: { threadId, realtorId, unreadCount: Number(unreadCount || 0) },
+            });
+          }
+
+          const lastMsg = lastMsgByThread.get(threadId) || null;
+          const lastMsgAt = lastMsg?.createdAt ? new Date(lastMsg.createdAt) : null;
+          const lastMsgAtMs = lastMsgAt && !Number.isNaN(lastMsgAt.getTime()) ? lastMsgAt.getTime() : 0;
+          if (!lastMsgAtMs) continue;
+
+          const lastSenderId = lastMsg?.senderId ? String(lastMsg.senderId) : "";
+          const lastOwnerAt = lastOwnerByThread.get(threadId) || null;
+          const lastOwnerMs = lastOwnerAt && !Number.isNaN(lastOwnerAt.getTime()) ? lastOwnerAt.getTime() : 0;
+
+          const awaitingResponse =
+            lastSenderId && String(lastSenderId) !== String(ownerId) && (!lastOwnerMs || lastMsgAtMs > lastOwnerMs);
+
+          if (awaitingResponse) {
+            const dueAt = addMinutes(new Date(lastMsgAtMs), SLA_AWAITING_RESPONSE_MINUTES);
+            const msToDue = dueAt.getTime() - now.getTime();
+            const priority: "LOW" | "MEDIUM" | "HIGH" =
+              msToDue <= 0 ? "HIGH" : msToDue <= 30 * 60 * 1000 ? "MEDIUM" : "LOW";
+
+            const key = `TEAM_CHAT_AWAITING_RESPONSE:${threadId}`;
+            dedupeKeys.add(key);
+            await this.upsertFromRule({
+              context: "AGENCY",
+              ownerId,
+              teamId,
+              leadId: null,
+              type: "TEAM_CHAT_AWAITING_RESPONSE",
+              priority,
+              title: `Chat do time: aguardando seu retorno`,
+              message: `${realtorLabel} está aguardando seu retorno.`,
+              dueAt,
+              dedupeKey: key,
+              primaryAction: { type: "OPEN_PAGE", url: openTeamChatUrl(threadId) },
+              secondaryAction: null,
+              metadata: { threadId, realtorId, lastMessageAt: new Date(lastMsgAtMs).toISOString() },
+            });
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
 
     const SLA_MINUTES_BY_CHANNEL: Record<string, number> = {
       CHAT: 15,

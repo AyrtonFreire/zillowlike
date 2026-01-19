@@ -959,15 +959,11 @@ export default function RealtorAssistantFeed(props: {
       channel.bind("assistant:item_updated", onItemUpdated as any);
       channel.bind("assistant:items_recalculated", onItemsRecalculated as any);
 
-      // Backward-compatible: still emitted in some places
-      channel.bind("assistant-updated", refresh as any);
-
       return () => {
         cancelled = true;
         try {
           channel.unbind("assistant:item_updated", onItemUpdated as any);
           channel.unbind("assistant:items_recalculated", onItemsRecalculated as any);
-          channel.unbind("assistant-updated", refresh as any);
           pusher.unsubscribe(channelName);
         } catch {
           // ignore

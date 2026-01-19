@@ -11,6 +11,71 @@ import { createAuditLog } from "@/lib/audit-log";
 
 export const runtime = "nodejs";
 
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+async function getSystemIntSetting(key: string, fallback: number): Promise<number> {
+  try {
+    const rec = await (prisma as any).systemSetting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    const parsed = Number.parseInt(String(rec?.value ?? ""), 10);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  } catch {
+  }
+  return fallback;
+}
+
+async function checkAssistantAiQuota(params: { actorId: string; context: "REALTOR" | "AGENCY"; teamId?: string | null }) {
+  const now = new Date();
+  const since = startOfMonth(now);
+
+  const rawLogs = await (prisma as any).auditLog.findMany({
+    where: {
+      createdAt: { gte: since },
+      actorId: String(params.actorId),
+      action: { in: ["ASSISTANT_DRAFT_GENERATED", "ASSISTANT_DRAFT_FALLBACK"] },
+      targetType: "AssistantItem",
+    },
+    select: { metadata: true },
+    orderBy: { createdAt: "desc" },
+    take: 5000,
+  });
+
+  const used = (Array.isArray(rawLogs) ? rawLogs : []).filter((log: any) => {
+    const meta = log?.metadata && typeof log.metadata === "object" ? (log.metadata as any) : null;
+    const metaContext = meta?.context ? String(meta.context).toUpperCase() : "";
+    if (params.context === "AGENCY") {
+      if (metaContext !== "AGENCY") return false;
+      if (params.teamId) {
+        const metaTeamId = meta?.teamId ? String(meta.teamId) : "";
+        if (metaTeamId !== String(params.teamId)) return false;
+      }
+    } else {
+      if (metaContext !== "REALTOR") return false;
+    }
+    return true;
+  }).length;
+
+  const defaultLimit = params.context === "AGENCY" ? 500 : 200;
+  const limit = params.context === "AGENCY" && params.teamId
+    ? await getSystemIntSetting(`team:${String(params.teamId)}:assistantAiMonthlyLimit`, await getSystemIntSetting("assistantAiMonthlyLimitAgency", defaultLimit))
+    : params.context === "AGENCY"
+      ? await getSystemIntSetting("assistantAiMonthlyLimitAgency", defaultLimit)
+      : await getSystemIntSetting("assistantAiMonthlyLimitRealtor", defaultLimit);
+
+  const remaining = Math.max(0, Number(limit || 0) - Number(used || 0));
+  return {
+    ok: remaining > 0,
+    used,
+    limit,
+    remaining,
+    periodStart: since.toISOString(),
+  };
+}
+
 type OpenAIChatResponse = {
   choices?: Array<{
     message?: {
@@ -426,6 +491,20 @@ async function handler(req: NextRequest, context: { params: Promise<{ id: string
 
   if (reqContext === "AGENCY" && !teamId) {
     return errorResponse("Não foi possível identificar o time da agência.", 400, null, "TEAM_ID_MISSING");
+  }
+
+  const quota = await checkAssistantAiQuota({
+    actorId: String(userId),
+    context: reqContext === "AGENCY" ? "AGENCY" : "REALTOR",
+    teamId: reqContext === "AGENCY" ? String(teamId || "") || null : null,
+  });
+  if (!quota.ok) {
+    return errorResponse(
+      "Limite mensal do Assistente IA atingido.",
+      429,
+      { quota },
+      "AI_QUOTA_EXCEEDED"
+    );
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
