@@ -20,6 +20,25 @@ export interface SimilarPropertyItem {
   matchReasons: string[];
 }
 
+function toNumber(value: unknown): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "bigint") return Number(value);
+  if (value === null || value === undefined) return 0;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function toBigInt(value: unknown): bigint {
+  if (typeof value === "bigint") return value;
+  if (typeof value === "number") return BigInt(Math.round(value));
+  if (value === null || value === undefined) return BigInt(0);
+  try {
+    return BigInt(value as any);
+  } catch {
+    return BigInt(0);
+  }
+}
+
 interface FindSimilarForLeadOptions {
   limit?: number;
 }
@@ -63,9 +82,9 @@ export class SimilarPropertiesService {
 
     const base = lead.property;
 
-    const price = typeof base.price === "number" ? base.price : 0;
-    const minPrice = price > 0 ? Math.round(price * 0.85) : undefined;
-    const maxPrice = price > 0 ? Math.round(price * 1.2) : undefined;
+    const priceCents = toBigInt((base as any).price);
+    const minPrice = priceCents > BigInt(0) ? (priceCents * BigInt(85)) / BigInt(100) : undefined;
+    const maxPrice = priceCents > BigInt(0) ? (priceCents * BigInt(120)) / BigInt(100) : undefined;
 
     const where: any = {
       ownerId: realtorId,
@@ -111,9 +130,12 @@ export class SimilarPropertiesService {
     });
 
     const result: SimilarPropertyItem[] = candidates.map((candidate) => {
-      const { score, reasons } = computeSimilarityScore(base, candidate);
+      const { score, reasons } = computeSimilarityScore(base as any, candidate as any);
       return {
-        property: candidate,
+        property: {
+          ...candidate,
+          price: toNumber((candidate as any).price),
+        },
         matchScore: score,
         matchReasons: reasons,
       };
@@ -127,14 +149,14 @@ export class SimilarPropertiesService {
 
 function computeSimilarityScore(
   base: {
-    price: number;
+    price: number | bigint;
     neighborhood: string | null;
     bedrooms: number | null;
     bathrooms: number | null;
     areaM2: number | null;
   },
   candidate: {
-    price: number;
+    price: number | bigint;
     neighborhood: string | null;
     bedrooms: number | null;
     bathrooms: number | null;
@@ -151,8 +173,8 @@ function computeSimilarityScore(
     }
   }
 
-  const basePrice = typeof base.price === "number" ? base.price : 0;
-  const candPrice = typeof candidate.price === "number" ? candidate.price : 0;
+  const basePrice = toNumber(base.price);
+  const candPrice = toNumber(candidate.price);
 
   if (basePrice > 0 && candPrice > 0) {
     const diffRatio = Math.abs(candPrice - basePrice) / basePrice;
