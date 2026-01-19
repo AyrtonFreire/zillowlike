@@ -3,6 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+function jsonSafe<T>(obj: T): T {
+  return JSON.parse(
+    JSON.stringify(obj, (_key, value) => (typeof value === "bigint" ? Number(value) : value))
+  ) as T;
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -37,7 +43,7 @@ export async function GET() {
       })
     );
 
-    return NextResponse.json({ properties: propertiesWithOwners });
+    return NextResponse.json({ properties: jsonSafe(propertiesWithOwners) });
   } catch (error) {
     console.error("Error fetching properties:", error);
     return NextResponse.json(

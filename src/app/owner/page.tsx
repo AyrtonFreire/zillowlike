@@ -5,6 +5,26 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { buildPropertyPath } from "@/lib/slug";
 
+function formatCentsBRLNoDecimals(value: bigint | number | null | undefined) {
+  if (value === null || value === undefined) return "R$ 0";
+
+  if (typeof value === "bigint") {
+    const negative = value < BigInt(0);
+    const abs = negative ? -value : value;
+    const reais = abs / BigInt(100);
+    const s = reais.toString();
+    const grouped = s.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return `R$ ${negative ? "-" : ""}${grouped}`;
+  }
+
+  try {
+    const reais = value / 100;
+    return `R$ ${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(reais || 0)}`;
+  } catch {
+    return `R$ ${String(value)}`;
+  }
+}
+
 export default async function OwnerDashboardPage() {
   const session = await getServerSession();
   const userId = (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub;
@@ -57,7 +77,7 @@ export default async function OwnerDashboardPage() {
                 <div className="p-4">
                   <div className="text-sm text-gray-500 mb-1">{p.city}/{p.state}</div>
                   <div className="font-semibold line-clamp-2 mb-2">{p.title}</div>
-                  <div className="text-blue-600 font-bold mb-3">R$ {(p.price / 100).toLocaleString("pt-BR")}</div>
+                  <div className="text-blue-600 font-bold mb-3">{formatCentsBRLNoDecimals(p.price)}</div>
                   <div className="flex gap-4 items-center">
                     <Link href={buildPropertyPath(p.id, p.title)} className="text-sm text-blue-600 hover:text-blue-800" aria-label={`Ver ${p.title}`}>Ver</Link>
                     <Link href={`/owner/edit/${p.id}`} className="text-sm text-gray-700 hover:text-gray-900" aria-label={`Editar ${p.title}`}>Editar</Link>
