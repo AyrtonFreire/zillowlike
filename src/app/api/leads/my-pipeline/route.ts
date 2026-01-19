@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 
 type PipelineStage = "NEW" | "CONTACT" | "VISIT" | "PROPOSAL" | "DOCUMENTS" | "WON" | "LOST";
 
+const jsonSafe = <T>(value: T): T | number => (typeof value === "bigint" ? Number(value) : value);
+
 export async function GET(_request: NextRequest) {
   try {
     const session: any = await getServerSession(authOptions);
@@ -67,6 +69,12 @@ export async function GET(_request: NextRequest) {
     const normalized = (leads as any[]).map((lead) => ({
       ...lead,
       pipelineStage: lead.pipelineStage || mapStatusToStage(lead.status),
+      property: lead.property
+        ? {
+            ...lead.property,
+            price: lead.property.price ? jsonSafe(lead.property.price) : lead.property.price,
+          }
+        : lead.property,
     }));
 
     return NextResponse.json(normalized);
