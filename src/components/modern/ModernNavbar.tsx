@@ -23,6 +23,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const [openMenu, setOpenMenu] = useState<"comprar" | "alugar" | "recursos" | null>(null);
   const buyButtonRef = useRef<HTMLButtonElement | null>(null);
   const rentButtonRef = useRef<HTMLButtonElement | null>(null);
+  const hoverCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
   const { scrollY } = useScroll();
@@ -40,6 +41,20 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const enableDropdown = navVariant !== "2";
   const useCompactPopover = navVariant === "3";
   const [compactPopoverLeft, setCompactPopoverLeft] = useState(0);
+
+  const clearHoverTimeout = () => {
+    if (hoverCloseTimeoutRef.current) {
+      clearTimeout(hoverCloseTimeoutRef.current);
+      hoverCloseTimeoutRef.current = null;
+    }
+  };
+
+  const scheduleCloseMenu = () => {
+    clearHoverTimeout();
+    hoverCloseTimeoutRef.current = setTimeout(() => {
+      setOpenMenu(null);
+    }, 140);
+  };
   
   // Mantém sempre estilo JamesEdition (sem transformação ao rolar)
 
@@ -470,12 +485,13 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 className=""
                 onMouseEnter={() => {
                   if (!enableDropdown) return;
+                  clearHoverTimeout();
                   setPrimary('comprar');
                   setOpenMenu('comprar');
                 }}
                 onMouseLeave={() => {
                   if (!enableDropdown) return;
-                  setOpenMenu(null);
+                  scheduleCloseMenu();
                 }}
               >
                 <button
@@ -506,6 +522,12 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   <div
                     className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
                     style={useCompactPopover ? { left: compactPopoverLeft } : undefined}
+                    onMouseEnter={() => {
+                      clearHoverTimeout();
+                    }}
+                    onMouseLeave={() => {
+                      scheduleCloseMenu();
+                    }}
                   >
                     <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
                     {useCompactPopover ? (
@@ -578,12 +600,13 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 className=""
                 onMouseEnter={() => {
                   if (!enableDropdown) return;
+                  clearHoverTimeout();
                   setPrimary('alugar');
                   setOpenMenu('alugar');
                 }}
                 onMouseLeave={() => {
                   if (!enableDropdown) return;
-                  setOpenMenu(null);
+                  scheduleCloseMenu();
                 }}
               >
                 <button
@@ -614,6 +637,12 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   <div
                     className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
                     style={useCompactPopover ? { left: compactPopoverLeft } : undefined}
+                    onMouseEnter={() => {
+                      clearHoverTimeout();
+                    }}
+                    onMouseLeave={() => {
+                      scheduleCloseMenu();
+                    }}
                   >
                     <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
                     {useCompactPopover ? (
