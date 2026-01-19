@@ -369,26 +369,6 @@ export default function RealtorAssistantFeed(props: {
     setAiItemSnapshot(null);
   }, [aiForId, aiLoadingId, items]);
 
-  useEffect(() => {
-    if (!aiForId) return;
-
-    const existing = items.find((i) => String(i.id) === String(aiForId)) || null;
-    const t = existing?.type || aiItemSnapshot?.type || null;
-    if (!isInternalChecklistType(t)) return;
-
-    try {
-      if (aiLoadingId === aiForId) {
-        aiAbortRef.current?.abort();
-      }
-    } catch {
-    }
-
-    setAiForId(null);
-    setAiError(null);
-    setAiResult(null);
-    setAiItemSnapshot(null);
-  }, [aiForId, aiItemSnapshot?.type, aiLoadingId, items]);
-
   const groupedItems = useMemo(() => {
     const groups: Record<string, AssistantItem[]> = {
       Leads: [],

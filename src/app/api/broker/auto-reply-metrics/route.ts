@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
           decision: "SKIPPED",
         },
         _count: { _all: true },
-        orderBy: { _count: { _all: "desc" } },
+        orderBy: { _count: { reason: "desc" } },
         take: 8,
       });
     } catch (error: any) {
