@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Activity, AlertTriangle, Kanban, MessageCircle, Settings, Users, Wand2, X } from "lucide-react";
+import { Activity, AlertTriangle, MessageCircle, Settings, Users, X } from "lucide-react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
 
@@ -106,25 +106,6 @@ export default function AgencyDashboardPage() {
   const [noticeTitle, setNoticeTitle] = useState<string>("Aviso da agência");
   const [noticeMessage, setNoticeMessage] = useState<string>("");
   const [sendingNotice, setSendingNotice] = useState(false);
-
-  const [autoRunning, setAutoRunning] = useState(false);
-  const [autoError, setAutoError] = useState<string | null>(null);
-  const [autoResult, setAutoResult] = useState<null | {
-    created: number;
-    updated: number;
-    targetRealtors: number;
-    pendingLeads: number;
-  }>(null);
-
-  const [metricsDays, setMetricsDays] = useState<1 | 7 | 30 | 90>(7);
-  const [metricsLoading, setMetricsLoading] = useState(false);
-  const [metricsError, setMetricsError] = useState<string | null>(null);
-  const [metrics, setMetrics] = useState<null | {
-    days: number;
-    total: number;
-    counts: Record<string, number>;
-    newestAt: string | null;
-  }>(null);
 
   const role = useMemo(() => {
     const s: any = session as any;
@@ -270,34 +251,6 @@ export default function AgencyDashboardPage() {
     }
   };
 
-  const runAutoNotices = async () => {
-    const teamId = insights?.team?.id ? String(insights.team.id) : "";
-    if (!teamId) return;
-    try {
-      setAutoRunning(true);
-      setAutoError(null);
-      setAutoResult(null);
-      const r = await fetch("/api/agency/notices/auto", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamId }),
-      });
-      const j = (await r.json().catch(() => null)) as any;
-      if (!r.ok || !j?.success) {
-        throw new Error(j?.error || "Não conseguimos gerar avisos automaticamente agora.");
-      }
-      setAutoResult({
-        created: Number(j?.result?.created || 0),
-        updated: Number(j?.result?.updated || 0),
-        targetRealtors: Number(j?.result?.targetRealtors || 0),
-        pendingLeads: Number(j?.result?.pendingLeads || 0),
-      });
-    } catch (e: any) {
-      setAutoError(e?.message || "Não conseguimos gerar avisos automaticamente agora.");
-    } finally {
-      setAutoRunning(false);
-    }
-  };
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -328,36 +281,6 @@ export default function AgencyDashboardPage() {
 
     load();
   }, [role, status]);
-
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    if (role !== "AGENCY" && role !== "ADMIN") return;
-
-    const run = async () => {
-      try {
-        setMetricsLoading(true);
-        setMetricsError(null);
-        const r = await fetch(`/api/assistant/metrics?context=AGENCY&days=${metricsDays}`, { cache: "no-store" });
-        const j = (await r.json().catch(() => null)) as any;
-        if (!r.ok || !j?.success) {
-          throw new Error(j?.error || "Não conseguimos carregar métricas agora.");
-        }
-        setMetrics({
-          days: Number(j.days || metricsDays),
-          total: Number(j.total || 0),
-          counts: (j.counts && typeof j.counts === "object" ? j.counts : {}) as Record<string, number>,
-          newestAt: j.newestAt ? String(j.newestAt) : null,
-        });
-      } catch (e: any) {
-        setMetrics(null);
-        setMetricsError(e?.message || "Não conseguimos carregar métricas agora.");
-      } finally {
-        setMetricsLoading(false);
-      }
-    };
-
-    run();
-  }, [metricsDays, role, status]);
 
   const severityStyles = (severity: AgencyInsight["severity"]) => {
     if (severity === "critical") {
@@ -412,7 +335,7 @@ export default function AgencyDashboardPage() {
                 className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
               >
                 <MessageCircle className="w-4 h-4 mr-2" />
-                Conversas do time
+                Leads do time
               </Link>
             ) : (
               <Link
@@ -466,58 +389,6 @@ export default function AgencyDashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-3">
               <StatCard
-                title="Uso da IA"
-                action={
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={metricsDays}
-                      onChange={(e) => setMetricsDays(Number(e.target.value) as any)}
-                      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
-                      aria-label="Período"
-                    >
-                      <option value={1}>Hoje</option>
-                      <option value={7}>7 dias</option>
-                      <option value={30}>30 dias</option>
-                      <option value={90}>90 dias</option>
-                    </select>
-                  </div>
-                }
-              >
-                {metricsError ? (
-                  <div className="text-sm text-amber-800">{metricsError}</div>
-                ) : metricsLoading ? (
-                  <div className="text-sm text-gray-600">Carregando métricas...</div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    {(() => {
-                      const c = metrics?.counts || {};
-                      const generated = Number(c.ASSISTANT_DRAFT_GENERATED || 0) + Number(c.ASSISTANT_DRAFT_FALLBACK || 0);
-                      const copied = Number(c.ASSISTANT_DRAFT_COPIED || 0);
-                      const sent = Number(c.ASSISTANT_DRAFT_SENT || 0);
-                      const resolved = Number(c.ASSISTANT_ITEM_RESOLVED || 0);
-                      const cards = [
-                        { label: "Drafts gerados", value: generated },
-                        { label: "Drafts copiados", value: copied },
-                        { label: "Drafts enviados", value: sent },
-                        { label: "Itens resolvidos", value: resolved },
-                      ];
-                      return cards.map((it) => (
-                        <div key={it.label} className="rounded-2xl border border-gray-200 bg-white p-4">
-                          <div className="text-[11px] font-semibold text-gray-500">{it.label}</div>
-                          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{it.value}</div>
-                          <div className="mt-1 text-xs text-gray-500">Últimos {metricsDays} dia{metricsDays === 1 ? "" : "s"}</div>
-                        </div>
-                      ));
-                    })()}
-                  </div>
-                )}
-              </StatCard>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-3">
-              <StatCard
                 title="Alertas do time"
                 action={
                   <div className="flex items-center gap-2">
@@ -528,15 +399,6 @@ export default function AgencyDashboardPage() {
                     >
                       Avisar corretor
                     </button>
-                    <button
-                      type="button"
-                      onClick={runAutoNotices}
-                      disabled={autoRunning}
-                      className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                    >
-                      <Wand2 className="w-4 h-4 mr-2" />
-                      {autoRunning ? "Gerando..." : "Gerar avisos (SLA)"}
-                    </button>
                     <Link
                       href={`/agency/teams/${insights.team.id}/crm`}
                       className="text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -546,16 +408,6 @@ export default function AgencyDashboardPage() {
                   </div>
                 }
               >
-                {autoError && (
-                  <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    {autoError}
-                  </div>
-                )}
-                {autoResult && (
-                  <div className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                    Gerado: {autoResult.created} novo(s), {autoResult.updated} atualizado(s) · Corretores: {autoResult.targetRealtors} · Leads: {autoResult.pendingLeads}
-                  </div>
-                )}
                 {Array.isArray(insights.highlights) && insights.highlights.length > 0 ? (
                   <div className="divide-y divide-gray-100">
                     {insights.highlights.map((h, idx) => {
@@ -597,7 +449,7 @@ export default function AgencyDashboardPage() {
                   <div className="min-w-0">
                     <p className="text-lg font-semibold text-gray-900">Avisar corretor</p>
                     <p className="mt-1 text-sm text-gray-600">
-                      Envie um aviso direto para o Assistente do corretor, com lista de leads e ações rápidas.
+                      Envie um aviso direto para o corretor, com lista de leads e ações rápidas.
                     </p>
                   </div>
                   <button

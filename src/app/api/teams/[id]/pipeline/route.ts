@@ -4,6 +4,12 @@ import { LeadStatus } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+function jsonSafe<T>(data: T): any {
+  return JSON.parse(
+    JSON.stringify(data, (_k, v) => (typeof v === "bigint" ? Number(v) : v))
+  );
+}
+
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session: any = await getServerSession(authOptions);
@@ -155,15 +161,17 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       queuePosition: typeof m.queuePosition === "number" ? m.queuePosition : 0,
     }));
 
-    return NextResponse.json({
-      success: true,
-      team: {
-        id: team.id,
-        name: team.name,
-      },
-      members,
-      leads: normalized,
-    });
+    return NextResponse.json(
+      jsonSafe({
+        success: true,
+        team: {
+          id: team.id,
+          name: team.name,
+        },
+        members,
+        leads: normalized,
+      })
+    );
   } catch (error) {
     console.error("Error fetching team pipeline:", error);
     return NextResponse.json(

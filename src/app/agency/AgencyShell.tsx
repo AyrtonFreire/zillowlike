@@ -6,7 +6,6 @@ import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, Kanban, Home, UserRound, MessageSquare } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
-import { AgencyAssistantWidget } from "@/components/crm/AgencyAssistantWidget";
 
 type NavItem = {
   href: string;
@@ -112,7 +111,6 @@ export default function AgencyShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-gray-50">
       <ModernNavbar />
-      <AgencyAssistantWidget />
       <div className="w-full px-4 sm:px-6 lg:px-8 pb-6">
         <div className="relative overflow-hidden rounded-3xl border border-gray-200/60 bg-white/60 backdrop-blur shadow-soft">
           <div className="absolute -top-28 -right-28 h-72 w-72 rounded-full bg-emerald-200/30 blur-3xl" />
