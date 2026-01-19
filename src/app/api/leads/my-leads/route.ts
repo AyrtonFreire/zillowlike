@@ -41,9 +41,136 @@ export async function GET(request: NextRequest) {
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : 40;
     const cursor = (searchParams.get("cursor") || "").trim() || null;
 
-    const leads = await (prisma as any).lead.findMany({
+    const mapStatusToStage = (status: LeadStatus): PipelineStage => {
+      if (status === "ACCEPTED") return "CONTACT";
+      if (status === "CONFIRMED") return "VISIT";
+      if (status === "COMPLETED") return "WON";
+      if (status === "CANCELLED" || status === "EXPIRED" || status === "OWNER_REJECTED") return "LOST";
+      return "NEW";
+    };
+
+    const leadIndex = await (prisma as any).lead.findMany({
       where: {
         realtorId: userId,
+      },
+      select: {
+        id: true,
+        createdAt: true,
+      },
+    });
+
+    const allLeadIds = (leadIndex as any[]).map((l) => String(l.id));
+
+    const [lastClientAgg, lastInternalAgg] = await Promise.all([
+      allLeadIds.length
+        ? (prisma as any).leadClientMessage.groupBy({
+            by: ["leadId"],
+            where: { lead: { realtorId: String(userId) } },
+            _max: { createdAt: true },
+          })
+        : Promise.resolve([] as any[]),
+      allLeadIds.length
+        ? (prisma as any).leadMessage.groupBy({
+            by: ["leadId"],
+            where: { lead: { realtorId: String(userId) } },
+            _max: { createdAt: true },
+          })
+        : Promise.resolve([] as any[]),
+    ]);
+
+    const lastClientAtByLead = new Map<string, Date>();
+    for (const row of lastClientAgg as any[]) {
+      if (!row?._max?.createdAt) continue;
+      lastClientAtByLead.set(String(row.leadId), new Date(row._max.createdAt));
+    }
+
+    const lastInternalAtByLead = new Map<string, Date>();
+    for (const row of lastInternalAgg as any[]) {
+      if (!row?._max?.createdAt) continue;
+      lastInternalAtByLead.set(String(row.leadId), new Date(row._max.createdAt));
+    }
+
+    let readReceipts: any[] = [];
+    try {
+      readReceipts = allLeadIds.length
+        ? await (prisma as any).leadChatReadReceipt.findMany({
+            where: { userId: String(userId), leadId: { in: allLeadIds } },
+            select: { leadId: true, lastReadAt: true },
+          })
+        : [];
+    } catch (err: any) {
+      if (err?.code === "P2021") {
+        readReceipts = [];
+      } else {
+        throw err;
+      }
+    }
+    const readMap = new Map<string, Date>(
+      (readReceipts || []).map((r: any) => [String(r.leadId), new Date(r.lastReadAt)])
+    );
+
+    const orderedLeadIds = (leadIndex as any[])
+      .map((lead) => {
+        const leadId = String(lead.id);
+        const createdAt = new Date(lead.createdAt);
+        const clientAt = lastClientAtByLead.get(leadId) || null;
+        const internalAt = lastInternalAtByLead.get(leadId) || null;
+
+        let lastMessageAt = createdAt;
+        let lastMessageFromClient = false;
+        if (clientAt && internalAt) {
+          if (clientAt.getTime() > internalAt.getTime()) {
+            lastMessageAt = clientAt;
+            lastMessageFromClient = true;
+          } else {
+            lastMessageAt = internalAt;
+          }
+        } else if (clientAt) {
+          lastMessageAt = clientAt;
+          lastMessageFromClient = true;
+        } else if (internalAt) {
+          lastMessageAt = internalAt;
+        }
+
+        let hasUnreadMessages = false;
+        if (lastMessageFromClient && clientAt) {
+          const lastReadAt = readMap.get(leadId) || null;
+          if (!lastReadAt) {
+            hasUnreadMessages = true;
+          } else {
+            const a = lastReadAt.getTime();
+            const b = clientAt.getTime();
+            if (!Number.isNaN(a) && !Number.isNaN(b) && b > a) {
+              hasUnreadMessages = true;
+            }
+          }
+        }
+
+        return {
+          id: leadId,
+          createdAt,
+          lastMessageAt,
+          hasUnreadMessages,
+        };
+      })
+      .sort((a, b) => {
+        if (a.hasUnreadMessages !== b.hasUnreadMessages) {
+          return a.hasUnreadMessages ? -1 : 1;
+        }
+        const aTime = a.lastMessageAt?.getTime() || 0;
+        const bTime = b.lastMessageAt?.getTime() || 0;
+        if (aTime !== bTime) return bTime - aTime;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      })
+      .map((row) => row.id);
+
+    const startIndex = cursor ? Math.max(orderedLeadIds.indexOf(String(cursor)) + 1, 0) : 0;
+    const pageLeadIds = orderedLeadIds.slice(startIndex, startIndex + limit);
+    const pagedNextCursor = pageLeadIds.length === limit ? pageLeadIds[pageLeadIds.length - 1] : null;
+
+    const leads = await (prisma as any).lead.findMany({
+      where: {
+        id: { in: pageLeadIds },
       },
       include: {
         property: {
@@ -73,21 +200,12 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
-      ...(paged
-        ? {
-            take: limit,
-            ...(cursor
-              ? {
-                  cursor: { id: cursor },
-                  skip: 1,
-                }
-              : {}),
-          }
-        : {}),
     });
 
-    const leadIds = (leads as any[]).map((l) => String(l.id));
+    const leadById = new Map<string, any>((leads as any[]).map((lead) => [String(lead.id), lead]));
+    const orderedLeads = pageLeadIds.map((id) => leadById.get(String(id))).filter(Boolean);
+
+    const leadIds = orderedLeads.map((l) => String(l.id));
 
     const [lastClientMsgs, lastInternalMsgs] = await Promise.all([
       leadIds.length
@@ -120,34 +238,7 @@ export async function GET(request: NextRequest) {
       if (!lastInternalByLead.has(k)) lastInternalByLead.set(k, m);
     }
 
-    let readReceipts: any[] = [];
-    try {
-      readReceipts = leadIds.length
-        ? await (prisma as any).leadChatReadReceipt.findMany({
-            where: { userId: String(userId), leadId: { in: leadIds } },
-            select: { leadId: true, lastReadAt: true },
-          })
-        : [];
-    } catch (err: any) {
-      if (err?.code === "P2021") {
-        readReceipts = [];
-      } else {
-        throw err;
-      }
-    }
-    const readMap = new Map<string, Date>(
-      (readReceipts || []).map((r: any) => [String(r.leadId), new Date(r.lastReadAt)])
-    );
-
-    const mapStatusToStage = (status: LeadStatus): PipelineStage => {
-      if (status === "ACCEPTED") return "CONTACT";
-      if (status === "CONFIRMED") return "VISIT";
-      if (status === "COMPLETED") return "WON";
-      if (status === "CANCELLED" || status === "EXPIRED" || status === "OWNER_REJECTED") return "LOST";
-      return "NEW";
-    };
-
-    const normalized = (leads as any[]).map((lead) => {
+    const normalized = (orderedLeads as any[]).map((lead) => {
       const leadId = String(lead.id);
       const lastClient = lastClientByLead.get(leadId) || null;
       const lastInternal = lastInternalByLead.get(leadId) || null;
@@ -211,11 +302,21 @@ export async function GET(request: NextRequest) {
     });
 
     if (!paged) {
-      return NextResponse.json(normalized);
+      const sorted = [...normalized].sort((a: any, b: any) => {
+        const au = a.hasUnreadMessages ? 1 : 0;
+        const bu = b.hasUnreadMessages ? 1 : 0;
+        if (au !== bu) return bu - au;
+        const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : new Date(a.createdAt).getTime();
+        const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : new Date(b.createdAt).getTime();
+        if (!Number.isNaN(aTime) && !Number.isNaN(bTime) && aTime !== bTime) {
+          return bTime - aTime;
+        }
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      return NextResponse.json(sorted);
     }
 
-    const nextCursor = normalized.length === limit ? String(normalized[normalized.length - 1]?.id || "") : null;
-    return NextResponse.json({ items: normalized, nextCursor: nextCursor || null });
+    return NextResponse.json({ items: normalized, nextCursor: pagedNextCursor || null });
   } catch (error) {
     console.error("Error getting my leads:", error);
     return NextResponse.json(
