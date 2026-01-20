@@ -198,9 +198,8 @@ export default function MyLeadsPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
-  const [openStageMenuLeadId, setOpenStageMenuLeadId] = useState<string | null>(null);
+  const [stagePickerLeadId, setStagePickerLeadId] = useState<string | null>(null);
   const [stageUpdating, setStageUpdating] = useState<Record<string, boolean>>({});
-  const stageMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [hoverPreviewLead, setHoverPreviewLead] = useState<Lead | null>(null);
   const [hoverPreviewRect, setHoverPreviewRect] = useState<DOMRect | null>(null);
@@ -343,15 +342,13 @@ export default function MyLeadsPage() {
   };
 
   useEffect(() => {
-    if (!openStageMenuLeadId) return;
-    const handler = (event: MouseEvent) => {
-      const target = event.target as Node | null;
-      if (stageMenuRef.current && target && stageMenuRef.current.contains(target)) return;
-      setOpenStageMenuLeadId(null);
+    if (!stagePickerLeadId) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setStagePickerLeadId(null);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [openStageMenuLeadId]);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [stagePickerLeadId]);
 
   const closeHoverPreviewSoon = useCallback(() => {
     if (hoverPreviewCloseTimer.current) {
@@ -853,83 +850,120 @@ export default function MyLeadsPage() {
     return <CenteredSpinner message="Carregando seus leads..." />;
   }
 
+  const stagePickerLead = stagePickerLeadId ? leads.find((l) => String(l.id) === String(stagePickerLeadId)) || null : null;
+  const stagePickerCurrentStage = stagePickerLead ? getCanonicalStage(stagePickerLead) : null;
+  const stagePickerIsUpdating = stagePickerLeadId ? !!stageUpdating[String(stagePickerLeadId)] : false;
+  const stagePickerNextStages = useMemo(() => {
+    if (!stagePickerCurrentStage) return [] as CanonicalStage[];
+    const idx = CANONICAL_STAGE_ORDER.indexOf(stagePickerCurrentStage);
+    if (idx < 0) return [] as CanonicalStage[];
+    return CANONICAL_STAGE_ORDER.slice(idx + 1);
+  }, [stagePickerCurrentStage]);
+
   const renderStageSelector = (lead: Lead) => {
     const currentStage = getCanonicalStage(lead);
     const stageMeta = CANONICAL_STAGE_META[currentStage];
-    const currentIndex = CANONICAL_STAGE_ORDER.indexOf(currentStage);
-    const nextStages = currentIndex >= 0 ? CANONICAL_STAGE_ORDER.slice(currentIndex + 1) : [];
-    const nextStagesRegular = nextStages.filter((stage) => stage !== "LOST");
-    const canMarkLost = nextStages.includes("LOST");
-    const isOpen = openStageMenuLeadId === String(lead.id);
     const isUpdating = !!stageUpdating[String(lead.id)];
 
     return (
-      <div className="relative inline-flex" ref={isOpen ? stageMenuRef : undefined}>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpenStageMenuLeadId((prev) => (prev === String(lead.id) ? null : String(lead.id)));
-          }}
-          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border ${stageMeta.borderColor} ${stageMeta.bgColor} ${stageMeta.color} transition-colors hover:bg-white`}
-        >
-          {stageMeta.label}
-          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-        </button>
-
-        {isOpen && (
-          <div className="absolute top-full right-0 mt-2 w-44 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
-            <div className="px-3 py-2 text-[11px] text-gray-500 border-b border-gray-100">
-              Avançar para
-            </div>
-            {nextStagesRegular.length ? (
-              <div className="py-1">
-                {nextStagesRegular.map((stage) => {
-                  const meta = CANONICAL_STAGE_META[stage];
-                  return (
-                    <button
-                      key={stage}
-                      type="button"
-                      disabled={isUpdating}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenStageMenuLeadId(null);
-                        void moveLeadToStage(String(lead.id), stage);
-                      }}
-                      className={`w-full px-3 py-2 text-left text-xs font-semibold ${meta.color} hover:bg-gray-50 transition-colors disabled:opacity-60`}
-                    >
-                      {meta.label}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="px-3 py-2 text-xs text-gray-500">Etapa final</div>
-            )}
-            {canMarkLost && (
-              <div className="border-t border-gray-100 py-1">
-                <button
-                  type="button"
-                  disabled={isUpdating}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenStageMenuLeadId(null);
-                    void moveLeadToStage(String(lead.id), "LOST");
-                  }}
-                  className="w-full px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60"
-                >
-                  Marcar como perdido
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setStagePickerLeadId(String(lead.id));
+        }}
+        disabled={isUpdating}
+        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border ${stageMeta.borderColor} ${stageMeta.bgColor} ${stageMeta.color} transition-colors hover:bg-white disabled:opacity-60`}
+      >
+        {stageMeta.label}
+        <ChevronRight className="w-3.5 h-3.5" />
+      </button>
     );
   };
 
   return (
     <div className="bg-gray-50">
+      {typeof window !== "undefined" && stagePickerLead && stagePickerCurrentStage
+        ? createPortal(
+            <div className="fixed inset-0 z-[9999]">
+              <button
+                type="button"
+                className="absolute inset-0 bg-black/40"
+                onClick={() => setStagePickerLeadId(null)}
+              />
+              <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center p-4">
+                <div className="w-full sm:max-w-md rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                    <div className="text-sm font-semibold text-gray-900">Mover etapa</div>
+                    <button
+                      type="button"
+                      onClick={() => setStagePickerLeadId(null)}
+                      className="p-2 rounded-lg hover:bg-gray-100"
+                    >
+                      <X className="w-4 h-4 text-gray-500" />
+                    </button>
+                  </div>
+
+                  <div className="px-4 py-3">
+                    <div className="text-xs text-gray-500">Atual</div>
+                    <div className="mt-1">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border ${CANONICAL_STAGE_META[stagePickerCurrentStage].borderColor} ${CANONICAL_STAGE_META[stagePickerCurrentStage].bgColor} ${CANONICAL_STAGE_META[stagePickerCurrentStage].color}`}
+                      >
+                        {CANONICAL_STAGE_META[stagePickerCurrentStage].label}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="px-2 pb-2">
+                    {stagePickerNextStages.length ? (
+                      <div className="grid grid-cols-2 gap-2 px-2">
+                        {stagePickerNextStages
+                          .filter((s) => s !== "LOST")
+                          .map((stage) => {
+                            const meta = CANONICAL_STAGE_META[stage];
+                            return (
+                              <button
+                                key={stage}
+                                type="button"
+                                disabled={stagePickerIsUpdating}
+                                onClick={() => {
+                                  setStagePickerLeadId(null);
+                                  void moveLeadToStage(String(stagePickerLead.id), stage);
+                                }}
+                                className={`px-3 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-left ${meta.color} disabled:opacity-60`}
+                              >
+                                {meta.label}
+                              </button>
+                            );
+                          })}
+                      </div>
+                    ) : (
+                      <div className="px-4 py-2 text-sm text-gray-600">Etapa final.</div>
+                    )}
+
+                    {stagePickerNextStages.includes("LOST") && (
+                      <div className="mt-3 px-2">
+                        <button
+                          type="button"
+                          disabled={stagePickerIsUpdating}
+                          onClick={() => {
+                            setStagePickerLeadId(null);
+                            void moveLeadToStage(String(stagePickerLead.id), "LOST");
+                          }}
+                          className="w-full px-3 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-semibold text-left text-red-700 disabled:opacity-60"
+                        >
+                          Marcar como perdido
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
       {/* Contadores inteligentes - visíveis quando tem algo relevante */}
       {(smartCounters.awaitingResponse > 0 || smartCounters.noContact48h > 0) && (
         <div className="bg-white border-b border-gray-200">
