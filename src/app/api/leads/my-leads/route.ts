@@ -285,6 +285,7 @@ export async function GET(request: NextRequest) {
                 bedrooms: true,
                 bathrooms: true,
                 areaM2: true,
+                parkingSpots: true,
                 images: {
                   take: 1,
                   orderBy: { sortOrder: "asc" },
@@ -514,6 +515,7 @@ export async function GET(request: NextRequest) {
             bedrooms: true,
             bathrooms: true,
             areaM2: true,
+            parkingSpots: true,
             images: {
               take: 1,
               orderBy: { sortOrder: "asc" },

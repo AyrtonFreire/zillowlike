@@ -40,6 +40,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
             bedrooms: true,
             bathrooms: true,
             areaM2: true,
+            parkingSpots: true,
             teamId: true,
             ownerId: true,
             images: {

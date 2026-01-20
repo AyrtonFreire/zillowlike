@@ -3,13 +3,28 @@ import * as React from "react";
 
 export interface TabItem { key: string; label: string; content: React.ReactNode }
 
-export default function Tabs({ items, defaultKey, onChange, className = "" }: { items: TabItem[]; defaultKey?: string; onChange?: (key: string) => void; className?: string; }) {
+export default function Tabs({
+  items,
+  defaultKey,
+  onChange,
+  className = "",
+  bleed = true,
+}: {
+  items: TabItem[];
+  defaultKey?: string;
+  onChange?: (key: string) => void;
+  className?: string;
+  bleed?: boolean;
+}) {
   const [active, setActive] = React.useState(defaultKey || (items[0]?.key ?? ""));
   const activeItem = items.find(i => i.key === active) || items[0];
+  const tabListClassName = bleed
+    ? "flex gap-2 border-b overflow-x-auto whitespace-nowrap md:whitespace-normal md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0"
+    : "flex gap-2 border-b overflow-x-auto whitespace-nowrap md:whitespace-normal md:overflow-visible";
   return (
     <div className={className}>
       <div
-        className="flex gap-2 border-b overflow-x-auto whitespace-nowrap md:whitespace-normal md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0"
+        className={tabListClassName}
         role="tablist"
         aria-orientation="horizontal"
       >

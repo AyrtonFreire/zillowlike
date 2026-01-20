@@ -9,7 +9,7 @@ import {
   Phone, Mail, MapPin, Calendar, CheckCircle, XCircle, Clock, RefreshCw, 
   MessageCircle, AlertCircle, ChevronDown, ChevronRight, Filter, User,
   ExternalLink, Columns3, Users, Handshake, Trophy, X,
-  Bell, PhoneOff, CalendarClock
+  Bell, PhoneOff, CalendarClock, BedDouble, Bath, Ruler, Car
 } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 import Image from "next/image";
@@ -84,6 +84,7 @@ interface Lead {
     bedrooms?: number | null;
     bathrooms?: number | null;
     areaM2?: number | null;
+    parkingSpots?: number | null;
     images: Array<{ url: string }>;
   };
   contact?: {
@@ -359,6 +360,20 @@ export default function MyLeadsPage() {
       .filter(Boolean)
       .join(", ");
 
+    const metrics: Array<{ key: string; icon: any; label: string; value: string | number }> = [];
+    if (hoverPreviewLead.property.bedrooms) {
+      metrics.push({ key: "beds", icon: BedDouble, label: "Quartos", value: hoverPreviewLead.property.bedrooms });
+    }
+    if (hoverPreviewLead.property.bathrooms) {
+      metrics.push({ key: "baths", icon: Bath, label: "Banheiros", value: hoverPreviewLead.property.bathrooms });
+    }
+    if (hoverPreviewLead.property.areaM2) {
+      metrics.push({ key: "area", icon: Ruler, label: "Área", value: `${hoverPreviewLead.property.areaM2}m²` });
+    }
+    if (hoverPreviewLead.property.parkingSpots) {
+      metrics.push({ key: "parking", icon: Car, label: "Vagas", value: hoverPreviewLead.property.parkingSpots });
+    }
+
     return createPortal(
       <div
         className="fixed z-[9999]"
@@ -382,22 +397,20 @@ export default function MyLeadsPage() {
             <div className="text-teal-700 font-bold mt-1">{formatPrice(hoverPreviewLead.property.price)}</div>
             <div className="text-xs text-gray-600 mt-1 line-clamp-2">{addressLine}</div>
             <div className="flex flex-wrap gap-2 mt-3">
-              {hoverPreviewLead.property.bedrooms ? (
-                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
-                  {hoverPreviewLead.property.bedrooms} quartos
-                </span>
-              ) : null}
-              {hoverPreviewLead.property.bathrooms ? (
-                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
-                  {hoverPreviewLead.property.bathrooms} banheiros
-                </span>
-              ) : null}
-              {hoverPreviewLead.property.areaM2 ? (
-                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
-                  {hoverPreviewLead.property.areaM2}m²
-                </span>
-              ) : null}
-              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">{ptBR.type(hoverPreviewLead.property.type)}</span>
+              {metrics.map((m) => {
+                const Icon = m.icon;
+                return (
+                  <span
+                    key={m.key}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium"
+                    title={m.label}
+                  >
+                    <Icon className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="tabular-nums">{m.value}</span>
+                  </span>
+                );
+              })}
+              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">{ptBR.type(hoverPreviewLead.property.type)}</span>
             </div>
           </div>
         </div>
