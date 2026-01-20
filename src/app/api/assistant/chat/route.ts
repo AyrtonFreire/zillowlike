@@ -224,7 +224,7 @@ function buildLeadAccessWhere(userId: string): Prisma.LeadWhereInput {
 }
 
 async function deleteHandler(req: NextRequest) {
-  const { userId, role } = await getSessionContext();
+  const { userId, role, email } = await getSessionContext();
   if (!userId) return errorResponse("Não autenticado", 401);
   if (role !== "ADMIN" && role !== "REALTOR") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
 
@@ -597,11 +597,12 @@ function extractJsonObject(text: string): any | null {
 async function getSessionContext() {
   const session: any = await getServerSession(authOptions);
   if (!session?.user && !session?.userId) {
-    return { userId: null, role: null };
+    return { userId: null, role: null, email: null };
   }
   const userId = session.userId || session.user?.id || null;
   const role = (session.role || session.user?.role || null) as Role | null;
-  return { userId: userId ? String(userId) : null, role };
+  const email = session.user?.email || null;
+  return { userId: userId ? String(userId) : null, role, email: email ? String(email) : null };
 }
 
 function canAccessLead(role: string | null, userId: string, lead: any) {
@@ -1149,7 +1150,7 @@ async function getHandler(req: NextRequest) {
 }
 
 async function postHandler(req: NextRequest) {
-  const { userId, role } = await getSessionContext();
+  const { userId, role, email } = await getSessionContext();
   if (!userId) return errorResponse("Não autenticado", 401);
   if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
 
@@ -1469,7 +1470,7 @@ async function postHandler(req: NextRequest) {
           action: "ASSISTANT_CHAT_AI_CALLED",
           message: "Assistant chat AI call",
           actorId: String(userId),
-          actorEmail: (session as any)?.user?.email ? String((session as any).user.email) : null,
+          actorEmail: email,
           actorRole: role || null,
           targetType: "AssistantChat",
           targetId: leadId ? String(leadId) : "global",
