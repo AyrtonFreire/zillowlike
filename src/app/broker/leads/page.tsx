@@ -70,8 +70,6 @@ interface Lead {
   lastMessageAt?: string | null;
   lastMessagePreview?: string | null;
   lastMessageFromClient?: boolean;
-  origin?: string | null;
-  originLabel?: string | null;
   clientChatToken?: string | null;
   chatUrl?: string | null;
   property: {
@@ -1360,7 +1358,6 @@ export default function MyLeadsPage() {
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr className="text-left text-xs font-semibold text-gray-600">
                         <th className="px-4 py-3">Lead</th>
-                        <th className="px-4 py-3">Origem</th>
                         <th className="px-4 py-3">Imóvel</th>
                         <th className="px-4 py-3">Etapa</th>
                         <th className="px-4 py-3">Atividade</th>
@@ -1396,11 +1393,6 @@ export default function MyLeadsPage() {
                                   )}
                                 </div>
                               </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                                {lead.originLabel || "-"}
-                              </span>
                             </td>
                             <td
                               className="px-4 py-3"

@@ -69,14 +69,6 @@ function cursorToLeadId(raw: string | null) {
   return decoded?.id ? String(decoded.id) : raw;
 }
 
-function originLabel(source: string | null) {
-  const s = String(source || "").toUpperCase();
-  if (s === "WHATSAPP") return "WhatsApp";
-  if (s === "CONTACT_FORM") return "Formulário";
-  if (s === "VISIT_REQUEST") return "Visita";
-  return s ? s : "-";
-}
-
 function pipelineGroupToStages(group: string | null): PipelineStage[] | null {
   const g = String(group || "").toUpperCase();
   if (!g || g === "ALL") return null;
@@ -142,12 +134,12 @@ export async function GET(request: NextRequest) {
 
     if (paged && isPostgres && (!cursor || decodedCursor)) {
       try {
-        const whereSql: Prisma.Sql[] = [Prisma.sql`l.realtor_id = ${String(userId)}`];
+        const whereSql: Prisma.Sql[] = [Prisma.sql`l."realtorId" = ${String(userId)}`];
         if (!includeCompleted) whereSql.push(Prisma.sql`l.status <> 'COMPLETED'`);
         if (stages && stages.length) {
-          whereSql.push(Prisma.sql`l.pipeline_stage IN (${Prisma.join(stages.map((s) => Prisma.sql`${s}`))})`);
+          whereSql.push(Prisma.sql`l."pipelineStage" IN (${Prisma.join(stages.map((s) => Prisma.sql`${s}`))})`);
         }
-        if (createdAtGte) whereSql.push(Prisma.sql`l.created_at >= ${createdAtGte}`);
+        if (createdAtGte) whereSql.push(Prisma.sql`l."createdAt" >= ${createdAtGte}`);
         if (type) whereSql.push(Prisma.sql`p.type = ${type}`);
         if (city) whereSql.push(Prisma.sql`p.city ILIKE ${"%" + city + "%"}`);
         if (effectiveQuery && effectiveQuery.length >= 2) {
@@ -179,37 +171,29 @@ export async function GET(request: NextRequest) {
           Prisma.sql`
             WITH lcm AS (
               SELECT
-                lead_id,
-                MAX(created_at) AS last_client_at,
-                (ARRAY_AGG(content ORDER BY created_at DESC))[1] AS last_client_content
+                "leadId",
+                MAX("createdAt") AS last_client_at,
+                (ARRAY_AGG(content ORDER BY "createdAt" DESC))[1] AS last_client_content
               FROM lead_client_messages
-              WHERE from_client = true
-              GROUP BY lead_id
+              WHERE "fromClient" = true
+              GROUP BY "leadId"
             ),
             lm AS (
               SELECT
-                lead_id,
-                MAX(created_at) AS last_internal_at,
-                (ARRAY_AGG(content ORDER BY created_at DESC))[1] AS last_internal_content
+                "leadId",
+                MAX("createdAt") AS last_internal_at,
+                (ARRAY_AGG(content ORDER BY "createdAt" DESC))[1] AS last_internal_content
               FROM lead_messages
-              GROUP BY lead_id
-            ),
-            created_src AS (
-              SELECT DISTINCT ON (lead_id)
-                lead_id,
-                (metadata->>'source') AS source
-              FROM lead_events
-              WHERE type = 'LEAD_CREATED'
-              ORDER BY lead_id, created_at DESC
+              GROUP BY "leadId"
             ),
             base AS (
               SELECT
                 l.id,
-                l.created_at,
+                l."createdAt" AS created_at,
                 GREATEST(
-                  l.created_at,
-                  COALESCE(lcm.last_client_at, l.created_at),
-                  COALESCE(lm.last_internal_at, l.created_at)
+                  l."createdAt",
+                  COALESCE(lcm.last_client_at, l."createdAt"),
+                  COALESCE(lm.last_internal_at, l."createdAt")
                 ) AS last_activity_at,
                 CASE
                   WHEN lcm.last_client_at IS NULL THEN false
@@ -226,7 +210,7 @@ export async function GET(request: NextRequest) {
                       ELSE false
                     END
                   ) = true AND (
-                    rr.last_read_at IS NULL OR lcm.last_client_at > rr.last_read_at
+                    rr."lastReadAt" IS NULL OR lcm.last_client_at > rr."lastReadAt"
                   ) THEN true
                   ELSE false
                 END AS has_unread,
@@ -241,7 +225,6 @@ export async function GET(request: NextRequest) {
                   ) = true THEN lcm.last_client_content
                   ELSE lm.last_internal_content
                 END AS last_preview,
-                created_src.source,
                 CASE WHEN (
                   CASE
                     WHEN (
@@ -252,18 +235,17 @@ export async function GET(request: NextRequest) {
                         ELSE false
                       END
                     ) = true AND (
-                      rr.last_read_at IS NULL OR lcm.last_client_at > rr.last_read_at
+                      rr."lastReadAt" IS NULL OR lcm.last_client_at > rr."lastReadAt"
                     ) THEN true
                     ELSE false
                   END
                 ) THEN 1 ELSE 0 END AS hu
               FROM leads l
-              JOIN properties p ON p.id = l.property_id
-              LEFT JOIN contacts c ON c.id = l.contact_id
-              LEFT JOIN lcm ON lcm.lead_id = l.id
-              LEFT JOIN lm ON lm.lead_id = l.id
-              LEFT JOIN lead_chat_read_receipts rr ON rr.lead_id = l.id AND rr.user_id = ${String(userId)}
-              LEFT JOIN created_src ON created_src.lead_id = l.id
+              JOIN properties p ON p.id = l."propertyId"
+              LEFT JOIN contacts c ON c.id = l."contactId"
+              LEFT JOIN lcm ON lcm."leadId" = l.id
+              LEFT JOIN lm ON lm."leadId" = l.id
+              LEFT JOIN lead_chat_read_receipts rr ON rr."leadId" = l.id AND rr."userId" = ${String(userId)}
               WHERE ${Prisma.join(whereSql, " AND ")}
             )
             SELECT
@@ -273,7 +255,6 @@ export async function GET(request: NextRequest) {
               base.has_unread,
               base.last_preview,
               base.last_from_client,
-              base.source,
               base.hu
             FROM base
             WHERE true
@@ -328,7 +309,6 @@ export async function GET(request: NextRequest) {
         const normalized = (orderedLeads as any[]).map((lead) => {
           const row = rowById.get(String(lead.id)) || null;
           const lastActivityAt = row?.last_activity_at ? new Date(row.last_activity_at).toISOString() : null;
-          const source = row?.source ? String(row.source) : null;
           return {
             ...lead,
             pipelineStage: lead.pipelineStage || mapStatusToStage(lead.status),
@@ -337,8 +317,6 @@ export async function GET(request: NextRequest) {
             lastMessagePreview: row?.last_preview ? clip(row.last_preview, 90) : null,
             lastMessageFromClient: !!row?.last_from_client,
             lastContactAt: lastActivityAt,
-            origin: source,
-            originLabel: originLabel(source),
             property: lead.property
               ? {
                   ...lead.property,
@@ -557,7 +535,7 @@ export async function GET(request: NextRequest) {
 
     const leadIds = orderedLeads.map((l) => String(l.id));
 
-    const [lastClientMsgs, lastInternalMsgs, createdEvents] = await Promise.all([
+    const [lastClientMsgs, lastInternalMsgs] = await Promise.all([
       leadIds.length
         ? (prisma as any).leadClientMessage.findMany({
             where: { leadId: { in: leadIds } },
@@ -574,22 +552,8 @@ export async function GET(request: NextRequest) {
             select: { leadId: true, createdAt: true, content: true },
           })
         : Promise.resolve([] as any[]),
-      leadIds.length
-        ? (prisma as any).leadEvent.findMany({
-            where: { leadId: { in: leadIds }, type: "LEAD_CREATED" },
-            orderBy: { createdAt: "desc" },
-            select: { leadId: true, metadata: true, createdAt: true },
-          })
-        : Promise.resolve([] as any[]),
     ]);
 
-    const originByLead = new Map<string, string | null>();
-    for (const ev of createdEvents as any[]) {
-      const id = String(ev.leadId);
-      if (originByLead.has(id)) continue;
-      const source = (ev as any)?.metadata?.source ? String((ev as any).metadata.source) : null;
-      originByLead.set(id, source);
-    }
 
     const lastClientByLead = new Map<string, any>();
     for (const m of lastClientMsgs as any[]) {
@@ -657,8 +621,6 @@ export async function GET(request: NextRequest) {
         lastMessagePreview,
         lastMessageFromClient,
         lastContactAt: lastMessageAt ? lastMessageAt.toISOString() : null,
-        origin: originByLead.get(leadId) ?? null,
-        originLabel: originLabel(originByLead.get(leadId) ?? null),
         property: lead.property
           ? {
               ...lead.property,
