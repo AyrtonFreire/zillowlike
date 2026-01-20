@@ -619,13 +619,13 @@ export default function MyLeadsPage() {
     }
   };
 
-  const formatPrice = (price: number) => {
+  function formatPrice(price: number) {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
       minimumFractionDigits: 0,
     }).format(price / 100);
-  };
+  }
 
   const getTimeAgo = (date: string) => {
     const now = new Date();
