@@ -105,7 +105,17 @@ interface Lead {
     bedrooms?: number | null;
     bathrooms?: number | null;
     areaM2?: number | null;
+    builtAreaM2?: number | null;
+    usableAreaM2?: number | null;
+    lotAreaM2?: number | null;
+    privateAreaM2?: number | null;
+    suites?: number | null;
     parkingSpots?: number | null;
+    floor?: number | null;
+    furnished?: boolean | null;
+    petFriendly?: boolean | null;
+    condoFee?: number | null;
+    purpose?: "SALE" | "RENT" | null;
     images: Array<{ url: string }>;
   };
   contact?: {
@@ -393,17 +403,45 @@ export default function MyLeadsPage() {
       .filter(Boolean)
       .join(", ");
 
+    const mainArea =
+      hoverPreviewLead.property.areaM2 ??
+      hoverPreviewLead.property.usableAreaM2 ??
+      hoverPreviewLead.property.builtAreaM2 ??
+      hoverPreviewLead.property.privateAreaM2 ??
+      null;
     const metrics: Array<{ key: string; icon: any; label: string; value: string | number | null | undefined }> = [
       { key: "beds", icon: BedDouble, label: "Quartos", value: hoverPreviewLead.property.bedrooms },
       { key: "baths", icon: Bath, label: "Banheiros", value: hoverPreviewLead.property.bathrooms },
+      { key: "suites", icon: BedDouble, label: "Suítes", value: hoverPreviewLead.property.suites },
       {
         key: "area",
         icon: Ruler,
         label: "Área",
-        value: hoverPreviewLead.property.areaM2 != null ? `${hoverPreviewLead.property.areaM2}m²` : null,
+        value: mainArea != null ? `${mainArea}m²` : null,
+      },
+      {
+        key: "lot",
+        icon: Ruler,
+        label: "Terreno",
+        value: hoverPreviewLead.property.lotAreaM2 != null ? `${hoverPreviewLead.property.lotAreaM2}m²` : null,
       },
       { key: "parking", icon: Car, label: "Vagas", value: hoverPreviewLead.property.parkingSpots },
+      {
+        key: "floor",
+        icon: Ruler,
+        label: "Andar",
+        value: hoverPreviewLead.property.floor != null ? hoverPreviewLead.property.floor : null,
+      },
     ];
+
+    const purposeLabel =
+      hoverPreviewLead.property.purpose === "SALE"
+        ? "Venda"
+        : hoverPreviewLead.property.purpose === "RENT"
+          ? "Aluguel"
+          : null;
+    const condoFeeLabel =
+      hoverPreviewLead.property.condoFee != null ? `Cond. ${formatPrice(hoverPreviewLead.property.condoFee)}` : null;
 
     return createPortal(
       <div
@@ -442,7 +480,29 @@ export default function MyLeadsPage() {
                   </span>
                 );
               })}
-              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">{ptBR.type(hoverPreviewLead.property.type)}</span>
+              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">
+                {ptBR.type(hoverPreviewLead.property.type)}
+              </span>
+              {purposeLabel && (
+                <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-[11px] font-medium">
+                  {purposeLabel}
+                </span>
+              )}
+              {hoverPreviewLead.property.furnished && (
+                <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-[11px] font-medium">
+                  Mobiliado
+                </span>
+              )}
+              {hoverPreviewLead.property.petFriendly && (
+                <span className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-[11px] font-medium">
+                  Pet friendly
+                </span>
+              )}
+              {condoFeeLabel && (
+                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">
+                  {condoFeeLabel}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -846,19 +906,16 @@ export default function MyLeadsPage() {
     };
   }, [leadsBaseForView]);
 
-  if (loading) {
-    return <CenteredSpinner message="Carregando seus leads..." />;
-  }
-
   const stagePickerLead = stagePickerLeadId ? leads.find((l) => String(l.id) === String(stagePickerLeadId)) || null : null;
   const stagePickerCurrentStage = stagePickerLead ? getCanonicalStage(stagePickerLead) : null;
   const stagePickerIsUpdating = stagePickerLeadId ? !!stageUpdating[String(stagePickerLeadId)] : false;
-  const stagePickerNextStages = useMemo(() => {
-    if (!stagePickerCurrentStage) return [] as CanonicalStage[];
-    const idx = CANONICAL_STAGE_ORDER.indexOf(stagePickerCurrentStage);
-    if (idx < 0) return [] as CanonicalStage[];
-    return CANONICAL_STAGE_ORDER.slice(idx + 1);
-  }, [stagePickerCurrentStage]);
+  const stagePickerNextStages: CanonicalStage[] = stagePickerCurrentStage
+    ? CANONICAL_STAGE_ORDER.slice(CANONICAL_STAGE_ORDER.indexOf(stagePickerCurrentStage) + 1)
+    : [];
+
+  if (loading) {
+    return <CenteredSpinner message="Carregando seus leads..." />;
+  }
 
   const renderStageSelector = (lead: Lead) => {
     const currentStage = getCanonicalStage(lead);

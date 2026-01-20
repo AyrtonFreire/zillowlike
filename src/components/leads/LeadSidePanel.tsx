@@ -41,7 +41,17 @@ type Lead = {
     bedrooms?: number | null;
     bathrooms?: number | null;
     areaM2?: number | null;
+    builtAreaM2?: number | null;
+    usableAreaM2?: number | null;
+    lotAreaM2?: number | null;
+    privateAreaM2?: number | null;
+    suites?: number | null;
     parkingSpots?: number | null;
+    floor?: number | null;
+    furnished?: boolean | null;
+    petFriendly?: boolean | null;
+    condoFee?: number | null;
+    purpose?: "SALE" | "RENT" | null;
     images: Array<{ url: string }>;
   };
   contact?: {
@@ -447,16 +457,56 @@ export default function LeadSidePanel({
                 <span className="tabular-nums">{lead.property.bathrooms}</span>
               </span>
             ) : null}
-            {lead.property.areaM2 ? (
+            {lead.property.suites ? (
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Suítes">
+                <BedDouble className="w-3.5 h-3.5 text-gray-500" />
+                <span className="tabular-nums">{lead.property.suites}</span>
+              </span>
+            ) : null}
+            {lead.property.areaM2 || lead.property.usableAreaM2 || lead.property.builtAreaM2 || lead.property.privateAreaM2 ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Área">
                 <Ruler className="w-3.5 h-3.5 text-gray-500" />
-                <span className="tabular-nums">{lead.property.areaM2}m²</span>
+                <span className="tabular-nums">
+                  {lead.property.areaM2 ?? lead.property.usableAreaM2 ?? lead.property.builtAreaM2 ?? lead.property.privateAreaM2}m²
+                </span>
+              </span>
+            ) : null}
+            {lead.property.lotAreaM2 ? (
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Terreno">
+                <Ruler className="w-3.5 h-3.5 text-gray-500" />
+                <span className="tabular-nums">{lead.property.lotAreaM2}m²</span>
               </span>
             ) : null}
             {lead.property.parkingSpots ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Vagas">
                 <Car className="w-3.5 h-3.5 text-gray-500" />
                 <span className="tabular-nums">{lead.property.parkingSpots}</span>
+              </span>
+            ) : null}
+            {lead.property.floor != null ? (
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Andar">
+                <Ruler className="w-3.5 h-3.5 text-gray-500" />
+                <span className="tabular-nums">{lead.property.floor}</span>
+              </span>
+            ) : null}
+            {lead.property.purpose ? (
+              <span className="inline-flex items-center px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-[11px] font-medium">
+                {lead.property.purpose === "SALE" ? "Venda" : "Aluguel"}
+              </span>
+            ) : null}
+            {lead.property.furnished ? (
+              <span className="inline-flex items-center px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-[11px] font-medium">
+                Mobiliado
+              </span>
+            ) : null}
+            {lead.property.petFriendly ? (
+              <span className="inline-flex items-center px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-[11px] font-medium">
+                Pet friendly
+              </span>
+            ) : null}
+            {lead.property.condoFee != null ? (
+              <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">
+                Cond. {formatPrice(lead.property.condoFee)}
               </span>
             ) : null}
           </div>

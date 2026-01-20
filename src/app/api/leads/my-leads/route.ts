@@ -285,7 +285,17 @@ export async function GET(request: NextRequest) {
                 bedrooms: true,
                 bathrooms: true,
                 areaM2: true,
+                builtAreaM2: true,
+                usableAreaM2: true,
+                lotAreaM2: true,
+                privateAreaM2: true,
+                suites: true,
                 parkingSpots: true,
+                floor: true,
+                furnished: true,
+                petFriendly: true,
+                condoFee: true,
+                purpose: true,
                 images: {
                   take: 1,
                   orderBy: { sortOrder: "asc" },
@@ -322,6 +332,7 @@ export async function GET(request: NextRequest) {
               ? {
                   ...lead.property,
                   price: jsonSafe(lead.property.price),
+                  condoFee: jsonSafe(lead.property.condoFee),
                 }
               : lead.property,
           };
@@ -515,7 +526,17 @@ export async function GET(request: NextRequest) {
             bedrooms: true,
             bathrooms: true,
             areaM2: true,
+            builtAreaM2: true,
+            usableAreaM2: true,
+            lotAreaM2: true,
+            privateAreaM2: true,
+            suites: true,
             parkingSpots: true,
+            floor: true,
+            furnished: true,
+            petFriendly: true,
+            condoFee: true,
+            purpose: true,
             images: {
               take: 1,
               orderBy: { sortOrder: "asc" },
@@ -627,6 +648,7 @@ export async function GET(request: NextRequest) {
           ? {
               ...lead.property,
               price: jsonSafe(lead.property.price),
+              condoFee: jsonSafe(lead.property.condoFee),
             }
           : lead.property,
       };

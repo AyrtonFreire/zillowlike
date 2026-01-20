@@ -40,7 +40,17 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
             bedrooms: true,
             bathrooms: true,
             areaM2: true,
+            builtAreaM2: true,
+            usableAreaM2: true,
+            lotAreaM2: true,
+            privateAreaM2: true,
+            suites: true,
             parkingSpots: true,
+            floor: true,
+            furnished: true,
+            petFriendly: true,
+            condoFee: true,
+            purpose: true,
             teamId: true,
             ownerId: true,
             images: {
@@ -110,6 +120,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
         ? {
             ...lead.property,
             price: jsonSafe(lead.property.price),
+            condoFee: jsonSafe((lead.property as any).condoFee),
           }
         : lead.property,
     };
