@@ -511,7 +511,7 @@ export default function AgencyTeamChatPanel() {
   }
 
   return (
-    <div className="h-[calc(100vh-240px)] min-h-[520px] bg-white rounded-xl border border-gray-200 overflow-hidden flex min-w-0 w-full max-w-full">
+    <div className="min-h-[520px] bg-white rounded-xl border border-gray-200 overflow-hidden flex min-w-0 w-full max-w-full">
       <div
         className={`w-full md:w-80 lg:w-96 border-r border-gray-200 flex flex-col bg-gray-50 ${
           selectedThreadId ? "hidden md:flex" : "flex"
