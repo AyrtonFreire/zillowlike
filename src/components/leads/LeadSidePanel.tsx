@@ -101,6 +101,7 @@ export default function LeadSidePanel({
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [notesLoadedLeadId, setNotesLoadedLeadId] = useState<string | null>(null);
 
   const title = lead?.property?.title ? lead.property.title : "Lead";
 
@@ -133,9 +134,11 @@ export default function LeadSidePanel({
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || "Erro ao carregar notas");
       setNotes(Array.isArray(data?.notes) ? data.notes : []);
+      setNotesLoadedLeadId(leadId);
     } catch (e: any) {
       setNotes([]);
       setNotesError(e?.message || "Erro ao carregar notas");
+      setNotesLoadedLeadId(leadId);
     } finally {
       setNotesLoading(false);
     }
@@ -149,14 +152,15 @@ export default function LeadSidePanel({
     setNotes([]);
     setNotesLoading(false);
     setNotesError(null);
+    setNotesLoadedLeadId(null);
     void loadLead();
   }, [open, leadId, loadLead]);
 
   useEffect(() => {
     if (!open) return;
     if (!leadId) return;
-    if (activeTab === "NOTAS" && notes.length === 0 && !notesLoading) void loadNotes();
-  }, [open, leadId, activeTab, notes.length, notesLoading, loadNotes]);
+    if (activeTab === "NOTAS" && !notesLoading && notesLoadedLeadId !== leadId) void loadNotes();
+  }, [open, leadId, activeTab, notesLoading, notesLoadedLeadId, loadNotes]);
 
   const handleAccept = useCallback(async () => {
     if (!leadId) return;
