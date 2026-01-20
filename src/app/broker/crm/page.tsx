@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import {
   Users,
   Phone,
@@ -16,6 +18,10 @@ import {
   MessageCircle,
   Clock,
   ListChecks,
+  BedDouble,
+  Bath,
+  Ruler,
+  Car,
 } from "lucide-react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, TouchSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,6 +29,8 @@ import { useToast } from "@/contexts/ToastContext";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import DraggableLeadCard from "@/components/crm/DraggableLeadCard";
 import DroppableStageColumn from "@/components/crm/DroppableStageColumn";
+import LeadSidePanel from "@/components/leads/LeadSidePanel";
+import { ptBR } from "@/lib/i18n/property";
 
 interface PipelineLead {
   id: string;
@@ -44,6 +52,11 @@ interface PipelineLead {
     city: string;
     state: string;
     neighborhood?: string | null;
+    street?: string | null;
+    bedrooms?: number | null;
+    bathrooms?: number | null;
+    areaM2?: number | null;
+    parkingSpots?: number | null;
     images: Array<{ url: string }>;
   };
   contact?: {
@@ -140,6 +153,12 @@ export default function BrokerCrmPage() {
   const [reminderUpdating, setReminderUpdating] = useState<Record<string, boolean>>({});
   const [showCrmHelp, setShowCrmHelp] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  const [hoverPreviewLead, setHoverPreviewLead] = useState<PipelineLead | null>(null);
+  const [hoverPreviewRect, setHoverPreviewRect] = useState<DOMRect | null>(null);
+  const hoverPreviewCloseTimer = useRef<number | null>(null);
 
   const [query, setQuery] = useState("");
   const [quickFilter, setQuickFilter] = useState<"all" | "unread" | "sla" | "noContact">("all");
@@ -233,6 +252,122 @@ export default function BrokerCrmPage() {
 
   const now = new Date();
   const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+  const openLeadPanel = (leadId: string) => {
+    setSelectedLeadId(leadId);
+    setIsPanelOpen(true);
+  };
+
+  const closeHoverPreviewSoon = useCallback(() => {
+    if (hoverPreviewCloseTimer.current) {
+      window.clearTimeout(hoverPreviewCloseTimer.current);
+    }
+    hoverPreviewCloseTimer.current = window.setTimeout(() => {
+      setHoverPreviewLead(null);
+      setHoverPreviewRect(null);
+    }, 120);
+  }, []);
+
+  const keepHoverPreviewOpen = useCallback(() => {
+    if (hoverPreviewCloseTimer.current) {
+      window.clearTimeout(hoverPreviewCloseTimer.current);
+      hoverPreviewCloseTimer.current = null;
+    }
+  }, []);
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 0,
+    }).format(price / 100);
+  };
+
+  const previewNode = useMemo(() => {
+    if (!hoverPreviewLead || !hoverPreviewRect) return null;
+    if (typeof document === "undefined") return null;
+
+    const maxWidth = 360;
+    const margin = 12;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+
+    let left = hoverPreviewRect.right + margin;
+    let top = hoverPreviewRect.top;
+
+    if (left + maxWidth + margin > vw) {
+      left = Math.max(margin, hoverPreviewRect.left - maxWidth - margin);
+    }
+
+    top = Math.min(Math.max(margin, top), vh - margin - 240);
+
+    const addressLine = [
+      hoverPreviewLead.property.street,
+      hoverPreviewLead.property.neighborhood,
+      hoverPreviewLead.property.city ? `${hoverPreviewLead.property.city}/${hoverPreviewLead.property.state}` : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    const metrics: Array<{ key: string; icon: any; label: string; value: string | number | null | undefined }> = [
+      { key: "beds", icon: BedDouble, label: "Quartos", value: hoverPreviewLead.property.bedrooms },
+      { key: "baths", icon: Bath, label: "Banheiros", value: hoverPreviewLead.property.bathrooms },
+      {
+        key: "area",
+        icon: Ruler,
+        label: "Área",
+        value: hoverPreviewLead.property.areaM2 != null ? `${hoverPreviewLead.property.areaM2}m²` : null,
+      },
+      { key: "parking", icon: Car, label: "Vagas", value: hoverPreviewLead.property.parkingSpots },
+    ];
+
+    return createPortal(
+      <div
+        className="fixed z-[9999]"
+        style={{ left, top, width: maxWidth }}
+        onMouseEnter={keepHoverPreviewOpen}
+        onMouseLeave={closeHoverPreviewSoon}
+      >
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+          <div className="relative h-40 bg-gray-100">
+            <Image
+              src={hoverPreviewLead.property.images[0]?.url || "/placeholder.jpg"}
+              alt={hoverPreviewLead.property.title}
+              fill
+              className="object-cover"
+            />
+          </div>
+          <div className="p-4">
+            <div className="text-sm font-semibold text-gray-900 line-clamp-2">
+              {hoverPreviewLead.property.title}
+            </div>
+            <div className="text-teal-700 font-bold mt-1">{formatPrice(hoverPreviewLead.property.price)}</div>
+            <div className="text-xs text-gray-600 mt-1 line-clamp-2">{addressLine}</div>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {metrics.map((m) => {
+                const Icon = m.icon;
+                const value = m.value ?? "—";
+                return (
+                  <span
+                    key={m.key}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium"
+                    title={m.label}
+                  >
+                    <Icon className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="tabular-nums">{value}</span>
+                  </span>
+                );
+              })}
+              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">
+                {ptBR.type(hoverPreviewLead.property.type)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }, [hoverPreviewLead, hoverPreviewRect, keepHoverPreviewOpen, closeHoverPreviewSoon]);
 
   const isSameDay = (a: Date, b: Date) => {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -784,8 +919,8 @@ export default function BrokerCrmPage() {
           onDragEnd={handleDragEnd}
         >
           {/* Desktop: Grid de colunas */}
-          <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="grid grid-cols-4 lg:grid-cols-7 gap-3">
+          <div className="hidden md:block w-full px-4 sm:px-6 lg:px-8 py-6">
+            <div className="grid grid-cols-4 lg:grid-cols-7 gap-px bg-gray-200 rounded-2xl p-px items-stretch">
               {STAGE_ORDER.map((stage) => {
                 const config = STAGE_CONFIG[stage];
                 const stageLeads = leadsByStage[stage];
@@ -809,6 +944,7 @@ export default function BrokerCrmPage() {
                         [stage]: !prev[stage],
                       }))
                     }
+                    className="rounded-none"
                   >
                     {stageLeads.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -827,6 +963,15 @@ export default function BrokerCrmPage() {
                             selectionMode={selectionMode}
                             selected={selectedLeadIds.includes(String(lead.id))}
                             onToggleSelected={() => toggleSelectLead(String(lead.id))}
+                            onHoverStart={(rect) => {
+                              if (hoverPreviewCloseTimer.current) {
+                                window.clearTimeout(hoverPreviewCloseTimer.current);
+                              }
+                              setHoverPreviewLead(lead);
+                              setHoverPreviewRect(rect);
+                            }}
+                            onHoverEnd={closeHoverPreviewSoon}
+                            onOpenLead={() => openLeadPanel(String(lead.id))}
                             onOpenChat={() => {
                               if (typeof window !== "undefined") {
                                 window.location.href = `/broker/chats?lead=${lead.id}`;
@@ -1035,6 +1180,15 @@ export default function BrokerCrmPage() {
             ) : null}
           </DragOverlay>
         </DndContext>
+
+        {previewNode}
+
+        <LeadSidePanel
+          open={isPanelOpen}
+          leadId={selectedLeadId}
+          onClose={() => setIsPanelOpen(false)}
+          onLeadUpdated={fetchLeads}
+        />
     </div>
   );
 }

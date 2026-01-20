@@ -59,20 +59,6 @@ type LeadNote = {
   createdAt: string;
 };
 
-type LeadMessage = {
-  id: string;
-  leadId: string;
-  senderId: string;
-  senderRole: string;
-  content: string;
-  createdAt: string;
-  sender?: {
-    id: string;
-    name: string | null;
-    role: string;
-  } | null;
-};
-
 function formatPrice(value: number) {
   try {
     return new Intl.NumberFormat("pt-BR", {
@@ -109,18 +95,12 @@ export default function LeadSidePanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"ATIVIDADES" | "NOTAS" | "MENSAGENS" | "IMOVEL">("ATIVIDADES");
+  const [activeTab, setActiveTab] = useState<"ATIVIDADES" | "NOTAS" | "IMOVEL">("ATIVIDADES");
 
   const [notes, setNotes] = useState<LeadNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
-
-  const [messages, setMessages] = useState<LeadMessage[]>([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [messagesError, setMessagesError] = useState<string | null>(null);
-  const [messageDraft, setMessageDraft] = useState("");
-  const [messageSending, setMessageSending] = useState(false);
 
   const title = lead?.property?.title ? lead.property.title : "Lead";
 
@@ -146,7 +126,10 @@ export default function LeadSidePanel({
     setNotesError(null);
     setNotesLoading(true);
     try {
-      const r = await fetch(`/api/leads/${leadId}/notes`);
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 12000);
+      const r = await fetch(`/api/leads/${leadId}/notes`, { signal: controller.signal });
+      window.clearTimeout(timeout);
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || "Erro ao carregar notas");
       setNotes(Array.isArray(data?.notes) ? data.notes : []);
@@ -158,29 +141,14 @@ export default function LeadSidePanel({
     }
   }, [leadId]);
 
-  const loadMessages = useCallback(async () => {
-    if (!leadId) return;
-    setMessagesError(null);
-    setMessagesLoading(true);
-    try {
-      const r = await fetch(`/api/leads/${leadId}/messages`);
-      const data = await r.json();
-      if (!r.ok) throw new Error(data?.error || "Erro ao carregar mensagens");
-      setMessages(Array.isArray(data?.messages) ? data.messages : []);
-    } catch (e: any) {
-      setMessages([]);
-      setMessagesError(e?.message || "Erro ao carregar mensagens");
-    } finally {
-      setMessagesLoading(false);
-    }
-  }, [leadId]);
-
   useEffect(() => {
     if (!open) return;
     if (!leadId) return;
     setActiveTab("ATIVIDADES");
     setNoteDraft("");
-    setMessageDraft("");
+    setNotes([]);
+    setNotesLoading(false);
+    setNotesError(null);
     void loadLead();
   }, [open, leadId, loadLead]);
 
@@ -188,8 +156,7 @@ export default function LeadSidePanel({
     if (!open) return;
     if (!leadId) return;
     if (activeTab === "NOTAS" && notes.length === 0 && !notesLoading) void loadNotes();
-    if (activeTab === "MENSAGENS" && messages.length === 0 && !messagesLoading) void loadMessages();
-  }, [open, leadId, activeTab, notes.length, notesLoading, loadNotes, messages.length, messagesLoading, loadMessages]);
+  }, [open, leadId, activeTab, notes.length, notesLoading, loadNotes]);
 
   const handleAccept = useCallback(async () => {
     if (!leadId) return;
@@ -259,33 +226,6 @@ export default function LeadSidePanel({
       setNotesLoading(false);
     }
   }, [leadId, noteDraft, loadNotes, toast, onLeadUpdated]);
-
-  const handleSendMessage = useCallback(async () => {
-    if (!leadId) return;
-    const content = String(messageDraft || "").trim();
-    if (!content) return;
-
-    setMessagesError(null);
-    setMessageSending(true);
-    try {
-      const r = await fetch(`/api/leads/${leadId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data?.error || "Erro ao enviar mensagem");
-      setMessageDraft("");
-      await loadMessages();
-      toast.success("Mensagem enviada");
-      onLeadUpdated?.();
-    } catch (e: any) {
-      setMessagesError(e?.message || "Erro ao enviar mensagem");
-      toast.error("Erro ao enviar mensagem", e?.message || undefined);
-    } finally {
-      setMessageSending(false);
-    }
-  }, [leadId, messageDraft, loadMessages, toast, onLeadUpdated]);
 
   const header = useMemo(() => {
     if (!lead) return null;
@@ -470,53 +410,10 @@ export default function LeadSidePanel({
             <button
               type="button"
               onClick={handleAddNote}
-              disabled={notesLoading}
+              disabled={notesLoading && notes.length === 0}
               className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg disabled:opacity-60"
             >
               Salvar
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-
-    const messagesContent = (
-      <div className="space-y-3">
-        {messagesError && <div className="text-xs text-red-600">{messagesError}</div>}
-        {messagesLoading && messages.length === 0 ? (
-          <div className="text-xs text-gray-500">Carregando...</div>
-        ) : messages.length ? (
-          <div className="space-y-2">
-            {messages.map((m) => (
-              <div key={m.id} className="p-3 bg-white rounded-lg border border-gray-200">
-                <div className="text-[11px] text-gray-500">
-                  {m.sender?.name ? m.sender.name : m.senderRole} • {new Date(m.createdAt).toLocaleString("pt-BR")}
-                </div>
-                <div className="text-sm text-gray-800 mt-1 whitespace-pre-wrap">{m.content}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-sm text-gray-600">Nenhuma mensagem ainda.</div>
-        )}
-
-        <div className="rounded-lg border border-gray-200 bg-white p-3">
-          <div className="text-xs font-semibold text-gray-800">Enviar mensagem interna</div>
-          <textarea
-            value={messageDraft}
-            onChange={(e) => setMessageDraft(e.target.value)}
-            rows={3}
-            className="mt-2 w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-            placeholder="Escreva uma mensagem..."
-          />
-          <div className="mt-2 flex justify-end">
-            <button
-              type="button"
-              onClick={handleSendMessage}
-              disabled={messageSending}
-              className="px-4 py-2 bg-neutral-900 hover:bg-black text-white text-sm font-semibold rounded-lg disabled:opacity-60"
-            >
-              Enviar
             </button>
           </div>
         </div>
@@ -566,10 +463,9 @@ export default function LeadSidePanel({
     return [
       { key: "ATIVIDADES", label: "Atividades", content: activitiesContent },
       { key: "NOTAS", label: "Notas", content: notesContent },
-      { key: "MENSAGENS", label: "Mensagens", content: messagesContent },
       { key: "IMOVEL", label: "Imóvel", content: propertyContent },
     ];
-  }, [lead, notes, notesLoading, notesError, noteDraft, handleAddNote, messages, messagesLoading, messagesError, messageDraft, handleSendMessage, messageSending]);
+  }, [lead, notes, notesLoading, notesError, noteDraft, handleAddNote]);
 
   return (
     <Drawer open={open} onClose={onClose} title={title} side="right">

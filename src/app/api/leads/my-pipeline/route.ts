@@ -48,6 +48,11 @@ export async function GET(_request: NextRequest) {
             city: true,
             state: true,
             neighborhood: true,
+            street: true,
+            bedrooms: true,
+            bathrooms: true,
+            areaM2: true,
+            parkingSpots: true,
             images: {
               take: 1,
               orderBy: { sortOrder: "asc" },

@@ -13,6 +13,7 @@ interface DroppableStageColumnProps {
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
   headerRight?: ReactNode;
+  className?: string;
 }
 
 export default function DroppableStageColumn({
@@ -24,6 +25,7 @@ export default function DroppableStageColumn({
   collapsed,
   onToggleCollapsed,
   headerRight,
+  className,
 }: DroppableStageColumnProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: stageId,
@@ -32,13 +34,13 @@ export default function DroppableStageColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-2xl border flex flex-col max-h-[70vh] transition-all duration-200 w-72 md:w-auto flex-shrink-0 md:flex-shrink ${
+      className={`rounded-xl bg-white flex flex-col max-h-[72vh] h-full transition-all duration-200 w-72 md:w-auto flex-shrink-0 md:flex-shrink ${
         isOver
-          ? "bg-blue-50 border-blue-300 ring-2 ring-blue-200"
-          : "bg-gray-50 border-gray-200"
-      }`}
+          ? "bg-blue-50 ring-2 ring-blue-200"
+          : ""
+      } ${className || ""}`}
     >
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-3 border-b border-gray-200">
         <div className="flex items-center justify-between mb-1">
           <p className="text-sm font-semibold text-gray-900">{label}</p>
           <div className="flex items-center gap-2">

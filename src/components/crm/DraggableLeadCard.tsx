@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import Image from "next/image";
 import Link from "next/link";
@@ -33,6 +34,9 @@ interface DraggableLeadCardProps {
   onToggleSelected?: () => void;
   onOpenChat?: () => void;
   onToggleReminder?: () => void;
+  onHoverStart?: (rect: DOMRect) => void;
+  onHoverEnd?: () => void;
+  onOpenLead?: () => void;
   dndDisabledOverride?: boolean;
   className?: string;
 }
@@ -48,9 +52,13 @@ export default function DraggableLeadCard({
   onToggleSelected,
   onOpenChat,
   onToggleReminder,
+  onHoverStart,
+  onHoverEnd,
+  onOpenLead,
   dndDisabledOverride,
   className,
 }: DraggableLeadCardProps) {
+  const cardRef = React.useRef<HTMLDivElement | null>(null);
   const dragDisabled = dndDisabledOverride ?? (!!selectionMode || !!isUpdating || !!isReminderUpdating);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead.id,
@@ -80,9 +88,19 @@ export default function DraggableLeadCard({
       }
     : {};
 
+  const setRefs = (node: HTMLDivElement | null) => {
+    cardRef.current = node;
+    setNodeRef(node);
+  };
+
+  const handleMouseEnter = () => {
+    if (!onHoverStart || !cardRef.current) return;
+    onHoverStart(cardRef.current.getBoundingClientRect());
+  };
+
   return (
     <div
-      ref={setNodeRef}
+      ref={setRefs}
       style={style}
       {...dragProps}
       className={`bg-white rounded-2xl border ${
@@ -90,6 +108,14 @@ export default function DraggableLeadCard({
       } p-3 md:p-3 text-xs md:text-[13px] text-gray-900 flex flex-col gap-2 transition-shadow overflow-hidden ${
         dragDisabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"
       } ${className || ""}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={onHoverEnd}
+      onClick={(event) => {
+        if (!onOpenLead || selectionMode) return;
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("a, button")) return;
+        onOpenLead();
+      }}
     >
       {/* Mobile layout (mantém o visual atual) */}
       <div className="md:hidden">

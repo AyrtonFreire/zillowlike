@@ -37,6 +37,7 @@ const PROPERTY_TYPES: Record<string, string> = {
 
 // Pipeline simplificado: 4 grupos das 7 etapas do CRM
 type PipelineStage = "NEW" | "CONTACT" | "NEGOTIATION" | "CLOSED";
+type CanonicalStage = "NEW" | "CONTACT" | "VISIT" | "PROPOSAL" | "DOCUMENTS" | "WON" | "LOST";
 const PIPELINE_STAGES: { id: PipelineStage; label: string; icon: any; color: string; bgColor: string }[] = [
   // Mesmas cores da coluna NEW do CRM (/broker/crm)
   { id: "NEW", label: "Novos", icon: Users, color: "text-blue-600", bgColor: "bg-blue-50" },
@@ -47,6 +48,26 @@ const PIPELINE_STAGES: { id: PipelineStage; label: string; icon: any; color: str
   // Agrupa WON/LOST usando a cor de WON do CRM (verde)
   { id: "CLOSED", label: "Fechado", icon: Trophy, color: "text-emerald-600", bgColor: "bg-emerald-50" },
 ];
+
+const CANONICAL_STAGE_ORDER: CanonicalStage[] = [
+  "NEW",
+  "CONTACT",
+  "VISIT",
+  "PROPOSAL",
+  "DOCUMENTS",
+  "WON",
+  "LOST",
+];
+
+const CANONICAL_STAGE_META: Record<CanonicalStage, { label: string; color: string; bgColor: string; borderColor: string }> = {
+  NEW: { label: "Novos", color: "text-blue-600", bgColor: "bg-blue-50", borderColor: "border-blue-200" },
+  CONTACT: { label: "Contato", color: "text-amber-600", bgColor: "bg-amber-50", borderColor: "border-amber-200" },
+  VISIT: { label: "Visita", color: "text-purple-600", bgColor: "bg-purple-50", borderColor: "border-purple-200" },
+  PROPOSAL: { label: "Proposta", color: "text-cyan-600", bgColor: "bg-cyan-50", borderColor: "border-cyan-200" },
+  DOCUMENTS: { label: "Docs", color: "text-orange-600", bgColor: "bg-orange-50", borderColor: "border-orange-200" },
+  WON: { label: "Fechado", color: "text-emerald-600", bgColor: "bg-emerald-50", borderColor: "border-emerald-200" },
+  LOST: { label: "Perdido", color: "text-gray-500", bgColor: "bg-gray-50", borderColor: "border-gray-200" },
+};
 
 // Mapeamento de status do lead para etapa do pipeline (4 colunas agrupadas)
 function getLeadPipelineStage(lead: Lead): PipelineStage {
@@ -176,6 +197,10 @@ export default function MyLeadsPage() {
 
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  const [openStageMenuLeadId, setOpenStageMenuLeadId] = useState<string | null>(null);
+  const [stageUpdating, setStageUpdating] = useState<Record<string, boolean>>({});
+  const stageMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [hoverPreviewLead, setHoverPreviewLead] = useState<Lead | null>(null);
   const [hoverPreviewRect, setHoverPreviewRect] = useState<DOMRect | null>(null);
@@ -317,6 +342,17 @@ export default function MyLeadsPage() {
     setIsPanelOpen(true);
   };
 
+  useEffect(() => {
+    if (!openStageMenuLeadId) return;
+    const handler = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (stageMenuRef.current && target && stageMenuRef.current.contains(target)) return;
+      setOpenStageMenuLeadId(null);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [openStageMenuLeadId]);
+
   const closeHoverPreviewSoon = useCallback(() => {
     if (hoverPreviewCloseTimer.current) {
       window.clearTimeout(hoverPreviewCloseTimer.current);
@@ -360,19 +396,17 @@ export default function MyLeadsPage() {
       .filter(Boolean)
       .join(", ");
 
-    const metrics: Array<{ key: string; icon: any; label: string; value: string | number }> = [];
-    if (hoverPreviewLead.property.bedrooms) {
-      metrics.push({ key: "beds", icon: BedDouble, label: "Quartos", value: hoverPreviewLead.property.bedrooms });
-    }
-    if (hoverPreviewLead.property.bathrooms) {
-      metrics.push({ key: "baths", icon: Bath, label: "Banheiros", value: hoverPreviewLead.property.bathrooms });
-    }
-    if (hoverPreviewLead.property.areaM2) {
-      metrics.push({ key: "area", icon: Ruler, label: "Área", value: `${hoverPreviewLead.property.areaM2}m²` });
-    }
-    if (hoverPreviewLead.property.parkingSpots) {
-      metrics.push({ key: "parking", icon: Car, label: "Vagas", value: hoverPreviewLead.property.parkingSpots });
-    }
+    const metrics: Array<{ key: string; icon: any; label: string; value: string | number | null | undefined }> = [
+      { key: "beds", icon: BedDouble, label: "Quartos", value: hoverPreviewLead.property.bedrooms },
+      { key: "baths", icon: Bath, label: "Banheiros", value: hoverPreviewLead.property.bathrooms },
+      {
+        key: "area",
+        icon: Ruler,
+        label: "Área",
+        value: hoverPreviewLead.property.areaM2 != null ? `${hoverPreviewLead.property.areaM2}m²` : null,
+      },
+      { key: "parking", icon: Car, label: "Vagas", value: hoverPreviewLead.property.parkingSpots },
+    ];
 
     return createPortal(
       <div
@@ -399,6 +433,7 @@ export default function MyLeadsPage() {
             <div className="flex flex-wrap gap-2 mt-3">
               {metrics.map((m) => {
                 const Icon = m.icon;
+                const value = m.value ?? "—";
                 return (
                   <span
                     key={m.key}
@@ -406,7 +441,7 @@ export default function MyLeadsPage() {
                     title={m.label}
                   >
                     <Icon className="w-3.5 h-3.5 text-gray-500" />
-                    <span className="tabular-nums">{m.value}</span>
+                    <span className="tabular-nums">{value}</span>
                   </span>
                 );
               })}
@@ -671,6 +706,59 @@ export default function MyLeadsPage() {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
+  const getCanonicalStage = (lead: Lead): CanonicalStage => {
+    const canonicalStage = (lead as any).pipelineStage as CanonicalStage | undefined;
+    if (canonicalStage) return canonicalStage;
+    if (lead.status === "COMPLETED") return "WON";
+    if (lead.status === "ACCEPTED") return "CONTACT";
+    return "NEW";
+  };
+
+  const moveLeadToStage = async (leadId: string, nextStage: CanonicalStage) => {
+    const lead = leads.find((l) => String(l.id) === String(leadId));
+    if (!lead) return;
+    const current = getCanonicalStage(lead);
+    if (current === nextStage) return;
+
+    try {
+      const confirmTitle = nextStage === "LOST" ? "Marcar como perdido?" : "Mover lead de etapa?";
+      const confirmMessage =
+        nextStage === "LOST"
+          ? "Tem certeza que deseja marcar este lead como perdido?"
+          : `Deseja mover este lead para a etapa "${CANONICAL_STAGE_META[nextStage].label}"?`;
+      const confirmed = await toast.confirm({
+        title: confirmTitle,
+        message: confirmMessage,
+        confirmText: "Sim, mover",
+        cancelText: "Cancelar",
+        variant: nextStage === "LOST" ? "warning" : "info",
+      });
+
+      if (!confirmed) return;
+
+      setStageUpdating((prev) => ({ ...prev, [leadId]: true }));
+      setLeads((prev) => prev.map((l) => (String(l.id) === String(leadId) ? { ...l, pipelineStage: nextStage } : l)));
+
+      const response = await fetch(`/api/leads/${leadId}/pipeline`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: nextStage }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        setLeads((prev) => prev.map((l) => (String(l.id) === String(leadId) ? lead : l)));
+        throw new Error(data?.error || "Não conseguimos atualizar a etapa deste lead agora.");
+      }
+
+      toast.success("Etapa atualizada!", `Lead movido para "${CANONICAL_STAGE_META[nextStage].label}".`);
+    } catch (err: any) {
+      toast.error("Erro ao mover lead", err?.message || "Não conseguimos atualizar a etapa deste lead agora.");
+    } finally {
+      setStageUpdating((prev) => ({ ...prev, [leadId]: false }));
+    }
+  };
+
   // Leads ativos (não encerrados) para contagens e lista
   const activeLeads = useMemo(() => leads.filter((lead) => lead.status !== "COMPLETED"), [leads]);
 
@@ -765,16 +853,78 @@ export default function MyLeadsPage() {
     return <CenteredSpinner message="Carregando seus leads..." />;
   }
 
-  const getPipelineStageBadge = (stageId: PipelineStage) => {
-    const stage = PIPELINE_STAGES.find((s) => s.id === stageId);
-    if (!stage) return null;
-    const Icon = stage.icon;
+  const renderStageSelector = (lead: Lead) => {
+    const currentStage = getCanonicalStage(lead);
+    const stageMeta = CANONICAL_STAGE_META[currentStage];
+    const currentIndex = CANONICAL_STAGE_ORDER.indexOf(currentStage);
+    const nextStages = currentIndex >= 0 ? CANONICAL_STAGE_ORDER.slice(currentIndex + 1) : [];
+    const nextStagesRegular = nextStages.filter((stage) => stage !== "LOST");
+    const canMarkLost = nextStages.includes("LOST");
+    const isOpen = openStageMenuLeadId === String(lead.id);
+    const isUpdating = !!stageUpdating[String(lead.id)];
 
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border border-gray-200 ${stage.bgColor} ${stage.color}`}>
-        <Icon className="w-3 h-3" />
-        {stage.label}
-      </span>
+      <div className="relative inline-flex" ref={isOpen ? stageMenuRef : undefined}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpenStageMenuLeadId((prev) => (prev === String(lead.id) ? null : String(lead.id)));
+          }}
+          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border ${stageMeta.borderColor} ${stageMeta.bgColor} ${stageMeta.color} transition-colors hover:bg-white`}
+        >
+          {stageMeta.label}
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        </button>
+
+        {isOpen && (
+          <div className="absolute top-full right-0 mt-2 w-44 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
+            <div className="px-3 py-2 text-[11px] text-gray-500 border-b border-gray-100">
+              Avançar para
+            </div>
+            {nextStagesRegular.length ? (
+              <div className="py-1">
+                {nextStagesRegular.map((stage) => {
+                  const meta = CANONICAL_STAGE_META[stage];
+                  return (
+                    <button
+                      key={stage}
+                      type="button"
+                      disabled={isUpdating}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenStageMenuLeadId(null);
+                        void moveLeadToStage(String(lead.id), stage);
+                      }}
+                      className={`w-full px-3 py-2 text-left text-xs font-semibold ${meta.color} hover:bg-gray-50 transition-colors disabled:opacity-60`}
+                    >
+                      {meta.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="px-3 py-2 text-xs text-gray-500">Etapa final</div>
+            )}
+            {canMarkLost && (
+              <div className="border-t border-gray-100 py-1">
+                <button
+                  type="button"
+                  disabled={isUpdating}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenStageMenuLeadId(null);
+                    void moveLeadToStage(String(lead.id), "LOST");
+                  }}
+                  className="w-full px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60"
+                >
+                  Marcar como perdido
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -1096,7 +1246,7 @@ export default function MyLeadsPage() {
                                 </p>
                               )}
                             </div>
-                            {getPipelineStageBadge(getLeadPipelineStage(lead))}
+                            {renderStageSelector(lead)}
                           </div>
                           
                           {/* Linha de info rápida */}
@@ -1286,14 +1436,18 @@ export default function MyLeadsPage() {
                                   <MessageCircle className="w-4 h-4" />
                                   Chat
                                 </Link>
-                                <Link
-                                  href={`/broker/leads/${lead.id}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg transition-colors text-sm"
-                                >
-                                  <ExternalLink className="w-4 h-4" />
-                                  Detalhes
-                                </Link>
+                                {getWhatsAppUrl(lead.contact?.phone) && (
+                                  <a
+                                    href={getWhatsAppUrl(lead.contact?.phone)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors text-sm"
+                                  >
+                                    <MessageCircle className="w-4 h-4" />
+                                    WhatsApp
+                                  </a>
+                                )}
                               </>
                             )}
                           </div>
@@ -1427,7 +1581,7 @@ export default function MyLeadsPage() {
                                 <div className="text-xs text-teal-700 font-bold">{formatPrice(lead.property.price)}</div>
                               </div>
                             </td>
-                            <td className="px-4 py-3">{getPipelineStageBadge(getLeadPipelineStage(lead))}</td>
+                            <td className="px-4 py-3">{renderStageSelector(lead)}</td>
                             <td className="px-4 py-3">
                               <div className="text-gray-700">{lastActivityLabel}</div>
                               {lead.lastMessagePreview && (
@@ -1446,13 +1600,17 @@ export default function MyLeadsPage() {
                                   <MessageCircle className="w-4 h-4" />
                                   Chat
                                 </Link>
-                                <Link
-                                  href={`/broker/leads/${lead.id}`}
-                                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
-                                >
-                                  <ExternalLink className="w-4 h-4" />
-                                  Detalhes
-                                </Link>
+                                {getWhatsAppUrl(lead.contact?.phone) && (
+                                  <a
+                                    href={getWhatsAppUrl(lead.contact?.phone)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                                  >
+                                    <MessageCircle className="w-4 h-4" />
+                                    WhatsApp
+                                  </a>
+                                )}
                               </div>
                             </td>
                           </tr>
