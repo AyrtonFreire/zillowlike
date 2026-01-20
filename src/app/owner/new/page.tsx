@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft } from "lucide-react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -337,6 +335,7 @@ export default function NewPropertyPage() {
   const leafletMap = useRef<any>(null);
   const leafletMarker = useRef<any>(null);
   const leafletResizeHandler = useRef<(() => void) | null>(null);
+  const leafletModuleRef = useRef<any>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   const openLightbox = (i: number) => setLightbox({ open: true, index: i });
@@ -372,8 +371,6 @@ export default function NewPropertyPage() {
       const pref = localStorage.getItem("owner_post_tips");
       if (pref !== null) setShowTips(pref === "1");
     } catch {}
-    // Leaflet é carregado via bundle/import (sem CDN) para evitar bloqueio por CSP
-    setLeafletLoaded(true);
     if (!lightbox.open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeLightbox();
@@ -383,6 +380,23 @@ export default function NewPropertyPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox.open, images]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const mod: any = await import("leaflet");
+        if (cancelled) return;
+        leafletModuleRef.current = mod?.default ?? mod;
+        setLeafletLoaded(true);
+      } catch (e) {
+        console.error("Failed to load Leaflet:", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Carrega telefone do usuário para confirmação no fluxo de publicação
   useEffect(() => {
@@ -457,6 +471,8 @@ export default function NewPropertyPage() {
   useEffect(() => {
     if (!leafletLoaded || currentStep !== 1) return;
     if (!mapContainerRef.current) return;
+    const L = leafletModuleRef.current;
+    if (!L) return;
     const container = mapContainerRef.current;
     const existingContainer = leafletMap.current?.getContainer?.() || leafletMap.current?._container;
     if (leafletMap.current && existingContainer && existingContainer !== container) {
