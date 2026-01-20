@@ -380,6 +380,7 @@ export default function MyLeadsPage() {
   const previewNode = useMemo(() => {
     if (!hoverPreviewLead || !hoverPreviewRect) return null;
     if (typeof document === "undefined") return null;
+    if (!hoverPreviewLead.property) return null;
 
     const maxWidth = 360;
     const margin = 12;
@@ -409,30 +410,18 @@ export default function MyLeadsPage() {
       hoverPreviewLead.property.builtAreaM2 ??
       hoverPreviewLead.property.privateAreaM2 ??
       null;
-    const metrics: Array<{ key: string; icon: any; label: string; value: string | number | null | undefined }> = [
+
+    const primaryMetrics: Array<{ key: string; icon: any; label: string; value: string | number | null | undefined }> = [
       { key: "beds", icon: BedDouble, label: "Quartos", value: hoverPreviewLead.property.bedrooms },
       { key: "baths", icon: Bath, label: "Banheiros", value: hoverPreviewLead.property.bathrooms },
-      { key: "suites", icon: BedDouble, label: "Suítes", value: hoverPreviewLead.property.suites },
       {
         key: "area",
         icon: Ruler,
         label: "Área",
         value: mainArea != null ? `${mainArea}m²` : null,
       },
-      {
-        key: "lot",
-        icon: Ruler,
-        label: "Terreno",
-        value: hoverPreviewLead.property.lotAreaM2 != null ? `${hoverPreviewLead.property.lotAreaM2}m²` : null,
-      },
       { key: "parking", icon: Car, label: "Vagas", value: hoverPreviewLead.property.parkingSpots },
-      {
-        key: "floor",
-        icon: Ruler,
-        label: "Andar",
-        value: hoverPreviewLead.property.floor != null ? hoverPreviewLead.property.floor : null,
-      },
-    ];
+    ].filter((m) => m.value !== null && m.value !== undefined);
 
     const purposeLabel =
       hoverPreviewLead.property.purpose === "SALE"
@@ -440,8 +429,6 @@ export default function MyLeadsPage() {
         : hoverPreviewLead.property.purpose === "RENT"
           ? "Aluguel"
           : null;
-    const condoFeeLabel =
-      hoverPreviewLead.property.condoFee != null ? `Cond. ${formatPrice(hoverPreviewLead.property.condoFee)}` : null;
 
     return createPortal(
       <div
@@ -465,10 +452,14 @@ export default function MyLeadsPage() {
             </div>
             <div className="text-teal-700 font-bold mt-1">{formatPrice(hoverPreviewLead.property.price)}</div>
             <div className="text-xs text-gray-600 mt-1 line-clamp-2">{addressLine}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {ptBR.type(hoverPreviewLead.property.type)}
+              {purposeLabel ? ` • ${purposeLabel}` : ""}
+            </div>
             <div className="flex flex-wrap gap-2 mt-3">
-              {metrics.map((m) => {
+              {primaryMetrics.map((m) => {
                 const Icon = m.icon;
-                const value = m.value ?? "—";
+                const value = m.value;
                 return (
                   <span
                     key={m.key}
@@ -480,29 +471,6 @@ export default function MyLeadsPage() {
                   </span>
                 );
               })}
-              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">
-                {ptBR.type(hoverPreviewLead.property.type)}
-              </span>
-              {purposeLabel && (
-                <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-[11px] font-medium">
-                  {purposeLabel}
-                </span>
-              )}
-              {hoverPreviewLead.property.furnished && (
-                <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-[11px] font-medium">
-                  Mobiliado
-                </span>
-              )}
-              {hoverPreviewLead.property.petFriendly && (
-                <span className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-[11px] font-medium">
-                  Pet friendly
-                </span>
-              )}
-              {condoFeeLabel && (
-                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">
-                  {condoFeeLabel}
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -942,14 +910,13 @@ export default function MyLeadsPage() {
     <div className="bg-gray-50">
       {typeof window !== "undefined" && stagePickerLead && stagePickerCurrentStage
         ? createPortal(
-            <div className="fixed inset-0 z-[9999]">
-              <button
-                type="button"
-                className="absolute inset-0 bg-black/40"
-                onClick={() => setStagePickerLeadId(null)}
-              />
+            <div className="fixed inset-0 z-[9999]" onMouseDown={() => setStagePickerLeadId(null)}>
+              <div className="absolute inset-0 bg-black/40" />
               <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center p-4">
-                <div className="w-full sm:max-w-md rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden">
+                <div
+                  className="w-full sm:max-w-md rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden"
+                  onMouseDown={(event) => event.stopPropagation()}
+                >
                   <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                     <div className="text-sm font-semibold text-gray-900">Mover etapa</div>
                     <button

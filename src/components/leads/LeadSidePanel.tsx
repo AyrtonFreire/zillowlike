@@ -10,6 +10,7 @@ import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import LeadTimeline from "@/components/crm/LeadTimeline";
 import { useToast } from "@/contexts/ToastContext";
+import { ptBR } from "@/lib/i18n/property";
 
 type LeadStatus = "RESERVED" | "ACCEPTED" | "COMPLETED" | string;
 
@@ -75,7 +76,7 @@ function formatPrice(value: number) {
       style: "currency",
       currency: "BRL",
       maximumFractionDigits: 0,
-    }).format(Number(value || 0));
+    }).format(Number(value || 0) / 100);
   } catch {
     return String(value);
   }
@@ -437,13 +438,38 @@ export default function LeadSidePanel({
     const propertyContent = lead ? (
       <div className="space-y-3">
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="text-sm font-semibold text-gray-900">{lead.property.title}</div>
-          <div className="text-teal-700 font-bold mt-1">{formatPrice(lead.property.price)}</div>
-          <div className="text-xs text-gray-600 mt-1">
-            {[lead.property.street, lead.property.neighborhood, `${lead.property.city}/${lead.property.state}`]
-              .filter(Boolean)
-              .join(", ")}
+          <div className="flex gap-3">
+            <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 ring-1 ring-black/5">
+              <Image src={lead.property.images?.[0]?.url || "/placeholder.jpg"} alt={lead.property.title} fill className="object-cover" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-gray-900 line-clamp-2">{lead.property.title}</div>
+              <div className="text-teal-700 font-bold mt-0.5">{formatPrice(lead.property.price)}</div>
+              <div className="text-xs text-gray-600 mt-1 line-clamp-2">
+                {[lead.property.street, lead.property.neighborhood, `${lead.property.city}/${lead.property.state}`]
+                  .filter(Boolean)
+                  .join(", ")}
+              </div>
+
+              <div className="flex flex-wrap gap-2 mt-2">
+                <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">
+                  {ptBR.type(lead.property.type)}
+                </span>
+                {lead.property.purpose ? (
+                  <span className="inline-flex items-center px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-[11px] font-medium">
+                    {lead.property.purpose === "SALE" ? "Venda" : "Aluguel"}
+                  </span>
+                ) : null}
+                {lead.property.condoFee != null ? (
+                  <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">
+                    Cond. {formatPrice(lead.property.condoFee)}
+                  </span>
+                ) : null}
+              </div>
+            </div>
           </div>
+
           <div className="flex flex-wrap gap-2 mt-3">
             {lead.property.bedrooms ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Quartos">
@@ -457,12 +483,6 @@ export default function LeadSidePanel({
                 <span className="tabular-nums">{lead.property.bathrooms}</span>
               </span>
             ) : null}
-            {lead.property.suites ? (
-              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Suítes">
-                <BedDouble className="w-3.5 h-3.5 text-gray-500" />
-                <span className="tabular-nums">{lead.property.suites}</span>
-              </span>
-            ) : null}
             {lead.property.areaM2 || lead.property.usableAreaM2 || lead.property.builtAreaM2 || lead.property.privateAreaM2 ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Área">
                 <Ruler className="w-3.5 h-3.5 text-gray-500" />
@@ -471,27 +491,10 @@ export default function LeadSidePanel({
                 </span>
               </span>
             ) : null}
-            {lead.property.lotAreaM2 ? (
-              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Terreno">
-                <Ruler className="w-3.5 h-3.5 text-gray-500" />
-                <span className="tabular-nums">{lead.property.lotAreaM2}m²</span>
-              </span>
-            ) : null}
             {lead.property.parkingSpots ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Vagas">
                 <Car className="w-3.5 h-3.5 text-gray-500" />
                 <span className="tabular-nums">{lead.property.parkingSpots}</span>
-              </span>
-            ) : null}
-            {lead.property.floor != null ? (
-              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Andar">
-                <Ruler className="w-3.5 h-3.5 text-gray-500" />
-                <span className="tabular-nums">{lead.property.floor}</span>
-              </span>
-            ) : null}
-            {lead.property.purpose ? (
-              <span className="inline-flex items-center px-2 py-1 bg-amber-50 text-amber-700 rounded-md text-[11px] font-medium">
-                {lead.property.purpose === "SALE" ? "Venda" : "Aluguel"}
               </span>
             ) : null}
             {lead.property.furnished ? (
@@ -502,11 +505,6 @@ export default function LeadSidePanel({
             {lead.property.petFriendly ? (
               <span className="inline-flex items-center px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-[11px] font-medium">
                 Pet friendly
-              </span>
-            ) : null}
-            {lead.property.condoFee != null ? (
-              <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">
-                Cond. {formatPrice(lead.property.condoFee)}
               </span>
             ) : null}
           </div>
