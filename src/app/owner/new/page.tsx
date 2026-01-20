@@ -32,6 +32,7 @@ export default function NewPropertyPage() {
 
   const stepperScrollRef = useRef<HTMLDivElement | null>(null);
   const stepperItemRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const formRef = useRef<HTMLFormElement | null>(null);
   
   const [description, setDescription] = useState("");
   const [aiDescriptionGenerations, setAiDescriptionGenerations] = useState<number>(0);
@@ -1387,11 +1388,16 @@ export default function NewPropertyPage() {
     setFieldErrors({});
 
     if (finalTitle.length < 3) {
+      setToast({ message: "Informe um título para o anúncio.", type: "error" });
       applyErrorsAndFocus(4, { title: "Informe um título para o anúncio." });
       return;
     }
 
     if (!hasAnyVerifiedContact) {
+      setToast({
+        message: "Para publicar, verifique seu telefone ou e-mail em Meu Perfil.",
+        type: "error",
+      });
       applyErrorsAndFocus(6, { contactVerification: "Para publicar, verifique seu telefone ou e-mail em Meu Perfil." });
       return;
     }
@@ -1400,18 +1406,21 @@ export default function NewPropertyPage() {
     try {
       // Impede publicar enquanto houver uploads pendentes
       if (images.some((img) => img.pending)) {
+        setToast({ message: "Aguarde terminar o envio das imagens antes de publicar.", type: "error" });
         applyErrorsAndFocus(3, { images: "Aguarde terminar o envio das imagens antes de publicar." });
         return;
       }
       // Exige ao menos uma imagem válida
       const hasAtLeastOneImage = images.some((img) => img.url && img.url.trim().length > 0);
       if (!hasAtLeastOneImage) {
+        setToast({ message: "Adicione pelo menos uma foto do imóvel.", type: "error" });
         applyErrorsAndFocus(3, { images: "Adicione pelo menos uma foto do imóvel." });
         return;
       }
 
       // Validar finalidade
       if (!purpose) {
+        setToast({ message: "Selecione se é Venda ou Aluguel.", type: "error" });
         applyErrorsAndFocus(1, { purpose: "Selecione se é Venda ou Aluguel." });
         return;
       }
@@ -1531,6 +1540,7 @@ export default function NewPropertyPage() {
 
       const parsed = PropertyCreateSchema.safeParse(payload);
       if (!parsed.success) {
+        setToast({ message: "Confira os campos destacados antes de publicar.", type: "error" });
         const next: Record<string, string> = {};
         for (const issue of parsed.error.issues) {
           const p = issue.path.join(".");
@@ -2046,7 +2056,7 @@ export default function NewPropertyPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-              <form onSubmit={handleSubmit}>
+              <form ref={formRef} onSubmit={handleSubmit}>
                 <div className="flex items-center justify-end">
                   <span className="text-xs text-gray-500">
                     Etapa {currentStep} de {steps.length}
@@ -2117,12 +2127,19 @@ export default function NewPropertyPage() {
                       </button>
                     ) : (
                       <button
-                        type="submit"
+                        type="button"
                         onClick={(event) => {
                           setSubmitIntent(true);
-                          event.preventDefault();
+                          if (!isSubmitting) setToast({ message: "Publicando...", type: "info" });
+                          const form = formRef.current;
+                          if (form?.requestSubmit) {
+                            try {
+                              form.requestSubmit();
+                              return;
+                            } catch {}
+                          }
                           try {
-                            (event.currentTarget as HTMLButtonElement).form?.requestSubmit();
+                            handleSubmit({ preventDefault: () => {} } as any);
                           } catch {}
                         }}
                         disabled={isSubmitting || images.some((i) => i.pending)}
@@ -3461,12 +3478,19 @@ export default function NewPropertyPage() {
                   </button>
                 ) : (
                   <button
-                    type="submit"
+                    type="button"
                     onClick={(event) => {
                       setSubmitIntent(true);
-                      event.preventDefault();
+                      if (!isSubmitting) setToast({ message: "Publicando...", type: "info" });
+                      const form = formRef.current;
+                      if (form?.requestSubmit) {
+                        try {
+                          form.requestSubmit();
+                          return;
+                        } catch {}
+                      }
                       try {
-                        (event.currentTarget as HTMLButtonElement).form?.requestSubmit();
+                        handleSubmit({ preventDefault: () => {} } as any);
                       } catch {}
                     }}
                     disabled={isSubmitting || images.some((i) => i.pending)}
