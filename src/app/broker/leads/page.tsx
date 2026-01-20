@@ -873,6 +873,13 @@ export default function MyLeadsPage() {
                 .map((lead) => {
                 const isExpanded = expandedLeadId === lead.id;
                 const lastActivityLabel = getTimeAgo((lead.lastMessageAt || lead.createdAt) as string);
+                const addressLine = [
+                  lead.property.street,
+                  lead.property.neighborhood,
+                  lead.property.city ? `${lead.property.city}/${lead.property.state}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(", ");
                 
                 return (
                   <motion.div
@@ -885,91 +892,129 @@ export default function MyLeadsPage() {
                     className="p-4 cursor-pointer"
                     onClick={() => setExpandedLeadId(isExpanded ? null : lead.id)}
                   >
-                    <div className="flex gap-3">
-                      {/* Imagem pequena */}
-                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                        <Image
-                          src={lead.property.images[0]?.url || "/placeholder.jpg"}
-                          alt={lead.property.title}
-                          fill
-                          className="object-cover"
-                        />
-                        {/* Badge de status sobreposto */}
-                        {lead.hasUnreadMessages && (
-                          <div className="absolute top-1 right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white" />
-                        )}
-                      </div>
-
-                      {/* Info principal */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
-                              {lead.property.title}
-                            </h3>
-                            <p className="text-teal-600 font-bold text-base sm:text-lg">
-                              {formatPrice(lead.property.price)}
-                            </p>
-                            {lead.contact?.name && (
-                              <p className="mt-0.5 text-xs text-gray-600 flex items-center gap-1 truncate">
-                                <User className="w-3 h-3" />
-                                <span className="truncate">{lead.contact.name}</span>
-                              </p>
-                            )}
-                            {lead.lastMessagePreview && (
-                              <p className={`mt-1 text-xs ${lead.hasUnreadMessages ? "font-semibold text-gray-900" : "text-gray-600"} line-clamp-2`}>
-                                {lead.lastMessageFromClient ? "Cliente: " : "Você: "}
-                                {lead.lastMessagePreview}
-                              </p>
-                            )}
-                          </div>
-                          {getPipelineStageBadge(getLeadPipelineStage(lead))}
-                        </div>
-                        
-                        {/* Linha de info rápida */}
-                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {lead.property.city}
-                          </span>
-                          <span>•</span>
-                          <span>{ptBR.type(lead.property.type)}</span>
-                          <span>•</span>
-                          <span>{lastActivityLabel}</span>
-                        </div>
-
-                        {/* Alertas inline */}
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {lead.nextActionDate && (() => {
-                            const actionDate = new Date(lead.nextActionDate);
-                            const isOverdue = actionDate < now && !isSameDay(actionDate, now);
-                            const isToday = isSameDay(actionDate, now);
-                            if (isOverdue || isToday) {
-                              return (
-                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                  isOverdue ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
-                                }`}>
-                                  <Clock className="w-2.5 h-2.5" />
-                                  {isOverdue ? "Atrasada" : "Hoje"}
-                                </span>
-                              );
-                            }
-                            return null;
-                          })()}
+                    <div className="sm:hidden">
+                      <div className="flex gap-3">
+                        <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                          <Image
+                            src={lead.property.images[0]?.url || "/placeholder.jpg"}
+                            alt={lead.property.title}
+                            fill
+                            className="object-cover"
+                          />
                           {lead.hasUnreadMessages && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">
-                              <MessageCircle className="w-2.5 h-2.5" />
-                              Mensagem
-                            </span>
+                            <div className="absolute top-1 right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">
+                            {lead.property.title}
+                          </h3>
+                          <p className="text-teal-600 font-bold text-base mt-0.5">
+                            {formatPrice(lead.property.price)}
+                          </p>
+                          {lead.contact?.name && (
+                            <p className="mt-1 text-xs text-gray-600 truncate">
+                              {lead.contact.name}
+                            </p>
+                          )}
+                          {addressLine && (
+                            <p className="mt-1 text-xs text-gray-500 flex items-center gap-1 min-w-0">
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">{addressLine}</span>
+                            </p>
                           )}
                         </div>
                       </div>
+                    </div>
 
-                      {/* Chevron para expandir */}
-                      <div className="flex-shrink-0 self-center">
-                        <ChevronDown 
-                          className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} 
-                        />
+                    <div className="hidden sm:block">
+                      <div className="flex gap-3">
+                        {/* Imagem pequena */}
+                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                          <Image
+                            src={lead.property.images[0]?.url || "/placeholder.jpg"}
+                            alt={lead.property.title}
+                            fill
+                            className="object-cover"
+                          />
+                          {/* Badge de status sobreposto */}
+                          {lead.hasUnreadMessages && (
+                            <div className="absolute top-1 right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white" />
+                          )}
+                        </div>
+
+                        {/* Info principal */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
+                                {lead.property.title}
+                              </h3>
+                              <p className="text-teal-600 font-bold text-base sm:text-lg">
+                                {formatPrice(lead.property.price)}
+                              </p>
+                              {lead.contact?.name && (
+                                <p className="mt-0.5 text-xs text-gray-600 flex items-center gap-1 truncate">
+                                  <User className="w-3 h-3" />
+                                  <span className="truncate">{lead.contact.name}</span>
+                                </p>
+                              )}
+                              {lead.lastMessagePreview && (
+                                <p className={`mt-1 text-xs ${lead.hasUnreadMessages ? "font-semibold text-gray-900" : "text-gray-600"} line-clamp-2`}>
+                                  {lead.lastMessageFromClient ? "Cliente: " : "Você: "}
+                                  {lead.lastMessagePreview}
+                                </p>
+                              )}
+                            </div>
+                            {getPipelineStageBadge(getLeadPipelineStage(lead))}
+                          </div>
+                          
+                          {/* Linha de info rápida */}
+                          <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {lead.property.city}
+                            </span>
+                            <span>•</span>
+                            <span>{ptBR.type(lead.property.type)}</span>
+                            <span>•</span>
+                            <span>{lastActivityLabel}</span>
+                          </div>
+
+                          {/* Alertas inline */}
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {lead.nextActionDate && (() => {
+                              const actionDate = new Date(lead.nextActionDate);
+                              const isOverdue = actionDate < now && !isSameDay(actionDate, now);
+                              const isToday = isSameDay(actionDate, now);
+                              if (isOverdue || isToday) {
+                                return (
+                                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                    isOverdue ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
+                                  }`}>
+                                    <Clock className="w-2.5 h-2.5" />
+                                    {isOverdue ? "Atrasada" : "Hoje"}
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                            {lead.hasUnreadMessages && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">
+                                <MessageCircle className="w-2.5 h-2.5" />
+                                Mensagem
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Chevron para expandir */}
+                        <div className="flex-shrink-0 self-center">
+                          <ChevronDown 
+                            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} 
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
