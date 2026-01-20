@@ -1621,6 +1621,13 @@ export default function NewPropertyPage() {
       });
       
       setToast({ message: "Imóvel publicado com sucesso!", type: "success" });
+    } catch (err: any) {
+      console.error("Error publishing property:", err);
+      const msg =
+        typeof err?.message === "string" && err.message.trim()
+          ? err.message
+          : "Não foi possível publicar o imóvel agora.";
+      setToast({ message: msg, type: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -2111,7 +2118,13 @@ export default function NewPropertyPage() {
                     ) : (
                       <button
                         type="submit"
-                        onClick={() => setSubmitIntent(true)}
+                        onClick={(event) => {
+                          setSubmitIntent(true);
+                          event.preventDefault();
+                          try {
+                            (event.currentTarget as HTMLButtonElement).form?.requestSubmit();
+                          } catch {}
+                        }}
                         disabled={isSubmitting || images.some((i) => i.pending)}
                         className="flex-1 px-3 py-2 glass-teal text-sm font-semibold text-white rounded-lg disabled:opacity-70 shadow"
                       >
@@ -3449,7 +3462,13 @@ export default function NewPropertyPage() {
                 ) : (
                   <button
                     type="submit"
-                    onClick={() => setSubmitIntent(true)}
+                    onClick={(event) => {
+                      setSubmitIntent(true);
+                      event.preventDefault();
+                      try {
+                        (event.currentTarget as HTMLButtonElement).form?.requestSubmit();
+                      } catch {}
+                    }}
                     disabled={isSubmitting || images.some((i) => i.pending)}
                     className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow disabled:opacity-70"
                   >
