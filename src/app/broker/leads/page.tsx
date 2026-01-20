@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -17,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import CountdownTimer from "@/components/queue/CountdownTimer";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import LeadSidePanel from "@/components/leads/LeadSidePanel";
 import { canonicalToBoardGroup } from "@/lib/lead-pipeline";
 import { getPusherClient } from "@/lib/pusher-client";
 import { ptBR } from "@/lib/i18n/property";
@@ -68,6 +70,8 @@ interface Lead {
   lastMessageAt?: string | null;
   lastMessagePreview?: string | null;
   lastMessageFromClient?: boolean;
+  origin?: string | null;
+  originLabel?: string | null;
   clientChatToken?: string | null;
   chatUrl?: string | null;
   property: {
@@ -170,6 +174,13 @@ export default function MyLeadsPage() {
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [notesLoading, setNotesLoading] = useState<Record<string, boolean>>({});
   const [notesError, setNotesError] = useState<Record<string, string | null>>({});
+
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  const [hoverPreviewLead, setHoverPreviewLead] = useState<Lead | null>(null);
+  const [hoverPreviewRect, setHoverPreviewRect] = useState<DOMRect | null>(null);
+  const hoverPreviewCloseTimer = useRef<number | null>(null);
   
   // Estados para UI mobile
   const [showFilters, setShowFilters] = useState(false);
@@ -180,14 +191,6 @@ export default function MyLeadsPage() {
   const toast = useToast();
 
   useEffect(() => {
-    if (!realtorId) return;
-    fetchLeads();
-    // Atualiza a cada 30 segundos em background, sem flicker visual
-    const interval = setInterval(() => fetchLeads({ isBackground: true }), 30000);
-    return () => clearInterval(interval);
-  }, [realtorId]);
-
-  useEffect(() => {
     setPipelineFilter(normalizePipelineStageFromUrl(stageFromUrl));
   }, [stageFromUrl, normalizePipelineStageFromUrl]);
 
@@ -195,10 +198,17 @@ export default function MyLeadsPage() {
     setDateFilter(normalizeDateFilterFromUrl(dateFromUrl));
   }, [dateFromUrl, normalizeDateFilterFromUrl]);
 
-  const fetchLeads = useCallback(async (options?: { isBackground?: boolean; append?: boolean; cursor?: string | null }) => {
+  const fetchLeads = useCallback(
+    async (options?: {
+      isBackground?: boolean;
+      append?: boolean;
+      cursor?: string | null;
+      preserveTail?: boolean;
+    }) => {
     try {
       if (!realtorId) return;
       const append = !!options?.append;
+      const preserveTail = options?.preserveTail !== false;
 
       if (!options?.isBackground && !append) {
         setError(null);
@@ -213,6 +223,12 @@ export default function MyLeadsPage() {
       params.set("paged", "1");
       params.set("limit", "40");
       if (options?.cursor) params.set("cursor", String(options.cursor));
+
+      if (pipelineFilter !== "all") params.set("group", String(pipelineFilter));
+      if (dateFilter !== "all") params.set("date", String(dateFilter));
+      if (nameFilter) params.set("q", String(nameFilter));
+      if (cityFilter) params.set("city", String(cityFilter));
+      if (typeFilter) params.set("type", String(typeFilter));
 
       const response = await fetch(`/api/leads/my-leads?${params.toString()}`);
       const data = await response.json();
@@ -245,6 +261,9 @@ export default function MyLeadsPage() {
 
       // Refresh/primeira página: só atualiza se houver mudança real para evitar animações desnecessárias
       setLeads((prev) => {
+        if (!preserveTail) {
+          return nextItems;
+        }
         try {
           const prevHead = prev.slice(0, nextItems.length);
           const prevJson = JSON.stringify(prevHead);
@@ -276,7 +295,118 @@ export default function MyLeadsPage() {
         setLoading(false);
       }
     }
-  }, [realtorId]);
+    },
+    [realtorId, pipelineFilter, dateFilter, nameFilter, cityFilter, typeFilter]
+  );
+
+  useEffect(() => {
+    if (!realtorId) return;
+    // Atualiza a cada 30 segundos em background, sem flicker visual
+    const interval = setInterval(() => fetchLeads({ isBackground: true }), 30000);
+    return () => clearInterval(interval);
+  }, [realtorId, fetchLeads]);
+
+  useEffect(() => {
+    if (!realtorId) return;
+    setLeads([]);
+    setNextCursor(null);
+    fetchLeads({ preserveTail: false });
+  }, [pipelineFilter, dateFilter, nameFilter, cityFilter, typeFilter, realtorId, fetchLeads]);
+
+  const openLeadPanel = (id: string) => {
+    setSelectedLeadId(id);
+    setIsPanelOpen(true);
+  };
+
+  const closeHoverPreviewSoon = useCallback(() => {
+    if (hoverPreviewCloseTimer.current) {
+      window.clearTimeout(hoverPreviewCloseTimer.current);
+    }
+    hoverPreviewCloseTimer.current = window.setTimeout(() => {
+      setHoverPreviewLead(null);
+      setHoverPreviewRect(null);
+    }, 120);
+  }, []);
+
+  const keepHoverPreviewOpen = useCallback(() => {
+    if (hoverPreviewCloseTimer.current) {
+      window.clearTimeout(hoverPreviewCloseTimer.current);
+      hoverPreviewCloseTimer.current = null;
+    }
+  }, []);
+
+  const previewNode = useMemo(() => {
+    if (!hoverPreviewLead || !hoverPreviewRect) return null;
+    if (typeof document === "undefined") return null;
+
+    const maxWidth = 360;
+    const margin = 12;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+
+    let left = hoverPreviewRect.right + margin;
+    let top = hoverPreviewRect.top;
+
+    if (left + maxWidth + margin > vw) {
+      left = Math.max(margin, hoverPreviewRect.left - maxWidth - margin);
+    }
+
+    top = Math.min(Math.max(margin, top), vh - margin - 240);
+
+    const addressLine = [
+      hoverPreviewLead.property.street,
+      hoverPreviewLead.property.neighborhood,
+      hoverPreviewLead.property.city ? `${hoverPreviewLead.property.city}/${hoverPreviewLead.property.state}` : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    return createPortal(
+      <div
+        className="fixed z-[9999]"
+        style={{ left, top, width: maxWidth }}
+        onMouseEnter={keepHoverPreviewOpen}
+        onMouseLeave={closeHoverPreviewSoon}
+      >
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+          <div className="relative h-40 bg-gray-100">
+            <Image
+              src={hoverPreviewLead.property.images[0]?.url || "/placeholder.jpg"}
+              alt={hoverPreviewLead.property.title}
+              fill
+              className="object-cover"
+            />
+          </div>
+          <div className="p-4">
+            <div className="text-sm font-semibold text-gray-900 line-clamp-2">
+              {hoverPreviewLead.property.title}
+            </div>
+            <div className="text-teal-700 font-bold mt-1">{formatPrice(hoverPreviewLead.property.price)}</div>
+            <div className="text-xs text-gray-600 mt-1 line-clamp-2">{addressLine}</div>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {hoverPreviewLead.property.bedrooms ? (
+                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
+                  {hoverPreviewLead.property.bedrooms} quartos
+                </span>
+              ) : null}
+              {hoverPreviewLead.property.bathrooms ? (
+                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
+                  {hoverPreviewLead.property.bathrooms} banheiros
+                </span>
+              ) : null}
+              {hoverPreviewLead.property.areaM2 ? (
+                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
+                  {hoverPreviewLead.property.areaM2}m²
+                </span>
+              ) : null}
+              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">{ptBR.type(hoverPreviewLead.property.type)}</span>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }, [hoverPreviewLead, hoverPreviewRect, keepHoverPreviewOpen, closeHoverPreviewSoon]);
 
   useEffect(() => {
     if (!realtorId) return;
@@ -856,21 +986,9 @@ export default function MyLeadsPage() {
         ) : (
           /* ===== MODO LISTA ===== */
           <div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
-              {[...filteredLeads]
-                .sort((a, b) => {
-                  const au = a.hasUnreadMessages ? 1 : 0;
-                  const bu = b.hasUnreadMessages ? 1 : 0;
-                  if (au !== bu) return bu - au;
-
-                  const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : new Date(a.createdAt).getTime();
-                  const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : new Date(b.createdAt).getTime();
-                  if (!Number.isNaN(aTime) && !Number.isNaN(bTime) && aTime !== bTime) {
-                    return bTime - aTime;
-                  }
-                  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                })
-                .map((lead) => {
+            {/* Mobile: cards (mantém o layout atual) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3 items-start">
+              {[...filteredLeads].map((lead) => {
                 const isExpanded = expandedLeadId === lead.id;
                 const lastActivityLabel = getTimeAgo((lead.lastMessageAt || lead.createdAt) as string);
                 const addressLine = [
@@ -1234,6 +1352,113 @@ export default function MyLeadsPage() {
               })}
             </div>
 
+            {/* Desktop: tabela */}
+            <div className="hidden lg:block">
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr className="text-left text-xs font-semibold text-gray-600">
+                        <th className="px-4 py-3">Lead</th>
+                        <th className="px-4 py-3">Origem</th>
+                        <th className="px-4 py-3">Imóvel</th>
+                        <th className="px-4 py-3">Etapa</th>
+                        <th className="px-4 py-3">Atividade</th>
+                        <th className="px-4 py-3">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredLeads.map((lead) => {
+                        const lastActivityLabel = getTimeAgo((lead.lastMessageAt || lead.createdAt) as string);
+                        return (
+                          <tr
+                            key={lead.id}
+                            className={`cursor-pointer hover:bg-gray-50 ${lead.hasUnreadMessages ? "bg-blue-50/30" : ""}`}
+                            onClick={() => openLeadPanel(lead.id)}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                                  <Image
+                                    src={lead.property.images[0]?.url || "/placeholder.jpg"}
+                                    alt={lead.property.title}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-gray-900 truncate">
+                                    {lead.contact?.name || "Lead"}
+                                  </div>
+                                  <div className="text-xs text-gray-600 truncate">{lead.contact?.email || ""}</div>
+                                  {lead.hasUnreadMessages && (
+                                    <div className="text-[11px] text-blue-700 font-semibold">Mensagem não lida</div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                {lead.originLabel || "-"}
+                              </span>
+                            </td>
+                            <td
+                              className="px-4 py-3"
+                              onMouseEnter={(e) => {
+                                keepHoverPreviewOpen();
+                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                setHoverPreviewLead(lead);
+                                setHoverPreviewRect(rect);
+                              }}
+                              onMouseLeave={() => {
+                                closeHoverPreviewSoon();
+                              }}
+                            >
+                              <div className="min-w-0">
+                                <div className="font-semibold text-gray-900 truncate">{lead.property.title}</div>
+                                <div className="text-xs text-gray-600 truncate">
+                                  {lead.property.city}/{lead.property.state} • {ptBR.type(lead.property.type)}
+                                </div>
+                                <div className="text-xs text-teal-700 font-bold">{formatPrice(lead.property.price)}</div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">{getPipelineStageBadge(getLeadPipelineStage(lead))}</td>
+                            <td className="px-4 py-3">
+                              <div className="text-gray-700">{lastActivityLabel}</div>
+                              {lead.lastMessagePreview && (
+                                <div className={`text-xs ${lead.hasUnreadMessages ? "font-semibold text-gray-900" : "text-gray-600"} line-clamp-1`}>
+                                  {lead.lastMessageFromClient ? "Cliente: " : "Você: "}
+                                  {lead.lastMessagePreview}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-2">
+                                <Link
+                                  href={`/broker/chats?lead=${lead.id}`}
+                                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
+                                >
+                                  <MessageCircle className="w-4 h-4" />
+                                  Chat
+                                </Link>
+                                <Link
+                                  href={`/broker/leads/${lead.id}`}
+                                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                  Detalhes
+                                </Link>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
             {nextCursor && (
               <div className="pt-4 flex justify-center">
                 <button
@@ -1249,6 +1474,15 @@ export default function MyLeadsPage() {
           </div>
         )}
       </div>
+
+      {previewNode}
+
+      <LeadSidePanel
+        open={isPanelOpen}
+        leadId={selectedLeadId}
+        onClose={() => setIsPanelOpen(false)}
+        onLeadUpdated={() => fetchLeads({ isBackground: true })}
+      />
     </div>
   );
 }

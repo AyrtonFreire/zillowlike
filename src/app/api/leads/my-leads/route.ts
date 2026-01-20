@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import type { LeadStatus } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -14,6 +15,76 @@ function clip(s: any, n: number) {
     .trim()
     .replace(/\s+/g, " ")
     .slice(0, n);
+}
+
+function base64UrlEncode(input: string) {
+  return Buffer.from(input, "utf8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function base64UrlDecode(input: string) {
+  const normalized = String(input || "")
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+  const pad = normalized.length % 4 ? "=".repeat(4 - (normalized.length % 4)) : "";
+  return Buffer.from(normalized + pad, "base64").toString("utf8");
+}
+
+type LeadCursor = {
+  hu: number;
+  la: string;
+  ca: string;
+  id: string;
+};
+
+function decodeCursor(raw: string | null): LeadCursor | null {
+  if (!raw) return null;
+  try {
+    const decoded = JSON.parse(base64UrlDecode(raw));
+    const hu = Number(decoded?.hu ?? 0);
+    const la = String(decoded?.la || "");
+    const ca = String(decoded?.ca || "");
+    const id = String(decoded?.id || "");
+    if (!Number.isFinite(hu) || !la || !ca || !id) return null;
+    return { hu, la, ca, id };
+  } catch {
+    return null;
+  }
+}
+
+function encodeCursor(cur: LeadCursor | null): string | null {
+  if (!cur) return null;
+  try {
+    return base64UrlEncode(JSON.stringify(cur));
+  } catch {
+    return null;
+  }
+}
+
+function cursorToLeadId(raw: string | null) {
+  const decoded = decodeCursor(raw);
+  return decoded?.id ? String(decoded.id) : raw;
+}
+
+function originLabel(source: string | null) {
+  const s = String(source || "").toUpperCase();
+  if (s === "WHATSAPP") return "WhatsApp";
+  if (s === "CONTACT_FORM") return "Formulário";
+  if (s === "VISIT_REQUEST") return "Visita";
+  return s ? s : "-";
+}
+
+function pipelineGroupToStages(group: string | null): PipelineStage[] | null {
+  const g = String(group || "").toUpperCase();
+  if (!g || g === "ALL") return null;
+  if (g === "NEW") return ["NEW"];
+  if (g === "CONTACT") return ["CONTACT"];
+  if (g === "NEGOTIATION") return ["VISIT", "PROPOSAL", "DOCUMENTS"];
+  if (g === "CLOSED") return ["WON", "LOST"];
+  return null;
 }
 
 export async function GET(request: NextRequest) {
@@ -41,6 +112,15 @@ export async function GET(request: NextRequest) {
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : 40;
     const cursor = (searchParams.get("cursor") || "").trim() || null;
 
+    const q = (searchParams.get("q") || "").trim();
+    const name = (searchParams.get("name") || "").trim();
+    const city = (searchParams.get("city") || "").trim();
+    const type = (searchParams.get("type") || "").trim();
+    const dateFilter = (searchParams.get("date") || "").trim();
+    const pipelineGroup = (searchParams.get("group") || "").trim();
+    const unreadOnly = (searchParams.get("unread") || "").trim() === "1";
+    const includeCompleted = (searchParams.get("includeCompleted") || "").trim() === "1";
+
     const mapStatusToStage = (status: LeadStatus): PipelineStage => {
       if (status === "ACCEPTED") return "CONTACT";
       if (status === "CONFIRMED") return "VISIT";
@@ -49,10 +129,276 @@ export async function GET(request: NextRequest) {
       return "NEW";
     };
 
+    const isPostgres = /postgres/i.test(process.env.DATABASE_URL || "");
+    const decodedCursor = decodeCursor(cursor);
+    const stages = pipelineGroupToStages(pipelineGroup);
+    const effectiveQuery = q || name;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const createdAtGte = dateFilter === "today" ? today : dateFilter === "last7" ? sevenDaysAgo : null;
+
+    if (paged && isPostgres && (!cursor || decodedCursor)) {
+      try {
+        const whereSql: Prisma.Sql[] = [Prisma.sql`l.realtor_id = ${String(userId)}`];
+        if (!includeCompleted) whereSql.push(Prisma.sql`l.status <> 'COMPLETED'`);
+        if (stages && stages.length) {
+          whereSql.push(Prisma.sql`l.pipeline_stage IN (${Prisma.join(stages.map((s) => Prisma.sql`${s}`))})`);
+        }
+        if (createdAtGte) whereSql.push(Prisma.sql`l.created_at >= ${createdAtGte}`);
+        if (type) whereSql.push(Prisma.sql`p.type = ${type}`);
+        if (city) whereSql.push(Prisma.sql`p.city ILIKE ${"%" + city + "%"}`);
+        if (effectiveQuery && effectiveQuery.length >= 2) {
+          const like = "%" + effectiveQuery + "%";
+          whereSql.push(
+            Prisma.sql`(
+              p.title ILIKE ${like} OR
+              p.city ILIKE ${like} OR
+              COALESCE(p.neighborhood,'') ILIKE ${like} OR
+              c.name ILIKE ${like} OR
+              c.email ILIKE ${like} OR
+              COALESCE(c.phone,'') ILIKE ${like}
+            )`
+          );
+        }
+
+        const cursorWhere = decodedCursor
+          ? Prisma.sql`AND (
+              (base.hu < ${decodedCursor.hu}) OR
+              (base.hu = ${decodedCursor.hu} AND base.last_activity_at < ${new Date(decodedCursor.la)}) OR
+              (base.hu = ${decodedCursor.hu} AND base.last_activity_at = ${new Date(decodedCursor.la)} AND base.created_at < ${new Date(decodedCursor.ca)}) OR
+              (base.hu = ${decodedCursor.hu} AND base.last_activity_at = ${new Date(decodedCursor.la)} AND base.created_at = ${new Date(decodedCursor.ca)} AND base.id < ${decodedCursor.id})
+            )`
+          : Prisma.sql``;
+
+        const unreadWhere = unreadOnly ? Prisma.sql`AND base.has_unread = true` : Prisma.sql``;
+
+        const rows = (await prisma.$queryRaw(
+          Prisma.sql`
+            WITH lcm AS (
+              SELECT
+                lead_id,
+                MAX(created_at) AS last_client_at,
+                (ARRAY_AGG(content ORDER BY created_at DESC))[1] AS last_client_content
+              FROM lead_client_messages
+              WHERE from_client = true
+              GROUP BY lead_id
+            ),
+            lm AS (
+              SELECT
+                lead_id,
+                MAX(created_at) AS last_internal_at,
+                (ARRAY_AGG(content ORDER BY created_at DESC))[1] AS last_internal_content
+              FROM lead_messages
+              GROUP BY lead_id
+            ),
+            created_src AS (
+              SELECT DISTINCT ON (lead_id)
+                lead_id,
+                (metadata->>'source') AS source
+              FROM lead_events
+              WHERE type = 'LEAD_CREATED'
+              ORDER BY lead_id, created_at DESC
+            ),
+            base AS (
+              SELECT
+                l.id,
+                l.created_at,
+                GREATEST(
+                  l.created_at,
+                  COALESCE(lcm.last_client_at, l.created_at),
+                  COALESCE(lm.last_internal_at, l.created_at)
+                ) AS last_activity_at,
+                CASE
+                  WHEN lcm.last_client_at IS NULL THEN false
+                  WHEN lm.last_internal_at IS NULL THEN true
+                  WHEN lcm.last_client_at > lm.last_internal_at THEN true
+                  ELSE false
+                END AS last_from_client,
+                CASE
+                  WHEN (
+                    CASE
+                      WHEN lcm.last_client_at IS NULL THEN false
+                      WHEN lm.last_internal_at IS NULL THEN true
+                      WHEN lcm.last_client_at > lm.last_internal_at THEN true
+                      ELSE false
+                    END
+                  ) = true AND (
+                    rr.last_read_at IS NULL OR lcm.last_client_at > rr.last_read_at
+                  ) THEN true
+                  ELSE false
+                END AS has_unread,
+                CASE
+                  WHEN (
+                    CASE
+                      WHEN lcm.last_client_at IS NULL THEN false
+                      WHEN lm.last_internal_at IS NULL THEN true
+                      WHEN lcm.last_client_at > lm.last_internal_at THEN true
+                      ELSE false
+                    END
+                  ) = true THEN lcm.last_client_content
+                  ELSE lm.last_internal_content
+                END AS last_preview,
+                created_src.source,
+                CASE WHEN (
+                  CASE
+                    WHEN (
+                      CASE
+                        WHEN lcm.last_client_at IS NULL THEN false
+                        WHEN lm.last_internal_at IS NULL THEN true
+                        WHEN lcm.last_client_at > lm.last_internal_at THEN true
+                        ELSE false
+                      END
+                    ) = true AND (
+                      rr.last_read_at IS NULL OR lcm.last_client_at > rr.last_read_at
+                    ) THEN true
+                    ELSE false
+                  END
+                ) THEN 1 ELSE 0 END AS hu
+              FROM leads l
+              JOIN properties p ON p.id = l.property_id
+              LEFT JOIN contacts c ON c.id = l.contact_id
+              LEFT JOIN lcm ON lcm.lead_id = l.id
+              LEFT JOIN lm ON lm.lead_id = l.id
+              LEFT JOIN lead_chat_read_receipts rr ON rr.lead_id = l.id AND rr.user_id = ${String(userId)}
+              LEFT JOIN created_src ON created_src.lead_id = l.id
+              WHERE ${Prisma.join(whereSql, " AND ")}
+            )
+            SELECT
+              base.id,
+              base.created_at,
+              base.last_activity_at,
+              base.has_unread,
+              base.last_preview,
+              base.last_from_client,
+              base.source,
+              base.hu
+            FROM base
+            WHERE true
+            ${unreadWhere}
+            ${cursorWhere}
+            ORDER BY base.hu DESC, base.last_activity_at DESC, base.created_at DESC, base.id DESC
+            LIMIT ${limit + 1}
+          `
+        )) as any[];
+
+        const slice = rows.slice(0, limit);
+        const hasMore = rows.length > limit;
+        const leadIds = slice.map((r) => String(r.id));
+
+        const leads = await (prisma as any).lead.findMany({
+          where: { id: { in: leadIds } },
+          include: {
+            property: {
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                type: true,
+                city: true,
+                state: true,
+                neighborhood: true,
+                street: true,
+                bedrooms: true,
+                bathrooms: true,
+                areaM2: true,
+                images: {
+                  take: 1,
+                  orderBy: { sortOrder: "asc" },
+                },
+              },
+            },
+            contact: {
+              select: {
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        });
+
+        const leadById = new Map<string, any>((leads as any[]).map((lead) => [String(lead.id), lead]));
+        const orderedLeads = leadIds.map((id) => leadById.get(String(id))).filter(Boolean);
+
+        const rowById = new Map<string, any>(slice.map((r) => [String(r.id), r]));
+
+        const normalized = (orderedLeads as any[]).map((lead) => {
+          const row = rowById.get(String(lead.id)) || null;
+          const lastActivityAt = row?.last_activity_at ? new Date(row.last_activity_at).toISOString() : null;
+          const source = row?.source ? String(row.source) : null;
+          return {
+            ...lead,
+            pipelineStage: lead.pipelineStage || mapStatusToStage(lead.status),
+            hasUnreadMessages: !!row?.has_unread,
+            lastMessageAt: lastActivityAt,
+            lastMessagePreview: row?.last_preview ? clip(row.last_preview, 90) : null,
+            lastMessageFromClient: !!row?.last_from_client,
+            lastContactAt: lastActivityAt,
+            origin: source,
+            originLabel: originLabel(source),
+            property: lead.property
+              ? {
+                  ...lead.property,
+                  price: jsonSafe(lead.property.price),
+                }
+              : lead.property,
+          };
+        });
+
+        const lastRow = slice.length ? slice[slice.length - 1] : null;
+        const nextCursor = hasMore
+          ? encodeCursor({
+              hu: Number(lastRow?.hu || 0),
+              la: new Date(lastRow.last_activity_at).toISOString(),
+              ca: new Date(lastRow.created_at).toISOString(),
+              id: String(lastRow.id),
+            })
+          : null;
+
+        return NextResponse.json({ items: normalized, nextCursor });
+      } catch (err) {
+        console.error("Error in optimized my-leads query:", err);
+      }
+    }
+
+    const leadWhere: any = {
+      realtorId: userId,
+      ...(includeCompleted ? {} : { status: { not: "COMPLETED" } }),
+      ...(createdAtGte ? { createdAt: { gte: createdAtGte } } : {}),
+      ...(stages && stages.length ? { pipelineStage: { in: stages } } : {}),
+      ...(type || city || effectiveQuery
+        ? {
+            property: {
+              ...(type ? { type } : {}),
+              ...(city ? { city: { contains: city, mode: "insensitive" } } : {}),
+              ...(effectiveQuery && effectiveQuery.length >= 2
+                ? {
+                    OR: [
+                      { title: { contains: effectiveQuery, mode: "insensitive" } },
+                      { city: { contains: effectiveQuery, mode: "insensitive" } },
+                      { neighborhood: { contains: effectiveQuery, mode: "insensitive" } },
+                    ],
+                  }
+                : {}),
+            },
+          }
+        : {}),
+      ...(effectiveQuery && effectiveQuery.length >= 2
+        ? {
+            OR: [
+              { contact: { name: { contains: effectiveQuery, mode: "insensitive" } } },
+              { contact: { email: { contains: effectiveQuery, mode: "insensitive" } } },
+              { contact: { phone: { contains: effectiveQuery, mode: "insensitive" } } },
+            ],
+          }
+        : {}),
+    };
+
     const leadIndex = await (prisma as any).lead.findMany({
-      where: {
-        realtorId: userId,
-      },
+      where: leadWhere,
       select: {
         id: true,
         createdAt: true,
@@ -153,6 +499,10 @@ export async function GET(request: NextRequest) {
           hasUnreadMessages,
         };
       })
+      .filter((row) => {
+        if (!unreadOnly) return true;
+        return !!row.hasUnreadMessages;
+      })
       .sort((a, b) => {
         if (a.hasUnreadMessages !== b.hasUnreadMessages) {
           return a.hasUnreadMessages ? -1 : 1;
@@ -164,7 +514,7 @@ export async function GET(request: NextRequest) {
       })
       .map((row) => row.id);
 
-    const startIndex = cursor ? Math.max(orderedLeadIds.indexOf(String(cursor)) + 1, 0) : 0;
+    const startIndex = cursor ? Math.max(orderedLeadIds.indexOf(String(cursorToLeadId(cursor))) + 1, 0) : 0;
     const pageLeadIds = orderedLeadIds.slice(startIndex, startIndex + limit);
     const pagedNextCursor = pageLeadIds.length === limit ? pageLeadIds[pageLeadIds.length - 1] : null;
 
@@ -207,7 +557,7 @@ export async function GET(request: NextRequest) {
 
     const leadIds = orderedLeads.map((l) => String(l.id));
 
-    const [lastClientMsgs, lastInternalMsgs] = await Promise.all([
+    const [lastClientMsgs, lastInternalMsgs, createdEvents] = await Promise.all([
       leadIds.length
         ? (prisma as any).leadClientMessage.findMany({
             where: { leadId: { in: leadIds } },
@@ -224,7 +574,22 @@ export async function GET(request: NextRequest) {
             select: { leadId: true, createdAt: true, content: true },
           })
         : Promise.resolve([] as any[]),
+      leadIds.length
+        ? (prisma as any).leadEvent.findMany({
+            where: { leadId: { in: leadIds }, type: "LEAD_CREATED" },
+            orderBy: { createdAt: "desc" },
+            select: { leadId: true, metadata: true, createdAt: true },
+          })
+        : Promise.resolve([] as any[]),
     ]);
+
+    const originByLead = new Map<string, string | null>();
+    for (const ev of createdEvents as any[]) {
+      const id = String(ev.leadId);
+      if (originByLead.has(id)) continue;
+      const source = (ev as any)?.metadata?.source ? String((ev as any).metadata.source) : null;
+      originByLead.set(id, source);
+    }
 
     const lastClientByLead = new Map<string, any>();
     for (const m of lastClientMsgs as any[]) {
@@ -292,6 +657,8 @@ export async function GET(request: NextRequest) {
         lastMessagePreview,
         lastMessageFromClient,
         lastContactAt: lastMessageAt ? lastMessageAt.toISOString() : null,
+        origin: originByLead.get(leadId) ?? null,
+        originLabel: originLabel(originByLead.get(leadId) ?? null),
         property: lead.property
           ? {
               ...lead.property,
