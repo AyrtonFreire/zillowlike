@@ -17,6 +17,12 @@ function getRedisClient(): Redis | null {
   const portStr = process.env.REDIS_PORT?.trim();
   const password = process.env.REDIS_PASSWORD?.trim();
 
+  const isProdRuntime = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+  const isLocalHost = !!host && (host === "127.0.0.1" || host === "localhost" || host === "::1");
+  if (!redisUrl && isProdRuntime && isLocalHost) {
+    return null;
+  }
+
   const hasUrl = !!redisUrl;
   const hasHostPort = !!host && !!portStr;
   if (!hasUrl && !hasHostPort) return null;

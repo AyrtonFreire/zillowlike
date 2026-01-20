@@ -18,6 +18,12 @@ export function getRedisConnection(): ConnectionOptions | Redis | null {
   const portStr = process.env.REDIS_PORT?.trim();
   const password = process.env.REDIS_PASSWORD?.trim();
 
+  const isProdRuntime = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+  const isLocalHost = !!host && (host === "127.0.0.1" || host === "localhost" || host === "::1");
+  if (isProdRuntime && isLocalHost) {
+    return null;
+  }
+
   if (!host || !portStr) {
     return null;
   }

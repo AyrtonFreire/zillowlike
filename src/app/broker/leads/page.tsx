@@ -917,31 +917,35 @@ export default function MyLeadsPage() {
                   className="w-full sm:max-w-md rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden"
                   onMouseDown={(event) => event.stopPropagation()}
                 >
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                    <div className="text-sm font-semibold text-gray-900">Mover etapa</div>
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-gray-400">Etapas</div>
+                      <div className="text-base font-semibold text-gray-900">Mover etapa</div>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setStagePickerLeadId(null)}
-                      className="p-2 rounded-lg hover:bg-gray-100"
+                      className="p-2 rounded-full hover:bg-gray-100"
                     >
                       <X className="w-4 h-4 text-gray-500" />
                     </button>
                   </div>
 
-                  <div className="px-4 py-3">
-                    <div className="text-xs text-gray-500">Atual</div>
-                    <div className="mt-1">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold border ${CANONICAL_STAGE_META[stagePickerCurrentStage].borderColor} ${CANONICAL_STAGE_META[stagePickerCurrentStage].bgColor} ${CANONICAL_STAGE_META[stagePickerCurrentStage].color}`}
-                      >
+                  <div className="px-5 py-4">
+                    <div className="text-[11px] uppercase tracking-[0.2em] text-gray-400">Atual</div>
+                    <div className="mt-2">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-800">
+                        <span
+                          className={`h-2 w-2 rounded-full border ${CANONICAL_STAGE_META[stagePickerCurrentStage].borderColor} ${CANONICAL_STAGE_META[stagePickerCurrentStage].bgColor}`}
+                        />
                         {CANONICAL_STAGE_META[stagePickerCurrentStage].label}
                       </span>
                     </div>
                   </div>
 
-                  <div className="px-2 pb-2">
+                  <div className="px-5 pb-5">
                     {stagePickerNextStages.length ? (
-                      <div className="grid grid-cols-2 gap-2 px-2">
+                      <div className="grid grid-cols-2 gap-2">
                         {stagePickerNextStages
                           .filter((s) => s !== "LOST")
                           .map((stage) => {
@@ -955,19 +959,20 @@ export default function MyLeadsPage() {
                                   setStagePickerLeadId(null);
                                   void moveLeadToStage(String(stagePickerLead.id), stage);
                                 }}
-                                className={`px-3 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-left ${meta.color} disabled:opacity-60`}
+                                className="group flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-800 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-60"
                               >
+                                <span className={`h-2 w-2 rounded-full border ${meta.borderColor} ${meta.bgColor}`} />
                                 {meta.label}
                               </button>
                             );
                           })}
                       </div>
                     ) : (
-                      <div className="px-4 py-2 text-sm text-gray-600">Etapa final.</div>
+                      <div className="px-1 py-2 text-sm text-gray-600">Etapa final.</div>
                     )}
 
                     {stagePickerNextStages.includes("LOST") && (
-                      <div className="mt-3 px-2">
+                      <div className="mt-4">
                         <button
                           type="button"
                           disabled={stagePickerIsUpdating}
@@ -975,7 +980,7 @@ export default function MyLeadsPage() {
                             setStagePickerLeadId(null);
                             void moveLeadToStage(String(stagePickerLead.id), "LOST");
                           }}
-                          className="w-full px-3 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-semibold text-left text-red-700 disabled:opacity-60"
+                          className="w-full rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
                         >
                           Marcar como perdido
                         </button>

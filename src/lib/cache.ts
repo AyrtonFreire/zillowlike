@@ -26,6 +26,16 @@ function getRedisClient(): Redis | null {
   const redisHostEnv = process.env.REDIS_HOST?.trim();
   const redisPortEnv = process.env.REDIS_PORT?.trim();
 
+  const isProdRuntime = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+  const isLocalRedisHost =
+    !!redisHostEnv &&
+    (redisHostEnv === "127.0.0.1" || redisHostEnv === "localhost" || redisHostEnv === "::1");
+
+  // In production, never attempt to connect to localhost redis (misconfig on Vercel)
+  if (!redisUrl && isProdRuntime && isLocalRedisHost) {
+    return null;
+  }
+
   // Require explicit configuration. Do NOT fallback to localhost in production/Vercel.
   const hasUrl = !!redisUrl;
   const hasHostPort = !!redisHostEnv && !!redisPortEnv;

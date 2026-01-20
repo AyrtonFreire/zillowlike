@@ -1646,7 +1646,7 @@ export default function NewPropertyPage() {
 
       // Validação de endereço (agora no Step 1)
       const cepDigits = postalCode.replace(/\D+/g, "");
-      if (!postalCode || cepDigits.length !== 8) {
+      if (postalCode && cepDigits.length !== 8) {
         applyErrorsAndFocus(1, { postalCode: "Informe um CEP válido (8 dígitos)." });
         return;
       }
@@ -2112,7 +2112,7 @@ export default function NewPropertyPage() {
                       <button
                         type="submit"
                         onClick={() => setSubmitIntent(true)}
-                        disabled={isSubmitting || images.some((i) => i.pending) || !canPublish}
+                        disabled={isSubmitting || images.some((i) => i.pending)}
                         className="flex-1 px-3 py-2 glass-teal text-sm font-semibold text-white rounded-lg disabled:opacity-70 shadow"
                       >
                         {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando" : "Publicar"}
@@ -3450,7 +3450,7 @@ export default function NewPropertyPage() {
                   <button
                     type="submit"
                     onClick={() => setSubmitIntent(true)}
-                    disabled={isSubmitting || images.some((i) => i.pending) || !canPublish}
+                    disabled={isSubmitting || images.some((i) => i.pending)}
                     className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow disabled:opacity-70"
                   >
                     {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando imagens" : "Publicar anúncio"}
