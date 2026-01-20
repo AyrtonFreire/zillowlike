@@ -69,7 +69,6 @@ export default function BrokerProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingAutoReply, setSavingAutoReply] = useState(false);
   const [toast, setToast] = useState<{ message: string; type?: "success" | "error" } | null>(null);
   const [newArea, setNewArea] = useState("");
 
@@ -159,52 +158,54 @@ export default function BrokerProfilePage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch("/api/broker/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
-      });
+      const [profileRes, autoRes] = await Promise.all([
+        fetch("/api/broker/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(profile),
+        }),
+        fetch("/api/broker/auto-reply-settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(autoReply),
+        }),
+      ]);
 
-      if (res.ok) {
-        setToast({ message: "Perfil salvo com sucesso!", type: "success" });
+      let profileError: string | null = null;
+      let autoReplyError: string | null = null;
+
+      if (!profileRes.ok) {
+        const data = await profileRes.json().catch(() => null);
+        profileError = data?.error || "Erro ao salvar perfil";
+      }
+
+      if (autoRes.ok) {
+        const data = await autoRes.json().catch(() => null);
+        if (data) {
+          setAutoReply({
+            enabled: Boolean(data.enabled),
+            timezone: data.timezone || "America/Sao_Paulo",
+            weekSchedule: data.weekSchedule || DEFAULT_WEEK_SCHEDULE,
+            cooldownMinutes: Number(data.cooldownMinutes ?? 3),
+            maxRepliesPerLeadPer24h: Number(data.maxRepliesPerLeadPer24h ?? 6),
+          });
+        }
       } else {
-        const data = await res.json();
-        setToast({ message: data.error || "Erro ao salvar perfil", type: "error" });
+        const data = await autoRes.json().catch(() => null);
+        autoReplyError = data?.error || "Erro ao salvar assistente offline";
+      }
+
+      if (!profileError && !autoReplyError) {
+        setToast({ message: "Alterações salvas com sucesso!", type: "success" });
+      } else if (profileError && autoReplyError) {
+        setToast({ message: `Perfil: ${profileError}. Assistente: ${autoReplyError}.`, type: "error" });
+      } else {
+        setToast({ message: profileError || autoReplyError || "Erro ao salvar alterações", type: "error" });
       }
     } catch (err) {
-      setToast({ message: "Erro ao salvar perfil", type: "error" });
+      setToast({ message: "Erro ao salvar alterações", type: "error" });
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleSaveAutoReply = async () => {
-    setSavingAutoReply(true);
-    try {
-      const res = await fetch("/api/broker/auto-reply-settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(autoReply),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setAutoReply({
-          enabled: Boolean(data.enabled),
-          timezone: data.timezone || "America/Sao_Paulo",
-          weekSchedule: data.weekSchedule || DEFAULT_WEEK_SCHEDULE,
-          cooldownMinutes: Number(data.cooldownMinutes ?? 3),
-          maxRepliesPerLeadPer24h: Number(data.maxRepliesPerLeadPer24h ?? 6),
-        });
-        setToast({ message: "Assistente offline salvo com sucesso!", type: "success" });
-      } else {
-        const data = await res.json().catch(() => null);
-        setToast({ message: data?.error || "Erro ao salvar assistente offline", type: "error" });
-      }
-    } catch {
-      setToast({ message: "Erro ao salvar assistente offline", type: "error" });
-    } finally {
-      setSavingAutoReply(false);
     }
   };
 
@@ -281,7 +282,7 @@ export default function BrokerProfilePage() {
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Salvar alterações
+            Salvar Alterações
           </button>
         </div>
 
@@ -306,14 +307,6 @@ export default function BrokerProfilePage() {
               <MessageCircle className="w-5 h-5 text-teal-600" />
               Assistente offline (auto-resposta)
             </h3>
-            <button
-              onClick={handleSaveAutoReply}
-              disabled={savingAutoReply}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50"
-            >
-              {savingAutoReply ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Salvar assistente
-            </button>
           </div>
 
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">

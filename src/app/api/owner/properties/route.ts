@@ -229,9 +229,9 @@ export async function GET(req: NextRequest) {
     };
 
     // Format properties for frontend
-    const formattedProperties = properties.map((p: any) => ({
+    const formattedProperties = properties.map((p: any) => {
       // Add derived analytics fields (best-effort)
-      analytics: (() => {
+      const analytics = (() => {
         const views = Number(p._count.views) || 0;
         const leads = p._count.leads as number;
         const conversionRate = views > 0 ? leads / views : 0;
@@ -273,59 +273,61 @@ export async function GET(req: NextRequest) {
         const leadsSeries = days.map((day) => leadsDayMap.get(`${p.id}|${day}`) || 0);
 
         return {
-          analytics: {
-            conversionRatePct,
-            daysSinceLastLead,
-            platformComparisonPct,
-            platformAvgConversionRatePct: baseRateForComparison
-              ? Math.round(baseRateForComparison * 1000) / 10
-              : Math.round(platformAvgConversionRate * 1000) / 10,
-            platformComparisonBucketId: bucketId,
-            platformComparisonBucketMinDays: bench?.bucketMinDays ?? null,
-            platformComparisonBucketMaxDays: bench?.bucketMaxDays ?? null,
-            platformComparisonSampleProperties: bench?.propertiesCount ?? null,
-            platformComparisonSampleViews: bench?.viewsTotal ?? null,
-          },
           conversionRatePct,
           daysSinceLastLead,
           platformComparisonPct,
+          platformAvgConversionRatePct: baseRateForComparison
+            ? Math.round(baseRateForComparison * 1000) / 10
+            : Math.round(platformAvgConversionRate * 1000) / 10,
+          platformComparisonBucketId: bucketId,
+          platformComparisonBucketMinDays: bench?.bucketMinDays ?? null,
+          platformComparisonBucketMaxDays: bench?.bucketMaxDays ?? null,
+          platformComparisonSampleProperties: bench?.propertiesCount ?? null,
+          platformComparisonSampleViews: bench?.viewsTotal ?? null,
           timeseries14d: {
             days,
             views: viewsSeries,
             leads: leadsSeries,
           },
         };
-      })(),
-      id: p.id,
-      title: p.title,
-      price: typeof p.price === "bigint" ? Number(p.price) : p.price,
-      status: p.status,
-      type: p.type,
-      city: p.city,
-      state: p.state,
-      street: p.street,
-      neighborhood: p.neighborhood,
-      bedrooms: p.bedrooms,
-      bathrooms: p.bathrooms,
-      areaM2: p.areaM2,
-      description: p.description,
-      image: p.images[0]?.url || null,
-      images: p.images?.map((img: any) => ({ url: img.url })) || [],
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      stats: {
+      })()
+      return {
+        id: p.id,
+        title: p.title,
+        price: typeof p.price === "bigint" ? Number(p.price) : p.price,
+        status: p.status,
+        type: p.type,
+        city: p.city,
+        state: p.state,
+        street: p.street,
+        neighborhood: p.neighborhood,
+        bedrooms: p.bedrooms,
+        bathrooms: p.bathrooms,
+        areaM2: p.areaM2,
+        description: p.description,
+        image: p.images[0]?.url || null,
+        images: p.images?.map((img: any) => ({ url: img.url })) || [],
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        stats: {
+          views: p._count.views,
+          leads: p._count.leads,
+          favorites: p._count.favorites,
+        },
+        // Flatten commonly used counters for dashboards
         views: p._count.views,
         leads: p._count.leads,
         favorites: p._count.favorites,
-      },
-      // Flatten commonly used counters for dashboards
-      views: p._count.views,
-      leads: p._count.leads,
-      favorites: p._count.favorites,
-      scheduledVisits: scheduledByProperty[p.id] || 0,
-      completedVisits: completedByProperty[p.id] || 0,
-      pendingApprovals: pendingByProperty[p.id] || 0,
-    }));
+        scheduledVisits: scheduledByProperty[p.id] || 0,
+        completedVisits: completedByProperty[p.id] || 0,
+        pendingApprovals: pendingByProperty[p.id] || 0,
+        analytics,
+        conversionRatePct: analytics.conversionRatePct,
+        daysSinceLastLead: analytics.daysSinceLastLead,
+        platformComparisonPct: analytics.platformComparisonPct,
+        timeseries14d: analytics.timeseries14d,
+      };
+    });
 
     return NextResponse.json({
       success: true,

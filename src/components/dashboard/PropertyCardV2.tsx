@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Home, MapPin, Eye, Users, Target, Timer, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { Home, MapPin, Eye, Users, Target, Timer, ExternalLink } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 
@@ -145,8 +145,6 @@ export default function PropertyCardV2({
   leads,
   conversionRatePct = null,
   daysSinceLastLead = null,
-  timeseries14d = null,
-  quickActions,
   favorites,
   qualityScore = 75,
   hasDescription = true,
@@ -155,7 +153,6 @@ export default function PropertyCardV2({
   badges = [],
 }: PropertyCardV2Props) {
   const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
 
   const isTapMode = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -208,40 +205,6 @@ export default function PropertyCardV2({
     if (daysSinceLastLead === null || typeof daysSinceLastLead === "undefined") return "—";
     if (daysSinceLastLead === 0) return "hoje";
     return `${daysSinceLastLead}d`;
-  };
-
-  const sparkline = useMemo(() => {
-    const seriesViews = timeseries14d?.views;
-    const seriesLeads = timeseries14d?.leads;
-    if (!Array.isArray(seriesViews) || !Array.isArray(seriesLeads)) return null;
-    const n = Math.min(seriesViews.length, seriesLeads.length);
-    if (n < 2) return null;
-    const maxVal = Math.max(1, ...seriesViews.slice(0, n), ...seriesLeads.slice(0, n));
-    const w = 160;
-    const h = 40;
-    const pad = 3;
-    const toPoints = (arr: number[]) => {
-      const pts: string[] = [];
-      for (let i = 0; i < n; i++) {
-        const x = (i / (n - 1)) * w;
-        const v = Math.max(0, Number(arr[i]) || 0);
-        const y = h - pad - (v / maxVal) * (h - pad * 2);
-        pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
-      }
-      return pts.join(" ");
-    };
-    return {
-      w,
-      h,
-      pointsViews: toPoints(seriesViews),
-      pointsLeads: toPoints(seriesLeads),
-    };
-  }, [timeseries14d]);
-
-  const handleToggleExpanded = (e: MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setExpanded((v) => !v);
   };
 
   const badgeStyle = (tone?: "info" | "warning" | "critical") => {
@@ -318,107 +281,9 @@ export default function PropertyCardV2({
 
             <div className="mt-2.5 sm:mt-3 flex items-end justify-between gap-3">
               <div className="text-xl sm:text-2xl font-extrabold text-teal-700 leading-none">{formatPrice(price)}</div>
-              <div className="flex items-center gap-3 text-[13px] sm:text-sm text-gray-600">
-                <div className="flex items-center gap-1" aria-label="Leads">
-                  <Users className="w-4 h-4" />
-                  <span className="font-semibold tabular-nums">{leads}</span>
-                </div>
-                <div className="flex items-center gap-1" aria-label="Views">
-                  <Eye className="w-4 h-4" />
-                  <span className="font-semibold tabular-nums">{views}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </a>
-
-        <button
-          type="button"
-          onClick={handleToggleExpanded}
-          className="border-t border-gray-100 bg-gray-50/60 px-4 py-3 text-left"
-          aria-expanded={expanded}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-sm font-semibold text-gray-800">Métricas</div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </div>
-          </div>
-        </button>
-
-        {expanded ? (
-          <div className="border-t border-gray-100 px-3 sm:px-4 py-3 sm:py-4 overflow-visible">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-              {sparkline ? (
-                <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="text-xs font-semibold text-gray-800">Últimos 14 dias</div>
-                    <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-gray-400" />
-                        Views
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-teal-600" />
-                        Leads
-                      </span>
-                    </div>
-                  </div>
-                  <svg width={sparkline.w} height={sparkline.h} viewBox={`0 0 ${sparkline.w} ${sparkline.h}`}>
-                    <polyline
-                      fill="none"
-                      stroke="#9CA3AF"
-                      strokeWidth="2"
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                      points={sparkline.pointsViews}
-                    />
-                    <polyline
-                      fill="none"
-                      stroke="#0D9488"
-                      strokeWidth="2"
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                      points={sparkline.pointsLeads}
-                    />
-                  </svg>
-                </div>
-              ) : null}
-
-              {(quickActions?.viewLeadsUrl || quickActions?.viewChatUrl || quickActions?.editUrl) ? (
-                <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                  <div className="text-xs font-semibold text-gray-800 mb-2">Ações rápidas</div>
-                  <div className="flex flex-wrap gap-2">
-                    {quickActions?.viewLeadsUrl ? (
-                      <a
-                        href={quickActions.viewLeadsUrl}
-                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        Ver leads
-                      </a>
-                    ) : null}
-                    {quickActions?.viewChatUrl ? (
-                      <a
-                        href={quickActions.viewChatUrl}
-                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        Ver chat
-                      </a>
-                    ) : null}
-                    {quickActions?.editUrl ? (
-                      <a
-                        href={quickActions.editUrl}
-                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        Editar
-                      </a>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
             </div>
 
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm text-gray-800">
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm text-gray-800">
               <TooltipMetric
                 id="views"
                 label="Views"
@@ -482,7 +347,7 @@ export default function PropertyCardV2({
               </TooltipMetric>
             </div>
           </div>
-        ) : null}
+        </a>
       </div>
     </div>
   );

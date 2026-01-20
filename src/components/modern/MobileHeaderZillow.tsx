@@ -629,13 +629,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                     {role === 'REALTOR' && (
                       <>
                         <Link href="/broker/dashboard" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
-                          Painel
-                        </Link>
-                        <Link href="/broker/leads" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
-                          Leads
-                        </Link>
-                        <Link href="/broker/properties" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
-                          Imóveis
+                          CRM
                         </Link>
                       </>
                     )}
@@ -665,8 +659,8 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                       </>
                     )}
 
-                    <Link href="/profile" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
-                      Configurações da conta
+                    <Link href="/account" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
+                      Minha conta
                     </Link>
 
                     <button
