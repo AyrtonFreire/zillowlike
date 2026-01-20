@@ -95,13 +95,34 @@ export async function GET(req: NextRequest) {
       })(),
     ]);
 
-    return NextResponse.json({
+    const ua = req.headers.get("user-agent") || "";
+    const uaLower = ua.toLowerCase();
+    const isLikelyBot =
+      uaLower.includes("bot") ||
+      uaLower.includes("spider") ||
+      uaLower.includes("crawler") ||
+      uaLower.includes("slack") ||
+      uaLower.includes("whatsapp") ||
+      uaLower.includes("telegram") ||
+      uaLower.includes("facebookexternalhit") ||
+      uaLower.includes("discord") ||
+      uaLower.includes("headless") ||
+      uaLower.includes("lighthouse");
+
+    const response = NextResponse.json({
       success: true,
       metrics: {
         unreadChats: Number(unreadChats || 0),
         assistantOpen: Number(assistantOpen || 0),
       },
     });
+
+    response.headers.set("Cache-Control", "private, max-age=60, stale-while-revalidate=60");
+
+    response.headers.set("x-zlw-ua-bot", isLikelyBot ? "1" : "0");
+    response.headers.set("x-zlw-ua", ua.slice(0, 200));
+
+    return response;
   } catch (error) {
     console.error("Error fetching broker nav metrics:", error);
     return NextResponse.json({ error: "Não conseguimos carregar as métricas agora." }, { status: 500 });

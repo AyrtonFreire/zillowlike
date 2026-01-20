@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { applySecurityHeaders } from "@/lib/security-headers";
 
 // Rotas que requerem autenticação
 const protectedPaths = ["/admin", "/owner", "/dashboard", "/realtor", "/broker", "/agency"];
@@ -26,15 +25,38 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/realtor/apply");
 
   if (isDeprecatedApiPath) {
-    const response = NextResponse.json({ error: "Not found" }, { status: 404 });
-    return applySecurityHeaders(request, response);
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (pathname === "/opengraph-image") {
+    const ua = request.headers.get("user-agent") || "";
+    const uaLower = ua.toLowerCase();
+    const isLikelyBot =
+      uaLower.includes("bot") ||
+      uaLower.includes("spider") ||
+      uaLower.includes("crawler") ||
+      uaLower.includes("slack") ||
+      uaLower.includes("whatsapp") ||
+      uaLower.includes("telegram") ||
+      uaLower.includes("facebookexternalhit") ||
+      uaLower.includes("discord") ||
+      uaLower.includes("headless") ||
+      uaLower.includes("lighthouse");
+
+    if (isLikelyBot) {
+      console.log("[opengraph-image] ua", ua.slice(0, 200));
+    }
+
+    const res = NextResponse.next();
+    res.headers.set("x-zlw-ua-bot", isLikelyBot ? "1" : "0");
+    res.headers.set("x-zlw-ua", ua.slice(0, 200));
+    return res;
   }
 
   if (pathname === "/broker") {
     const url = request.nextUrl.clone();
     url.pathname = "/broker/dashboard";
-    const response = NextResponse.redirect(url);
-    return applySecurityHeaders(request, response);
+    return NextResponse.redirect(url);
   }
 
   if (
@@ -45,18 +67,15 @@ export async function middleware(request: NextRequest) {
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/broker/dashboard";
-    const response = NextResponse.redirect(url);
-    return applySecurityHeaders(request, response);
+    return NextResponse.redirect(url);
   }
 
   if (pathname.startsWith("/broker/apply")) {
-    const response = NextResponse.redirect(new URL("/broker/dashboard", request.url));
-    return applySecurityHeaders(request, response);
+    return NextResponse.redirect(new URL("/broker/dashboard", request.url));
   }
 
   if (pathname.startsWith("/become-realtor")) {
-    const response = NextResponse.redirect(new URL("/realtor/register", request.url));
-    return applySecurityHeaders(request, response);
+    return NextResponse.redirect(new URL("/realtor/register", request.url));
   }
 
   const segments = pathname.split("/").filter(Boolean);
@@ -74,8 +93,7 @@ export async function middleware(request: NextRequest) {
   const isProtected = protectedPaths.some((path) => pathname.startsWith(path));
 
   if (!isProtected || isPublicRealtorProfile || isPublicOwnerProfile) {
-    const response = NextResponse.next();
-    return applySecurityHeaders(request, response);
+    return NextResponse.next();
   }
 
   // Obtém token JWT do NextAuth
@@ -88,18 +106,15 @@ export async function middleware(request: NextRequest) {
   if (!token) {
     const url = new URL("/api/auth/signin", request.url);
     url.searchParams.set("callbackUrl", pathname);
-    const response = NextResponse.redirect(url);
-    return applySecurityHeaders(request, response);
+    return NextResponse.redirect(url);
   }
 
   if (pathname.startsWith("/realtor/register")) {
-    const response = NextResponse.next();
-    return applySecurityHeaders(request, response);
+    return NextResponse.next();
   }
 
   if (pathname.startsWith("/agency/register")) {
-    const response = NextResponse.next();
-    return applySecurityHeaders(request, response);
+    return NextResponse.next();
   }
 
   // Removido: fluxo automático de onboarding que promovia USER para OWNER/REALTOR
@@ -111,8 +126,7 @@ export async function middleware(request: NextRequest) {
       
       if (!allowedRoles.includes(userRole)) {
         // Usuário não tem permissão
-        const response = NextResponse.redirect(new URL("/unauthorized", request.url));
-        return applySecurityHeaders(request, response);
+        return NextResponse.redirect(new URL("/unauthorized", request.url));
       }
     }
   }
@@ -129,13 +143,24 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Aplica security headers
-  return applySecurityHeaders(request, response);
+  return response;
 }
 
 // Configuração de quais paths o middleware deve rodar
 export const config = {
   matcher: [
-    "/((?!_next/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|txt)).*)",
+    "/admin/:path*",
+    "/owner/:path*",
+    "/dashboard/:path*",
+    "/realtor/:path*",
+    "/broker/:path*",
+    "/agency/:path*",
+    "/opengraph-image",
+    "/api/leads/mural/:path*",
+    "/api/realtor/apply/:path*",
+    "/api/leads/:id/candidate/:path*",
+    "/api/leads/:id/distribute/:path*",
+    "/api/leads/:id/select-priority/:path*",
+    "/api/admin/leads/:id/mural/:path*",
   ],
 };

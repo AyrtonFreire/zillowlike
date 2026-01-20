@@ -161,6 +161,7 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
 
   const fetchMetrics = useCallback(async () => {
     try {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       const response = await fetch("/api/broker/nav-metrics");
       const data = await response.json();
       if (response.ok && data?.success && data.metrics) {
