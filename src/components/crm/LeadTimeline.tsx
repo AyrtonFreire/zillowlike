@@ -91,6 +91,13 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
   const date = event.createdAt;
   const type = event.type;
 
+  if (String(type || "").toUpperCase().startsWith("EMAIL")) {
+    return null;
+  }
+  if (String(event.title || "").toUpperCase().startsWith("EMAIL")) {
+    return null;
+  }
+
   switch (type) {
     case "LEAD_CREATED":
       return {
