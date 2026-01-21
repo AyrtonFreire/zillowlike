@@ -996,7 +996,7 @@ export default function MyLeadsPage() {
       {/* Contadores inteligentes - visíveis quando tem algo relevante */}
       {(smartCounters.awaitingResponse > 0 || smartCounters.noContact48h > 0) && (
         <div className="bg-white border-b border-gray-200">
-          <div className="w-full px-2 sm:px-3 lg:px-4 py-2">
+          <div className="w-full px-0 py-2">
             <div className="flex flex-wrap gap-3">
               {smartCounters.awaitingResponse > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg text-xs whitespace-nowrap">
@@ -1022,10 +1022,10 @@ export default function MyLeadsPage() {
       )}
 
       {/* Barra de filtros e toggle de visualização */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm lg:shadow-none lg:rounded-t-2xl lg:border lg:border-gray-200 lg:border-b-0">
         <div className="w-full">
           {/* Toggle mobile + Filtros */}
-          <div className="px-2 sm:px-3 lg:px-4 py-3">
+          <div className="px-0 py-3">
             <div className="flex items-center gap-3">
             {/* Filtros - scroll horizontal */}
             <div className="flex-1">
@@ -1072,7 +1072,7 @@ export default function MyLeadsPage() {
         </div>
 
         {/* Botão de filtros avançados */}
-        <div className="px-2 sm:px-3 lg:px-4 pb-3 flex items-center gap-2">
+        <div className="px-0 pb-3 flex items-center gap-2">
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -1111,7 +1111,7 @@ export default function MyLeadsPage() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden border-t border-gray-100"
             >
-              <div className="px-2 sm:px-3 lg:px-4 py-3 bg-gray-50 space-y-3">
+              <div className="px-0 py-3 bg-gray-50 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <input
                     type="text"
@@ -1183,7 +1183,7 @@ export default function MyLeadsPage() {
     </div>
 
       {/* Leads Content */}
-      <div className="w-full px-2 sm:px-3 lg:px-4 pt-2 pb-6">
+      <div className="w-full px-0 pt-2 lg:pt-0 pb-6">
         {error ? (
           <EmptyState
             title="Não foi possível carregar seus leads"
