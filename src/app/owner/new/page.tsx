@@ -1425,7 +1425,7 @@ export default function NewPropertyPage() {
 
     showIssues(
       {
-        title: options?.title || "Não foi possível publicar",
+        title: options?.title || "Corrija antes de publicar",
         message: options?.message || "Corrija os itens abaixo para publicar o anúncio.",
         issues,
         technical: options?.technical,
@@ -1713,7 +1713,7 @@ export default function NewPropertyPage() {
             publish: "Muitas requisições. Aguarde um pouco e tente novamente.",
           },
           {
-            title: "Não foi possível publicar",
+            title: "Ajuste antes de publicar",
             technical: { status: res.status, requestId: res.headers.get("x-request-id") || undefined },
           }
         );
@@ -1775,7 +1775,7 @@ export default function NewPropertyPage() {
         openPublishIssues(
           { publish: msg },
           {
-            title: "Não foi possível publicar",
+            title: "Ajuste antes de publicar",
             technical: { status: res.status, requestId: res.headers.get("x-request-id") || undefined },
           }
         );
@@ -1812,7 +1812,7 @@ export default function NewPropertyPage() {
         typeof err?.message === "string" && err.message.trim()
           ? err.message
           : "Não foi possível publicar o imóvel agora.";
-      openPublishIssues({ publish: msg }, { title: "Não foi possível publicar" });
+      openPublishIssues({ publish: msg }, { title: "Ajuste antes de publicar" });
     } finally {
       setIsSubmitting(false);
     }
