@@ -1183,7 +1183,7 @@ export default function MyLeadsPage() {
     </div>
 
       {/* Leads Content */}
-      <div className="w-full px-2 sm:px-3 lg:px-4 py-6">
+      <div className="w-full px-2 sm:px-3 lg:px-4 pt-2 pb-6">
         {error ? (
           <EmptyState
             title="Não foi possível carregar seus leads"
@@ -1582,7 +1582,7 @@ export default function MyLeadsPage() {
 
             {/* Desktop: tabela */}
             <div className="hidden lg:block">
-              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="bg-white rounded-b-2xl border border-t-0 border-gray-200 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-200">
