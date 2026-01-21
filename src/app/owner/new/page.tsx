@@ -13,6 +13,7 @@ import { geocodeAddressParts } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import { buildPropertyPath } from "@/lib/slug";
 import Toast from "@/components/Toast";
+import { useIssueDrawer } from "@/contexts/IssueDrawerContext";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Checkbox from "@/components/ui/Checkbox";
@@ -27,6 +28,8 @@ export default function NewPropertyPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitIntent, setSubmitIntent] = useState(false);
   const [publishedProperty, setPublishedProperty] = useState<{ id: string; title: string; url: string } | null>(null);
+
+  const { showIssues } = useIssueDrawer();
 
   const stepperScrollRef = useRef<HTMLDivElement | null>(null);
   const stepperItemRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -1331,6 +1334,102 @@ export default function NewPropertyPage() {
     { id: 6, name: "Revisão final", description: "Conferir dados e publicar" },
   ];
 
+  const publishFieldMeta = useMemo(() => {
+    return {
+      publish: { title: "Publicação", step: 6 },
+      purpose: { title: "Finalidade", step: 1 },
+      priceBRL: { title: "Preço", step: 1 },
+      type: { title: "Tipo de imóvel", step: 1 },
+      postalCode: { title: "CEP", step: 1 },
+      street: { title: "Rua", step: 1 },
+      addressNumber: { title: "Número", step: 1 },
+      neighborhood: { title: "Bairro", step: 1 },
+      city: { title: "Cidade", step: 1 },
+      state: { title: "Estado (UF)", step: 1 },
+      geo: { title: "Endereço no mapa", step: 1 },
+      bedrooms: { title: "Quartos", step: 2 },
+      bathrooms: { title: "Banheiros", step: 2 },
+      areaM2: { title: "Área", step: 2 },
+      builtAreaM2: { title: "Área construída", step: 2 },
+      lotAreaM2: { title: "Área do terreno", step: 2 },
+      privateAreaM2: { title: "Área privativa", step: 2 },
+      usableAreaM2: { title: "Área útil", step: 2 },
+      suites: { title: "Suítes", step: 2 },
+      parkingSpots: { title: "Vagas", step: 2 },
+      floor: { title: "Andar", step: 2 },
+      totalFloors: { title: "Total de andares", step: 2 },
+      yearBuilt: { title: "Ano de construção", step: 2 },
+      yearRenovated: { title: "Ano de reforma", step: 2 },
+      iptuYearBRL: { title: "IPTU", step: 6 },
+      images: { title: "Fotos", step: 3 },
+      title: { title: "Título do anúncio", step: 4 },
+      metaTitle: { title: "Meta Title", step: 4 },
+      metaDescription: { title: "Meta Description", step: 4 },
+      contactVerification: { title: "Contato para publicação", step: 6 },
+    } as const;
+  }, []);
+
+  const scrollToFieldId = (fieldId: string) => {
+    if (typeof window === "undefined") return;
+    window.setTimeout(() => {
+      const el = document.getElementById(fieldId) as HTMLElement | null;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      (el as any).focus?.();
+    }, 80);
+  };
+
+  const openPublishIssues = (
+    errors: Record<string, string>,
+    options?: {
+      title?: string;
+      message?: string;
+      technical?: { requestId?: string; status?: number };
+    }
+  ) => {
+    const entries = Object.entries(errors).filter(([, msg]) => typeof msg === "string" && msg.trim());
+    if (entries.length === 0) return;
+
+    setFieldErrors(errors);
+
+    const issues = entries
+      .map(([fieldId, msg], i) => {
+        const meta = (publishFieldMeta as any)[fieldId] as { title: string; step: number } | undefined;
+        const step = meta?.step;
+        const stepName = typeof step === "number" ? steps.find((s) => s.id === step)?.name : undefined;
+        return {
+          id: `${fieldId}-${i}`,
+          title: meta?.title || fieldId,
+          message: msg,
+          severity: "error" as const,
+          step,
+          context: stepName ? `Etapa ${step}: ${stepName}` : undefined,
+          fieldId,
+          actionLabel: "Ir para corrigir",
+        };
+      })
+      .sort((a, b) => {
+        const as = typeof a.step === "number" ? a.step : 999;
+        const bs = typeof b.step === "number" ? b.step : 999;
+        if (as !== bs) return as - bs;
+        return a.title.localeCompare(b.title);
+      });
+
+    showIssues(
+      {
+        title: options?.title || "Não foi possível publicar",
+        message: options?.message || "Corrija os itens abaixo para publicar o anúncio.",
+        issues,
+        technical: options?.technical,
+        autoNavigateToFirst: true,
+      },
+      (issue) => {
+        if (typeof issue.step === "number") setCurrentStep(issue.step);
+        if (issue.fieldId) scrollToFieldId(issue.fieldId);
+      }
+    );
+  };
+
   function tipsForStep(step: number): string[] {
     switch (step) {
       case 1:
@@ -1404,17 +1503,14 @@ export default function NewPropertyPage() {
     setFieldErrors({});
 
     if (finalTitle.length < 3) {
-      setToast({ message: "Informe um título para o anúncio.", type: "error" });
-      applyErrorsAndFocus(4, { title: "Informe um título para o anúncio." });
+      openPublishIssues({ title: "Informe um título para o anúncio." });
       return;
     }
 
     if (!hasAnyVerifiedContact) {
-      setToast({
-        message: "Para publicar, verifique seu telefone ou e-mail em Meu Perfil.",
-        type: "error",
+      openPublishIssues({
+        contactVerification: "Para publicar, verifique seu telefone ou e-mail em Meu Perfil.",
       });
-      applyErrorsAndFocus(6, { contactVerification: "Para publicar, verifique seu telefone ou e-mail em Meu Perfil." });
       return;
     }
 
@@ -1422,22 +1518,19 @@ export default function NewPropertyPage() {
     try {
       // Impede publicar enquanto houver uploads pendentes
       if (images.some((img) => img.pending)) {
-        setToast({ message: "Aguarde terminar o envio das imagens antes de publicar.", type: "error" });
-        applyErrorsAndFocus(3, { images: "Aguarde terminar o envio das imagens antes de publicar." });
+        openPublishIssues({ images: "Aguarde terminar o envio das imagens antes de publicar." });
         return;
       }
       // Exige ao menos uma imagem válida
       const hasAtLeastOneImage = images.some((img) => img.url && img.url.trim().length > 0);
       if (!hasAtLeastOneImage) {
-        setToast({ message: "Adicione pelo menos uma foto do imóvel.", type: "error" });
-        applyErrorsAndFocus(3, { images: "Adicione pelo menos uma foto do imóvel." });
+        openPublishIssues({ images: "Adicione pelo menos uma foto do imóvel." });
         return;
       }
 
       // Validar finalidade
       if (!purpose) {
-        setToast({ message: "Selecione se é Venda ou Aluguel.", type: "error" });
-        applyErrorsAndFocus(1, { purpose: "Selecione se é Venda ou Aluguel." });
+        openPublishIssues({ purpose: "Selecione se é Venda ou Aluguel." });
         return;
       }
 
@@ -1556,7 +1649,6 @@ export default function NewPropertyPage() {
 
       const parsed = PropertyCreateSchema.safeParse(payload);
       if (!parsed.success) {
-        setToast({ message: "Confira os campos destacados antes de publicar.", type: "error" });
         const next: Record<string, string> = {};
         for (const issue of parsed.error.issues) {
           const p = issue.path.join(".");
@@ -1589,27 +1681,10 @@ export default function NewPropertyPage() {
         }
 
         if (Object.keys(next).length) {
-          const hasStep3 =
-            !!next.bedrooms ||
-            !!next.bathrooms ||
-            !!next.areaM2 ||
-            !!next.suites ||
-            !!next.parkingSpots ||
-            !!next.floor ||
-            !!next.totalFloors ||
-            !!next.yearBuilt ||
-            !!next.yearRenovated ||
-            !!next.iptuYearBRL;
-          const step = next.images
-            ? 3
-            : next.postalCode || next.street || next.city || next.state || next.neighborhood || next.geo
-            ? 1
-            : hasStep3
-            ? 2
-            : next.title || next.metaTitle || next.metaDescription
-            ? 4
-            : 1;
-          applyErrorsAndFocus(step, next);
+          openPublishIssues(next, {
+            title: "Confira os campos antes de publicar",
+            message: "Revise os itens abaixo e tente novamente.",
+          });
         }
         return;
       }
@@ -1620,13 +1695,76 @@ export default function NewPropertyPage() {
         body: JSON.stringify(parsed.data),
       });
       if (res.status === 429) {
-        setToast({ message: "Muitas requisições, tente novamente em instantes.", type: "error" });
+        openPublishIssues(
+          {
+            publish: "Muitas requisições. Aguarde um pouco e tente novamente.",
+          },
+          {
+            title: "Não foi possível publicar",
+            technical: { status: res.status, requestId: res.headers.get("x-request-id") || undefined },
+          }
+        );
         return;
       }
       if (!res.ok) {
         let msg = "Falha ao criar imóvel";
-        try { const j = await res.json(); if (j?.error) msg = j.error; } catch {}
-        setToast({ message: msg, type: "error" });
+        let issues: any[] | undefined;
+        try {
+          const j = await res.json();
+          if (typeof j?.message === "string" && j.message.trim()) msg = j.message;
+          else if (typeof j?.error === "string" && j.error.trim()) msg = j.error;
+          if (Array.isArray(j?.issues)) issues = j.issues;
+        } catch {}
+
+        if (issues && issues.length) {
+          const next: Record<string, string> = {};
+          for (const issue of issues) {
+            const p = Array.isArray(issue?.path) ? issue.path.join(".") : String(issue?.path || "");
+            if (p === "title") next.title = "Informe um título válido.";
+            else if (p === "metaTitle") next.metaTitle = "Meta Title deve ter no máximo 65 caracteres.";
+            else if (p === "metaDescription") next.metaDescription = "Meta Description deve ter no máximo 155 caracteres.";
+            else if (p === "priceBRL") next.priceBRL = "Informe um preço válido.";
+            else if (p === "type") next.type = "Selecione o tipo de imóvel.";
+            else if (p === "address.postalCode") next.postalCode = "Informe um CEP válido.";
+            else if (p === "address.street") next.street = "Informe a rua.";
+            else if (p === "address.neighborhood") next.neighborhood = "Informe o bairro.";
+            else if (p === "address.city") next.city = "Informe a cidade.";
+            else if (p === "address.state") next.state = "Informe o estado (UF).";
+            else if (p === "geo.lat" || p === "geo.lng") next.geo = "Valide o endereço no mapa.";
+            else if (p === "details.bedrooms") next.bedrooms = "Informe um número válido de quartos.";
+            else if (p === "details.bathrooms") next.bathrooms = "Informe um número válido de banheiros.";
+            else if (p === "details.areaM2") next.areaM2 = "Informe uma área válida.";
+            else if (p === "details.builtAreaM2") next.builtAreaM2 = "Informe uma área construída válida.";
+            else if (p === "details.lotAreaM2") next.lotAreaM2 = "Informe uma área de terreno válida.";
+            else if (p === "details.privateAreaM2") next.privateAreaM2 = "Informe uma área privativa válida.";
+            else if (p === "details.usableAreaM2") next.usableAreaM2 = "Informe uma área útil válida.";
+            else if (p === "details.suites") next.suites = "Informe um número válido de suítes.";
+            else if (p === "details.parkingSpots") next.parkingSpots = "Informe um número válido de vagas.";
+            else if (p === "details.floor") next.floor = "Informe um andar válido.";
+            else if (p === "details.totalFloors") next.totalFloors = "Informe o total de andares válido.";
+            else if (p === "details.yearBuilt") next.yearBuilt = "Ano de construção deve ser entre 1800 e 2100.";
+            else if (p === "details.yearRenovated") next.yearRenovated = "Ano de reforma deve ser entre 1800 e 2100.";
+            else if (p === "visibility.iptuYearly") next.iptuYearBRL = "Informe um valor de IPTU válido.";
+            else if (p.startsWith("images")) next.images = "Adicione ao menos uma foto válida.";
+          }
+
+          if (Object.keys(next).length) {
+            openPublishIssues(next, {
+              title: "Confira os campos antes de publicar",
+              message: "Revise os itens abaixo e tente novamente.",
+              technical: { status: res.status, requestId: res.headers.get("x-request-id") || undefined },
+            });
+            return;
+          }
+        }
+
+        openPublishIssues(
+          { publish: msg },
+          {
+            title: "Não foi possível publicar",
+            technical: { status: res.status, requestId: res.headers.get("x-request-id") || undefined },
+          }
+        );
         return;
       }
 
@@ -1653,7 +1791,7 @@ export default function NewPropertyPage() {
         typeof err?.message === "string" && err.message.trim()
           ? err.message
           : "Não foi possível publicar o imóvel agora.";
-      setToast({ message: msg, type: "error" });
+      openPublishIssues({ publish: msg }, { title: "Não foi possível publicar" });
     } finally {
       setIsSubmitting(false);
     }

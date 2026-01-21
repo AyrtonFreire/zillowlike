@@ -574,43 +574,82 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    // rate limit
-    if (!checkRateLimit(req)) {
-      const res = NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    const withRequestId = (res: NextResponse) => {
       res.headers.set("x-request-id", requestId);
       return res;
+    };
+    // rate limit
+    if (!checkRateLimit(req)) {
+      return withRequestId(
+        NextResponse.json(
+          {
+            code: "RATE_LIMITED",
+            message: "Too many requests",
+            error: "Too many requests",
+          },
+          { status: 429 }
+        )
+      );
     }
     const session = await getServerSession(authOptions);
     if (!session) {
       console.warn("api/properties POST unauthorized: no session");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return withRequestId(
+        NextResponse.json(
+          {
+            code: "UNAUTHORIZED",
+            message: "Unauthorized",
+            error: "Unauthorized",
+          },
+          { status: 401 }
+        )
+      );
     }
     const body = await req.json();
     // Defensive validation for images before zod (limit and URL)
     if (Array.isArray(body?.images)) {
       const imgs = body.images as any[];
       if (imgs.length < 1 || imgs.length > 20) {
-        const res = NextResponse.json({ error: "Images count must be between 1 and 20" }, { status: 400 });
-        res.headers.set("x-request-id", requestId);
-        return res;
+        return withRequestId(
+          NextResponse.json(
+            {
+              code: "VALIDATION_ERROR",
+              message: "Images count must be between 1 and 20",
+              error: "Images count must be between 1 and 20",
+            },
+            { status: 400 }
+          )
+        );
       }
       const urlOk = (u: any) => typeof u === 'string' && /^https?:\/\//.test(u);
       for (const it of imgs) {
         if (!it?.url || !urlOk(it.url)) {
-          const res = NextResponse.json({ error: "Invalid image URL in payload" }, { status: 400 });
-          res.headers.set("x-request-id", requestId);
-          return res;
+          return withRequestId(
+            NextResponse.json(
+              {
+                code: "VALIDATION_ERROR",
+                message: "Invalid image URL in payload",
+                error: "Invalid image URL in payload",
+              },
+              { status: 400 }
+            )
+          );
         }
       }
     }
     const parsed = PropertyCreateSchema.safeParse(body);
     if (!parsed.success) {
-      const res = NextResponse.json(
-        { error: "Invalid body", issues: parsed.error.issues },
-        { status: 400 }
+      return withRequestId(
+        NextResponse.json(
+          {
+            code: "VALIDATION_ERROR",
+            message: "Invalid body",
+            error: "Invalid body",
+            issues: parsed.error.issues,
+          },
+          { status: 400 }
+        )
       );
-      res.headers.set("x-request-id", requestId);
-      return res;
     }
 
     const { title, metaTitle, metaDescription, description, priceBRL, type, purpose, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility } = parsed.data;
@@ -634,7 +673,16 @@ export async function POST(req: NextRequest) {
     const userId = (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub;
     if (!userId) {
       console.error("api/properties POST: session present but userId missing");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return withRequestId(
+        NextResponse.json(
+          {
+            code: "UNAUTHORIZED",
+            message: "Unauthorized",
+            error: "Unauthorized",
+          },
+          { status: 401 }
+        )
+      );
     }
 
     // Require at least one verified recovery/contact channel before allowing property creation
@@ -645,7 +693,16 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       console.error("api/properties POST: user not found", userId);
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return withRequestId(
+        NextResponse.json(
+          {
+            code: "UNAUTHORIZED",
+            message: "Unauthorized",
+            error: "Unauthorized",
+          },
+          { status: 401 }
+        )
+      );
     }
 
     const hasVerifiedPhone = !!(user.phone && user.phone.trim() && user.phoneVerifiedAt);
@@ -657,12 +714,18 @@ export async function POST(req: NextRequest) {
     const hasBackupCodes = backupCodesUnused > 0;
 
     if (!hasVerifiedPhone && !hasVerifiedEmail && !hasVerifiedRecoveryEmail && !hasBackupCodes) {
-      const res = NextResponse.json(
-        { error: "Para publicar um imóvel, configure pelo menos um método de recuperação (telefone verificado, e-mail verificado, e-mail de recuperação verificado ou backup codes) em Meu Perfil." },
-        { status: 400 }
+      return withRequestId(
+        NextResponse.json(
+          {
+            code: "CONTACT_NOT_VERIFIED",
+            message:
+              "Para publicar um imóvel, configure pelo menos um método de recuperação (telefone verificado, e-mail verificado, e-mail de recuperação verificado ou backup codes) em Meu Perfil.",
+            error:
+              "Para publicar um imóvel, configure pelo menos um método de recuperação (telefone verificado, e-mail verificado, e-mail de recuperação verificado ou backup codes) em Meu Perfil.",
+          },
+          { status: 400 }
+        )
       );
-      res.headers.set("x-request-id", requestId);
-      return res;
     }
 
     // AUTO-PROMOTION: Check if user is USER and has no properties yet
@@ -808,10 +871,17 @@ export async function POST(req: NextRequest) {
     res.headers.set("x-request-id", requestId);
     return res;
   } catch (err: any) {
-    const rid = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     console.error("/api/properties POST error", err?.message || err);
-    const res = NextResponse.json({ error: "Failed to create property" }, { status: 500 });
-    res.headers.set("x-request-id", rid);
+    const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const res = NextResponse.json(
+      {
+        code: "INTERNAL_ERROR",
+        message: "Failed to create property",
+        error: "Failed to create property",
+      },
+      { status: 500 }
+    );
+    res.headers.set("x-request-id", requestId);
     return res;
   }
 }

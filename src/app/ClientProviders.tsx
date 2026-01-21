@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/modern";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { IssueDrawerProvider } from "@/contexts/IssueDrawerContext";
 
 export default function ClientProviders({ children, session }: { children: React.ReactNode; session?: any }) {
   return (
@@ -15,7 +16,7 @@ export default function ClientProviders({ children, session }: { children: React
           refetchOnWindowFocus={false} // Refetch when user returns to tab
         >
           <ToastProvider>
-            {children}
+            <IssueDrawerProvider>{children}</IssueDrawerProvider>
           </ToastProvider>
         </SessionProvider>
       </ThemeProvider>
