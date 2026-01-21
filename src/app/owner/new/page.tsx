@@ -18,6 +18,7 @@ import { useIssueDrawer } from "@/contexts/IssueDrawerContext";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Checkbox from "@/components/ui/Checkbox";
+import Textarea from "@/components/ui/Textarea";
 import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 
 type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File };
@@ -2412,18 +2413,14 @@ export default function NewPropertyPage() {
                           clearFieldError("street");
                         }}
                       />
-                      <label className="block">
-                        <span className="block mb-1">
-                          <span className="text-sm font-medium text-neutral-700">Número</span>
-                        </span>
-                        <input
-                          id="addressNumber"
-                          ref={numberInputRef}
-                          value={addressNumber}
-                          onChange={(e) => setAddressNumber(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent transition border-neutral-300"
-                        />
-                      </label>
+                      <Input
+                        id="addressNumber"
+                        ref={numberInputRef}
+                        label="Número"
+                        value={addressNumber}
+                        onChange={(e) => setAddressNumber(e.target.value)}
+                        optional
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -2626,23 +2623,20 @@ export default function NewPropertyPage() {
                   </div>
 
                   <div className="pt-2">
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Título do anúncio *
-                    </label>
-                    <input
+                    <Input
                       id="title"
                       type="text"
+                      label="Título do anúncio *"
                       value={customTitle}
+                      error={fieldErrors.title}
                       onChange={(e) => {
                         setCustomTitle(e.target.value);
                         clearFieldError("title");
                         setAiGenerateWarning(null);
                       }}
                       placeholder="Ex: Casa em Petrolina"
-                      className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.title ? "border-danger" : "border-neutral-300"}`}
                       maxLength={70}
                     />
-                    {fieldErrors.title && <span className="mt-1 block text-xs text-danger">{fieldErrors.title}</span>}
                     {aiGenerateWarning && (
                       <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                         {aiGenerateWarning}
@@ -2652,40 +2646,40 @@ export default function NewPropertyPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Meta Title</label>
-                      <input
+                      <Input
                         id="metaTitle"
                         type="text"
+                        label="Meta Title"
                         value={metaTitle}
                         onChange={(e) => {
                           setMetaTitle(e.target.value);
                           clearFieldError("metaTitle");
                         }}
                         placeholder="Título otimizado para Google (até 65 caracteres)"
-                        className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.metaTitle ? "border-danger" : "border-neutral-300"}`}
                         maxLength={65}
+                        error={fieldErrors.metaTitle}
                       />
                       <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                        <span>{fieldErrors.metaTitle ? <span className="text-danger">{fieldErrors.metaTitle}</span> : <span />}</span>
+                        <span />
                         <span>{metaTitle.length}/65</span>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">Meta Description</label>
-                      <input
+                      <Input
                         id="metaDescription"
                         type="text"
+                        label="Meta Description"
                         value={metaDescription}
                         onChange={(e) => {
                           setMetaDescription(e.target.value);
                           clearFieldError("metaDescription");
                         }}
                         placeholder="Descrição curta para Google (até 155 caracteres)"
-                        className={`w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent text-sm ${fieldErrors.metaDescription ? "border-danger" : "border-neutral-300"}`}
                         maxLength={155}
+                        error={fieldErrors.metaDescription}
                       />
                       <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                        <span>{fieldErrors.metaDescription ? <span className="text-danger">{fieldErrors.metaDescription}</span> : <span />}</span>
+                        <span />
                         <span>{metaDescription.length}/155</span>
                       </div>
                     </div>
@@ -2747,12 +2741,12 @@ export default function NewPropertyPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">Texto do anúncio</label>
-                    <textarea
+                    <Textarea
+                      label="Texto do anúncio"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={8}
-                      className="w-full px-4 py-2.5 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-accent focus:border-transparent text-sm resize-y"
+                      className="resize-y"
                       placeholder="Use este espaço para explicar os pontos fortes do imóvel, estado de conservação, diferenciais, etc."
                     />
                     <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
@@ -2787,11 +2781,11 @@ export default function NewPropertyPage() {
                     <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
                   </div>
 
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                     <button
                       type="button"
                       onClick={() => setOpenAcc((p) => ({ ...p, acc_condition: !p.acc_condition }))}
-                      className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
                       <span className="text-sm font-semibold text-gray-800">
                         🛠️ Condição do imóvel
@@ -2802,7 +2796,7 @@ export default function NewPropertyPage() {
                       <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condition ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_condition && (
-                      <div className="p-4 pt-0 bg-gray-50/50">
+                      <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           {[...CONDITION_STATUS_OPTIONS, ...CONDITION_EXTRA_OPTIONS].map((tag) => (
                             <Checkbox
@@ -2817,11 +2811,11 @@ export default function NewPropertyPage() {
                     )}
                   </div>
 
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                     <button
                       type="button"
                       onClick={() => setOpenAcc((p) => ({ ...p, acc_measures: !p.acc_measures }))}
-                      className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
                       <span className="text-sm font-semibold text-gray-800">
                         📐 Medidas do imóvel
@@ -2832,7 +2826,7 @@ export default function NewPropertyPage() {
                       <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_measures ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_measures && (
-                      <div className="p-4 pt-0 bg-gray-50/50">
+                      <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                           <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
                           <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
@@ -2843,11 +2837,11 @@ export default function NewPropertyPage() {
                     )}
                   </div>
 
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                     <button
                       type="button"
                       onClick={() => setOpenAcc((p) => ({ ...p, acc_features: !p.acc_features }))}
-                      className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
                       <span className="text-sm font-semibold text-gray-800">
                         🏠 Características do imóvel
@@ -2858,7 +2852,7 @@ export default function NewPropertyPage() {
                       <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_features ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_features && (
-                      <div className="p-4 pt-0 bg-gray-50/50">
+                      <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
                           <Checkbox
@@ -2885,11 +2879,11 @@ export default function NewPropertyPage() {
                     )}
                   </div>
 
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                     <button
                       type="button"
                       onClick={() => setOpenAcc((p) => ({ ...p, acc_condo: !p.acc_condo }))}
-                      className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
                       <span className="text-sm font-semibold text-gray-800">
                         🏢 Condomínio / áreas comuns
@@ -2900,7 +2894,7 @@ export default function NewPropertyPage() {
                       <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condo ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_condo && (
-                      <div className="p-4 pt-0 bg-gray-50/50">
+                      <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
                           <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
@@ -2915,13 +2909,13 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Segurança */}
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_sec: !p.acc_sec }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_sec: !p.acc_sec }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                       <span className="text-sm font-semibold text-gray-800">🔒 Segurança {accSecurityCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accSecurityCount}</span>}</span>
                       <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_sec ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_sec && (
-                      <div className="p-4 pt-0 grid grid-cols-2 gap-3 bg-gray-50/50">
+                      <div className="px-4 pb-4 pt-3 grid grid-cols-2 gap-3 bg-gray-50/50 border-t border-gray-100">
                         <Checkbox checked={secCCTV} onChange={(e) => setSecCCTV(e.target.checked)} label="CFTV / Câmeras" />
                         <Checkbox checked={secSallyPort} onChange={(e) => setSecSallyPort(e.target.checked)} label="Clausura (sally port)" />
                         <Checkbox checked={secNightGuard} onChange={(e) => setSecNightGuard(e.target.checked)} label="Ronda noturna" />
@@ -2931,13 +2925,13 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Conforto e Energia */}
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_ce: !p.acc_ce }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_ce: !p.acc_ce }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                       <span className="text-sm font-semibold text-gray-800">❄️ Conforto e Energia {accComfortCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accComfortCount}</span>}</span>
                       <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_ce ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_ce && (
-                      <div className="p-4 pt-0 grid grid-cols-2 gap-3 bg-gray-50/50">
+                      <div className="px-4 pb-4 pt-3 grid grid-cols-2 gap-3 bg-gray-50/50 border-t border-gray-100">
                         <Checkbox checked={comfortAC} onChange={(e) => setComfortAC(e.target.checked)} label="Ar-condicionado" />
                         <Checkbox checked={comfortHeating} onChange={(e) => setComfortHeating(e.target.checked)} label="Aquecimento" />
                         <Checkbox checked={comfortSolar} onChange={(e) => setComfortSolar(e.target.checked)} label="Energia solar" />
@@ -2949,13 +2943,13 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Acabamentos */}
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_fin: !p.acc_fin }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_fin: !p.acc_fin }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                       <span className="text-sm font-semibold text-gray-800">✨ Acabamentos {accFinishCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFinishCount}</span>}</span>
                       <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_fin ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_fin && (
-                      <div className="p-4 pt-0 space-y-3 bg-gray-50/50">
+                      <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
                         <Select label="Piso principal" value={finishFloor} onChange={(e) => setFinishFloor(e.target.value)} optional>
                           <option value="">Selecione</option>
                           <option value="porcelanato">Porcelanato</option>
@@ -2972,13 +2966,13 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Vista e Posição */}
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_view: !p.acc_view }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_view: !p.acc_view }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                       <span className="text-sm font-semibold text-gray-800">🌅 Vista e Posição {accViewCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accViewCount}</span>}</span>
                       <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_view ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_view && (
-                      <div className="p-4 pt-0 space-y-3 bg-gray-50/50">
+                      <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
                         <div className="grid grid-cols-2 gap-3">
                           <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
                           <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
@@ -2996,13 +2990,13 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Acessibilidade */}
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_acc: !p.acc_acc }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_acc: !p.acc_acc }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                       <span className="text-sm font-semibold text-gray-800">♿ Acessibilidade {accAccessibilityCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accAccessibilityCount}</span>}</span>
                       <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_acc ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_acc && (
-                      <div className="p-4 pt-0 grid grid-cols-2 gap-3 bg-gray-50/50">
+                      <div className="px-4 pb-4 pt-3 grid grid-cols-2 gap-3 bg-gray-50/50 border-t border-gray-100">
                         <Checkbox checked={accRamps} onChange={(e) => setAccRamps(e.target.checked)} label="Rampas de acesso" />
                         <Checkbox checked={accWideDoors} onChange={(e) => setAccWideDoors(e.target.checked)} label="Portas largas" />
                         <Checkbox checked={accAccessibleElevator} onChange={(e) => setAccAccessibleElevator(e.target.checked)} label="Elevador acessível" />
@@ -3012,13 +3006,13 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Pets e Regras */}
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_pets: !p.acc_pets }))} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_pets: !p.acc_pets }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                       <span className="text-sm font-semibold text-gray-800">🐾 Pets e Regras {accPetsCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accPetsCount}</span>}</span>
                       <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_pets ? 'rotate-180' : ''}`} />
                     </button>
                     {openAcc.acc_pets && (
-                      <div className="p-4 pt-0 space-y-3 bg-gray-50/50">
+                      <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
                         <div className="grid grid-cols-2 gap-3">
                           <Checkbox checked={petsSmall} onChange={(e) => setPetsSmall(e.target.checked)} label="Aceita pets pequenos" />
                           <Checkbox checked={petsLarge} onChange={(e) => setPetsLarge(e.target.checked)} label="Aceita pets grandes" />
@@ -3263,7 +3257,7 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Informações de contato do proprietário */}
-                  <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
                     <h3 className="font-medium text-gray-900 mb-3">Contato do proprietário</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Input
@@ -3294,7 +3288,7 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Informações financeiras */}
-                  <div className="p-4 bg-green-50 rounded-xl border border-green-100">
+                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
                     <h3 className="font-medium text-gray-900 mb-3">Valores e comissão</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <Input
@@ -3322,7 +3316,7 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Exclusividade */}
-                  <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
+                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
                     <h3 className="font-medium text-gray-900 mb-3">Exclusividade</h3>
                     <div className="space-y-4">
                       <Checkbox
@@ -3342,7 +3336,7 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Situação do imóvel */}
-                  <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
                     <h3 className="font-medium text-gray-900 mb-3">Situação do imóvel</h3>
                     <div className="space-y-4">
                       <Checkbox
@@ -3369,14 +3363,12 @@ export default function NewPropertyPage() {
 
                   {/* Notas internas */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Observações internas
-                    </label>
-                    <textarea
+                    <Textarea
+                      label="Observações internas"
                       value={privateNotes}
                       onChange={(e) => setPrivateNotes(e.target.value)}
                       rows={3}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-accent focus:border-transparent text-sm resize-y"
+                      className="resize-y"
                       placeholder="Anotações particulares sobre este imóvel ou negociação..."
                     />
                   </div>
@@ -3719,56 +3711,58 @@ export default function NewPropertyPage() {
 
           <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start space-y-4">
             {/* Score de qualidade do anúncio */}
-            <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                  adQualityScore.level === 'excellent' ? 'bg-green-100 text-green-700' :
-                  adQualityScore.level === 'good' ? 'bg-blue-100 text-blue-700' :
-                  adQualityScore.level === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-red-100 text-red-700'
-                }`}>
-                  {adQualityScore.score}%
-                </span>
+            {false && (
+              <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    adQualityScore.level === 'excellent' ? 'bg-green-100 text-green-700' :
+                    adQualityScore.level === 'good' ? 'bg-blue-100 text-blue-700' :
+                    adQualityScore.level === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {adQualityScore.score}%
+                  </span>
+                </div>
+                
+                {/* Barra de progresso */}
+                <div className="h-2 rounded-full bg-gray-200 mb-3 overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      adQualityScore.level === 'excellent' ? 'bg-gradient-to-r from-green-400 to-green-500' :
+                      adQualityScore.level === 'good' ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
+                      adQualityScore.level === 'medium' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
+                      'bg-gradient-to-r from-red-400 to-red-500'
+                    }`}
+                    style={{ width: `${adQualityScore.score}%` }}
+                  />
+                </div>
+                
+                {/* Checklist resumido */}
+                <div className="space-y-1.5 text-xs">
+                  {adQualityScore.items.slice(0, 5).map((item, idx) => (
+                    <div key={idx} className={`flex items-center gap-2 ${item.done ? 'text-gray-700' : 'text-gray-400'}`}>
+                      {item.done ? (
+                        <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                        </svg>
+                      )}
+                      <span className={item.done ? '' : 'line-through'}>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+                
+                {adQualityScore.score < 60 && (
+                  <p className="mt-3 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1.5">
+                    💡 Complete mais campos para aumentar a visibilidade do seu anúncio
+                  </p>
+                )}
               </div>
-              
-              {/* Barra de progresso */}
-              <div className="h-2 rounded-full bg-gray-200 mb-3 overflow-hidden">
-                <div 
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    adQualityScore.level === 'excellent' ? 'bg-gradient-to-r from-green-400 to-green-500' :
-                    adQualityScore.level === 'good' ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
-                    adQualityScore.level === 'medium' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
-                    'bg-gradient-to-r from-red-400 to-red-500'
-                  }`}
-                  style={{ width: `${adQualityScore.score}%` }}
-                />
-              </div>
-              
-              {/* Checklist resumido */}
-              <div className="space-y-1.5 text-xs">
-                {adQualityScore.items.slice(0, 5).map((item, idx) => (
-                  <div key={idx} className={`flex items-center gap-2 ${item.done ? 'text-gray-700' : 'text-gray-400'}`}>
-                    {item.done ? (
-                      <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                      </svg>
-                    )}
-                    <span className={item.done ? '' : 'line-through'}>{item.label}</span>
-                  </div>
-                ))}
-              </div>
-              
-              {adQualityScore.score < 60 && (
-                <p className="mt-3 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1.5">
-                  💡 Complete mais campos para aumentar a visibilidade do seu anúncio
-                </p>
-              )}
-            </div>
+            )}
 
             {/* Preview do card */}
             <PropertyCardPremium
@@ -3787,6 +3781,7 @@ export default function NewPropertyPage() {
                 type,
                 description: description,
                 purpose: (purpose || 'SALE') as 'SALE' | 'RENT',
+                videoUrl: videoUrl || null,
               }}
               watermark={showWatermark}
             />

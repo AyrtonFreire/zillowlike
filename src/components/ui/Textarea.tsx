@@ -1,13 +1,13 @@
 "use client";
 import * as React from "react";
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
   optional?: boolean;
 }
 
-const Input = React.forwardRef<HTMLInputElement, InputProps>(
+const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, optional, className = "", ...props }, ref) => {
     return (
       <label className="block">
@@ -17,7 +17,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {optional && <span className="ml-2 text-xs font-normal text-neutral-400">Opcional</span>}
           </span>
         )}
-        <input
+        <textarea
           {...props}
           ref={ref}
           className={`w-full px-4 py-3 sm:py-2.5 min-h-[48px] sm:min-h-0 text-base sm:text-sm rounded-lg border focus:ring-2 focus:ring-accent focus:border-transparent transition ${
@@ -30,6 +30,6 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
   }
 );
 
-Input.displayName = "Input";
+Textarea.displayName = "Textarea";
 
-export default Input;
+export default Textarea;
