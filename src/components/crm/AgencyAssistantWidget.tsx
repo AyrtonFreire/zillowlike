@@ -14,6 +14,10 @@ export function AgencyAssistantWidget() {
   const [teamId, setTeamId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [activeCount, setActiveCount] = useState<number>(0);
+  const [launcherPosition, setLauncherPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isDraggingLauncher, setIsDraggingLauncher] = useState(false);
+  const launcherRef = useRef<HTMLButtonElement | null>(null);
+  const dragStateRef = useRef({ offsetX: 0, offsetY: 0, dragging: false, dragged: false });
 
   const countEtagRef = useRef<string | null>(null);
 
@@ -81,15 +85,126 @@ export function AgencyAssistantWidget() {
     return mounted && typeof document !== "undefined";
   }, [mounted]);
 
+  const bottomOffsetPx = 20;
+  const mobileSafeAreaStyle = useMemo(() => {
+    return {
+      bottom: `calc(env(safe-area-inset-bottom, 0px) + ${bottomOffsetPx}px)`,
+      right: "20px",
+    } as React.CSSProperties;
+  }, [bottomOffsetPx]);
+
+  const launcherStyle = launcherPosition
+    ? { left: `${launcherPosition.x}px`, top: `${launcherPosition.y}px` }
+    : mobileSafeAreaStyle;
+
   if (!canRender) return null;
   if (!teamId) return null;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!launcherRef.current) return;
+    if (launcherPosition) return;
+
+    const button = launcherRef.current;
+    const width = button.offsetWidth || 180;
+    const height = button.offsetHeight || 48;
+    const margin = 20;
+    const nextX = Math.max(margin, window.innerWidth - width - margin);
+    const nextY = Math.max(margin, window.innerHeight - height - bottomOffsetPx);
+    setLauncherPosition({ x: nextX, y: nextY });
+  }, [launcherPosition, bottomOffsetPx]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onMove = (event: PointerEvent) => {
+      if (!dragStateRef.current.dragging) return;
+      const button = launcherRef.current;
+      if (!button) return;
+
+      const width = button.offsetWidth || 180;
+      const height = button.offsetHeight || 48;
+      const margin = 12;
+      const maxX = Math.max(margin, window.innerWidth - width - margin);
+      const maxY = Math.max(margin, window.innerHeight - height - margin);
+      const nextX = Math.min(Math.max(event.clientX - dragStateRef.current.offsetX, margin), maxX);
+      const nextY = Math.min(Math.max(event.clientY - dragStateRef.current.offsetY, margin), maxY);
+
+      if (!dragStateRef.current.dragged && launcherPosition) {
+        const dx = Math.abs(nextX - launcherPosition.x);
+        const dy = Math.abs(nextY - launcherPosition.y);
+        if (dx > 3 || dy > 3) dragStateRef.current.dragged = true;
+      }
+
+      setLauncherPosition({ x: nextX, y: nextY });
+    };
+
+    const onUp = () => {
+      if (!dragStateRef.current.dragging) return;
+      dragStateRef.current.dragging = false;
+      setIsDraggingLauncher(false);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [launcherPosition]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!launcherPosition) return;
+
+    const onResize = () => {
+      const button = launcherRef.current;
+      if (!button) return;
+      const width = button.offsetWidth || 180;
+      const height = button.offsetHeight || 48;
+      const margin = 12;
+      const maxX = Math.max(margin, window.innerWidth - width - margin);
+      const maxY = Math.max(margin, window.innerHeight - height - margin);
+
+      setLauncherPosition((prev) => {
+        if (!prev) return prev;
+        const nextX = Math.min(Math.max(prev.x, margin), maxX);
+        const nextY = Math.min(Math.max(prev.y, margin), maxY);
+        if (nextX === prev.x && nextY === prev.y) return prev;
+        return { x: nextX, y: nextY };
+      });
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [launcherPosition]);
 
   const widgetUi = !open ? (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="fixed top-28 right-4 z-[2147483647] hidden lg:flex items-center gap-2 rounded-full bg-white border border-gray-200 shadow-lg px-4 py-3 hover:shadow-xl transition-shadow"
+        ref={launcherRef}
+        style={launcherStyle}
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          dragStateRef.current.dragging = true;
+          dragStateRef.current.dragged = false;
+          const rect = event.currentTarget.getBoundingClientRect();
+          dragStateRef.current.offsetX = event.clientX - rect.left;
+          dragStateRef.current.offsetY = event.clientY - rect.top;
+          setIsDraggingLauncher(true);
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          } catch {
+          }
+        }}
+        onClick={() => {
+          if (dragStateRef.current.dragged || isDraggingLauncher) return;
+          setOpen(true);
+        }}
+        className="fixed z-[2147483647] flex items-center gap-2 rounded-full bg-white border border-gray-200 shadow-lg px-4 py-3 hover:shadow-xl transition-shadow touch-none select-none"
       >
         <span className="relative">
           <ClipboardList className="w-5 h-5 text-gray-800" />
@@ -102,21 +217,6 @@ export function AgencyAssistantWidget() {
         <span className="text-sm font-semibold text-gray-900">Assistente</span>
       </button>
 
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-[2147483647] lg:hidden flex items-center gap-2 rounded-full bg-white border border-gray-200 shadow-lg px-4 py-3 hover:shadow-xl transition-shadow"
-      >
-        <span className="relative">
-          <ClipboardList className="w-5 h-5 text-gray-800" />
-          {activeCount > 0 && (
-            <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border border-white">
-              {activeCount > 99 ? "99+" : activeCount}
-            </span>
-          )}
-        </span>
-        <span className="text-sm font-semibold text-gray-900">Assistente</span>
-      </button>
     </>
   ) : (
     <>
