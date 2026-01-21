@@ -940,8 +940,8 @@ export default function BrokerCrmPage() {
           onDragEnd={handleDragEnd}
         >
           {/* Desktop: Grid de colunas */}
-          <div className="hidden md:flex flex-1 min-h-0 w-full px-4 sm:px-6 lg:px-8 py-6">
-            <div className="grid grid-cols-4 lg:grid-cols-7 gap-px bg-gray-200 rounded-2xl p-px items-stretch h-full min-h-0 w-full">
+          <div className="hidden md:flex flex-1 min-h-0 w-full">
+            <div className="grid grid-cols-4 lg:grid-cols-7 gap-px bg-gray-200 items-stretch h-full min-h-0 w-full">
               {STAGE_ORDER.map((stage) => {
                 const config = STAGE_CONFIG[stage];
                 const stageLeads = leadsByStage[stage];
