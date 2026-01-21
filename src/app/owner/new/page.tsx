@@ -1689,11 +1689,14 @@ export default function NewPropertyPage() {
         return;
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
       const res = await fetch("/api/properties", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
-      });
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
       if (res.status === 429) {
         openPublishIssues(
           {
@@ -1787,6 +1790,13 @@ export default function NewPropertyPage() {
       setToast({ message: "Imóvel publicado com sucesso!", type: "success" });
     } catch (err: any) {
       console.error("Error publishing property:", err);
+      if (err?.name === "AbortError") {
+        openPublishIssues(
+          { publish: "A publicação demorou demais para responder. Tente novamente em instantes." },
+          { title: "Tempo limite ao publicar" }
+        );
+        return;
+      }
       const msg =
         typeof err?.message === "string" && err.message.trim()
           ? err.message
@@ -2282,19 +2292,10 @@ export default function NewPropertyPage() {
                     ) : (
                       <button
                         type="button"
-                        onClick={(event) => {
+                        onClick={() => {
+                          if (isSubmitting) return;
                           setSubmitIntent(true);
-                          if (!isSubmitting) setToast({ message: "Publicando...", type: "info" });
-                          const form = formRef.current;
-                          if (form?.requestSubmit) {
-                            try {
-                              form.requestSubmit();
-                              return;
-                            } catch {}
-                          }
-                          try {
-                            handleSubmit({ preventDefault: () => {} } as any);
-                          } catch {}
+                          void handleSubmit({ preventDefault: () => {} } as any);
                         }}
                         disabled={isSubmitting || images.some((i) => i.pending)}
                         className="flex-1 px-3 py-2 glass-teal text-sm font-semibold text-white rounded-lg disabled:opacity-70 shadow"
@@ -3633,19 +3634,10 @@ export default function NewPropertyPage() {
                 ) : (
                   <button
                     type="button"
-                    onClick={(event) => {
+                    onClick={() => {
+                      if (isSubmitting) return;
                       setSubmitIntent(true);
-                      if (!isSubmitting) setToast({ message: "Publicando...", type: "info" });
-                      const form = formRef.current;
-                      if (form?.requestSubmit) {
-                        try {
-                          form.requestSubmit();
-                          return;
-                        } catch {}
-                      }
-                      try {
-                        handleSubmit({ preventDefault: () => {} } as any);
-                      } catch {}
+                      void handleSubmit({ preventDefault: () => {} } as any);
                     }}
                     disabled={isSubmitting || images.some((i) => i.pending)}
                     className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow disabled:opacity-70"
