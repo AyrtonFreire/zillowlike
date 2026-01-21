@@ -471,30 +471,41 @@ export default function LeadSidePanel({
           </div>
 
           <div className="flex flex-wrap gap-2 mt-3">
-            {lead.property.bedrooms ? (
+            {lead.property.bedrooms != null ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Quartos">
                 <BedDouble className="w-3.5 h-3.5 text-gray-500" />
                 <span className="tabular-nums">{lead.property.bedrooms}</span>
               </span>
             ) : null}
-            {lead.property.bathrooms ? (
+            {lead.property.bathrooms != null ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Banheiros">
                 <Bath className="w-3.5 h-3.5 text-gray-500" />
                 <span className="tabular-nums">{lead.property.bathrooms}</span>
               </span>
             ) : null}
-            {lead.property.areaM2 || lead.property.usableAreaM2 || lead.property.builtAreaM2 || lead.property.privateAreaM2 ? (
+            {lead.property.areaM2 != null || lead.property.usableAreaM2 != null || lead.property.builtAreaM2 != null || lead.property.privateAreaM2 != null || lead.property.lotAreaM2 != null ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Área">
                 <Ruler className="w-3.5 h-3.5 text-gray-500" />
                 <span className="tabular-nums">
-                  {lead.property.areaM2 ?? lead.property.usableAreaM2 ?? lead.property.builtAreaM2 ?? lead.property.privateAreaM2}m²
+                  {lead.property.areaM2 ?? lead.property.usableAreaM2 ?? lead.property.builtAreaM2 ?? lead.property.privateAreaM2 ?? lead.property.lotAreaM2}m²
                 </span>
               </span>
             ) : null}
-            {lead.property.parkingSpots ? (
+            {lead.property.parkingSpots != null ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Vagas">
                 <Car className="w-3.5 h-3.5 text-gray-500" />
                 <span className="tabular-nums">{lead.property.parkingSpots}</span>
+              </span>
+            ) : null}
+            {lead.property.suites != null ? (
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Suítes">
+                <BedDouble className="w-3.5 h-3.5 text-gray-500" />
+                <span className="tabular-nums">{lead.property.suites}</span>
+              </span>
+            ) : null}
+            {lead.property.floor != null ? (
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Andar">
+                <span className="tabular-nums">Andar {lead.property.floor}</span>
               </span>
             ) : null}
             {lead.property.furnished ? (

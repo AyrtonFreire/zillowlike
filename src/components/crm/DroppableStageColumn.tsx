@@ -19,7 +19,7 @@ interface DroppableStageColumnProps {
 export default function DroppableStageColumn({
   stageId,
   label,
-  description,
+  description: _description,
   count,
   children,
   collapsed,
@@ -34,7 +34,7 @@ export default function DroppableStageColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-xl bg-white flex flex-col max-h-[72vh] h-full transition-all duration-200 w-72 md:w-auto flex-shrink-0 md:flex-shrink ${
+      className={`rounded-xl bg-white flex flex-col h-full min-h-0 transition-all duration-200 w-72 md:w-auto flex-shrink-0 md:flex-shrink ${
         isOver
           ? "bg-blue-50 ring-2 ring-blue-200"
           : ""
@@ -66,11 +66,10 @@ export default function DroppableStageColumn({
             )}
           </div>
         </div>
-        <p className="text-[11px] text-gray-500 leading-snug">{description}</p>
       </div>
 
       {!collapsed && (
-        <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-[100px]">
+        <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-0">
           {children}
         </div>
       )}

@@ -1642,6 +1642,34 @@ export default function MyLeadsPage() {
                                   {lead.property.city}/{lead.property.state} • {ptBR.type(lead.property.type)}
                                 </div>
                                 <div className="text-xs text-teal-700 font-bold">{formatPrice(lead.property.price)}</div>
+                                <div className="mt-1 flex flex-wrap gap-2">
+                                  {lead.property.bedrooms != null ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Quartos">
+                                      <BedDouble className="w-3.5 h-3.5 text-gray-500" />
+                                      <span className="tabular-nums">{lead.property.bedrooms}</span>
+                                    </span>
+                                  ) : null}
+                                  {lead.property.bathrooms != null ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Banheiros">
+                                      <Bath className="w-3.5 h-3.5 text-gray-500" />
+                                      <span className="tabular-nums">{lead.property.bathrooms}</span>
+                                    </span>
+                                  ) : null}
+                                  {lead.property.parkingSpots != null ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Vagas">
+                                      <Car className="w-3.5 h-3.5 text-gray-500" />
+                                      <span className="tabular-nums">{lead.property.parkingSpots}</span>
+                                    </span>
+                                  ) : null}
+                                  {lead.property.areaM2 != null || lead.property.usableAreaM2 != null || lead.property.builtAreaM2 != null || lead.property.privateAreaM2 != null || lead.property.lotAreaM2 != null ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium" title="Área">
+                                      <Ruler className="w-3.5 h-3.5 text-gray-500" />
+                                      <span className="tabular-nums">
+                                        {lead.property.areaM2 ?? lead.property.usableAreaM2 ?? lead.property.builtAreaM2 ?? lead.property.privateAreaM2 ?? lead.property.lotAreaM2}m²
+                                      </span>
+                                    </span>
+                                  ) : null}
+                                </div>
                               </div>
                             </td>
                             <td className="px-4 py-3">{renderStageSelector(lead)}</td>

@@ -49,6 +49,7 @@ interface PipelineLead {
     title: string;
     price: number;
     type: string;
+    purpose?: "SALE" | "RENT" | null;
     city: string;
     state: string;
     neighborhood?: string | null;
@@ -56,6 +57,10 @@ interface PipelineLead {
     bedrooms?: number | null;
     bathrooms?: number | null;
     areaM2?: number | null;
+    usableAreaM2?: number | null;
+    builtAreaM2?: number | null;
+    privateAreaM2?: number | null;
+    lotAreaM2?: number | null;
     parkingSpots?: number | null;
     images: Array<{ url: string }>;
   };
@@ -116,7 +121,7 @@ const STAGE_CONFIG: Record<PipelineLead["pipelineStage"], {
     borderColor: "border-cyan-200",
   },
   DOCUMENTS: {
-    label: "Docs",
+    label: "Documentação",
     description: "Documentação em andamento",
     icon: FileCheck,
     color: "text-orange-600",
@@ -309,6 +314,14 @@ export default function BrokerCrmPage() {
       .filter(Boolean)
       .join(", ");
 
+    const mainArea =
+      hoverPreviewLead.property.areaM2 ??
+      hoverPreviewLead.property.usableAreaM2 ??
+      hoverPreviewLead.property.builtAreaM2 ??
+      hoverPreviewLead.property.privateAreaM2 ??
+      hoverPreviewLead.property.lotAreaM2 ??
+      null;
+
     const metrics: Array<{ key: string; icon: any; label: string; value: string | number | null | undefined }> = [
       { key: "beds", icon: BedDouble, label: "Quartos", value: hoverPreviewLead.property.bedrooms },
       { key: "baths", icon: Bath, label: "Banheiros", value: hoverPreviewLead.property.bathrooms },
@@ -316,10 +329,17 @@ export default function BrokerCrmPage() {
         key: "area",
         icon: Ruler,
         label: "Área",
-        value: hoverPreviewLead.property.areaM2 != null ? `${hoverPreviewLead.property.areaM2}m²` : null,
+        value: mainArea != null ? `${mainArea}m²` : null,
       },
       { key: "parking", icon: Car, label: "Vagas", value: hoverPreviewLead.property.parkingSpots },
-    ];
+    ].filter((m) => m.value !== null && m.value !== undefined);
+
+    const purposeLabel =
+      hoverPreviewLead.property.purpose === "SALE"
+        ? "Venda"
+        : hoverPreviewLead.property.purpose === "RENT"
+          ? "Aluguel"
+          : null;
 
     return createPortal(
       <div
@@ -343,10 +363,14 @@ export default function BrokerCrmPage() {
             </div>
             <div className="text-teal-700 font-bold mt-1">{formatPrice(hoverPreviewLead.property.price)}</div>
             <div className="text-xs text-gray-600 mt-1 line-clamp-2">{addressLine}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {ptBR.type(hoverPreviewLead.property.type)}
+              {purposeLabel ? ` • ${purposeLabel}` : ""}
+            </div>
             <div className="flex flex-wrap gap-2 mt-3">
               {metrics.map((m) => {
                 const Icon = m.icon;
-                const value = m.value ?? "—";
+                const value = m.value;
                 return (
                   <span
                     key={m.key}
@@ -358,9 +382,6 @@ export default function BrokerCrmPage() {
                   </span>
                 );
               })}
-              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-[11px] font-medium">
-                {ptBR.type(hoverPreviewLead.property.type)}
-              </span>
             </div>
           </div>
         </div>
@@ -654,7 +675,7 @@ export default function BrokerCrmPage() {
   }
 
   return (
-    <div className="bg-gray-50">
+    <div className="bg-gray-50 min-h-screen flex flex-col">
         <div className="hidden md:block bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center gap-3">
@@ -919,8 +940,8 @@ export default function BrokerCrmPage() {
           onDragEnd={handleDragEnd}
         >
           {/* Desktop: Grid de colunas */}
-          <div className="hidden md:block w-full px-4 sm:px-6 lg:px-8 py-6">
-            <div className="grid grid-cols-4 lg:grid-cols-7 gap-px bg-gray-200 rounded-2xl p-px items-stretch">
+          <div className="hidden md:flex flex-1 min-h-0 w-full px-4 sm:px-6 lg:px-8 py-6">
+            <div className="grid grid-cols-4 lg:grid-cols-7 gap-px bg-gray-200 rounded-2xl p-px items-stretch h-full min-h-0 w-full">
               {STAGE_ORDER.map((stage) => {
                 const config = STAGE_CONFIG[stage];
                 const stageLeads = leadsByStage[stage];
@@ -1043,7 +1064,6 @@ export default function BrokerCrmPage() {
                           </div>
                           <div>
                             <h3 className={`font-semibold ${config.color}`}>{config.label}</h3>
-                            <p className="text-xs text-gray-600">{config.description}</p>
                           </div>
                           <div className="ml-auto">
                             <span className={`text-2xl font-bold ${config.color}`}>{stageLeads.length}</span>

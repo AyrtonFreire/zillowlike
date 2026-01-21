@@ -103,11 +103,7 @@ export default function DraggableLeadCard({
       ref={setRefs}
       style={style}
       {...dragProps}
-      className={`bg-white rounded-2xl border ${
-        isDragging ? "border-teal-400 shadow-xl" : "border-gray-200"
-      } p-3 md:p-3 text-xs md:text-[13px] text-gray-900 flex flex-col gap-2 transition-shadow overflow-hidden ${
-        dragDisabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"
-      } ${className || ""}`}
+      className={`rounded-2xl ${dragDisabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"} ${className || ""}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={onHoverEnd}
       onClick={(event) => {
@@ -117,6 +113,15 @@ export default function DraggableLeadCard({
         onOpenLead();
       }}
     >
+      <div
+        className={`bg-white rounded-2xl border ${
+          isDragging ? "border-teal-400 shadow-xl" : "border-gray-200"
+        } p-3 md:p-3 text-xs md:text-[13px] text-gray-900 flex flex-col gap-2 overflow-hidden transition-all duration-150 will-change-transform ${
+          isDragging
+            ? ""
+            : "hover:-translate-y-[1px] hover:shadow-md hover:border-gray-300"
+        }`}
+      >
       {/* Mobile layout (mantém o visual atual) */}
       <div className="md:hidden">
         <div className="flex items-start gap-2">
@@ -306,6 +311,7 @@ export default function DraggableLeadCard({
             </button>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
