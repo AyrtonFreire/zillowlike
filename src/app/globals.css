@@ -7,6 +7,7 @@
   --foreground: #171717;
   --color-background: #ffffff;
   --color-foreground: #171717;
+  --site-max-width: 1600px;
   --site-gutter: 6px;
   --site-gutter-sm: 8px;
   --site-gutter-lg: 12px;
@@ -87,6 +88,14 @@ body {
     padding-left: var(--site-gutter-lg);
     padding-right: var(--site-gutter-lg);
   }
+}
+
+.max-w-7xl {
+  max-width: min(var(--site-max-width), 100%);
+}
+
+.max-w-6xl {
+  max-width: min(calc(var(--site-max-width) - 160px), 100%);
 }
 
 html,
