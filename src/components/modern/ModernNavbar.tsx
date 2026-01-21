@@ -865,7 +865,10 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   </div>
                 </button>
                 {userMenuOpen && (
-                  <div id="user-menu-dropdown" className="absolute left-0 mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-xl z-[20000]">
+                  <div
+                    id="user-menu-dropdown"
+                    className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-16px)] bg-white rounded-xl border border-gray-200 shadow-xl z-[20000]"
+                  >
                     <ul className="py-1 text-sm text-gray-800">
                       {role === 'OWNER' && (
                         <>

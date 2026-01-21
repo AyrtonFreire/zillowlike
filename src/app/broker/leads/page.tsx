@@ -996,7 +996,7 @@ export default function MyLeadsPage() {
       {/* Contadores inteligentes - visíveis quando tem algo relevante */}
       {(smartCounters.awaitingResponse > 0 || smartCounters.noContact48h > 0) && (
         <div className="bg-white border-b border-gray-200">
-          <div className="w-full px-4 sm:px-6 lg:px-8 py-2">
+          <div className="w-full px-2 sm:px-3 lg:px-4 py-2">
             <div className="flex flex-wrap gap-3">
               {smartCounters.awaitingResponse > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg text-xs whitespace-nowrap">
@@ -1183,7 +1183,7 @@ export default function MyLeadsPage() {
     </div>
 
       {/* Leads Content */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full px-2 sm:px-3 lg:px-4 py-6">
         {error ? (
           <EmptyState
             title="Não foi possível carregar seus leads"
@@ -1587,11 +1587,11 @@ export default function MyLeadsPage() {
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr className="text-left text-xs font-semibold text-gray-600">
-                        <th className="px-4 py-3">Lead</th>
-                        <th className="px-4 py-3">Imóvel</th>
-                        <th className="px-4 py-3">Etapa</th>
-                        <th className="px-4 py-3">Atividade</th>
-                        <th className="px-4 py-3">Ações</th>
+                        <th className="px-3 py-3">Lead</th>
+                        <th className="px-3 py-3">Imóvel</th>
+                        <th className="px-3 py-3">Etapa</th>
+                        <th className="px-3 py-3">Atividade</th>
+                        <th className="px-3 py-3">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -1603,7 +1603,7 @@ export default function MyLeadsPage() {
                             className={`cursor-pointer hover:bg-gray-50 ${lead.hasUnreadMessages ? "bg-blue-50/30" : ""}`}
                             onClick={() => openLeadPanel(lead.id)}
                           >
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3">
                               <div className="flex items-center gap-3">
                                 <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                                   <Image
@@ -1625,7 +1625,7 @@ export default function MyLeadsPage() {
                               </div>
                             </td>
                             <td
-                              className="px-4 py-3"
+                              className="px-3 py-3"
                               onMouseEnter={(e) => {
                                 keepHoverPreviewOpen();
                                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -1672,8 +1672,8 @@ export default function MyLeadsPage() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3">{renderStageSelector(lead)}</td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3">{renderStageSelector(lead)}</td>
+                            <td className="px-3 py-3">
                               <div className="text-gray-700">{lastActivityLabel}</div>
                               {lead.lastMessagePreview && (
                                 <div className={`text-xs ${lead.hasUnreadMessages ? "font-semibold text-gray-900" : "text-gray-600"} line-clamp-1`}>
@@ -1682,7 +1682,7 @@ export default function MyLeadsPage() {
                                 </div>
                               )}
                             </td>
-                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-2">
                                 <Link
                                   href={`/broker/chats?lead=${lead.id}`}
