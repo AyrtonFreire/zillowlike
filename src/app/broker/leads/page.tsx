@@ -1025,7 +1025,7 @@ export default function MyLeadsPage() {
       <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
         <div className="w-full">
           {/* Toggle mobile + Filtros */}
-          <div className="px-4 py-3">
+          <div className="px-2 sm:px-3 lg:px-4 py-3">
             <div className="flex items-center gap-3">
             {/* Filtros - scroll horizontal */}
             <div className="flex-1">
@@ -1072,7 +1072,7 @@ export default function MyLeadsPage() {
         </div>
 
         {/* Botão de filtros avançados */}
-        <div className="px-4 pb-3 flex items-center gap-2">
+        <div className="px-2 sm:px-3 lg:px-4 pb-3 flex items-center gap-2">
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -1111,7 +1111,7 @@ export default function MyLeadsPage() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden border-t border-gray-100"
             >
-              <div className="px-4 py-3 bg-gray-50 space-y-3">
+              <div className="px-2 sm:px-3 lg:px-4 py-3 bg-gray-50 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <input
                     type="text"
