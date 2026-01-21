@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { parseVideoUrl } from "@/lib/video";
 
 async function preprocessImageForUpload(file: File): Promise<File> {
   const MAX_SIDE = 2560;
@@ -60,6 +61,7 @@ export default function EditPropertyPage() {
   const [description, setDescription] = useState("");
   const [priceBRL, setPriceBRL] = useState("");
   const [type, setType] = useState("HOUSE");
+  const [videoUrl, setVideoUrl] = useState("");
 
   const [street, setStreet] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
@@ -81,6 +83,7 @@ export default function EditPropertyPage() {
         const p = data.property;
         setTitle(p.title);
         setDescription(p.description);
+        setVideoUrl(p.videoUrl || "");
         setPriceBRL(String(Math.round(p.price / 100)));
         setType(p.type);
         setStreet(p.street);
@@ -110,6 +113,7 @@ export default function EditPropertyPage() {
       const payload: any = {
         title,
         description,
+        videoUrl: videoUrl || "",
         price: Math.round(Number(priceBRL) * 100),
         type,
         street,
@@ -162,6 +166,40 @@ export default function EditPropertyPage() {
             <label className="block text-sm font-medium mb-1">Título</label>
             <input className="w-full border rounded px-3 py-2" value={title} onChange={(e)=>setTitle(e.target.value)} required />
           </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium">Vídeo (YouTube/Vimeo)</label>
+              {videoUrl && (
+                <button type="button" className="text-xs text-gray-600" onClick={() => setVideoUrl("")}>Remover</button>
+              )}
+            </div>
+            <input
+              className="w-full border rounded px-3 py-2"
+              value={videoUrl}
+              onChange={(e)=>setVideoUrl(e.target.value)}
+              placeholder="https://youtu.be/... ou https://vimeo.com/..."
+            />
+            {videoUrl && !parseVideoUrl(videoUrl) && (
+              <div className="mt-1 text-xs text-red-700">Link de vídeo inválido. Use YouTube ou Vimeo.</div>
+            )}
+            {videoUrl && parseVideoUrl(videoUrl) && (
+              <div className="mt-3">
+                <div className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-black aspect-video">
+                  <iframe
+                    src={parseVideoUrl(videoUrl)?.embedUrl}
+                    title="Vídeo do imóvel"
+                    className="absolute inset-0 w-full h-full"
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    sandbox="allow-scripts allow-same-origin allow-presentation"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <h2 className="text-lg font-semibold mb-2">Imagens</h2>
             <div className="space-y-4">

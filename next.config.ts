@@ -48,6 +48,7 @@ const nextConfig: NextConfig = {
       "img-src 'self' data: blob: https: https://res.cloudinary.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https://vitals.vercel-insights.com https://api.cloudinary.com https://*.supabase.co https://*.pusher.com wss://*.pusher.com https://nominatim.openstreetmap.org",
+      "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com",
       "frame-ancestors 'none'",
     ];
 

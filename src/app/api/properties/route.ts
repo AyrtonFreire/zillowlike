@@ -6,6 +6,7 @@ import { PropertyCreateSchema, PropertyQuerySchema } from "@/lib/schemas";
 import { Prisma } from "@prisma/client";
 import { createHash } from "crypto";
 import { requireRecoveryFactor } from "@/lib/recovery-factor";
+import { parseVideoUrl } from "@/lib/video";
 
 // Simple in-memory rate limiter: allow 5 POSTs per IP per minute (best-effort, free)
 const rateMap = new Map<string, number[]>();
@@ -652,7 +653,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { title, metaTitle, metaDescription, description, priceBRL, type, purpose, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility } = parsed.data;
+    const { title, metaTitle, metaDescription, description, priceBRL, type, purpose, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility, videoUrl } = parsed.data;
+
+    const parsedVideo = typeof videoUrl === "string" && videoUrl.trim() ? parseVideoUrl(videoUrl) : null;
 
     let latitude = geo?.lat;
     let longitude = geo?.lng;
@@ -754,6 +757,9 @@ export async function POST(req: NextRequest) {
       description,
       price: BigInt(price),
       type: safeType,
+      videoUrl: parsedVideo ? parsedVideo.canonicalUrl : null,
+      videoProvider: parsedVideo ? parsedVideo.provider : null,
+      videoId: parsedVideo ? parsedVideo.id : null,
       ...(purpose ? { purpose } : {}),
       ownerId: userId || undefined,
       street: address.street,
@@ -904,8 +910,25 @@ export async function PATCH(req: NextRequest) {
 
     // allow limited fields update
     const allowed: any = {};
-    const fields = ["title","description","price","type","purpose","conditionTags","street","neighborhood","city","state","postalCode","latitude","longitude","bedrooms","bathrooms","areaM2"];
+    const fields = ["title","description","price","type","purpose","conditionTags","street","neighborhood","city","state","postalCode","latitude","longitude","bedrooms","bathrooms","areaM2","videoUrl"];
     for (const k of fields) if (k in data) allowed[k] = data[k];
+
+    if ("videoUrl" in allowed) {
+      const raw = typeof allowed.videoUrl === "string" ? allowed.videoUrl.trim() : "";
+      if (!raw) {
+        allowed.videoUrl = null;
+        allowed.videoProvider = null;
+        allowed.videoId = null;
+      } else {
+        const parsed = parseVideoUrl(raw);
+        if (!parsed) {
+          return NextResponse.json({ error: "Invalid video url" }, { status: 400 });
+        }
+        allowed.videoUrl = parsed.canonicalUrl;
+        allowed.videoProvider = parsed.provider;
+        allowed.videoId = parsed.id;
+      }
+    }
 
     if ("price" in allowed) {
       allowed.price = BigInt(Math.trunc(Number(allowed.price)));

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent, ArrowUpRight } from "lucide-react";
+import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent, ArrowUpRight, Video } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -43,6 +43,8 @@ interface PropertyCardPremiumProps {
     conditionTags?: string[];
     description?: string;
     media?: { type: 'image' | 'video'; url: string }[];
+    videoUrl?: string | null;
+    videoId?: string | null;
     createdAt?: string | Date | null;
     viewsCount?: number | null;
     leadsCount?: number | null;
@@ -176,6 +178,10 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     const imgs = Array.isArray(property.images) ? property.images : [];
     return imgs.slice(0, MAX_CARD_IMAGES);
   }, [property.images]);
+  const hasVideo = useMemo(() => {
+    if (property.videoUrl || property.videoId) return true;
+    return Array.isArray(property.media) && property.media.some((m) => m.type === "video");
+  }, [property.media, property.videoId, property.videoUrl]);
   const hasMoreImages = (Array.isArray(property.images) ? property.images.length : 0) > MAX_CARD_IMAGES;
   const totalSlides = cardImages.length + (hasMoreImages ? 1 : 0);
 
@@ -533,6 +539,14 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               {watermark && (
                 <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-2">
                   <span className="text-[10px] font-semibold text-white/80 bg-black/30 px-2 py-1 rounded-md">OggaHub</span>
+                </div>
+              )}
+
+              {hasVideo && (
+                <div className="absolute bottom-3 left-3 z-10">
+                  <div className="flex items-center justify-center w-7 h-7 rounded-full bg-black/65 text-white shadow-md">
+                    <Video className="w-3.5 h-3.5" />
+                  </div>
                 </div>
               )}
 

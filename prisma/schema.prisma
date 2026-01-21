@@ -68,6 +68,11 @@ enum Purpose {
   RENT
 }
 
+enum VideoProvider {
+  YOUTUBE
+  VIMEO
+}
+
 enum ClientStatus {
   ACTIVE
   PAUSED
@@ -215,6 +220,10 @@ model Property {
   owner       User?          @relation("PropertyOwner", fields: [ownerId], references: [id])
   teamId      String?
   team        Team?          @relation(fields: [teamId], references: [id])
+
+  videoUrl      String?
+  videoProvider VideoProvider?
+  videoId       String?
 
   // Location & address
   street       String

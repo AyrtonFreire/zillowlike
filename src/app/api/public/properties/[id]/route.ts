@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
 
-    const item = await prisma.property.findUnique({
+    const item = await (prisma as any).property.findUnique({
       where: { id },
       select: {
         id: true,
@@ -26,6 +26,9 @@ export async function GET(req: NextRequest, context: RouteContext) {
         purpose: true,
         status: true,
         ownerId: true,
+        videoUrl: true,
+        videoProvider: true,
+        videoId: true,
         street: true,
         neighborhood: true,
         city: true,

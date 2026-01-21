@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireRecoveryFactor } from "@/lib/recovery-factor";
+import { parseVideoUrl } from "@/lib/video";
 
 function jsonSafe<T>(data: T): any {
   return JSON.parse(
@@ -140,6 +141,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       "type",
       "status",
       "purpose",
+      "videoUrl",
       "street",
       "neighborhood",
       "city",
@@ -228,6 +230,23 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     for (const field of allowedFields) {
       if (field in body) {
         updateData[field] = body[field];
+      }
+    }
+
+    if ("videoUrl" in updateData) {
+      const raw = typeof updateData.videoUrl === "string" ? updateData.videoUrl.trim() : "";
+      if (!raw) {
+        updateData.videoUrl = null;
+        updateData.videoProvider = null;
+        updateData.videoId = null;
+      } else {
+        const parsed = parseVideoUrl(raw);
+        if (!parsed) {
+          return NextResponse.json({ error: "Invalid video url" }, { status: 400 });
+        }
+        updateData.videoUrl = parsed.canonicalUrl;
+        updateData.videoProvider = parsed.provider;
+        updateData.videoId = parsed.id;
       }
     }
 

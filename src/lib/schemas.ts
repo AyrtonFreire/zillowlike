@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseVideoUrl } from "@/lib/video";
 
 export const PropertyTypeEnum = z.enum([
   "HOUSE",
@@ -18,7 +19,8 @@ export const SunOrientationEnum = z.enum(["NASCENTE","POENTE","OUTRA"]);
 // Free-form condition/features tags (display-only), capped by length and count
 export const ConditionTagEnum = z.string().min(1).max(60);
 
-export const PropertyCreateSchema = z.object({
+export const PropertyCreateSchema = z
+  .object({
   title: z.string().min(3).max(70),
   metaTitle: z.string().max(65).optional().or(z.literal("")),
   metaDescription: z.string().max(155).optional().or(z.literal("")),
@@ -127,6 +129,7 @@ export const PropertyCreateSchema = z.object({
     hideIPTU: z.boolean().optional(),
     iptuYearly: z.number().int().nullable().optional(), // em centavos
   }).optional(),
+  videoUrl: z.string().max(1000).optional().or(z.literal("")),
   images: z
     .array(
       z.object({
@@ -137,7 +140,20 @@ export const PropertyCreateSchema = z.object({
     )
     .max(30)
     .optional(),
-});
+  })
+  .superRefine((value, ctx) => {
+    const raw = (value as any)?.videoUrl;
+    if (typeof raw !== "string" || !raw.trim()) return;
+
+    const parsed = parseVideoUrl(raw);
+    if (!parsed) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["videoUrl"],
+        message: "Invalid video url",
+      });
+    }
+  });
 
 export type PropertyCreateInput = z.infer<typeof PropertyCreateSchema>;
 

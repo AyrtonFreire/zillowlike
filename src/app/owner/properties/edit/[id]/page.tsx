@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, Upload, X, GripVertical } from "lucide-react";
+import { parseVideoUrl } from "@/lib/video";
 
 type RouteParams = {
   id: string;
@@ -129,6 +130,7 @@ export default function EditPropertyPage() {
   const [purpose, setPurpose] = useState<"SALE" | "RENT" | "">("");
   const [condoFeeBRL, setCondoFeeBRL] = useState("");
   const [iptuYearlyBRL, setIptuYearlyBRL] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [furnished, setFurnished] = useState(false);
   const [petFriendly, setPetFriendly] = useState(false);
   const [hasBalcony, setHasBalcony] = useState(false);
@@ -199,6 +201,7 @@ export default function EditPropertyPage() {
         const p = data.property;
         setTitle(p.title);
         setDescription(p.description || "");
+        setVideoUrl(p.videoUrl || "");
         setPrice(String(p.price / 100));
         setType(p.type);
         setStatus(p.status);
@@ -302,6 +305,7 @@ export default function EditPropertyPage() {
         body: JSON.stringify({
           title,
           description,
+          videoUrl: videoUrl || null,
           price: Math.round(parseFloat(price) * 100),
           type,
           status,
@@ -664,6 +668,48 @@ export default function EditPropertyPage() {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Vídeo do imóvel (YouTube/Vimeo)
+                    </label>
+                    {videoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setVideoUrl("")}
+                        className="text-xs font-semibold text-gray-600 hover:text-gray-800"
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
+                    placeholder="https://youtu.be/... ou https://vimeo.com/..."
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  {videoUrl && !parseVideoUrl(videoUrl) && (
+                    <div className="mt-2 text-xs text-red-700">Link de vídeo inválido. Use YouTube ou Vimeo.</div>
+                  )}
+                  {videoUrl && parseVideoUrl(videoUrl) && (
+                    <div className="mt-3">
+                      <div className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-black aspect-video">
+                        <iframe
+                          src={parseVideoUrl(videoUrl)?.embedUrl}
+                          title="Vídeo do imóvel"
+                          className="absolute inset-0 w-full h-full"
+                          loading="lazy"
+                          referrerPolicy="strict-origin-when-cross-origin"
+                          allow="autoplay; encrypted-media; picture-in-picture"
+                          sandbox="allow-scripts allow-same-origin allow-presentation"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </section>

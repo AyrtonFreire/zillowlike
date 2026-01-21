@@ -12,6 +12,7 @@ import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
 import { geocodeAddressParts } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import { buildPropertyPath } from "@/lib/slug";
+import { parseVideoUrl } from "@/lib/video";
 import Toast from "@/components/Toast";
 import { useIssueDrawer } from "@/contexts/IssueDrawerContext";
 import Input from "@/components/ui/Input";
@@ -42,6 +43,7 @@ export default function NewPropertyPage() {
   const [customTitle, setCustomTitle] = useState(""); // Título editável pelo usuário
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [priceBRL, setPriceBRL] = useState("");
   const [type, setType] = useState("HOUSE");
   const [purpose, setPurpose] = useState<"SALE"|"RENT"|"">("");
@@ -839,6 +841,7 @@ export default function NewPropertyPage() {
     setCustomTitle("");
     setMetaTitle("");
     setMetaDescription("");
+    setVideoUrl("");
     setPriceBRL("");
     setType("HOUSE");
     setConditionTags([]);
@@ -976,6 +979,7 @@ export default function NewPropertyPage() {
       else if (d.aiGeneratedMetaTitle) setMetaTitle(d.aiGeneratedMetaTitle);
       if (d.metaDescription) setMetaDescription(d.metaDescription);
       else if (d.aiGeneratedMetaDescription) setMetaDescription(d.aiGeneratedMetaDescription);
+      if (d.videoUrl) setVideoUrl(d.videoUrl);
       if (d.priceBRL) setPriceBRL(d.priceBRL);
       if (d.type) setType(d.type);
       if (d.purpose) setPurpose(d.purpose);
@@ -1052,6 +1056,7 @@ export default function NewPropertyPage() {
         else if (d.aiGeneratedMetaTitle) setMetaTitle(d.aiGeneratedMetaTitle);
         if (d.metaDescription) setMetaDescription(d.metaDescription);
         else if (d.aiGeneratedMetaDescription) setMetaDescription(d.aiGeneratedMetaDescription);
+        if (d.videoUrl) setVideoUrl(d.videoUrl);
         if (d.priceBRL) setPriceBRL(d.priceBRL);
         if (d.type) setType(d.type);
         if (d.purpose) setPurpose(d.purpose);
@@ -1127,6 +1132,7 @@ export default function NewPropertyPage() {
           customTitle,
           metaTitle,
           metaDescription,
+          videoUrl,
           priceBRL,
           type,
           purpose,
@@ -1187,7 +1193,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, petFriendly, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, isSubmitting, publishedProperty]);
+  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, petFriendly, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, isSubmitting, publishedProperty]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1365,6 +1371,7 @@ export default function NewPropertyPage() {
       title: { title: "Título do anúncio", step: 4 },
       metaTitle: { title: "Meta Title", step: 4 },
       metaDescription: { title: "Meta Description", step: 4 },
+      videoUrl: { title: "Vídeo", step: 4 },
       contactVerification: { title: "Contato para publicação", step: 6 },
     } as const;
   }, []);
@@ -1556,6 +1563,7 @@ export default function NewPropertyPage() {
         metaTitle: metaTitle || "",
         metaDescription: metaDescription || "",
         description,
+        videoUrl: videoUrl || "",
         priceBRL: parseBRLToNumber(priceBRL),
         type,
         purpose,
@@ -1655,6 +1663,7 @@ export default function NewPropertyPage() {
           if (p === "title") next.title = "Informe um título válido.";
           else if (p === "metaTitle") next.metaTitle = "Meta Title deve ter no máximo 65 caracteres.";
           else if (p === "metaDescription") next.metaDescription = "Meta Description deve ter no máximo 155 caracteres.";
+          else if (p === "videoUrl") next.videoUrl = "Link de vídeo inválido. Use YouTube ou Vimeo.";
           else if (p === "priceBRL") next.priceBRL = "Informe um preço válido.";
           else if (p === "type") next.type = "Selecione o tipo de imóvel.";
           else if (p === "address.postalCode") next.postalCode = "Informe um CEP válido.";
@@ -1726,6 +1735,7 @@ export default function NewPropertyPage() {
             if (p === "title") next.title = "Informe um título válido.";
             else if (p === "metaTitle") next.metaTitle = "Meta Title deve ter no máximo 65 caracteres.";
             else if (p === "metaDescription") next.metaDescription = "Meta Description deve ter no máximo 155 caracteres.";
+            else if (p === "videoUrl") next.videoUrl = "Link de vídeo inválido. Use YouTube ou Vimeo.";
             else if (p === "priceBRL") next.priceBRL = "Informe um preço válido.";
             else if (p === "type") next.type = "Selecione o tipo de imóvel.";
             else if (p === "address.postalCode") next.postalCode = "Informe um CEP válido.";
@@ -1919,6 +1929,7 @@ export default function NewPropertyPage() {
       if (finalTitle.length < 3) errs.title = "Informe um título para o anúncio.";
       if (metaTitle && metaTitle.length > 65) errs.metaTitle = "Meta Title deve ter no máximo 65 caracteres.";
       if (metaDescription && metaDescription.length > 155) errs.metaDescription = "Meta Description deve ter no máximo 155 caracteres.";
+      if (videoUrl && !parseVideoUrl(videoUrl)) errs.videoUrl = "Link de vídeo inválido. Use YouTube ou Vimeo.";
       if (Object.keys(errs).length) {
         applyErrorsAndFocus(4, errs);
         return;
@@ -2485,6 +2496,7 @@ export default function NewPropertyPage() {
                       <div ref={mapContainerRef} className="w-full h-full" />
                     </div>
                   </div>
+
                 </div>
               )}
 
@@ -2605,6 +2617,7 @@ export default function NewPropertyPage() {
                         setDescription("");
                         setMetaTitle("");
                         setMetaDescription("");
+                        setVideoUrl("");
                       }}
                       className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
                     >
@@ -2676,6 +2689,61 @@ export default function NewPropertyPage() {
                         <span>{metaDescription.length}/155</span>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="border border-gray-200 rounded-xl p-4 bg-white">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-900">Vídeo do imóvel (YouTube/Vimeo)</h3>
+                        <p className="text-xs text-gray-600 mt-1">Cole o link do vídeo. Opcional.</p>
+                      </div>
+                      {videoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVideoUrl("");
+                            clearFieldError("videoUrl");
+                          }}
+                          className="text-xs font-semibold text-gray-600 hover:text-gray-800"
+                        >
+                          Remover
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="mt-3">
+                      <Input
+                        id="videoUrl"
+                        label="Link do vídeo"
+                        value={videoUrl}
+                        error={fieldErrors.videoUrl}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setVideoUrl(v);
+                          if (!v.trim()) {
+                            clearFieldError("videoUrl");
+                          }
+                        }}
+                        placeholder="https://youtu.be/... ou https://vimeo.com/..."
+                        optional
+                      />
+                    </div>
+
+                    {videoUrl && parseVideoUrl(videoUrl) && (
+                      <div className="mt-3">
+                        <div className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-black aspect-video">
+                          <iframe
+                            src={parseVideoUrl(videoUrl)?.embedUrl}
+                            title="Vídeo do imóvel"
+                            className="absolute inset-0 w-full h-full"
+                            loading="lazy"
+                            referrerPolicy="strict-origin-when-cross-origin"
+                            allow="autoplay; encrypted-media; picture-in-picture"
+                            sandbox="allow-scripts allow-same-origin allow-presentation"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>

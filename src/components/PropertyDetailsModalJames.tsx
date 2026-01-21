@@ -11,6 +11,7 @@ import { getLowestFinancing } from "@/lib/financing";
 import { normalizePOIs } from "@/lib/overpass";
 import { buildPropertyPath } from "@/lib/slug";
 import { ptBR } from "@/lib/i18n/property";
+import { parseVideoUrl } from "@/lib/video";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 const SimilarCarousel = dynamic(() => import("@/components/SimilarCarousel"), { ssr: false });
@@ -33,6 +34,9 @@ type PropertyDetails = {
   price: number;
   type: string;
   purpose?: 'SALE' | 'RENT';
+  videoUrl?: string | null;
+  videoProvider?: 'YOUTUBE' | 'VIMEO' | null;
+  videoId?: string | null;
   street: string;
   neighborhood: string | null;
   city: string;
@@ -731,6 +735,22 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             >
         {/* Gallery */}
         <div className="max-w-screen-2xl mx-auto md:px-6 lg:px-8 md:py-6">
+          {property?.videoUrl && parseVideoUrl(property.videoUrl) && (
+            <div className="mb-4">
+              <div className="relative w-full overflow-hidden rounded-xl border border-gray-200 bg-black aspect-video">
+                <iframe
+                  src={parseVideoUrl(property.videoUrl)?.embedUrl}
+                  title="Vídeo do imóvel"
+                  className="absolute inset-0 w-full h-full"
+                  loading="lazy"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  sandbox="allow-scripts allow-same-origin allow-presentation"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Mobile: swipeable gallery - IGUAL AO CARD */}
           <div
             ref={mobContainerRef}
