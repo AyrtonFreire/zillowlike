@@ -287,83 +287,85 @@ export default function AgencyTeamCrmPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <label className="block">
-            <span className="block text-[11px] font-semibold text-gray-600">Buscar</span>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cliente, imóvel, corretor, ID..."
-              className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
-            />
-          </label>
-          <label className="block">
-            <span className="block text-[11px] font-semibold text-gray-600">Etapa</span>
-            <select
-              value={stage}
-              onChange={(e) => setStage(String(e.target.value))}
-              className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
-            >
-              <option value="">Todas</option>
-              {stageOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="block text-[11px] font-semibold text-gray-600">Responsável</span>
-            <select
-              value={realtorId}
-              onChange={(e) => setRealtorId(String(e.target.value))}
-              className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
-            >
-              <option value="">Todos</option>
-              {realtorOptions.map((m) => (
-                <option key={m.userId} value={m.userId}>
-                  {String(m.name || m.email || m.userId)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2 mt-6 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={onlyPendingReply}
-              onChange={(e) => setOnlyPendingReply(e.target.checked)}
-              className="h-4 w-4"
-            />
-            Só pendentes (SLA)
-          </label>
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm lg:shadow-none lg:rounded-t-2xl lg:border lg:border-gray-200 lg:border-b-0">
+        <div className="px-0 py-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <label className="block">
+              <span className="block text-[11px] font-semibold text-gray-600">Buscar</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Cliente, imóvel, corretor, ID..."
+                className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
+              />
+            </label>
+            <label className="block">
+              <span className="block text-[11px] font-semibold text-gray-600">Etapa</span>
+              <select
+                value={stage}
+                onChange={(e) => setStage(String(e.target.value))}
+                className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
+              >
+                <option value="">Todas</option>
+                {stageOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="block text-[11px] font-semibold text-gray-600">Responsável</span>
+              <select
+                value={realtorId}
+                onChange={(e) => setRealtorId(String(e.target.value))}
+                className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
+              >
+                <option value="">Todos</option>
+                {realtorOptions.map((m) => (
+                  <option key={m.userId} value={m.userId}>
+                    {String(m.name || m.email || m.userId)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 mt-6 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={onlyPendingReply}
+                onChange={(e) => setOnlyPendingReply(e.target.checked)}
+                className="h-4 w-4"
+              />
+              Só pendentes (SLA)
+            </label>
+          </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm lg:rounded-b-2xl lg:rounded-t-none lg:border-t-0">
         <div className="overflow-x-auto">
           <table className="min-w-[980px] w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr className="text-left text-[11px] font-semibold text-gray-600">
-                <th className="px-4 py-3">Lead</th>
-                <th className="px-4 py-3">Imóvel</th>
-                <th className="px-4 py-3">Etapa</th>
-                <th className="px-4 py-3">Responsável</th>
-                <th className="px-4 py-3">Criado</th>
-                <th className="px-4 py-3">SLA</th>
-                <th className="px-4 py-3">Ações</th>
+                <th className="pl-2 pr-3 py-3">Lead</th>
+                <th className="px-3 py-3">Imóvel</th>
+                <th className="px-3 py-3">Etapa</th>
+                <th className="px-3 py-3">Responsável</th>
+                <th className="px-3 py-3">Criado</th>
+                <th className="px-3 py-3">SLA</th>
+                <th className="px-3 py-3">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td className="px-4 py-6 text-gray-600" colSpan={7}>
+                  <td className="px-3 py-6 text-gray-600" colSpan={7}>
                     Carregando...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-8 text-gray-600" colSpan={7}>
+                  <td className="px-3 py-8 text-gray-600" colSpan={7}>
                     Nenhum lead encontrado com os filtros atuais.
                   </td>
                 </tr>
@@ -376,23 +378,23 @@ export default function AgencyTeamCrmPage() {
                   const isPending = !!pending;
                   return (
                     <tr key={leadId} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
+                      <td className="pl-2 pr-3 py-3">
                         <div className="font-semibold text-gray-900">{l.contact?.name || `Lead ${leadId}`}</div>
                         <div className="text-[11px] text-gray-500">ID: {leadId}</div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <div className="font-medium text-gray-900 line-clamp-1">{l.property?.title || "-"}</div>
                         <div className="text-[11px] text-gray-500">
                           {l.property?.city ? `${l.property.city}` : ""}
                           {l.property?.state ? `/${l.property.state}` : ""}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700">
                           {l.pipelineStage}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <div className="min-w-[220px]">
                           <select
                             value={assignedId}
@@ -409,8 +411,8 @@ export default function AgencyTeamCrmPage() {
                           </select>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-700">{formatShortDate(l.createdAt)}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 text-gray-700">{formatShortDate(l.createdAt)}</td>
+                      <td className="px-3 py-3">
                         {isPending ? (
                           <div className="inline-flex items-center gap-2 rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-[11px] font-semibold text-rose-700">
                             <AlertTriangle className="w-3.5 h-3.5" />
@@ -420,7 +422,7 @@ export default function AgencyTeamCrmPage() {
                           <span className="text-[11px] text-gray-500">OK</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <Link
                           href={`/agency/team-chat`}
                           className="text-sm font-semibold text-blue-600 hover:text-blue-700"
