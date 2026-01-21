@@ -1587,7 +1587,7 @@ export default function MyLeadsPage() {
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr className="text-left text-xs font-semibold text-gray-600">
-                        <th className="px-3 py-3">Lead</th>
+                        <th className="pl-2 pr-3 py-3">Lead</th>
                         <th className="px-3 py-3">Imóvel</th>
                         <th className="px-3 py-3">Etapa</th>
                         <th className="px-3 py-3">Atividade</th>
@@ -1603,7 +1603,7 @@ export default function MyLeadsPage() {
                             className={`cursor-pointer hover:bg-gray-50 ${lead.hasUnreadMessages ? "bg-blue-50/30" : ""}`}
                             onClick={() => openLeadPanel(lead.id)}
                           >
-                            <td className="px-3 py-3">
+                            <td className="pl-2 pr-3 py-3">
                               <div className="flex items-center gap-3">
                                 <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                                   <Image
