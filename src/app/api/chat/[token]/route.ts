@@ -131,6 +131,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       where: { clientChatToken: token },
       select: {
         id: true,
+        teamId: true,
         realtorId: true,
         pipelineStage: true,
         respondedAt: true,
@@ -222,6 +223,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         leadId: lead.id,
         fromClient,
         content: parsed.data.content.trim(),
+        source: fromClient ? "HUMAN" : "HUMAN",
+      },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
       },
     });
 
@@ -239,68 +246,73 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       return !!rec?.id;
     };
 
-    if (!fromClient) {
-      try {
-        const currentStage = previousStage;
-        if (!currentStage || currentStage === "NEW") {
-          await (prisma as any).lead.update({
-            where: { id: lead.id },
-            data: {
-              pipelineStage: "CONTACT",
-              respondedAt: (lead as any)?.respondedAt ? undefined : new Date(),
-            },
-            select: { id: true },
-          });
-        } else if (!(lead as any)?.respondedAt) {
-          await (prisma as any).lead.update({
-            where: { id: lead.id },
-            data: { respondedAt: new Date() },
-            select: { id: true },
-          });
-        }
-      } catch (updateError) {
-        console.error("Error auto-updating lead pipelineStage on chat reply:", updateError);
+    try {
+      // Se um profissional respondeu, marcar respondedAt e, se estiver em NEW, avançar para CONTACT
+      if (!fromClient) {
+        const stage = String(previousStage || "");
+        const shouldAdvance = !stage || stage === "NEW";
+        await (prisma as any).lead.update({
+          where: { id: lead.id },
+          data: {
+            pipelineStage: shouldAdvance ? "CONTACT" : undefined,
+            respondedAt: (lead as any)?.respondedAt ? undefined : new Date(),
+          },
+          select: { id: true },
+        });
       }
+    } catch {
+      // ignore
     }
 
-    if (fromClient) {
-      await LeadEventService.record({
-        leadId: lead.id,
-        type: "CLIENT_MESSAGE",
-        actorId,
-        actorRole,
-        title: "Mensagem do cliente",
-        description: parsed.data.content.trim().slice(0, 200),
-      });
+    await LeadEventService.record({
+      leadId: lead.id,
+      type: "CLIENT_MESSAGE",
+      actorId,
+      actorRole,
+      title: fromClient ? "Mensagem do cliente" : "Mensagem enviada ao cliente",
+      description: parsed.data.content.trim().slice(0, 200),
+      fromStage: previousStage || null,
+      toStage: !fromClient && (!previousStage || previousStage === "NEW") ? "CONTACT" : previousStage || null,
+    });
 
-      void LeadAutoReplyService.enqueueForClientMessage({
-        leadId: lead.id,
-        clientMessageId: message.id,
-      }).catch(() => null);
-    }
-
-    // Enviar notificação em tempo real via Pusher
     try {
       const pusher = getPusherServer();
-      await pusher.trigger(
-        PUSHER_CHANNELS.CHAT(lead.id),
-        PUSHER_EVENTS.NEW_CHAT_MESSAGE,
-        {
-          id: message.id,
-          leadId: lead.id,
-          fromClient,
-          content: message.content,
-          createdAt: message.createdAt,
-        }
-      );
-    } catch (pusherError) {
-      console.error("Error sending Pusher notification:", pusherError);
-      // Não bloqueia a resposta se Pusher falhar
+      await pusher.trigger(PUSHER_CHANNELS.CHAT(String(lead.id)), PUSHER_EVENTS.NEW_CHAT_MESSAGE, {
+        id: message.id,
+        leadId: String(lead.id),
+        fromClient,
+        content: message.content,
+        createdAt: message.createdAt,
+      });
+    } catch {
+      // ignore
+    }
+
+    try {
+      const teamId = (lead as any)?.teamId ? String((lead as any).teamId) : null;
+      if (teamId) {
+        const pusher = getPusherServer();
+        await pusher.trigger(PUSHER_CHANNELS.AGENCY(teamId), PUSHER_EVENTS.AGENCY_LEADS_UPDATED, {
+          teamId,
+          leadId: String(lead.id),
+          ts: new Date().toISOString(),
+        });
+      }
+    } catch {
+      // ignore
     }
 
     if (lead.realtorId) {
       try {
-        await RealtorAssistantService.recalculateForRealtor(lead.realtorId);
+        await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+      } catch {
+        // ignore
+      }
+    }
+
+    if (fromClient && lead.realtorId) {
+      try {
+        await LeadAutoReplyService.enqueueForClientMessage({ leadId: String(lead.id), clientMessageId: String(message.id) });
       } catch {
         // ignore
       }

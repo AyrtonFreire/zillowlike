@@ -36,6 +36,8 @@ interface LeadEventApi {
   id: string;
   type: LeadEventApiType | string;
   createdAt: string;
+  actorId?: string | null;
+  actorRole?: string | null;
   title?: string | null;
   description?: string | null;
   fromStage?: string | null;
@@ -91,6 +93,24 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
   const date = event.createdAt;
   const type = event.type;
 
+  const actorLabel = (() => {
+    const meta: any = event.metadata || null;
+    const name = meta?.actorName ? String(meta.actorName) : "";
+    const email = meta?.actorEmail ? String(meta.actorEmail) : "";
+    const label = name || email;
+    return label || null;
+  })();
+
+  const withActor = (e: TimelineEvent | null): TimelineEvent | null => {
+    if (!e) return e;
+    if (!actorLabel) return e;
+    const suffix = ` • Por ${actorLabel}`;
+    return {
+      ...e,
+      description: e.description ? `${e.description}${suffix}` : `Por ${actorLabel}`,
+    };
+  };
+
   if (String(type || "").toUpperCase().startsWith("EMAIL")) {
     return null;
   }
@@ -100,7 +120,7 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
 
   switch (type) {
     case "LEAD_CREATED":
-      return {
+      return withActor({
         id: event.id,
         type: "created",
         title: event.title || "Lead criado",
@@ -109,9 +129,9 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "user",
         metadata: event.metadata || undefined,
-      };
+      });
     case "LEAD_ACCEPTED":
-      return {
+      return withActor({
         id: event.id,
         type: "status_change",
         title: event.title || "Lead aceito",
@@ -120,9 +140,9 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "check",
         metadata: event.metadata || undefined,
-      };
+      });
     case "LEAD_REJECTED":
-      return {
+      return withActor({
         id: event.id,
         type: "status_change",
         title: event.title || "Lead recusado",
@@ -130,10 +150,10 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "x",
         metadata: event.metadata || undefined,
-      };
+      });
     case "LEAD_COMPLETED": {
       const isWon = event.toStage === "WON";
-      return {
+      return withActor({
         id: event.id,
         type: "status_change",
         title: isWon ? "Negócio fechado! 🎉" : "Atendimento concluído",
@@ -145,10 +165,10 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: isWon ? "check" : "x",
         metadata: event.metadata || undefined,
-      };
+      });
     }
     case "LEAD_LOST":
-      return {
+      return withActor({
         id: event.id,
         type: "status_change",
         title: event.title || "Lead perdido",
@@ -156,7 +176,7 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "x",
         metadata: event.metadata || undefined,
-      };
+      });
     case "STAGE_CHANGED": {
       const fromLabel =
         (event.fromStage && stageLabels[event.fromStage]) || event.fromStage;
@@ -167,7 +187,7 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         (fromLabel && toLabel
           ? `Do estágio "${fromLabel}" para "${toLabel}"`
           : undefined);
-      return {
+      return withActor({
         id: event.id,
         type: "stage_change",
         title: event.title || "Etapa do funil atualizada",
@@ -175,10 +195,10 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "arrow",
         metadata: event.metadata || undefined,
-      };
+      });
     }
     case "NOTE_ADDED":
-      return {
+      return withActor({
         id: event.id,
         type: "note",
         title: event.title || "Nota adicionada",
@@ -186,10 +206,10 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "note",
         metadata: event.metadata || undefined,
-      };
+      });
     case "INTERNAL_MESSAGE":
     case "CLIENT_MESSAGE":
-      return {
+      return withActor({
         id: event.id,
         type: "message",
         title:
@@ -201,10 +221,10 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "message",
         metadata: event.metadata || undefined,
-      };
+      });
     case "REMINDER_SET":
     case "REMINDER_CLEARED":
-      return {
+      return withActor({
         id: event.id,
         type: "reminder",
         title:
@@ -216,9 +236,9 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "clock",
         metadata: event.metadata || undefined,
-      };
+      });
     case "VISIT_REQUESTED":
-      return {
+      return withActor({
         id: event.id,
         type: "status_change",
         title: event.title || "Visita solicitada",
@@ -226,9 +246,9 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "calendar",
         metadata: event.metadata || undefined,
-      };
+      });
     case "VISIT_CONFIRMED":
-      return {
+      return withActor({
         id: event.id,
         type: "status_change",
         title: event.title || "Visita confirmada",
@@ -236,9 +256,9 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "calendar",
         metadata: event.metadata || undefined,
-      };
+      });
     case "VISIT_REJECTED":
-      return {
+      return withActor({
         id: event.id,
         type: "status_change",
         title: event.title || "Visita recusada",
@@ -246,9 +266,9 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "x",
         metadata: event.metadata || undefined,
-      };
+      });
     case "OWNER_APPROVAL_REQUESTED":
-      return {
+      return withActor({
         id: event.id,
         type: "status_change",
         title: event.title || "Aprovação do proprietário solicitada",
@@ -256,7 +276,7 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         date,
         icon: "user",
         metadata: event.metadata || undefined,
-      };
+      });
     default:
       return null;
   }

@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { updatePipelineStageSchema } from "@/lib/validations/lead";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
+import { captureException } from "@/lib/sentry";
+import { logger } from "@/lib/logger";
 
 const PIPELINE_ORDER = ["NEW", "CONTACT", "VISIT", "PROPOSAL", "DOCUMENTS", "WON", "LOST"] as const;
 type PipelineStage = (typeof PIPELINE_ORDER)[number];
@@ -47,6 +50,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         status: true,
         pipelineStage: true,
         realtorId: true,
+        teamId: true,
         team: {
           select: {
             ownerId: true,
@@ -123,9 +127,24 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       }
     }
 
+    try {
+      const teamId = lead?.teamId ? String(lead.teamId) : null;
+      if (teamId) {
+        const pusher = getPusherServer();
+        await pusher.trigger(PUSHER_CHANNELS.AGENCY(teamId), PUSHER_EVENTS.AGENCY_LEADS_UPDATED, {
+          teamId,
+          leadId: id,
+          ts: new Date().toISOString(),
+        });
+      }
+    } catch {
+      // ignore
+    }
+
     return NextResponse.json({ success: true, lead: updated });
   } catch (error: any) {
-    console.error("Error updating lead pipeline stage:", error);
+    captureException(error, { route: "/api/leads/[id]/pipeline" });
+    logger.error("Error updating lead pipeline stage", { error });
     const message = error?.message || "Não conseguimos atualizar a etapa deste lead agora.";
     return NextResponse.json({ error: message }, { status: 400 });
   }

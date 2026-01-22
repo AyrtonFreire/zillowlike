@@ -3,7 +3,12 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
+import { createAuditLog } from "@/lib/audit-log";
+import { captureException } from "@/lib/sentry";
+import { logger } from "@/lib/logger";
 
 async function getSessionContext() {
   const session: any = await getServerSession(authOptions);
@@ -14,17 +19,18 @@ async function getSessionContext() {
 
   const userId = session.userId || session.user?.id || null;
   const role = session.role || session.user?.role || null;
+  const email = session.user?.email || null;
 
-  return { userId, role };
+  return { userId, role, email };
 }
 
 const assignLeadSchema = z.object({
-  realtorId: z.string().min(1, "realtorId é obrigatório"),
+  realtorId: z.string().optional(),
 });
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { userId, role } = await getSessionContext();
+    const { userId, role, email } = await getSessionContext();
 
     if (!userId) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
@@ -38,7 +44,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       return NextResponse.json({ error: "Dados inválidos", issues: parsed.error.issues }, { status: 400 });
     }
 
-    const newRealtorId = parsed.data.realtorId;
+    const rawRealtorId = typeof parsed.data.realtorId === "string" ? parsed.data.realtorId : "";
+    const newRealtorId = rawRealtorId.trim() ? rawRealtorId.trim() : null;
 
     const lead = await (prisma as any).lead.findUnique({
       where: { id },
@@ -60,6 +67,17 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     const previousRealtorId = lead.realtorId as string | null;
     const effectiveTeamId = (lead as any).teamId || (lead.property as any)?.teamId || null;
+
+    if (role === "AGENCY") {
+      const profile = await (prisma as any).agencyProfile.findUnique({
+        where: { userId: String(userId) },
+        select: { teamId: true },
+      });
+      const agencyTeamId = profile?.teamId ? String(profile.teamId) : null;
+      if (!agencyTeamId || String(effectiveTeamId || "") !== String(agencyTeamId)) {
+        return NextResponse.json({ error: "Você só pode reatribuir leads do seu time." }, { status: 403 });
+      }
+    }
 
     if (!effectiveTeamId) {
       if (role !== "ADMIN") {
@@ -92,12 +110,55 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         },
       });
 
+      void createAuditLog({
+        level: "INFO",
+        action: "LEAD_ASSIGN",
+        actorId: String(userId),
+        actorEmail: email,
+        actorRole: String(role || ""),
+        targetType: "LEAD",
+        targetId: String(id),
+        metadata: {
+          teamId: effectiveTeamId ? String(effectiveTeamId) : null,
+          fromRealtorId: previousRealtorId,
+          toRealtorId: newRealtorId,
+        },
+      });
+
+      await LeadEventService.record({
+        leadId: id,
+        type: "INTERNAL_MESSAGE",
+        actorId: String(userId),
+        actorRole: role,
+        title: "Responsável alterado",
+        description: (() => {
+          if (!newRealtorId) return "Responsável removido.";
+          if (previousRealtorId) return `Responsável mudou de ${String(previousRealtorId)} para ${String(newRealtorId)}.`;
+          return `Responsável definido para ${String(newRealtorId)}.`;
+        })(),
+        metadata: {
+          fromRealtorId: previousRealtorId,
+          toRealtorId: newRealtorId,
+        },
+      });
+
       try {
         if (previousRealtorId && String(previousRealtorId) !== String(newRealtorId)) {
           await RealtorAssistantService.recalculateForRealtor(String(previousRealtorId));
         }
-        if (newRealtorId) {
-          await RealtorAssistantService.recalculateForRealtor(String(newRealtorId));
+        if (newRealtorId) await RealtorAssistantService.recalculateForRealtor(String(newRealtorId));
+      } catch {
+        // ignore
+      }
+
+      try {
+        if (effectiveTeamId) {
+          const pusher = getPusherServer();
+          await pusher.trigger(PUSHER_CHANNELS.AGENCY(String(effectiveTeamId)), PUSHER_EVENTS.AGENCY_LEADS_UPDATED, {
+            teamId: String(effectiveTeamId),
+            leadId: id,
+            ts: new Date().toISOString(),
+          });
         }
       } catch {
         // ignore
@@ -131,20 +192,22 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       );
     }
 
-    const targetMembership = members.find((m) => m.userId === newRealtorId);
+    if (newRealtorId) {
+      const targetMembership = members.find((m) => m.userId === newRealtorId);
 
-    if (!targetMembership) {
-      return NextResponse.json(
-        { error: "O corretor escolhido não faz parte deste time." },
-        { status: 400 },
-      );
-    }
+      if (!targetMembership) {
+        return NextResponse.json(
+          { error: "O corretor escolhido não faz parte deste time." },
+          { status: 400 },
+        );
+      }
 
-    if (targetMembership.role === "ASSISTANT") {
-      return NextResponse.json(
-        { error: "Assistentes não podem ser responsáveis por leads." },
-        { status: 400 },
-      );
+      if (targetMembership.role === "ASSISTANT") {
+        return NextResponse.json(
+          { error: "Assistentes não podem ser responsáveis por leads." },
+          { status: 400 },
+        );
+      }
     }
 
     const updated = await (prisma as any).lead.update({
@@ -174,12 +237,40 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       },
     });
 
+    await LeadEventService.record({
+      leadId: id,
+      type: "INTERNAL_MESSAGE",
+      actorId: String(userId),
+      actorRole: role,
+      title: "Responsável alterado",
+      description: (() => {
+        if (!newRealtorId) return "Responsável removido.";
+        if (previousRealtorId) return `Responsável mudou de ${String(previousRealtorId)} para ${String(newRealtorId)}.`;
+        return `Responsável definido para ${String(newRealtorId)}.`;
+      })(),
+      metadata: {
+        fromRealtorId: previousRealtorId,
+        toRealtorId: newRealtorId,
+      },
+    });
+
     try {
       if (previousRealtorId && String(previousRealtorId) !== String(newRealtorId)) {
         await RealtorAssistantService.recalculateForRealtor(String(previousRealtorId));
       }
-      if (newRealtorId) {
-        await RealtorAssistantService.recalculateForRealtor(String(newRealtorId));
+      if (newRealtorId) await RealtorAssistantService.recalculateForRealtor(String(newRealtorId));
+    } catch {
+      // ignore
+    }
+
+    try {
+      if (effectiveTeamId) {
+        const pusher = getPusherServer();
+        await pusher.trigger(PUSHER_CHANNELS.AGENCY(String(effectiveTeamId)), PUSHER_EVENTS.AGENCY_LEADS_UPDATED, {
+          teamId: String(effectiveTeamId),
+          leadId: id,
+          ts: new Date().toISOString(),
+        });
       }
     } catch {
       // ignore
@@ -187,7 +278,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     return NextResponse.json({ success: true, lead: updated });
   } catch (error) {
-    console.error("Error assigning lead:", error);
+    captureException(error, { route: "/api/leads/[id]/assign" });
+    logger.error("Error assigning lead", { error });
     return NextResponse.json(
       { error: "Não conseguimos reatribuir este lead agora." },
       { status: 500 },

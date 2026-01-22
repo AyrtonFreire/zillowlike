@@ -3,10 +3,13 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getPusherServer } from "@/lib/pusher-server";
+import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
 import { sendEmail, getRealtorReplyNotificationEmail } from "@/lib/email";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { createAuditLog } from "@/lib/audit-log";
+import { captureException } from "@/lib/sentry";
+import { logger } from "@/lib/logger";
 
 const messageSchema = z.object({
   content: z.string().min(1, "Escreva uma mensagem antes de enviar.").max(2000, "A mensagem está muito longa."),
@@ -122,9 +125,22 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       read: true, // Marcamos como lido quando visualizado
     }));
 
+    void createAuditLog({
+      level: "INFO",
+      action: "LEAD_CHAT_VIEW",
+      actorId: String(userId),
+      actorRole: String(role || ""),
+      targetType: "LEAD",
+      targetId: String(id),
+      metadata: {
+        count: formattedMessages.length,
+      },
+    });
+
     return NextResponse.json({ messages: formattedMessages });
   } catch (error) {
-    console.error("Error fetching client messages:", error);
+    captureException(error, { route: "/api/leads/[id]/client-messages" });
+    logger.error("Error fetching client messages", { error });
     return NextResponse.json(
       { error: "Não conseguimos carregar as mensagens deste lead agora." },
       { status: 500 }
@@ -153,6 +169,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       where: { id },
       select: {
         id: true,
+        teamId: true,
         realtorId: true,
         userId: true,
         property: {
@@ -255,6 +272,21 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       });
     } catch (pusherError) {
       console.error("Error triggering pusher for client message:", pusherError);
+    }
+
+    // Atualizar CRM da agência em tempo real
+    try {
+      const teamId = (lead as any)?.teamId ? String((lead as any).teamId) : null;
+      if (teamId) {
+        const pusher = getPusherServer();
+        await pusher.trigger(PUSHER_CHANNELS.AGENCY(teamId), PUSHER_EVENTS.AGENCY_LEADS_UPDATED, {
+          teamId,
+          leadId: String(id),
+          ts: new Date().toISOString(),
+        });
+      }
+    } catch {
+      // ignore
     }
 
     if (lead.realtorId) {

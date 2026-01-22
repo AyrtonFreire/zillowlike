@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit-log";
+import { captureException } from "@/lib/sentry";
+import { logger } from "@/lib/logger";
 
 async function getSessionContext() {
   const session: any = await getServerSession(authOptions);
@@ -89,9 +92,55 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ events });
+    const actorIds = Array.from(
+      new Set(
+        (events || [])
+          .map((e: any) => (e?.actorId ? String(e.actorId) : ""))
+          .filter(Boolean)
+      )
+    );
+
+    const actorMap = new Map<string, { name: string | null; email: string | null }>();
+    if (actorIds.length) {
+      const users = await (prisma as any).user.findMany({
+        where: { id: { in: actorIds } },
+        select: { id: true, name: true, email: true },
+      });
+      for (const u of users || []) {
+        actorMap.set(String(u.id), { name: u?.name ? String(u.name) : null, email: u?.email ? String(u.email) : null });
+      }
+    }
+
+    const enriched = (events || []).map((e: any) => {
+      const aid = e?.actorId ? String(e.actorId) : "";
+      const actor = aid ? actorMap.get(aid) || null : null;
+      const meta = (e?.metadata && typeof e.metadata === "object") ? e.metadata : null;
+      return {
+        ...e,
+        metadata: {
+          ...(meta || {}),
+          actorName: actor?.name || null,
+          actorEmail: actor?.email || null,
+        },
+      };
+    });
+
+    void createAuditLog({
+      level: "INFO",
+      action: "LEAD_EVENTS_VIEW",
+      actorId: String(userId),
+      actorRole: String(role || ""),
+      targetType: "LEAD",
+      targetId: String(id),
+      metadata: {
+        count: enriched.length,
+      },
+    });
+
+    return NextResponse.json({ events: enriched });
   } catch (error) {
-    console.error("Error fetching lead events:", error);
+    captureException(error, { route: "/api/leads/[id]/events" });
+    logger.error("Error fetching lead events", { error });
     return NextResponse.json(
       { error: "Não conseguimos carregar o histórico de atividades deste lead agora." },
       { status: 500 }

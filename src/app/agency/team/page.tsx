@@ -15,6 +15,15 @@ type TeamMember = {
   role: string;
 };
 
+function formatMinutes(value: number | null | undefined) {
+  if (value == null || Number.isNaN(Number(value))) return "-";
+  const minutes = Math.max(0, Math.round(Number(value)));
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h}h ${m.toString().padStart(2, "0")}m`;
+}
+
 type TeamMemberRole = "OWNER" | "AGENT" | "ASSISTANT";
 
 type Team = {
@@ -87,6 +96,9 @@ type AgencyInsights = {
     activeLeads: number;
     pendingReply: number;
     stalledLeads: number;
+    wonLeads?: number;
+    lostLeads?: number;
+    avgFirstResponseMinutes?: number | null;
   }>;
   highlights: Array<{
     title: string;
@@ -691,6 +703,15 @@ export default function AgencyTeamPage() {
                                   </span>
                                   <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700">
                                     Parados: <span className="ml-1 tabular-nums">{m.stalledLeads}</span>
+                                  </span>
+                                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
+                                    Ganhos: <span className="ml-1 tabular-nums">{Number(m.wonLeads || 0)}</span>
+                                  </span>
+                                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
+                                    Perdidos: <span className="ml-1 tabular-nums text-gray-900">{Number(m.lostLeads || 0)}</span>
+                                  </span>
+                                  <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 font-semibold text-blue-700">
+                                    1ª resposta: <span className="ml-1 tabular-nums">{formatMinutes(m.avgFirstResponseMinutes ?? null)}</span>
                                   </span>
                                 </div>
                               </div>

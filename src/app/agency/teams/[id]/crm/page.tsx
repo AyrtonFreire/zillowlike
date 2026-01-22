@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import AgencyLeadSidePanel from "../../../../../components/leads/AgencyLeadSidePanel";
+import { getPusherClient } from "@/lib/pusher-client";
 
 type PipelineMember = {
   userId: string;
@@ -18,6 +21,7 @@ type PipelineLead = {
   status: string;
   pipelineStage: string;
   createdAt: string;
+  pendingReplyAt?: string | null;
   contact?: { name?: string | null; phone?: string | null } | null;
   property?: {
     id?: string | null;
@@ -34,6 +38,10 @@ type TeamPipelineResponse = {
   team?: { id: string; name: string } | null;
   members?: PipelineMember[];
   leads?: PipelineLead[];
+  pageInfo?: {
+    nextCursor: string | null;
+    hasMore: boolean;
+  };
   error?: string;
 };
 
@@ -88,6 +96,7 @@ function formatSlaAge(value: string | null | undefined) {
 export default function AgencyTeamCrmPage() {
   const params = useParams();
   const teamId = params?.id as string;
+  const searchParams = useSearchParams();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,22 +106,54 @@ export default function AgencyTeamCrmPage() {
   const [leads, setLeads] = useState<PipelineLead[]>([]);
   const [insights, setInsights] = useState<AgencyInsightsResponse | null>(null);
 
+  const [pageInfo, setPageInfo] = useState<{ nextCursor: string | null; hasMore: boolean }>({
+    nextCursor: null,
+    hasMore: false,
+  });
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
   const [query, setQuery] = useState("");
   const [stage, setStage] = useState<string>("");
   const [realtorId, setRealtorId] = useState<string>("");
   const [onlyPendingReply, setOnlyPendingReply] = useState(false);
 
+  const [leadPanelOpen, setLeadPanelOpen] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [leadPanelInitialTab, setLeadPanelInitialTab] = useState<"ATIVIDADES" | "CHAT" | "NOTAS">("ATIVIDADES");
+
   const [savingLeadId, setSavingLeadId] = useState<string | null>(null);
 
-  const reload = async () => {
+  const buildPipelineUrl = (opts: { cursor?: string | null } = {}) => {
+    const url = new URL(`/api/teams/${encodeURIComponent(teamId)}/pipeline`, window.location.origin);
+    if (query.trim()) url.searchParams.set("q", query.trim());
+    if (stage) url.searchParams.set("stage", stage);
+    if (realtorId) url.searchParams.set("realtorId", realtorId);
+    url.searchParams.set("onlyPendingReply", onlyPendingReply ? "1" : "0");
+    url.searchParams.set("limit", "50");
+    if (opts.cursor) url.searchParams.set("cursor", String(opts.cursor));
+    return url.pathname + url.search;
+  };
+
+  const reload = async (opts: { append?: boolean } = {}) => {
     if (!teamId) return;
+    const append = !!opts.append;
+
     try {
-      setLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
 
+      const pipeUrl = buildPipelineUrl({ cursor: append ? pageInfo.nextCursor : null });
+
       const [pipeRes, insRes] = await Promise.all([
-        fetch(`/api/teams/${encodeURIComponent(teamId)}/pipeline`, { cache: "no-store" }),
-        fetch(`/api/agency/insights?teamId=${encodeURIComponent(teamId)}`, { cache: "no-store" }),
+        fetch(pipeUrl, { cache: "no-store" }),
+        append
+          ? Promise.resolve(null)
+          : fetch(`/api/agency/insights?teamId=${encodeURIComponent(teamId)}`, { cache: "no-store" }),
       ]);
 
       const pipeJson = (await pipeRes.json().catch(() => null)) as TeamPipelineResponse | null;
@@ -120,41 +161,109 @@ export default function AgencyTeamCrmPage() {
         throw new Error(pipeJson?.error || "Não conseguimos carregar os leads do time agora.");
       }
 
-      const insJson = (await insRes.json().catch(() => null)) as AgencyInsightsResponse | null;
-      if (insRes.ok && insJson?.success) {
-        setInsights(insJson);
-      } else {
-        setInsights(null);
+      if (!append && insRes) {
+        const insJson = (await insRes.json().catch(() => null)) as AgencyInsightsResponse | null;
+        if (insRes.ok && insJson?.success) {
+          setInsights(insJson);
+        } else {
+          setInsights(null);
+        }
       }
 
       setTeamName(String(pipeJson?.team?.name || ""));
       setMembers(Array.isArray(pipeJson?.members) ? pipeJson!.members! : []);
-      setLeads(Array.isArray(pipeJson?.leads) ? pipeJson!.leads! : []);
+
+      const nextLeads = Array.isArray(pipeJson?.leads) ? pipeJson!.leads! : [];
+      setLeads((prev) => (append ? [...prev, ...nextLeads] : nextLeads));
+
+      setPageInfo({
+        nextCursor: pipeJson?.pageInfo?.nextCursor ?? null,
+        hasMore: Boolean(pipeJson?.pageInfo?.hasMore),
+      });
     } catch (e: any) {
       setError(e?.message || "Não conseguimos carregar os leads do time agora.");
-      setMembers([]);
-      setLeads([]);
-      setInsights(null);
-      setTeamName("");
+      if (!append) {
+        setMembers([]);
+        setLeads([]);
+        setInsights(null);
+        setTeamName("");
+        setPageInfo({ nextCursor: null, hasMore: false });
+      }
     } finally {
-      setLoading(false);
+      if (append) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    void reload();
+    if (!teamId) return;
+
+    let cancelled = false;
+    try {
+      const pusher = getPusherClient();
+      const channelName = `private-agency-${teamId}`;
+      const channel = pusher.subscribe(channelName);
+
+      const handler = () => {
+        if (cancelled) return;
+        void reload({ append: false });
+      };
+
+      channel.bind("agency:leads_updated", handler as any);
+
+      return () => {
+        cancelled = true;
+        try {
+          channel.unbind("agency:leads_updated", handler as any);
+          pusher.unsubscribe(channelName);
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      return;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId]);
 
+  useEffect(() => {
+    if (!searchParams) return;
+    const q = searchParams.get("q");
+    const stageParam = searchParams.get("stage");
+    const realtorParam = searchParams.get("realtorId");
+    const onlyPendingParam = searchParams.get("onlyPendingReply");
+    if (q != null) setQuery(String(q));
+    if (stageParam != null) setStage(String(stageParam));
+    if (realtorParam != null) setRealtorId(String(realtorParam));
+    if (onlyPendingParam != null) {
+      const raw = String(onlyPendingParam).toLowerCase().trim();
+      setOnlyPendingReply(raw === "1" || raw === "true" || raw === "yes");
+    }
+    setInitialized(true);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!teamId || !initialized) return;
+    const t = window.setTimeout(() => {
+      void reload({ append: false });
+    }, 250);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, initialized, query, stage, realtorId, onlyPendingReply]);
+
   const pendingMap = useMemo(() => {
     const map = new Map<string, { lastClientAt: string }>();
-    const rows = insights?.sla?.pendingReplyLeads || [];
-    for (const row of rows) {
-      if (!row?.leadId) continue;
-      map.set(String(row.leadId), { lastClientAt: String(row.lastClientAt) });
+    for (const l of leads) {
+      const leadId = String(l?.id || "");
+      const ts = l?.pendingReplyAt ? String(l.pendingReplyAt) : "";
+      if (!leadId || !ts) continue;
+      map.set(leadId, { lastClientAt: ts });
     }
     return map;
-  }, [insights?.sla?.pendingReplyLeads]);
+  }, [leads]);
 
   const realtorOptions = useMemo(() => {
     return (Array.isArray(members) ? members : [])
@@ -164,37 +273,19 @@ export default function AgencyTeamCrmPage() {
   }, [members]);
 
   const stageOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const l of leads) {
-      if (l?.pipelineStage) set.add(String(l.pipelineStage));
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [leads]);
+    return ["NEW", "CONTACT", "VISIT", "PROPOSAL", "DOCUMENTS", "WON", "LOST"];
+  }, []);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return (Array.isArray(leads) ? leads : []).filter((l) => {
-      if (stage && String(l.pipelineStage) !== stage) return false;
-      if (realtorId && String(l.realtor?.id || "") !== realtorId) return false;
-      if (onlyPendingReply && !pendingMap.has(String(l.id))) return false;
-      if (!q) return true;
-      const fields = [
-        String(l.contact?.name || ""),
-        String(l.property?.title || ""),
-        String(l.realtor?.name || ""),
-        String(l.realtor?.email || ""),
-        String(l.id || ""),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return fields.includes(q);
-    });
-  }, [leads, onlyPendingReply, pendingMap, query, realtorId, stage]);
+  const openLeadPanel = (id: string, tab: "ATIVIDADES" | "CHAT" | "NOTAS" = "ATIVIDADES") => {
+    setSelectedLeadId(String(id));
+    setLeadPanelInitialTab(tab);
+    setLeadPanelOpen(true);
+  };
 
   const handleAssign = async (leadId: string, nextRealtorId: string) => {
     const id = String(leadId);
     const rid = String(nextRealtorId);
-    if (!id || !rid) return;
+    if (!id) return;
     try {
       setSavingLeadId(id);
       const res = await fetch(`/api/leads/${encodeURIComponent(id)}/assign`, {
@@ -237,6 +328,12 @@ export default function AgencyTeamCrmPage() {
           <div className="text-lg font-semibold text-gray-900 truncate">{teamName || teamId}</div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          <a
+            href={`/api/teams/${encodeURIComponent(teamId)}/leads-export?q=${encodeURIComponent(query)}&stage=${encodeURIComponent(stage)}&realtorId=${encodeURIComponent(realtorId)}&onlyPendingReply=${onlyPendingReply ? "1" : "0"}`}
+            className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Exportar CSV
+          </a>
           <Link
             href="/agency/team-chat"
             className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
@@ -322,6 +419,7 @@ export default function AgencyTeamCrmPage() {
                 className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
               >
                 <option value="">Todos</option>
+                <option value="unassigned">Sem responsável</option>
                 {realtorOptions.map((m) => (
                   <option key={m.userId} value={m.userId}>
                     {String(m.name || m.email || m.userId)}
@@ -363,14 +461,14 @@ export default function AgencyTeamCrmPage() {
                     Carregando...
                   </td>
                 </tr>
-              ) : filtered.length === 0 ? (
+              ) : leads.length === 0 ? (
                 <tr>
                   <td className="px-3 py-8 text-gray-600" colSpan={7}>
                     Nenhum lead encontrado com os filtros atuais.
                   </td>
                 </tr>
               ) : (
-                filtered.map((l) => {
+                leads.map((l) => {
                   const leadId = String(l.id);
                   const pending = pendingMap.get(leadId) || null;
                   const slaAge = formatSlaAge(pending?.lastClientAt || null);
@@ -379,7 +477,13 @@ export default function AgencyTeamCrmPage() {
                   return (
                     <tr key={leadId} className="hover:bg-gray-50">
                       <td className="pl-2 pr-3 py-3">
-                        <div className="font-semibold text-gray-900">{l.contact?.name || `Lead ${leadId}`}</div>
+                        <button
+                          type="button"
+                          onClick={() => openLeadPanel(leadId, "ATIVIDADES")}
+                          className="font-semibold text-gray-900 hover:underline text-left"
+                        >
+                          {l.contact?.name || `Lead ${leadId}`}
+                        </button>
                         <div className="text-[11px] text-gray-500">ID: {leadId}</div>
                       </td>
                       <td className="px-3 py-3">
@@ -423,12 +527,13 @@ export default function AgencyTeamCrmPage() {
                         )}
                       </td>
                       <td className="px-3 py-3">
-                        <Link
-                          href={`/agency/team-chat`}
+                        <button
+                          type="button"
+                          onClick={() => openLeadPanel(leadId, "CHAT")}
                           className="text-sm font-semibold text-blue-600 hover:text-blue-700"
                         >
                           Ver chat
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -438,6 +543,26 @@ export default function AgencyTeamCrmPage() {
           </table>
         </div>
       </div>
+
+      {pageInfo.hasMore && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            disabled={loading || loadingMore || !pageInfo.nextCursor}
+            onClick={() => reload({ append: true })}
+            className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+          >
+            {loadingMore ? "Carregando..." : "Carregar mais"}
+          </button>
+        </div>
+      )}
+
+      <AgencyLeadSidePanel
+        open={leadPanelOpen}
+        leadId={selectedLeadId}
+        initialTab={leadPanelInitialTab}
+        onClose={() => setLeadPanelOpen(false)}
+      />
     </div>
   );
 }

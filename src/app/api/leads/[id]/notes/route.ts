@@ -5,6 +5,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { createAuditLog } from "@/lib/audit-log";
+import { captureException } from "@/lib/sentry";
+import { logger } from "@/lib/logger";
 
 const noteSchema = z.object({
   content: z.string().min(1, "Escreva uma nota antes de salvar.").max(2000, "A nota está muito longa."),
@@ -92,9 +95,22 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       orderBy: { createdAt: "asc" },
     });
 
+    void createAuditLog({
+      level: "INFO",
+      action: "LEAD_NOTES_VIEW",
+      actorId: String(userId),
+      actorRole: String(role || ""),
+      targetType: "LEAD",
+      targetId: String(id),
+      metadata: {
+        count: notes.length,
+      },
+    });
+
     return NextResponse.json({ notes });
   } catch (error) {
-    console.error("Error fetching lead notes:", error);
+    captureException(error, { route: "/api/leads/[id]/notes" });
+    logger.error("Error fetching lead notes", { error });
     return NextResponse.json(
       { error: "Não conseguimos carregar as notas deste lead agora." },
       { status: 500 }

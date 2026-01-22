@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { createAuditLog } from "@/lib/audit-log";
+import { captureException } from "@/lib/sentry";
+import { logger } from "@/lib/logger";
 
 const jsonSafe = <T,>(value: T): T | number =>
   typeof value === "bigint" ? Number(value) : value;
@@ -90,6 +93,19 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Lead não encontrado" }, { status: 404 });
     }
 
+    let agencyTeamId: string | null = null;
+    if (role === "AGENCY") {
+      const profile = await (prisma as any).agencyProfile.findUnique({
+        where: { userId: String(userId) },
+        select: { teamId: true },
+      });
+      agencyTeamId = profile?.teamId ? String(profile.teamId) : null;
+
+      if (!agencyTeamId) {
+        return NextResponse.json({ error: "Perfil de agência sem time associado." }, { status: 403 });
+      }
+    }
+
     let isTeamOwner = false;
     const teamId = (lead as any).teamId || (lead.property as any)?.teamId || null;
 
@@ -104,7 +120,27 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       }
     }
 
-    if (role !== "ADMIN" && lead.realtorId !== userId && !isTeamOwner) {
+    if (role === "AGENCY") {
+      const effectiveTeamId = teamId ? String(teamId) : null;
+      const sameTeam = !!effectiveTeamId && !!agencyTeamId && effectiveTeamId === String(agencyTeamId);
+
+      let realtorIsTeamMember = false;
+      const realtorId = (lead as any)?.realtorId ? String((lead as any).realtorId) : "";
+      if (!sameTeam && realtorId) {
+        const membership = await (prisma as any).teamMember.findFirst({
+          where: {
+            teamId: String(agencyTeamId),
+            userId: realtorId,
+          },
+          select: { id: true },
+        });
+        realtorIsTeamMember = !!membership?.id;
+      }
+
+      if (!sameTeam && !realtorIsTeamMember) {
+        return NextResponse.json({ error: "Você só pode visualizar leads do seu time." }, { status: 403 });
+      }
+    } else if (role !== "ADMIN" && lead.realtorId !== userId && !isTeamOwner) {
       return NextResponse.json(
         {
           error:
@@ -125,9 +161,23 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
         : lead.property,
     };
 
+    void createAuditLog({
+      level: "INFO",
+      action: "LEAD_VIEW",
+      actorId: String(userId),
+      actorEmail: session.user?.email || null,
+      actorRole: String(role || ""),
+      targetType: "LEAD",
+      targetId: String(id),
+      metadata: {
+        teamId: teamId ? String(teamId) : null,
+      },
+    });
+
     return NextResponse.json({ success: true, lead: normalized });
   } catch (error) {
-    console.error("Error fetching lead by id:", error);
+    captureException(error, { route: "/api/leads/[id]" });
+    logger.error("Error fetching lead by id", { error });
     return NextResponse.json(
       { error: "Não conseguimos carregar este lead agora." },
       { status: 500 }

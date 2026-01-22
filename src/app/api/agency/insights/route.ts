@@ -4,6 +4,8 @@ import { Prisma, LeadPipelineStage, LeadStatus } from "@prisma/client";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { captureException } from "@/lib/sentry";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -71,12 +73,19 @@ export async function GET(req: NextRequest) {
 
     let teamId = parsedQuery.data.teamId || null;
 
-    if (!teamId && role === "AGENCY") {
+    if (role === "AGENCY") {
       const agencyProfile = await (prisma as any).agencyProfile.findUnique({
         where: { userId: String(userId) },
         select: { teamId: true },
       });
-      teamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+      const agencyTeamId = agencyProfile?.teamId ? String(agencyProfile.teamId) : null;
+      if (!agencyTeamId) {
+        return NextResponse.json({ error: "Perfil de agência sem time associado." }, { status: 403 });
+      }
+      if (teamId && String(teamId) !== String(agencyTeamId)) {
+        return NextResponse.json({ error: "Você só pode acessar insights do seu time." }, { status: 403 });
+      }
+      teamId = agencyTeamId;
     }
 
     if (!teamId && role === "ADMIN") {
@@ -149,6 +158,8 @@ export async function GET(req: NextRequest) {
         pipelineStage: true,
         createdAt: true,
         updatedAt: true,
+        respondedAt: true,
+        completedAt: true,
         realtorId: true,
         contact: { select: { name: true } },
         property: { select: { title: true } },
@@ -183,6 +194,7 @@ export async function GET(req: NextRequest) {
 
     const activeLeadIdsList = Array.from(activeLeadIds);
 
+    let pendingReplyRowsAll: Array<{ leadId: string; lastClientAt: string }> = [];
     let pendingReplyLeadIds: Array<{ leadId: string; lastClientAt: string }> = [];
     let pendingReplyTotal = 0;
 
@@ -211,33 +223,25 @@ export async function GET(req: NextRequest) {
         )
       `;
 
-      const countRows = (await prisma.$queryRaw(
-        Prisma.sql`${cte}
-          SELECT COUNT(*)::int AS "pendingReplyTotal"
-          FROM last_msg
-          WHERE "fromClient" = true;
-        `
-      )) as any[];
-
-      pendingReplyTotal = Number(countRows?.[0]?.pendingReplyTotal || 0);
-
-      const leadRows = (await prisma.$queryRaw(
+      const rows = (await prisma.$queryRaw(
         Prisma.sql`${cte}
           SELECT "leadId", "createdAt" AS "lastClientAt"
           FROM last_msg
           WHERE "fromClient" = true
-          ORDER BY "createdAt" DESC
-          LIMIT 25;
+          ORDER BY "createdAt" DESC;
         `
       )) as any[];
 
-      pendingReplyLeadIds = (leadRows || []).map((r: any) => ({
+      pendingReplyRowsAll = (rows || []).map((r: any) => ({
         leadId: String(r.leadId),
         lastClientAt: r.lastClientAt ? new Date(r.lastClientAt).toISOString() : new Date().toISOString(),
       }));
+
+      pendingReplyTotal = pendingReplyRowsAll.length;
+      pendingReplyLeadIds = pendingReplyRowsAll.slice(0, 25);
     }
 
-    const pendingIdSet = new Set(pendingReplyLeadIds.map((x) => x.leadId));
+    const pendingIdSet = new Set(pendingReplyRowsAll.map((x) => x.leadId));
     const leadById = new Map(leads.map((l) => [String(l.id), l]));
 
     const pendingReplyLeads = pendingReplyLeadIds
@@ -265,6 +269,7 @@ export async function GET(req: NextRequest) {
     }>;
 
     const staleThreshold = addDays(now, -3);
+    const unassignedThreshold = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
     const memberStats = members
       .filter((m) => String(m.role || "").toUpperCase() !== "ASSISTANT")
@@ -278,6 +283,34 @@ export async function GET(req: NextRequest) {
           return u < staleThreshold;
         });
 
+        const won = leads.filter((l) => {
+          if (String(l.realtorId || "") !== mid) return false;
+          const stage = normalizeStage((l.pipelineStage as any) ?? null, l.status as any);
+          return stage === "WON";
+        });
+
+        const lost = leads.filter((l) => {
+          if (String(l.realtorId || "") !== mid) return false;
+          const stage = normalizeStage((l.pipelineStage as any) ?? null, l.status as any);
+          return stage === "LOST";
+        });
+
+        const firstResponseSamples = leads
+          .filter((l) => String(l.realtorId || "") === mid)
+          .map((l) => {
+            const createdAt = l.createdAt ? new Date(l.createdAt) : null;
+            const respondedAt = (l as any).respondedAt ? new Date((l as any).respondedAt) : null;
+            if (!createdAt || Number.isNaN(createdAt.getTime())) return null;
+            if (!respondedAt || Number.isNaN(respondedAt.getTime())) return null;
+            const minutes = Math.max(0, Math.round((respondedAt.getTime() - createdAt.getTime()) / 60000));
+            return minutes;
+          })
+          .filter((x): x is number => typeof x === "number");
+
+        const avgFirstResponseMinutes = firstResponseSamples.length
+          ? Math.round(firstResponseSamples.reduce((a, b) => a + b, 0) / firstResponseSamples.length)
+          : null;
+
         return {
           userId: mid,
           name: m.user?.name ? String(m.user.name) : null,
@@ -286,6 +319,9 @@ export async function GET(req: NextRequest) {
           activeLeads: activeLeads.length,
           pendingReply: pending.length,
           stalledLeads: stalled.length,
+          wonLeads: won.length,
+          lostLeads: lost.length,
+          avgFirstResponseMinutes,
         };
       })
       .sort((a, b) => {
@@ -304,6 +340,21 @@ export async function GET(req: NextRequest) {
         href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm`,
         hrefLabel: "Abrir CRM do time",
       });
+
+      const stuck48h = pendingReplyRowsAll.filter((r) => {
+        const d = new Date(r.lastClientAt);
+        if (Number.isNaN(d.getTime())) return false;
+        return now.getTime() - d.getTime() >= 48 * 60 * 60 * 1000;
+      });
+      if (stuck48h.length > 0) {
+        highlights.push({
+          title: "SLA crítico (48h sem resposta)",
+          detail: `${stuck48h.length} lead${stuck48h.length === 1 ? "" : "s"} aguardando retorno há 48h ou mais.`,
+          severity: "critical",
+          href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?onlyPendingReply=1`,
+          hrefLabel: "Ver pendentes",
+        });
+      }
     }
 
     if (unassigned > 0) {
@@ -314,6 +365,23 @@ export async function GET(req: NextRequest) {
         href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?realtorId=unassigned`,
         hrefLabel: "Ver no CRM",
       });
+
+      const unassignedAging = leads.filter((l) => {
+        if (!activeLeadIds.has(String(l.id))) return false;
+        if (l.realtorId) return false;
+        const c = l.createdAt ? new Date(l.createdAt) : null;
+        if (!c || Number.isNaN(c.getTime())) return false;
+        return c < unassignedThreshold;
+      });
+      if (unassignedAging.length > 0) {
+        highlights.push({
+          title: "Sem responsável há mais de 2h",
+          detail: `${unassignedAging.length} lead${unassignedAging.length === 1 ? "" : "s"} sem responsável há mais de 2 horas.`,
+          severity: "warning",
+          href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?realtorId=unassigned`,
+          hrefLabel: "Distribuir agora",
+        });
+      }
     }
 
     if (newLast24h > 0) {
@@ -334,6 +402,22 @@ export async function GET(req: NextRequest) {
         severity: worstMember.pendingReply >= 5 ? "critical" : "warning",
         href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?realtorId=${encodeURIComponent(worstMember.userId)}`,
         hrefLabel: "Ver leads do corretor",
+      });
+    }
+
+    const stalledTotal = leads.filter((l) => {
+      if (!activeLeadIds.has(String(l.id))) return false;
+      const u = l.updatedAt ? new Date(l.updatedAt) : null;
+      if (!u || Number.isNaN(u.getTime())) return false;
+      return u < staleThreshold;
+    }).length;
+    if (stalledTotal > 0) {
+      highlights.push({
+        title: "Leads parados (3+ dias sem atualização)",
+        detail: `${stalledTotal} lead${stalledTotal === 1 ? "" : "s"} sem atualização há mais de 3 dias.`,
+        severity: stalledTotal >= 10 ? "warning" : "info",
+        href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm`,
+        hrefLabel: "Abrir CRM",
       });
     }
 
@@ -495,7 +579,8 @@ export async function GET(req: NextRequest) {
       highlights: highlights.slice(0, 8),
     });
   } catch (error) {
-    console.error("Error fetching agency insights:", error);
+    captureException(error, { route: "/api/agency/insights" });
+    logger.error("Error fetching agency insights", { error });
     return NextResponse.json({ error: "Não conseguimos carregar os insights agora." }, { status: 500 });
   }
 }
