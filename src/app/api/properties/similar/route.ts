@@ -7,6 +7,14 @@ function jsonSafe<T>(data: T): any {
   );
 }
 
+function toNumber(value: unknown): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "bigint") return Number(value);
+  if (value === null || value === undefined) return 0;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 // Função para calcular similaridade entre dois imóveis
 function calculateSimilarity(
   current: any,
@@ -24,8 +32,10 @@ function calculateSimilarity(
   }
 
   // Preço (30%) - ±15%
-  const priceDiff = Math.abs(current.price - candidate.price) / current.price;
-  if (priceDiff <= 0.15) {
+  const currentPrice = toNumber(current.price);
+  const candidatePrice = toNumber(candidate.price);
+  const priceDiff = currentPrice > 0 ? Math.abs(currentPrice - candidatePrice) / currentPrice : 1;
+  if (currentPrice > 0 && priceDiff <= 0.15) {
     const priceScore = 30 * (1 - priceDiff / 0.15);
     score += priceScore;
     breakdown.price = Math.round(priceScore);

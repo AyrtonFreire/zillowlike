@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { X, Share2, Heart, MapPin, ChevronLeft, ChevronRight, Car, Home, Wind, Waves, Building2, Dumbbell, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Sun, Video, Zap, Eye, ArrowUp, ArrowDown, Accessibility, DoorOpen, Lightbulb, Droplets, Archive, Gem, Compass, Dog, ChevronDown, School, Pill, ShoppingCart, Landmark, Fuel, Hospital, Building } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Button from "./ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -30,8 +31,12 @@ type PropertyDetailsModalProps = {
 type PropertyDetails = {
   id: string;
   title: string;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
   description: string;
   price: number;
+  condoFee?: number | null;
+  iptuYearly?: number | null;
   type: string;
   purpose?: 'SALE' | 'RENT';
   videoUrl?: string | null;
@@ -41,15 +46,64 @@ type PropertyDetails = {
   neighborhood: string | null;
   city: string;
   state: string;
+  postalCode?: string | null;
   bedrooms: number | null;
   bathrooms: number | null;
   areaM2: number | null;
+  builtAreaM2?: number | null;
+  lotAreaM2?: number | null;
+  privateAreaM2?: number | null;
+  usableAreaM2?: number | null;
+  suites?: number | null;
   parkingSpots: number | null;
+  floor?: number | null;
   yearBuilt: number | null;
+  yearRenovated?: number | null;
+  totalFloors?: number | null;
   furnished: boolean;
   petFriendly: boolean;
-  images: { url: string }[];
+  images: { url: string; alt?: string | null }[];
+  conditionTags?: string[] | null;
+  hasBalcony?: boolean | null;
+  hasElevator?: boolean | null;
+  hasPool?: boolean | null;
+  hasGym?: boolean | null;
+  hasPlayground?: boolean | null;
+  hasPartyRoom?: boolean | null;
+  hasGourmet?: boolean | null;
+  hasConcierge24h?: boolean | null;
+  accRamps?: boolean | null;
+  accWideDoors?: boolean | null;
+  accAccessibleElevator?: boolean | null;
+  accTactile?: boolean | null;
+  comfortAC?: boolean | null;
+  comfortHeating?: boolean | null;
+  comfortSolar?: boolean | null;
+  comfortNoiseWindows?: boolean | null;
+  comfortLED?: boolean | null;
+  comfortWaterReuse?: boolean | null;
+  finishFloor?: string | null;
+  finishCabinets?: boolean | null;
+  finishCounterGranite?: boolean | null;
+  finishCounterQuartz?: boolean | null;
+  viewSea?: boolean | null;
+  viewCity?: boolean | null;
+  positionFront?: boolean | null;
+  positionBack?: boolean | null;
+  sunByRoomNote?: string | null;
+  petsSmall?: boolean | null;
+  petsLarge?: boolean | null;
+  condoRules?: string | null;
+  secCCTV?: boolean | null;
+  secSallyPort?: boolean | null;
+  secNightGuard?: boolean | null;
+  secElectricFence?: boolean | null;
+  sunOrientation?: string | null;
+  hidePrice?: boolean | null;
+  hideExactAddress?: boolean | null;
   hideOwnerContact?: boolean | null;
+  hideCondoFee?: boolean | null;
+  hideIPTU?: boolean | null;
   privateOwnerName?: string | null;
   privateOwnerPhone?: string | null;
   privateOwnerEmail?: string | null;
@@ -88,11 +142,13 @@ const FEATURES_ICONS = {
 
 export default function PropertyDetailsModalJames({ propertyId, open, onClose }: PropertyDetailsModalProps) {
   const { variant = "overlay", mode = "public", backHref, backLabel } = arguments[0] as PropertyDetailsModalProps;
+  const router = useRouter();
   const isOpen = variant === "page" ? true : open;
   const [activePropertyId, setActivePropertyId] = useState<string | null>(propertyId);
   const [property, setProperty] = useState<PropertyDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCloning, setIsCloning] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [thumbsPerPage, setThumbsPerPage] = useState(9);
   const [showAllFeatures, setShowAllFeatures] = useState(false);
@@ -286,6 +342,185 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     }
   };
 
+  const formatDraftBRLFromCents = (cents?: number | null) => {
+    if (typeof cents !== "number" || !Number.isFinite(cents)) return "";
+    const reais = Math.trunc(cents / 100);
+    if (!Number.isFinite(reais) || reais <= 0) return "";
+    return String(reais).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  const normalizeDateToInput = (value?: string | null) => {
+    if (!value) return "";
+    const s = String(value);
+    if (s.length >= 10) return s.slice(0, 10);
+    return "";
+  };
+
+  const mapFinishFloorToDraft = (v?: string | null) => {
+    const s = (v || "").toString().toUpperCase();
+    if (s === "PORCELANATO") return "porcelanato";
+    if (s === "MADEIRA") return "madeira";
+    if (s === "VINILICO") return "vinilico";
+    return "";
+  };
+
+  const mapSunOrientationToDraft = (v?: string | null) => {
+    const s = (v || "").toString().toUpperCase();
+    if (s === "NASCENTE" || s === "POENTE") return s;
+    return "";
+  };
+
+  const handleCloneListing = async () => {
+    if (!property) return;
+    if (isCloning) return;
+    setIsCloning(true);
+    try {
+      const SAVE_KEY = "owner_new_draft";
+
+      try {
+        const existing = window.localStorage.getItem(SAVE_KEY);
+        if (existing && existing.trim()) {
+          const ok = window.confirm(
+            "Você já tem um rascunho salvo em Anunciar imóvel. Deseja substituir pelo anúncio clonado?"
+          );
+          if (!ok) return;
+        }
+      } catch {}
+
+      const amenityTagSet = new Set([
+        "Varanda",
+        "Elevador",
+        "Piscina",
+        "Academia",
+        "Playground",
+        "Salão de festas",
+        "Espaço gourmet",
+        "Portaria 24h",
+      ]);
+      const conditionTags = Array.isArray(property.conditionTags)
+        ? property.conditionTags.filter((t) => typeof t === "string" && !amenityTagSet.has(t))
+        : [];
+
+      const images = Array.isArray(property.images)
+        ? property.images
+            .filter((img: { url: string; alt?: string | null }) => !!img?.url)
+            .slice(0, 20)
+            .map((img: { url: string; alt?: string | null }) => ({ url: img.url, alt: img.alt ?? undefined, useUrl: true }))
+        : [];
+
+      const draft: any = {
+        description: property.description || "",
+        aiDescriptionGenerations: 0,
+        customTitle: property.title || "",
+        metaTitle: property.metaTitle || "",
+        metaDescription: property.metaDescription || "",
+        videoUrl: property.videoUrl || "",
+        priceBRL: formatDraftBRLFromCents(property.price),
+        type: property.type,
+        purpose: property.purpose || "",
+        street: property.street || "",
+        neighborhood: property.neighborhood || "",
+        city: property.city || "",
+        state: property.state || "",
+        postalCode: property.postalCode || "",
+        bedrooms: property.bedrooms ?? "",
+        bathrooms: property.bathrooms ?? "",
+        areaM2: property.areaM2 ?? "",
+        builtAreaM2: property.builtAreaM2 ?? "",
+        lotAreaM2: property.lotAreaM2 ?? "",
+        privateAreaM2: property.privateAreaM2 ?? "",
+        usableAreaM2: property.usableAreaM2 ?? "",
+        suites: property.suites ?? "",
+        parkingSpots: property.parkingSpots ?? "",
+        floor: property.floor ?? "",
+        yearBuilt: property.yearBuilt ?? "",
+        yearRenovated: property.yearRenovated ?? "",
+        totalFloors: property.totalFloors ?? "",
+        images: images.length ? images : [{ url: "", useUrl: false }],
+        addressNumber: "",
+        conditionTags,
+        petFriendly: !!property.petFriendly,
+        currentStep: 1,
+        iptuYearBRL: formatDraftBRLFromCents(property.iptuYearly),
+        condoFeeBRL: formatDraftBRLFromCents(property.condoFee),
+        hasBalcony: !!property.hasBalcony,
+        hasElevator: !!property.hasElevator,
+        hasPool: !!property.hasPool,
+        hasGym: !!property.hasGym,
+        hasPlayground: !!property.hasPlayground,
+        hasPartyRoom: !!property.hasPartyRoom,
+        hasGourmet: !!property.hasGourmet,
+        hasConcierge24h: !!property.hasConcierge24h,
+        accRamps: !!property.accRamps,
+        accWideDoors: !!property.accWideDoors,
+        accAccessibleElevator: !!property.accAccessibleElevator,
+        accTactile: !!property.accTactile,
+        comfortAC: !!property.comfortAC,
+        comfortHeating: !!property.comfortHeating,
+        comfortSolar: !!property.comfortSolar,
+        comfortNoiseWindows: !!property.comfortNoiseWindows,
+        comfortLED: !!property.comfortLED,
+        comfortWaterReuse: !!property.comfortWaterReuse,
+        finishFloor: mapFinishFloorToDraft(property.finishFloor),
+        finishCabinets: !!property.finishCabinets,
+        finishCounterGranite: !!property.finishCounterGranite,
+        finishCounterQuartz: !!property.finishCounterQuartz,
+        viewSea: !!property.viewSea,
+        viewCity: !!property.viewCity,
+        positionFront: !!property.positionFront,
+        positionBack: !!property.positionBack,
+        sunByRoomNote: property.sunByRoomNote || "",
+        petsSmall: !!property.petsSmall,
+        petsLarge: !!property.petsLarge,
+        condoRules: property.condoRules || "",
+        secCCTV: !!property.secCCTV,
+        secSallyPort: !!property.secSallyPort,
+        secNightGuard: !!property.secNightGuard,
+        secElectricFence: !!property.secElectricFence,
+        sunOrientation: mapSunOrientationToDraft(property.sunOrientation),
+        privateOwnerName: property.privateOwnerName || "",
+        privateOwnerPhone: property.privateOwnerPhone || "",
+        privateOwnerEmail: property.privateOwnerEmail || "",
+        privateOwnerAddress: property.privateOwnerAddress || "",
+        privateOwnerPriceBRL: formatDraftBRLFromCents(property.privateOwnerPrice),
+        privateBrokerFeePercent:
+          typeof property.privateBrokerFeePercent === "number" && Number.isFinite(property.privateBrokerFeePercent)
+            ? String(property.privateBrokerFeePercent)
+            : "",
+        privateBrokerFeeFixedBRL: formatDraftBRLFromCents(property.privateBrokerFeeFixed),
+        privateExclusive: !!property.privateExclusive,
+        privateExclusiveUntil: normalizeDateToInput(property.privateExclusiveUntil),
+        privateOccupied: !!property.privateOccupied,
+        privateOccupantInfo: property.privateOccupantInfo || "",
+        privateKeyLocation: property.privateKeyLocation || "",
+        privateNotes: property.privateNotes || "",
+        hidePrice: !!property.hidePrice,
+        hideExactAddress: !!property.hideExactAddress,
+        hideOwnerContact: !!property.hideOwnerContact,
+        hideCondoFee: !!property.hideCondoFee,
+        hideIPTU: !!property.hideIPTU,
+        cloneFromPropertyId: property.id,
+      };
+
+      try {
+        window.localStorage.setItem(SAVE_KEY, JSON.stringify(draft));
+      } catch {}
+      try {
+        const apiDraft = { ...draft };
+        delete (apiDraft as any).cloneFromPropertyId;
+        fetch("/api/properties/draft", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: apiDraft, currentStep: 1 }),
+        }).catch(() => {});
+      } catch {}
+
+      router.push("/owner/new");
+    } finally {
+      setIsCloning(false);
+    }
+  };
+
   // Fetch property data
   useEffect(() => {
     if (!isOpen) return;
@@ -308,7 +543,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           setProperty({
             ...p,
             description: p.description || "",
-            images: Array.isArray(p.images) ? p.images.map((img: any) => ({ url: img.url })) : [],
+            images: Array.isArray(p.images) ? p.images.map((img: any) => ({ url: img.url, alt: img.alt ?? null })) : [],
           });
         } else {
           setProperty(data.item);
@@ -705,6 +940,30 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             )}
             {/* Ações só aparecem em sm+; no mobile usamos os botões sobre a foto */}
             <div className="hidden sm:flex items-center gap-3">
+              {mode === "internal" && photoViewMode !== "feed" && (
+                <>
+                  <Link
+                    href={`/broker/properties/${property.id}`}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                  >
+                    Leads & negociação
+                  </Link>
+                  <Link
+                    href={`/owner/properties/edit/${property.id}`}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                  >
+                    Editar anúncio
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={isCloning}
+                    onClick={handleCloneListing}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    Clonar anúncio
+                  </button>
+                </>
+              )}
               <button
                 onClick={handleShare}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
@@ -849,7 +1108,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               className="flex h-full"
               style={{ width: `${property.images.length * 100}%` }}
             >
-              {property.images.map((img, i) => (
+              {property.images.map((img: { url: string; alt?: string | null }, i: number) => (
                 <div key={i} className="relative h-full" style={{ width: `${100 / property.images.length}%` }}>
                   <Image
                     src={transformCloudinary(img.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto")}
@@ -893,11 +1152,12 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             {/* Dots indicadores */}
             {property.images.length > 1 && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                {property.images.map((_, i) => (
+                {property.images.map((_v: { url: string; alt?: string | null }, i: number) => (
                   <button
                     key={i}
                     onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(i); }}
-                    className={`h-2 rounded-full transition-all ${i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
+                    className={`w-2 h-2 rounded-full transition-all ${
+i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   />
                 ))}
               </div>
@@ -917,7 +1177,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {displayImages.slice(1, 5).map((img, i) => (
+              {displayImages.slice(1, 5).map((img: { url: string; alt?: string | null }, i: number) => (
                 <div
                   key={i}
                   className="relative rounded-lg overflow-hidden cursor-pointer"
@@ -945,6 +1205,35 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               ))}
             </div>
           </div>
+
+          {mode === "internal" && variant === "page" && (
+            <div className="sm:hidden mt-4">
+              <div className="rounded-xl border border-teal/10 p-4 bg-white shadow-sm">
+                <div className="grid grid-cols-1 gap-2">
+                  <Link
+                    href={`/broker/properties/${property.id}`}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                  >
+                    Leads & negociação
+                  </Link>
+                  <Link
+                    href={`/owner/properties/edit/${property.id}`}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                  >
+                    Editar anúncio
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={isCloning}
+                    onClick={handleCloneListing}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    Clonar anúncio
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 px-4 md:px-0">
@@ -1122,7 +1411,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 {/* Skeleton de POIs */}
                 {poiLoading && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                    {Array.from({length: 6}).map((_,i)=> (
+                    {Array.from({length: 6}).map((_v: unknown, i: number)=> (
                       <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 animate-pulse">
                         <div className="h-4 w-32 bg-gray-200 rounded mb-3" />
                         <div className="space-y-2">
@@ -1348,6 +1637,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                       );
                     })()}
                   </>
+                ) : variant === "page" ? (
+                  <></>
                 ) : (
                   <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
                     <h4 className="font-semibold text-gray-900 mb-3">Ferramentas internas</h4>
@@ -1364,6 +1655,14 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                       >
                         Editar anúncio
                       </Link>
+                      <button
+                        type="button"
+                        disabled={isCloning}
+                        onClick={handleCloneListing}
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        Clonar anúncio
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1428,7 +1727,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 <div className="flex-1 overflow-y-auto">
                   {/* Mobile: todas as fotos do mesmo tamanho, full width */}
                   <div className="md:hidden">
-                    {property.images.map((img, i) => (
+                    {property.images.map((img: { url: string; alt?: string | null }, i: number) => (
                       <div
                         key={i}
                         className="relative w-full aspect-[4/3] cursor-pointer"
@@ -1739,7 +2038,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 className="flex h-full items-center"
                 style={{ width: `${property.images.length * 100}%` }}
               >
-                {property.images.map((img, i) => (
+                {property.images.map((img: { url: string; alt?: string | null }, i: number) => (
                   <div key={i} className="relative h-full flex items-center justify-center" style={{ width: `${100 / property.images.length}%` }}>
                     <Image
                       src={img.url || "/placeholder.jpg"}
@@ -1787,7 +2086,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 </button>
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-                {property.images.map((img, i) => (
+                {property.images.map((img: { url: string; alt?: string | null }, i: number) => (
                   <button
                     key={`grid-${i}`}
                     onClick={() => { setCurrentImageIndex(i); setShowThumbGrid(false); }}

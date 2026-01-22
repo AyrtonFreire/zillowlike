@@ -1033,6 +1033,57 @@ export default function NewPropertyPage() {
       if (typeof d.condoFeeBRL === 'string') setCondoFeeBRL(d.condoFeeBRL);
       if (d.iptuYearBRL) setIptuYearBRL(d.iptuYearBRL);
       else if (d.iptuYearlyBRL) setIptuYearBRL(d.iptuYearlyBRL);
+
+      if (typeof d.hasBalcony === 'boolean') setHasBalcony(d.hasBalcony);
+      if (typeof d.hasElevator === 'boolean') setHasElevator(d.hasElevator);
+      if (typeof d.hasPool === 'boolean') setHasPool(d.hasPool);
+      if (typeof d.hasGym === 'boolean') setHasGym(d.hasGym);
+      if (typeof d.hasPlayground === 'boolean') setHasPlayground(d.hasPlayground);
+      if (typeof d.hasPartyRoom === 'boolean') setHasPartyRoom(d.hasPartyRoom);
+      if (typeof d.hasGourmet === 'boolean') setHasGourmet(d.hasGourmet);
+      if (typeof d.hasConcierge24h === 'boolean') setHasConcierge24h(d.hasConcierge24h);
+
+      if (typeof d.accRamps === 'boolean') setAccRamps(d.accRamps);
+      if (typeof d.accWideDoors === 'boolean') setAccWideDoors(d.accWideDoors);
+      if (typeof d.accAccessibleElevator === 'boolean') setAccAccessibleElevator(d.accAccessibleElevator);
+      if (typeof d.accTactile === 'boolean') setAccTactile(d.accTactile);
+
+      if (typeof d.comfortAC === 'boolean') setComfortAC(d.comfortAC);
+      if (typeof d.comfortHeating === 'boolean') setComfortHeating(d.comfortHeating);
+      if (typeof d.comfortSolar === 'boolean') setComfortSolar(d.comfortSolar);
+      if (typeof d.comfortNoiseWindows === 'boolean') setComfortNoiseWindows(d.comfortNoiseWindows);
+      if (typeof d.comfortLED === 'boolean') setComfortLED(d.comfortLED);
+      if (typeof d.comfortWaterReuse === 'boolean') setComfortWaterReuse(d.comfortWaterReuse);
+
+      if (typeof d.finishFloor === 'string') setFinishFloor(d.finishFloor);
+      if (typeof d.finishCabinets === 'boolean') setFinishCabinets(d.finishCabinets);
+      if (typeof d.finishCounterGranite === 'boolean') setFinishCounterGranite(d.finishCounterGranite);
+      if (typeof d.finishCounterQuartz === 'boolean') setFinishCounterQuartz(d.finishCounterQuartz);
+
+      if (typeof d.viewSea === 'boolean') setViewSea(d.viewSea);
+      if (typeof d.viewCity === 'boolean') setViewCity(d.viewCity);
+      if (typeof d.positionFront === 'boolean') setPositionFront(d.positionFront);
+      if (typeof d.positionBack === 'boolean') setPositionBack(d.positionBack);
+      if (typeof d.sunByRoomNote === 'string') setSunByRoomNote(d.sunByRoomNote);
+      if (typeof d.sunOrientation === 'string') setSunOrientation(d.sunOrientation);
+
+      if (typeof d.petsSmall === 'boolean') setPetsSmall(d.petsSmall);
+      if (typeof d.petsLarge === 'boolean') setPetsLarge(d.petsLarge);
+      if (typeof d.condoRules === 'string') setCondoRules(d.condoRules);
+
+      if (typeof d.secCCTV === 'boolean') setSecCCTV(d.secCCTV);
+      if (typeof d.secSallyPort === 'boolean') setSecSallyPort(d.secSallyPort);
+      if (typeof d.secNightGuard === 'boolean') setSecNightGuard(d.secNightGuard);
+      if (typeof d.secElectricFence === 'boolean') setSecElectricFence(d.secElectricFence);
+
+      if (d.cloneFromPropertyId) {
+        setToast({ message: "Anúncio clonado. Revise os campos antes de publicar.", type: "info" });
+        try {
+          const next = { ...d };
+          delete (next as any).cloneFromPropertyId;
+          window.localStorage.setItem(SAVE_KEY, JSON.stringify(next));
+        } catch {}
+      }
     } catch {}
   }, []);
 
@@ -1114,6 +1165,48 @@ export default function NewPropertyPage() {
         if (d.iptuYearBRL) setIptuYearBRL(d.iptuYearBRL);
         else if (d.iptuYearlyBRL) setIptuYearBRL(d.iptuYearlyBRL);
 
+        if (typeof d.hasBalcony === 'boolean') setHasBalcony(d.hasBalcony);
+        if (typeof d.hasElevator === 'boolean') setHasElevator(d.hasElevator);
+        if (typeof d.hasPool === 'boolean') setHasPool(d.hasPool);
+        if (typeof d.hasGym === 'boolean') setHasGym(d.hasGym);
+        if (typeof d.hasPlayground === 'boolean') setHasPlayground(d.hasPlayground);
+        if (typeof d.hasPartyRoom === 'boolean') setHasPartyRoom(d.hasPartyRoom);
+        if (typeof d.hasGourmet === 'boolean') setHasGourmet(d.hasGourmet);
+        if (typeof d.hasConcierge24h === 'boolean') setHasConcierge24h(d.hasConcierge24h);
+
+        if (typeof d.accRamps === 'boolean') setAccRamps(d.accRamps);
+        if (typeof d.accWideDoors === 'boolean') setAccWideDoors(d.accWideDoors);
+        if (typeof d.accAccessibleElevator === 'boolean') setAccAccessibleElevator(d.accAccessibleElevator);
+        if (typeof d.accTactile === 'boolean') setAccTactile(d.accTactile);
+
+        if (typeof d.comfortAC === 'boolean') setComfortAC(d.comfortAC);
+        if (typeof d.comfortHeating === 'boolean') setComfortHeating(d.comfortHeating);
+        if (typeof d.comfortSolar === 'boolean') setComfortSolar(d.comfortSolar);
+        if (typeof d.comfortNoiseWindows === 'boolean') setComfortNoiseWindows(d.comfortNoiseWindows);
+        if (typeof d.comfortLED === 'boolean') setComfortLED(d.comfortLED);
+        if (typeof d.comfortWaterReuse === 'boolean') setComfortWaterReuse(d.comfortWaterReuse);
+
+        if (typeof d.finishFloor === 'string') setFinishFloor(d.finishFloor);
+        if (typeof d.finishCabinets === 'boolean') setFinishCabinets(d.finishCabinets);
+        if (typeof d.finishCounterGranite === 'boolean') setFinishCounterGranite(d.finishCounterGranite);
+        if (typeof d.finishCounterQuartz === 'boolean') setFinishCounterQuartz(d.finishCounterQuartz);
+
+        if (typeof d.viewSea === 'boolean') setViewSea(d.viewSea);
+        if (typeof d.viewCity === 'boolean') setViewCity(d.viewCity);
+        if (typeof d.positionFront === 'boolean') setPositionFront(d.positionFront);
+        if (typeof d.positionBack === 'boolean') setPositionBack(d.positionBack);
+        if (typeof d.sunByRoomNote === 'string') setSunByRoomNote(d.sunByRoomNote);
+        if (typeof d.sunOrientation === 'string') setSunOrientation(d.sunOrientation);
+
+        if (typeof d.petsSmall === 'boolean') setPetsSmall(d.petsSmall);
+        if (typeof d.petsLarge === 'boolean') setPetsLarge(d.petsLarge);
+        if (typeof d.condoRules === 'string') setCondoRules(d.condoRules);
+
+        if (typeof d.secCCTV === 'boolean') setSecCCTV(d.secCCTV);
+        if (typeof d.secSallyPort === 'boolean') setSecSallyPort(d.secSallyPort);
+        if (typeof d.secNightGuard === 'boolean') setSecNightGuard(d.secNightGuard);
+        if (typeof d.secElectricFence === 'boolean') setSecElectricFence(d.secElectricFence);
+
         try { window.localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch {}
       } catch {}
     };
@@ -1182,6 +1275,41 @@ export default function NewPropertyPage() {
           hideOwnerContact,
           hideCondoFee,
           hideIPTU,
+          hasBalcony,
+          hasElevator,
+          hasPool,
+          hasGym,
+          hasPlayground,
+          hasPartyRoom,
+          hasGourmet,
+          hasConcierge24h,
+          accRamps,
+          accWideDoors,
+          accAccessibleElevator,
+          accTactile,
+          comfortAC,
+          comfortHeating,
+          comfortSolar,
+          comfortNoiseWindows,
+          comfortLED,
+          comfortWaterReuse,
+          finishFloor,
+          finishCabinets,
+          finishCounterGranite,
+          finishCounterQuartz,
+          viewSea,
+          viewCity,
+          positionFront,
+          positionBack,
+          sunByRoomNote,
+          sunOrientation,
+          petsSmall,
+          petsLarge,
+          condoRules,
+          secCCTV,
+          secSallyPort,
+          secNightGuard,
+          secElectricFence,
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
 
@@ -1194,7 +1322,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, petFriendly, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, isSubmitting, publishedProperty]);
+  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, petFriendly, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, sunOrientation, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
