@@ -155,16 +155,7 @@ export default function BrokerPropertiesPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-end mb-4">
-        <Link
-          href="/start"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-teal-200 bg-white text-teal-700 hover:bg-teal-50 text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Novo anúncio
-        </Link>
-      </div>
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {error && (
         <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-2 text-xs text-yellow-800">
           {error}
@@ -198,28 +189,38 @@ export default function BrokerPropertiesPage() {
                     {totalProperties} imóveis no total, {totalActive} ativos e {totalLeads} leads gerados.
                   </p>
                 </div>
-                <div className="grid grid-cols-3 gap-3 text-xs md:text-sm">
-                  <div className="bg-white/10 rounded-xl px-3 py-2 text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1 text-teal-100">
-                      <Home className="w-3.5 h-3.5" />
-                      <span>Imóveis</span>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="grid grid-cols-3 gap-3 text-xs md:text-sm">
+                    <div className="bg-white/10 rounded-xl px-3 py-2 text-center">
+                      <div className="flex items-center justify-center gap-1 mb-1 text-teal-100">
+                        <Home className="w-3.5 h-3.5" />
+                        <span>Imóveis</span>
+                      </div>
+                      <div className="text-base md:text-lg font-bold">{totalProperties}</div>
                     </div>
-                    <div className="text-base md:text-lg font-bold">{totalProperties}</div>
-                  </div>
-                  <div className="bg-white/10 rounded-xl px-3 py-2 text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1 text-teal-100">
-                      <Users className="w-3.5 h-3.5" />
-                      <span>Leads</span>
+                    <div className="bg-white/10 rounded-xl px-3 py-2 text-center">
+                      <div className="flex items-center justify-center gap-1 mb-1 text-teal-100">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>Leads</span>
+                      </div>
+                      <div className="text-base md:text-lg font-bold">{totalLeads}</div>
                     </div>
-                    <div className="text-base md:text-lg font-bold">{totalLeads}</div>
-                  </div>
-                  <div className="bg-white/10 rounded-xl px-3 py-2 text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1 text-teal-100">
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Views</span>
+                    <div className="bg-white/10 rounded-xl px-3 py-2 text-center">
+                      <div className="flex items-center justify-center gap-1 mb-1 text-teal-100">
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Views</span>
+                      </div>
+                      <div className="text-base md:text-lg font-bold">{totalViews}</div>
                     </div>
-                    <div className="text-base md:text-lg font-bold">{totalViews}</div>
                   </div>
+
+                  <Link
+                    href="/start"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/95 text-teal-800 hover:bg-white font-semibold text-sm transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Novo anúncio
+                  </Link>
                 </div>
               </div>
             </div>
@@ -309,7 +310,7 @@ export default function BrokerPropertiesPage() {
                 Nenhum imóvel encontrado com os filtros atuais. Ajuste a busca ou os filtros para ver outros imóveis.
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {sortedProperties.map((property) => (
                   <PropertyCardV2
                     key={property.id}

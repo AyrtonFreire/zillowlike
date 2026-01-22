@@ -1381,161 +1381,160 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                 })()}
               </div>
 
-              {/* Explore the Area */}
-              <div ref={areaSectionRef} className="pt-4 border-t border-teal/10">
-                <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Explore a Região</h3>
-                
-                {/* Mapa com POIs */}
-                {shouldLoadArea && (property as any).latitude && (property as any).longitude && (
-                  <div className="mb-4 h-[300px] rounded-lg overflow-hidden border border-teal/10">
-                    <Map
-                      items={[{
-                        id: property.id,
-                        price: property.price,
-                        latitude: (property as any).latitude,
-                        longitude: (property as any).longitude
-                      }]}
-                      pois={{
-                        mode: 'auto' as const,
-                        center: [(property as any).latitude, (property as any).longitude],
-                        radius: 1000
-                      }}
-                      hideRefitButton
-                      centeredPriceMarkers
-                      simplePin
-                      limitInteraction={{ minZoom: 13, maxZoom: 16, radiusMeters: 2000 }}
-                    />
-                  </div>
-                )}
-                
-                {/* Skeleton de POIs */}
-                {poiLoading && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                    {Array.from({length: 6}).map((_v: unknown, i: number)=> (
-                      <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 animate-pulse">
-                        <div className="h-4 w-32 bg-gray-200 rounded mb-3" />
-                        <div className="space-y-2">
-                          <div className="h-3 w-5/6 bg-gray-200 rounded" />
-                          <div className="h-3 w-2/3 bg-gray-200 rounded" />
-                          <div className="h-3 w-3/4 bg-gray-200 rounded" />
+              {mode === "public" && (
+                <div ref={areaSectionRef} className="pt-4 border-t border-teal/10">
+                  <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Explore a Região</h3>
+
+                  {/* Mapa com POIs */}
+                  {shouldLoadArea && (property as any).latitude && (property as any).longitude && (
+                    <div className="mb-4 h-[300px] rounded-lg overflow-hidden border border-teal/10">
+                      <Map
+                        items={[{
+                          id: property.id,
+                          price: property.price,
+                          latitude: (property as any).latitude,
+                          longitude: (property as any).longitude,
+                        }]}
+                        pois={{
+                          mode: 'auto' as const,
+                          center: [(property as any).latitude, (property as any).longitude],
+                          radius: 1000,
+                        }}
+                        hideRefitButton
+                        centeredPriceMarkers
+                        simplePin
+                        limitInteraction={{ minZoom: 13, maxZoom: 16, radiusMeters: 2000 }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Skeleton de POIs */}
+                  {poiLoading && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                      {Array.from({ length: 6 }).map((_v: unknown, i: number) => (
+                        <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 animate-pulse">
+                          <div className="h-4 w-32 bg-gray-200 rounded mb-3" />
+                          <div className="space-y-2">
+                            <div className="h-3 w-5/6 bg-gray-200 rounded" />
+                            <div className="h-3 w-2/3 bg-gray-200 rounded" />
+                            <div className="h-3 w-3/4 bg-gray-200 rounded" />
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
 
-                {!shouldLoadArea ? (
-                  <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
-                    <p className="text-sm text-gray-600">Carregando mapa e pontos de interesse...</p>
-                    <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
-                  </div>
-                ) : (nearbyPlaces.schools.length > 0 || nearbyPlaces.markets.length > 0 || nearbyPlaces.pharmacies.length > 0 || nearbyPlaces.restaurants.length > 0 || nearbyPlaces.hospitals.length > 0 || nearbyPlaces.parks.length > 0 || nearbyPlaces.gyms.length > 0 || nearbyPlaces.fuel.length > 0 || nearbyPlaces.bakeries.length > 0 || nearbyPlaces.banks.length > 0 || nearbyPlaces.malls.length > 0) ? (
-                  <div className="mb-6">
-                    {(() => {
-                      const lat = (property as any).latitude;
-                      const lng = (property as any).longitude;
-                      const hasCoords = typeof lat === 'number' && typeof lng === 'number';
+                  {!shouldLoadArea ? (
+                    <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
+                      <p className="text-sm text-gray-600">Carregando mapa e pontos de interesse...</p>
+                      <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
+                    </div>
+                  ) : (nearbyPlaces.schools.length > 0 || nearbyPlaces.markets.length > 0 || nearbyPlaces.pharmacies.length > 0 || nearbyPlaces.restaurants.length > 0 || nearbyPlaces.hospitals.length > 0 || nearbyPlaces.parks.length > 0 || nearbyPlaces.gyms.length > 0 || nearbyPlaces.fuel.length > 0 || nearbyPlaces.bakeries.length > 0 || nearbyPlaces.banks.length > 0 || nearbyPlaces.malls.length > 0) ? (
+                    <div className="mb-6">
+                      {(() => {
+                        const lat = (property as any).latitude;
+                        const lng = (property as any).longitude;
+                        const hasCoords = typeof lat === 'number' && typeof lng === 'number';
 
-                      const available = poiCategories
-                        .filter((c) => Array.isArray(c.items) && (c.items as any[]).length > 0)
-                        .map((c) => {
-                          const base = ((c.items as any[]) || []).slice();
-                          base.sort((a: any, b: any) => {
-                            if (hasCoords) {
-                              const d1 = (a.lat - lat) * (a.lat - lat) + (a.lng - lng) * (a.lng - lng);
-                              const d2 = (b.lat - lat) * (b.lat - lat) + (b.lng - lng) * (b.lng - lng);
-                              return d1 - d2;
-                            }
-                            return String(a.name).localeCompare(String(b.name));
+                        const available = poiCategories
+                          .filter((c) => Array.isArray(c.items) && (c.items as any[]).length > 0)
+                          .map((c) => {
+                            const base = ((c.items as any[]) || []).slice();
+                            base.sort((a: any, b: any) => {
+                              if (hasCoords) {
+                                const d1 = (a.lat - lat) * (a.lat - lat) + (a.lng - lng) * (a.lng - lng);
+                                const d2 = (b.lat - lat) * (b.lat - lat) + (b.lng - lng) * (b.lng - lng);
+                                return d1 - d2;
+                              }
+                              return String(a.name).localeCompare(String(b.name));
+                            });
+                            return { ...c, sorted: base };
                           });
-                          return { ...c, sorted: base };
-                        });
 
-                      if (available.length === 0) return null;
+                        if (available.length === 0) return null;
 
-                      const selected = (available as any[]).find((c: any) => c.key === activePOITab) || (available as any[])[0];
-                      const selectedList = (selected as any).sorted || [];
+                        const selected = (available as any[]).find((c: any) => c.key === activePOITab) || (available as any[])[0];
+                        const selectedList = (selected as any).sorted || [];
 
-                      const totalPois = (available as any[]).reduce((acc: number, c: any) => acc + (((c.items as any[]) || []).length), 0);
+                        const totalPois = (available as any[]).reduce((acc: number, c: any) => acc + (((c.items as any[]) || []).length), 0);
 
-                      return (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setPoiOpen((v) => !v)}
-                            className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
-                          >
-                            <span className="text-sm font-semibold text-gray-900">Estabelecimentos próximos</span>
-                            <span className="flex items-center gap-2 text-xs font-semibold text-gray-600">
-                              <span>{totalPois}</span>
-                              <ChevronDown className={`w-4 h-4 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
-                            </span>
-                          </button>
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setPoiOpen((v) => !v)}
+                              className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+                            >
+                              <span className="text-sm font-semibold text-gray-900">Estabelecimentos próximos</span>
+                              <span className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                                <span>{totalPois}</span>
+                                <ChevronDown className={`w-4 h-4 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
+                              </span>
+                            </button>
 
-                          {poiOpen && (
-                            <>
-                              <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                                {(available as any[]).map((c: any) => (
-                                  <button
-                                    key={`poi-tab-${c.key}`}
-                                    type="button"
-                                    onClick={() => setActivePOITab(c.key)}
-                                    className={`shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
-                                      c.key === (selected as any).key
-                                        ? "border-teal-500 bg-teal-50 text-teal-800"
-                                        : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                                    }`}
-                                  >
-                                    {(() => {
-                                      const I = c.Icon as any;
-                                      return <I className="w-3.5 h-3.5" />;
-                                    })()}
-                                    <span>{c.label}</span>
-                                    <span className="text-[11px] font-semibold text-gray-500">{((c.items as any[]) || []).length}</span>
-                                  </button>
-                                ))}
-                              </div>
-                              <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
-                                {selectedList.slice(0, 8).map((p: any, idx: number) => {
-                                  const dist = hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number' ? formatDistance(haversine(lat, lng, p.lat, p.lng)) : null;
-                                  return (
-                                    <div key={`poi-${idx}`} className="flex items-center justify-between gap-3 px-4 py-3 bg-white">
-                                      <div className="min-w-0">
-                                        <div className="text-sm font-medium text-gray-900 truncate">{p.name}</div>
-                                        <div className="text-xs text-gray-500">{(selected as any).label}</div>
+                            {poiOpen && (
+                              <>
+                                <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                                  {(available as any[]).map((c: any) => (
+                                    <button
+                                      key={`poi-tab-${c.key}`}
+                                      type="button"
+                                      onClick={() => setActivePOITab(c.key)}
+                                      className={`shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+                                        c.key === (selected as any).key
+                                          ? "border-teal-500 bg-teal-50 text-teal-800"
+                                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                      }`}
+                                    >
+                                      {(() => {
+                                        const I = c.Icon as any;
+                                        return <I className="w-3.5 h-3.5" />;
+                                      })()}
+                                      <span>{c.label}</span>
+                                      <span className="text-[11px] font-semibold text-gray-500">{((c.items as any[]) || []).length}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+                                  {selectedList.slice(0, 8).map((p: any, idx: number) => {
+                                    const dist = hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number' ? formatDistance(haversine(lat, lng, p.lat, p.lng)) : null;
+                                    return (
+                                      <div key={`poi-${idx}`} className="flex items-center justify-between gap-3 px-4 py-3 bg-white">
+                                        <div className="min-w-0">
+                                          <div className="text-sm font-medium text-gray-900 truncate">{p.name}</div>
+                                          <div className="text-xs text-gray-500">{(selected as any).label}</div>
+                                        </div>
+                                        {dist && (
+                                          <span className="shrink-0 text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
+                                            {dist}
+                                          </span>
+                                        )}
                                       </div>
-                                      {dist && (
-                                        <span className="shrink-0 text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
-                                          {dist}
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                ) : (
-                  <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
-                    <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
-                    <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
-                  </div>
-                )}
-                
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.street}, ${property.city}, ${property.state}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium mb-8"
-                >
-                  Ver no Google Maps →
-                </a>
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
+                      <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
+                      <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
+                    </div>
+                  )}
 
-                {mode === "public" && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.street}, ${property.city}, ${property.state}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium mb-8"
+                  >
+                    Ver no Google Maps →
+                  </a>
+
                   <div className="md:hidden mb-8">
                     <PropertyContactCard
                       propertyId={property.id}
@@ -1550,44 +1549,44 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                       hideOwnerContact={!!(property as any)?.hideOwnerContact}
                     />
                   </div>
-                )}
 
-                <div ref={relatedSectionRef}>
-                  {/* Imóveis Próximos */}
-                  {shouldLoadRelated ? (
-                    nearbyProperties.length > 0 ? (
-                      <div className="border-t border-teal/10 pt-8 mt-8">
-                        <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" onOpenOverlay={handleOpenRelated} />
-                      </div>
+                  <div ref={relatedSectionRef}>
+                    {/* Imóveis Próximos */}
+                    {shouldLoadRelated ? (
+                      nearbyProperties.length > 0 ? (
+                        <div className="border-t border-teal/10 pt-8 mt-8">
+                          <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" onOpenOverlay={handleOpenRelated} />
+                        </div>
+                      ) : (
+                        <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
+                          <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
+                        </div>
+                      )
                     ) : (
                       <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
-                        <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
+                        <p className="text-sm text-gray-500">Carregando sugestões de imóveis...</p>
                       </div>
-                    )
-                  ) : (
-                    <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
-                      <p className="text-sm text-gray-500">Carregando sugestões de imóveis...</p>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Imóveis similares */}
-                  {shouldLoadRelated ? (
-                    similarProperties.length > 0 ? (
-                      <div className="border-t border-teal/10 pt-8 mt-8">
-                        <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" onOpenOverlay={handleOpenRelated} />
-                      </div>
+                    {/* Imóveis similares */}
+                    {shouldLoadRelated ? (
+                      similarProperties.length > 0 ? (
+                        <div className="border-t border-teal/10 pt-8 mt-8">
+                          <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" onOpenOverlay={handleOpenRelated} />
+                        </div>
+                      ) : (
+                        <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
+                          <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
+                        </div>
+                      )
                     ) : (
                       <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
-                        <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
+                        <p className="text-sm text-gray-500">Carregando sugestões de imóveis...</p>
                       </div>
-                    )
-                  ) : (
-                    <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
-                      <p className="text-sm text-gray-500">Carregando sugestões de imóveis...</p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Sidebar */}
