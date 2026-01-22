@@ -29,6 +29,129 @@ function safeString(x: any) {
   return s;
 }
 
+function normalizeTextForMatch(input: string) {
+  const raw = String(input || "").toLowerCase();
+  try {
+    return raw.normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  } catch {
+    return raw;
+  }
+}
+
+function includesAny(text: string, patterns: Array<string | RegExp>) {
+  for (const p of patterns) {
+    if (typeof p === "string") {
+      if (text.includes(p)) return true;
+      continue;
+    }
+    if (p.test(text)) return true;
+  }
+  return false;
+}
+
+type OfflineAssistantIntent = "PROPERTY" | "SCHEDULING" | "FINANCING" | "OFF_TOPIC" | "UNCLEAR";
+
+function classifyIntent(message: string): OfflineAssistantIntent {
+  const t = normalizeTextForMatch(message);
+  if (!t || t.trim().length === 0) return "UNCLEAR";
+
+  const scheduling: Array<string | RegExp> = [
+    "agend",
+    "agenda",
+    "marcar",
+    "visita",
+    "horario",
+    "amanha",
+    "hoje",
+    "sabado",
+    "domingo",
+    "segunda",
+    "terca",
+    "quarta",
+    "quinta",
+    "sexta",
+    "posso ir",
+    "posso ver",
+    "quando posso",
+    /\b\d{1,2}:\d{2}\b/,
+  ];
+
+  const financing: Array<string | RegExp> = ["financi", "fgts", "entrada", "parcela", "parcel", "juros", "simul", "credito", "banco"];
+
+  if (includesAny(t, scheduling)) return "SCHEDULING";
+  if (includesAny(t, financing)) return "FINANCING";
+  const offTopic: Array<string | RegExp> = ["tempo", "clima", "polit", "futebol", "carro", "emprego", "curriculo", "senha", "pix", "cartao"];
+  if (includesAny(t, offTopic)) return "OFF_TOPIC";
+  return "PROPERTY";
+}
+
+function toNumberCents(value: any): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "bigint") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function formatBRLFromCents(value: any): string {
+  const cents = toNumberCents(value);
+  if (cents == null) return "";
+  try {
+    return `R$ ${(cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+  } catch {
+    return `R$ ${(cents / 100).toFixed(2)}`;
+  }
+}
+
+function buildAssistantIntro(clientName: string) {
+  const greet = clientName ? `Olá ${clientName}, tudo bem?` : "Olá, tudo bem?";
+  return `${greet}\n\nSou a assistente virtual do corretor e estou aqui para ajudar com dúvidas básicas do anúncio.\n\n`;
+}
+
+function buildRefusalReply(params: {
+  clientName: string;
+  propertyTitle: string;
+  reason: "OFF_TOPIC" | "SCHEDULING" | "FINANCING" | "UNCLEAR";
+  includeIntro?: boolean;
+}) {
+  const intro = params.includeIntro ? buildAssistantIntro(params.clientName) : "";
+  const about = params.propertyTitle ? `Sobre o imóvel ${params.propertyTitle}, ` : "Sobre o imóvel, ";
+
+  if (params.reason === "SCHEDULING") {
+    return (
+      intro +
+      "Eu não consigo combinar esse tipo de detalhe por aqui.\n\n" +
+      `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
+      "O que você gostaria de saber sobre o imóvel?"
+    );
+  }
+
+  if (params.reason === "FINANCING") {
+    return (
+      intro +
+      "Eu não consigo orientar sobre financiamento por aqui.\n\n" +
+      `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
+      "O que você gostaria de confirmar sobre o imóvel?"
+    );
+  }
+
+  if (params.reason === "OFF_TOPIC") {
+    return (
+      intro +
+      "Eu só consigo ajudar com dúvidas relacionadas a este anúncio.\n\n" +
+      `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
+      "O que você gostaria de saber sobre o imóvel?"
+    );
+  }
+
+  return (
+    intro +
+    `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
+    "O que você gostaria de saber?"
+  );
+}
+
 function safeTimezone(tz: any) {
   const s = safeString(tz) || "America/Sao_Paulo";
   try {
@@ -240,12 +363,13 @@ export class LeadAutoReplyService {
   }
 
   static async enqueueForClientMessage(params: { leadId: string; clientMessageId: string }) {
-    const lead = await prisma.lead.findUnique({
+    const lead = await (prisma as any).lead.findUnique({
       where: { id: params.leadId },
-      select: { id: true, realtorId: true },
+      select: { id: true, realtorId: true, autoReplyPaused: true },
     });
 
     if (!lead?.realtorId) return { enqueued: false as const, reason: "NO_REALTOR" as const };
+    if (lead.autoReplyPaused) return { enqueued: false as const, reason: "PAUSED" as const };
 
     const settings = await this.getSettings(lead.realtorId);
     if (!settings.enabled) return { enqueued: false as const, reason: "DISABLED" as const };
@@ -317,11 +441,12 @@ export class LeadAutoReplyService {
         return { ok: true as const, status: "SKIPPED" as const, reason: "NOT_A_CLIENT_MESSAGE" };
       }
 
-      const lead = await prisma.lead.findUnique({
+      const lead = await (prisma as any).lead.findUnique({
         where: { id: msg.leadId },
         select: {
           id: true,
           realtorId: true,
+          autoReplyPaused: true,
           contact: { select: { name: true } },
           property: {
             select: {
@@ -331,11 +456,20 @@ export class LeadAutoReplyService {
               neighborhood: true,
               price: true,
               hidePrice: true,
+              condoFee: true,
+              hideCondoFee: true,
+              iptuYearly: true,
+              hideIPTU: true,
               type: true,
               purpose: true,
               bedrooms: true,
               bathrooms: true,
               areaM2: true,
+              suites: true,
+              parkingSpots: true,
+              floor: true,
+              furnished: true,
+              petFriendly: true,
             },
           },
         },
@@ -347,6 +481,24 @@ export class LeadAutoReplyService {
           data: { status: "SKIPPED", skipReason: "NO_REALTOR", processedAt: now },
         });
         return { ok: true as const, status: "SKIPPED" as const, reason: "NO_REALTOR" };
+      }
+
+      if (lead.autoReplyPaused) {
+        await (prisma as any).leadAutoReplyJob.update({
+          where: { clientMessageId },
+          data: { status: "SKIPPED", skipReason: "PAUSED", processedAt: now },
+        });
+        await this.safeEvent(lead.id, "AUTO_REPLY_SKIPPED", { reason: "PAUSED", clientMessageId });
+        await (prisma as any).leadAutoReplyLog.create({
+          data: {
+            leadId: lead.id,
+            realtorId: lead.realtorId,
+            clientMessageId,
+            decision: "SKIPPED",
+            reason: "PAUSED",
+          },
+        });
+        return { ok: true as const, status: "SKIPPED" as const, reason: "PAUSED" };
       }
 
       const settings = await this.getSettings(lead.realtorId);
@@ -440,6 +592,8 @@ export class LeadAutoReplyService {
         select: { createdAt: true },
       });
 
+      const shouldIntroduce = !lastAi?.createdAt;
+
       if (lastAi?.createdAt) {
         const cooldownMs = settings.cooldownMinutes * 60_000;
         if (now.getTime() - new Date(lastAi.createdAt).getTime() < cooldownMs) {
@@ -484,6 +638,92 @@ export class LeadAutoReplyService {
         return { ok: true as const, status: "SKIPPED" as const, reason: "RATE_LIMIT" };
       }
 
+      const clientName = safeString(lead.contact?.name) || "";
+      const propertyTitle = safeString(lead.property?.title) || "";
+
+      const intent = classifyIntent(msg.content);
+      if (intent !== "PROPERTY") {
+        const refusal = buildRefusalReply({
+          clientName,
+          propertyTitle,
+          includeIntro: shouldIntroduce,
+          reason: intent === "FINANCING" ? "FINANCING" : intent === "SCHEDULING" ? "SCHEDULING" : intent === "OFF_TOPIC" ? "OFF_TOPIC" : "UNCLEAR",
+        });
+
+        const draft = applyOfflineAutoReplyGuardrails({
+          draft: refusal,
+          clientName,
+          propertyTitle,
+        });
+
+        if (!draft) {
+          await (prisma as any).leadAutoReplyJob.update({
+            where: { clientMessageId },
+            data: { status: "FAILED", lastError: "EMPTY_TEMPLATE_OUTPUT", processedAt: now },
+          });
+          await this.safeEvent(lead.id, "AUTO_REPLY_FAILED", { reason: "EMPTY_TEMPLATE_OUTPUT", clientMessageId });
+          await (prisma as any).leadAutoReplyLog.create({
+            data: {
+              leadId: lead.id,
+              realtorId: lead.realtorId,
+              clientMessageId,
+              decision: "FAILED",
+              reason: "EMPTY_TEMPLATE_OUTPUT",
+              model: null,
+              promptVersion: "v2",
+            },
+          });
+          return { ok: false as const, status: "FAILED" as const, reason: "EMPTY_TEMPLATE_OUTPUT" };
+        }
+
+        const assistantMessage = await (prisma as any).leadClientMessage.create({
+          data: {
+            leadId: lead.id,
+            fromClient: false,
+            content: draft,
+            source: "AUTO_REPLY_AI" as any,
+          },
+          select: { id: true, content: true, createdAt: true },
+        });
+
+        await (prisma as any).leadAutoReplyJob.update({
+          where: { clientMessageId },
+          data: { status: "SENT", processedAt: now },
+        });
+
+        await (prisma as any).leadAutoReplyLog.create({
+          data: {
+            leadId: lead.id,
+            realtorId: lead.realtorId,
+            clientMessageId,
+            assistantMessageId: assistantMessage.id,
+            decision: "SENT",
+            reason: intent,
+            model: null,
+            promptVersion: "v2",
+          },
+        });
+
+        await this.safeEvent(lead.id, "AUTO_REPLY_SENT", {
+          clientMessageId,
+          assistantMessageId: assistantMessage.id,
+          model: null,
+        });
+
+        try {
+          const pusher = getPusherServer();
+          await pusher.trigger(PUSHER_CHANNELS.CHAT(lead.id), PUSHER_EVENTS.NEW_CHAT_MESSAGE, {
+            id: assistantMessage.id,
+            leadId: lead.id,
+            fromClient: false,
+            content: assistantMessage.content,
+            createdAt: assistantMessage.createdAt,
+          });
+        } catch {}
+
+        return { ok: true as const, status: "SENT" as const };
+      }
+
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) {
         await (prisma as any).leadAutoReplyJob.update({
@@ -507,18 +747,19 @@ export class LeadAutoReplyService {
         where: { leadId: lead.id },
         orderBy: { createdAt: "desc" },
         take: 8,
-        select: { fromClient: true, content: true, createdAt: true },
+        select: { fromClient: true, content: true, createdAt: true, source: true },
       });
 
       const history = recent
         .slice()
         .reverse()
-        .map((m) => `${m.fromClient ? "Cliente" : "Corretor"}: ${safeString(m.content)}`)
+        .map((m: any) => {
+          const who = m.fromClient ? "Cliente" : String(m?.source) === "AUTO_REPLY_AI" ? "Assistente" : "Corretor";
+          return `${who}: ${safeString(m.content)}`;
+        })
         .filter(Boolean)
         .join("\n");
 
-      const clientName = safeString(lead.contact?.name) || "";
-      const propertyTitle = safeString(lead.property?.title) || "";
       const city = safeString(lead.property?.city) || "";
       const state = safeString(lead.property?.state) || "";
       const neighborhood = safeString(lead.property?.neighborhood) || "";
@@ -528,16 +769,25 @@ export class LeadAutoReplyService {
       const bathrooms = typeof lead.property?.bathrooms === "number" ? String(lead.property.bathrooms) : "";
       const areaM2 = typeof lead.property?.areaM2 === "number" ? String(lead.property.areaM2) : "";
 
-      const price =
-        lead.property?.hidePrice || typeof lead.property?.price !== "number"
-          ? "Consulte"
-          : `R$ ${(lead.property.price / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+      const suites = typeof (lead.property as any)?.suites === "number" ? String((lead.property as any).suites) : "";
+      const parkingSpots = typeof (lead.property as any)?.parkingSpots === "number" ? String((lead.property as any).parkingSpots) : "";
+      const floor = typeof (lead.property as any)?.floor === "number" ? String((lead.property as any).floor) : "";
+      const furnished =
+        typeof (lead.property as any)?.furnished === "boolean" ? ((lead.property as any).furnished ? "Sim" : "Não") : "";
+      const petFriendly =
+        typeof (lead.property as any)?.petFriendly === "boolean" ? ((lead.property as any).petFriendly ? "Sim" : "Não") : "";
+
+      const price = (lead.property as any)?.hidePrice ? "Consulte" : formatBRLFromCents((lead.property as any)?.price) || "Consulte";
+      const condoFee =
+        (lead.property as any)?.hideCondoFee ? "Consulte" : formatBRLFromCents((lead.property as any)?.condoFee) || "";
+      const iptuYearly = (lead.property as any)?.hideIPTU ? "Consulte" : formatBRLFromCents((lead.property as any)?.iptuYearly) || "";
 
       const systemPrompt =
         "Você é um assistente de atendimento do chat do site (pt-BR) para corretores de imóveis no Brasil.\n" +
         "Você está respondendo enquanto o corretor está offline (fora do horário comercial configurado).\n" +
         "Objetivo: manter o cliente engajado, esclarecer dúvidas básicas do imóvel usando SOMENTE os dados fornecidos e fazer 1 pergunta curta para qualificar.\n" +
-        "Regras: não invente informações, não use links/telefone, não agende visitas, não sugira horários, não prometa retorno em X minutos.\n" +
+        "Regras: responda apenas sobre o anúncio; não invente informações; não use links/telefone; não agende visitas; não sugira horários; não prometa retorno em X minutos.\n" +
+        "Se esta for sua primeira mensagem nesta conversa, se identifique como assistente virtual do corretor.\n" +
         "Responda de forma curta, humana e direta (máximo ~5 linhas).";
 
       const lines: string[] = [];
@@ -547,20 +797,30 @@ export class LeadAutoReplyService {
       if (type) lines.push(`Tipo: ${type}`);
       if (purpose) lines.push(`Finalidade: ${purpose}`);
       lines.push(`Preço: ${price}`);
+      if (condoFee) lines.push(`Condomínio: ${condoFee}`);
+      if (iptuYearly) lines.push(`IPTU (anual): ${iptuYearly}`);
       if (bedrooms) lines.push(`Quartos: ${bedrooms}`);
+      if (suites) lines.push(`Suítes: ${suites}`);
       if (bathrooms) lines.push(`Banheiros: ${bathrooms}`);
+      if (parkingSpots) lines.push(`Vagas: ${parkingSpots}`);
+      if (floor) lines.push(`Andar: ${floor}`);
+      if (furnished) lines.push(`Mobiliado: ${furnished}`);
+      if (petFriendly) lines.push(`Aceita pets: ${petFriendly}`);
       if (areaM2) lines.push(`Área: ${areaM2} m²`);
 
       const userPrompt =
         lines.join("\n") +
         "\n\nHistórico recente do chat:\n" +
         (history || "(sem histórico)") +
+        `\n\nEsta é sua primeira resposta nesta conversa? ${shouldIntroduce ? "Sim" : "Não"}.` +
         "\n\nAgora escreva a resposta para o cliente.";
 
       const ai = await callOpenAiText({ apiKey, systemPrompt, userPrompt });
-      const draft = ai
+      const rawDraft = ai?.content ? String(ai.content) : "";
+      const draftWithIntro = shouldIntroduce ? buildAssistantIntro(clientName) + rawDraft : rawDraft;
+      const draft = rawDraft
         ? applyOfflineAutoReplyGuardrails({
-            draft: ai.content,
+            draft: draftWithIntro,
             clientName,
             propertyTitle,
           })
@@ -610,7 +870,7 @@ export class LeadAutoReplyService {
           decision: "SENT",
           reason: null,
           model: ai?.model || null,
-          promptVersion: "v1",
+          promptVersion: "v2",
         },
       });
 
@@ -645,7 +905,7 @@ export class LeadAutoReplyService {
       await this.safeEvent(job.leadId, "AUTO_REPLY_FAILED", { reason: "ERROR", clientMessageId });
 
       try {
-        const lead = await prisma.lead.findUnique({ where: { id: job.leadId }, select: { realtorId: true } });
+        const lead = await (prisma as any).lead.findUnique({ where: { id: job.leadId }, select: { realtorId: true } });
         if (lead?.realtorId) {
           await (prisma as any).leadAutoReplyLog.create({
             data: {
@@ -655,7 +915,7 @@ export class LeadAutoReplyService {
               decision: "FAILED",
               reason: "ERROR",
               model: null,
-              promptVersion: "v1",
+              promptVersion: "v2",
             },
           });
         }

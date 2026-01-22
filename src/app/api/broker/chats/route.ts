@@ -195,6 +195,7 @@ export async function GET(_req: NextRequest) {
           clientName: lead.contact?.name || "Cliente",
           clientEmail: lead.contact?.email || "",
           clientPhone: lead.contact?.phone || null,
+          autoReplyPaused: Boolean((lead as any)?.autoReplyPaused),
           lastMessage: lastMessage ? (lastMessage.length > 50 ? lastMessage.slice(0, 50) + "..." : lastMessage) : undefined,
           lastMessageAt,
           lastMessageFromClient,

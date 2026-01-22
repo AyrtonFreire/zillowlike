@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { logger } from "./logger";
 import { LeadEventService } from "./lead-event-service";
 import { RealtorAssistantService } from "./realtor-assistant-service";
+import { LeadAutoReplyService } from "./lead-auto-reply-service";
 import { randomBytes } from "crypto";
 import { LeadDistributionService } from "./lead-distribution-service";
 
@@ -128,17 +129,30 @@ export class VisitSchedulingService {
       },
     });
 
+    let initialClientMessageId: string | null = null;
     if (clientNotes && String(clientNotes).trim().length > 0) {
       try {
-        await (prisma as any).leadClientMessage.create({
+        const created = await (prisma as any).leadClientMessage.create({
           data: {
             leadId: lead.id,
             fromClient: true,
             content: String(clientNotes),
           },
+          select: { id: true },
         });
+        initialClientMessageId = created?.id ? String(created.id) : null;
       } catch {
         // ignore
+      }
+    }
+
+    if ((lead as any).realtorId && initialClientMessageId) {
+      try {
+        await LeadAutoReplyService.enqueueForClientMessage({
+          leadId: String(lead.id),
+          clientMessageId: String(initialClientMessageId),
+        });
+      } catch {
       }
     }
 

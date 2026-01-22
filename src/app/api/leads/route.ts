@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { LeadDistributionService } from "@/lib/lead-distribution-service";
+import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
 
 // Gera um token único para chat do cliente
 function generateChatToken(): string {
@@ -226,17 +227,30 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  let initialClientMessageId: string | null = null;
   if (message && String(message).trim().length > 0) {
     try {
-      await (prisma as any).leadClientMessage.create({
+      const created = await (prisma as any).leadClientMessage.create({
         data: {
           leadId: lead.id,
           fromClient: true,
           content: String(message),
         },
+        select: { id: true },
       });
+      initialClientMessageId = created?.id ? String(created.id) : null;
     } catch {
       // ignore
+    }
+  }
+
+  if (lead.realtorId && initialClientMessageId) {
+    try {
+      await LeadAutoReplyService.enqueueForClientMessage({
+        leadId: String(lead.id),
+        clientMessageId: String(initialClientMessageId),
+      });
+    } catch {
     }
   }
 
