@@ -13,7 +13,6 @@ import {
   Search,
   Phone,
   MapPin,
-  Clock,
   CheckCheck,
   Check,
   MoreVertical,
@@ -26,7 +25,6 @@ import { buildPropertyPath } from "@/lib/slug";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { getPusherClient } from "@/lib/pusher-client";
-import { useToast } from "@/contexts/ToastContext";
 
 interface ChatPreview {
   leadId: string;
@@ -34,7 +32,6 @@ interface ChatPreview {
   clientName: string;
   clientEmail: string;
   clientPhone?: string | null;
-  autoReplyPaused?: boolean;
   lastMessage?: string;
   lastMessageAt?: string;
   lastMessageFromClient?: boolean;
@@ -67,8 +64,6 @@ export default function BrokerChatsPage() {
   const draftFromUrl = searchParams.get("draft");
   const userId = (session?.user as any)?.id || "";
 
-  const toast = useToast();
-
   const STORAGE_PREFIX = "zlw_broker_chat_last_read_";
   const [readTick, setReadTick] = useState(0);
 
@@ -81,7 +76,6 @@ export default function BrokerChatsPage() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
-  const [togglingAutoReplyPaused, setTogglingAutoReplyPaused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -189,26 +183,12 @@ export default function BrokerChatsPage() {
         fetchChats(true);
       };
 
-      const pausedHandler = (data: { leadId: string; autoReplyPaused: boolean }) => {
-        if (cancelled) return;
-        if (!data?.leadId) return;
-        if (String(data.leadId) !== String(selectedChat.leadId)) return;
-        setSelectedChat((prev) => (prev ? { ...prev, autoReplyPaused: Boolean(data.autoReplyPaused) } : prev));
-        setChats((prev) =>
-          prev.map((c) =>
-            c.leadId === String(data.leadId) ? { ...c, autoReplyPaused: Boolean(data.autoReplyPaused) } : c
-          )
-        );
-      };
-
       channel.bind("new-chat-message", handler as any);
-      channel.bind("lead-auto-reply-paused", pausedHandler as any);
 
       return () => {
         cancelled = true;
         try {
           channel.unbind("new-chat-message", handler as any);
-          channel.unbind("lead-auto-reply-paused", pausedHandler as any);
           pusher.unsubscribe(channelName);
         } catch {
           // ignore
@@ -218,55 +198,6 @@ export default function BrokerChatsPage() {
       return;
     }
   }, [selectedChat?.leadId]);
-
-  const toggleAutoReplyPaused = async () => {
-    if (!selectedChat?.leadId) return;
-
-    const nextPaused = !Boolean(selectedChat.autoReplyPaused);
-
-    if (nextPaused) {
-      const confirmed = await toast.confirm({
-        title: "Assumir conversa?",
-        message: "Isso vai pausar as respostas automáticas do assistente neste chat, para você conduzir a conversa.",
-        confirmText: "Sim, assumir",
-        cancelText: "Cancelar",
-        variant: "warning",
-      });
-      if (!confirmed) return;
-    }
-
-    try {
-      setTogglingAutoReplyPaused(true);
-      const response = await fetch(`/api/leads/${selectedChat.leadId}/auto-reply-paused`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paused: nextPaused }),
-      });
-
-      const data = await response.json().catch(() => null);
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.error || "Não conseguimos atualizar o assistente agora.");
-      }
-
-      setSelectedChat((prev) => (prev ? { ...prev, autoReplyPaused: Boolean(data?.lead?.autoReplyPaused) } : prev));
-      setChats((prev) =>
-        prev.map((c) =>
-          c.leadId === selectedChat.leadId ? { ...c, autoReplyPaused: Boolean(data?.lead?.autoReplyPaused) } : c
-        )
-      );
-
-      if (nextPaused) {
-        toast.info("Assistente pausado", "Este chat não receberá respostas automáticas.");
-      } else {
-        toast.success("Assistente reativado", "O chat volta a receber respostas automáticas fora do horário.");
-      }
-    } catch (err: any) {
-      console.error("Error toggling auto reply paused:", err);
-      toast.error("Erro ao atualizar assistente", err?.message || "Tente novamente.");
-    } finally {
-      setTogglingAutoReplyPaused(false);
-    }
-  };
 
   const fetchChats = async (silent = false) => {
     try {
@@ -577,19 +508,6 @@ export default function BrokerChatsPage() {
                       <Phone className="w-5 h-5 text-gray-600" />
                     </a>
                   )}
-                  <button
-                    type="button"
-                    onClick={toggleAutoReplyPaused}
-                    disabled={togglingAutoReplyPaused}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                    title={
-                      selectedChat.autoReplyPaused
-                        ? "Reativar respostas automáticas para este chat"
-                        : "Pausar respostas automáticas para assumir a conversa"
-                    }
-                  >
-                    <Clock className={`w-5 h-5 ${selectedChat.autoReplyPaused ? "text-amber-600" : "text-gray-600"}`} />
-                  </button>
                   <Link
                     href={`/broker/leads/${selectedChat.leadId}`}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

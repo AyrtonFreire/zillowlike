@@ -24,9 +24,21 @@ const DEFAULT_WEEK_SCHEDULE: WeekSchedule = {
   sun: { enabled: false, start: "09:00", end: "13:00" },
 };
 
+const REALTOR_ONLINE_THRESHOLD_MS = 2 * 60_000;
+
 function safeString(x: any) {
   const s = String(x ?? "").trim();
   return s;
+}
+
+async function isRealtorOnline(realtorId: string, now: Date) {
+  const user = await (prisma as any).user
+    .findUnique({ where: { id: realtorId }, select: { lastSeenAt: true } })
+    .catch(() => null);
+
+  const last = user?.lastSeenAt ? new Date(user.lastSeenAt) : null;
+  if (!last || Number.isNaN(last.getTime())) return false;
+  return now.getTime() - last.getTime() < REALTOR_ONLINE_THRESHOLD_MS;
 }
 
 function normalizeTextForMatch(input: string) {
@@ -365,22 +377,25 @@ export class LeadAutoReplyService {
   static async enqueueForClientMessage(params: { leadId: string; clientMessageId: string }) {
     const lead = await (prisma as any).lead.findUnique({
       where: { id: params.leadId },
-      select: { id: true, realtorId: true, autoReplyPaused: true },
+      select: { id: true, realtorId: true },
     });
 
     if (!lead?.realtorId) return { enqueued: false as const, reason: "NO_REALTOR" as const };
-    if (lead.autoReplyPaused) return { enqueued: false as const, reason: "PAUSED" as const };
 
     const settings = await this.getSettings(lead.realtorId);
     if (!settings.enabled) return { enqueued: false as const, reason: "DISABLED" as const };
-
     const outside = isOutsideBusinessHours({
       now: new Date(),
       timezone: settings.timezone,
       schedule: settings.weekSchedule,
     });
 
-    if (!outside) return { enqueued: false as const, reason: "WITHIN_BUSINESS_HOURS" as const };
+    const within = !outside;
+
+    if (!within) return { enqueued: false as const, reason: "OUTSIDE_BUSINESS_HOURS" as const };
+
+    const online = await isRealtorOnline(String(lead.realtorId), new Date());
+    if (online) return { enqueued: false as const, reason: "REALTOR_ONLINE" as const };
 
     const jobRow = await (prisma as any).leadAutoReplyJob
       .create({
@@ -446,7 +461,6 @@ export class LeadAutoReplyService {
         select: {
           id: true,
           realtorId: true,
-          autoReplyPaused: true,
           contact: { select: { name: true } },
           property: {
             select: {
@@ -475,33 +489,19 @@ export class LeadAutoReplyService {
         },
       });
 
+      const leadId = lead?.id ? String(lead.id) : String(msg.leadId);
+
       if (!lead?.realtorId) {
         await (prisma as any).leadAutoReplyJob.update({
           where: { clientMessageId },
           data: { status: "SKIPPED", skipReason: "NO_REALTOR", processedAt: now },
         });
+        await this.safeEvent(leadId, "AUTO_REPLY_SKIPPED", { reason: "NO_REALTOR", clientMessageId });
         return { ok: true as const, status: "SKIPPED" as const, reason: "NO_REALTOR" };
       }
 
-      if (lead.autoReplyPaused) {
-        await (prisma as any).leadAutoReplyJob.update({
-          where: { clientMessageId },
-          data: { status: "SKIPPED", skipReason: "PAUSED", processedAt: now },
-        });
-        await this.safeEvent(lead.id, "AUTO_REPLY_SKIPPED", { reason: "PAUSED", clientMessageId });
-        await (prisma as any).leadAutoReplyLog.create({
-          data: {
-            leadId: lead.id,
-            realtorId: lead.realtorId,
-            clientMessageId,
-            decision: "SKIPPED",
-            reason: "PAUSED",
-          },
-        });
-        return { ok: true as const, status: "SKIPPED" as const, reason: "PAUSED" };
-      }
-
       const settings = await this.getSettings(lead.realtorId);
+
       if (!settings.enabled) {
         await (prisma as any).leadAutoReplyJob.update({
           where: { clientMessageId },
@@ -521,22 +521,41 @@ export class LeadAutoReplyService {
       }
 
       const outside = isOutsideBusinessHours({ now, timezone: settings.timezone, schedule: settings.weekSchedule });
-      if (!outside) {
+      if (outside) {
         await (prisma as any).leadAutoReplyJob.update({
           where: { clientMessageId },
-          data: { status: "SKIPPED", skipReason: "WITHIN_BUSINESS_HOURS", processedAt: now },
+          data: { status: "SKIPPED", skipReason: "OUTSIDE_BUSINESS_HOURS", processedAt: now },
         });
-        await this.safeEvent(lead.id, "AUTO_REPLY_SKIPPED", { reason: "WITHIN_BUSINESS_HOURS", clientMessageId });
+        await this.safeEvent(lead.id, "AUTO_REPLY_SKIPPED", { reason: "OUTSIDE_BUSINESS_HOURS", clientMessageId });
         await (prisma as any).leadAutoReplyLog.create({
           data: {
             leadId: lead.id,
             realtorId: lead.realtorId,
             clientMessageId,
             decision: "SKIPPED",
-            reason: "WITHIN_BUSINESS_HOURS",
+            reason: "OUTSIDE_BUSINESS_HOURS",
           },
         });
-        return { ok: true as const, status: "SKIPPED" as const, reason: "WITHIN_BUSINESS_HOURS" };
+        return { ok: true as const, status: "SKIPPED" as const, reason: "OUTSIDE_BUSINESS_HOURS" };
+      }
+
+      const online = await isRealtorOnline(String(lead.realtorId), now);
+      if (online) {
+        await (prisma as any).leadAutoReplyJob.update({
+          where: { clientMessageId },
+          data: { status: "SKIPPED", skipReason: "REALTOR_ONLINE", processedAt: now },
+        });
+        await this.safeEvent(lead.id, "AUTO_REPLY_SKIPPED", { reason: "REALTOR_ONLINE", clientMessageId });
+        await (prisma as any).leadAutoReplyLog.create({
+          data: {
+            leadId: lead.id,
+            realtorId: lead.realtorId,
+            clientMessageId,
+            decision: "SKIPPED",
+            reason: "REALTOR_ONLINE",
+          },
+        });
+        return { ok: true as const, status: "SKIPPED" as const, reason: "REALTOR_ONLINE" };
       }
 
       const lastOverall = await prisma.leadClientMessage.findFirst({

@@ -476,6 +476,7 @@ model User {
   recoveryEmailVerifiedAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  lastSeenAt    DateTime  @default(now())
 
   // Perfil público
   publicSlug           String? @unique
@@ -630,8 +631,6 @@ model Lead {
   nextActionNote String?
 
   clientChatToken String? @unique
-
-  autoReplyPaused Boolean @default(false)
 
   candidatures LeadCandidature[]
   rating       RealtorRating?

@@ -33,7 +33,6 @@ interface Lead {
   reservedUntil?: string | null;
   respondedAt?: string | null;
   completedAt?: string | null;
-  autoReplyPaused?: boolean;
   pipelineStage?: "NEW" | "CONTACT" | "VISIT" | "PROPOSAL" | "DOCUMENTS" | "WON" | "LOST";
   lostReason?:
     | "CLIENT_DESISTIU"
@@ -226,54 +225,9 @@ export default function LeadDetailPage() {
   const [completingLead, setCompletingLead] = useState(false);
   const [clearingReminder, setClearingReminder] = useState(false);
   const [archivingLead, setArchivingLead] = useState(false);
-  const [togglingAutoReplyPaused, setTogglingAutoReplyPaused] = useState(false);
 
   const leadId = (params?.id as string) || "";
   const toast = useToast();
-
-  const handleToggleAutoReplyPaused = async () => {
-    if (!leadId || !lead) return;
-
-    const nextPaused = !Boolean(lead.autoReplyPaused);
-
-    if (nextPaused) {
-      const confirmed = await toast.confirm({
-        title: "Assumir conversa?",
-        message: "Isso vai pausar as respostas automáticas do assistente neste chat, para você conduzir a conversa.",
-        confirmText: "Sim, assumir",
-        cancelText: "Cancelar",
-        variant: "warning",
-      });
-      if (!confirmed) return;
-    }
-
-    try {
-      setTogglingAutoReplyPaused(true);
-      const response = await fetch(`/api/leads/${leadId}/auto-reply-paused`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paused: nextPaused }),
-      });
-
-      const data = await response.json().catch(() => null);
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.error || "Não conseguimos atualizar o assistente agora.");
-      }
-
-      setLead((prev) => (prev ? { ...prev, autoReplyPaused: Boolean(data?.lead?.autoReplyPaused) } : prev));
-
-      if (nextPaused) {
-        toast.info("Assistente pausado", "Este chat não receberá respostas automáticas.");
-      } else {
-        toast.success("Assistente reativado", "O chat volta a receber respostas automáticas fora do horário.");
-      }
-    } catch (err: any) {
-      console.error("Error toggling auto reply paused:", err);
-      toast.error("Erro ao atualizar assistente", err?.message || "Tente novamente.");
-    } finally {
-      setTogglingAutoReplyPaused(false);
-    }
-  };
 
   useEffect(() => {
     if (!leadId) return;
@@ -295,20 +249,12 @@ export default function LeadDetailPage() {
         });
       };
 
-      const pausedHandler = (data: { leadId: string; autoReplyPaused: boolean }) => {
-        if (!data?.leadId || cancelled) return;
-        if (String(data.leadId) !== String(leadId)) return;
-        setLead((prev) => (prev ? { ...prev, autoReplyPaused: Boolean(data.autoReplyPaused) } : prev));
-      };
-
       channel.bind("lead-message", handler as any);
-      channel.bind("lead-auto-reply-paused", pausedHandler as any);
 
       return () => {
         cancelled = true;
         try {
           channel.unbind("lead-message", handler as any);
-          channel.unbind("lead-auto-reply-paused", pausedHandler as any);
           pusher.unsubscribe(channelName);
         } catch {
           // ignore pusher errors on cleanup
@@ -989,28 +935,6 @@ export default function LeadDetailPage() {
                   Abrir conversa
                 </button>
               )}
-
-              <button
-                type="button"
-                onClick={handleToggleAutoReplyPaused}
-                disabled={togglingAutoReplyPaused}
-                className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border text-xs sm:text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed ${
-                  lead?.autoReplyPaused
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                    : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
-                }`}
-                title={
-                  lead?.autoReplyPaused
-                    ? "Reativar respostas automáticas para este chat"
-                    : "Pausar respostas automáticas para assumir a conversa"
-                }
-              >
-                {togglingAutoReplyPaused
-                  ? "Salvando..."
-                  : lead?.autoReplyPaused
-                    ? "Reativar assistente"
-                    : "Assumir conversa"}
-              </button>
 
               <div className="flex flex-wrap justify-end gap-2">
                 {lead.contact?.phone && (

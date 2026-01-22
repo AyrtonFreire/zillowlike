@@ -317,8 +317,8 @@ export default function BrokerProfilePage() {
               className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
             />
             <div>
-              <div className="text-sm font-medium text-gray-800">Ativar fora do horário comercial</div>
-              <div className="text-xs text-gray-500">Responde no chat do site quando você estiver offline.</div>
+              <div className="text-sm font-medium text-gray-800">Ativar assistente offline</div>
+              <div className="text-xs text-gray-500">Responde dentro do horário configurado quando você estiver offline.</div>
             </div>
           </div>
 
