@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { X, Share2, Heart, MapPin, ChevronLeft, ChevronRight, Car, Home, Wind, Waves, Building2, Dumbbell, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Sun, Video, Zap, Eye, ArrowUp, ArrowDown, Accessibility, DoorOpen, Lightbulb, Droplets, Archive, Gem, Compass, Dog, ChevronDown, School, Pill, ShoppingCart, Landmark, Fuel, Hospital, Building } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Button from "./ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -143,8 +143,6 @@ const FEATURES_ICONS = {
 export default function PropertyDetailsModalJames({ propertyId, open, onClose }: PropertyDetailsModalProps) {
   const { variant = "overlay", mode = "public", backHref, backLabel } = arguments[0] as PropertyDetailsModalProps;
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const isOpen = variant === "page" ? true : open;
   const [activePropertyId, setActivePropertyId] = useState<string | null>(propertyId);
   const [property, setProperty] = useState<PropertyDetails | null>(null);
@@ -220,75 +218,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [poiLoading, setPoiLoading] = useState(false);
   const [poiOpen, setPoiOpen] = useState(false);
   const trackedViewRef = useRef<Set<string>>(new Set());
-
-  const uiVariant = useMemo(() => {
-    try {
-      const raw = searchParams?.get("ui");
-      const n = raw ? parseInt(raw, 10) : 0;
-      if (!Number.isFinite(n)) return 0;
-      if (n < 1 || n > 5) return 0;
-      return n;
-    } catch {
-      return 0;
-    }
-  }, [searchParams]);
-
-  const showUiSelector = uiVariant > 0;
-
-  const setUiVariant = useCallback(
-    (n: number) => {
-      try {
-        const sp = new URLSearchParams(searchParams?.toString() || "");
-        if (n >= 1 && n <= 5) sp.set("ui", String(n));
-        else sp.delete("ui");
-        const qs = sp.toString();
-        router.replace(qs ? `${pathname}?${qs}` : pathname);
-      } catch {}
-    },
-    [router, pathname, searchParams]
-  );
-
-  const isUI1 = uiVariant === 1;
-  const isUI2 = uiVariant === 2;
-  const isUI3 = uiVariant === 3;
-  const isUI4 = uiVariant === 4;
-  const isUI5 = uiVariant === 5;
-
-  const sectionCardClass = isUI4
-    ? "rounded-2xl border border-gray-200 bg-white p-6"
-    : "pt-4 border-t border-teal/10";
-
-  const titleClass = isUI5
-    ? "text-4xl md:text-5xl font-display font-normal text-gray-900 leading-tight"
-    : "text-3xl md:text-4xl font-display font-normal text-gray-900 leading-tight";
-
-  const priceClass = isUI5
-    ? "text-3xl md:text-4xl font-bold text-gray-900"
-    : "text-2xl md:text-3xl font-bold text-gray-900";
-
-  const layoutGridClass = isUI2
-    ? "grid grid-cols-1 lg:grid-cols-12 gap-8"
-    : isUI4
-      ? "grid grid-cols-1 lg:grid-cols-3 gap-6"
-      : isUI5
-        ? "grid grid-cols-1 lg:grid-cols-12 gap-10"
-        : "grid grid-cols-1 lg:grid-cols-3 gap-8";
-
-  const mainColClass = isUI2
-    ? "lg:col-span-7 space-y-6"
-    : isUI5
-      ? "lg:col-span-8 space-y-8 max-w-3xl lg:max-w-none mx-auto"
-      : "lg:col-span-2 space-y-6";
-
-  const sideColClass = isUI2
-    ? "lg:col-span-5"
-    : isUI5
-      ? "lg:col-span-4"
-      : "lg:col-span-1";
-
-  const topSummaryCardClass = isUI2
-    ? "rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-    : "";
   // Lightbox touch resistance state
   const lbStartX = useRef<number | null>(null);
   const lbStartY = useRef<number | null>(null);
@@ -980,7 +909,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         )}
 
         {/* Header principal do modal (desktop/tablet). No mobile usamos controles sobre a foto. */}
-        <div className="sticky top-0 z-20 bg-white border-b border-teal/10 hidden sm:block">
+        <div className="sticky top-0 z-20 bg-white/85 backdrop-blur-xl border-b border-gray-200/70 hidden sm:block">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             {photoViewMode === "feed" ? (
               <button
@@ -1011,33 +940,17 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             )}
             {/* Ações só aparecem em sm+; no mobile usamos os botões sobre a foto */}
             <div className="hidden sm:flex items-center gap-3">
-              {showUiSelector && (
-                <div className="hidden md:flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-2 py-1">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={`ui-${n}`}
-                      type="button"
-                      onClick={() => setUiVariant(n)}
-                      className={`px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                        uiVariant === n ? "bg-teal-50 text-teal-800" : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      UI {n}
-                    </button>
-                  ))}
-                </div>
-              )}
               {mode === "internal" && photoViewMode !== "feed" && (
                 <>
                   <Link
                     href={`/broker/properties/${property.id}`}
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-medium"
                   >
                     Leads & negociação
                   </Link>
                   <Link
                     href={`/owner/properties/edit/${property.id}`}
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-medium"
                   >
                     Editar anúncio
                   </Link>
@@ -1045,7 +958,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                     type="button"
                     disabled={isCloning}
                     onClick={handleCloneListing}
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     Clonar anúncio
                   </button>
@@ -1053,14 +966,14 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               )}
               <button
                 onClick={handleShare}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-medium"
               >
                 <Share2 className="w-4 h-4" />
                 <span className="hidden sm:inline">Compartilhar</span>
               </button>
               <button
                 onClick={handleFavorite}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-medium"
               >
                 <Heart className={`w-4 h-4 ${isFavorite ? "fill-teal-500 text-teal-500" : ""}`} />
                 <span className="hidden sm:inline">Salvar</span>
@@ -1252,7 +1165,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
           </div>
 
           {/* Desktop: mosaic */}
-          <div className={`hidden md:grid grid-cols-2 gap-2 h-[500px] ${isUI3 ? "relative" : ""}`}>
+          <div className="hidden md:grid grid-cols-2 gap-2 h-[500px]">
             <div className="relative rounded-lg overflow-hidden col-span-1 cursor-pointer" onClick={() => setPhotoViewMode("feed")}>
               <Image
                 src={displayImages[0]?.url ? transformCloudinary(displayImages[0].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto") : "/placeholder.jpg"}
@@ -1291,44 +1204,21 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                 </div>
               ))}
             </div>
-            {isUI3 && (
-              <div className="absolute left-6 bottom-6 max-w-[680px]">
-                <div className="bg-white/90 backdrop-blur-xl rounded-2xl border border-white/60 shadow-xl px-5 py-4">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {typeof property.price === "number" && property.price > 0
-                      ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(property.price / 100)
-                      : "Sob consulta"}
-                  </div>
-                  <div className="mt-1 text-xl font-display font-normal text-gray-900 leading-snug">
-                    {property.title}
-                  </div>
-                  <div className="mt-2 text-sm text-gray-700 flex flex-wrap items-center gap-3">
-                    {property.bedrooms != null && <span>{property.bedrooms} quartos</span>}
-                    {property.bathrooms != null && <span>{property.bathrooms} banheiros</span>}
-                    {property.areaM2 != null && <span>{property.areaM2} m²</span>}
-                    <span>
-                      {property.neighborhood && `${property.neighborhood}, `}
-                      {property.city}, {property.state}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {mode === "internal" && variant === "page" && (
             <div className="sm:hidden mt-4">
-              <div className="rounded-xl border border-teal/10 p-4 bg-white shadow-sm">
+              <div className="rounded-2xl border border-gray-200 p-4 bg-white shadow-sm">
                 <div className="grid grid-cols-1 gap-2">
                   <Link
                     href={`/broker/properties/${property.id}`}
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-medium"
                   >
                     Leads & negociação
                   </Link>
                   <Link
                     href={`/owner/properties/edit/${property.id}`}
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium"
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-medium"
                   >
                     Editar anúncio
                   </Link>
@@ -1336,7 +1226,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                     type="button"
                     disabled={isCloning}
                     onClick={handleCloneListing}
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     Clonar anúncio
                   </button>
@@ -1345,73 +1235,69 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
             </div>
           )}
 
-          {isUI1 && (
-            <div className="hidden md:block mt-6">
-              <div className="sticky top-16 z-10 bg-white/90 backdrop-blur border border-gray-100 rounded-2xl px-3 py-2">
-                <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <a href="#about" className="px-3 py-2 rounded-xl hover:bg-gray-50">Sobre</a>
-                  <a href="#details" className="px-3 py-2 rounded-xl hover:bg-gray-50">Detalhes</a>
-                  <a href="#features" className="px-3 py-2 rounded-xl hover:bg-gray-50">Características</a>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Content Grid */}
-          <div className={`mt-8 px-4 md:px-0 ${isUI5 ? "bg-white/0" : ""}`}>
-            <div className={layoutGridClass}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 px-4 md:px-0">
             {/* Main Content */}
-            <div className={mainColClass}>
-              <div className={topSummaryCardClass}>
-              {/* Price */}
-              {!isUI3 && (
+            <div className="lg:col-span-2 space-y-5">
+              <div className="rounded-2xl border border-gray-200 bg-white p-6">
+                {/* Price */}
                 <div>
-                  <h2 className={priceClass}>
+                  <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900">
                     {typeof property.price === "number" && property.price > 0
-                      ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(property.price / 100)
+                      ? new Intl.NumberFormat("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                          minimumFractionDigits: 0,
+                        }).format(property.price / 100)
                       : "Sob consulta"}
                   </h2>
                 </div>
-              )}
 
-              {/* Title */}
-              {!isUI3 && (
-                <div>
-                  <h1 className={titleClass}>{property.title}</h1>
+                {/* Title */}
+                <div className="mt-2">
+                  <h1 className="text-xl md:text-2xl font-semibold text-gray-900 leading-snug">
+                    {property.title}
+                  </h1>
                 </div>
-              )}
 
-              {/* Specs inline */}
-              {!isUI3 && (
-                <div className={`flex flex-wrap items-center gap-4 text-sm ${isUI5 ? "text-gray-700" : "text-gray-600"}`}>
-                  {property.bedrooms != null && <span>{property.bedrooms} Quartos</span>}
-                  {property.bathrooms != null && <span>· {property.bathrooms} Banheiros</span>}
-                  {property.areaM2 != null && <span>· {property.areaM2} m²</span>}
+                {/* Location */}
+                <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+                  <MapPin className="w-4 h-4 text-gray-400" />
+                  <span>
+                    {property.neighborhood && `${property.neighborhood}, `}
+                    {property.city}, {property.state}
+                  </span>
                 </div>
-              )}
 
-              {/* Location */}
-              <div className="flex items-center gap-2 text-gray-700">
-                <MapPin className="w-5 h-5 text-gray-400" />
-                <span>
-                  {property.neighborhood && `${property.neighborhood}, `}
-                  {property.city}, {property.state}
-                </span>
-              </div>
-
+                {/* Specs */}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {property.bedrooms != null && (
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+                      {property.bedrooms} quartos
+                    </span>
+                  )}
+                  {property.bathrooms != null && (
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+                      {property.bathrooms} banheiros
+                    </span>
+                  )}
+                  {property.areaM2 != null && (
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+                      {property.areaM2} m²
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* About the Property */}
-              <div id="about" className={sectionCardClass}>
-                <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">
-                  Sobre o Imóvel
-                </h3>
-                <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+              <div className="rounded-2xl border border-gray-200 bg-white p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Sobre o imóvel</h3>
+                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                   <p>{showMore ? property.description : truncatedDescription}</p>
                   {property.description.length > 400 && (
                     <button
                       onClick={() => setShowMore(!showMore)}
-                      className="text-teal hover:text-teal-dark font-medium mt-2 inline-flex items-center gap-1"
+                      className="text-teal hover:text-teal-dark font-medium mt-3 inline-flex items-center gap-1"
                     >
                       {showMore ? "Ver menos" : "Ver mais"} →
                     </button>
@@ -1420,8 +1306,8 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               </div>
 
               {/* Property Details Grid */}
-              <div id="details" className={isUI4 ? "rounded-2xl border border-gray-200 bg-white p-6" : ""}>
-              <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${isUI4 ? "" : "pt-4"}`}>
+              <div className="rounded-2xl border border-gray-200 bg-white p-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {property.type && (
                   <div>
                     <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Tipo</div>
@@ -1446,12 +1332,12 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                     <div className="font-medium text-gray-900">Mobiliado</div>
                   </div>
                 )}
-              </div>
+                </div>
               </div>
 
               {/* Features - Sober style with Lucide icons */}
-              <div id="features" className={sectionCardClass}>
-                <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Características</h3>
+              <div className="pt-4 border-t border-teal/10">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Características</h3>
                 {(() => {
                   const allFeatures: { icon: React.ReactNode; label: string }[] = [];
                   
@@ -1490,7 +1376,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   
                   return (
                     <>
-                      <div className={`grid ${isUI4 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3"} gap-4`}>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {visibleFeatures.map((feature, idx) => (
                           <div key={idx} className="flex items-center gap-3">
                             {feature.icon}
@@ -1515,11 +1401,11 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
 
               {mode === "public" && (
                 <div ref={areaSectionRef} className="pt-4 border-t border-teal/10">
-                  <h3 className="text-2xl font-display font-normal text-gray-900 mb-4">Explore a Região</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Explore a Região</h3>
 
                   {/* Mapa com POIs */}
                   {shouldLoadArea && (property as any).latitude && (property as any).longitude && (
-                    <div className="mb-4 h-[300px] rounded-lg overflow-hidden border border-teal/10">
+                    <div className="rounded-2xl border border-teal/10 overflow-hidden bg-white shadow-sm">
                       <Map
                         items={[{
                           id: property.id,
@@ -1722,7 +1608,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
             </div>
 
             {/* Sidebar */}
-            <div className={sideColClass}>
+            <div className="lg:col-span-1">
               <div className="sticky top-24 space-y-6">
                 {mode === "public" ? (
                   <>
@@ -1818,7 +1704,6 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   </div>
                 )}
               </div>
-            </div>
             </div>
           </div>
           

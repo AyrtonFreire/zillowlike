@@ -165,7 +165,7 @@ export default function PropertyContactCard({
   };
 
   return (
-    <div className="rounded-xl border border-teal/10 p-6 bg-white shadow-sm">
+    <div className="rounded-2xl border border-gray-200 p-6 bg-white shadow-sm">
       {/* Header: foto/logo do corretor/imobiliária (se aplicável) */}
       {isRealtorOrAgency && ownerName && (
         <div className="mb-6 pb-6 border-b border-gray-200">
@@ -220,15 +220,15 @@ export default function PropertyContactCard({
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
-        <h3 className="text-lg font-semibold text-gray-900">Fale diretamente com o Anunciante</h3>
+      <div className="px-0 py-0">
+        <h3 className="text-base font-semibold text-gray-900">Fale com o anunciante</h3>
 
         <div className="mt-3">
           <button
             type="button"
             onClick={handleWhatsAppClick}
             disabled={!canShowWhatsApp}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white text-base font-semibold px-4 py-3 shadow-sm hover:bg-[#128C7E] active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white text-sm font-semibold px-4 py-3 shadow-sm hover:bg-[#128C7E] active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
           >
             <WhatsAppIcon className="w-5 h-5" />
             WhatsApp
@@ -248,7 +248,7 @@ export default function PropertyContactCard({
             type="button"
             onClick={createLeadAndOpenChat}
             disabled={loading}
-            className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 text-white text-base font-semibold px-4 py-3 shadow-sm hover:bg-teal-700 active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 text-white text-sm font-semibold px-4 py-3 shadow-sm hover:bg-teal-700 active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
           >
             <MessageCircle className="w-5 h-5" />
             {loading ? "Abrindo..." : "Chat"}
