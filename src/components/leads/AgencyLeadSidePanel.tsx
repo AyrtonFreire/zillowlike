@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MessageCircle, Sparkles } from "lucide-react";
+import { createPortal } from "react-dom";
+import { MessageCircle } from "lucide-react";
 import Drawer from "@/components/ui/Drawer";
 import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
@@ -21,6 +22,7 @@ type Lead = {
   id: string;
   status: string;
   createdAt: string;
+  pendingReplyAt?: string | null;
   respondedAt?: string | null;
   completedAt?: string | null;
   pipelineStage?: string | null;
@@ -59,35 +61,126 @@ function whatsappNumberFromMember(member: PipelineMember | null) {
   return digits;
 }
 
-function buildFallbackMessage(params: {
+function buildRealtorPingMessage(params: {
   leadId: string;
   realtorName: string | null;
   contactName: string | null;
   propertyTitle: string | null;
+  isPendingReply: boolean;
+  isNewLead: boolean;
+  slaAge: string | null;
+  pipelineStage: string | null;
 }) {
-  const realtor = params.realtorName || "tudo bem";
-  const client = params.contactName || `Lead ${params.leadId}`;
+  const realtorName = String(params.realtorName || "").trim();
+  const greeting = realtorName ? `Olá ${realtorName}!` : "Olá!";
+  const client = params.contactName || `lead ${params.leadId}`;
   const prop = params.propertyTitle ? ` (${params.propertyTitle})` : "";
-  return `Olá ${realtor}! Tudo bem? Vi no painel da agência que o lead ${client}${prop} está com pendência de resposta. Você consegue verificar e dar um retorno quando possível? Obrigado!`;
+  const stage = String(params.pipelineStage || "").toUpperCase().trim();
+  const sla = params.slaAge ? ` há ${params.slaAge}` : "";
+
+  if (params.isPendingReply) {
+    return `${greeting} Tudo bem? No painel aparece que o ${client}${prop} está aguardando retorno${sla}. Você consegue confirmar se já respondeu e atualizar o status quando puder? Obrigado!`;
+  }
+
+  if (params.isNewLead) {
+    return `${greeting} Tudo bem? Chegou um lead novo: ${client}${prop}. Você consegue fazer o primeiro contato e atualizar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "CONTACT") {
+    return `${greeting} Tudo bem? Consegue me confirmar como está o contato com o ${client}${prop} e atualizar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "VISIT") {
+    return `${greeting} Tudo bem? Consegue me atualizar sobre a visita do ${client}${prop} (se já aconteceu / próximos passos) e registrar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "PROPOSAL") {
+    return `${greeting} Tudo bem? Consegue me atualizar sobre a proposta do ${client}${prop} e registrar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "DOCUMENTS") {
+    return `${greeting} Tudo bem? Consegue me atualizar sobre a etapa de documentação do ${client}${prop} e registrar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "WON") {
+    return `${greeting} Tudo bem? Consegue confirmar se o ${client}${prop} foi fechado e registrar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "LOST") {
+    return `${greeting} Tudo bem? Consegue confirmar se o ${client}${prop} foi perdido e registrar o motivo/status quando puder? Obrigado!`;
+  }
+
+  return `${greeting} Tudo bem? Consegue me dar um update rápido sobre o ${client}${prop}? Obrigado!`;
 }
 
-async function generateAiDraft(params: { leadId: string; assignedId: string; fallbackMessage: string }) {
-  try {
-    const res = await fetch(
-      `/api/agency/leads/${encodeURIComponent(params.leadId)}/realtor-contact-draft?realtorId=${encodeURIComponent(
-        params.assignedId
-      )}`,
-      { cache: "no-store" }
-    );
-    const data = await res.json().catch(() => null);
-    const draft =
-      typeof data?.draft === "string" && data.draft.trim().length >= 10
-        ? data.draft.trim()
-        : params.fallbackMessage;
-    return draft;
-  } catch {
-    return params.fallbackMessage;
-  }
+type TemplateOption = { id: string; label: string; text: string };
+
+function formatSlaAge(value: string | null | undefined) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  const diffMs = Date.now() - d.getTime();
+  const minutes = Math.max(0, Math.floor(diffMs / 60000));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rem = minutes % 60;
+  if (hours < 24) return `${hours}h ${rem.toString().padStart(2, "0")}m`;
+  const days = Math.floor(hours / 24);
+  const hrs = hours % 24;
+  return `${days}d ${hrs}h`;
+}
+
+function buildTemplateOptions(params: {
+  leadId: string;
+  realtorName: string | null;
+  contactName: string | null;
+  propertyTitle: string | null;
+  isPendingReply: boolean;
+  isNewLead: boolean;
+  slaAge: string | null;
+  pipelineStage: string | null;
+}) {
+  const options: TemplateOption[] = [];
+
+  const recommended = buildRealtorPingMessage(params);
+  options.push({ id: "recommended", label: "Recomendado", text: recommended });
+
+  options.push({
+    id: "status",
+    label: "Pedir update (neutro)",
+    text: buildRealtorPingMessage({
+      ...params,
+      isPendingReply: false,
+      isNewLead: false,
+      slaAge: null,
+      pipelineStage: null,
+    }),
+  });
+
+  options.push({
+    id: "new",
+    label: "Lead novo (primeiro contato)",
+    text: buildRealtorPingMessage({
+      ...params,
+      isPendingReply: false,
+      isNewLead: true,
+      slaAge: null,
+      pipelineStage: "NEW",
+    }),
+  });
+
+  options.push({
+    id: "pending",
+    label: "Cobrar retorno (SLA)",
+    text: buildRealtorPingMessage({
+      ...params,
+      isPendingReply: true,
+      isNewLead: false,
+      pipelineStage: params.pipelineStage,
+    }),
+  });
+
+  return options;
 }
 
 function formatDateTime(value: string | null | undefined) {
@@ -102,23 +195,17 @@ export default function AgencyLeadSidePanel({
   leadId,
   initialTab = "ATIVIDADES",
   members,
-  useAiDraft,
-  onToggleUseAiDraft,
   onClose,
 }: {
   open: boolean;
   leadId: string | null;
   initialTab?: "ATIVIDADES" | "NOTAS";
   members: PipelineMember[];
-  useAiDraft: boolean;
-  onToggleUseAiDraft: () => void;
   onClose: () => void;
 }) {
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [aiGenerating, setAiGenerating] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"ATIVIDADES" | "NOTAS">(initialTab);
 
@@ -126,6 +213,14 @@ export default function AgencyLeadSidePanel({
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
   const [notesLoadedLeadId, setNotesLoadedLeadId] = useState<string | null>(null);
+
+  const [templateModal, setTemplateModal] = useState<null | {
+    leadId: string;
+    channel: "CHAT" | "WHATSAPP";
+    assignedId: string;
+    whatsappNumber?: string | null;
+    options: TemplateOption[];
+  }>(null);
 
   const title = lead?.contact?.name || lead?.property?.title || "Lead";
 
@@ -199,12 +294,23 @@ export default function AgencyLeadSidePanel({
     const member = assignedId ? (members || []).find((m) => String(m.userId) === assignedId) || null : null;
     const wa = whatsappNumberFromMember(member);
 
+    const pendingReplyAt = lead.pendingReplyAt ? String(lead.pendingReplyAt) : "";
+    const isPending = !!pendingReplyAt;
+    const slaAge = formatSlaAge(pendingReplyAt || null);
+    const isNewLead =
+      String(lead.pipelineStage || "").toUpperCase() === "NEW" ||
+      (lead.createdAt ? Date.now() - new Date(lead.createdAt).getTime() < 24 * 60 * 60 * 1000 : false);
+
     const fallbackMessage = assignedId
-      ? buildFallbackMessage({
+      ? buildRealtorPingMessage({
           leadId: String(lead.id),
           realtorName: member?.name ?? lead.realtor?.name ?? null,
           contactName: lead.contact?.name ?? null,
           propertyTitle: lead.property?.title ?? null,
+          isPendingReply: isPending,
+          isNewLead,
+          slaAge,
+          pipelineStage: lead.pipelineStage ?? null,
         })
       : "";
 
@@ -238,42 +344,59 @@ export default function AgencyLeadSidePanel({
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs font-semibold text-gray-900">Ações</div>
-            <button
-              type="button"
-              onClick={onToggleUseAiDraft}
-              aria-pressed={useAiDraft}
-              disabled={aiGenerating}
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
-                useAiDraft
-                  ? "border-neutral-900 bg-neutral-900 text-white"
-                  : "border-gray-200 bg-white text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-              }`}
-              title={useAiDraft ? "IA ligada" : "IA desligada"}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {useAiDraft ? "IA ligada" : "IA desligada"}
-            </button>
           </div>
 
           <div className="mt-3 flex items-center gap-2">
             <button
               type="button"
-              disabled={!assignedId || aiGenerating}
-              onClick={async () => {
+              disabled={!assignedId}
+              onClick={(e) => {
                 if (!assignedId) return;
-                setAiGenerating(true);
-                try {
-                  const text = useAiDraft
-                    ? await generateAiDraft({ leadId: String(lead.id), assignedId, fallbackMessage })
-                    : fallbackMessage;
-                  const qs = new URLSearchParams({ realtor: assignedId, text });
-                  window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
-                } finally {
-                  setAiGenerating(false);
+                const options = buildTemplateOptions({
+                  leadId: String(lead.id),
+                  realtorName: member?.name ?? lead.realtor?.name ?? null,
+                  contactName: lead.contact?.name ?? null,
+                  propertyTitle: lead.property?.title ?? null,
+                  isPendingReply: isPending,
+                  isNewLead,
+                  slaAge,
+                  pipelineStage: lead.pipelineStage ?? null,
+                });
+
+                if (e.shiftKey) {
+                  setTemplateModal({
+                    leadId: String(lead.id),
+                    channel: "CHAT",
+                    assignedId,
+                    options,
+                  });
+                  return;
                 }
+                const qs = new URLSearchParams({ realtor: assignedId, text: fallbackMessage });
+                window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                if (!assignedId) return;
+                const options = buildTemplateOptions({
+                  leadId: String(lead.id),
+                  realtorName: member?.name ?? lead.realtor?.name ?? null,
+                  contactName: lead.contact?.name ?? null,
+                  propertyTitle: lead.property?.title ?? null,
+                  isPendingReply: isPending,
+                  isNewLead,
+                  slaAge,
+                  pipelineStage: lead.pipelineStage ?? null,
+                });
+                setTemplateModal({
+                  leadId: String(lead.id),
+                  channel: "CHAT",
+                  assignedId,
+                  options,
+                });
               }}
               className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 disabled:opacity-50"
-              title="Chat interno"
+              title="Chat interno (Shift+clique ou clique direito para escolher)"
               aria-label="Abrir chat interno"
             >
               <MessageCircle className="w-5 h-5" />
@@ -281,21 +404,55 @@ export default function AgencyLeadSidePanel({
 
             <button
               type="button"
-              disabled={!wa || aiGenerating}
-              onClick={async () => {
+              disabled={!wa}
+              onClick={(e) => {
                 if (!wa) return;
-                setAiGenerating(true);
-                try {
-                  const text = useAiDraft
-                    ? await generateAiDraft({ leadId: String(lead.id), assignedId, fallbackMessage })
-                    : fallbackMessage;
-                  window.open(`https://wa.me/${wa}?text=${encodeURIComponent(text)}`, "_blank");
-                } finally {
-                  setAiGenerating(false);
+                const options = buildTemplateOptions({
+                  leadId: String(lead.id),
+                  realtorName: member?.name ?? lead.realtor?.name ?? null,
+                  contactName: lead.contact?.name ?? null,
+                  propertyTitle: lead.property?.title ?? null,
+                  isPendingReply: isPending,
+                  isNewLead,
+                  slaAge,
+                  pipelineStage: lead.pipelineStage ?? null,
+                });
+
+                if (e.shiftKey) {
+                  setTemplateModal({
+                    leadId: String(lead.id),
+                    channel: "WHATSAPP",
+                    assignedId,
+                    whatsappNumber: wa,
+                    options,
+                  });
+                  return;
                 }
+                window.open(`https://wa.me/${wa}?text=${encodeURIComponent(fallbackMessage)}`, "_blank");
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                if (!wa) return;
+                const options = buildTemplateOptions({
+                  leadId: String(lead.id),
+                  realtorName: member?.name ?? lead.realtor?.name ?? null,
+                  contactName: lead.contact?.name ?? null,
+                  propertyTitle: lead.property?.title ?? null,
+                  isPendingReply: isPending,
+                  isNewLead,
+                  slaAge,
+                  pipelineStage: lead.pipelineStage ?? null,
+                });
+                setTemplateModal({
+                  leadId: String(lead.id),
+                  channel: "WHATSAPP",
+                  assignedId,
+                  whatsappNumber: wa,
+                  options,
+                });
               }}
               className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-              title="WhatsApp"
+              title="WhatsApp (Shift+clique ou clique direito para escolher)"
               aria-label="Abrir WhatsApp"
             >
               <svg viewBox="0 0 32 32" className="w-5 h-5" fill="currentColor" aria-hidden="true">
@@ -318,7 +475,7 @@ export default function AgencyLeadSidePanel({
         </div>
       </div>
     );
-  }, [lead, members, useAiDraft, aiGenerating, onToggleUseAiDraft]);
+  }, [lead, members]);
 
   const tabs = useMemo(() => {
     const activitiesContent = lead ? (
@@ -382,6 +539,62 @@ export default function AgencyLeadSidePanel({
           />
         </div>
       )}
+
+      {templateModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[70000]">
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setTemplateModal(null)}
+              aria-hidden="true"
+            />
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden"
+              >
+                <div className="px-5 py-4 border-b border-gray-200">
+                  <div className="text-sm font-semibold text-gray-900">Escolher mensagem</div>
+                  <div className="text-xs text-gray-500 mt-0.5">Lead {templateModal.leadId}</div>
+                </div>
+                <div className="p-4 space-y-2">
+                  {templateModal.options.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        if (templateModal.channel === "WHATSAPP") {
+                          const wa = String(templateModal.whatsappNumber || "").trim();
+                          if (!wa) return;
+                          window.open(`https://wa.me/${wa}?text=${encodeURIComponent(opt.text)}`, "_blank");
+                        } else {
+                          const qs = new URLSearchParams({ realtor: templateModal.assignedId, text: opt.text });
+                          window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
+                        }
+                        setTemplateModal(null);
+                      }}
+                      className="w-full text-left rounded-xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50"
+                    >
+                      <div className="text-sm font-semibold text-gray-900">{opt.label}</div>
+                      <div className="mt-1 text-xs text-gray-600 line-clamp-2">{opt.text}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="px-5 py-4 border-t border-gray-200 flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setTemplateModal(null)}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </Drawer>
   );
 }

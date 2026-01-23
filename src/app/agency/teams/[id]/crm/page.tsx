@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle, MessageCircle, RefreshCw, Sparkles } from "lucide-react";
+import { AlertTriangle, MessageCircle, RefreshCw } from "lucide-react";
 import AgencyLeadSidePanel from "../../../../../components/leads/AgencyLeadSidePanel";
 import { getPusherClient } from "@/lib/pusher-client";
 
@@ -113,12 +114,124 @@ function buildRealtorPingMessage(params: {
   contactName: string | null;
   propertyTitle: string | null;
   slaAge: string | null;
+  isPendingReply: boolean;
+  isNewLead: boolean;
+  pipelineStage: string | null;
+  nextActionDate?: string | null;
 }) {
-  const realtor = params.realtorName || "tudo bem";
-  const client = params.contactName || `Lead ${params.leadId}`;
+  const realtorName = String(params.realtorName || "").trim();
+  const greeting = realtorName ? `Olá ${realtorName}!` : "Olá!";
+  const client = params.contactName || `lead ${params.leadId}`;
   const prop = params.propertyTitle ? ` (${params.propertyTitle})` : "";
-  const sla = params.slaAge ? ` Há ${params.slaAge}.` : "";
-  return `Olá ${realtor}! Tudo bem? Vi no painel da agência que o lead ${client}${prop} está com pendência de resposta.${sla} Você consegue verificar e dar um retorno quando possível? Obrigado!`;
+  const sla = params.slaAge ? ` há ${params.slaAge}` : "";
+  const stage = String(params.pipelineStage || "").toUpperCase().trim();
+
+  if (params.isPendingReply) {
+    return `${greeting} Tudo bem? No painel aparece que o ${client}${prop} está aguardando retorno${sla}. Você consegue confirmar se já respondeu e atualizar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "WON") {
+    return `${greeting} Tudo bem? Consegue confirmar se o ${client}${prop} foi fechado e registrar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "LOST") {
+    return `${greeting} Tudo bem? Consegue confirmar se o ${client}${prop} foi perdido e registrar o motivo/status quando puder? Obrigado!`;
+  }
+
+  if (params.nextActionDate) {
+    const when = (() => {
+      const d = new Date(String(params.nextActionDate));
+      if (Number.isNaN(d.getTime())) return null;
+      try {
+        return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      } catch {
+        return String(params.nextActionDate);
+      }
+    })();
+    return `${greeting} Tudo bem? Tem um follow-up ${when ? `agendado para ${when}` : "agendado"} do ${client}${prop}. Você consegue realizar e atualizar o status quando puder? Obrigado!`;
+  }
+
+  if (params.isNewLead) {
+    return `${greeting} Tudo bem? Chegou um lead novo: ${client}${prop}. Você consegue fazer o primeiro contato e atualizar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "CONTACT") {
+    return `${greeting} Tudo bem? Consegue me confirmar como está o contato com o ${client}${prop} e atualizar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "VISIT") {
+    return `${greeting} Tudo bem? Consegue me atualizar sobre a visita do ${client}${prop} (se já aconteceu / próximos passos) e registrar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "PROPOSAL") {
+    return `${greeting} Tudo bem? Consegue me atualizar sobre a proposta do ${client}${prop} e registrar o status quando puder? Obrigado!`;
+  }
+
+  if (stage === "DOCUMENTS") {
+    return `${greeting} Tudo bem? Consegue me atualizar sobre a etapa de documentação do ${client}${prop} e registrar o status quando puder? Obrigado!`;
+  }
+
+  return `${greeting} Tudo bem? Consegue me dar um update rápido sobre o ${client}${prop}? Obrigado!`;
+}
+
+type TemplateOption = { id: string; label: string; text: string };
+
+function buildTemplateOptions(params: {
+  leadId: string;
+  realtorName: string | null;
+  contactName: string | null;
+  propertyTitle: string | null;
+  slaAge: string | null;
+  isPendingReply: boolean;
+  isNewLead: boolean;
+  pipelineStage: string | null;
+}) {
+  const options: TemplateOption[] = [];
+
+  const recommended = buildRealtorPingMessage({
+    ...params,
+    nextActionDate: null,
+  });
+
+  options.push({ id: "recommended", label: "Recomendado", text: recommended });
+
+  options.push({
+    id: "status",
+    label: "Pedir update (neutro)",
+    text: buildRealtorPingMessage({
+      ...params,
+      isPendingReply: false,
+      isNewLead: false,
+      pipelineStage: null,
+      nextActionDate: null,
+    }),
+  });
+
+  options.push({
+    id: "new",
+    label: "Lead novo (primeiro contato)",
+    text: buildRealtorPingMessage({
+      ...params,
+      isPendingReply: false,
+      isNewLead: true,
+      pipelineStage: "NEW",
+      nextActionDate: null,
+    }),
+  });
+
+  options.push({
+    id: "pending",
+    label: "Cobrar retorno (SLA)",
+    text: buildRealtorPingMessage({
+      ...params,
+      isPendingReply: true,
+      isNewLead: false,
+      pipelineStage: params.pipelineStage,
+      nextActionDate: null,
+    }),
+  });
+
+  return options;
 }
 
 export default function AgencyTeamCrmPage() {
@@ -152,52 +265,13 @@ export default function AgencyTeamCrmPage() {
 
   const [savingLeadId, setSavingLeadId] = useState<string | null>(null);
 
-  const [aiGeneratingLeadId, setAiGeneratingLeadId] = useState<string | null>(null);
-  const [useAiDraft, setUseAiDraft] = useState(true);
-
-  const generateAiDraftAndOpen = async (params: {
+  const [templateModal, setTemplateModal] = useState<null | {
     leadId: string;
-    assignedId: string;
-    fallbackMessage: string;
     channel: "CHAT" | "WHATSAPP";
+    assignedId: string;
     whatsappNumber?: string | null;
-  }) => {
-    if (!params.leadId || !params.assignedId) return;
-    if (aiGeneratingLeadId) return;
-    try {
-      setAiGeneratingLeadId(String(params.leadId));
-      const res = await fetch(
-        `/api/agency/leads/${encodeURIComponent(params.leadId)}/realtor-contact-draft?realtorId=${encodeURIComponent(
-          params.assignedId
-        )}`,
-        { cache: "no-store" }
-      );
-      const data = await res.json().catch(() => null);
-      const draft =
-        typeof data?.draft === "string" && data.draft.trim().length >= 10
-          ? data.draft.trim()
-          : params.fallbackMessage;
-      if (params.channel === "WHATSAPP") {
-        const wa = String(params.whatsappNumber || "").trim();
-        if (!wa) return;
-        window.open(`https://wa.me/${wa}?text=${encodeURIComponent(draft)}`, "_blank");
-        return;
-      }
-      const qs = new URLSearchParams({ realtor: params.assignedId, text: draft });
-      window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
-    } catch {
-      if (params.channel === "WHATSAPP") {
-        const wa = String(params.whatsappNumber || "").trim();
-        if (!wa) return;
-        window.open(`https://wa.me/${wa}?text=${encodeURIComponent(params.fallbackMessage)}`, "_blank");
-        return;
-      }
-      const qs = new URLSearchParams({ realtor: params.assignedId, text: params.fallbackMessage });
-      window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
-    } finally {
-      setAiGeneratingLeadId(null);
-    }
-  };
+    options: TemplateOption[];
+  }>(null);
 
   const buildPipelineUrl = (opts: { cursor?: string | null } = {}) => {
     const url = new URL(`/api/teams/${encodeURIComponent(teamId)}/pipeline`, window.location.origin);
@@ -528,24 +602,6 @@ export default function AgencyTeamCrmPage() {
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm lg:rounded-b-2xl lg:rounded-t-none lg:border-t-0">
-        <div className="px-3 py-2 border-b border-gray-100 bg-white">
-          <div className="flex items-center justify-end">
-            <button
-              type="button"
-              onClick={() => setUseAiDraft((prev) => !prev)}
-              aria-pressed={useAiDraft}
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
-                useAiDraft
-                  ? "border-neutral-900 bg-neutral-900 text-white"
-                  : "border-gray-200 bg-white text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-              }`}
-              title={useAiDraft ? "IA ligada" : "IA desligada"}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {useAiDraft ? "IA ligada" : "Usar IA"}
-            </button>
-          </div>
-        </div>
         <div className="overflow-x-auto">
           <table className="min-w-[980px] w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -579,6 +635,9 @@ export default function AgencyTeamCrmPage() {
                   const slaAge = formatSlaAge(pending?.lastClientAt || null);
                   const assignedId = l.realtor?.id ? String(l.realtor.id) : "";
                   const isPending = !!pending;
+                  const isNewLead =
+                    String(l.pipelineStage || "").toUpperCase() === "NEW" ||
+                    (l.createdAt ? Date.now() - new Date(l.createdAt).getTime() < 24 * 60 * 60 * 1000 : false);
 
                   const member = assignedId ? realtorOptions.find((m) => String(m.userId) === assignedId) || null : null;
                   const fallbackMessage = assignedId
@@ -588,6 +647,10 @@ export default function AgencyTeamCrmPage() {
                         contactName: l.contact?.name ?? null,
                         propertyTitle: l.property?.title ?? null,
                         slaAge,
+                        isPendingReply: isPending,
+                        isNewLead,
+                        pipelineStage: l.pipelineStage ?? null,
+                        nextActionDate: null,
                       })
                     : "";
 
@@ -648,22 +711,54 @@ export default function AgencyTeamCrmPage() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            disabled={!assignedId || aiGeneratingLeadId === leadId}
-                            onClick={() => {
+                            disabled={!assignedId}
+                            onClick={(e) => {
                               if (!assignedId) return;
-                              if (useAiDraft) {
-                                return generateAiDraftAndOpen({
+                              const options = buildTemplateOptions({
+                                leadId,
+                                realtorName: member?.name ?? l.realtor?.name ?? null,
+                                contactName: l.contact?.name ?? null,
+                                propertyTitle: l.property?.title ?? null,
+                                slaAge,
+                                isPendingReply: isPending,
+                                isNewLead,
+                                pipelineStage: l.pipelineStage ?? null,
+                              });
+
+                              if (e.shiftKey) {
+                                setTemplateModal({
                                   leadId,
-                                  assignedId,
-                                  fallbackMessage,
                                   channel: "CHAT",
+                                  assignedId,
+                                  options,
                                 });
+                                return;
                               }
                               const qs = new URLSearchParams({ realtor: assignedId, text: fallbackMessage });
                               window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
                             }}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              if (!assignedId) return;
+                              const options = buildTemplateOptions({
+                                leadId,
+                                realtorName: member?.name ?? l.realtor?.name ?? null,
+                                contactName: l.contact?.name ?? null,
+                                propertyTitle: l.property?.title ?? null,
+                                slaAge,
+                                isPendingReply: isPending,
+                                isNewLead,
+                                pipelineStage: l.pipelineStage ?? null,
+                              });
+                              setTemplateModal({
+                                leadId,
+                                channel: "CHAT",
+                                assignedId,
+                                options,
+                              });
+                            }}
                             className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 disabled:opacity-50"
-                            title="Chat interno"
+                            title="Chat interno (Shift+clique ou clique direito para escolher)"
                             aria-label="Abrir chat interno"
                           >
                             <MessageCircle className="w-5 h-5" />
@@ -671,25 +766,58 @@ export default function AgencyTeamCrmPage() {
 
                           <button
                             type="button"
-                            disabled={!wa || aiGeneratingLeadId === leadId}
-                            onClick={() => {
+                            disabled={!wa}
+                            onClick={(e) => {
                               if (!wa) return;
-                              if (useAiDraft) {
-                                return generateAiDraftAndOpen({
+                              const options = buildTemplateOptions({
+                                leadId,
+                                realtorName: member?.name ?? l.realtor?.name ?? null,
+                                contactName: l.contact?.name ?? null,
+                                propertyTitle: l.property?.title ?? null,
+                                slaAge,
+                                isPendingReply: isPending,
+                                isNewLead,
+                                pipelineStage: l.pipelineStage ?? null,
+                              });
+
+                              if (e.shiftKey) {
+                                setTemplateModal({
                                   leadId,
-                                  assignedId,
-                                  fallbackMessage,
                                   channel: "WHATSAPP",
+                                  assignedId,
                                   whatsappNumber: wa,
+                                  options,
                                 });
+                                return;
                               }
                               window.open(
                                 `https://wa.me/${wa}?text=${encodeURIComponent(fallbackMessage)}`,
                                 "_blank"
                               );
                             }}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              if (!wa) return;
+                              const options = buildTemplateOptions({
+                                leadId,
+                                realtorName: member?.name ?? l.realtor?.name ?? null,
+                                contactName: l.contact?.name ?? null,
+                                propertyTitle: l.property?.title ?? null,
+                                slaAge,
+                                isPendingReply: isPending,
+                                isNewLead,
+                                pipelineStage: l.pipelineStage ?? null,
+                              });
+                              setTemplateModal({
+                                leadId,
+                                channel: "WHATSAPP",
+                                assignedId,
+                                whatsappNumber: wa,
+                                options,
+                              });
+                            }}
                             className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-                            title="WhatsApp"
+                            title="WhatsApp (Shift+clique ou clique direito para escolher)"
                             aria-label="Abrir WhatsApp"
                           >
                             <svg viewBox="0 0 32 32" className="w-5 h-5" fill="currentColor" aria-hidden="true">
@@ -726,10 +854,66 @@ export default function AgencyTeamCrmPage() {
         leadId={selectedLeadId}
         initialTab={leadPanelInitialTab}
         members={members}
-        useAiDraft={useAiDraft}
-        onToggleUseAiDraft={() => setUseAiDraft((prev) => !prev)}
         onClose={() => setLeadPanelOpen(false)}
       />
+
+      {templateModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[70000]">
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setTemplateModal(null)}
+              aria-hidden="true"
+            />
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden"
+              >
+                <div className="px-5 py-4 border-b border-gray-200">
+                  <div className="text-sm font-semibold text-gray-900">Escolher mensagem</div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    Lead {templateModal.leadId}
+                  </div>
+                </div>
+                <div className="p-4 space-y-2">
+                  {templateModal.options.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        if (templateModal.channel === "WHATSAPP") {
+                          const wa = String(templateModal.whatsappNumber || "").trim();
+                          if (!wa) return;
+                          window.open(`https://wa.me/${wa}?text=${encodeURIComponent(opt.text)}`, "_blank");
+                        } else {
+                          const qs = new URLSearchParams({ realtor: templateModal.assignedId, text: opt.text });
+                          window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
+                        }
+                        setTemplateModal(null);
+                      }}
+                      className="w-full text-left rounded-xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50"
+                    >
+                      <div className="text-sm font-semibold text-gray-900">{opt.label}</div>
+                      <div className="mt-1 text-xs text-gray-600 line-clamp-2">{opt.text}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="px-5 py-4 border-t border-gray-200 flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setTemplateModal(null)}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
