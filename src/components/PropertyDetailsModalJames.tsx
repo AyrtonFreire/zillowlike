@@ -1238,8 +1238,8 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
           {/* Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 px-4 md:px-0">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-5">
-              <div className="rounded-2xl border border-gray-200 bg-white p-6">
+            <div className="lg:col-span-2 divide-y divide-gray-200">
+              <div className="pt-0 pb-8">
                 {/* Price */}
                 <div>
                   <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900">
@@ -1290,7 +1290,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               </div>
 
               {/* About the Property */}
-              <div className="rounded-2xl border border-gray-200 bg-white p-6">
+              <div className="py-8">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Sobre o imóvel</h3>
                 <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                   <p>{showMore ? property.description : truncatedDescription}</p>
@@ -1306,7 +1306,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               </div>
 
               {/* Property Details Grid */}
-              <div className="rounded-2xl border border-gray-200 bg-white p-6">
+              <div className="py-8">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {property.type && (
                   <div>
@@ -1336,7 +1336,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               </div>
 
               {/* Features - Sober style with Lucide icons */}
-              <div className="pt-4 border-t border-teal/10">
+              <div className="py-8">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Características</h3>
                 {(() => {
                   const allFeatures: { icon: React.ReactNode; label: string }[] = [];
@@ -1400,7 +1400,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               </div>
 
               {mode === "public" && (
-                <div ref={areaSectionRef} className="pt-4 border-t border-teal/10">
+                <div ref={areaSectionRef} className="py-8">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">Explore a Região</h3>
 
                   {/* Mapa com POIs */}
