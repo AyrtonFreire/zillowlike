@@ -12,6 +12,9 @@ type PipelineMember = {
   userId: string;
   name: string | null;
   email: string | null;
+  publicWhatsApp?: string | null;
+  phoneNormalized?: string | null;
+  phone?: string | null;
   role: string;
   queuePosition?: number;
 };
@@ -93,6 +96,31 @@ function formatSlaAge(value: string | null | undefined) {
   return `${days}d ${hrs}h`;
 }
 
+function whatsappNumberFromMember(member: PipelineMember | null) {
+  if (!member) return null;
+  const raw = String(member.publicWhatsApp || member.phoneNormalized || member.phone || "").trim();
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("55")) return digits;
+  if (digits.length <= 11) return `55${digits}`;
+  return digits;
+}
+
+function buildRealtorPingMessage(params: {
+  leadId: string;
+  realtorName: string | null;
+  contactName: string | null;
+  propertyTitle: string | null;
+  slaAge: string | null;
+}) {
+  const realtor = params.realtorName || "tudo bem";
+  const client = params.contactName || `Lead ${params.leadId}`;
+  const prop = params.propertyTitle ? ` (${params.propertyTitle})` : "";
+  const sla = params.slaAge ? ` Há ${params.slaAge}.` : "";
+  return `Olá ${realtor}! Tudo bem? Vi no painel da agência que o lead ${client}${prop} está com pendência de resposta.${sla} Você consegue verificar e dar um retorno quando possível? Obrigado!`;
+}
+
 export default function AgencyTeamCrmPage() {
   const params = useParams();
   const teamId = params?.id as string;
@@ -123,6 +151,52 @@ export default function AgencyTeamCrmPage() {
   const [leadPanelInitialTab, setLeadPanelInitialTab] = useState<"ATIVIDADES" | "NOTAS">("ATIVIDADES");
 
   const [savingLeadId, setSavingLeadId] = useState<string | null>(null);
+
+  const [aiGeneratingLeadId, setAiGeneratingLeadId] = useState<string | null>(null);
+
+  const generateAiDraftAndOpen = async (params: {
+    leadId: string;
+    assignedId: string;
+    fallbackMessage: string;
+    channel: "CHAT" | "WHATSAPP";
+    whatsappNumber?: string | null;
+  }) => {
+    if (!params.leadId || !params.assignedId) return;
+    if (aiGeneratingLeadId) return;
+    try {
+      setAiGeneratingLeadId(String(params.leadId));
+      const res = await fetch(
+        `/api/agency/leads/${encodeURIComponent(params.leadId)}/realtor-contact-draft?realtorId=${encodeURIComponent(
+          params.assignedId
+        )}`,
+        { cache: "no-store" }
+      );
+      const data = await res.json().catch(() => null);
+      const draft =
+        typeof data?.draft === "string" && data.draft.trim().length >= 10
+          ? data.draft.trim()
+          : params.fallbackMessage;
+      if (params.channel === "WHATSAPP") {
+        const wa = String(params.whatsappNumber || "").trim();
+        if (!wa) return;
+        window.open(`https://wa.me/${wa}?text=${encodeURIComponent(draft)}`, "_blank");
+        return;
+      }
+      const qs = new URLSearchParams({ realtor: params.assignedId, text: draft });
+      window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
+    } catch {
+      if (params.channel === "WHATSAPP") {
+        const wa = String(params.whatsappNumber || "").trim();
+        if (!wa) return;
+        window.open(`https://wa.me/${wa}?text=${encodeURIComponent(params.fallbackMessage)}`, "_blank");
+        return;
+      }
+      const qs = new URLSearchParams({ realtor: params.assignedId, text: params.fallbackMessage });
+      window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
+    } finally {
+      setAiGeneratingLeadId(null);
+    }
+  };
 
   const buildPipelineUrl = (opts: { cursor?: string | null } = {}) => {
     const url = new URL(`/api/teams/${encodeURIComponent(teamId)}/pipeline`, window.location.origin);
@@ -486,6 +560,20 @@ export default function AgencyTeamCrmPage() {
                   const slaAge = formatSlaAge(pending?.lastClientAt || null);
                   const assignedId = l.realtor?.id ? String(l.realtor.id) : "";
                   const isPending = !!pending;
+
+                  const member = assignedId ? realtorOptions.find((m) => String(m.userId) === assignedId) || null : null;
+                  const fallbackMessage = assignedId
+                    ? buildRealtorPingMessage({
+                        leadId,
+                        realtorName: member?.name ?? l.realtor?.name ?? null,
+                        contactName: l.contact?.name ?? null,
+                        propertyTitle: l.property?.title ?? null,
+                        slaAge,
+                      })
+                    : "";
+
+                  const wa = whatsappNumberFromMember(member);
+                  const whatsappHref = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(fallbackMessage)}` : null;
                   return (
                     <tr key={leadId} className="hover:bg-gray-50">
                       <td className="pl-2 pr-3 py-3">
@@ -546,6 +634,65 @@ export default function AgencyTeamCrmPage() {
                         >
                           Ver detalhes
                         </button>
+
+                        {assignedId ? (
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              disabled={aiGeneratingLeadId === leadId}
+                              onClick={() =>
+                                generateAiDraftAndOpen({
+                                  leadId,
+                                  assignedId,
+                                  fallbackMessage,
+                                  channel: "CHAT",
+                                })
+                              }
+                              className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg bg-neutral-900 text-[11px] font-semibold text-white hover:bg-black disabled:opacity-60"
+                            >
+                              {aiGeneratingLeadId === leadId ? "Gerando..." : "Chat c/ IA"}
+                            </button>
+
+                            {wa ? (
+                              <button
+                                type="button"
+                                disabled={aiGeneratingLeadId === leadId}
+                                onClick={() =>
+                                  generateAiDraftAndOpen({
+                                    leadId,
+                                    assignedId,
+                                    fallbackMessage,
+                                    channel: "WHATSAPP",
+                                    whatsappNumber: wa,
+                                  })
+                                }
+                                className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg bg-green-600 text-[11px] font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+                              >
+                                {aiGeneratingLeadId === leadId ? "Gerando..." : "WhatsApp c/ IA"}
+                              </button>
+                            ) : null}
+
+                            <a
+                              href={`/agency/team-chat?realtor=${encodeURIComponent(assignedId)}&text=${encodeURIComponent(fallbackMessage)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
+                            >
+                              Chat do time
+                            </a>
+
+                            {whatsappHref ? (
+                              <a
+                                href={whatsappHref}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg bg-green-600 text-[11px] font-semibold text-white hover:bg-green-700"
+                              >
+                                WhatsApp
+                              </a>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </td>
                     </tr>
                   );

@@ -107,6 +107,8 @@ export default function AgencyTeamChatPanel() {
   const userId = (session as any)?.user?.id || (session as any)?.userId || "";
 
   const threadIdFromUrl = searchParams?.get("thread") || null;
+  const realtorIdFromUrl = searchParams?.get("realtor") || null;
+  const textFromUrl = searchParams?.get("text") || null;
 
   const [team, setTeam] = useState<TeamChatTeam | null>(null);
   const [threads, setThreads] = useState<TeamChatThread[]>([]);
@@ -123,6 +125,8 @@ export default function AgencyTeamChatPanel() {
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+
+  const didPrefillDraftRef = useRef(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -275,6 +279,28 @@ export default function AgencyTeamChatPanel() {
     if (!threads.some((t) => String(t.id) === String(threadIdFromUrl))) return;
     setSelectedThreadId(String(threadIdFromUrl));
   }, [threadIdFromUrl, threads]);
+
+  useEffect(() => {
+    if (!realtorIdFromUrl) return;
+    if (threadIdFromUrl) return;
+    if (!threads.length) return;
+
+    const target = threads.find((t) => String(t.realtor?.id || "") === String(realtorIdFromUrl)) || null;
+    if (!target) return;
+    setSelectedThreadId(String(target.id));
+  }, [realtorIdFromUrl, threadIdFromUrl, threads]);
+
+  useEffect(() => {
+    if (!textFromUrl) return;
+    if (!selectedThreadId) return;
+    if (didPrefillDraftRef.current) return;
+
+    setDraft((prev) => {
+      if (String(prev || "").trim().length > 0) return prev;
+      didPrefillDraftRef.current = true;
+      return String(textFromUrl);
+    });
+  }, [textFromUrl, selectedThreadId]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
