@@ -738,7 +738,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     className="group/realtor flex items-center gap-3 min-w-0 flex-1"
                     aria-label={`Ver perfil de ${property.owner.name}`}
                   >
-                    <span className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
+                    <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 ring-1 ring-gray-200">
                       {property.owner?.image ? (
                         <Image
                           src={property.owner.image}
@@ -748,23 +748,22 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                           sizes="32px"
                         />
                       ) : (
-                        <span className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-gray-700">
+                        <span className="absolute inset-0 flex items-center justify-center text-[13px] font-medium text-gray-700">
                           {String(property.owner.name).trim().slice(0, 1).toUpperCase()}
                         </span>
                       )}
                     </span>
-                    <span className="min-w-0 max-w-[180px] sm:max-w-[220px]">
+                    <span className="min-w-0 max-w-[200px] sm:max-w-[240px]">
                       <span className="flex items-center gap-1 min-w-0">
-                        <span className="block text-[12.5px] font-bold text-gray-900 leading-tight truncate transition-colors group-hover/realtor:text-teal-700 group-hover/realtor:underline">
+                        <span className="block text-[12.5px] font-normal text-gray-700 leading-tight tracking-tight truncate transition-colors group-hover/realtor:text-teal-700">
                           {property.owner.name}
                         </span>
-                        <ArrowUpRight className="w-3.5 h-3.5 flex-none text-gray-400 transition-transform group-hover/realtor:translate-x-0.5 group-hover/realtor:-translate-y-0.5" />
                       </span>
                     </span>
                   </Link>
                 ) : (
                   <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-100 border border-white shadow">
+                    <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 ring-1 ring-gray-200">
                       {property.owner?.image ? (
                         <Image
                           src={property.owner.image}
@@ -774,13 +773,13 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                           sizes="32px"
                         />
                       ) : (
-                        <span className="absolute inset-0 flex items-center justify-center text-[13px] font-extrabold text-gray-700">
+                        <span className="absolute inset-0 flex items-center justify-center text-[13px] font-medium text-gray-700">
                           {String(property.owner.name).trim().slice(0, 1).toUpperCase()}
                         </span>
                       )}
                     </span>
-                    <span className="min-w-0 max-w-[180px] sm:max-w-[220px]">
-                      <span className="block text-[12.5px] font-bold text-gray-900 leading-tight truncate">
+                    <span className="min-w-0 max-w-[200px] sm:max-w-[240px]">
+                      <span className="block text-[12.5px] font-normal text-gray-700 leading-tight tracking-tight truncate">
                         {property.owner.name}
                       </span>
                     </span>
@@ -790,7 +789,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                 {showAgencyLogo ? (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="relative w-20 h-8 rounded-md overflow-hidden bg-white border border-gray-200"
+                    className="relative w-24 h-8 overflow-hidden flex items-center justify-center opacity-90"
                     title={property.team?.name || ""}
                     aria-label={property.team?.name ? `Imobiliária ${property.team.name}` : "Imobiliária"}
                   >
@@ -803,7 +802,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                         sizes="80px"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-700 px-2">
+                      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-normal text-gray-500 px-2">
                         <span className="truncate">{String(property.team?.name || "")}</span>
                       </div>
                     )}
