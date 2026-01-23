@@ -1522,10 +1522,6 @@ async function postHandler(req: NextRequest) {
   return successResponse({ threadId: thread.id, messages: [userMessage, assistantMessage] });
 }
 
-async function disabledHandler(_req: NextRequest) {
-  return errorResponse("Chat IA desativado", 410, null, "AI_CHAT_DISABLED");
-}
-
-export const GET = withErrorHandling(withRateLimit(disabledHandler, "default"));
-export const POST = withErrorHandling(withRateLimit(disabledHandler, "default"));
-export const DELETE = withErrorHandling(withRateLimit(disabledHandler, "default"));
+export const GET = withErrorHandling(withRateLimit(getHandler, "default"));
+export const POST = withErrorHandling(withRateLimit(postHandler, "ai"));
+export const DELETE = withErrorHandling(withRateLimit(deleteHandler, "default"));

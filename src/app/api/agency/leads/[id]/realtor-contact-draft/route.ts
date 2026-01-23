@@ -4,6 +4,8 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
+import { createAuditLog } from "@/lib/audit-log";
+import { captureException } from "@/lib/sentry";
 
 export const runtime = "nodejs";
 
@@ -102,15 +104,15 @@ async function callOpenAiText(params: { apiKey: string; systemPrompt: string; us
 
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
-      return { ok: false as const, status: res.status, body: txt.slice(0, 2000) };
+      return { ok: false as const, status: res.status, body: txt.slice(0, 2000), model };
     }
 
     const json = (await res.json().catch(() => null)) as OpenAIChatResponse | null;
     const content = json?.choices?.[0]?.message?.content?.trim() || "";
-    if (!content) return { ok: false as const, status: 0, body: "empty" };
-    return { ok: true as const, content };
+    if (!content) return { ok: false as const, status: 0, body: "empty", model };
+    return { ok: true as const, content, model };
   } catch {
-    return { ok: false as const, status: 0, body: "timeout_or_network" };
+    return { ok: false as const, status: 0, body: "timeout_or_network", model };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -186,6 +188,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     if (!lead) {
       return NextResponse.json({ success: false, error: "Lead não encontrado" }, { status: 404 });
     }
+
+    const logTeamId = agencyTeamId ?? (lead.teamId ? String(lead.teamId) : null);
 
     if (role === "AGENCY") {
       if (!lead.teamId || String(lead.teamId) !== String(agencyTeamId)) {
@@ -288,6 +292,19 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     });
 
     if (!apiKey) {
+      void createAuditLog({
+        level: "WARN",
+        action: "AGENCY_REALTOR_DRAFT_FALLBACK",
+        actorId: String(userId),
+        actorRole: String(role || ""),
+        targetType: "Lead",
+        targetId: String(leadId),
+        metadata: {
+          reason: "missing_api_key",
+          teamId: logTeamId,
+          realtorId: lead.realtor?.id ? String(lead.realtor.id) : null,
+        },
+      });
       return NextResponse.json({
         success: true,
         usedAi: false,
@@ -316,17 +333,62 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     const aiRes = await callOpenAiText({ apiKey, systemPrompt, userPrompt });
     if (!aiRes.ok) {
+      void createAuditLog({
+        level: "WARN",
+        action: "AGENCY_REALTOR_DRAFT_FALLBACK",
+        actorId: String(userId),
+        actorRole: String(role || ""),
+        targetType: "Lead",
+        targetId: String(leadId),
+        metadata: {
+          reason: "ai_failed",
+          model: (aiRes as any)?.model ?? null,
+          status: (aiRes as any)?.status ?? null,
+          body: (aiRes as any)?.body ?? null,
+          teamId: logTeamId,
+          realtorId: lead.realtor?.id ? String(lead.realtor.id) : null,
+        },
+      });
       return NextResponse.json({ success: true, usedAi: false, draft: fallback });
     }
 
     const draft = cleanText(aiRes.content, 1200);
     if (draft.length < 10) {
+      void createAuditLog({
+        level: "WARN",
+        action: "AGENCY_REALTOR_DRAFT_FALLBACK",
+        actorId: String(userId),
+        actorRole: String(role || ""),
+        targetType: "Lead",
+        targetId: String(leadId),
+        metadata: {
+          reason: "empty_ai_output",
+          model: (aiRes as any)?.model ?? null,
+          teamId: logTeamId,
+          realtorId: lead.realtor?.id ? String(lead.realtor.id) : null,
+        },
+      });
       return NextResponse.json({ success: true, usedAi: false, draft: fallback });
     }
+
+    void createAuditLog({
+      level: "INFO",
+      action: "AGENCY_REALTOR_DRAFT_GENERATED",
+      actorId: String(userId),
+      actorRole: String(role || ""),
+      targetType: "Lead",
+      targetId: String(leadId),
+      metadata: {
+        model: (aiRes as any)?.model ?? null,
+        teamId: logTeamId,
+        realtorId: lead.realtor?.id ? String(lead.realtor.id) : null,
+      },
+    });
 
     return NextResponse.json({ success: true, usedAi: true, draft });
   } catch (error) {
     console.error("Error generating realtor contact draft:", error);
+    captureException(error, { route: "/api/agency/leads/[id]/realtor-contact-draft" });
     return NextResponse.json({ success: false, error: "Não conseguimos gerar a mensagem agora." }, { status: 500 });
   }
 }

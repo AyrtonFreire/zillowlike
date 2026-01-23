@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { ClientMatchService } from "@/lib/client-match-service";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 import { normalizePhoneE164 } from "@/lib/sms";
+import { createAuditLog } from "@/lib/audit-log";
+import { captureException } from "@/lib/sentry";
 
 export const runtime = "nodejs";
 
@@ -127,19 +129,15 @@ async function callOpenAI(input: { apiKey: string; systemPrompt: string; userPro
 
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
-      return { ok: false as const, status: res.status, body: txt.slice(0, 2000) };
+      return { ok: false as const, status: res.status, body: txt.slice(0, 2000), model };
     }
 
     const json = (await res.json().catch(() => null)) as OpenAIChatResponse | null;
     const content = json?.choices?.[0]?.message?.content?.trim() || "";
-
-    if (!content) {
-      return { ok: false as const, status: 0, body: "empty" };
-    }
-
-    return { ok: true as const, content };
+    if (!content) return { ok: false as const, status: 0, body: "empty", model };
+    return { ok: true as const, content, model };
   } catch {
-    return { ok: false as const, status: 0, body: "timeout_or_network" };
+    return { ok: false as const, status: 0, body: "timeout_or_network", model };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -381,6 +379,8 @@ export async function POST(
     const apiKey = process.env.OPENAI_API_KEY || "";
     let draft = fallbackDraft;
     let usedAi = false;
+    let aiModel: string | null = null;
+    let fallbackReason: string | null = null;
 
     if (apiKey) {
       const listPropertyCount = Array.isArray(list?.propertyIds) ? list.propertyIds.length : 0;
@@ -422,6 +422,8 @@ export async function POST(
         userPrompt: userPromptLines.join("\n\n"),
       });
 
+      aiModel = (attempt as any)?.model ?? null;
+
       if (attempt.ok) {
         const cleaned = String(attempt.content || "")
           .replace(/^```[a-zA-Z]*\n?/, "")
@@ -430,9 +432,30 @@ export async function POST(
         if (cleaned.length >= 10) {
           draft = cleaned.slice(0, 1200).trim();
           usedAi = true;
+        } else {
+          fallbackReason = "AI response too short";
         }
+      } else {
+        fallbackReason = attempt.body;
       }
     }
+
+    void createAuditLog({
+      level: usedAi ? "INFO" : "WARN",
+      action: usedAi ? "AGENCY_WHATSAPP_DRAFT_GENERATED" : "AGENCY_WHATSAPP_DRAFT_FALLBACK",
+      actorId: String(userId),
+      actorRole: String(role || ""),
+      targetType: "Client",
+      targetId: String(clientId),
+      metadata: {
+        usedAi,
+        model: aiModel,
+        teamId: String(teamId || "") || null,
+        listId: list?.id ? String(list.id) : null,
+        shareUrl,
+        fallbackReason,
+      },
+    });
 
     const text = encodeURIComponent(draft);
     const whatsappUrl = `https://wa.me/${phoneDigits}?text=${text}`;
@@ -457,7 +480,8 @@ export async function POST(
         : null,
     });
   } catch (error) {
-    console.error("Error generating client WhatsApp draft:", error);
-    return NextResponse.json({ success: false, error: "Não conseguimos gerar a mensagem agora." }, { status: 500 });
+    console.error("Error creating whatsapp draft:", error);
+    captureException(error, { route: "/api/agency/clients/[id]/whatsapp-draft" });
+    return NextResponse.json({ success: false, error: "Não foi possível gerar mensagem agora." }, { status: 500 });
   }
 }

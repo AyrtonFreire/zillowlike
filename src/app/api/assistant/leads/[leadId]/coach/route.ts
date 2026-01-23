@@ -4,6 +4,9 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sanitizeDraft, sanitizeReason } from "@/lib/ai-guardrails";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
+import { createAuditLog } from "@/lib/audit-log";
+import { captureException } from "@/lib/sentry";
 
 export const runtime = "nodejs";
 
@@ -323,6 +326,18 @@ export async function GET(req: NextRequest, context: { params: Promise<{ leadId:
       return NextResponse.json({ error: "Invalid query", issues: parsedQuery.error.issues }, { status: 400 });
     }
 
+    const wantsAi = parsedQuery.data.ai === "1";
+    if (wantsAi) {
+      const ip = getClientIp(req);
+      const allowed = await checkRateLimit(`${ip}:${String(userId || "")}`, "ai");
+      if (!allowed) {
+        return NextResponse.json(
+          { error: "Muitas requisições. Tente novamente em alguns minutos." },
+          { status: 429 }
+        );
+      }
+    }
+
     const lead: any = await (prisma as any).lead.findUnique({
       where: { id: String(leadId) },
       select: {
@@ -360,24 +375,46 @@ export async function GET(req: NextRequest, context: { params: Promise<{ leadId:
       lastClientMessage,
     });
 
-    const wantsAi = parsedQuery.data.ai === "1";
     const apiKey = process.env.OPENAI_API_KEY;
 
-    const output = wantsAi && apiKey
-      ? (await callAi({
-          apiKey,
-          lead: {
-            clientName: lead?.contact?.name || null,
-            propertyTitle: lead?.property?.title || null,
-          },
-          lastClientMessage,
-          base,
-        })) || base
-      : base;
+    const aiAttempted = wantsAi && !!apiKey;
+    let aiSuccess = false;
+    let output = base;
+    if (aiAttempted) {
+      const ai = await callAi({
+        apiKey,
+        lead: {
+          clientName: lead?.contact?.name || null,
+          propertyTitle: lead?.property?.title || null,
+        },
+        lastClientMessage,
+        base,
+      });
+      if (ai) {
+        output = ai;
+        aiSuccess = true;
+      }
+    }
+
+    if (wantsAi) {
+      void createAuditLog({
+        level: aiSuccess ? "INFO" : "WARN",
+        action: "ASSISTANT_COACH_AI_CALLED",
+        actorId: String(userId),
+        actorRole: String(role || ""),
+        targetType: "Lead",
+        targetId: String(lead.id),
+        metadata: {
+          usedAi: aiSuccess,
+          hasApiKey: Boolean(apiKey),
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, data: output });
   } catch (e) {
     console.error("/api/assistant/leads/[leadId]/coach GET error", e);
+    captureException(e, { route: "/api/assistant/leads/[leadId]/coach" });
     return NextResponse.json({ error: "Não conseguimos gerar sugestões agora." }, { status: 500 });
   }
 }
