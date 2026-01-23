@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState, useCallback } from "react";
 import type { ApiProperty } from "@/types/api";
@@ -40,6 +39,14 @@ export default function PropertyCard({
     } catch {
       return url;
     }
+  };
+
+  const cloudinaryUrl = (url: string, transformation: string) => {
+    return transformCloudinary(url, transformation);
+  };
+
+  const cloudinarySrcSet = (url: string, oneXTransformation: string, twoXTransformation: string) => {
+    return `${cloudinaryUrl(url, oneXTransformation)} 1x, ${cloudinaryUrl(url, twoXTransformation)} 2x`;
   };
   const [imageError, setImageError] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -106,13 +113,17 @@ export default function PropertyCard({
         >
           {/* Imagem Principal com Transição */}
           {p.images?.[currentImageIndex]?.url && !imageError ? (
-            <Image 
-              src={transformCloudinary(p.images[currentImageIndex].url, "f_auto,q_auto:good,dpr_auto,w_1200,h_900,c_fill,g_auto")} 
-              alt={`${p.title} - ${currentImageIndex + 1}`} 
-              fill
-              className="object-cover group-hover:scale-105 transition-all duration-700"
+            <img
+              src={cloudinaryUrl(p.images[currentImageIndex].url, "f_auto,q_auto:good,w_1200,h_900,c_fill,g_auto,dpr_1.0")}
+              srcSet={cloudinarySrcSet(
+                p.images[currentImageIndex].url,
+                "f_auto,q_auto:good,w_1200,h_900,c_fill,g_auto,dpr_1.0",
+                "f_auto,q_auto:good,w_1200,h_900,c_fill,g_auto,dpr_2.0"
+              )}
+              alt={`${p.title} - ${currentImageIndex + 1}`}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-700"
+              loading="lazy"
               onError={() => setImageError(true)}
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 flex items-center justify-center">

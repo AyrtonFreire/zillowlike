@@ -35,6 +35,14 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
     }
   };
 
+  const cloudinaryUrl = (url: string, transformation: string) => {
+    return transformCloudinary(url, transformation);
+  };
+
+  const cloudinarySrcSet = (url: string, oneXTransformation: string, twoXTransformation: string) => {
+    return `${cloudinaryUrl(url, oneXTransformation)} 1x, ${cloudinaryUrl(url, twoXTransformation)} 2x`;
+  };
+
   const hasImages = images && images.length > 0;
   const current = images?.[index] || null;
 
@@ -103,9 +111,30 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
             }}
           >
             <img
-              src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_1600,h_1200,c_fill,g_auto")}
+              src={
+                cloudinaryUrl(
+                  img.url,
+                  i === 0
+                    ? "f_webp,q_auto:best,w_1800,h_1350,c_fill,g_auto,dpr_1.0"
+                    : "f_auto,q_auto:good,w_1600,h_1200,c_fill,g_auto,dpr_1.0"
+                )
+              }
+              srcSet={
+                i === 0
+                  ? cloudinarySrcSet(
+                      img.url,
+                      "f_webp,q_auto:best,w_1800,h_1350,c_fill,g_auto,dpr_1.0",
+                      "f_webp,q_auto:best,w_1800,h_1350,c_fill,g_auto,dpr_2.0"
+                    )
+                  : cloudinarySrcSet(
+                      img.url,
+                      "f_auto,q_auto:good,w_1600,h_1200,c_fill,g_auto,dpr_1.0",
+                      "f_auto,q_auto:good,w_1600,h_1200,c_fill,g_auto,dpr_2.0"
+                    )
+              }
               alt={img.alt || title}
               loading={i === 0 ? "eager" : "lazy"}
+              fetchPriority={i === 0 ? "high" : undefined}
               onError={(e) => {
                 const el = e.currentTarget;
                 if (el.dataset.fallback === "1") return;
@@ -151,7 +180,12 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                 className={`relative h-12 w-16 md:h-16 md:w-28 rounded-md overflow-hidden ring-2 flex-shrink-0 ${index===i? 'ring-white' : 'ring-white/50'}`}
               >
                 <img 
-                  src={transformCloudinary(im.url, "f_auto,q_auto:eco,dpr_auto,w_320,h_180,c_fill,g_auto")} 
+                  src={cloudinaryUrl(im.url, "f_auto,q_auto:eco,w_360,h_270,c_fill,g_auto,dpr_1.0")} 
+                  srcSet={cloudinarySrcSet(
+                    im.url,
+                    "f_auto,q_auto:eco,w_360,h_270,c_fill,g_auto,dpr_1.0",
+                    "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0"
+                  )}
                   alt={(im.alt || title)+" thumb"} 
                   className="w-full h-full object-cover" 
                   loading="lazy" 
@@ -299,10 +333,22 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                 {images.map((img, i) => (
                   <div key={i} className="relative h-full flex items-center justify-center" style={{ width: `${100 / images.length}%` }}>
                     <img
-                      src={img.url}
+                      src={cloudinaryUrl(img.url, "f_auto,q_auto:good,w_1400,c_limit,dpr_1.0")}
+                      srcSet={cloudinarySrcSet(
+                        img.url,
+                        "f_auto,q_auto:good,w_1400,c_limit,dpr_1.0",
+                        "f_auto,q_auto:good,w_1400,c_limit,dpr_2.0"
+                      )}
                       alt={img.alt || title}
                       className="max-w-full max-h-full object-contain"
                       loading={i === index ? "eager" : "lazy"}
+                      fetchPriority={i === index ? "high" : undefined}
+                      onError={(e) => {
+                        const el = e.currentTarget;
+                        if (el.dataset.fallback === "1") return;
+                        el.dataset.fallback = "1";
+                        el.src = img.url;
+                      }}
                     />
                   </div>
                 ))}

@@ -171,7 +171,16 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     }
   };
 
-  const cardImageTransform = "f_auto,q_auto:good,dpr_auto,w_1200,h_720,c_fill,g_auto";
+  const cloudinaryUrl = (url: string, transformation: string) => {
+    return transformCloudinary(url, transformation);
+  };
+
+  const cloudinarySrcSet = (url: string, oneXTransformation: string, twoXTransformation: string) => {
+    return `${cloudinaryUrl(url, oneXTransformation)} 1x, ${cloudinaryUrl(url, twoXTransformation)} 2x`;
+  };
+
+  const cardImageTransform1x = "f_auto,q_auto:good,w_1200,h_720,c_fill,g_auto,dpr_1.0";
+  const cardImageTransform2x = "f_auto,q_auto:good,w_1200,h_720,c_fill,g_auto,dpr_2.0";
 
   const MAX_CARD_IMAGES = 5;
   const cardImages = useMemo(() => {
@@ -490,27 +499,44 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               >
                 {cardImages.map((image, i) => (
                   <div key={i} className="min-w-full h-full relative">
-                    <Image
-                      src={transformCloudinary(image.url, cardImageTransform)}
+                    <img
+                      src={cloudinaryUrl(image.url, cardImageTransform1x)}
+                      srcSet={cloudinarySrcSet(image.url, cardImageTransform1x, cardImageTransform2x)}
                       alt={property.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      loading={i === 0 ? "eager" : "lazy"}
+                      fetchPriority={i === 0 ? "high" : undefined}
+                      onError={(e) => {
+                        const el = e.currentTarget;
+                        if (el.dataset.fallback === "1") return;
+                        el.dataset.fallback = "1";
+                        el.src = image.url;
+                      }}
                     />
                   </div>
                 ))}
 
                 {hasMoreImages && (
                   <div className="min-w-full h-full relative">
-                    <Image
-                      src={transformCloudinary(
+                    <img
+                      src={cloudinaryUrl(
                         (cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string,
-                        cardImageTransform
+                        cardImageTransform1x
+                      )}
+                      srcSet={cloudinarySrcSet(
+                        (cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string,
+                        cardImageTransform1x,
+                        cardImageTransform2x
                       )}
                       alt={property.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        const el = e.currentTarget;
+                        if (el.dataset.fallback === "1") return;
+                        el.dataset.fallback = "1";
+                        el.src = (cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string;
+                      }}
                     />
                     <div className="absolute inset-0 bg-black/45" />
                     <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">

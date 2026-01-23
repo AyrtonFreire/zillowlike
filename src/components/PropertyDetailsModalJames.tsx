@@ -342,6 +342,14 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     }
   };
 
+  const cloudinaryUrl = (url: string | null | undefined, transformation: string) => {
+    return transformCloudinary(url || "/placeholder.jpg", transformation);
+  };
+
+  const cloudinarySrcSet = (url: string | null | undefined, oneXTransformation: string, twoXTransformation: string) => {
+    return `${cloudinaryUrl(url, oneXTransformation)} 1x, ${cloudinaryUrl(url, twoXTransformation)} 2x`;
+  };
+
   const formatDraftBRLFromCents = (cents?: number | null) => {
     if (typeof cents !== "number" || !Number.isFinite(cents)) return "";
     const reais = Math.trunc(cents / 100);
@@ -719,7 +727,12 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     const urls = [1, 2, 3]
       .map((d) => property.images[(currentImageIndex + d) % total]?.url)
       .filter(Boolean) as string[];
-    urls.forEach((src) => { try { const img = new (window as any).Image(); img.src = src; } catch {} });
+    urls.forEach((src) => {
+      try {
+        const img = new (window as any).Image();
+        img.src = cloudinaryUrl(src, "f_auto,q_auto:good,w_1400,c_limit,dpr_1.0");
+      } catch {}
+    });
   }, [photoViewMode, property, currentImageIndex, isOpen]);
 
   useEffect(() => {
@@ -1110,13 +1123,38 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             >
               {property.images.map((img: { url: string; alt?: string | null }, i: number) => (
                 <div key={i} className="relative h-full" style={{ width: `${100 / property.images.length}%` }}>
-                  <Image
-                    src={transformCloudinary(img.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto")}
+                  <img
+                    src={
+                      cloudinaryUrl(
+                        img.url,
+                        i === 0
+                          ? "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_1.0"
+                          : "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_1.0"
+                      )
+                    }
+                    srcSet={
+                      i === 0
+                        ? cloudinarySrcSet(
+                            img.url,
+                            "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_1.0",
+                            "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_2.0"
+                          )
+                        : cloudinarySrcSet(
+                            img.url,
+                            "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_1.0",
+                            "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_2.0"
+                          )
+                    }
                     alt={`${property.title} ${i + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="100vw"
-                    priority={i === 0}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading={i === 0 ? "eager" : "lazy"}
+                    fetchPriority={i === 0 ? "high" : undefined}
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      if (el.dataset.fallback === "1") return;
+                      el.dataset.fallback = "1";
+                      el.src = img.url || "/placeholder.jpg";
+                    }}
                   />
                 </div>
               ))}
@@ -1167,13 +1205,31 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
           {/* Desktop: mosaic */}
           <div className="hidden md:grid grid-cols-2 gap-2 h-[500px]">
             <div className="relative rounded-lg overflow-hidden col-span-1 cursor-pointer" onClick={() => setPhotoViewMode("feed")}>
-              <Image
-                src={displayImages[0]?.url ? transformCloudinary(displayImages[0].url, "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto") : "/placeholder.jpg"}
+              <img
+                src={
+                  displayImages[0]?.url
+                    ? cloudinaryUrl(displayImages[0].url, "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_1.0")
+                    : "/placeholder.jpg"
+                }
+                srcSet={
+                  displayImages[0]?.url
+                    ? cloudinarySrcSet(
+                        displayImages[0].url,
+                        "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_1.0",
+                        "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_2.0"
+                      )
+                    : undefined
+                }
                 alt={property.title}
-                fill
-                className="object-cover"
-                sizes="50vw"
-                priority
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="eager"
+                fetchPriority="high"
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (el.dataset.fallback === "1") return;
+                  el.dataset.fallback = "1";
+                  el.src = displayImages[0]?.url || "/placeholder.jpg";
+                }}
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -1183,12 +1239,22 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   className="relative rounded-lg overflow-hidden cursor-pointer"
                   onClick={() => setPhotoViewMode("feed")}
                 >
-                  <Image
-                    src={transformCloudinary(img.url, "f_auto,q_auto:good,dpr_auto,w_800,h_600,c_fill,g_auto")}
+                  <img
+                    src={cloudinaryUrl(img.url, "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0")}
+                    srcSet={cloudinarySrcSet(
+                      img.url,
+                      "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0",
+                      "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_2.0"
+                    )}
                     alt={`${property.title} ${i + 2}`}
-                    fill
-                    className="object-cover"
-                    sizes="25vw"
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      if (el.dataset.fallback === "1") return;
+                      el.dataset.fallback = "1";
+                      el.src = img.url;
+                    }}
                   />
                   {i === 3 && property.images.length > 5 && (
                     <button
@@ -1750,12 +1816,23 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                         className="relative w-full aspect-[4/3] cursor-pointer"
                         onClick={() => { setCurrentImageIndex(i); setPhotoViewMode("fullscreen"); }}
                       >
-                        <Image
-                          src={transformCloudinary(img.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1440,c_fill,g_auto")}
+                        <img
+                          src={cloudinaryUrl(img.url, "f_auto,q_auto:good,w_1400,h_1050,c_fill,g_auto,dpr_1.0")}
+                          srcSet={cloudinarySrcSet(
+                            img.url,
+                            "f_auto,q_auto:good,w_1400,h_1050,c_fill,g_auto,dpr_1.0",
+                            "f_auto,q_auto:good,w_1400,h_1050,c_fill,g_auto,dpr_2.0"
+                          )}
                           alt={`${property.title} ${i + 1}`}
-                          fill
-                          className="object-cover"
-                          sizes="100vw"
+                          className="absolute inset-0 w-full h-full object-cover"
+                          loading={i === 0 ? "eager" : "lazy"}
+                          fetchPriority={i === 0 ? "high" : undefined}
+                          onError={(e) => {
+                            const el = e.currentTarget;
+                            if (el.dataset.fallback === "1") return;
+                            el.dataset.fallback = "1";
+                            el.src = img.url || "/placeholder.jpg";
+                          }}
                         />
                       </div>
                     ))}
@@ -1779,12 +1856,23 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                             className="relative w-full aspect-[16/9] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
                             onClick={() => { setCurrentImageIndex(g.main); setPhotoViewMode("fullscreen"); }}
                           >
-                            <Image
-                              src={transformCloudinary(property.images[g.main]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1920,h_1080,c_fill,g_auto")}
+                            <img
+                              src={cloudinaryUrl(property.images[g.main]?.url, "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_1.0")}
+                              srcSet={cloudinarySrcSet(
+                                property.images[g.main]?.url,
+                                "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_1.0",
+                                "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_2.0"
+                              )}
                               alt={`${property.title} ${g.main + 1}`}
-                              fill
-                              className="object-cover"
-                              sizes="60vw"
+                              className="absolute inset-0 w-full h-full object-cover"
+                              loading={g.main === 0 ? "eager" : "lazy"}
+                              fetchPriority={g.main === 0 ? "high" : undefined}
+                              onError={(e) => {
+                                const el = e.currentTarget;
+                                if (el.dataset.fallback === "1") return;
+                                el.dataset.fallback = "1";
+                                el.src = property.images[g.main]?.url || "/placeholder.jpg";
+                              }}
                             />
                           </div>
                           {g.thumbs.length > 0 && (
@@ -1795,12 +1883,22 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                                   className="relative w-full aspect-[4/3] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
                                   onClick={() => { setCurrentImageIndex(ti); setPhotoViewMode("fullscreen"); }}
                                 >
-                                  <Image
-                                    src={transformCloudinary(property.images[ti]?.url || "/placeholder.jpg", "f_auto,q_auto:good,dpr_auto,w_1200,h_900,c_fill,g_auto")}
+                                  <img
+                                    src={cloudinaryUrl(property.images[ti]?.url, "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0")}
+                                    srcSet={cloudinarySrcSet(
+                                      property.images[ti]?.url,
+                                      "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0",
+                                      "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_2.0"
+                                    )}
                                     alt={`${property.title} ${ti + 1}`}
-                                    fill
-                                    className="object-cover"
-                                    sizes="30vw"
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      const el = e.currentTarget;
+                                      if (el.dataset.fallback === "1") return;
+                                      el.dataset.fallback = "1";
+                                      el.src = property.images[ti]?.url || "/placeholder.jpg";
+                                    }}
                                   />
                                 </div>
                               ))}
@@ -2057,13 +2155,23 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               >
                 {property.images.map((img: { url: string; alt?: string | null }, i: number) => (
                   <div key={i} className="relative h-full flex items-center justify-center" style={{ width: `${100 / property.images.length}%` }}>
-                    <Image
-                      src={img.url || "/placeholder.jpg"}
+                    <img
+                      src={cloudinaryUrl(img.url, "f_auto,q_auto:good,w_1400,c_limit,dpr_1.0")}
+                      srcSet={cloudinarySrcSet(
+                        img.url,
+                        "f_auto,q_auto:good,w_1400,c_limit,dpr_1.0",
+                        "f_auto,q_auto:good,w_1400,c_limit,dpr_2.0"
+                      )}
                       alt={`${property.title} - foto ${i + 1}`}
-                      fill
-                      className="object-contain"
-                      sizes="100vw"
-                      priority={i === currentImageIndex}
+                      className="absolute inset-0 w-full h-full object-contain"
+                      loading={i === currentImageIndex ? "eager" : "lazy"}
+                      fetchPriority={i === currentImageIndex ? "high" : undefined}
+                      onError={(e) => {
+                        const el = e.currentTarget;
+                        if (el.dataset.fallback === "1") return;
+                        el.dataset.fallback = "1";
+                        el.src = img.url || "/placeholder.jpg";
+                      }}
                     />
                   </div>
                 ))}
@@ -2109,7 +2217,23 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                     onClick={() => { setCurrentImageIndex(i); setShowThumbGrid(false); }}
                     className={`relative w-full pt-[66%] rounded-md overflow-hidden ring-2 ${i === currentImageIndex ? 'ring-teal-500' : 'ring-transparent hover:ring-teal-300'}`}
                   >
-                    <Image src={img.url} alt={`grid ${i + 1}`} fill className="object-cover" />
+                    <img
+                      src={cloudinaryUrl(img.url, "f_auto,q_auto:eco,w_720,h_480,c_fill,g_auto,dpr_1.0")}
+                      srcSet={cloudinarySrcSet(
+                        img.url,
+                        "f_auto,q_auto:eco,w_720,h_480,c_fill,g_auto,dpr_1.0",
+                        "f_auto,q_auto:eco,w_720,h_480,c_fill,g_auto,dpr_2.0"
+                      )}
+                      alt={`grid ${i + 1}`}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        const el = e.currentTarget;
+                        if (el.dataset.fallback === "1") return;
+                        el.dataset.fallback = "1";
+                        el.src = img.url;
+                      }}
+                    />
                   </button>
                 ))}
               </div>
