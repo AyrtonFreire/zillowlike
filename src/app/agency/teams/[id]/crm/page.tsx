@@ -153,6 +153,7 @@ export default function AgencyTeamCrmPage() {
   const [savingLeadId, setSavingLeadId] = useState<string | null>(null);
 
   const [aiGeneratingLeadId, setAiGeneratingLeadId] = useState<string | null>(null);
+  const [useAiDraft, setUseAiDraft] = useState(true);
 
   const generateAiDraftAndOpen = async (params: {
     leadId: string;
@@ -636,61 +637,79 @@ export default function AgencyTeamCrmPage() {
                         </button>
 
                         {assignedId ? (
-                          <div className="mt-2 flex items-center gap-2 flex-wrap">
-                            <button
-                              type="button"
-                              disabled={aiGeneratingLeadId === leadId}
-                              onClick={() =>
-                                generateAiDraftAndOpen({
-                                  leadId,
-                                  assignedId,
-                                  fallbackMessage,
-                                  channel: "CHAT",
-                                })
-                              }
-                              className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg bg-neutral-900 text-[11px] font-semibold text-white hover:bg-black disabled:opacity-60"
-                            >
-                              {aiGeneratingLeadId === leadId ? "Gerando..." : "Chat c/ IA"}
-                            </button>
-
-                            {wa ? (
+                          <div className="mt-2 flex flex-col gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <button
                                 type="button"
                                 disabled={aiGeneratingLeadId === leadId}
-                                onClick={() =>
-                                  generateAiDraftAndOpen({
-                                    leadId,
-                                    assignedId,
-                                    fallbackMessage,
-                                    channel: "WHATSAPP",
-                                    whatsappNumber: wa,
-                                  })
-                                }
-                                className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg bg-green-600 text-[11px] font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+                                onClick={() => {
+                                  if (useAiDraft) {
+                                    return generateAiDraftAndOpen({
+                                      leadId,
+                                      assignedId,
+                                      fallbackMessage,
+                                      channel: "CHAT",
+                                    });
+                                  }
+                                  const qs = new URLSearchParams({ realtor: assignedId, text: fallbackMessage });
+                                  window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
+                                }}
+                                className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-900 text-[11px] font-semibold text-white hover:bg-black disabled:opacity-60"
                               >
-                                {aiGeneratingLeadId === leadId ? "Gerando..." : "WhatsApp c/ IA"}
+                                {aiGeneratingLeadId === leadId ? "Abrindo..." : "Chat do time"}
+                                {useAiDraft && (
+                                  <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide">
+                                    IA
+                                  </span>
+                                )}
                               </button>
-                            ) : null}
 
-                            <a
-                              href={`/agency/team-chat?realtor=${encodeURIComponent(assignedId)}&text=${encodeURIComponent(fallbackMessage)}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
-                            >
-                              Chat do time
-                            </a>
-
-                            {whatsappHref ? (
-                              <a
-                                href={whatsappHref}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg bg-green-600 text-[11px] font-semibold text-white hover:bg-green-700"
+                              <button
+                                type="button"
+                                disabled={!wa || aiGeneratingLeadId === leadId}
+                                onClick={() => {
+                                  if (!wa) return;
+                                  if (useAiDraft) {
+                                    return generateAiDraftAndOpen({
+                                      leadId,
+                                      assignedId,
+                                      fallbackMessage,
+                                      channel: "WHATSAPP",
+                                      whatsappNumber: wa,
+                                    });
+                                  }
+                                  window.open(
+                                    `https://wa.me/${wa}?text=${encodeURIComponent(fallbackMessage)}`,
+                                    "_blank"
+                                  );
+                                }}
+                                className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                               >
-                                WhatsApp
-                              </a>
-                            ) : null}
+                                {aiGeneratingLeadId === leadId ? "Abrindo..." : "WhatsApp"}
+                                {useAiDraft && (
+                                  <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide">
+                                    IA
+                                  </span>
+                                )}
+                              </button>
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={aiGeneratingLeadId === leadId}
+                              onClick={() => setUseAiDraft((prev) => !prev)}
+                              aria-pressed={useAiDraft}
+                              className={`inline-flex items-center gap-2 self-start rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ${
+                                useAiDraft
+                                  ? "border-neutral-900 bg-neutral-900 text-white"
+                                  : "border-gray-200 bg-white text-gray-500 hover:text-gray-700"
+                              }`}
+                            >
+                              <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide">
+                                IA
+                              </span>
+                              {useAiDraft ? "IA ligada" : "IA desligada"}
+                            </button>
                           </div>
                         ) : null}
                       </td>
