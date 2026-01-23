@@ -125,6 +125,34 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       };
     });
 
+    const sanitized = role === "AGENCY"
+      ? enriched.map((e: any) => {
+          const t = String(e?.type || "");
+          if (t === "CLIENT_MESSAGE") {
+            return {
+              ...e,
+              title: "Mensagem do cliente",
+              description: null,
+            };
+          }
+          if (t === "INTERNAL_MESSAGE") {
+            return {
+              ...e,
+              title: "Atualização registrada",
+              description: null,
+            };
+          }
+          if (t === "NOTE_ADDED") {
+            return {
+              ...e,
+              title: "Nota adicionada",
+              description: null,
+            };
+          }
+          return e;
+        })
+      : enriched;
+
     void createAuditLog({
       level: "INFO",
       action: "LEAD_EVENTS_VIEW",
@@ -133,11 +161,11 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       targetType: "LEAD",
       targetId: String(id),
       metadata: {
-        count: enriched.length,
+        count: sanitized.length,
       },
     });
 
-    return NextResponse.json({ events: enriched });
+    return NextResponse.json({ events: sanitized });
   } catch (error) {
     captureException(error, { route: "/api/leads/[id]/events" });
     logger.error("Error fetching lead events", { error });

@@ -47,17 +47,11 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    let agencyTeamId: string | null = null;
     if (role === "AGENCY") {
-      const profile = await (prisma as any).agencyProfile.findUnique({
-        where: { userId: String(userId) },
-        select: { teamId: true },
-      });
-      agencyTeamId = profile?.teamId ? String(profile.teamId) : null;
-
-      if (!agencyTeamId) {
-        return NextResponse.json({ error: "Perfil de agência sem time associado." }, { status: 403 });
-      }
+      return NextResponse.json(
+        { error: "Perfil de agência não tem permissão para visualizar o chat do cliente." },
+        { status: 403 }
+      );
     }
 
     const lead: any = await (prisma as any).lead.findUnique({
@@ -84,25 +78,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Lead não encontrado" }, { status: 404 });
     }
 
-    if (role === "AGENCY") {
-      const sameTeam = !!lead.teamId && String(lead.teamId) === String(agencyTeamId);
-      let realtorIsTeamMember = false;
-
-      if (!sameTeam && lead.realtorId) {
-        const membership = await (prisma as any).teamMember.findFirst({
-          where: {
-            teamId: String(agencyTeamId),
-            userId: String(lead.realtorId),
-          },
-          select: { id: true },
-        });
-        realtorIsTeamMember = !!membership?.id;
-      }
-
-      if (!sameTeam && !realtorIsTeamMember) {
-        return NextResponse.json({ error: "Você só pode ver mensagens dos leads do seu time." }, { status: 403 });
-      }
-    } else if (!canAccessLead(role, userId, lead)) {
+    if (!canAccessLead(role, userId, lead)) {
       return NextResponse.json(
         { error: "Você só pode ver mensagens dos leads dos quais participa." },
         { status: 403 }

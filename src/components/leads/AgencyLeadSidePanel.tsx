@@ -37,13 +37,6 @@ type LeadNote = {
   createdAt: string;
 };
 
-type LeadChatMessage = {
-  id: string;
-  content: string;
-  senderType?: string | null;
-  createdAt: string;
-};
-
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "-";
   const d = new Date(value);
@@ -59,24 +52,19 @@ export default function AgencyLeadSidePanel({
 }: {
   open: boolean;
   leadId: string | null;
-  initialTab?: "ATIVIDADES" | "CHAT" | "NOTAS";
+  initialTab?: "ATIVIDADES" | "NOTAS";
   onClose: () => void;
 }) {
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"ATIVIDADES" | "CHAT" | "NOTAS">(initialTab);
+  const [activeTab, setActiveTab] = useState<"ATIVIDADES" | "NOTAS">(initialTab);
 
   const [notes, setNotes] = useState<LeadNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
   const [notesLoadedLeadId, setNotesLoadedLeadId] = useState<string | null>(null);
-
-  const [messages, setMessages] = useState<LeadChatMessage[]>([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [messagesError, setMessagesError] = useState<string | null>(null);
-  const [messagesLoadedLeadId, setMessagesLoadedLeadId] = useState<string | null>(null);
 
   const title = lead?.contact?.name || lead?.property?.title || "Lead";
 
@@ -116,25 +104,6 @@ export default function AgencyLeadSidePanel({
     }
   }, [leadId]);
 
-  const loadMessages = useCallback(async () => {
-    if (!leadId) return;
-    setMessagesError(null);
-    setMessagesLoading(true);
-    try {
-      const r = await fetch(`/api/leads/${encodeURIComponent(leadId)}/client-messages`, { cache: "no-store" });
-      const data = await r.json().catch(() => null);
-      if (!r.ok) throw new Error(data?.error || "Erro ao carregar mensagens");
-      setMessages(Array.isArray(data?.messages) ? data.messages : []);
-      setMessagesLoadedLeadId(String(leadId));
-    } catch (e: any) {
-      setMessages([]);
-      setMessagesError(e?.message || "Erro ao carregar mensagens");
-      setMessagesLoadedLeadId(String(leadId));
-    } finally {
-      setMessagesLoading(false);
-    }
-  }, [leadId]);
-
   useEffect(() => {
     if (!open) return;
     if (!leadId) return;
@@ -144,9 +113,6 @@ export default function AgencyLeadSidePanel({
     setNotes([]);
     setNotesError(null);
     setNotesLoadedLeadId(null);
-    setMessages([]);
-    setMessagesError(null);
-    setMessagesLoadedLeadId(null);
     void loadLead();
   }, [open, leadId, initialTab, loadLead]);
 
@@ -157,10 +123,7 @@ export default function AgencyLeadSidePanel({
     if (activeTab === "NOTAS" && !notesLoading && notesLoadedLeadId !== String(leadId)) {
       void loadNotes();
     }
-    if (activeTab === "CHAT" && !messagesLoading && messagesLoadedLeadId !== String(leadId)) {
-      void loadMessages();
-    }
-  }, [open, leadId, activeTab, notesLoading, notesLoadedLeadId, messagesLoading, messagesLoadedLeadId, loadNotes, loadMessages]);
+  }, [open, leadId, activeTab, notesLoading, notesLoadedLeadId, loadNotes]);
 
   const header = useMemo(() => {
     if (!lead) return null;
@@ -223,39 +186,6 @@ export default function AgencyLeadSidePanel({
       />
     ) : null;
 
-    const chatContent = (
-      <div className="space-y-3">
-        {messagesError ? <div className="text-xs text-red-600">{messagesError}</div> : null}
-        {messagesLoading ? (
-          <div className="text-xs text-gray-500">Carregando mensagens...</div>
-        ) : messages.length ? (
-          <div className="space-y-2">
-            {messages.map((m) => {
-              const fromClient = String(m.senderType || "").toUpperCase() === "CLIENT";
-              return (
-                <div key={m.id} className={`flex ${fromClient ? "justify-start" : "justify-end"}`}>
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-3 py-2 border text-sm whitespace-pre-wrap ${
-                      fromClient
-                        ? "bg-white border-gray-200 text-gray-800"
-                        : "bg-blue-50 border-blue-200 text-blue-900"
-                    }`}
-                  >
-                    <div className="text-[11px] text-gray-500 mb-1">
-                      {fromClient ? "Cliente" : "Time"} • {formatDateTime(m.createdAt)}
-                    </div>
-                    {m.content}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-sm text-gray-600">Nenhuma mensagem ainda.</div>
-        )}
-      </div>
-    );
-
     const notesContent = (
       <div className="space-y-3">
         {notesError ? <div className="text-xs text-red-600">{notesError}</div> : null}
@@ -278,10 +208,9 @@ export default function AgencyLeadSidePanel({
 
     return [
       { key: "ATIVIDADES", label: "Atividades", content: activitiesContent },
-      { key: "CHAT", label: "Chat", content: chatContent },
       { key: "NOTAS", label: "Notas", content: notesContent },
     ];
-  }, [lead, messages, messagesError, messagesLoading, notes, notesError, notesLoading]);
+  }, [lead, notes, notesError, notesLoading]);
 
   return (
     <Drawer open={open} onClose={onClose} title={title} side="right">

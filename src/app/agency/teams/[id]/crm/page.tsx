@@ -120,7 +120,7 @@ export default function AgencyTeamCrmPage() {
 
   const [leadPanelOpen, setLeadPanelOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-  const [leadPanelInitialTab, setLeadPanelInitialTab] = useState<"ATIVIDADES" | "CHAT" | "NOTAS">("ATIVIDADES");
+  const [leadPanelInitialTab, setLeadPanelInitialTab] = useState<"ATIVIDADES" | "NOTAS">("ATIVIDADES");
 
   const [savingLeadId, setSavingLeadId] = useState<string | null>(null);
 
@@ -288,7 +288,7 @@ export default function AgencyTeamCrmPage() {
     };
   }, []);
 
-  const openLeadPanel = (id: string, tab: "ATIVIDADES" | "CHAT" | "NOTAS" = "ATIVIDADES") => {
+  const openLeadPanel = (id: string, tab: "ATIVIDADES" | "NOTAS" = "ATIVIDADES") => {
     setSelectedLeadId(String(id));
     setLeadPanelInitialTab(tab);
     setLeadPanelOpen(true);
@@ -541,10 +541,10 @@ export default function AgencyTeamCrmPage() {
                       <td className="px-3 py-3">
                         <button
                           type="button"
-                          onClick={() => openLeadPanel(leadId, "CHAT")}
+                          onClick={() => openLeadPanel(leadId, "ATIVIDADES")}
                           className="text-sm font-semibold text-blue-600 hover:text-blue-700"
                         >
-                          Ver chat
+                          Ver detalhes
                         </button>
                       </td>
                     </tr>
