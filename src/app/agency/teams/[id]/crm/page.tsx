@@ -276,6 +276,18 @@ export default function AgencyTeamCrmPage() {
     return ["NEW", "CONTACT", "VISIT", "PROPOSAL", "DOCUMENTS", "WON", "LOST"];
   }, []);
 
+  const stageLabels = useMemo<Record<string, string>>(() => {
+    return {
+      NEW: "Novo",
+      CONTACT: "Em contato",
+      VISIT: "Visita",
+      PROPOSAL: "Proposta",
+      DOCUMENTS: "Documentação",
+      WON: "Fechado",
+      LOST: "Perdido",
+    };
+  }, []);
+
   const openLeadPanel = (id: string, tab: "ATIVIDADES" | "CHAT" | "NOTAS" = "ATIVIDADES") => {
     setSelectedLeadId(String(id));
     setLeadPanelInitialTab(tab);
@@ -406,7 +418,7 @@ export default function AgencyTeamCrmPage() {
                 <option value="">Todas</option>
                 {stageOptions.map((s) => (
                   <option key={s} value={s}>
-                    {s}
+                    {stageLabels[s] ?? s}
                   </option>
                 ))}
               </select>
@@ -495,7 +507,7 @@ export default function AgencyTeamCrmPage() {
                       </td>
                       <td className="px-3 py-3">
                         <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700">
-                          {l.pipelineStage}
+                          {stageLabels[l.pipelineStage || ""] ?? l.pipelineStage}
                         </span>
                       </td>
                       <td className="px-3 py-3">
