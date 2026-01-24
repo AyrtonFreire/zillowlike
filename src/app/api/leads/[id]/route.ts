@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
@@ -93,6 +94,53 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Lead não encontrado" }, { status: 404 });
     }
 
+    const statusUpper = String((lead as any)?.status || "").toUpperCase();
+    const stageUpper = String((lead as any)?.pipelineStage || "").toUpperCase();
+    const isClosed =
+      stageUpper === "WON" ||
+      stageUpper === "LOST" ||
+      statusUpper === "COMPLETED" ||
+      statusUpper === "CANCELLED" ||
+      statusUpper === "EXPIRED" ||
+      statusUpper === "OWNER_REJECTED";
+
+    let pendingReplyAt: string | null = null;
+    if (!isClosed) {
+      try {
+        const rows = (await prisma.$queryRaw(
+          Prisma.sql`
+            WITH m AS (
+              SELECT cm."leadId" AS "leadId", cm."fromClient" AS "fromClient", cm."createdAt" AS "createdAt"
+              FROM "lead_client_messages" cm
+              WHERE cm."leadId" = ${id}
+
+              UNION ALL
+
+              SELECT im."leadId" AS "leadId", false AS "fromClient", im."createdAt" AS "createdAt"
+              FROM "lead_messages" im
+              WHERE im."leadId" = ${id}
+            ),
+            last_msg AS (
+              SELECT DISTINCT ON (m."leadId")
+                m."leadId" AS "leadId",
+                m."fromClient" AS "fromClient",
+                m."createdAt" AS "createdAt"
+              FROM m
+              ORDER BY m."leadId", m."createdAt" DESC
+            )
+            SELECT "leadId", "createdAt" AS "lastClientAt"
+            FROM last_msg
+            WHERE "fromClient" = true;
+          `
+        )) as any[];
+
+        const ts = rows?.[0]?.lastClientAt ? new Date(rows[0].lastClientAt).toISOString() : null;
+        pendingReplyAt = ts && ts.length ? ts : null;
+      } catch {
+        pendingReplyAt = null;
+      }
+    }
+
     let agencyTeamId: string | null = null;
     if (role === "AGENCY") {
       const profile = await (prisma as any).agencyProfile.findUnique({
@@ -152,6 +200,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
 
     const normalized = {
       ...lead,
+      pendingReplyAt,
       property: lead.property
         ? {
             ...lead.property,

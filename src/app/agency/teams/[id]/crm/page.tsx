@@ -8,6 +8,11 @@ import { useSearchParams } from "next/navigation";
 import { AlertTriangle, MessageCircle, RefreshCw } from "lucide-react";
 import AgencyLeadSidePanel from "../../../../../components/leads/AgencyLeadSidePanel";
 import { getPusherClient } from "@/lib/pusher-client";
+import {
+  buildAgencyLeadRecommendedMessage,
+  buildAgencyLeadTemplateOptions,
+  type AgencyLeadTemplateOption,
+} from "@/lib/agency-lead-message-templates";
 
 type PipelineMember = {
   userId: string;
@@ -26,6 +31,7 @@ type PipelineLead = {
   pipelineStage: string;
   createdAt: string;
   pendingReplyAt?: string | null;
+  nextActionDate?: string | null;
   contact?: { name?: string | null; phone?: string | null } | null;
   property?: {
     id?: string | null;
@@ -108,132 +114,6 @@ function whatsappNumberFromMember(member: PipelineMember | null) {
   return digits;
 }
 
-function buildRealtorPingMessage(params: {
-  leadId: string;
-  realtorName: string | null;
-  contactName: string | null;
-  propertyTitle: string | null;
-  slaAge: string | null;
-  isPendingReply: boolean;
-  isNewLead: boolean;
-  pipelineStage: string | null;
-  nextActionDate?: string | null;
-}) {
-  const realtorName = String(params.realtorName || "").trim();
-  const greeting = realtorName ? `Olá ${realtorName}!` : "Olá!";
-  const client = params.contactName || `lead ${params.leadId}`;
-  const prop = params.propertyTitle ? ` (${params.propertyTitle})` : "";
-  const sla = params.slaAge ? ` há ${params.slaAge}` : "";
-  const stage = String(params.pipelineStage || "").toUpperCase().trim();
-
-  if (params.isPendingReply) {
-    return `${greeting} Tudo bem? No painel aparece que o ${client}${prop} está aguardando retorno${sla}. Você consegue confirmar se já respondeu e atualizar o status quando puder? Obrigado!`;
-  }
-
-  if (stage === "WON") {
-    return `${greeting} Tudo bem? Consegue confirmar se o ${client}${prop} foi fechado e registrar o status quando puder? Obrigado!`;
-  }
-
-  if (stage === "LOST") {
-    return `${greeting} Tudo bem? Consegue confirmar se o ${client}${prop} foi perdido e registrar o motivo/status quando puder? Obrigado!`;
-  }
-
-  if (params.nextActionDate) {
-    const when = (() => {
-      const d = new Date(String(params.nextActionDate));
-      if (Number.isNaN(d.getTime())) return null;
-      try {
-        return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-      } catch {
-        return String(params.nextActionDate);
-      }
-    })();
-    return `${greeting} Tudo bem? Tem um follow-up ${when ? `agendado para ${when}` : "agendado"} do ${client}${prop}. Você consegue realizar e atualizar o status quando puder? Obrigado!`;
-  }
-
-  if (params.isNewLead) {
-    return `${greeting} Tudo bem? Chegou um lead novo: ${client}${prop}. Você consegue fazer o primeiro contato e atualizar o status quando puder? Obrigado!`;
-  }
-
-  if (stage === "CONTACT") {
-    return `${greeting} Tudo bem? Consegue me confirmar como está o contato com o ${client}${prop} e atualizar o status quando puder? Obrigado!`;
-  }
-
-  if (stage === "VISIT") {
-    return `${greeting} Tudo bem? Consegue me atualizar sobre a visita do ${client}${prop} (se já aconteceu / próximos passos) e registrar o status quando puder? Obrigado!`;
-  }
-
-  if (stage === "PROPOSAL") {
-    return `${greeting} Tudo bem? Consegue me atualizar sobre a proposta do ${client}${prop} e registrar o status quando puder? Obrigado!`;
-  }
-
-  if (stage === "DOCUMENTS") {
-    return `${greeting} Tudo bem? Consegue me atualizar sobre a etapa de documentação do ${client}${prop} e registrar o status quando puder? Obrigado!`;
-  }
-
-  return `${greeting} Tudo bem? Consegue me dar um update rápido sobre o ${client}${prop}? Obrigado!`;
-}
-
-type TemplateOption = { id: string; label: string; text: string };
-
-function buildTemplateOptions(params: {
-  leadId: string;
-  realtorName: string | null;
-  contactName: string | null;
-  propertyTitle: string | null;
-  slaAge: string | null;
-  isPendingReply: boolean;
-  isNewLead: boolean;
-  pipelineStage: string | null;
-}) {
-  const options: TemplateOption[] = [];
-
-  const recommended = buildRealtorPingMessage({
-    ...params,
-    nextActionDate: null,
-  });
-
-  options.push({ id: "recommended", label: "Recomendado", text: recommended });
-
-  options.push({
-    id: "status",
-    label: "Pedir update (neutro)",
-    text: buildRealtorPingMessage({
-      ...params,
-      isPendingReply: false,
-      isNewLead: false,
-      pipelineStage: null,
-      nextActionDate: null,
-    }),
-  });
-
-  options.push({
-    id: "new",
-    label: "Lead novo (primeiro contato)",
-    text: buildRealtorPingMessage({
-      ...params,
-      isPendingReply: false,
-      isNewLead: true,
-      pipelineStage: "NEW",
-      nextActionDate: null,
-    }),
-  });
-
-  options.push({
-    id: "pending",
-    label: "Cobrar retorno (SLA)",
-    text: buildRealtorPingMessage({
-      ...params,
-      isPendingReply: true,
-      isNewLead: false,
-      pipelineStage: params.pipelineStage,
-      nextActionDate: null,
-    }),
-  });
-
-  return options;
-}
-
 export default function AgencyTeamCrmPage() {
   const params = useParams();
   const teamId = params?.id as string;
@@ -270,7 +150,7 @@ export default function AgencyTeamCrmPage() {
     channel: "CHAT" | "WHATSAPP";
     assignedId: string;
     whatsappNumber?: string | null;
-    options: TemplateOption[];
+    options: AgencyLeadTemplateOption[];
   }>(null);
 
   const buildPipelineUrl = (opts: { cursor?: string | null } = {}) => {
@@ -635,26 +515,24 @@ export default function AgencyTeamCrmPage() {
                   const slaAge = formatSlaAge(pending?.lastClientAt || null);
                   const assignedId = l.realtor?.id ? String(l.realtor.id) : "";
                   const isPending = !!pending;
-                  const isNewLead =
-                    String(l.pipelineStage || "").toUpperCase() === "NEW" ||
-                    (l.createdAt ? Date.now() - new Date(l.createdAt).getTime() < 24 * 60 * 60 * 1000 : false);
 
                   const member = assignedId ? realtorOptions.find((m) => String(m.userId) === assignedId) || null : null;
-                  const fallbackMessage = assignedId
-                    ? buildRealtorPingMessage({
-                        leadId,
-                        realtorName: member?.name ?? l.realtor?.name ?? null,
-                        contactName: l.contact?.name ?? null,
-                        propertyTitle: l.property?.title ?? null,
-                        slaAge,
-                        isPendingReply: isPending,
-                        isNewLead,
-                        pipelineStage: l.pipelineStage ?? null,
-                        nextActionDate: null,
-                      })
-                    : "";
+                  const templateCtx = {
+                    leadId,
+                    realtorName: member?.name ?? l.realtor?.name ?? null,
+                    contactName: l.contact?.name ?? null,
+                    propertyTitle: l.property?.title ?? null,
+                    pipelineStage: l.pipelineStage ?? null,
+                    createdAt: l.createdAt ?? null,
+                    pendingReplyAt: pending?.lastClientAt ?? null,
+                    nextActionDate: l.nextActionDate ?? null,
+                    hasAssignee: !!assignedId,
+                  };
+                  const fallbackMessage = buildAgencyLeadRecommendedMessage(templateCtx);
 
                   const wa = whatsappNumberFromMember(member);
+                  const canChat = !!assignedId;
+                  const canWhatsApp = !!wa;
                   return (
                     <tr key={leadId} className="hover:bg-gray-50">
                       <td className="pl-2 pr-3 py-3">
@@ -711,21 +589,10 @@ export default function AgencyTeamCrmPage() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            disabled={!assignedId}
                             onClick={(e) => {
-                              if (!assignedId) return;
-                              const options = buildTemplateOptions({
-                                leadId,
-                                realtorName: member?.name ?? l.realtor?.name ?? null,
-                                contactName: l.contact?.name ?? null,
-                                propertyTitle: l.property?.title ?? null,
-                                slaAge,
-                                isPendingReply: isPending,
-                                isNewLead,
-                                pipelineStage: l.pipelineStage ?? null,
-                              });
+                              const options = buildAgencyLeadTemplateOptions(templateCtx);
 
-                              if (e.shiftKey) {
+                              if (!canChat || e.shiftKey) {
                                 setTemplateModal({
                                   leadId,
                                   channel: "CHAT",
@@ -734,22 +601,13 @@ export default function AgencyTeamCrmPage() {
                                 });
                                 return;
                               }
+
                               const qs = new URLSearchParams({ realtor: assignedId, text: fallbackMessage });
                               window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
                             }}
                             onContextMenu={(e) => {
                               e.preventDefault();
-                              if (!assignedId) return;
-                              const options = buildTemplateOptions({
-                                leadId,
-                                realtorName: member?.name ?? l.realtor?.name ?? null,
-                                contactName: l.contact?.name ?? null,
-                                propertyTitle: l.property?.title ?? null,
-                                slaAge,
-                                isPendingReply: isPending,
-                                isNewLead,
-                                pipelineStage: l.pipelineStage ?? null,
-                              });
+                              const options = buildAgencyLeadTemplateOptions(templateCtx);
                               setTemplateModal({
                                 leadId,
                                 channel: "CHAT",
@@ -757,8 +615,15 @@ export default function AgencyTeamCrmPage() {
                                 options,
                               });
                             }}
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 disabled:opacity-50"
-                            title="Chat interno (Shift+clique ou clique direito para escolher)"
+                            aria-disabled={!canChat}
+                            className={`inline-flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 ${
+                              canChat ? "" : "opacity-50"
+                            }`}
+                            title={
+                              canChat
+                                ? "Chat interno (Shift+clique ou clique direito para escolher)"
+                                : "Sem responsável (clique para copiar mensagem)"
+                            }
                             aria-label="Abrir chat interno"
                           >
                             <MessageCircle className="w-5 h-5" />
@@ -766,21 +631,10 @@ export default function AgencyTeamCrmPage() {
 
                           <button
                             type="button"
-                            disabled={!wa}
                             onClick={(e) => {
-                              if (!wa) return;
-                              const options = buildTemplateOptions({
-                                leadId,
-                                realtorName: member?.name ?? l.realtor?.name ?? null,
-                                contactName: l.contact?.name ?? null,
-                                propertyTitle: l.property?.title ?? null,
-                                slaAge,
-                                isPendingReply: isPending,
-                                isNewLead,
-                                pipelineStage: l.pipelineStage ?? null,
-                              });
+                              const options = buildAgencyLeadTemplateOptions(templateCtx);
 
-                              if (e.shiftKey) {
+                              if (!canWhatsApp || e.shiftKey) {
                                 setTemplateModal({
                                   leadId,
                                   channel: "WHATSAPP",
@@ -790,24 +644,12 @@ export default function AgencyTeamCrmPage() {
                                 });
                                 return;
                               }
-                              window.open(
-                                `https://wa.me/${wa}?text=${encodeURIComponent(fallbackMessage)}`,
-                                "_blank"
-                              );
+
+                              window.open(`https://wa.me/${wa}?text=${encodeURIComponent(fallbackMessage)}`, "_blank");
                             }}
                             onContextMenu={(e) => {
                               e.preventDefault();
-                              if (!wa) return;
-                              const options = buildTemplateOptions({
-                                leadId,
-                                realtorName: member?.name ?? l.realtor?.name ?? null,
-                                contactName: l.contact?.name ?? null,
-                                propertyTitle: l.property?.title ?? null,
-                                slaAge,
-                                isPendingReply: isPending,
-                                isNewLead,
-                                pipelineStage: l.pipelineStage ?? null,
-                              });
+                              const options = buildAgencyLeadTemplateOptions(templateCtx);
                               setTemplateModal({
                                 leadId,
                                 channel: "WHATSAPP",
@@ -816,8 +658,15 @@ export default function AgencyTeamCrmPage() {
                                 options,
                               });
                             }}
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-                            title="WhatsApp (Shift+clique ou clique direito para escolher)"
+                            aria-disabled={!canWhatsApp}
+                            className={`inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 ${
+                              canWhatsApp ? "" : "opacity-50"
+                            }`}
+                            title={
+                              canWhatsApp
+                                ? "WhatsApp (Shift+clique ou clique direito para escolher)"
+                                : "WhatsApp indisponível (clique para copiar mensagem)"
+                            }
                             aria-label="Abrir WhatsApp"
                           >
                             <svg viewBox="0 0 32 32" className="w-5 h-5" fill="currentColor" aria-hidden="true">
@@ -883,13 +732,23 @@ export default function AgencyTeamCrmPage() {
                       key={opt.id}
                       type="button"
                       onClick={() => {
-                        if (templateModal.channel === "WHATSAPP") {
+                        const canOpenChat = templateModal.channel === "CHAT" && !!templateModal.assignedId;
+                        const canOpenWa =
+                          templateModal.channel === "WHATSAPP" &&
+                          !!String(templateModal.whatsappNumber || "").trim();
+
+                        if (canOpenWa) {
                           const wa = String(templateModal.whatsappNumber || "").trim();
-                          if (!wa) return;
                           window.open(`https://wa.me/${wa}?text=${encodeURIComponent(opt.text)}`, "_blank");
-                        } else {
+                        } else if (canOpenChat) {
                           const qs = new URLSearchParams({ realtor: templateModal.assignedId, text: opt.text });
                           window.open(`/agency/team-chat?${qs.toString()}`, "_blank");
+                        } else {
+                          try {
+                            void navigator.clipboard.writeText(opt.text);
+                          } catch {
+                            // ignore
+                          }
                         }
                         setTemplateModal(null);
                       }}

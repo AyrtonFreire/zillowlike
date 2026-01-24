@@ -169,6 +169,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       status: true,
       pipelineStage: true,
       createdAt: true,
+      nextActionDate: true,
       realtorId: true,
       property: {
         select: {
@@ -330,6 +331,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       status: lead.status,
       pipelineStage: lead.pipelineStage || mapStatusToStage(lead.status),
       createdAt: lead.createdAt,
+      nextActionDate: (lead as any)?.nextActionDate ?? null,
       property: lead.property,
       contact: lead.contact,
       realtor: lead.realtor,
