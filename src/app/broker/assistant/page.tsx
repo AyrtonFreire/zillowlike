@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Bell, CalendarClock, ClipboardList, MoreHorizontal, Users } from "lucide-react";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
@@ -174,6 +175,15 @@ export default function BrokerAssistantPage() {
                     </button>
                   );
                 })}
+              </div>
+
+              <div className="mt-4">
+                <Link
+                  href="/broker/assistant/offline"
+                  className="block w-full rounded-2xl border border-gray-200 bg-white px-3 py-3 text-[13px] font-semibold text-gray-900 hover:bg-gray-50"
+                >
+                  Assistente offline (horários e logs)
+                </Link>
               </div>
 
                 <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3">

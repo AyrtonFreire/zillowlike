@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import {
   Kanban,
   LayoutDashboard,
+  Clock,
   MessageCircle,
   MessageSquare,
   Sparkles,
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/broker/crm", label: "Funil", icon: Kanban },
   { href: "/broker/chats", label: "Chats", icon: MessageSquare, badgeKey: "unreadChats" },
   { href: "/broker/assistant", label: "Assistente", icon: Sparkles, badgeKey: "assistantOpen" },
+  { href: "/broker/assistant/offline", label: "Assistente offline", icon: Clock },
   { href: "/broker/teams", label: "Chat do time", icon: MessageCircle },
   { href: "/broker/properties", label: "Imóveis", icon: Home },
   { href: "/broker/profile", label: "Perfil", icon: UserRound },

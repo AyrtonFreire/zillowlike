@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Input from "@/components/ui/Input";
 import Toast from "@/components/Toast";
 import {
@@ -12,7 +13,6 @@ import {
   Instagram,
   Linkedin,
   Facebook,
-  MessageCircle,
   Globe,
   Save,
   Eye,
@@ -36,34 +36,6 @@ interface ProfileData {
   publicServiceAreas: string[];
 }
 
-type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
-
-type DaySchedule = {
-  enabled: boolean;
-  start: string;
-  end: string;
-};
-
-type WeekSchedule = Record<DayKey, DaySchedule>;
-
-interface AutoReplySettings {
-  enabled: boolean;
-  timezone: string;
-  weekSchedule: WeekSchedule;
-  cooldownMinutes: number;
-  maxRepliesPerLeadPer24h: number;
-}
-
-const DEFAULT_WEEK_SCHEDULE: WeekSchedule = {
-  mon: { enabled: true, start: "09:00", end: "18:00" },
-  tue: { enabled: true, start: "09:00", end: "18:00" },
-  wed: { enabled: true, start: "09:00", end: "18:00" },
-  thu: { enabled: true, start: "09:00", end: "18:00" },
-  fri: { enabled: true, start: "09:00", end: "18:00" },
-  sat: { enabled: false, start: "09:00", end: "13:00" },
-  sun: { enabled: false, start: "09:00", end: "13:00" },
-};
-
 export default function BrokerProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -86,14 +58,6 @@ export default function BrokerProfilePage() {
     publicServiceAreas: [],
   });
 
-  const [autoReply, setAutoReply] = useState<AutoReplySettings>({
-    enabled: false,
-    timezone: "America/Sao_Paulo",
-    weekSchedule: DEFAULT_WEEK_SCHEDULE,
-    cooldownMinutes: 3,
-    maxRepliesPerLeadPer24h: 6,
-  });
-
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/signin");
@@ -107,7 +71,7 @@ export default function BrokerProfilePage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      await Promise.all([fetchProfile(), fetchAutoReplySettings()]);
+      await Promise.all([fetchProfile()]);
     } finally {
       setLoading(false);
     }
@@ -137,70 +101,26 @@ export default function BrokerProfilePage() {
     }
   };
 
-  const fetchAutoReplySettings = async () => {
-    try {
-      const res = await fetch("/api/broker/auto-reply-settings");
-      if (res.ok) {
-        const data = await res.json();
-        setAutoReply({
-          enabled: Boolean(data.enabled),
-          timezone: data.timezone || "America/Sao_Paulo",
-          weekSchedule: data.weekSchedule || DEFAULT_WEEK_SCHEDULE,
-          cooldownMinutes: Number(data.cooldownMinutes ?? 3),
-          maxRepliesPerLeadPer24h: Number(data.maxRepliesPerLeadPer24h ?? 6),
-        });
-      }
-    } catch (err) {
-      console.error("Erro ao carregar auto-reply:", err);
-    }
-  };
-
   const handleSave = async () => {
     setSaving(true);
     try {
-      const [profileRes, autoRes] = await Promise.all([
-        fetch("/api/broker/profile", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(profile),
-        }),
-        fetch("/api/broker/auto-reply-settings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(autoReply),
-        }),
-      ]);
+      const profileRes = await fetch("/api/broker/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profile),
+      });
 
       let profileError: string | null = null;
-      let autoReplyError: string | null = null;
 
       if (!profileRes.ok) {
         const data = await profileRes.json().catch(() => null);
         profileError = data?.error || "Erro ao salvar perfil";
       }
 
-      if (autoRes.ok) {
-        const data = await autoRes.json().catch(() => null);
-        if (data) {
-          setAutoReply({
-            enabled: Boolean(data.enabled),
-            timezone: data.timezone || "America/Sao_Paulo",
-            weekSchedule: data.weekSchedule || DEFAULT_WEEK_SCHEDULE,
-            cooldownMinutes: Number(data.cooldownMinutes ?? 3),
-            maxRepliesPerLeadPer24h: Number(data.maxRepliesPerLeadPer24h ?? 6),
-          });
-        }
-      } else {
-        const data = await autoRes.json().catch(() => null);
-        autoReplyError = data?.error || "Erro ao salvar assistente offline";
-      }
-
-      if (!profileError && !autoReplyError) {
+      if (!profileError) {
         setToast({ message: "Alterações salvas com sucesso!", type: "success" });
-      } else if (profileError && autoReplyError) {
-        setToast({ message: `Perfil: ${profileError}. Assistente: ${autoReplyError}.`, type: "error" });
       } else {
-        setToast({ message: profileError || autoReplyError || "Erro ao salvar alterações", type: "error" });
+        setToast({ message: profileError || "Erro ao salvar alterações", type: "error" });
       }
     } catch (err) {
       setToast({ message: "Erro ao salvar alterações", type: "error" });
@@ -239,16 +159,6 @@ export default function BrokerProfilePage() {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
   const profileUrl = profile.publicSlug ? `${siteUrl}/realtor/${profile.publicSlug}` : null;
-
-  const dayLabels: Record<DayKey, string> = {
-    mon: "Seg",
-    tue: "Ter",
-    wed: "Qua",
-    thu: "Qui",
-    fri: "Sex",
-    sat: "Sáb",
-    sun: "Dom",
-  };
 
   if (loading) {
     return (
@@ -301,109 +211,18 @@ export default function BrokerProfilePage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between gap-4">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-teal-600" />
-              Assistente offline (auto-resposta)
-            </h3>
-          </div>
-
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-            <input
-              type="checkbox"
-              checked={autoReply.enabled}
-              onChange={(e) => setAutoReply((s) => ({ ...s, enabled: e.target.checked }))}
-              className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-            />
-            <div>
-              <div className="text-sm font-medium text-gray-800">Ativar assistente offline</div>
-              <div className="text-xs text-gray-500">Responde dentro do horário configurado quando você estiver offline.</div>
+            <div className="min-w-0">
+              <h3 className="font-semibold text-gray-900">Assistente offline</h3>
+              <p className="mt-1 text-sm text-gray-600">Configurações de horário e logs ficam no Assistente.</p>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Input
-              label="Timezone"
-              value={autoReply.timezone}
-              onChange={(e) => setAutoReply((s) => ({ ...s, timezone: e.target.value }))}
-              placeholder="America/Sao_Paulo"
-            />
-            <Input
-              label="Cooldown (min)"
-              type="number"
-              min={1}
-              max={60}
-              value={String(autoReply.cooldownMinutes)}
-              onChange={(e) => setAutoReply((s) => ({ ...s, cooldownMinutes: Number(e.target.value || 0) }))}
-            />
-            <Input
-              label="Máx. respostas por lead (24h)"
-              type="number"
-              min={1}
-              max={30}
-              value={String(autoReply.maxRepliesPerLeadPer24h)}
-              onChange={(e) => setAutoReply((s) => ({ ...s, maxRepliesPerLeadPer24h: Number(e.target.value || 0) }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            {(Object.keys(autoReply.weekSchedule) as DayKey[]).map((day) => {
-              const row = autoReply.weekSchedule[day];
-              return (
-                <div key={day} className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-center">
-                  <div className="text-sm font-medium text-gray-700">{dayLabels[day]}</div>
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={row.enabled}
-                      onChange={(e) =>
-                        setAutoReply((s) => ({
-                          ...s,
-                          weekSchedule: {
-                            ...s.weekSchedule,
-                            [day]: { ...s.weekSchedule[day], enabled: e.target.checked },
-                          },
-                        }))
-                      }
-                      className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-                    />
-                    Ativo
-                  </label>
-                  <input
-                    type="time"
-                    value={row.start}
-                    disabled={!row.enabled}
-                    onChange={(e) =>
-                      setAutoReply((s) => ({
-                        ...s,
-                        weekSchedule: {
-                          ...s.weekSchedule,
-                          [day]: { ...s.weekSchedule[day], start: e.target.value },
-                        },
-                      }))
-                    }
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50"
-                  />
-                  <input
-                    type="time"
-                    value={row.end}
-                    disabled={!row.enabled}
-                    onChange={(e) =>
-                      setAutoReply((s) => ({
-                        ...s,
-                        weekSchedule: {
-                          ...s.weekSchedule,
-                          [day]: { ...s.weekSchedule[day], end: e.target.value },
-                        },
-                      }))
-                    }
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50"
-                  />
-                  <div className="text-xs text-gray-500">{row.enabled ? "" : "Fora do horário"}</div>
-                </div>
-              );
-            })}
+            <Link
+              href="/broker/assistant/offline"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-teal-700 bg-teal-50 rounded-lg hover:bg-teal-100"
+            >
+              Abrir
+            </Link>
           </div>
         </div>
 
