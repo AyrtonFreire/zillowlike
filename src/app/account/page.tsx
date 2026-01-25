@@ -208,6 +208,12 @@ export default function AccountPage() {
           href: "/broker/properties",
           icon: <Home className="w-5 h-5" />,
         },
+        {
+          title: "OLX",
+          description: "Conecte e teste publicação via OLX.",
+          href: "/account/olx",
+          icon: <Settings className="w-5 h-5" />,
+        },
       ];
 
       if (canBecomeAgency) actions.push(becomeAgencyAction);

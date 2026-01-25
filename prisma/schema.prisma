@@ -335,6 +335,7 @@ model Property {
   allowRealtorBoard Boolean? @default(false) // Se true, leads vão para o mural; se false, contato direto
 
   images    Image[]
+  olxListings OlxListing[] @relation("OlxListingProperty")
   documents PropertyDocument[]
   favorites     Favorite[]
   leads         Lead[]
@@ -549,6 +550,9 @@ model User {
   leadAutoReplyLogs LeadAutoReplyLog[]
 
   realtorAssistantChatThreads RealtorAssistantChatThread[]
+
+  olxAccount     OlxAccount?
+  olxOAuthStates OlxOAuthState[]
 }
 
 model VerificationToken {
@@ -636,7 +640,6 @@ model Lead {
   rating       RealtorRating?
   ownerRating  OwnerRating?
   reports      Report[]
-  clientMessages LeadClientMessage[]
 
   autoReplyJobs LeadAutoReplyJob[]
   autoReplyLogs LeadAutoReplyLog[]
@@ -645,9 +648,13 @@ model Lead {
 
   messages LeadMessage[]
 
+  clientMessages LeadClientMessage[]
+
   chatReadReceipts LeadChatReadReceipt[]
 
   events LeadEvent[]
+
+  olxLeadEvents OlxLeadEvent[] @relation("OlxLeadInternalLead")
 
   recommendationLists LeadRecommendationList[]
   assistantItems       AssistantItem[]
@@ -1292,6 +1299,8 @@ model Team {
   assistantItems AssistantItem[]
   clientRecommendationLists ClientRecommendationList[]
   teamChatThreads TeamChatThread[]
+  olxAccount OlxAccount?
+  olxOAuthStates OlxOAuthState[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1618,4 +1627,215 @@ model RealtorAssistantChatMessage {
 
   @@index([threadId, createdAt])
   @@map("realtor_assistant_chat_messages")
+}
+
+model OlxAccount {
+  id String @id @default(cuid())
+
+  user   User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String? @unique
+
+  team   Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId String? @unique
+
+  accessTokenEnc String
+  tokenType      String   @default("Bearer")
+  scopes         String[] @default([])
+
+  webhookToken String @unique
+
+  leadConfigId    String?
+  leadConfigToken String?
+
+  chatWebhookEnabled Boolean @default(false)
+
+  notificationConfigId    String?
+  notificationConfigToken String?
+
+  listings      OlxListing[]
+  leadEvents    OlxLeadEvent[]
+  chatThreads   OlxChatThread[]
+  notifications OlxNotificationEvent[]
+
+  oauthStates OlxOAuthState[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([teamId])
+  @@map("olx_accounts")
+}
+
+model OlxOAuthState {
+  id String @id @default(cuid())
+
+  state String @unique
+
+  user      User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  account   OlxAccount? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String?
+  team      Team?       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String?
+
+  returnTo  String?
+  scopes    String?
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([teamId])
+  @@index([accountId])
+  @@index([expiresAt])
+  @@map("olx_oauth_states")
+}
+
+model OlxListing {
+  id String @id @default(cuid())
+
+  account   OlxAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  property   Property @relation("OlxListingProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId String
+
+  olxAdId String
+  listId  String?
+
+  category  Int?
+  status    String?
+  operation String?
+
+  olxUrl String?
+
+  lastImportToken     String?
+  lastImportStatus    String?
+  lastImportCheckedAt DateTime?
+  lastUpdateAt        DateTime?
+
+  raw Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([accountId, propertyId])
+  @@unique([accountId, olxAdId])
+  @@index([listId])
+  @@index([accountId])
+  @@index([propertyId])
+  @@map("olx_listings")
+}
+
+model OlxLeadEvent {
+  id String @id @default(cuid())
+
+  account   OlxAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  externalId String?
+  adId       String?
+  listId     String?
+  linkAd     String?
+  source     String?
+
+  name    String?
+  email   String?
+  phone   String?
+  message String?
+
+  createdAtRemote DateTime?
+
+  internalLead   Lead?   @relation("OlxLeadInternalLead", fields: [internalLeadId], references: [id], onDelete: SetNull)
+  internalLeadId String?
+
+  raw Json?
+
+  receivedAt DateTime @default(now())
+
+  @@unique([accountId, externalId])
+  @@index([accountId])
+  @@index([listId])
+  @@index([email])
+  @@index([internalLeadId])
+  @@map("olx_lead_events")
+}
+
+model OlxChatThread {
+  id String @id @default(cuid())
+
+  account   OlxAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  chatId String
+  listId String?
+
+  lastMessageAt      DateTime?
+  lastMessagePreview String?
+
+  messages OlxChatMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([accountId, chatId])
+  @@index([accountId])
+  @@index([listId])
+  @@map("olx_chat_threads")
+}
+
+model OlxChatMessage {
+  id String @id @default(cuid())
+
+  thread   OlxChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  threadId String
+
+  messageId String
+  senderType String?
+  origin     String?
+
+  email String?
+  name  String?
+  phone String?
+
+  message          String?
+  messageTimestamp DateTime?
+
+  raw Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([threadId, messageId])
+  @@index([threadId, createdAt])
+  @@map("olx_chat_messages")
+}
+
+model OlxNotificationEvent {
+  id String @id @default(cuid())
+
+  account   OlxAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  notificationId String
+  topic          String?
+  createdAtRemote DateTime?
+
+  adId      String?
+  listId    String?
+  category  Int?
+  status    String?
+  operation String?
+  reasonTag String?
+  message   String?
+  viewUrl   String?
+
+  raw Json?
+  receivedAt DateTime @default(now())
+
+  @@unique([accountId, notificationId])
+  @@index([accountId])
+  @@index([listId])
+  @@index([status])
+  @@map("olx_notification_events")
 }
