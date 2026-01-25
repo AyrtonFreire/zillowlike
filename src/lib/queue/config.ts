@@ -14,6 +14,7 @@ export function getRedisConnection(): ConnectionOptions | Redis | null {
     return null;
   }
 
+  const redisUrl = process.env.REDIS_URL?.trim();
   const host = process.env.REDIS_HOST?.trim();
   const portStr = process.env.REDIS_PORT?.trim();
   const password = process.env.REDIS_PASSWORD?.trim();
@@ -24,19 +25,45 @@ export function getRedisConnection(): ConnectionOptions | Redis | null {
     return null;
   }
 
-  if (!host || !portStr) {
+  const parseRedisUrl = (urlStr: string): ConnectionOptions | null => {
+    try {
+      const u = new URL(urlStr);
+      const protocol = String(u.protocol || "").toLowerCase();
+      if (protocol !== "redis:" && protocol !== "rediss:") return null;
+      const h = u.hostname;
+      const p = u.port ? parseInt(u.port, 10) : 6379;
+      if (!h || !Number.isFinite(p)) return null;
+      const pass = u.password ? decodeURIComponent(u.password) : undefined;
+      const isTls = protocol === "rediss:";
+      const isLocal = h === "127.0.0.1" || h === "localhost" || h === "::1";
+      if (isProdRuntime && isLocal) return null;
+      return {
+        host: h,
+        port: p,
+        password: pass,
+        ...(isTls ? { tls: {} } : {}),
+      } as any;
+    } catch {
+      return null;
+    }
+  };
+
+  const urlConn = redisUrl ? parseRedisUrl(redisUrl) : null;
+
+  if (!urlConn && (!host || !portStr)) {
     return null;
   }
 
-  const port = parseInt(portStr, 10);
+  const port = urlConn ? (urlConn as any).port : parseInt(portStr as string, 10);
   if (!Number.isFinite(port)) return null;
 
   if (bullRedisClient) return bullRedisClient;
 
   const client = new Redis({
-    host,
+    host: urlConn ? (urlConn as any).host : (host as string),
     port,
-    password,
+    password: urlConn ? (urlConn as any).password : password,
+    ...(urlConn && (urlConn as any).tls ? { tls: (urlConn as any).tls } : {}),
     maxRetriesPerRequest: null, // Recomendado para BullMQ
     enableOfflineQueue: false,
     retryStrategy: (times: number): number | null => {
