@@ -54,14 +54,28 @@ export async function GET(req: NextRequest) {
       ],
     };
 
-    const [activeCount, agg] = await Promise.all([
-      (prisma as any).assistantItem.count({ where: activeWhere }),
+    const [activeItems, agg] = await Promise.all([
+      (prisma as any).assistantItem.findMany({
+        where: activeWhere,
+        select: { id: true, leadId: true },
+      }),
       (prisma as any).assistantItem.aggregate({
         where: baseWhere,
         _max: { updatedAt: true },
         _count: { _all: true },
       }),
     ]);
+
+    const keys = new Set<string>();
+    for (const row of Array.isArray(activeItems) ? activeItems : []) {
+      const id = String((row as any)?.id || "");
+      const leadIdValue = (row as any)?.leadId;
+      const leadId = leadIdValue ? String(leadIdValue) : "";
+      if (!id) continue;
+      keys.add(leadId ? `lead:${leadId}` : `item:${id}`);
+    }
+
+    const activeCount = keys.size;
 
     const newestMs = agg?._max?.updatedAt ? new Date(agg._max.updatedAt).getTime() : 0;
     const total = Number(agg?._count?._all || 0);

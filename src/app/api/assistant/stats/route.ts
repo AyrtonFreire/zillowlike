@@ -60,11 +60,10 @@ export async function GET(req: NextRequest) {
       OR: [{ status: "ACTIVE" }, { status: "SNOOZED", snoozedUntil: { lte: now } }],
     };
 
-    const [byType, agg, snoozedCount] = await Promise.all([
-      (prisma as any).assistantItem.groupBy({
-        by: ["type"],
+    const [activeItems, agg, snoozedCount] = await Promise.all([
+      (prisma as any).assistantItem.findMany({
         where: activeWhere,
-        _count: { _all: true },
+        select: { id: true, leadId: true, type: true },
       }),
       (prisma as any).assistantItem.aggregate({
         where: baseWhere,
@@ -87,14 +86,35 @@ export async function GET(req: NextRequest) {
       Outros: 0,
     };
 
-    for (const row of Array.isArray(byType) ? byType : []) {
+    const allKeys = new Set<string>();
+    const keysByCategory: Record<keyof Counts, Set<string>> = {
+      ALL: allKeys,
+      Leads: new Set<string>(),
+      Visitas: new Set<string>(),
+      Lembretes: new Set<string>(),
+      Outros: new Set<string>(),
+    };
+
+    for (const row of Array.isArray(activeItems) ? activeItems : []) {
+      const id = String((row as any)?.id || "");
+      const leadIdValue = (row as any)?.leadId;
+      const leadId = leadIdValue ? String(leadIdValue) : "";
       const t = String((row as any)?.type || "");
-      const c = Number((row as any)?._count?._all || 0);
-      if (!c) continue;
-      counts.ALL += c;
-      const cat = getRealtorAssistantCategory(t);
-      (counts as any)[cat] = Number((counts as any)[cat] || 0) + c;
+      if (!id || !t) continue;
+
+      const key = leadId ? `lead:${leadId}` : `item:${id}`;
+      allKeys.add(key);
+
+      const cat = getRealtorAssistantCategory(t) as keyof Counts;
+      const bucket = keysByCategory[cat] || keysByCategory.Outros;
+      bucket.add(key);
     }
+
+    counts.ALL = keysByCategory.ALL.size;
+    counts.Leads = keysByCategory.Leads.size;
+    counts.Visitas = keysByCategory.Visitas.size;
+    counts.Lembretes = keysByCategory.Lembretes.size;
+    counts.Outros = keysByCategory.Outros.size;
 
     const newestMs = agg?._max?.updatedAt ? new Date(agg._max.updatedAt).getTime() : 0;
     const total = Number(agg?._count?._all || 0);

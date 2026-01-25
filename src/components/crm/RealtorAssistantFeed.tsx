@@ -131,6 +131,12 @@ function getPriorityClasses(priority: AssistantItem["priority"]) {
   return "bg-gray-50 text-gray-600 border-gray-200";
 }
 
+function stripNoiseFromTitle(title: string) {
+  const t = String(title || "").trim();
+  if (!t) return t;
+  return t.replace(/\s*\(\s*Formul[aá]rio\s*\)\s*/gi, " ").replace(/\s{2,}/g, " ").trim();
+}
+
 function formatPriceBRL(value: number | null | undefined) {
   if (value == null) return null;
   const cents = Number(value);
@@ -323,7 +329,6 @@ export default function RealtorAssistantFeed(props: {
   const deleteConfirmTimerRef = useRef<any>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [propertySummaryExpandedForId, setPropertySummaryExpandedForId] = useState<string | null>(null);
   const [justResolvedId, setJustResolvedId] = useState<string | null>(null);
   const [justSnoozedId, setJustSnoozedId] = useState<string | null>(null);
   const resolvedTimerRef = useRef<any>(null);
@@ -1483,7 +1488,8 @@ export default function RealtorAssistantFeed(props: {
 
                     const property = item.lead?.property || null;
                     const hasPropertySummary = !!property;
-                    const isPropertySummaryExpanded = propertySummaryExpandedForId === item.id;
+                    const propertyTitle = String(property?.title || "").trim();
+                    const propertyPrice = property?.hidePrice ? "Consulte" : formatPriceBRL(property?.price) || "";
 
                     const weeklyPreview =
                       String(item.type || "").trim() === "WEEKLY_SUMMARY"
@@ -1611,7 +1617,7 @@ export default function RealtorAssistantFeed(props: {
                             <div className="mt-3 flex items-start gap-2">
                               <div className="flex-1 min-w-0">
                                 {isReminder && <Phone className="w-4 h-4 text-gray-400 mt-1" />}
-                                <p className="text-[18px] leading-6 font-extrabold text-gray-900">{item.title}</p>
+                                <p className="text-[18px] leading-6 font-extrabold text-gray-900">{stripNoiseFromTitle(item.title)}</p>
                                 <p
                                   className={
                                     isInternalChecklist
@@ -1954,80 +1960,20 @@ export default function RealtorAssistantFeed(props: {
                             </div>
 
                             {hasPropertySummary && (
-                                <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div className="min-w-0">
-                                      <p className="text-[11px] font-semibold text-gray-800">Resumo do imóvel</p>
-                                      {property?.title && (
-                                        <p className="mt-0.5 text-[11px] text-gray-600 line-clamp-1">{String(property.title)}</p>
-                                      )}
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setPropertySummaryExpandedForId((prev) => (prev === item.id ? null : item.id))
-                                      }
-                                      className="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
-                                    >
-                                      {isPropertySummaryExpanded ? "Esconder" : "Ver"}
-                                    </button>
+                              <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-[11px] font-semibold text-gray-500">Imóvel</p>
+                                    <p className="mt-0.5 text-[13px] font-semibold text-gray-900 line-clamp-1">
+                                      {propertyTitle || "(sem título)"}
+                                    </p>
                                   </div>
-
-                                  {isPropertySummaryExpanded && (
-                                    <div className="mt-3 space-y-2">
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">Preço</p>
-                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                            {property?.hidePrice ? "Consulte" : formatPriceBRL(property?.price) || "—"}
-                                          </p>
-                                        </div>
-
-                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">Localização</p>
-                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                            {[property?.neighborhood, property?.city, property?.state]
-                                              .filter(Boolean)
-                                              .join(" · ") || "—"}
-                                          </p>
-                                        </div>
-                                      </div>
-
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">Tipo</p>
-                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                            {[property?.type, property?.purpose].filter(Boolean).join(" · ") || "—"}
-                                          </p>
-                                        </div>
-
-                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">Características</p>
-                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                            {[
-                                              typeof property?.bedrooms === "number" ? `${property.bedrooms}q` : null,
-                                              typeof property?.bathrooms === "number" ? `${property.bathrooms}b` : null,
-                                              typeof property?.areaM2 === "number" ? `${property.areaM2}m²` : null,
-                                            ]
-                                              .filter(Boolean)
-                                              .join(" · ") || "—"}
-                                          </p>
-                                        </div>
-                                      </div>
-
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-                                          <p className="text-[10px] font-semibold text-gray-500">ID do imóvel</p>
-                                          <p className="mt-0.5 text-[12px] font-semibold text-gray-900">
-                                            {property?.id ? String(property.id) : "—"}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
+                                  <div className="flex-shrink-0 text-[13px] font-extrabold text-gray-900">
+                                    {propertyPrice || "—"}
+                                  </div>
                                 </div>
-                              )}
+                              </div>
+                            )}
 
                         {subtasks.length > 0 && (
                           <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
@@ -2122,10 +2068,10 @@ export default function RealtorAssistantFeed(props: {
                               type="button"
                               disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
                               onClick={() => performAction(item.id, { action: "resolve" })}
-                              className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+                              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
                               title={resolveTitle}
                             >
-                              <CheckCircle2 className="w-5 h-5" />
+                              <CheckCircle2 className="w-4 h-4" />
                               {isResolvedPreview ? "Feito" : isReminder ? "Concluir" : resolveLabel}
                             </button>
 
@@ -2136,8 +2082,8 @@ export default function RealtorAssistantFeed(props: {
                                 onClick={() => requestDeleteLead(item)}
                                 className={
                                   deleteConfirmForId === item.id
-                                    ? "inline-flex items-center gap-2 px-5 py-3 rounded-full border border-red-200 bg-red-50 text-sm font-bold text-red-700 hover:bg-red-100 disabled:opacity-60"
-                                    : "inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+                                    ? "inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-red-200 bg-red-50 text-[13px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-60"
+                                    : "inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
                                 }
                                 title={
                                   deleteConfirmForId === item.id
@@ -2145,7 +2091,7 @@ export default function RealtorAssistantFeed(props: {
                                     : "Excluir lead"
                                 }
                               >
-                                <Trash2 className="w-5 h-5" />
+                                <Trash2 className="w-4 h-4" />
                                 {deleteConfirmForId === item.id ? "Confirmar" : "Excluir lead"}
                               </button>
                             )}
@@ -2156,9 +2102,9 @@ export default function RealtorAssistantFeed(props: {
                                   type="button"
                                   disabled={isTransientPreview || item.status !== "ACTIVE"}
                                   onClick={() => handleOpenAction(openLeadAction, item)}
-                                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
+                                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-teal text-white text-[13px] font-bold disabled:opacity-60"
                                 >
-                                  <Eye className="w-5 h-5" />
+                                  <Eye className="w-4 h-4" />
                                   {getActionLabel(openLeadAction, item)}
                                 </button>
                               )
@@ -2169,9 +2115,9 @@ export default function RealtorAssistantFeed(props: {
                                     type="button"
                                     disabled={isTransientPreview || item.status !== "ACTIVE"}
                                     onClick={() => handleOpenAction(openChatAction, item)}
-                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
+                                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-teal text-white text-[13px] font-bold disabled:opacity-60"
                                   >
-                                    <MessageCircle className="w-5 h-5" />
+                                    <MessageCircle className="w-4 h-4" />
                                     {getActionLabel(openChatAction, item)}
                                   </button>
                                 )}
@@ -2181,9 +2127,9 @@ export default function RealtorAssistantFeed(props: {
                                     type="button"
                                     disabled={isTransientPreview || item.status !== "ACTIVE"}
                                     onClick={() => handleOpenAction(openChatAction, item)}
-                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
+                                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-teal text-white text-[13px] font-bold disabled:opacity-60"
                                   >
-                                    <MessageCircle className="w-5 h-5" />
+                                    <MessageCircle className="w-4 h-4" />
                                     Abrir conversa
                                   </button>
                                 )}
@@ -2220,9 +2166,9 @@ export default function RealtorAssistantFeed(props: {
 
                                       await generateAi({ id: item.id });
                                     }}
-                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full glass-teal text-white text-sm font-bold disabled:opacity-60"
+                                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-teal text-white text-[13px] font-bold disabled:opacity-60"
                                   >
-                                    <Sparkles className="w-5 h-5" />
+                                    <Sparkles className="w-4 h-4" />
                                     {aiLoadingId === item.id
                                       ? "Gerando..."
                                       : isWhatsAppIntent &&
@@ -2237,9 +2183,9 @@ export default function RealtorAssistantFeed(props: {
                                     type="button"
                                     disabled={isTransientPreview || item.status !== "ACTIVE"}
                                     onClick={() => handleOpenAction(primaryOpenAction, item)}
-                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+                                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
                                   >
-                                    {PrimaryOpenIcon && <PrimaryOpenIcon className="w-5 h-5" />}
+                                    {PrimaryOpenIcon && <PrimaryOpenIcon className="w-4 h-4" />}
                                     {getActionLabel(primaryOpenAction, item)}
                                   </button>
                                 )}
@@ -2249,9 +2195,9 @@ export default function RealtorAssistantFeed(props: {
                                     type="button"
                                     disabled={isTransientPreview || item.status !== "ACTIVE"}
                                     onClick={() => handleOpenAction(openLeadAction, item)}
-                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+                                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-bold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
                                   >
-                                    <Eye className="w-5 h-5" />
+                                    <Eye className="w-4 h-4" />
                                     {getActionLabel(openLeadAction, item)}
                                   </button>
                                 )}
