@@ -191,13 +191,6 @@ export default function BrokerAssistantOfflinePage() {
         title: "Horários e limites",
         content: (
           <div className="space-y-4">
-            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-              <p className="text-sm font-semibold text-gray-900">O que significa 09:00–18:00?</p>
-              <p className="mt-1 text-sm text-gray-700">
-                Esse é o horário em que a IA pode responder por você. Fora desse horário ela não responde, mesmo que você esteja offline.
-              </p>
-            </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Input
                 label="Timezone"
@@ -224,6 +217,13 @@ export default function BrokerAssistantOfflinePage() {
             </div>
 
             <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-center text-xs font-semibold text-gray-500">
+                <div />
+                <div />
+                <div>Início</div>
+                <div>Fim</div>
+                <div />
+              </div>
               {(Object.keys(settings.weekSchedule) as DayKey[]).map((day) => {
                 const row = settings.weekSchedule[day];
                 return (
