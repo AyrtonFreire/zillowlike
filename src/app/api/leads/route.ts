@@ -89,11 +89,18 @@ export async function POST(req: NextRequest) {
   const { propertyId, name, email, phone, message, visitDate, visitTime, isDirect } = parsed.data;
   const isDirectFlag = isDirect ?? false;
 
-  const prop = await prisma.property.findUnique({
+  const propertyWithOwner = await prisma.property.findUnique({
     where: { id: propertyId },
-    select: { id: true, teamId: true } as any,
+    include: {
+      images: { take: 1, orderBy: { sortOrder: "asc" } },
+      owner: { select: { id: true, role: true, email: true, name: true } },
+    },
   });
-  if (!prop) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+  if (!propertyWithOwner) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+
+  const teamId = (propertyWithOwner as any)?.teamId ? String((propertyWithOwner as any).teamId) : null;
+  const ownerRole = String((propertyWithOwner as any)?.owner?.role || "").toUpperCase();
+  const shouldForceTeamDistribution = !!teamId && ownerRole === "AGENCY";
 
   // 🆕 Se tiver visitDate e visitTime, usar VisitSchedulingService
   if (visitDate && visitTime) {
@@ -136,6 +143,8 @@ export async function POST(req: NextRequest) {
           id: true,
           userId: true,
           clientChatToken: true,
+          realtorId: true,
+          status: true,
         },
         orderBy: { updatedAt: "desc" },
       });
@@ -164,6 +173,17 @@ export async function POST(req: NextRequest) {
           token = updated?.clientChatToken || token;
         }
 
+        if (
+          shouldForceTeamDistribution &&
+          !existing.realtorId &&
+          (existing.status === "PENDING" || existing.status === "AVAILABLE")
+        ) {
+          try {
+            await LeadDistributionService.distributeNewLead(String(existing.id));
+          } catch {
+          }
+        }
+
         const chatUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://zillowlike.vercel.app"}/chat/${token}`;
         return NextResponse.json({ ok: true, leadId: existing.id, chatToken: token, chatUrl, reused: true });
       }
@@ -183,15 +203,6 @@ export async function POST(req: NextRequest) {
       data: { name, email, phone },
     });
   }
-
-  // Get property with owner info (including owner role)
-  const propertyWithOwner = await prisma.property.findUnique({
-    where: { id: propertyId },
-    include: {
-      images: { take: 1, orderBy: { sortOrder: "asc" } },
-      owner: { select: { id: true, role: true, email: true, name: true } },
-    },
-  });
 
   // Gerar token para chat do cliente
   const clientChatToken = generateChatToken();
@@ -218,12 +229,12 @@ export async function POST(req: NextRequest) {
       userId: sessionUserId ? String(sessionUserId) : undefined,
       message,
       isDirect: isDirectFlag,
-      teamId: (prop as any)?.teamId ?? undefined,
+      teamId: teamId ?? undefined,
       clientChatToken, // Token para o cliente acessar o chat
       // Se o owner é REALTOR/AGENCY, atribuir automaticamente como corretor responsável
-      realtorId: (prop as any)?.teamId && !isDirectFlag ? undefined : autoRealtorId,
+      realtorId: teamId && !isDirectFlag ? undefined : autoRealtorId,
       // Se tem realtorId, já marca como ACCEPTED; caso contrário, segue fluxo padrão PENDING
-      status: (prop as any)?.teamId && !isDirectFlag ? "PENDING" : autoRealtorId ? "ACCEPTED" : "PENDING",
+      status: teamId && !isDirectFlag ? "PENDING" : autoRealtorId ? "ACCEPTED" : "PENDING",
     },
   });
 
@@ -244,7 +255,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (lead.realtorId && initialClientMessageId) {
+  let assignedRealtorId: string | null = lead.realtorId ? String(lead.realtorId) : null;
+  if (!assignedRealtorId && (!isDirectFlag || shouldForceTeamDistribution)) {
+    try {
+      const distributed = await LeadDistributionService.distributeNewLead(String(lead.id));
+      assignedRealtorId = distributed?.realtorId ? String(distributed.realtorId) : assignedRealtorId;
+    } catch {
+    }
+  }
+
+  if (assignedRealtorId && initialClientMessageId) {
     try {
       await LeadAutoReplyService.enqueueForClientMessage({
         leadId: String(lead.id),
@@ -254,12 +274,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (lead.realtorId) {
+  if (assignedRealtorId) {
     const hasInitialMessage = !!(message && String(message).trim().length > 0);
-    const shouldRecalc = lead.status === "RESERVED" || hasInitialMessage;
-    if (shouldRecalc) {
+    if (hasInitialMessage) {
       try {
-        await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+        await RealtorAssistantService.recalculateForRealtor(String(assignedRealtorId));
       } catch {
         // ignore
       }
@@ -278,15 +297,6 @@ export async function POST(req: NextRequest) {
       isDirect: isDirect ?? false,
     },
   });
-  if (!lead.realtorId && !isDirectFlag) {
-    (async () => {
-      try {
-        await LeadDistributionService.distributeNewLead(String(lead.id));
-      } catch (err) {
-        console.error("[LEAD] Error distributing new lead:", err);
-      }
-    })();
-  }
 
   const chatUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://zillowlike.vercel.app'}/chat/${clientChatToken}`;
 

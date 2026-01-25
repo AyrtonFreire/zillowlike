@@ -102,6 +102,11 @@ export default function EditPropertyPage() {
   const [saving, setSaving] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [aiGenerateWarning, setAiGenerateWarning] = useState<string | null>(null);
+
+  const [userRole, setUserRole] = useState<string>("USER");
+  const [agencyTeamId, setAgencyTeamId] = useState<string | null>(null);
+  const [teamRealtors, setTeamRealtors] = useState<Array<{ id: string; name: string | null; email: string | null }>>([]);
+  const [capturerRealtorId, setCapturerRealtorId] = useState<string>("");
   
   // Form fields
   const [title, setTitle] = useState("");
@@ -285,6 +290,8 @@ export default function EditPropertyPage() {
         setHideCondoFee(!!p.hideCondoFee);
         setHideIPTU(!!p.hideIPTU);
         setImages(p.images || []);
+
+        setCapturerRealtorId(p.capturerRealtorId ? String(p.capturerRealtorId) : "");
       }
     } catch (error) {
       console.error("Error fetching property:", error);
@@ -294,8 +301,75 @@ export default function EditPropertyPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/user/profile");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data?.success || !data.user || cancelled) return;
+        setUserRole(String(data.user.role || "USER").toUpperCase());
+      } catch {
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (userRole !== "AGENCY") {
+      setAgencyTeamId(null);
+      setTeamRealtors([]);
+      setCapturerRealtorId("");
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const profileRes = await fetch("/api/agency/profile");
+        const profileJson = await profileRes.json().catch(() => null);
+        const teamId = profileRes.ok && profileJson?.success && profileJson?.agencyProfile?.teamId
+          ? String(profileJson.agencyProfile.teamId)
+          : null;
+        if (cancelled) return;
+        setAgencyTeamId(teamId);
+
+        if (!teamId) {
+          setTeamRealtors([]);
+          return;
+        }
+
+        const r = await fetch(`/api/teams/${encodeURIComponent(teamId)}/pipeline`, { cache: "no-store" });
+        const j = await r.json().catch(() => null);
+        const members = Array.isArray(j?.members) ? j.members : [];
+        const realtors = members
+          .filter((m: any) => String(m?.role || "").toUpperCase() !== "ASSISTANT")
+          .filter((m: any) => String(m?.userRole || "").toUpperCase() === "REALTOR")
+          .filter((m: any) => m?.userId)
+          .map((m: any) => ({ id: String(m.userId), name: m?.name ?? null, email: m?.email ?? null }));
+
+        setTeamRealtors(realtors);
+      } catch {
+        if (cancelled) return;
+        setAgencyTeamId(null);
+        setTeamRealtors([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userRole]);
+
+  const handleSubmit = async (e?: any) => {
+    try {
+      e?.preventDefault?.();
+    } catch {
+    }
+
     setSaving(true);
 
     try {
@@ -310,6 +384,7 @@ export default function EditPropertyPage() {
           type,
           status,
           purpose: purpose || null,
+          ...(userRole === "AGENCY" ? { capturerRealtorId: capturerRealtorId ? capturerRealtorId : null } : {}),
           street,
           neighborhood,
           city,
@@ -358,29 +433,25 @@ export default function EditPropertyPage() {
           viewCity,
           positionFront,
           positionBack,
-          sunByRoomNote: sunByRoomNote || null,
+          sunByRoomNote,
           petsSmall,
           petsLarge,
-          condoRules: condoRules || null,
-          sunOrientation: sunOrientation || null,
+          condoRules,
+          sunOrientation,
           conditionTags,
-          privateOwnerName: privateOwnerName || null,
-          privateOwnerPhone: privateOwnerPhone || null,
-          privateOwnerEmail: privateOwnerEmail || null,
-          privateOwnerAddress: privateOwnerAddress || null,
+          privateOwnerName,
+          privateOwnerPhone,
+          privateOwnerEmail,
+          privateOwnerAddress,
           privateOwnerPrice: privateOwnerPriceBRL ? parseBRLToNumber(privateOwnerPriceBRL) * 100 : null,
-          privateBrokerFeePercent: privateBrokerFeePercent
-            ? parseFloat(privateBrokerFeePercent.replace(",", "."))
-            : null,
-          privateBrokerFeeFixed: privateBrokerFeeFixedBRL
-            ? parseBRLToNumber(privateBrokerFeeFixedBRL) * 100
-            : null,
+          privateBrokerFeePercent: privateBrokerFeePercent ? parseFloat(privateBrokerFeePercent.replace(',', '.')) : null,
+          privateBrokerFeeFixed: privateBrokerFeeFixedBRL ? parseBRLToNumber(privateBrokerFeeFixedBRL) * 100 : null,
           privateExclusive,
-          privateExclusiveUntil: privateExclusiveUntil || null,
+          privateExclusiveUntil: privateExclusiveUntil ? new Date(privateExclusiveUntil).toISOString() : null,
           privateOccupied,
-          privateOccupantInfo: privateOccupantInfo || null,
-          privateKeyLocation: privateKeyLocation || null,
-          privateNotes: privateNotes || null,
+          privateOccupantInfo,
+          privateKeyLocation,
+          privateNotes,
           hidePrice,
           hideExactAddress,
           hideOwnerContact,
@@ -560,6 +631,27 @@ export default function EditPropertyPage() {
             <section>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Informações Básicas</h2>
               <div className="space-y-4">
+                {userRole === "AGENCY" && (
+                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="font-medium text-gray-900 mb-2">Captador / Parceiro</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Selecione o corretor responsável por este imóvel.
+                    </p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Corretor captador</label>
+                    <select
+                      value={capturerRealtorId}
+                      onChange={(e) => setCapturerRealtorId(String(e.target.value))}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Não definir</option>
+                      {teamRealtors.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name || m.email || m.id}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Título *

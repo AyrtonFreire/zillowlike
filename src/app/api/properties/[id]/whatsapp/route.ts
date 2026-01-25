@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { authOptions } from "@/lib/auth";
+import { LeadDistributionService } from "@/lib/lead-distribution-service";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,31 @@ function normalizePhoneDigits(raw: string) {
   return `55${digits}`;
 }
 
+type TeamLeadDistributionMode = "ROUND_ROBIN" | "CAPTURER_FIRST" | "MANUAL";
+
+function normalizeTeamLeadDistributionMode(raw: unknown): TeamLeadDistributionMode | null {
+  const value = String(raw || "")
+    .trim()
+    .toUpperCase();
+  if (value === "ROUND_ROBIN" || value === "CAPTURER_FIRST" || value === "MANUAL") {
+    return value as TeamLeadDistributionMode;
+  }
+  return null;
+}
+
+async function getTeamLeadDistributionMode(teamId: string): Promise<TeamLeadDistributionMode> {
+  try {
+    const rec = await (prisma as any).systemSetting.findUnique({
+      where: { key: `team:${teamId}:leadDistributionMode` },
+      select: { value: true },
+    });
+    const normalized = normalizeTeamLeadDistributionMode(rec?.value);
+    if (normalized) return normalized;
+  } catch {
+  }
+  return "ROUND_ROBIN";
+}
+
 async function getWhatsAppPayload(req: NextRequest, id: string) {
   const property = await prisma.property.findUnique({
     where: { id },
@@ -47,6 +73,7 @@ async function getWhatsAppPayload(req: NextRequest, id: string) {
       hideOwnerContact: true,
       title: true,
       teamId: true,
+      capturerRealtorId: true,
       owner: {
         select: {
           id: true,
@@ -76,6 +103,7 @@ async function getWhatsAppPayload(req: NextRequest, id: string) {
 
   const ownerRole = String(owner?.role || "").toUpperCase();
   const isRealtorOrAgency = ownerRole === "REALTOR" || ownerRole === "AGENCY";
+  const isAgencyListing = ownerRole === "AGENCY";
 
   // If advertiser opted to hide contact, do not expose (only for direct owners)
   if ((property as any)?.hideOwnerContact && !isRealtorOrAgency) {
@@ -87,14 +115,67 @@ async function getWhatsAppPayload(req: NextRequest, id: string) {
     return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
   }
 
-  const hasVerifiedPhone = !!(owner.phone && owner.phoneVerifiedAt);
-  if (!hasVerifiedPhone) {
-    return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
-  }
+  let responsibleRealtorId: string | null = owner?.id ? String(owner.id) : null;
+  let phoneDigits = owner?.phone ? normalizePhoneDigits(owner.phone) : "";
 
-  const phoneDigits = normalizePhoneDigits(owner.phone);
-  if (!phoneDigits) {
-    return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+  if (isAgencyListing && (property as any)?.teamId) {
+    const teamId = String((property as any).teamId);
+    const distributionMode = await getTeamLeadDistributionMode(teamId);
+    const preferredRealtorId =
+      distributionMode === "CAPTURER_FIRST" && (property as any)?.capturerRealtorId
+        ? String((property as any).capturerRealtorId)
+        : null;
+
+    const members = await (prisma as any).teamMember.findMany({
+      where: {
+        teamId,
+        role: {
+          in: ["OWNER", "AGENT"],
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            role: true,
+            phone: true,
+            phoneVerifiedAt: true,
+          },
+        },
+      },
+      orderBy: [{ queuePosition: "asc" }, { createdAt: "asc" }],
+    });
+
+    const eligible = (members as any[]).filter((m) => m.user?.role === "REALTOR");
+    const preferred =
+      preferredRealtorId && eligible.some((m) => String(m.user?.id) === preferredRealtorId)
+        ? eligible.find((m) => String(m.user?.id) === preferredRealtorId)
+        : null;
+    const picked = preferred || eligible[0] || null;
+
+    if (!picked?.user?.id) {
+      return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+    }
+
+    responsibleRealtorId = String(picked.user.id);
+    const hasVerifiedPhone = !!(picked.user.phone && picked.user.phoneVerifiedAt);
+    if (!hasVerifiedPhone) {
+      return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+    }
+
+    phoneDigits = normalizePhoneDigits(String(picked.user.phone));
+    if (!phoneDigits) {
+      return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+    }
+  } else {
+    const hasVerifiedPhone = !!(owner.phone && owner.phoneVerifiedAt);
+    if (!hasVerifiedPhone) {
+      return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+    }
+
+    if (!phoneDigits) {
+      return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+    }
   }
 
   const origin = req.nextUrl.origin;
@@ -112,6 +193,8 @@ async function getWhatsAppPayload(req: NextRequest, id: string) {
     ownerId: owner?.id ? String(owner.id) : null,
     ownerRole,
     isRealtorOrAgency,
+    isAgencyListing,
+    responsibleRealtorId,
   };
 }
 
@@ -150,21 +233,52 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       const now = new Date();
       const recentThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
+      const baseWhere: any = {
+        propertyId: payload.propertyId,
+        isDirect: true,
+        ...(sessionUserId
+          ? {
+              OR: [{ userId: String(sessionUserId) }, { userId: null, contactId: null }],
+            }
+          : { userId: null, contactId: null }),
+        updatedAt: { gte: recentThreshold },
+      };
+
       const existingLead: any = await (prisma as any).lead.findFirst({
-        where: {
-          propertyId: payload.propertyId,
-          realtorId: payload.ownerId,
-          isDirect: true,
-          ...(sessionUserId
-            ? {
-                OR: [{ userId: String(sessionUserId) }, { userId: null, contactId: null }],
-              }
-            : { userId: null, contactId: null }),
-          updatedAt: { gte: recentThreshold },
-        },
+        where: payload.isAgencyListing ? baseWhere : { ...baseWhere, realtorId: payload.ownerId },
         orderBy: { updatedAt: "desc" },
-        select: { id: true },
+        select: { id: true, realtorId: true },
       });
+
+      const ensureAssignedAgencyLead = async (leadId: string) => {
+        const current: any = await (prisma as any).lead.findUnique({
+          where: { id: String(leadId) },
+          select: { id: true, realtorId: true, status: true },
+        });
+
+        if (current?.realtorId) return String(current.realtorId);
+
+        try {
+          await (prisma as any).lead.update({
+            where: { id: String(leadId) },
+            data: {
+              teamId: payload.teamId ?? undefined,
+              status: "PENDING",
+              isDirect: false,
+            },
+            select: { id: true },
+          });
+        } catch {
+        }
+
+        try {
+          const distributed = await LeadDistributionService.distributeNewLead(String(leadId));
+          if (distributed?.realtorId) return String(distributed.realtorId);
+        } catch {
+        }
+
+        return payload.responsibleRealtorId ? String(payload.responsibleRealtorId) : null;
+      };
 
       const lead = existingLead?.id
         ? await (prisma as any).lead.update({
@@ -178,16 +292,65 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         : await (prisma as any).lead.create({
             data: {
               propertyId: payload.propertyId,
-              realtorId: payload.ownerId,
-              teamId: payload.teamId ?? undefined,
+              ...(payload.isAgencyListing
+                ? {
+                    teamId: payload.teamId ?? undefined,
+                    status: "PENDING",
+                    isDirect: false,
+                    pipelineStage: "NEW",
+                  }
+                : {
+                    realtorId: payload.ownerId,
+                    teamId: payload.teamId ?? undefined,
+                    status: "ACCEPTED",
+                    pipelineStage: "NEW",
+                    isDirect: true,
+                  }),
               ...(sessionUserId ? { userId: String(sessionUserId) } : {}),
-              status: "ACCEPTED",
-              pipelineStage: "NEW",
-              isDirect: true,
               message: "Interesse via WhatsApp",
             },
             select: { id: true },
           });
+
+      let effectiveRealtorId = payload.ownerId;
+      if (payload.isAgencyListing) {
+        const assigned = await ensureAssignedAgencyLead(String(lead.id));
+        if (assigned) {
+          effectiveRealtorId = String(assigned);
+          try {
+            await (prisma as any).lead.update({
+              where: { id: String(lead.id) },
+              data: {
+                realtorId: effectiveRealtorId,
+                status: "ACCEPTED",
+                pipelineStage: "NEW",
+                isDirect: true,
+                reservedUntil: null,
+              },
+              select: { id: true },
+            });
+          } catch {
+          }
+        }
+      }
+
+      const realtorPhoneRec = await (prisma as any).user.findUnique({
+        where: { id: String(effectiveRealtorId) },
+        select: { phone: true, phoneVerifiedAt: true },
+      });
+
+      const hasVerifiedPhone = !!(realtorPhoneRec?.phone && realtorPhoneRec?.phoneVerifiedAt);
+      if (!hasVerifiedPhone) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+
+      const phoneDigits = normalizePhoneDigits(String(realtorPhoneRec.phone));
+      if (!phoneDigits) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+
+      const text = encodeURIComponent(`Olá! Tenho interesse no imóvel: ${payload.propertyUrl}`);
+      const effectiveWhatsappUrl = `https://wa.me/${phoneDigits}?text=${text}`;
 
       if (!existingLead?.id) {
         await LeadEventService.record({
@@ -205,7 +368,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
       const assistantItem = await RealtorAssistantService.upsertFromRule({
         context: "REALTOR",
-        ownerId: payload.ownerId,
+        ownerId: String(effectiveRealtorId),
         leadId: String(lead.id),
         type: "LEAD_NO_FIRST_CONTACT",
         priority: "HIGH",
@@ -220,14 +383,18 @@ export async function POST(req: NextRequest, { params }: Ctx) {
           kind: "CLICK",
           propertyId: payload.propertyId,
           propertyUrl: payload.propertyUrl,
-          whatsappUrl: payload.whatsappUrl,
+          whatsappUrl: effectiveWhatsappUrl,
         },
       });
 
       try {
-        await RealtorAssistantService.emitItemUpdated(payload.ownerId, assistantItem);
+        await RealtorAssistantService.emitItemUpdated(String(effectiveRealtorId), assistantItem);
       } catch {
       }
+
+      const res = NextResponse.json({ whatsappUrl: effectiveWhatsappUrl });
+      res.headers.set("Cache-Control", "no-store");
+      return res;
     }
 
     const res = NextResponse.json({ whatsappUrl: payload.whatsappUrl });

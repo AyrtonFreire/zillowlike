@@ -133,10 +133,13 @@ export class LeadDistributionService {
 
       const eligibleIds = eligible.map((m) => String(m.userId));
 
-      const preferredRealtorId =
-        distributionMode === "CAPTURER_FIRST" && (lead as any)?.property?.ownerId
-          ? String((lead as any).property.ownerId)
-          : null;
+      const preferredRealtorId = (() => {
+        if (distributionMode !== "CAPTURER_FIRST") return null;
+        const capturer = (lead as any)?.property?.capturerRealtorId;
+        if (capturer) return String(capturer);
+        const ownerId = (lead as any)?.property?.ownerId;
+        return ownerId ? String(ownerId) : null;
+      })();
 
       let effectivePreferredRealtorId = preferredRealtorId;
       if (effectivePreferredRealtorId && eligibleIds.includes(effectivePreferredRealtorId)) {

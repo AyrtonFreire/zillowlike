@@ -31,6 +31,11 @@ export default function NewPropertyPage() {
   const [submitIntent, setSubmitIntent] = useState(false);
   const [publishedProperty, setPublishedProperty] = useState<{ id: string; title: string; url: string } | null>(null);
 
+  const [userRole, setUserRole] = useState<string>("USER");
+  const [agencyTeamId, setAgencyTeamId] = useState<string | null>(null);
+  const [teamRealtors, setTeamRealtors] = useState<Array<{ id: string; name: string | null; email: string | null }>>([]);
+  const [capturerRealtorId, setCapturerRealtorId] = useState<string>("");
+
   const { showIssues } = useIssueDrawer();
 
   const stepperScrollRef = useRef<HTMLDivElement | null>(null);
@@ -114,6 +119,52 @@ export default function NewPropertyPage() {
       return next;
     });
   };
+
+  useEffect(() => {
+    if (userRole !== "AGENCY") {
+      setAgencyTeamId(null);
+      setTeamRealtors([]);
+      setCapturerRealtorId("");
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const profileRes = await fetch("/api/agency/profile");
+        const profileJson = await profileRes.json().catch(() => null);
+        const teamId = profileRes.ok && profileJson?.success && profileJson?.agencyProfile?.teamId
+          ? String(profileJson.agencyProfile.teamId)
+          : null;
+        if (cancelled) return;
+        setAgencyTeamId(teamId);
+
+        if (!teamId) {
+          setTeamRealtors([]);
+          return;
+        }
+
+        const r = await fetch(`/api/teams/${encodeURIComponent(teamId)}/pipeline`, { cache: "no-store" });
+        const j = await r.json().catch(() => null);
+        const members = Array.isArray(j?.members) ? j.members : [];
+        const realtors = members
+          .filter((m: any) => String(m?.role || "").toUpperCase() !== "ASSISTANT")
+          .filter((m: any) => String(m?.userRole || "").toUpperCase() === "REALTOR")
+          .filter((m: any) => m?.userId)
+          .map((m: any) => ({ id: String(m.userId), name: m?.name ?? null, email: m?.email ?? null }));
+
+        setTeamRealtors(realtors);
+      } catch {
+        if (cancelled) return;
+        setAgencyTeamId(null);
+        setTeamRealtors([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userRole]);
 
   const applyErrorsAndFocus = (step: number, errors: Record<string, string>) => {
     setFieldErrors(errors);
@@ -413,6 +464,7 @@ export default function NewPropertyPage() {
         if (!res.ok) return;
         const data = await res.json();
         if (!data?.success || !data.user || cancelled) return;
+        setUserRole(String(data.user.role || "USER").toUpperCase());
         setProfilePhone(data.user.phone || "");
         setProfilePhoneVerified(!!data.user.phoneVerifiedAt);
         setProfileEmail(data.user.email || "");
@@ -1076,6 +1128,8 @@ export default function NewPropertyPage() {
       if (typeof d.secNightGuard === 'boolean') setSecNightGuard(d.secNightGuard);
       if (typeof d.secElectricFence === 'boolean') setSecElectricFence(d.secElectricFence);
 
+      if (typeof d.capturerRealtorId === 'string') setCapturerRealtorId(d.capturerRealtorId);
+
       if (d.cloneFromPropertyId) {
         setToast({ message: "Anúncio clonado. Revise os campos antes de publicar.", type: "info" });
         try {
@@ -1207,6 +1261,8 @@ export default function NewPropertyPage() {
         if (typeof d.secNightGuard === 'boolean') setSecNightGuard(d.secNightGuard);
         if (typeof d.secElectricFence === 'boolean') setSecElectricFence(d.secElectricFence);
 
+        if (typeof d.capturerRealtorId === 'string') setCapturerRealtorId(d.capturerRealtorId);
+
         try { window.localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch {}
       } catch {}
     };
@@ -1252,6 +1308,7 @@ export default function NewPropertyPage() {
           addressNumber,
           conditionTags,
           petFriendly,
+          capturerRealtorId,
           currentStep,
           iptuYearBRL,
           condoFeeBRL,
@@ -1322,7 +1379,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, petFriendly, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, sunOrientation, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
+  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, petFriendly, capturerRealtorId, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, sunOrientation, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1696,6 +1753,7 @@ export default function NewPropertyPage() {
         priceBRL: parseBRLToNumber(priceBRL),
         type,
         purpose,
+        capturerRealtorId: capturerRealtorId ? capturerRealtorId : null,
         address: { street, neighborhood, city, state, postalCode, number: addressNumber || undefined },
         geo: geo ? { lat: geo.lat, lng: geo.lng } : undefined,
         furnished: isFurnished,
@@ -2448,6 +2506,34 @@ export default function NewPropertyPage() {
 
               {currentStep === 1 && (
                 <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Informações básicas</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Conte o essencial do seu imóvel.
+                    </p>
+                  </div>
+
+                  {userRole === "AGENCY" && (
+                    <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                      <h3 className="font-medium text-gray-900 mb-2">Captador / Parceiro</h3>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Selecione o corretor responsável por este imóvel (usado no modo de distribuição por prioridade).
+                      </p>
+                      <Select
+                        label="Corretor captador"
+                        value={capturerRealtorId}
+                        onChange={(e) => setCapturerRealtorId(String(e.target.value))}
+                        optional
+                      >
+                        <option value="">Não definir</option>
+                        {teamRealtors.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name || m.email || m.id}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Select

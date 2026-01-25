@@ -653,7 +653,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { title, metaTitle, metaDescription, description, priceBRL, type, purpose, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility, videoUrl } = parsed.data;
+    const { title, metaTitle, metaDescription, description, priceBRL, type, purpose, capturerRealtorId, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility, videoUrl } = parsed.data;
 
     const parsedVideo = typeof videoUrl === "string" && videoUrl.trim() ? parseVideoUrl(videoUrl) : null;
 
@@ -761,6 +761,7 @@ export async function POST(req: NextRequest) {
       videoProvider: parsedVideo ? parsedVideo.provider : null,
       videoId: parsedVideo ? parsedVideo.id : null,
       ...(purpose ? { purpose } : {}),
+      ...(capturerRealtorId ? { capturerRealtorId: String(capturerRealtorId) } : {}),
       ownerId: userId || undefined,
       street: address.street,
       neighborhood: address.neighborhood ?? null,
@@ -870,6 +871,49 @@ export async function POST(req: NextRequest) {
       }
     } catch (err) {
       console.error("api/properties POST: failed to infer teamId", err);
+    }
+
+    if (createData?.teamId && createData?.capturerRealtorId) {
+      const membership = await (prisma as any).teamMember.findFirst({
+        where: {
+          teamId: String(createData.teamId),
+          userId: String(createData.capturerRealtorId),
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              role: true,
+            },
+          },
+        },
+      });
+
+      if (!membership?.user?.id || String(membership.user.role || "").toUpperCase() !== "REALTOR") {
+        return withRequestId(
+          NextResponse.json(
+            {
+              code: "VALIDATION_ERROR",
+              message: "Corretor captador inválido para este time.",
+              error: "Corretor captador inválido para este time.",
+            },
+            { status: 400 }
+          )
+        );
+      }
+    }
+
+    if (!createData?.teamId && createData?.capturerRealtorId) {
+      return withRequestId(
+        NextResponse.json(
+          {
+            code: "VALIDATION_ERROR",
+            message: "Não é possível definir corretor captador sem um time vinculado.",
+            error: "Não é possível definir corretor captador sem um time vinculado.",
+          },
+          { status: 400 }
+        )
+      );
     }
     const created = await prisma.property.create({ data: createData, include: { images: true } });
     console.log("api/properties POST created", { id: created.id, ownerId: created.ownerId, city: created.city, state: created.state, status: created.status, requestId });

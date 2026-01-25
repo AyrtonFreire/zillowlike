@@ -32,6 +32,7 @@ export const PropertyCreateSchema = z
     .max(1_000_000_000), // até R$ 1 bi (inteiro em reais)
   type: PropertyTypeEnum,
   purpose: PurposeEnum.optional(),
+  capturerRealtorId: z.string().trim().min(1).optional().nullable(),
   // Flags usadas nos filtros de busca
   furnished: z.boolean().optional(),
   petFriendly: z.boolean().optional(),

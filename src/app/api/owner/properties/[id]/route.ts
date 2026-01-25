@@ -141,6 +141,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       "type",
       "status",
       "purpose",
+      "capturerRealtorId",
       "videoUrl",
       "street",
       "neighborhood",
@@ -230,6 +231,43 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     for (const field of allowedFields) {
       if (field in body) {
         updateData[field] = body[field];
+      }
+    }
+
+    if ("capturerRealtorId" in updateData) {
+      const raw = updateData.capturerRealtorId;
+      const normalized = raw === "" || raw === null || typeof raw === "undefined" ? null : String(raw);
+      updateData.capturerRealtorId = normalized;
+
+      if (normalized) {
+        const prop = await prisma.property.findUnique({
+          where: { id },
+          select: { teamId: true },
+        });
+
+        const teamId = (prop as any)?.teamId ? String((prop as any).teamId) : null;
+        if (!teamId) {
+          return NextResponse.json({ error: "Este imóvel não está vinculado a um time." }, { status: 400 });
+        }
+
+        const membership = await (prisma as any).teamMember.findFirst({
+          where: {
+            teamId,
+            userId: String(normalized),
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                role: true,
+              },
+            },
+          },
+        });
+
+        if (!membership?.user?.id || String(membership.user.role || "").toUpperCase() !== "REALTOR") {
+          return NextResponse.json({ error: "Corretor captador inválido para este time." }, { status: 400 });
+        }
       }
     }
 

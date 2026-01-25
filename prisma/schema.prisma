@@ -220,6 +220,8 @@ model Property {
   owner       User?          @relation("PropertyOwner", fields: [ownerId], references: [id])
   teamId      String?
   team        Team?          @relation(fields: [teamId], references: [id])
+  capturerRealtorId String?
+  capturerRealtor   User?          @relation("PropertyCapturer", fields: [capturerRealtorId], references: [id])
 
   videoUrl      String?
   videoProvider VideoProvider?
@@ -354,6 +356,7 @@ model Property {
   @@index([ownerId])
   @@index([status])
   @@index([teamId])
+  @@index([capturerRealtorId])
   @@map("properties")
 }
 
@@ -504,6 +507,7 @@ model User {
   realtorLeads         Lead[]               @relation("RealtorLeads")
   leadMessages         LeadMessage[]
   properties           Property[]           @relation("PropertyOwner")
+  capturedProperties    Property[]           @relation("PropertyCapturer")
   queue                RealtorQueue?
   stats                RealtorStats?
   ratings              RealtorRating[]
