@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Clock, 
   MessageCircle, 
@@ -318,13 +318,23 @@ export default function LeadTimeline({
 }: LeadTimelineProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const lastEtagRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadEvents() {
       try {
-        const response = await fetch(`/api/leads/${leadId}/events`);
+        const response = await fetch(`/api/leads/${leadId}/events`, {
+          headers: lastEtagRef.current ? { "if-none-match": lastEtagRef.current } : undefined,
+        });
+
+        if (response.status === 304) {
+          return;
+        }
+
+        const etag = response.headers.get("etag");
+        if (etag) lastEtagRef.current = etag;
 
         if (response.ok) {
           const data = await response.json();

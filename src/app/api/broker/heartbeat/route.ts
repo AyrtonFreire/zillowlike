@@ -24,6 +24,16 @@ export async function POST() {
 
     const now = new Date();
 
+    const existing = await (prisma as any).user.findUnique({
+      where: { id: String(userId) },
+      select: { lastSeenAt: true },
+    });
+
+    const lastSeenAt = existing?.lastSeenAt ? new Date(existing.lastSeenAt) : null;
+    if (lastSeenAt && now.getTime() - lastSeenAt.getTime() < 5 * 60_000) {
+      return NextResponse.json({ success: true, ts: now.toISOString() });
+    }
+
     await (prisma as any).user.update({
       where: { id: String(userId) },
       data: { lastSeenAt: now },

@@ -28,31 +28,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (pathname === "/opengraph-image") {
-    const ua = request.headers.get("user-agent") || "";
-    const uaLower = ua.toLowerCase();
-    const isLikelyBot =
-      uaLower.includes("bot") ||
-      uaLower.includes("spider") ||
-      uaLower.includes("crawler") ||
-      uaLower.includes("slack") ||
-      uaLower.includes("whatsapp") ||
-      uaLower.includes("telegram") ||
-      uaLower.includes("facebookexternalhit") ||
-      uaLower.includes("discord") ||
-      uaLower.includes("headless") ||
-      uaLower.includes("lighthouse");
-
-    if (isLikelyBot) {
-      console.log("[opengraph-image] ua", ua.slice(0, 200));
-    }
-
-    const res = NextResponse.next();
-    res.headers.set("x-zlw-ua-bot", isLikelyBot ? "1" : "0");
-    res.headers.set("x-zlw-ua", ua.slice(0, 200));
-    return res;
-  }
-
   if (pathname === "/broker") {
     const url = request.nextUrl.clone();
     url.pathname = "/broker/dashboard";
@@ -150,12 +125,17 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/admin/:path*",
-    "/owner/:path*",
     "/dashboard/:path*",
-    "/realtor/:path*",
     "/broker/:path*",
     "/agency/:path*",
-    "/opengraph-image",
+    "/owner/dashboard/:path*",
+    "/owner/analytics/:path*",
+    "/owner/leads/:path*",
+    "/owner/new/:path*",
+    "/owner/edit/:path*",
+    "/owner/properties/:path*",
+    "/realtor/register/:path*",
+    "/realtor/leads/:path*",
     "/api/leads/mural/:path*",
     "/api/realtor/apply/:path*",
     "/api/leads/:id/candidate/:path*",

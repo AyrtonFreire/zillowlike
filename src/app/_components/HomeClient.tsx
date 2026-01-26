@@ -60,7 +60,7 @@ export default function HomeClient() {
   async function search() {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/properties?${queryString}`);
+      const res = await fetch(`/api/properties?${queryString}`, { credentials: "omit" });
       if (!res.ok) {
         const msg = res.status === 400 ? "Parâmetros inválidos na busca." : "Falha ao carregar imóveis.";
         setToast({ message: msg, type: "error" });

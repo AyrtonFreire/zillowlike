@@ -550,14 +550,14 @@ export default function Home() {
       ...baseParams,
     });
     try {
-      const res = await fetch(`/api/properties?${p1}`);
+      const res = await fetch(`/api/properties?${p1}`, { credentials: "omit" });
       const data = await res.json();
       if (data?.properties?.length) return data.properties as Property[];
     } catch {}
     // Fallback sem cidade/estado ou sem resultados
     const p2 = buildSearchParams({ page: 1, pageSize: 12, sort: 'recent', lite: 1, ...baseParams });
     try {
-      const res2 = await fetch(`/api/properties?${p2}`);
+      const res2 = await fetch(`/api/properties?${p2}`, { credentials: "omit" });
       const data2 = await res2.json();
       return (data2?.properties || []) as Property[];
     } catch {
@@ -579,7 +579,7 @@ export default function Home() {
           preferredState = localStorage.getItem('lastState') || undefined;
         }
         if (!preferredCity || !preferredState) {
-          const res = await fetch('/api/properties?pageSize=1&sort=recent&lite=1');
+          const res = await fetch('/api/properties?pageSize=1&sort=recent&lite=1', { credentials: "omit" });
           const data = await res.json();
           const first = data?.properties?.[0];
           if (first?.city && first?.state) {
@@ -622,7 +622,7 @@ export default function Home() {
   useEffect(() => {
     if (!hasSearched) {
       setFeaturedLoading(true);
-      fetch('/api/properties?pageSize=12&lite=1')
+      fetch('/api/properties?pageSize=12&lite=1', { credentials: "omit" })
         .then(res => res.json())
         .then((data: any) => {
           if (data.success) {
@@ -634,7 +634,7 @@ export default function Home() {
 
       // Trending (ex: maior preço)
       setTrendingLoading(true);
-      fetch('/api/properties?pageSize=12&sort=price_desc&lite=1')
+      fetch('/api/properties?pageSize=12&sort=price_desc&lite=1', { credentials: "omit" })
         .then(res => res.json())
         .then((data: any) => { if (data.success) setTrending(data.properties || []); })
         .catch(console.error)
@@ -642,7 +642,7 @@ export default function Home() {
 
       // Newest (mais recentes)
       setNewestLoading(true);
-      fetch('/api/properties?pageSize=12&sort=recent&lite=1')
+      fetch('/api/properties?pageSize=12&sort=recent&lite=1', { credentials: "omit" })
         .then(res => res.json())
         .then((data: any) => { if (data.success) setNewest(data.properties || []); })
         .catch(console.error)
@@ -714,7 +714,7 @@ export default function Home() {
       pageSize: 12
     });
 
-    fetch(`/api/properties?${params}`)
+    fetch(`/api/properties?${params}`, { credentials: "omit" })
       .then(async res => {
         if (!res.ok) {
           const text = await res.text();
@@ -874,7 +874,7 @@ export default function Home() {
         lite: 1,
         pageSize: 12
       });
-      const res = await fetch(`/api/properties?${params}`);
+      const res = await fetch(`/api/properties?${params}`, { credentials: "omit" });
       const data = await res.json();
       if (data?.success) {
         setProperties((prev) => [...prev, ...(data.properties || [])]);
@@ -2857,7 +2857,7 @@ export default function Home() {
                     maxLng: bounds.maxLng,
                   });
                   try {
-                    const res = await fetch(`/api/properties?${params}`);
+                    const res = await fetch(`/api/properties?${params}`, { credentials: "omit" });
                     const data = await res.json();
                     if (data.success) {
                       setProperties(data.properties || []);
@@ -3288,7 +3288,7 @@ export default function Home() {
                   maxLng: bounds.maxLng,
                 });
                 try {
-                  const res = await fetch(`/api/properties?${params}`);
+                  const res = await fetch(`/api/properties?${params}`, { credentials: "omit" });
                   const data = await res.json();
                   if (data.success) {
                     setProperties(data.properties || []);

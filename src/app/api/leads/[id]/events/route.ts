@@ -6,6 +6,8 @@ import { createAuditLog } from "@/lib/audit-log";
 import { captureException } from "@/lib/sentry";
 import { logger } from "@/lib/logger";
 
+const auditThrottle = new Map<string, number>();
+
 async function getSessionContext() {
   const session: any = await getServerSession(authOptions);
 
@@ -92,6 +94,20 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       orderBy: { createdAt: "desc" },
     });
 
+    const newestMs = (events?.[0]?.createdAt ? new Date(events[0].createdAt).getTime() : 0) || 0;
+    const count = Array.isArray(events) ? events.length : 0;
+    const etag = `W/"lead-events:${String(id)}:${newestMs}:${count}"`;
+    const ifNoneMatch = _req.headers.get("if-none-match") || "";
+    if (ifNoneMatch && ifNoneMatch === etag) {
+      return new NextResponse(null, {
+        status: 304,
+        headers: {
+          ETag: etag,
+          "Cache-Control": "private, max-age=0, must-revalidate",
+        },
+      });
+    }
+
     const actorIds = Array.from(
       new Set(
         (events || [])
@@ -153,19 +169,28 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
         })
       : enriched;
 
-    void createAuditLog({
-      level: "INFO",
-      action: "LEAD_EVENTS_VIEW",
-      actorId: String(userId),
-      actorRole: String(role || ""),
-      targetType: "LEAD",
-      targetId: String(id),
-      metadata: {
-        count: sanitized.length,
-      },
-    });
+    const throttleKey = `${String(userId)}:${String(id)}`;
+    const now = Date.now();
+    const last = auditThrottle.get(throttleKey) || 0;
+    if (now - last > 60_000) {
+      auditThrottle.set(throttleKey, now);
+      void createAuditLog({
+        level: "INFO",
+        action: "LEAD_EVENTS_VIEW",
+        actorId: String(userId),
+        actorRole: String(role || ""),
+        targetType: "LEAD",
+        targetId: String(id),
+        metadata: {
+          count: sanitized.length,
+        },
+      });
+    }
 
-    return NextResponse.json({ events: sanitized });
+    const res = NextResponse.json({ events: sanitized });
+    res.headers.set("ETag", etag);
+    res.headers.set("Cache-Control", "private, max-age=0, must-revalidate");
+    return res;
   } catch (error) {
     captureException(error, { route: "/api/leads/[id]/events" });
     logger.error("Error fetching lead events", { error });

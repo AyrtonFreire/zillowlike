@@ -1,7 +1,8 @@
 "use client";
 
 import { SessionProvider, useSession } from "next-auth/react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/modern";
 import { ToastProvider } from "@/contexts/ToastContext";
@@ -9,10 +10,16 @@ import { IssueDrawerProvider } from "@/contexts/IssueDrawerContext";
 
 function PresenceHeartbeat() {
   const { data: session } = useSession();
+  const pathname = usePathname();
+  const lastPingRef = useRef(0);
 
   useEffect(() => {
     const role = (session as any)?.role || (session as any)?.user?.role;
     if (role !== "REALTOR" && role !== "ADMIN") return;
+
+    const path = String(pathname || "");
+    const isInternalArea = path.startsWith("/broker") || path.startsWith("/admin");
+    if (!isInternalArea) return;
 
     let stopped = false;
 
@@ -20,6 +27,12 @@ function PresenceHeartbeat() {
       if (stopped) return;
       try {
         if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+
+        const now = Date.now();
+        const minIntervalMs = 5 * 60_000;
+        if (now - lastPingRef.current < minIntervalMs) return;
+        lastPingRef.current = now;
+
         await fetch("/api/broker/heartbeat", { method: "POST" });
       } catch {
       }
@@ -34,7 +47,7 @@ function PresenceHeartbeat() {
 
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
-    const interval = window.setInterval(() => void ping(), 60_000);
+    const interval = window.setInterval(() => void ping(), 5 * 60_000);
 
     return () => {
       stopped = true;
@@ -42,7 +55,7 @@ function PresenceHeartbeat() {
       document.removeEventListener("visibilitychange", onVisibility);
       window.clearInterval(interval);
     };
-  }, [session]);
+  }, [session, pathname]);
 
   return null;
 }
