@@ -205,12 +205,12 @@ export default function ComparePage() {
                     </td>
                     {properties.map((property) => {
                       const pricePerM2 = property.areaM2
-                        ? ((property.price / 100) / property.areaM2).toFixed(2)
+                        ? Math.round((property.price / 100) / property.areaM2)
                         : null;
                       
                       return (
                         <td key={property.id} className="p-4 text-center font-semibold text-blue-600">
-                          {pricePerM2 ? `R$ ${pricePerM2}` : "—"}
+                          {pricePerM2 != null ? `R$ ${Number(pricePerM2).toLocaleString("pt-BR")}` : "—"}
                         </td>
                       );
                     })}

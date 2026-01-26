@@ -110,9 +110,14 @@ function formatBRLFromCents(value: any): string {
   const cents = toNumberCents(value);
   if (cents == null) return "";
   try {
-    return `R$ ${(cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(cents / 100);
   } catch {
-    return `R$ ${(cents / 100).toFixed(2)}`;
+    return `R$ ${Math.round(cents / 100).toLocaleString("pt-BR")}`;
   }
 }
 

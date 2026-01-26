@@ -91,8 +91,11 @@ function formatDate(iso: string) {
 }
 
 function formatPrice(price: number | null | undefined) {
-  if (!price) return null;
-  return price.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+  if (price == null) return null;
+  const cents = Number(price);
+  if (!Number.isFinite(cents)) return null;
+  const brl = cents / 100;
+  return brl.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 }
 
 function isSameDay(d1: string, d2: string) {

@@ -1314,6 +1314,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                           style: "currency",
                           currency: "BRL",
                           minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
                         }).format(property.price / 100)
                       : "Sob consulta"}
                   </h2>
@@ -1761,9 +1762,9 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                       {property.privateOwnerPhone && <div><span className="text-gray-500">Telefone:</span> {property.privateOwnerPhone}</div>}
                       {property.privateOwnerEmail && <div><span className="text-gray-500">E-mail:</span> {property.privateOwnerEmail}</div>}
                       {property.privateOwnerAddress && <div><span className="text-gray-500">Endereço:</span> {property.privateOwnerAddress}</div>}
-                      {typeof property.privateOwnerPrice === "number" && <div><span className="text-gray-500">Valor desejado:</span> {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(property.privateOwnerPrice / 100)}</div>}
+                      {typeof property.privateOwnerPrice === "number" && <div><span className="text-gray-500">Valor desejado:</span> {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.privateOwnerPrice / 100)}</div>}
                       {typeof property.privateBrokerFeePercent === "number" && <div><span className="text-gray-500">Taxa (%):</span> {property.privateBrokerFeePercent}%</div>}
-                      {typeof property.privateBrokerFeeFixed === "number" && <div><span className="text-gray-500">Taxa fixa:</span> {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(property.privateBrokerFeeFixed / 100)}</div>}
+                      {typeof property.privateBrokerFeeFixed === "number" && <div><span className="text-gray-500">Taxa fixa:</span> {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.privateBrokerFeeFixed / 100)}</div>}
                       {property.privateKeyLocation && <div><span className="text-gray-500">Chave:</span> {property.privateKeyLocation}</div>}
                       {property.privateNotes && <div className="pt-2 border-t border-gray-100"><span className="text-gray-500">Notas:</span> <span className="block text-gray-700 whitespace-pre-wrap">{property.privateNotes}</span></div>}
                     </div>
@@ -1917,7 +1918,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Preço</div>
                   <div className="text-3xl font-bold text-gray-900">
                     {typeof property.price === "number" && property.price > 0
-                      ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(property.price / 100)
+                      ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
                       : "Sob consulta"}
                   </div>
                 </div>
@@ -2187,7 +2188,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
             <div className="bg-[#2b2b2b] py-3 px-4 text-center shrink-0">
               <p className="text-white/90 text-sm">
                 {property.purpose === "SALE" ? "Venda" : "Aluguel"}: {typeof property.price === "number" && property.price > 0 
-                  ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(property.price / 100)
+                  ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
                   : "Sob consulta"}
                 {property.bedrooms != null && ` (${property.bedrooms} quartos`}
                 {property.bathrooms != null && `, ${property.bathrooms} banheiros`}

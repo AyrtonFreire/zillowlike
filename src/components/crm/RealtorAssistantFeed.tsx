@@ -143,9 +143,14 @@ function formatPriceBRL(value: number | null | undefined) {
   if (!Number.isFinite(cents)) return null;
   const brl = cents / 100;
   try {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(brl);
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(brl);
   } catch {
-    return `R$ ${brl.toFixed(2)}`;
+    return `R$ ${Math.round(brl).toLocaleString("pt-BR")}`;
   }
 }
 

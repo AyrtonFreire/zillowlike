@@ -106,7 +106,7 @@ export default async function PropertyCanonicalPage({ params }: PageProps) {
     image: (property.images || []).map((img: { url: string }) => img.url),
     offers: {
       "@type": "Offer",
-      price: typeof priceCents === "number" && priceCents > 0 ? (priceCents / 100).toFixed(2) : undefined,
+      price: typeof priceCents === "number" && priceCents > 0 ? String(Math.round(priceCents / 100)) : undefined,
       priceCurrency: "BRL",
       availability: "https://schema.org/InStock",
       url: `${base}${canonicalPath}`,

@@ -35,7 +35,12 @@ interface OwnerLeadListItem {
 
 const currencyBRL = (value: number) => {
   try {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Math.round(Number(value || 0)));
   } catch {
     return String(value || 0);
   }
