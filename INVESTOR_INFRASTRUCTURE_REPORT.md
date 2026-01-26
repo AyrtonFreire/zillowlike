@@ -13,7 +13,7 @@ O projeto está construído em uma arquitetura moderna e “cloud-friendly”, c
 - **Tempo real (realtime)**: **Pusher** (server + client), com canais de chat e eventos de leads.
 - **Emails**: integração com **Resend** (com fallback de mock em dev).
 - **Observabilidade**: **Sentry** (server + client, amostragem configurável) + **Vercel Speed Insights**.
-- **Segurança**: middleware RBAC + security headers (CSP/HSTS etc) + rate limiting (atual: em memória).
+- **Segurança**: middleware RBAC + security headers (CSP/HSTS etc) + rate limiting (Redis se configurado; fallback em memória).
 
 **Conclusão**: a base já está bem preparada para scaling por:
 
@@ -80,6 +80,10 @@ O projeto está construído em uma arquitetura moderna e “cloud-friendly”, c
 - `src/workers/index.ts`: workers com concurrency por fila.
 - `src/lib/queue/config.ts`: Redis opcional (queues desabilitam se não configurado; evita problemas em build).
 
+**Detalhes operacionais** (queues existentes, schedules, env vars, deploy do worker, runbooks e riscos de serverless) estão em:
+
+`REDIS_QUEUES_WORKERS_RUNBOOK.md`
+
 **Escalabilidade**
 - Excelente: workers escalam horizontalmente e independentes do app.
 
@@ -131,7 +135,7 @@ O projeto está construído em uma arquitetura moderna e “cloud-friendly”, c
 ### 2.9 Segurança
 - Middleware com RBAC.
 - Security headers (`src/lib/security-headers.ts`): CSP, HSTS, X-Frame-Options etc.
-- Rate limiting (`src/lib/rate-limiter.ts`) **em memória**.
+- Rate limiting (`src/lib/rate-limiter.ts`) **em Redis quando configurado (fallback em memória)**.
 
 **Ponto de atenção**
 - rate limit em memória não é consistente em escala horizontal.
@@ -183,6 +187,8 @@ Gargalos típicos ao crescer:
 - introduzir search engine (Typesense/Meilisearch/Elastic) para listagens
 - revisar realtime (manter Pusher enquanto custo-benefício for bom)
 
+Notas operacionais (config/variáveis de ambiente e execução de worker) estão no `REDIS_QUEUES_WORKERS_RUNBOOK.md`.
+
 ---
 
 ## 6) Custos (drivers + estimativas)
@@ -215,10 +221,12 @@ Gargalos típicos ao crescer:
 ---
 
 ## 7) Riscos atuais (e mitigação rápida)
-- **Rate limiting em memória** → mover para Redis.
+- **Rate limiting sem Redis (fallback em memória)** → configurar Redis em produção para consistência em escala.
 - **Nominatim em produção** (limites de uso) → provider pago + cache.
 - **Conexões Prisma em serverless** → pooling (PgBouncer) e ajuste de deploy.
 - **Pusher auth**: garantir validação de canais privados/presence conforme permissões.
+
+Riscos e mitigação específicos de Redis/queues/workers estão no `REDIS_QUEUES_WORKERS_RUNBOOK.md`.
 
 ---
 
