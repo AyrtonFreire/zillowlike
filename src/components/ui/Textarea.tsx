@@ -8,13 +8,14 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 }
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ label, error, optional, className = "", ...props }, ref) => {
+  ({ label, error, optional: _optional, className = "", ...props }, ref) => {
+    const showRequired = !!props.required && !!label && !label.includes("*");
     return (
       <label className="block">
         {label && (
           <span className="block mb-1">
             <span className="text-sm font-medium text-neutral-700">{label}</span>
-            {optional && <span className="ml-2 text-xs font-normal text-neutral-400">Opcional</span>}
+            {showRequired && <span className="ml-1 text-sm font-semibold text-danger">*</span>}
           </span>
         )}
         <textarea

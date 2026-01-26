@@ -63,8 +63,6 @@ export default function Home() {
   const [luxuryLoading, setLuxuryLoading] = useState(true);
   const [condoList, setCondoList] = useState<Property[]>([]);
   const [condoLoading, setCondoLoading] = useState(true);
-  const [studioList, setStudioList] = useState<Property[]>([]);
-  const [studioLoading, setStudioLoading] = useState(true);
   const [landList, setLandList] = useState<Property[]>([]);
   const [landLoading, setLandLoading] = useState(true);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -590,19 +588,17 @@ export default function Home() {
           }
         }
       } catch {}
-      setFurnishedLoading(true); setLuxuryLoading(true); setCondoLoading(true); setStudioLoading(true); setLandLoading(true);
-      const [furnished, luxury, condos, studios, lands] = await Promise.all([
+      setFurnishedLoading(true); setLuxuryLoading(true); setCondoLoading(true); setLandLoading(true);
+      const [furnished, luxury, condos, lands] = await Promise.all([
         fetchCategory({ furnished: 'true' }, { city: preferredCity, state: preferredState }),
         fetchCategory({ minPrice: '1500000' }, { city: preferredCity, state: preferredState }), // Luxo: R$1,5M+
         fetchCategory({ type: 'CONDO' }, { city: preferredCity, state: preferredState }),
-        fetchCategory({ type: 'STUDIO' }, { city: preferredCity, state: preferredState }),
         fetchCategory({ type: 'LAND' }, { city: preferredCity, state: preferredState }),
       ]);
       if (cancelled) return;
       setFurnishedList(furnished); setFurnishedLoading(false);
       setLuxuryList(luxury); setLuxuryLoading(false);
       setCondoList(condos); setCondoLoading(false);
-      setStudioList(studios); setStudioLoading(false);
       setLandList(lands); setLandLoading(false);
     })();
     return () => { cancelled = true; };
@@ -3015,20 +3011,6 @@ export default function Home() {
                     <div className="md:hidden"><Carousel items={condoList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
                     <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
                       {condoList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
-                    </div>
-                  </>
-                )
-              )},
-              { key: 'studios', label: 'Studios', content: (
-                studioLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[...Array(6)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
-                  </div>
-                ) : (
-                  <>
-                    <div className="md:hidden"><Carousel items={studioList} renderItem={(p)=> (<div className="px-1"><PropertyCardPremium property={p} onOpenOverlay={openOverlay} /></div>)} /></div>
-                    <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
-                      {studioList.slice(0, 6).map((p)=> (<PropertyCardPremium key={p.id} property={p} onOpenOverlay={openOverlay} />))}
                     </div>
                   </>
                 )

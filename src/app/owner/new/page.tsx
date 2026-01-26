@@ -185,11 +185,11 @@ export default function NewPropertyPage() {
     el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }, [currentStep]);
   const CONDITION_STATUS_OPTIONS: string[] = useMemo(
-    () => ["Novo", "Reformado", "Em obras", "Em construção", "Na planta", "Pronto para morar"],
+    () => ["Novo", "Reformado", "Em obras", "Em construção", "Na planta"],
     []
   );
   const CONDITION_EXTRA_OPTIONS: string[] = useMemo(
-    () => ["Mobiliado", "Semi-mobiliado"],
+    () => ["Mobiliado", "Semi-mobiliado", "Sem mobília"],
     []
   );
   const CONDITION_EXTRA_SET = useMemo(
@@ -200,7 +200,7 @@ export default function NewPropertyPage() {
     () => new Set(CONDITION_STATUS_OPTIONS),
     [CONDITION_STATUS_OPTIONS]
   );
-  const FURNISHING_SET = useMemo(() => new Set(["Mobiliado", "Semi-mobiliado"]), []);
+  const FURNISHING_SET = useMemo(() => new Set(["Mobiliado", "Semi-mobiliado", "Sem mobília"]), []);
   const PROPERTY_FEATURE_TAG_OPTIONS: string[] = useMemo(
     () => [
       "Quintal",
@@ -1526,6 +1526,50 @@ export default function NewPropertyPage() {
     { id: 6, name: "Revisão final", description: "Conferir dados e publicar" },
   ];
 
+  const isStepComplete = (stepId: number) => {
+    if (stepId === 1) {
+      const price = parseBRLToNumber(priceBRL);
+      const cepDigits = String(postalCode || "").replace(/\D+/g, "");
+      const hasValidCep = !postalCode || cepDigits.length === 8;
+      return (
+        !!purpose &&
+        !!type &&
+        !!street &&
+        !!neighborhood &&
+        !!city &&
+        !!state &&
+        hasValidCep &&
+        Number.isFinite(price) &&
+        price > 0
+      );
+    }
+
+    if (stepId === 2) {
+      const b = Number(bedrooms);
+      const ba = Number(bathrooms);
+      const a = Number(areaM2);
+      return Number.isFinite(b) && b >= 0 && Number.isFinite(ba) && ba >= 0 && Number.isFinite(a) && a >= 0;
+    }
+
+    if (stepId === 3) {
+      return images.some((it) => it.url && String(it.url).trim().length > 0);
+    }
+
+    if (stepId === 4) {
+      if (finalTitle.length < 3) return false;
+      if (metaTitle && metaTitle.length > 65) return false;
+      if (metaDescription && metaDescription.length > 155) return false;
+      if (videoUrl && !parseVideoUrl(videoUrl)) return false;
+      return true;
+    }
+
+    if (stepId === 5) {
+      return true;
+    }
+
+    return true;
+  };
+
   const publishFieldMeta = useMemo(() => {
     return {
       publish: { title: "Publicação", step: 6 },
@@ -2060,6 +2104,22 @@ export default function NewPropertyPage() {
     // Step 3: sanidade dos números (quando fornecidos)
     if (currentStep === 2) {
       const errs: Record<string, string> = {};
+
+      const requireNum = (key: string, label: string, v: any) => {
+        if (v === "" || v === null || v === undefined) {
+          errs[key] = `Informe ${label.toLowerCase()}.`;
+          return;
+        }
+        const n = Number(v);
+        if (!Number.isFinite(n) || n < 0) {
+          errs[key] = `${label} deve ser 0 ou maior.`;
+        }
+      };
+
+      requireNum("bedrooms", "Quartos", bedrooms);
+      requireNum("bathrooms", "Banheiros", bathrooms);
+      requireNum("areaM2", "Área", areaM2);
+
       const checkNonNeg = (key: string, label: string, v: any) => {
         if (v === "" || v === null || v === undefined) return;
         const n = Number(v);
@@ -2174,7 +2234,7 @@ export default function NewPropertyPage() {
     if (/pet\s*(friendly|aceito|permite)/i.test(norm)) add('Aceita pets');
     if (/(nao\s*aceita\s*pets|sem\s*pets)/i.test(norm)) add('Não aceita pets');
     if (/(mobiliado|mobilhado)/i.test(norm)) add('Mobiliado');
-    if (/(nao\s*mobiliado|sem\s*moveis)/i.test(norm)) add('Não mobiliado');
+    if (/(nao\s*mobiliado|sem\s*moveis)/i.test(norm)) add('Sem mobília');
     if (/(semi\s*-?mobiliado)/i.test(norm)) add('Semi-mobiliado');
     if (/(varanda\s*gourmet)/i.test(norm)) add('Varanda gourmet');
     if (/(varanda|terraco|terra[cç]o)/i.test(norm)) add('Varanda');
@@ -2431,40 +2491,48 @@ export default function NewPropertyPage() {
                 >
                   <div className="flex items-center w-max gap-4">
                     {steps.map((step, index) => (
-                      <div
-                        key={step.id}
-                        ref={(el) => {
-                          stepperItemRefs.current[step.id] = el;
-                        }}
-                        className="flex items-center"
-                      >
-                        <div
-                          className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
-                            currentStep >= step.id
-                              ? 'glass-teal border-emerald-500 text-white'
-                              : 'bg-white border-gray-300 text-gray-500'
-                          }`}
-                        >
-                          {step.id}
-                        </div>
-                        <div className="ml-3 hidden sm:block min-w-[120px]">
+                      (() => {
+                        const canJump = step.id < currentStep && isStepComplete(step.id);
+                        return (
                           <div
-                            className={`text-sm font-medium ${
-                              currentStep >= step.id ? 'text-emerald-700' : 'text-gray-500'
-                            }`}
+                            key={step.id}
+                            ref={(el) => {
+                              stepperItemRefs.current[step.id] = el;
+                            }}
+                            onClick={() => {
+                              if (canJump) setCurrentStep(step.id);
+                            }}
+                            className={`flex items-center ${canJump ? "cursor-pointer" : "cursor-default"}`}
                           >
-                            {step.name}
+                            <div
+                              className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
+                                currentStep >= step.id
+                                  ? 'glass-teal border-emerald-500 text-white'
+                                  : 'bg-white border-gray-300 text-gray-500'
+                              }`}
+                            >
+                              {step.id}
+                            </div>
+                            <div className="ml-3 hidden sm:block min-w-[120px]">
+                              <div
+                                className={`text-sm font-medium ${
+                                  currentStep >= step.id ? 'text-emerald-700' : 'text-gray-500'
+                                }`}
+                              >
+                                {step.name}
+                              </div>
+                              <div className="text-xs text-gray-500">{step.description}</div>
+                            </div>
+                            {index < steps.length - 1 && (
+                              <div
+                                className={`w-12 sm:w-16 h-0.5 mx-2 sm:mx-4 transition-all duration-200 ${
+                                  currentStep > step.id ? 'glass-teal' : 'bg-gray-300'
+                                }`}
+                              />
+                            )}
                           </div>
-                          <div className="text-xs text-gray-500">{step.description}</div>
-                        </div>
-                        {index < steps.length - 1 && (
-                          <div
-                            className={`w-12 sm:w-16 h-0.5 mx-2 sm:mx-4 transition-all duration-200 ${
-                              currentStep > step.id ? 'glass-teal' : 'bg-gray-300'
-                            }`}
-                          />
-                        )}
-                      </div>
+                        );
+                      })()
                     ))}
                   </div>
                 </div>
@@ -2514,31 +2582,32 @@ export default function NewPropertyPage() {
                   </div>
 
                   {userRole === "AGENCY" && (
-                    <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                      <h3 className="font-medium text-gray-900 mb-2">Captador / Parceiro</h3>
-                      <p className="text-sm text-gray-600 mb-3">
-                        Selecione o corretor responsável por este imóvel (usado no modo de distribuição por prioridade).
-                      </p>
-                      <Select
-                        label="Corretor captador"
-                        value={capturerRealtorId}
-                        onChange={(e) => setCapturerRealtorId(String(e.target.value))}
-                        optional
-                      >
-                        <option value="">Não definir</option>
-                        {teamRealtors.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name || m.email || m.id}
-                          </option>
-                        ))}
-                      </Select>
+                    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                      <div className="px-4 py-3 bg-white border-b border-gray-100">
+                        <span className="text-sm font-semibold text-gray-800">Corretor captador</span>
+                      </div>
+                      <div className="p-4">
+                        <Select
+                          aria-label="Corretor captador"
+                          value={capturerRealtorId}
+                          onChange={(e) => setCapturerRealtorId(String(e.target.value))}
+                        >
+                          <option value="">Não definir</option>
+                          {teamRealtors.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name || m.email || m.id}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
                     </div>
                   )}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Select
                         id="purpose"
-                        label="Finalidade *"
+                        label="Finalidade"
+                        required
                         value={purpose}
                         error={fieldErrors.purpose}
                         onChange={(e) => {
@@ -2554,7 +2623,8 @@ export default function NewPropertyPage() {
                     <div>
                       <Input
                         id="priceBRL"
-                        label="Preço (R$) *"
+                        label="Preço (R$)"
+                        required
                         value={priceBRL}
                         error={fieldErrors.priceBRL}
                         onChange={(e) => {
@@ -2568,7 +2638,8 @@ export default function NewPropertyPage() {
                     <div>
                       <Select
                         id="type"
-                        label="Tipo de imóvel *"
+                        label="Tipo de imóvel"
+                        required
                         value={type}
                         error={fieldErrors.type}
                         onChange={(e) => {
@@ -2576,11 +2647,19 @@ export default function NewPropertyPage() {
                           clearFieldError("type");
                         }}
                       >
+                        {type === "TOWNHOUSE" && (
+                          <option value="TOWNHOUSE" disabled>
+                            Sobrado (legado)
+                          </option>
+                        )}
+                        {type === "STUDIO" && (
+                          <option value="STUDIO" disabled>
+                            Studio/Kitnet (legado)
+                          </option>
+                        )}
                         <option value="HOUSE">Casa</option>
                         <option value="APARTMENT">Apartamento</option>
                         <option value="CONDO">Condomínio</option>
-                        <option value="TOWNHOUSE">Sobrado</option>
-                        <option value="STUDIO">Studio/Kitnet</option>
                         <option value="LAND">Terreno</option>
                         <option value="RURAL">Imóvel rural</option>
                         <option value="COMMERCIAL">Comercial</option>
@@ -2607,7 +2686,8 @@ export default function NewPropertyPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <Input
                         id="postalCode"
-                        label="CEP *"
+                        label="CEP"
+                        required
                         value={postalCode}
                         error={fieldErrors.postalCode}
                         onChange={(e) => {
@@ -2619,7 +2699,8 @@ export default function NewPropertyPage() {
                       />
                       <Input
                         id="street"
-                        label="Rua *"
+                        label="Rua"
+                        required
                         value={street}
                         error={fieldErrors.street}
                         onChange={(e) => {
@@ -2640,7 +2721,8 @@ export default function NewPropertyPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <Input
                         id="neighborhood"
-                        label="Bairro *"
+                        label="Bairro"
+                        required
                         value={neighborhood}
                         error={fieldErrors.neighborhood}
                         onChange={(e) => {
@@ -2650,7 +2732,8 @@ export default function NewPropertyPage() {
                       />
                       <Input
                         id="city"
-                        label="Cidade *"
+                        label="Cidade"
+                        required
                         value={city}
                         error={fieldErrors.city}
                         onChange={(e) => {
@@ -2660,7 +2743,8 @@ export default function NewPropertyPage() {
                       />
                       <Input
                         id="state"
-                        label="Estado (UF) *"
+                        label="Estado (UF)"
+                        required
                         value={state}
                         error={fieldErrors.state}
                         onChange={(e) => {
@@ -2840,7 +2924,8 @@ export default function NewPropertyPage() {
                     <Input
                       id="title"
                       type="text"
-                      label="Título do anúncio *"
+                      label="Título do anúncio"
+                      required
                       value={customTitle}
                       error={fieldErrors.title}
                       onChange={(e) => {
@@ -2903,7 +2988,7 @@ export default function NewPropertyPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-sm font-semibold text-gray-900">Vídeo do imóvel (YouTube/Vimeo)</h3>
-                        <p className="text-xs text-gray-600 mt-1">Cole o link do vídeo. Opcional.</p>
+                        <p className="text-xs text-gray-600 mt-1">Cole o link do vídeo.</p>
                       </div>
                       {videoUrl && (
                         <button
@@ -2986,9 +3071,9 @@ export default function NewPropertyPage() {
 
                   {/* Números principais */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <Input id="bedrooms" label="Quartos" value={bedrooms} error={fieldErrors.bedrooms} onChange={(e) => { setBedrooms(e.target.value); clearFieldError("bedrooms"); }} inputMode="numeric" />
-                    <Input id="bathrooms" label="Banheiros" value={bathrooms} error={fieldErrors.bathrooms} onChange={(e) => { setBathrooms(e.target.value); clearFieldError("bathrooms"); }} inputMode="numeric" />
-                    <Input id="areaM2" label="Área (m²)" value={areaM2} error={fieldErrors.areaM2} onChange={(e) => { setAreaM2(e.target.value); clearFieldError("areaM2"); }} inputMode="numeric" />
+                    <Input id="bedrooms" label="Quartos" required value={bedrooms} error={fieldErrors.bedrooms} onChange={(e) => { setBedrooms(e.target.value); clearFieldError("bedrooms"); }} inputMode="numeric" />
+                    <Input id="bathrooms" label="Banheiros" required value={bathrooms} error={fieldErrors.bathrooms} onChange={(e) => { setBathrooms(e.target.value); clearFieldError("bathrooms"); }} inputMode="numeric" />
+                    <Input id="areaM2" label="Área (m²)" required value={areaM2} error={fieldErrors.areaM2} onChange={(e) => { setAreaM2(e.target.value); clearFieldError("areaM2"); }} inputMode="numeric" />
                     <Input id="suites" label="Suítes" value={suites as any} error={fieldErrors.suites} onChange={(e) => { setSuites(e.target.value); clearFieldError("suites"); }} inputMode="numeric" optional />
                     <Input id="parkingSpots" label="Vagas" value={parkingSpots as any} error={fieldErrors.parkingSpots} onChange={(e) => { setParkingSpots(e.target.value); clearFieldError("parkingSpots"); }} inputMode="numeric" optional />
                     <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
@@ -3011,15 +3096,30 @@ export default function NewPropertyPage() {
                     </button>
                     {openAcc.acc_condition && (
                       <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          {[...CONDITION_STATUS_OPTIONS, ...CONDITION_EXTRA_OPTIONS].map((tag) => (
-                            <Checkbox
-                              key={tag}
-                              checked={conditionTags.includes(tag)}
-                              onChange={() => toggleConditionTag(tag)}
-                              label={tag}
-                            />
-                          ))}
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {CONDITION_STATUS_OPTIONS.map((tag) => (
+                              <Checkbox
+                                key={tag}
+                                checked={conditionTags.includes(tag)}
+                                onChange={() => toggleConditionTag(tag)}
+                                label={tag}
+                              />
+                            ))}
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-gray-600 mb-2">Móveis</div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              {CONDITION_EXTRA_OPTIONS.map((tag) => (
+                                <Checkbox
+                                  key={tag}
+                                  checked={conditionTags.includes(tag)}
+                                  onChange={() => toggleConditionTag(tag)}
+                                  label={tag}
+                                />
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}

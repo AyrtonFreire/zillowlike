@@ -252,11 +252,19 @@ export default function EditPropertyPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Tipo</label>
               <select className="w-full border rounded px-3 py-2" value={type} onChange={(e)=>setType(e.target.value)}>
+                {type === "TOWNHOUSE" && (
+                  <option value="TOWNHOUSE" disabled>
+                    Sobrado (legado)
+                  </option>
+                )}
+                {type === "STUDIO" && (
+                  <option value="STUDIO" disabled>
+                    Studio (legado)
+                  </option>
+                )}
                 <option value="HOUSE">Casa</option>
                 <option value="APARTMENT">Apartamento</option>
                 <option value="CONDO">Condomínio</option>
-                <option value="TOWNHOUSE">Sobrado</option>
-                <option value="STUDIO">Studio</option>
                 <option value="LAND">Terreno</option>
                 <option value="RURAL">Imóvel rural</option>
                 <option value="COMMERCIAL">Comercial</option>

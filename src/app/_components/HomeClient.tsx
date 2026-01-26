@@ -270,8 +270,6 @@ export default function HomeClient() {
                       <option value="HOUSE">Casa</option>
                       <option value="APARTMENT">Apartamento</option>
                       <option value="CONDO">Condomínio</option>
-                      <option value="TOWNHOUSE">Sobrado</option>
-                      <option value="STUDIO">Studio</option>
                       <option value="LAND">Terreno</option>
                       <option value="RURAL">Imóvel rural</option>
                       <option value="COMMERCIAL">Comercial</option>

@@ -58,6 +58,8 @@ function normalizeSearchParamsForCache(searchParams: URLSearchParams) {
   return sp.toString();
 }
 
+const REMOVED_PROPERTY_TYPES = new Set(["STUDIO", "TOWNHOUSE"]);
+
 // GET /api/properties?city=&state=&minPrice=&maxPrice=&type=&q=&page=&pageSize=&sort=&bedroomsMin=&bathroomsMin=&areaMin=
 export async function GET(req: NextRequest) {
   try {
@@ -138,8 +140,17 @@ export async function GET(req: NextRequest) {
     }
     if (city) where.city = { equals: city, mode: 'insensitive' as Prisma.QueryMode };
     if (state) where.state = { equals: state, mode: 'insensitive' as Prisma.QueryMode };
-    if (type) where.type = type as any;
+    if (type) {
+      const upperType = String(type).toUpperCase();
+      if (REMOVED_PROPERTY_TYPES.has(upperType)) {
+        return NextResponse.json({ success: true, total: 0, properties: [], page, pageSize }, { status: 200 });
+      }
+      where.type = type as any;
+    }
     if (purpose) where.purpose = purpose as any;
+    if (!where.type) {
+      where.type = { notIn: Array.from(REMOVED_PROPERTY_TYPES) };
+    }
     if (minPrice || maxPrice) {
       where.price = {};
       if (minPrice) where.price.gte = toBigInt(minPrice);
@@ -647,6 +658,20 @@ export async function POST(req: NextRequest) {
             message: "Invalid body",
             error: "Invalid body",
             issues: parsed.error.issues,
+          },
+          { status: 400 }
+        )
+      );
+    }
+
+    const rawType = String(parsed.data.type || "").toUpperCase();
+    if (REMOVED_PROPERTY_TYPES.has(rawType)) {
+      return withRequestId(
+        NextResponse.json(
+          {
+            code: "VALIDATION_ERROR",
+            message: "Tipo de imóvel não permitido",
+            error: "Tipo de imóvel não permitido",
           },
           { status: 400 }
         )

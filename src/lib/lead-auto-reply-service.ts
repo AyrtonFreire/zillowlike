@@ -126,6 +126,16 @@ function buildAssistantIntro(clientName: string) {
   return `${greet}\n\nSou a assistente virtual do corretor e estou aqui para ajudar com dúvidas básicas do anúncio.\n\n`;
 }
 
+function buildGenericFallbackReply(params: { clientName: string; propertyTitle: string; includeIntro?: boolean }) {
+  const intro = params.includeIntro ? buildAssistantIntro(params.clientName) : "";
+  const about = params.propertyTitle ? `Sobre o imóvel ${params.propertyTitle}, ` : "Sobre o imóvel, ";
+  return (
+    intro +
+    `${about}no momento eu não consigo responder essa pergunta por aqui.\n\n` +
+    "O corretor vai te responder assim que possível."
+  );
+}
+
 function buildRefusalReply(params: {
   clientName: string;
   propertyTitle: string;
@@ -140,6 +150,7 @@ function buildRefusalReply(params: {
       intro +
       "Eu não consigo combinar esse tipo de detalhe por aqui.\n\n" +
       `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
+      "O corretor vai te responder assim que possível.\n\n" +
       "O que você gostaria de saber sobre o imóvel?"
     );
   }
@@ -149,6 +160,7 @@ function buildRefusalReply(params: {
       intro +
       "Eu não consigo orientar sobre financiamento por aqui.\n\n" +
       `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
+      "O corretor vai te responder assim que possível.\n\n" +
       "O que você gostaria de confirmar sobre o imóvel?"
     );
   }
@@ -158,6 +170,7 @@ function buildRefusalReply(params: {
       intro +
       "Eu só consigo ajudar com dúvidas relacionadas a este anúncio.\n\n" +
       `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
+      "O corretor vai te responder assim que possível.\n\n" +
       "O que você gostaria de saber sobre o imóvel?"
     );
   }
@@ -165,6 +178,7 @@ function buildRefusalReply(params: {
   return (
     intro +
     `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
+    "O corretor vai te responder assim que possível.\n\n" +
     "O que você gostaria de saber?"
   );
 }
@@ -615,6 +629,9 @@ export class LeadAutoReplyService {
         return { ok: true as const, status: "SKIPPED" as const, reason: "HUMAN_ALREADY_REPLIED" };
       }
 
+      const clientName = safeString(lead.contact?.name) || "";
+      const propertyTitle = safeString(lead.property?.title) || "";
+
       const lastAi = await (prisma as any).leadClientMessage.findFirst({
         where: { leadId: lead.id, fromClient: false, source: "AUTO_REPLY_AI" as any },
         orderBy: { createdAt: "desc" },
@@ -622,53 +639,6 @@ export class LeadAutoReplyService {
       });
 
       const shouldIntroduce = !lastAi?.createdAt;
-
-      if (lastAi?.createdAt) {
-        const cooldownMs = settings.cooldownMinutes * 60_000;
-        if (now.getTime() - new Date(lastAi.createdAt).getTime() < cooldownMs) {
-          await (prisma as any).leadAutoReplyJob.update({
-            where: { clientMessageId },
-            data: { status: "SKIPPED", skipReason: "COOLDOWN", processedAt: now },
-          });
-          await this.safeEvent(lead.id, "AUTO_REPLY_SKIPPED", { reason: "COOLDOWN", clientMessageId });
-          await (prisma as any).leadAutoReplyLog.create({
-            data: {
-              leadId: lead.id,
-              realtorId: lead.realtorId,
-              clientMessageId,
-              decision: "SKIPPED",
-              reason: "COOLDOWN",
-            },
-          });
-          return { ok: true as const, status: "SKIPPED" as const, reason: "COOLDOWN" };
-        }
-      }
-
-      const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      const aiCount = await (prisma as any).leadClientMessage.count({
-        where: { leadId: lead.id, fromClient: false, source: "AUTO_REPLY_AI" as any, createdAt: { gte: since24h } },
-      });
-
-      if (aiCount >= settings.maxRepliesPerLeadPer24h) {
-        await (prisma as any).leadAutoReplyJob.update({
-          where: { clientMessageId },
-          data: { status: "SKIPPED", skipReason: "RATE_LIMIT", processedAt: now },
-        });
-        await this.safeEvent(lead.id, "AUTO_REPLY_SKIPPED", { reason: "RATE_LIMIT", clientMessageId });
-        await (prisma as any).leadAutoReplyLog.create({
-          data: {
-            leadId: lead.id,
-            realtorId: lead.realtorId,
-            clientMessageId,
-            decision: "SKIPPED",
-            reason: "RATE_LIMIT",
-          },
-        });
-        return { ok: true as const, status: "SKIPPED" as const, reason: "RATE_LIMIT" };
-      }
-
-      const clientName = safeString(lead.contact?.name) || "";
-      const propertyTitle = safeString(lead.property?.title) || "";
 
       const intent = classifyIntent(msg.content);
       if (intent !== "PROPERTY") {
@@ -685,31 +655,13 @@ export class LeadAutoReplyService {
           propertyTitle,
         });
 
-        if (!draft) {
-          await (prisma as any).leadAutoReplyJob.update({
-            where: { clientMessageId },
-            data: { status: "FAILED", lastError: "EMPTY_TEMPLATE_OUTPUT", processedAt: now },
-          });
-          await this.safeEvent(lead.id, "AUTO_REPLY_FAILED", { reason: "EMPTY_TEMPLATE_OUTPUT", clientMessageId });
-          await (prisma as any).leadAutoReplyLog.create({
-            data: {
-              leadId: lead.id,
-              realtorId: lead.realtorId,
-              clientMessageId,
-              decision: "FAILED",
-              reason: "EMPTY_TEMPLATE_OUTPUT",
-              model: null,
-              promptVersion: "v2",
-            },
-          });
-          return { ok: false as const, status: "FAILED" as const, reason: "EMPTY_TEMPLATE_OUTPUT" };
-        }
+        const finalText = draft || buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: shouldIntroduce });
 
         const assistantMessage = await (prisma as any).leadClientMessage.create({
           data: {
             leadId: lead.id,
             fromClient: false,
-            content: draft,
+            content: finalText,
             source: "AUTO_REPLY_AI" as any,
           },
           select: { id: true, content: true, createdAt: true },
@@ -737,6 +689,65 @@ export class LeadAutoReplyService {
           clientMessageId,
           assistantMessageId: assistantMessage.id,
           model: null,
+          refusal: true,
+          intent,
+        });
+
+        try {
+          const pusher = getPusherServer();
+          await pusher.trigger(PUSHER_CHANNELS.CHAT(lead.id), PUSHER_EVENTS.NEW_CHAT_MESSAGE, {
+            id: assistantMessage.id,
+            leadId: lead.id,
+            fromClient: false,
+            content: assistantMessage.content,
+            createdAt: assistantMessage.createdAt,
+          });
+        } catch {}
+
+        return { ok: true as const, status: "SENT" as const };
+      }
+
+      const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const aiCount = await (prisma as any).leadClientMessage.count({
+        where: { leadId: lead.id, fromClient: false, source: "AUTO_REPLY_AI" as any, createdAt: { gte: since24h } },
+      });
+
+      if (aiCount >= settings.maxRepliesPerLeadPer24h) {
+        const fallback = buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: false });
+        const assistantMessage = await (prisma as any).leadClientMessage.create({
+          data: {
+            leadId: lead.id,
+            fromClient: false,
+            content: fallback,
+            source: "AUTO_REPLY_AI" as any,
+          },
+          select: { id: true, content: true, createdAt: true },
+        });
+
+        await (prisma as any).leadAutoReplyJob.update({
+          where: { clientMessageId },
+          data: { status: "SENT", processedAt: now },
+        });
+
+        await (prisma as any).leadAutoReplyLog.create({
+          data: {
+            leadId: lead.id,
+            realtorId: lead.realtorId,
+            clientMessageId,
+            assistantMessageId: assistantMessage.id,
+            decision: "SENT",
+            reason: "RATE_LIMIT",
+            model: null,
+            promptVersion: "v2",
+          },
+        });
+
+        await this.safeEvent(lead.id, "AUTO_REPLY_SENT", {
+          clientMessageId,
+          assistantMessageId: assistantMessage.id,
+          model: null,
+          fallback: true,
+          reason: "RATE_LIMIT",
         });
 
         try {
@@ -755,21 +766,53 @@ export class LeadAutoReplyService {
 
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) {
+        const fallback = buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: shouldIntroduce });
+        const assistantMessage = await (prisma as any).leadClientMessage.create({
+          data: {
+            leadId: lead.id,
+            fromClient: false,
+            content: fallback,
+            source: "AUTO_REPLY_AI" as any,
+          },
+          select: { id: true, content: true, createdAt: true },
+        });
+
         await (prisma as any).leadAutoReplyJob.update({
           where: { clientMessageId },
-          data: { status: "SKIPPED", skipReason: "OPENAI_API_KEY_MISSING", processedAt: now },
+          data: { status: "SENT", processedAt: now },
         });
-        await this.safeEvent(lead.id, "AUTO_REPLY_SKIPPED", { reason: "OPENAI_API_KEY_MISSING", clientMessageId });
+
         await (prisma as any).leadAutoReplyLog.create({
           data: {
             leadId: lead.id,
             realtorId: lead.realtorId,
             clientMessageId,
-            decision: "SKIPPED",
+            assistantMessageId: assistantMessage.id,
+            decision: "SENT",
             reason: "OPENAI_API_KEY_MISSING",
           },
         });
-        return { ok: true as const, status: "SKIPPED" as const, reason: "OPENAI_API_KEY_MISSING" };
+
+        await this.safeEvent(lead.id, "AUTO_REPLY_SENT", {
+          clientMessageId,
+          assistantMessageId: assistantMessage.id,
+          model: null,
+          fallback: true,
+          reason: "OPENAI_API_KEY_MISSING",
+        });
+
+        try {
+          const pusher = getPusherServer();
+          await pusher.trigger(PUSHER_CHANNELS.CHAT(lead.id), PUSHER_EVENTS.NEW_CHAT_MESSAGE, {
+            id: assistantMessage.id,
+            leadId: lead.id,
+            fromClient: false,
+            content: assistantMessage.content,
+            createdAt: assistantMessage.createdAt,
+          });
+        } catch {}
+
+        return { ok: true as const, status: "SENT" as const };
       }
 
       const recent = await prisma.leadClientMessage.findMany({
@@ -816,7 +859,6 @@ export class LeadAutoReplyService {
         "Você está respondendo enquanto o corretor está offline (fora do horário comercial configurado).\n" +
         "Objetivo: manter o cliente engajado, esclarecer dúvidas básicas do imóvel usando SOMENTE os dados fornecidos e fazer 1 pergunta curta para qualificar.\n" +
         "Regras: responda apenas sobre o anúncio; não invente informações; não use links/telefone; não agende visitas; não sugira horários; não prometa retorno em X minutos.\n" +
-        "Se esta for sua primeira mensagem nesta conversa, se identifique como assistente virtual do corretor.\n" +
         "Responda de forma curta, humana e direta (máximo ~5 linhas).";
 
       const lines: string[] = [];
@@ -846,7 +888,14 @@ export class LeadAutoReplyService {
 
       const ai = await callOpenAiText({ apiKey, systemPrompt, userPrompt });
       const rawDraft = ai?.content ? String(ai.content) : "";
-      const draftWithIntro = shouldIntroduce ? buildAssistantIntro(clientName) + rawDraft : rawDraft;
+      const normalized = normalizeTextForMatch(rawDraft);
+      const alreadyIntroduced =
+        normalized.includes("sou a assistente") ||
+        normalized.includes("assistente virtual") ||
+        normalized.includes("sou o assistente") ||
+        normalized.includes("sou a assistente virtual do corretor") ||
+        normalized.includes("sou o assistente virtual do corretor");
+      const draftWithIntro = shouldIntroduce && !alreadyIntroduced ? buildAssistantIntro(clientName) + rawDraft : rawDraft;
       const draft = rawDraft
         ? applyOfflineAutoReplyGuardrails({
             draft: draftWithIntro,
@@ -856,23 +905,55 @@ export class LeadAutoReplyService {
         : "";
 
       if (!draft) {
+        const fallback = buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: shouldIntroduce });
+        const assistantMessage = await (prisma as any).leadClientMessage.create({
+          data: {
+            leadId: lead.id,
+            fromClient: false,
+            content: fallback,
+            source: "AUTO_REPLY_AI" as any,
+          },
+          select: { id: true, content: true, createdAt: true },
+        });
+
         await (prisma as any).leadAutoReplyJob.update({
           where: { clientMessageId },
-          data: { status: "FAILED", lastError: "EMPTY_AI_OUTPUT", processedAt: now },
+          data: { status: "SENT", processedAt: now },
         });
-        await this.safeEvent(lead.id, "AUTO_REPLY_FAILED", { reason: "EMPTY_AI_OUTPUT", clientMessageId });
+
         await (prisma as any).leadAutoReplyLog.create({
           data: {
             leadId: lead.id,
             realtorId: lead.realtorId,
             clientMessageId,
-            decision: "FAILED",
+            assistantMessageId: assistantMessage.id,
+            decision: "SENT",
             reason: "EMPTY_AI_OUTPUT",
             model: ai?.model || null,
-            promptVersion: "v1",
+            promptVersion: "v2",
           },
         });
-        return { ok: false as const, status: "FAILED" as const, reason: "EMPTY_AI_OUTPUT" };
+
+        await this.safeEvent(lead.id, "AUTO_REPLY_SENT", {
+          clientMessageId,
+          assistantMessageId: assistantMessage.id,
+          model: ai?.model || null,
+          fallback: true,
+          reason: "EMPTY_AI_OUTPUT",
+        });
+
+        try {
+          const pusher = getPusherServer();
+          await pusher.trigger(PUSHER_CHANNELS.CHAT(lead.id), PUSHER_EVENTS.NEW_CHAT_MESSAGE, {
+            id: assistantMessage.id,
+            leadId: lead.id,
+            fromClient: false,
+            content: assistantMessage.content,
+            createdAt: assistantMessage.createdAt,
+          });
+        } catch {}
+
+        return { ok: true as const, status: "SENT" as const };
       }
 
       const assistantMessage = await (prisma as any).leadClientMessage.create({

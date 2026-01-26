@@ -212,9 +212,7 @@ export default function SearchFiltersBarZillow({
     { value: "HOUSE", label: "Casa", icon: "🏠" },
     { value: "APARTMENT", label: "Apartamento", icon: "🏢" },
     { value: "CONDO", label: "Condomínio", icon: "🏘️" },
-    { value: "TOWNHOUSE", label: "Sobrado", icon: "🏡" },
     { value: "LAND", label: "Terreno", icon: "🌳" },
-    { value: "STUDIO", label: "Studio", icon: "🛏️" },
     { value: "RURAL", label: "Imóvel rural", icon: "🌾" },
     { value: "COMMERCIAL", label: "Comercial", icon: "🏬" },
   ];

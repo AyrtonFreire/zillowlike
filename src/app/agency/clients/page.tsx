@@ -61,14 +61,14 @@ type PreferencePutResponse = {
   issues?: any;
 };
 
-const PROPERTY_TYPES = ["HOUSE", "APARTMENT", "CONDO", "TOWNHOUSE", "STUDIO", "LAND", "RURAL", "COMMERCIAL"] as const;
+const PROPERTY_TYPES = ["HOUSE", "APARTMENT", "CONDO", "LAND", "RURAL", "COMMERCIAL"] as const;
+
+const REMOVED_TYPES = new Set(["STUDIO", "TOWNHOUSE"]);
 
 const PROPERTY_TYPE_LABEL: Record<string, string> = {
   HOUSE: "Casa",
   APARTMENT: "Apartamento",
   CONDO: "Condomínio",
-  TOWNHOUSE: "Sobrado",
-  STUDIO: "Studio",
   LAND: "Terreno",
   RURAL: "Imóvel rural",
   COMMERCIAL: "Comercial",
@@ -286,7 +286,11 @@ export default function AgencyClientsPage() {
       setEditPrefNeighborhoodDraft("");
       setEditPrefPurpose(pref?.purpose === "SALE" || pref?.purpose === "RENT" ? pref.purpose : "");
       setEditPrefScope(pref?.scope === "MARKET" ? "MARKET" : "PORTFOLIO");
-      setEditPrefTypes(Array.isArray(pref?.types) ? pref.types.map((x: any) => String(x)) : []);
+      setEditPrefTypes(
+        Array.isArray(pref?.types)
+          ? pref.types.map((x: any) => String(x)).filter((t: string) => !REMOVED_TYPES.has(t))
+          : []
+      );
       setEditPrefMinPrice(pref?.minPrice != null ? String(Math.round(Number(pref.minPrice) / 100)) : "");
       setEditPrefMaxPrice(pref?.maxPrice != null ? String(Math.round(Number(pref.maxPrice) / 100)) : "");
       setEditPrefBedroomsMin(pref?.bedroomsMin != null ? String(pref.bedroomsMin) : "");
@@ -584,7 +588,7 @@ export default function AgencyClientsPage() {
         state,
         neighborhoods: prefNeighborhoodTags,
         purpose: prefPurpose ? prefPurpose : null,
-        types: prefTypes,
+        types: (prefTypes || []).filter((t) => !REMOVED_TYPES.has(String(t))),
         minPrice: prefMinPrice.trim() ? Math.max(0, Math.round(Number(prefMinPrice))) * 100 : null,
         maxPrice: prefMaxPrice.trim() ? Math.max(0, Math.round(Number(prefMaxPrice))) * 100 : null,
         bedroomsMin: prefBedroomsMin.trim() ? Math.max(0, Math.round(Number(prefBedroomsMin))) : null,
@@ -654,7 +658,7 @@ export default function AgencyClientsPage() {
         state,
         neighborhoods: editPrefNeighborhoodTags,
         purpose: editPrefPurpose ? editPrefPurpose : null,
-        types: editPrefTypes,
+        types: (editPrefTypes || []).filter((t) => !REMOVED_TYPES.has(String(t))),
         minPrice: editPrefMinPrice.trim() ? Math.max(0, Math.round(Number(editPrefMinPrice))) * 100 : null,
         maxPrice: editPrefMaxPrice.trim() ? Math.max(0, Math.round(Number(editPrefMaxPrice))) * 100 : null,
         bedroomsMin: editPrefBedroomsMin.trim() ? Math.max(0, Math.round(Number(editPrefBedroomsMin))) : null,

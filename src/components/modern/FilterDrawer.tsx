@@ -116,8 +116,6 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
                       "HOUSE",
                       "APARTMENT",
                       "CONDO",
-                      "TOWNHOUSE",
-                      "STUDIO",
                       "LAND",
                       "RURAL",
                       "COMMERCIAL",

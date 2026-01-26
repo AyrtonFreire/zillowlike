@@ -155,14 +155,14 @@ type WhatsAppDraftResponse = {
   error?: string;
 };
 
-const PROPERTY_TYPES = ["HOUSE", "APARTMENT", "CONDO", "TOWNHOUSE", "STUDIO", "LAND", "RURAL", "COMMERCIAL"] as const;
+const PROPERTY_TYPES = ["HOUSE", "APARTMENT", "CONDO", "LAND", "RURAL", "COMMERCIAL"] as const;
+
+const REMOVED_TYPES = new Set(["STUDIO", "TOWNHOUSE"]);
 
 const PROPERTY_TYPE_LABEL: Record<string, string> = {
   HOUSE: "Casa",
   APARTMENT: "Apartamento",
   CONDO: "Condomínio",
-  TOWNHOUSE: "Sobrado",
-  STUDIO: "Studio",
   LAND: "Terreno",
   RURAL: "Imóvel rural",
   COMMERCIAL: "Comercial",
@@ -339,7 +339,7 @@ export default function AgencyClientDetailPage() {
       setPrefNeighborhoodTags(Array.isArray(p?.neighborhoods) ? p.neighborhoods.map((s: any) => String(s)).filter(Boolean) : []);
       setPrefNeighborhoodDraft("");
       setPrefPurpose((p?.purpose as any) ?? null);
-      setPrefTypes(Array.isArray(p?.types) ? p.types : []);
+      setPrefTypes(Array.isArray(p?.types) ? p.types.filter((t: any) => !REMOVED_TYPES.has(String(t))) : []);
       setPrefMinPrice(brlFromCents(p?.minPrice ?? null));
       setPrefMaxPrice(brlFromCents(p?.maxPrice ?? null));
       setPrefBedroomsMin(p?.bedroomsMin != null ? String(p.bedroomsMin) : "");
@@ -380,7 +380,7 @@ export default function AgencyClientDetailPage() {
         state: prefState.trim(),
         neighborhoods,
         purpose: prefPurpose ?? null,
-        types: prefTypes,
+        types: (prefTypes || []).filter((t) => !REMOVED_TYPES.has(String(t))),
         minPrice: centsFromBrlInput(prefMinPrice),
         maxPrice: centsFromBrlInput(prefMaxPrice),
         bedroomsMin: prefBedroomsMin.trim() ? Number(prefBedroomsMin) : null,

@@ -115,6 +115,9 @@ export default function ClientChatPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
+  const pollRef = useRef<number | null>(null);
+  const pollStopRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!token) return;
     if (status === "loading") return;
@@ -217,6 +220,49 @@ export default function ClientChatPage() {
       cancelled = true;
     };
   }, [token]);
+
+  const fetchMessagesOnly = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`/api/chat/${token}`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) return;
+      const next = Array.isArray(data.messages) ? data.messages : [];
+      setMessages((prev) => {
+        if (!prev.length) return next;
+        if (!next.length) return prev;
+        const prevLast = prev[prev.length - 1]?.id;
+        const nextLast = next[next.length - 1]?.id;
+        if (prevLast && nextLast && prevLast === nextLast) return prev;
+        return next;
+      });
+    } catch {
+      // ignore
+    }
+  }, [token]);
+
+  const startShortPolling = useCallback(() => {
+    if (pollRef.current) window.clearInterval(pollRef.current);
+    if (pollStopRef.current) window.clearTimeout(pollStopRef.current);
+
+    void fetchMessagesOnly();
+    pollRef.current = window.setInterval(() => {
+      void fetchMessagesOnly();
+    }, 1200);
+
+    pollStopRef.current = window.setTimeout(() => {
+      if (pollRef.current) window.clearInterval(pollRef.current);
+      pollRef.current = null;
+      pollStopRef.current = null;
+    }, 12_000);
+  }, [fetchMessagesOnly]);
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) window.clearInterval(pollRef.current);
+      if (pollStopRef.current) window.clearTimeout(pollStopRef.current);
+    };
+  }, []);
 
   // Conectar ao Pusher para atualizações em tempo real
   useEffect(() => {
@@ -360,11 +406,12 @@ export default function ClientChatPage() {
             : m
         )
       );
+
+      // Fallback: puxa novas mensagens por alguns segundos (caso o Pusher não entregue)
+      startShortPolling();
     } catch (err: any) {
-      console.error("Error sending client chat message:", err);
-      // Remove a mensagem temporária em caso de erro
-      setMessages((prev) => prev.filter((m) => m.id !== tempId));
-      alert(err?.message || "Não conseguimos enviar esta mensagem agora. Tente novamente mais tarde.");
+      console.error("Error sending message:", err);
+      setError(err?.message || "Não conseguimos enviar esta mensagem agora.");
     } finally {
       setSending(false);
     }
