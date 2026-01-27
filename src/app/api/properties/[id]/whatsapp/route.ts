@@ -78,6 +78,8 @@ async function getWhatsAppPayload(req: NextRequest, id: string) {
         select: {
           id: true,
           role: true,
+          publicWhatsApp: true,
+          phoneNormalized: true,
           phone: true,
           phoneVerifiedAt: true,
           publicPhoneOptIn: true,
@@ -126,6 +128,36 @@ async function getWhatsAppPayload(req: NextRequest, id: string) {
         ? String((property as any).capturerRealtorId)
         : null;
 
+    const agencyProfile = await (prisma as any).agencyProfile.findUnique({
+      where: { teamId },
+      select: {
+        phone: true,
+        user: {
+          select: {
+            publicWhatsApp: true,
+            phoneNormalized: true,
+            phone: true,
+          },
+        },
+      },
+    });
+
+    const agencyRawPhone = String(
+      agencyProfile?.phone ||
+        agencyProfile?.user?.publicWhatsApp ||
+        agencyProfile?.user?.phoneNormalized ||
+        agencyProfile?.user?.phone ||
+        owner?.publicWhatsApp ||
+        owner?.phoneNormalized ||
+        owner?.phone ||
+        ""
+    ).trim();
+
+    phoneDigits = agencyRawPhone ? normalizePhoneDigits(agencyRawPhone) : "";
+    if (!phoneDigits) {
+      return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+    }
+
     const members = await (prisma as any).teamMember.findMany({
       where: {
         teamId,
@@ -153,20 +185,7 @@ async function getWhatsAppPayload(req: NextRequest, id: string) {
         : null;
     const picked = preferred || eligible[0] || null;
 
-    if (!picked?.user?.id) {
-      return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
-    }
-
-    responsibleRealtorId = String(picked.user.id);
-    const hasVerifiedPhone = !!(picked.user.phone && picked.user.phoneVerifiedAt);
-    if (!hasVerifiedPhone) {
-      return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
-    }
-
-    phoneDigits = normalizePhoneDigits(String(picked.user.phone));
-    if (!phoneDigits) {
-      return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
-    }
+    responsibleRealtorId = picked?.user?.id ? String(picked.user.id) : null;
   } else {
     const hasVerifiedPhone = !!(owner.phone && owner.phoneVerifiedAt);
     if (!hasVerifiedPhone) {
@@ -235,7 +254,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
       const baseWhere: any = {
         propertyId: payload.propertyId,
-        isDirect: true,
+        isDirect: payload.isAgencyListing ? false : true,
         ...(sessionUserId
           ? {
               OR: [{ userId: String(sessionUserId) }, { userId: null, contactId: null }],
@@ -245,7 +264,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       };
 
       const existingLead: any = await (prisma as any).lead.findFirst({
-        where: payload.isAgencyListing ? baseWhere : { ...baseWhere, realtorId: payload.ownerId },
+        where: payload.isAgencyListing
+          ? { ...baseWhere, teamId: payload.teamId ?? undefined }
+          : { ...baseWhere, realtorId: payload.ownerId },
         orderBy: { updatedAt: "desc" },
         select: { id: true, realtorId: true },
       });
@@ -317,40 +338,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         const assigned = await ensureAssignedAgencyLead(String(lead.id));
         if (assigned) {
           effectiveRealtorId = String(assigned);
-          try {
-            await (prisma as any).lead.update({
-              where: { id: String(lead.id) },
-              data: {
-                realtorId: effectiveRealtorId,
-                status: "ACCEPTED",
-                pipelineStage: "NEW",
-                isDirect: true,
-                reservedUntil: null,
-              },
-              select: { id: true },
-            });
-          } catch {
-          }
         }
       }
-
-      const realtorPhoneRec = await (prisma as any).user.findUnique({
-        where: { id: String(effectiveRealtorId) },
-        select: { phone: true, phoneVerifiedAt: true },
-      });
-
-      const hasVerifiedPhone = !!(realtorPhoneRec?.phone && realtorPhoneRec?.phoneVerifiedAt);
-      if (!hasVerifiedPhone) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
-
-      const phoneDigits = normalizePhoneDigits(String(realtorPhoneRec.phone));
-      if (!phoneDigits) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
-
-      const text = encodeURIComponent(`Olá! Tenho interesse no imóvel: ${payload.propertyUrl}`);
-      const effectiveWhatsappUrl = `https://wa.me/${phoneDigits}?text=${text}`;
 
       if (!existingLead?.id) {
         await LeadEventService.record({
@@ -366,33 +355,35 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         });
       }
 
-      const assistantItem = await RealtorAssistantService.upsertFromRule({
-        context: "REALTOR",
-        ownerId: String(effectiveRealtorId),
-        leadId: String(lead.id),
-        type: "LEAD_NO_FIRST_CONTACT",
-        priority: "HIGH",
-        title: "Novo interesse via WhatsApp",
-        message: `Alguém clicou no WhatsApp do imóvel “${payload.propertyTitle}”. Gere a primeira mensagem e confirme o contato.`,
-        dueAt: now,
-        dedupeKey: `WHATSAPP_CLICK:${payload.propertyId}`,
-        primaryAction: { type: "OPEN_LEAD", leadId: String(lead.id) },
-        secondaryAction: null,
-        metadata: {
-          source: "WHATSAPP",
-          kind: "CLICK",
-          propertyId: payload.propertyId,
-          propertyUrl: payload.propertyUrl,
-          whatsappUrl: effectiveWhatsappUrl,
-        },
-      });
+      if (!payload.isAgencyListing) {
+        const assistantItem = await RealtorAssistantService.upsertFromRule({
+          context: "REALTOR",
+          ownerId: String(effectiveRealtorId),
+          leadId: String(lead.id),
+          type: "LEAD_NO_FIRST_CONTACT",
+          priority: "HIGH",
+          title: "Novo interesse via WhatsApp",
+          message: `Alguém clicou no WhatsApp do imóvel “${payload.propertyTitle}”. Gere a primeira mensagem e confirme o contato.`,
+          dueAt: now,
+          dedupeKey: `WHATSAPP_CLICK:${payload.propertyId}`,
+          primaryAction: { type: "OPEN_LEAD", leadId: String(lead.id) },
+          secondaryAction: null,
+          metadata: {
+            source: "WHATSAPP",
+            kind: "CLICK",
+            propertyId: payload.propertyId,
+            propertyUrl: payload.propertyUrl,
+            whatsappUrl: payload.whatsappUrl,
+          },
+        });
 
-      try {
-        await RealtorAssistantService.emitItemUpdated(String(effectiveRealtorId), assistantItem);
-      } catch {
+        try {
+          await RealtorAssistantService.emitItemUpdated(String(effectiveRealtorId), assistantItem);
+        } catch {
+        }
       }
 
-      const res = NextResponse.json({ whatsappUrl: effectiveWhatsappUrl });
+      const res = NextResponse.json({ whatsappUrl: payload.whatsappUrl });
       res.headers.set("Cache-Control", "no-store");
       return res;
     }

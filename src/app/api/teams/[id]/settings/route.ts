@@ -6,9 +6,23 @@ import { prisma } from "@/lib/prisma";
 
 const teamSettingsSchema = z.object({
   leadDistributionMode: z.enum(["ROUND_ROBIN", "CAPTURER_FIRST", "MANUAL"]),
+  leadReservationMinutes: z.number().int().min(1).max(24 * 60).optional(),
+  leadMaxRedistributionAttempts: z.number().int().min(1).max(50).optional(),
 });
 
 type TeamLeadDistributionMode = z.infer<typeof teamSettingsSchema>["leadDistributionMode"];
+
+function keyForMode(teamId: string) {
+  return `team:${teamId}:leadDistributionMode`;
+}
+
+function keyForReservationMinutes(teamId: string) {
+  return `team:${teamId}:leadReservationMinutes`;
+}
+
+function keyForMaxRedistributionAttempts(teamId: string) {
+  return `team:${teamId}:leadMaxRedistributionAttempts`;
+}
 
 async function getSessionContext() {
   const session: any = await getServerSession(authOptions);
@@ -55,8 +69,15 @@ async function assertCanManageTeam(teamId: string, userId: string, role: string 
   return { ok: true as const };
 }
 
-function keyFor(teamId: string) {
-  return `team:${teamId}:leadDistributionMode`;
+function normalizeMode(value: unknown): TeamLeadDistributionMode {
+  const v = String(value || "").trim().toUpperCase();
+  return v === "CAPTURER_FIRST" || v === "MANUAL" || v === "ROUND_ROBIN" ? (v as any) : "ROUND_ROBIN";
+}
+
+function parsePositiveInt(value: unknown): number | null {
+  const n = Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
 }
 
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -71,16 +92,33 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     const permission = await assertCanManageTeam(teamId, userId, role);
     if (!permission.ok) return permission.response;
 
-    const rec = await (prisma as any).systemSetting.findUnique({
-      where: { key: keyFor(teamId) },
-      select: { key: true, value: true },
+    const [modeRec, reservationRec, attemptsRec] = await Promise.all([
+      (prisma as any).systemSetting.findUnique({
+        where: { key: keyForMode(teamId) },
+        select: { value: true },
+      }),
+      (prisma as any).systemSetting.findUnique({
+        where: { key: keyForReservationMinutes(teamId) },
+        select: { value: true },
+      }),
+      (prisma as any).systemSetting.findUnique({
+        where: { key: keyForMaxRedistributionAttempts(teamId) },
+        select: { value: true },
+      }),
+    ]);
+
+    const mode = normalizeMode(modeRec?.value);
+    const leadReservationMinutes = parsePositiveInt(reservationRec?.value);
+    const leadMaxRedistributionAttempts = parsePositiveInt(attemptsRec?.value);
+
+    return NextResponse.json({
+      success: true,
+      settings: {
+        leadDistributionMode: mode,
+        leadReservationMinutes,
+        leadMaxRedistributionAttempts,
+      },
     });
-
-    const value = String(rec?.value || "").trim().toUpperCase();
-    const mode: TeamLeadDistributionMode =
-      value === "CAPTURER_FIRST" || value === "MANUAL" || value === "ROUND_ROBIN" ? (value as any) : "ROUND_ROBIN";
-
-    return NextResponse.json({ success: true, settings: { leadDistributionMode: mode } });
   } catch (error) {
     console.error("Error fetching team settings:", error);
     return NextResponse.json({ error: "Não conseguimos carregar as configurações deste time." }, { status: 500 });
@@ -106,21 +144,72 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       return NextResponse.json({ error: "Dados inválidos", issues: parsed.error.issues }, { status: 400 });
     }
 
-    const updated = await (prisma as any).systemSetting.upsert({
-      where: { key: keyFor(teamId) },
-      create: {
-        key: keyFor(teamId),
-        value: parsed.data.leadDistributionMode,
-        updatedByUserId: userId,
-      },
-      update: {
-        value: parsed.data.leadDistributionMode,
-        updatedByUserId: userId,
-      },
-      select: { key: true, value: true },
-    });
+    const ops: Promise<any>[] = [];
 
-    return NextResponse.json({ success: true, settings: { leadDistributionMode: updated.value } });
+    ops.push(
+      (prisma as any).systemSetting.upsert({
+        where: { key: keyForMode(teamId) },
+        create: {
+          key: keyForMode(teamId),
+          value: parsed.data.leadDistributionMode,
+          updatedByUserId: userId,
+        },
+        update: {
+          value: parsed.data.leadDistributionMode,
+          updatedByUserId: userId,
+        },
+        select: { value: true },
+      })
+    );
+
+    if (typeof parsed.data.leadReservationMinutes === "number") {
+      ops.push(
+        (prisma as any).systemSetting.upsert({
+          where: { key: keyForReservationMinutes(teamId) },
+          create: {
+            key: keyForReservationMinutes(teamId),
+            value: String(parsed.data.leadReservationMinutes),
+            updatedByUserId: userId,
+          },
+          update: {
+            value: String(parsed.data.leadReservationMinutes),
+            updatedByUserId: userId,
+          },
+          select: { value: true },
+        })
+      );
+    }
+
+    if (typeof parsed.data.leadMaxRedistributionAttempts === "number") {
+      ops.push(
+        (prisma as any).systemSetting.upsert({
+          where: { key: keyForMaxRedistributionAttempts(teamId) },
+          create: {
+            key: keyForMaxRedistributionAttempts(teamId),
+            value: String(parsed.data.leadMaxRedistributionAttempts),
+            updatedByUserId: userId,
+          },
+          update: {
+            value: String(parsed.data.leadMaxRedistributionAttempts),
+            updatedByUserId: userId,
+          },
+          select: { value: true },
+        })
+      );
+    }
+
+    const [modeUpdated, reservationUpdated, attemptsUpdated] = await Promise.all(ops);
+
+    return NextResponse.json({
+      success: true,
+      settings: {
+        leadDistributionMode: String(modeUpdated?.value || parsed.data.leadDistributionMode),
+        leadReservationMinutes:
+          reservationUpdated?.value != null ? parsePositiveInt(reservationUpdated.value) : null,
+        leadMaxRedistributionAttempts:
+          attemptsUpdated?.value != null ? parsePositiveInt(attemptsUpdated.value) : null,
+      },
+    });
   } catch (error) {
     console.error("Error updating team settings:", error);
     return NextResponse.json({ error: "Não conseguimos salvar as configurações deste time." }, { status: 500 });

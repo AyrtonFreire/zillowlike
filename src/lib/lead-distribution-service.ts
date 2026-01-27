@@ -3,11 +3,13 @@ import { QueueService } from "./queue-service";
 import { logger } from "./logger";
 import { LeadEventService } from "./lead-event-service";
 import { RealtorAssistantService } from "./realtor-assistant-service";
+import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "./pusher-server";
 
 const prisma = new PrismaClient();
 
 // Tempo de reserva em minutos
-const RESERVATION_TIME_MINUTES = 10;
+const RESERVATION_TIME_MINUTES = 30;
+const MAX_REDISTRIBUTION_ATTEMPTS = 3;
 const MAX_ACTIVE_LEADS_PER_REALTOR = 3;
 
 type TeamLeadDistributionMode = "ROUND_ROBIN" | "CAPTURER_FIRST" | "MANUAL";
@@ -26,6 +28,21 @@ function normalizeTeamLeadDistributionMode(raw: unknown): TeamLeadDistributionMo
  * Serviço de distribuição de leads
  */
 export class LeadDistributionService {
+  private static async getSystemIntSettingMaybe(key: string): Promise<number | null> {
+    try {
+      const rec = await (prisma as any).systemSetting.findUnique({
+        where: { key },
+        select: { value: true },
+      });
+      const parsed = Number.parseInt(String(rec?.value ?? ""), 10);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    } catch (e) {
+      void e;
+    }
+
+    return null;
+  }
+
   private static async getSystemIntSetting(key: string, fallback: number): Promise<number> {
     try {
       const rec = await (prisma as any).systemSetting.findUnique({
@@ -41,12 +58,95 @@ export class LeadDistributionService {
     return fallback;
   }
 
-  private static async getLeadReservationMinutes(): Promise<number> {
-    return await this.getSystemIntSetting("leadReservationMinutes", RESERVATION_TIME_MINUTES);
+  private static async getLeadReservationMinutes(teamId?: string | null): Promise<number> {
+    if (teamId) {
+      const perTeam = await this.getSystemIntSettingMaybe(`team:${String(teamId)}:leadReservationMinutes`);
+      if (perTeam) return perTeam;
+    }
+
+    const globalSetting = await this.getSystemIntSettingMaybe("leadReservationMinutes");
+    if (globalSetting) return globalSetting;
+
+    return RESERVATION_TIME_MINUTES;
+  }
+
+  private static async getTeamMaxRedistributionAttempts(teamId: string): Promise<number> {
+    const perTeam = await this.getSystemIntSettingMaybe(`team:${String(teamId)}:leadMaxRedistributionAttempts`);
+    if (perTeam) return perTeam;
+    return MAX_REDISTRIBUTION_ATTEMPTS;
   }
 
   private static async getMaxActiveLeadsPerRealtor(): Promise<number> {
     return await this.getSystemIntSetting("maxActiveLeadsPerRealtor", MAX_ACTIVE_LEADS_PER_REALTOR);
+  }
+
+  private static async notifyAgencyLeadRedistributed(params: {
+    teamId: string;
+    leadId: string;
+    fromRealtorId?: string | null;
+    toRealtorId?: string | null;
+    reason: "EXPIRED" | "REJECTED" | "POOL_MANUAL";
+    attempt?: number | null;
+    maxAttempts?: number | null;
+  }) {
+    const teamId = String(params.teamId);
+
+    const agencyProfile = await (prisma as any).agencyProfile.findUnique({
+      where: { teamId },
+      select: { userId: true },
+    });
+    const agencyUserId = agencyProfile?.userId ? String(agencyProfile.userId) : null;
+    if (!agencyUserId) return;
+
+    const attemptLabel =
+      typeof params.attempt === "number" && params.attempt > 0
+        ? ` (tentativa ${params.attempt}${params.maxAttempts ? `/${params.maxAttempts}` : ""})`
+        : "";
+    const from = params.fromRealtorId ? String(params.fromRealtorId) : null;
+    const to = params.toRealtorId ? String(params.toRealtorId) : null;
+
+    const message =
+      params.reason === "POOL_MANUAL"
+        ? `O lead foi movido para o pool manual${attemptLabel}.`
+        : `O lead foi redistribuído automaticamente${attemptLabel}${from ? ` (antes: ${from})` : ""}${to ? ` (agora: ${to})` : ""}.`;
+
+    const item = await RealtorAssistantService.upsertFromRule({
+      context: "AGENCY",
+      ownerId: agencyUserId,
+      teamId,
+      leadId: String(params.leadId),
+      type: "LEAD_REDISTRIBUTED",
+      priority: "HIGH",
+      title: params.reason === "POOL_MANUAL" ? "Lead sem aceite (pool manual)" : "Lead redistribuído",
+      message,
+      dueAt: null,
+      dedupeKey: `LEAD_REDISTRIBUTED:${String(params.leadId)}`,
+      primaryAction: { type: "OPEN_LEAD", leadId: String(params.leadId) },
+      secondaryAction: null,
+      metadata: {
+        teamId,
+        reason: params.reason,
+        fromRealtorId: from,
+        toRealtorId: to,
+        attempt: params.attempt ?? null,
+        maxAttempts: params.maxAttempts ?? null,
+      },
+    });
+
+    try {
+      await RealtorAssistantService.emitItemUpdated(agencyUserId, item, { context: "AGENCY", teamId });
+    } catch {
+    }
+
+    try {
+      const pusher = getPusherServer();
+      await pusher.trigger(PUSHER_CHANNELS.AGENCY(teamId), PUSHER_EVENTS.AGENCY_LEADS_UPDATED, {
+        teamId,
+        leadId: String(params.leadId),
+        ts: new Date().toISOString(),
+      });
+    } catch {
+    }
   }
 
   private static async getTeamLeadDistributionMode(teamId: string): Promise<TeamLeadDistributionMode> {
@@ -84,7 +184,7 @@ export class LeadDistributionService {
 
     if ((lead as any).teamId) {
       const teamId = String((lead as any).teamId);
-      const reservationMinutes = await this.getLeadReservationMinutes();
+      const reservationMinutes = await this.getLeadReservationMinutes(teamId);
 
       const distributionMode = await this.getTeamLeadDistributionMode(teamId);
       if (distributionMode === "MANUAL") {
@@ -262,7 +362,7 @@ export class LeadDistributionService {
     }
 
     // Reserva lead para o corretor
-    const reservationMinutes = await this.getLeadReservationMinutes();
+    const reservationMinutes = await this.getLeadReservationMinutes(null);
     const reservedUntil = new Date();
     reservedUntil.setMinutes(reservedUntil.getMinutes() + reservationMinutes);
 
@@ -316,7 +416,9 @@ export class LeadDistributionService {
     }
 
     // Calcula tempo de resposta
-    const reservationMinutes = await this.getLeadReservationMinutes();
+    const reservationMinutes = await this.getLeadReservationMinutes(
+      (lead as any)?.teamId ? String((lead as any).teamId) : null
+    );
     let referenceStart = lead.createdAt;
     if (lead.reservedUntil) {
       const reservedAt = new Date(lead.reservedUntil.getTime() - reservationMinutes * 60000);
@@ -445,9 +547,47 @@ export class LeadDistributionService {
     const fromStatus = lead.status as any;
     let toStatus: any = "AVAILABLE";
     let shouldRedistribute = true;
-    const reservationMinutes = await this.getLeadReservationMinutes();
+    const teamId = (lead as any)?.teamId ? String((lead as any).teamId) : null;
+    const previousRealtorId = lead.realtorId ? String(lead.realtorId) : null;
+    let redistributedToRealtorId: string | null = null;
+
+    const reservationMinutes = await this.getLeadReservationMinutes(teamId);
+
+    let maxAttempts = MAX_REDISTRIBUTION_ATTEMPTS;
+    let attempts = 0;
+    if (teamId) {
+      try {
+        maxAttempts = await this.getTeamMaxRedistributionAttempts(teamId);
+        attempts = await (prisma as any).leadAssignmentLog.count({
+          where: {
+            leadId: String(leadId),
+            teamId: String(teamId),
+            changedByUserId: "SYSTEM",
+          },
+        });
+      } catch {
+        attempts = 0;
+      }
+    }
+
+    const shouldMoveToManualPool = !!teamId && attempts >= maxAttempts;
 
     await prisma.$transaction(async (tx) => {
+      if (shouldMoveToManualPool) {
+        await tx.lead.update({
+          where: { id: leadId },
+          data: {
+            status: "PENDING",
+            realtorId: null,
+            reservedUntil: null,
+          },
+        });
+
+        toStatus = "PENDING";
+        shouldRedistribute = false;
+        return;
+      }
+
       if (lead.status === "WAITING_REALTOR_ACCEPT" && lead.realtorId) {
         const now = new Date();
 
@@ -486,7 +626,7 @@ export class LeadDistributionService {
           const reservedUntil = new Date();
           reservedUntil.setMinutes(reservedUntil.getMinutes() + reservationMinutes);
 
-          await tx.lead.update({
+          await (tx as any).lead.update({
             where: { id: leadId },
             data: {
               status: "WAITING_REALTOR_ACCEPT",
@@ -494,6 +634,20 @@ export class LeadDistributionService {
               reservedUntil,
             },
           });
+
+          if (teamId) {
+            await (tx as any).leadAssignmentLog.create({
+              data: {
+                leadId,
+                fromRealtorId: previousRealtorId,
+                toRealtorId: String(nextCandidate.queue.realtorId),
+                changedByUserId: "SYSTEM",
+                teamId,
+              },
+            });
+          }
+
+          redistributedToRealtorId = String(nextCandidate.queue.realtorId);
 
           toStatus = "WAITING_REALTOR_ACCEPT";
           shouldRedistribute = false;
@@ -550,8 +704,33 @@ export class LeadDistributionService {
       toStatus,
     });
 
-    if ((lead as any).teamId) {
-      const teamId = String((lead as any).teamId);
+    if (teamId && shouldMoveToManualPool) {
+      await LeadEventService.record({
+        leadId,
+        type: "INTERNAL_MESSAGE",
+        title: "Lead movido para pool manual",
+        description: "O lead foi redistribuído muitas vezes sem aceite e foi movido para o pool manual.",
+        metadata: {
+          teamId,
+          attempts,
+          maxAttempts,
+          reason: "POOL_MANUAL",
+          fromRealtorId: previousRealtorId,
+        },
+      });
+
+      await this.notifyAgencyLeadRedistributed({
+        teamId,
+        leadId,
+        fromRealtorId: previousRealtorId,
+        toRealtorId: null,
+        reason: "POOL_MANUAL",
+        attempt: attempts,
+        maxAttempts,
+      });
+    }
+
+    if (teamId) {
       try {
         const member: any = await (prisma as any).teamMember.findFirst({
           where: { teamId, userId: realtorId },
@@ -597,11 +776,48 @@ export class LeadDistributionService {
       }
     }
 
+    if (teamId && redistributedToRealtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(String(redistributedToRealtorId));
+      } catch {
+      }
+
+      await this.notifyAgencyLeadRedistributed({
+        teamId,
+        leadId,
+        fromRealtorId: previousRealtorId,
+        toRealtorId: redistributedToRealtorId,
+        reason: "REJECTED",
+        attempt: attempts,
+        maxAttempts,
+      });
+    }
+
     if (shouldRedistribute) {
       try {
         await this.distributeNewLead(leadId);
       } catch (e) {
         void e;
+      }
+
+      if (teamId) {
+        try {
+          const refreshed: any = await (prisma as any).lead.findUnique({
+            where: { id: String(leadId) },
+            select: { realtorId: true },
+          });
+          const toRealtorId = refreshed?.realtorId ? String(refreshed.realtorId) : null;
+          await this.notifyAgencyLeadRedistributed({
+            teamId,
+            leadId,
+            fromRealtorId: previousRealtorId,
+            toRealtorId,
+            reason: "REJECTED",
+            attempt: attempts,
+            maxAttempts,
+          });
+        } catch {
+        }
       }
     }
 
@@ -680,6 +896,11 @@ export class LeadDistributionService {
    * 🆕 Seleciona corretor prioritário entre os candidatos
    */
   static async selectPriorityRealtor(leadId: string) {
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      select: { id: true, teamId: true },
+    });
+
     // Busca candidatos ordenados por posição na fila
     const candidatures = await prisma.leadCandidature.findMany({
       where: {
@@ -712,7 +933,7 @@ export class LeadDistributionService {
     const priority = candidatures[0];
 
     // Reserva lead para este corretor (10 minutos)
-    const reservationMinutes = await this.getLeadReservationMinutes();
+    const reservationMinutes = await this.getLeadReservationMinutes(lead?.teamId ? String(lead.teamId) : null);
     const reservedUntil = new Date();
     reservedUntil.setMinutes(reservedUntil.getMinutes() + reservationMinutes);
 
@@ -740,7 +961,7 @@ export class LeadDistributionService {
   static async moveToNextCandidate(leadId: string) {
     const lead = await prisma.lead.findUnique({
       where: { id: leadId },
-      select: { realtorId: true },
+      select: { realtorId: true, teamId: true },
     });
 
     if (!lead?.realtorId) {
@@ -799,17 +1020,31 @@ export class LeadDistributionService {
     }
 
     // Reserva para próximo candidato
-    const reservationMinutes = await this.getLeadReservationMinutes();
+    const reservationMinutes = await this.getLeadReservationMinutes(lead?.teamId ? String(lead.teamId) : null);
     const reservedUntil = new Date();
     reservedUntil.setMinutes(reservedUntil.getMinutes() + reservationMinutes);
 
-    await prisma.lead.update({
-      where: { id: leadId },
-      data: {
-        status: "WAITING_REALTOR_ACCEPT",
-        realtorId: nextCandidate.queue.realtorId,
-        reservedUntil,
-      },
+    await prisma.$transaction(async (tx) => {
+      await (tx as any).lead.update({
+        where: { id: leadId },
+        data: {
+          status: "WAITING_REALTOR_ACCEPT",
+          realtorId: nextCandidate.queue.realtorId,
+          reservedUntil,
+        },
+      });
+
+      if (lead?.teamId) {
+        await (tx as any).leadAssignmentLog.create({
+          data: {
+            leadId,
+            fromRealtorId: String(lead.realtorId),
+            toRealtorId: String(nextCandidate.queue.realtorId),
+            changedByUserId: "SYSTEM",
+            teamId: String(lead.teamId),
+          },
+        });
+      }
     });
 
     logger.info("Moved to next candidate", {
@@ -1087,6 +1322,65 @@ export class LeadDistributionService {
         realtorId: lead.realtorId 
       });
 
+      const teamId = (lead as any)?.teamId ? String((lead as any).teamId) : null;
+      const fromRealtorId = lead.realtorId ? String(lead.realtorId) : null;
+
+      if (teamId) {
+        const maxAttempts = await this.getTeamMaxRedistributionAttempts(teamId);
+        let attempts = 0;
+        try {
+          attempts = await (prisma as any).leadAssignmentLog.count({
+            where: {
+              leadId: String(lead.id),
+              teamId: String(teamId),
+              changedByUserId: "SYSTEM",
+            },
+          });
+        } catch {
+          attempts = 0;
+        }
+
+        if (attempts >= maxAttempts) {
+          try {
+            await prisma.lead.update({
+              where: { id: String(lead.id) },
+              data: {
+                status: "PENDING" as any,
+                realtorId: null,
+                reservedUntil: null,
+              },
+            });
+          } catch {
+          }
+
+          await LeadEventService.record({
+            leadId: String(lead.id),
+            type: "INTERNAL_MESSAGE",
+            title: "Lead movido para pool manual",
+            description: "O lead foi redistribuído muitas vezes sem aceite e foi movido para o pool manual.",
+            metadata: {
+              teamId,
+              attempts,
+              maxAttempts,
+              reason: "POOL_MANUAL",
+              fromRealtorId,
+            },
+          });
+
+          await this.notifyAgencyLeadRedistributed({
+            teamId,
+            leadId: String(lead.id),
+            fromRealtorId,
+            toRealtorId: null,
+            reason: "POOL_MANUAL",
+            attempt: attempts,
+            maxAttempts,
+          });
+
+          continue;
+        }
+      }
+
       // Penaliza corretor (pequena penalidade para não desencorajar)
       if (lead.realtorId) {
         await QueueService.updateScore(
@@ -1116,6 +1410,33 @@ export class LeadDistributionService {
           leadId: lead.id,
           newRealtorId: nextRealtor.id,
         });
+
+        if (teamId) {
+          let attempts = 0;
+          let maxAttempts = MAX_REDISTRIBUTION_ATTEMPTS;
+          try {
+            maxAttempts = await this.getTeamMaxRedistributionAttempts(teamId);
+            attempts = await (prisma as any).leadAssignmentLog.count({
+              where: { leadId: String(lead.id), teamId: String(teamId), changedByUserId: "SYSTEM" },
+            });
+          } catch {
+          }
+
+          await this.notifyAgencyLeadRedistributed({
+            teamId,
+            leadId: String(lead.id),
+            fromRealtorId,
+            toRealtorId: String(nextRealtor.id),
+            reason: "EXPIRED",
+            attempt: attempts,
+            maxAttempts,
+          });
+        }
+
+        try {
+          await RealtorAssistantService.recalculateForRealtor(String(nextRealtor.id));
+        } catch {
+        }
       } else {
         // Sem mais candidatos
         logger.info("No more candidates", {
@@ -1126,6 +1447,37 @@ export class LeadDistributionService {
           await this.distributeNewLead(lead.id);
         } catch (e) {
           void e;
+        }
+
+        if (teamId) {
+          try {
+            const refreshed: any = await (prisma as any).lead.findUnique({
+              where: { id: String(lead.id) },
+              select: { realtorId: true },
+            });
+            const toRealtorId = refreshed?.realtorId ? String(refreshed.realtorId) : null;
+
+            let attempts = 0;
+            let maxAttempts = MAX_REDISTRIBUTION_ATTEMPTS;
+            try {
+              maxAttempts = await this.getTeamMaxRedistributionAttempts(teamId);
+              attempts = await (prisma as any).leadAssignmentLog.count({
+                where: { leadId: String(lead.id), teamId: String(teamId), changedByUserId: "SYSTEM" },
+              });
+            } catch {
+            }
+
+            await this.notifyAgencyLeadRedistributed({
+              teamId,
+              leadId: String(lead.id),
+              fromRealtorId,
+              toRealtorId,
+              reason: "EXPIRED",
+              attempt: attempts,
+              maxAttempts,
+            });
+          } catch {
+          }
         }
       }
     }
