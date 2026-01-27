@@ -472,7 +472,10 @@ model User {
   name          String?
   email         String?   @unique
   emailVerified DateTime?
+  username      String?   @unique
   passwordHash  String?
+  mustChangePassword Boolean @default(false)
+  passwordChangedAt DateTime?
   image         String?
   role          Role      @default(USER)
   authVersion   Int       @default(0)

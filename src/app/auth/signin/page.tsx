@@ -18,7 +18,7 @@ export default function SignInPage() {
   const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   const [idx, setIdx] = useState(0);
-  const [email, setEmail] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,8 +32,8 @@ export default function SignInPage() {
     e.preventDefault();
     setError(null);
 
-    if (!email || !password) {
-      setError("Informe e-mail e senha.");
+    if (!login || !password) {
+      setError("Informe usuário/e-mail e senha.");
       return;
     }
 
@@ -42,7 +42,7 @@ export default function SignInPage() {
     try {
       const res = await signIn("credentials", {
         redirect: false,
-        email,
+        login,
         password,
         callbackUrl,
       });
@@ -135,22 +135,22 @@ export default function SignInPage() {
 
             <div className="flex items-center gap-3 text-[11px] text-gray-500">
               <div className="h-px flex-1 bg-gray-200" />
-              <span>ou entrar com e-mail</span>
+              <span>ou entrar com usuário</span>
               <div className="h-px flex-1 bg-gray-200" />
             </div>
 
             <form className="space-y-3" onSubmit={handleSubmit}>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-700">
-                  E-mail
+                  Usuário ou e-mail
                 </label>
                 <input
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  autoComplete="username"
+                  value={login}
+                  onChange={(e) => setLogin(e.target.value)}
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-500"
-                  placeholder="voce@exemplo.com"
+                  placeholder="seu.usuario"
                 />
               </div>
 

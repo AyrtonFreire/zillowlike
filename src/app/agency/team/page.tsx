@@ -6,12 +6,13 @@ import { useSession } from "next-auth/react";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
 import Tabs from "@/components/ui/Tabs";
-import { Activity, AlertTriangle, Copy, Mail, Plus, Settings, Trash2, Users } from "lucide-react";
+import { Activity, AlertTriangle, KeyRound, Plus, Settings, Trash2, Users } from "lucide-react";
 
 type TeamMember = {
   id: string;
   name: string | null;
   email: string | null;
+  username?: string | null;
   role: string;
 };
 
@@ -36,18 +37,6 @@ type Team = {
     email: string | null;
   };
   members: TeamMember[];
-};
-
-type Invite = {
-  id: string;
-  email: string;
-  role: string;
-  status: string;
-  createdAt: string;
-  expiresAt: string;
-  acceptedAt?: string | null;
-  revokedAt?: string | null;
-  acceptUrl?: string | null;
 };
 
 type AgencyProfile = {
@@ -92,6 +81,7 @@ type AgencyInsights = {
     userId: string;
     name: string | null;
     email: string | null;
+    username?: string | null;
     role: string;
     activeLeads: number;
     pendingReply: number;
@@ -132,12 +122,13 @@ export default function AgencyTeamPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [team, setTeam] = useState<Team | null>(null);
-  const [invites, setInvites] = useState<Invite[]>([]);
   const [agencyProfile, setAgencyProfile] = useState<AgencyProfile | null>(null);
 
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<TeamMemberRole>("AGENT");
-  const [inviting, setInviting] = useState(false);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberUsername, setNewMemberUsername] = useState("");
+  const [newMemberPassword, setNewMemberPassword] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState<TeamMemberRole>("AGENT");
+  const [creatingMember, setCreatingMember] = useState(false);
 
   const [memberBusyId, setMemberBusyId] = useState<string | null>(null);
   const [ownerTransferBusy, setOwnerTransferBusy] = useState(false);
@@ -231,18 +222,7 @@ export default function AgencyTeamPage() {
         }
 
         if (selected?.id) {
-          const [invRes, settingsRes] = await Promise.all([
-            fetch(`/api/teams/${selected.id}/invites`),
-            fetch(`/api/teams/${selected.id}/settings`),
-          ]);
-
-          const invJson = await invRes.json().catch(() => null);
-          if (invRes.ok && invJson?.success && Array.isArray(invJson.invites)) {
-            setInvites(invJson.invites);
-          } else {
-            setInvites([]);
-          }
-
+          const settingsRes = await fetch(`/api/teams/${selected.id}/settings`);
           const settingsJson = await settingsRes.json().catch(() => null);
           const mode = String(settingsJson?.settings?.leadDistributionMode || "").toUpperCase();
           if (mode === "CAPTURER_FIRST" || mode === "MANUAL" || mode === "ROUND_ROBIN") {
@@ -324,14 +304,6 @@ export default function AgencyTeamPage() {
     run();
   }, [role, status, team?.id]);
 
-  async function refreshInvites(teamId: string) {
-    const invRes = await fetch(`/api/teams/${teamId}/invites`);
-    const invJson = await invRes.json().catch(() => null);
-    if (invRes.ok && invJson?.success && Array.isArray(invJson.invites)) {
-      setInvites(invJson.invites);
-    }
-  }
-
   async function refreshTeam(teamId: string) {
     const teamRes = await fetch("/api/teams");
     const teamJson = await teamRes.json().catch(() => null);
@@ -346,34 +318,76 @@ export default function AgencyTeamPage() {
     }
   }
 
-  async function handleInvite(e: FormEvent) {
+  async function handleCreateMember(e: FormEvent) {
     e.preventDefault();
     if (!team?.id) return;
 
-    const email = inviteEmail.trim();
-    if (!email) return;
+    const username = newMemberUsername.trim();
+    const password = newMemberPassword;
+    if (!username || !password) return;
 
     try {
-      setInviting(true);
+      setCreatingMember(true);
       setError(null);
 
-      const res = await fetch(`/api/teams/${team.id}/invites`, {
+      const roleValue = newMemberRole === "ASSISTANT" ? "ASSISTANT" : "AGENT";
+
+      const res = await fetch(`/api/teams/${team.id}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role: inviteRole }),
+        body: JSON.stringify({
+          name: newMemberName.trim() ? newMemberName.trim() : undefined,
+          username,
+          password,
+          teamRole: roleValue,
+        }),
       });
 
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Não conseguimos enviar este convite agora.");
+        throw new Error(data?.error || "Não conseguimos criar este corretor agora.");
       }
 
-      setInviteEmail("");
-      await refreshInvites(team.id);
+      setNewMemberName("");
+      setNewMemberUsername("");
+      setNewMemberPassword("");
+      setNewMemberRole("AGENT");
+
+      await refreshTeam(team.id);
     } catch (err: any) {
-      setError(err?.message || "Não conseguimos enviar este convite agora.");
+      setError(err?.message || "Não conseguimos criar este corretor agora.");
     } finally {
-      setInviting(false);
+      setCreatingMember(false);
+    }
+  }
+
+  async function handleResetMemberPassword(targetUserId: string) {
+    if (!team?.id) return;
+
+    const password = window.prompt("Defina uma senha provisória (mínimo 8 caracteres):") || "";
+    if (!password) return;
+    if (password.length < 8) {
+      setError("A senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+
+    try {
+      setMemberBusyId(targetUserId);
+      setError(null);
+
+      const res = await fetch(`/api/teams/${team.id}/members/${targetUserId}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "Não conseguimos resetar a senha agora.");
+      }
+    } catch (err: any) {
+      setError(err?.message || "Não conseguimos resetar a senha agora.");
+    } finally {
+      setMemberBusyId(null);
     }
   }
 
@@ -460,23 +474,6 @@ export default function AgencyTeamPage() {
     }
   }
 
-  async function handleRevokeInvite(inviteId: string) {
-    if (!team?.id) return;
-
-    try {
-      setError(null);
-      const res = await fetch(`/api/teams/${team.id}/invites/${inviteId}`, { method: "DELETE" });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Não conseguimos revogar este convite agora.");
-      }
-
-      await refreshInvites(team.id);
-    } catch (err: any) {
-      setError(err?.message || "Não conseguimos revogar este convite agora.");
-    }
-  }
-
   async function handleSaveProfile() {
     try {
       setSavingProfile(true);
@@ -558,15 +555,6 @@ export default function AgencyTeamPage() {
     return "Distribui entre corretores de forma equilibrada.";
   };
 
-  const inviteStatusBadge = (status: string) => {
-    const s = String(status || "").toUpperCase();
-    if (s === "PENDING") return "border-amber-200 bg-amber-50 text-amber-700";
-    if (s === "ACCEPTED") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    if (s === "REVOKED") return "border-gray-200 bg-gray-50 text-gray-700";
-    if (s === "EXPIRED") return "border-rose-200 bg-rose-50 text-rose-700";
-    return "border-slate-200 bg-slate-50 text-slate-700";
-  };
-
   const rolePill = (roleValue: string) => {
     const r = String(roleValue || "").toUpperCase();
     if (r === "OWNER") return "border-teal-200 bg-teal-50 text-teal-700";
@@ -629,8 +617,8 @@ export default function AgencyTeamPage() {
                         href="#invites"
                         className="inline-flex items-center justify-center px-3 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
                       >
-                        <Mail className="w-4 h-4 mr-2" />
-                        Convidar
+                        <KeyRound className="w-4 h-4 mr-2" />
+                        Acessos
                       </a>
                     </div>
                   </div>
@@ -692,8 +680,8 @@ export default function AgencyTeamPage() {
                               className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-gray-100 bg-white p-4"
                             >
                               <div className="min-w-0">
-                                <p className="font-semibold text-gray-900 truncate">{m.name || m.email || "Membro"}</p>
-                                <p className="text-xs text-gray-500 truncate">{m.email || ""}</p>
+                                <p className="font-semibold text-gray-900 truncate">{m.name || m.username || m.email || "Membro"}</p>
+                                <p className="text-xs text-gray-500 truncate">{m.username || m.email || ""}</p>
                                 <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
                                   <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
                                     Ativos: <span className="ml-1 tabular-nums text-gray-900">{m.activeLeads}</span>
@@ -754,7 +742,7 @@ export default function AgencyTeamPage() {
                   title="Membros"
                   action={
                     <a href="#invites" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                      Convidar
+                      Acessos
                     </a>
                   }
                 >
@@ -767,18 +755,18 @@ export default function AgencyTeamPage() {
                         >
                           <div className="min-w-0 flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 flex-shrink-0">
-                              {initials(m.name || m.email || "")}
+                              {initials(m.name || m.username || m.email || "")}
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 min-w-0">
-                                <div className="font-semibold text-gray-900 truncate">{m.name || m.email || "Membro"}</div>
+                                <div className="font-semibold text-gray-900 truncate">{m.name || m.username || m.email || "Membro"}</div>
                                 <span
                                   className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${rolePill(String(m.role))}`}
                                 >
                                   {String(m.role).toUpperCase()}
                                 </span>
                               </div>
-                              <div className="text-[11px] text-gray-500 truncate">{m.email || ""}</div>
+                              <div className="text-[11px] text-gray-500 truncate">{m.username || m.email || ""}</div>
                             </div>
                           </div>
 
@@ -861,103 +849,99 @@ export default function AgencyTeamPage() {
           },
           {
             key: "invites",
-            label: "Convites",
+            label: "Acessos",
             content: (
               <div id="invites" className="space-y-6">
-                <StatCard title="Convites">
-                  <form onSubmit={handleInvite} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end mb-4">
-                    <div className="md:col-span-3">
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail do corretor</label>
+                <StatCard title="Criar acesso de corretor">
+                  <form onSubmit={handleCreateMember} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Nome</label>
                       <input
-                        type="email"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="corretor@email.com"
+                        type="text"
+                        value={newMemberName}
+                        onChange={(e) => setNewMemberName(e.target.value)}
+                        placeholder="Nome do corretor"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Usuário</label>
+                      <input
+                        type="text"
+                        value={newMemberUsername}
+                        onChange={(e) => setNewMemberUsername(e.target.value)}
+                        placeholder="ex: joao.silva"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Senha provisória</label>
+                      <input
+                        type="password"
+                        value={newMemberPassword}
+                        onChange={(e) => setNewMemberPassword(e.target.value)}
+                        placeholder="Mínimo 8 caracteres"
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
                       />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-xs font-semibold text-gray-700 mb-1">Papel no time</label>
                       <select
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value as TeamMemberRole)}
+                        value={newMemberRole}
+                        onChange={(e) => setNewMemberRole(e.target.value as TeamMemberRole)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
                       >
                         <option value="AGENT">Agente</option>
                         <option value="ASSISTANT">Assistente</option>
                       </select>
                     </div>
-                    <div className="md:col-span-1">
+                    <div className="md:col-span-4" />
+                    <div className="md:col-span-2">
                       <button
                         type="submit"
-                        disabled={inviting || !team?.id}
+                        disabled={creatingMember || !team?.id || !newMemberUsername.trim() || newMemberPassword.length < 8}
                         className="w-full inline-flex items-center justify-center px-4 py-2 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800 disabled:opacity-60"
                       >
-                        <Mail className="w-4 h-4 mr-2" />
-                        {inviting ? "Enviando..." : "Convidar"}
+                        <KeyRound className="w-4 h-4 mr-2" />
+                        {creatingMember ? "Criando..." : "Criar acesso"}
                       </button>
                     </div>
                   </form>
+                  <div className="mt-4 text-[11px] text-gray-500">
+                    O corretor será obrigado a trocar a senha no primeiro acesso.
+                  </div>
+                </StatCard>
 
-                  {invites.length ? (
-                    <div className="space-y-2">
-                      {invites.map((inv) => (
-                        <div key={inv.id} className="rounded-2xl border border-gray-100 bg-white p-4 text-sm text-gray-700">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="font-semibold text-gray-900 truncate">{inv.email}</div>
-                              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-                                <span
-                                  className={`inline-flex items-center rounded-full border px-2.5 py-1 font-semibold ${inviteStatusBadge(String(inv.status))}`}
-                                >
-                                  {String(inv.status).toUpperCase()}
-                                </span>
-                                <span
-                                  className={`inline-flex items-center rounded-full border px-2.5 py-1 font-semibold ${rolePill(String(inv.role))}`}
-                                >
-                                  {String(inv.role).toUpperCase()}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {inv.acceptUrl && inv.status === "PENDING" && (
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    try {
-                                      await navigator.clipboard.writeText(String(inv.acceptUrl));
-                                    } catch {}
-                                  }}
-                                  className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                                >
-                                  <Copy className="w-3.5 h-3.5 mr-1.5" />
-                                  Copiar link
-                                </button>
-                              )}
-                              {inv.status === "PENDING" && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRevokeInvite(inv.id)}
-                                  className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                                  Revogar
-                                </button>
-                              )}
-                            </div>
+                <StatCard title="Acessos do time">
+                  {team?.members?.length ? (
+                    <div className="space-y-2 text-sm text-gray-700">
+                      {team.members.map((m) => (
+                        <div
+                          key={m.id}
+                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-semibold text-gray-900 truncate">{m.name || m.username || m.email || "Membro"}</div>
+                            <div className="text-[11px] text-gray-500 truncate">{m.username || m.email || ""}</div>
                           </div>
-
-                          {inv.acceptUrl && inv.status === "PENDING" && (
-                            <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-[11px] text-gray-600 break-all">
-                              {inv.acceptUrl}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2 justify-end">
+                            {team?.id && canManageTeam && (
+                              <button
+                                type="button"
+                                onClick={() => handleResetMemberPassword(m.id)}
+                                disabled={memberBusyId === m.id}
+                                className="inline-flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                              >
+                                <KeyRound className="w-3.5 h-3.5 mr-1.5" />
+                                Resetar senha
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-600">Nenhum convite enviado ainda.</div>
+                    <div className="text-sm text-gray-600">Nenhum membro encontrado.</div>
                   )}
                 </StatCard>
               </div>

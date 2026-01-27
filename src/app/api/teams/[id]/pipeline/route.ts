@@ -69,6 +69,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
                 id: true,
                 name: true,
                 email: true,
+                username: true,
                 role: true,
                 publicWhatsApp: true,
                 phoneNormalized: true,
@@ -193,6 +194,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
           id: true,
           name: true,
           email: true,
+          username: true,
         },
       },
     } as const;

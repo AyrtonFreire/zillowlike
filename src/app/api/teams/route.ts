@@ -52,6 +52,7 @@ export async function GET(_req: NextRequest) {
                     id: true,
                     name: true,
                     email: true,
+                    username: true,
                   },
                 },
               },
@@ -74,6 +75,7 @@ export async function GET(_req: NextRequest) {
           id: m.user.id,
           name: m.user.name,
           email: m.user.email,
+          username: (m.user as any)?.username ?? null,
           role: m.role as string,
         })),
       };

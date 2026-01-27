@@ -3,7 +3,15 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 // Rotas que requerem autenticação
-const protectedPaths = ["/admin", "/owner", "/dashboard", "/realtor", "/broker", "/agency"];
+const protectedPaths = [
+  "/admin",
+  "/owner",
+  "/dashboard",
+  "/realtor",
+  "/broker",
+  "/agency",
+  "/auth/force-change-password",
+];
 
 // Mapeamento de paths para roles permitidos
 const roleBasedPaths: Record<string, string[]> = {
@@ -84,6 +92,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  const mustChangePassword = Boolean((token as any)?.mustChangePassword);
+  if (
+    mustChangePassword &&
+    !pathname.startsWith("/auth/force-change-password") &&
+    !pathname.startsWith("/api/auth")
+  ) {
+    const url = new URL("/auth/force-change-password", request.url);
+    url.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(url);
+  }
+
   if (pathname.startsWith("/realtor/register")) {
     return NextResponse.next();
   }
@@ -128,6 +147,7 @@ export const config = {
     "/dashboard/:path*",
     "/broker/:path*",
     "/agency/:path*",
+    "/auth/force-change-password/:path*",
     "/owner/dashboard/:path*",
     "/owner/analytics/:path*",
     "/owner/leads/:path*",

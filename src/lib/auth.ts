@@ -27,16 +27,21 @@ providers.push(
   CredentialsProvider({
     name: "Email e senha",
     credentials: {
-      email: { label: "E-mail", type: "email" },
+      login: { label: "Usuário ou e-mail", type: "text" },
       password: { label: "Senha", type: "password" },
     },
     async authorize(credentials) {
-      if (!credentials?.email || !credentials.password) {
+      if (!credentials?.login || !credentials.password) {
         return null;
       }
 
-      const email = credentials.email.toLowerCase().trim();
-      const user = await prisma.user.findUnique({ where: { email } });
+      const rawLogin = String(credentials.login || "").trim();
+      const login = rawLogin.toLowerCase();
+      const looksLikeEmail = login.includes("@");
+
+      const user = looksLikeEmail
+        ? await prisma.user.findUnique({ where: { email: login } })
+        : await (prisma as any).user.findUnique({ where: { username: login } });
 
       if (!user || !user.passwordHash) {
         return null;
@@ -47,9 +52,7 @@ providers.push(
         return null;
       }
 
-      if (!user.emailVerified) {
-        return null;
-      }
+      if ((looksLikeEmail || user.email) && !user.emailVerified) return null;
 
       return {
         id: user.id,
@@ -58,6 +61,7 @@ providers.push(
         image: user.image,
         role: user.role,
         authVersion: (user as any).authVersion ?? 0,
+        mustChangePassword: (user as any).mustChangePassword ?? false,
       } as any;
     },
   })
@@ -241,6 +245,8 @@ export const authOptions: NextAuthOptions = {
         token.name = (user as any).name ?? token.name;
         token.picture = (user as any).image ?? (token as any).picture;
         (token as any).authVersion = (user as any).authVersion ?? (token as any).authVersion ?? 0;
+        (token as any).mustChangePassword =
+          (user as any).mustChangePassword ?? (token as any).mustChangePassword ?? false;
         (token as any).roleCheckedAt = nowMs;
         dbg("🔑 JWT Callback - Initial sign in, role:", token.role);
         return token;
@@ -259,6 +265,7 @@ export const authOptions: NextAuthOptions = {
                 name: true,
                 image: true,
                 authVersion: true,
+                mustChangePassword: true,
                 recoveryEmail: true,
                 recoveryEmailVerifiedAt: true,
               },
@@ -284,6 +291,7 @@ export const authOptions: NextAuthOptions = {
             token.name = dbUser?.name ?? token.name;
             token.picture = dbUser?.image ?? (token as any).picture;
             (token as any).authVersion = dbAuthVersion;
+            (token as any).mustChangePassword = (dbUser as any)?.mustChangePassword ?? false;
             (token as any).recoveryEmail = (dbUser as any)?.recoveryEmail ?? null;
             (token as any).recoveryEmailVerifiedAt = (dbUser as any)?.recoveryEmailVerifiedAt
               ? new Date((dbUser as any).recoveryEmailVerifiedAt).toISOString()
@@ -331,6 +339,7 @@ export const authOptions: NextAuthOptions = {
         if (token?.email) session.user.email = token.email as string;
         if (token?.name) session.user.name = token.name as string;
         if ((token as any)?.picture) (session.user as any).image = (token as any).picture as string;
+        (session.user as any).mustChangePassword = (token as any)?.mustChangePassword ?? false;
         (session.user as any).recoveryEmail = (token as any)?.recoveryEmail ?? null;
         (session.user as any).recoveryEmailVerifiedAt = (token as any)?.recoveryEmailVerifiedAt ?? null;
       }

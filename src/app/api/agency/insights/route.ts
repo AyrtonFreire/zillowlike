@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
         owner: { select: { id: true, name: true, email: true } },
         members: {
           include: {
-            user: { select: { id: true, name: true, email: true } },
+            user: { select: { id: true, name: true, email: true, username: true } },
           },
         },
       },
@@ -150,7 +150,7 @@ export async function GET(req: NextRequest) {
       OR: [{ teamId: String(teamId) }, { realtorId: { in: memberIds } }],
     };
 
-    const leads = await prisma.lead.findMany({
+    const leads = await (prisma as any).lead.findMany({
       where: baseWhere,
       select: {
         id: true,
@@ -163,7 +163,7 @@ export async function GET(req: NextRequest) {
         realtorId: true,
         contact: { select: { name: true } },
         property: { select: { title: true } },
-        realtor: { select: { id: true, name: true, email: true } },
+        realtor: { select: { id: true, name: true, email: true, username: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 2500,
@@ -241,8 +241,8 @@ export async function GET(req: NextRequest) {
       pendingReplyLeadIds = pendingReplyRowsAll.slice(0, 25);
     }
 
-    const pendingIdSet = new Set(pendingReplyRowsAll.map((x) => x.leadId));
-    const leadById = new Map(leads.map((l) => [String(l.id), l]));
+    const pendingIdSet = new Set(pendingReplyRowsAll.map((x: any) => x.leadId));
+    const leadById = new Map((leads as any[]).map((l: any) => [String(l.id), l]));
 
     const pendingReplyLeads = pendingReplyLeadIds
       .map((row) => {
@@ -254,7 +254,12 @@ export async function GET(req: NextRequest) {
           propertyTitle: lead.property?.title ? String(lead.property.title) : null,
           pipelineStage: lead.pipelineStage ? String(lead.pipelineStage) : null,
           realtorId: lead.realtor?.id ? String(lead.realtor.id) : lead.realtorId ? String(lead.realtorId) : null,
-          realtorName: lead.realtor?.name ? String(lead.realtor.name) : null,
+          realtorName:
+            lead.realtor?.name
+              ? String(lead.realtor.name)
+              : (lead as any)?.realtor?.username
+                ? String((lead as any).realtor.username)
+                : null,
           lastClientAt: row.lastClientAt,
         };
       })
@@ -271,33 +276,35 @@ export async function GET(req: NextRequest) {
     const staleThreshold = addDays(now, -3);
     const unassignedThreshold = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
-    const memberStats = members
+    const memberStats = (members as any[])
       .filter((m) => String(m.role || "").toUpperCase() !== "ASSISTANT")
       .map((m) => {
         const mid = String(m.userId);
-        const activeLeads = leads.filter((l) => activeLeadIds.has(String(l.id)) && String(l.realtorId || "") === mid);
-        const pending = activeLeads.filter((l) => pendingIdSet.has(String(l.id)));
-        const stalled = activeLeads.filter((l) => {
+        const activeLeads = (leads as any[]).filter(
+          (l: any) => activeLeadIds.has(String(l.id)) && String(l.realtorId || "") === mid,
+        );
+        const pending = activeLeads.filter((l: any) => pendingIdSet.has(String(l.id)));
+        const stalled = activeLeads.filter((l: any) => {
           const u = l.updatedAt ? new Date(l.updatedAt) : null;
           if (!u || Number.isNaN(u.getTime())) return false;
           return u < staleThreshold;
         });
 
-        const won = leads.filter((l) => {
+        const won = (leads as any[]).filter((l: any) => {
           if (String(l.realtorId || "") !== mid) return false;
           const stage = normalizeStage((l.pipelineStage as any) ?? null, l.status as any);
           return stage === "WON";
         });
 
-        const lost = leads.filter((l) => {
+        const lost = (leads as any[]).filter((l: any) => {
           if (String(l.realtorId || "") !== mid) return false;
           const stage = normalizeStage((l.pipelineStage as any) ?? null, l.status as any);
           return stage === "LOST";
         });
 
         const firstResponseSamples = leads
-          .filter((l) => String(l.realtorId || "") === mid)
-          .map((l) => {
+          .filter((l: any) => String(l.realtorId || "") === mid)
+          .map((l: any) => {
             const createdAt = l.createdAt ? new Date(l.createdAt) : null;
             const respondedAt = (l as any).respondedAt ? new Date((l as any).respondedAt) : null;
             if (!createdAt || Number.isNaN(createdAt.getTime())) return null;
@@ -305,16 +312,19 @@ export async function GET(req: NextRequest) {
             const minutes = Math.max(0, Math.round((respondedAt.getTime() - createdAt.getTime()) / 60000));
             return minutes;
           })
-          .filter((x): x is number => typeof x === "number");
+          .filter((x: number | null): x is number => typeof x === "number");
 
         const avgFirstResponseMinutes = firstResponseSamples.length
-          ? Math.round(firstResponseSamples.reduce((a, b) => a + b, 0) / firstResponseSamples.length)
+          ? Math.round(
+              firstResponseSamples.reduce((a: number, b: number) => a + b, 0) / firstResponseSamples.length,
+            )
           : null;
 
         return {
           userId: mid,
           name: m.user?.name ? String(m.user.name) : null,
           email: m.user?.email ? String(m.user.email) : null,
+          username: m.user?.username ? String(m.user.username) : null,
           role: String(m.role || ""),
           activeLeads: activeLeads.length,
           pendingReply: pending.length,
@@ -366,7 +376,7 @@ export async function GET(req: NextRequest) {
         hrefLabel: "Ver no CRM",
       });
 
-      const unassignedAging = leads.filter((l) => {
+      const unassignedAging = (leads as any[]).filter((l: any) => {
         if (!activeLeadIds.has(String(l.id))) return false;
         if (l.realtorId) return false;
         const c = l.createdAt ? new Date(l.createdAt) : null;
@@ -405,7 +415,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const stalledTotal = leads.filter((l) => {
+    const stalledTotal = (leads as any[]).filter((l: any) => {
       if (!activeLeadIds.has(String(l.id))) return false;
       const u = l.updatedAt ? new Date(l.updatedAt) : null;
       if (!u || Number.isNaN(u.getTime())) return false;
