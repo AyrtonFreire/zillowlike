@@ -31,6 +31,15 @@ import { ptBR } from "@/lib/i18n/property";
 type Property = ApiProperty;
 const MapWithPriceBubbles = dynamic(() => import("@/components/MapWithPriceBubbles"), { ssr: false });
 
+type SearchSuggestion =
+  | { kind: "location"; label: string; city: string; state: string; neighborhood: string | null; count: number }
+  | { kind: "agency"; label: string; agencyId: string; count: number }
+  | { kind: "realtor"; label: string; realtorId: string; count: number };
+
+const isLocationSuggestion = (
+  s: SearchSuggestion
+): s is Extract<SearchSuggestion, { kind: "location" }> => s.kind === "location";
+
 type OnboardingStatus = {
   authenticated: boolean;
   role: string;
@@ -213,6 +222,10 @@ export default function Home() {
   const [searchInput, setSearchInput] = useState(""); // texto digitado na barra de busca
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+  const [agencyId, setAgencyId] = useState("");
+  const [agencyName, setAgencyName] = useState("");
+  const [realtorId, setRealtorId] = useState("");
+  const [realtorName, setRealtorName] = useState("");
   const [type, setType] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -266,7 +279,7 @@ export default function Home() {
   const [petsLarge, setPetsLarge] = useState(false);
   
   // Autocomplete para barra de busca
-  const [searchSuggestions, setSearchSuggestions] = useState<Array<{label: string; city: string; state: string; neighborhood: string | null; count: number}>>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const searchInputRef = useRef<HTMLDivElement>(null);
@@ -275,9 +288,19 @@ export default function Home() {
   useEffect(() => {
     const filters = parseFiltersFromSearchParams(searchParams);
     setSearch(filters.q || "");
-    setSearchInput(filters.q || "");
+    setSearchInput(
+      filters.agencyId
+        ? filters.agencyName || ""
+        : filters.realtorId
+        ? filters.realtorName || ""
+        : filters.q || ""
+    );
     setCity(filters.city || "");
     setState(filters.state || "");
+    setAgencyId(filters.agencyId || "");
+    setAgencyName(filters.agencyName || "");
+    setRealtorId(filters.realtorId || "");
+    setRealtorName(filters.realtorName || "");
     setType(filters.type || "");
     setMinPrice(filters.minPrice || "");
     setMaxPrice(filters.maxPrice || "");
@@ -308,8 +331,19 @@ export default function Home() {
 
   // Verificar se há busca ativa
   const hasSearched = useMemo(() => {
-    return !!(search || city || type || minPrice || maxPrice || bedroomsMin || bathroomsMin || areaMin);
-  }, [search, city, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin]);
+    return !!(
+      search ||
+      city ||
+      agencyId ||
+      realtorId ||
+      type ||
+      minPrice ||
+      maxPrice ||
+      bedroomsMin ||
+      bathroomsMin ||
+      areaMin
+    );
+  }, [search, city, agencyId, realtorId, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin]);
 
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
 
@@ -451,7 +485,7 @@ export default function Home() {
       if (searchInput.length > 0) {
         setIsFetchingSuggestions(true);
         try {
-          const response = await fetch(`/api/locations?q=${encodeURIComponent(searchInput)}`);
+          const response = await fetch(`/api/search-suggestions?q=${encodeURIComponent(searchInput)}`);
           const data = await response.json();
           if (data.success) {
             setSearchSuggestions(data.suggestions || []);
@@ -483,30 +517,96 @@ export default function Home() {
   }, []);
 
   // Função para selecionar uma sugestão
-  const handleSelectSuggestion = useCallback((suggestion: {label: string; city: string; state: string; neighborhood: string | null}) => {
-    setCity(suggestion.city);
-    setState(suggestion.state);
-    setSearch(suggestion.neighborhood || '');
-    setSearchInput(suggestion.neighborhood || '');
-    setShowSearchSuggestions(false);
+  const handleSelectSuggestion = useCallback((suggestion: SearchSuggestion) => {
     const effectivePurpose = (purpose || "SALE") as any;
     setPurpose(effectivePurpose);
-    
-    // Fazer a busca imediatamente
-    const params = buildSearchParams({ 
-      q: suggestion.neighborhood || '', 
-      city: suggestion.city, 
-      state: suggestion.state, 
-      type, 
-      minPrice, 
-      maxPrice, 
-      bedroomsMin, 
-      bathroomsMin, 
-      areaMin, 
+
+    if (suggestion.kind === "location") {
+      setAgencyId("");
+      setAgencyName("");
+      setRealtorId("");
+      setRealtorName("");
+
+      setCity(suggestion.city);
+      setState(suggestion.state);
+      setSearch(suggestion.neighborhood || "");
+      setSearchInput(suggestion.neighborhood || "");
+      setShowSearchSuggestions(false);
+
+      const params = buildSearchParams({
+        q: suggestion.neighborhood || "",
+        city: suggestion.city,
+        state: suggestion.state,
+        type,
+        minPrice,
+        maxPrice,
+        bedroomsMin,
+        bathroomsMin,
+        areaMin,
+        purpose: effectivePurpose,
+        sort,
+        page: 1,
+      });
+
+      router.push(`/?${params}`);
+      return;
+    }
+
+    if (suggestion.kind === "agency") {
+      setAgencyId(suggestion.agencyId);
+      setAgencyName(suggestion.label);
+      setRealtorId("");
+      setRealtorName("");
+
+      setCity("");
+      setState("");
+      setSearch("");
+      setSearchInput(suggestion.label);
+      setShowSearchSuggestions(false);
+
+      const params = buildSearchParams({
+        agencyId: suggestion.agencyId,
+        agencyName: suggestion.label,
+        type,
+        minPrice,
+        maxPrice,
+        bedroomsMin,
+        bathroomsMin,
+        areaMin,
+        purpose: effectivePurpose,
+        sort,
+        page: 1,
+      });
+
+      router.push(`/?${params}`);
+      return;
+    }
+
+    setAgencyId("");
+    setAgencyName("");
+    setRealtorId(suggestion.realtorId);
+    setRealtorName(suggestion.label);
+
+    setCity("");
+    setState("");
+    setSearch("");
+    setSearchInput(suggestion.label);
+    setShowSearchSuggestions(false);
+
+    const params = buildSearchParams({
+      realtorId: suggestion.realtorId,
+      realtorName: suggestion.label,
+      type,
+      minPrice,
+      maxPrice,
+      bedroomsMin,
+      bathroomsMin,
+      areaMin,
       purpose: effectivePurpose,
-      sort, 
-      page: 1 
+      sort,
+      page: 1,
     });
+
     router.push(`/?${params}`);
   }, [type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, router]);
 
@@ -516,6 +616,12 @@ export default function Home() {
     // Atualiza o termo aplicado para acionar a busca de imóveis
     setSearch(query);
 
+    // Busca textual manual limpa filtros de entidade
+    setAgencyId("");
+    setAgencyName("");
+    setRealtorId("");
+    setRealtorName("");
+
     const effectivePurpose = (purpose || "SALE") as any;
     setPurpose(effectivePurpose);
 
@@ -523,6 +629,10 @@ export default function Home() {
       q: query,
       city,
       state,
+      agencyId: "",
+      agencyName: "",
+      realtorId: "",
+      realtorName: "",
       type,
       minPrice,
       maxPrice,
@@ -664,6 +774,10 @@ export default function Home() {
       q: search,
       city,
       state,
+      agencyId,
+      agencyName,
+      realtorId,
+      realtorName,
       type,
       minPrice,
       maxPrice,
@@ -768,6 +882,10 @@ export default function Home() {
     search,
     city,
     state,
+    agencyId,
+    agencyName,
+    realtorId,
+    realtorName,
     type,
     minPrice,
     maxPrice,
@@ -825,6 +943,10 @@ export default function Home() {
         q: search,
         city,
         state,
+        agencyId,
+        agencyName,
+        realtorId,
+        realtorName,
         type,
         minPrice,
         maxPrice,
@@ -1741,7 +1863,7 @@ export default function Home() {
                     
                     {/* Autocomplete Dropdown */}
                     {showSearchSuggestions && searchSuggestions.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-80 overflow-y-auto">
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] max-h-80 overflow-y-auto pointer-events-auto">
                         {searchSuggestions.map((suggestion, idx) => (
                           <button
                             key={idx}
@@ -1751,9 +1873,15 @@ export default function Home() {
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <div className="font-medium text-gray-900">{suggestion.label}</div>
-                                <div className="text-xs text-gray-500 mt-0.5">
-                                  {suggestion.city}, {suggestion.state}
-                                </div>
+                                {isLocationSuggestion(suggestion) ? (
+                                  <div className="text-xs text-gray-500 mt-0.5">
+                                    {suggestion.city}, {suggestion.state}
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-gray-500 mt-0.5">
+                                    {suggestion.kind === "agency" ? "Imobiliária" : "Corretor"}
+                                  </div>
+                                )}
                               </div>
                               <div className="text-xs text-gray-400 ml-2">
                                 {suggestion.count} {suggestion.count === 1 ? 'imóvel' : 'imóveis'}
@@ -1773,7 +1901,7 @@ export default function Home() {
                     onChange={(e) => {
                       const newPurpose = e.target.value as "SALE" | "RENT";
                       setPurpose(newPurpose);
-                      const params = buildSearchParams({ q: search, city, state, purpose: newPurpose, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                      const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, purpose: newPurpose, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
                       router.push(`/?${params}`);
                     }}
                     className={`px-3 py-2 rounded-full text-sm font-semibold cursor-pointer border transition-colors ${
@@ -1858,7 +1986,7 @@ export default function Home() {
                             </button>
                             <button
                               onClick={() => {
-                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                                const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
@@ -1942,7 +2070,7 @@ export default function Home() {
                             </button>
                             <button
                               onClick={() => {
-                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                                const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
@@ -1988,7 +2116,7 @@ export default function Home() {
                               key={option.value}
                               onClick={() => {
                                 setType(option.value);
-                                const params = buildSearchParams({ q: search, city, state, type: option.value, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                                const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type: option.value, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
@@ -2049,7 +2177,7 @@ export default function Home() {
                             </button>
                             <button
                               onClick={() => {
-                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                                const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
@@ -2089,7 +2217,7 @@ export default function Home() {
                               key={spots}
                               onClick={() => {
                                 setParkingSpots(spots);
-                                const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, parkingSpots: spots, purpose, sort, page: 1 });
+                                const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, parkingSpots: spots, purpose, sort, page: 1 });
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
@@ -2161,7 +2289,7 @@ export default function Home() {
                       
                       {/* Autocomplete Dropdown Mobile */}
                       {showSearchSuggestions && searchSuggestions.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-80 overflow-y-auto pointer-events-auto">
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] max-h-80 overflow-y-auto pointer-events-auto">
                           {searchSuggestions.map((suggestion, idx) => (
                             <button
                               key={idx}
@@ -2171,9 +2299,15 @@ export default function Home() {
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                   <div className="font-medium text-gray-900">{suggestion.label}</div>
-                                  <div className="text-xs text-gray-500 mt-0.5">
-                                    {suggestion.city}, {suggestion.state}
-                                  </div>
+                                  {isLocationSuggestion(suggestion) ? (
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                      {suggestion.city}, {suggestion.state}
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                      {suggestion.kind === "agency" ? "Imobiliária" : "Corretor"}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="text-xs text-gray-400 ml-2">
                                   {suggestion.count} {suggestion.count === 1 ? 'imóvel' : 'imóveis'}
@@ -2219,7 +2353,7 @@ export default function Home() {
                           setSearch('');
                           setCity('');
                           setState('');
-                          const params = buildSearchParams({ type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                          const params = buildSearchParams({ agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2236,7 +2370,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setType('');
-                          const params = buildSearchParams({ q: search, city, state, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2253,7 +2387,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setMinPrice('');
-                          const params = buildSearchParams({ q: search, city, state, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2270,7 +2404,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setMaxPrice('');
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2287,7 +2421,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setBedroomsMin('');
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2304,7 +2438,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setBathroomsMin('');
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, areaMin, purpose, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2321,7 +2455,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setPetFriendly(false);
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2338,7 +2472,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setFurnished(false);
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2355,7 +2489,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setHasPool(false);
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2372,7 +2506,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setHasGym(false);
-                          const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                          const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                           router.push(`/?${params}`);
                         }}
                         className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2401,17 +2535,21 @@ export default function Home() {
                     <select
                       value={sort}
                       onChange={(e) => {
-                        const newSort = e.target.value;
-                        setSort(newSort);
-                        const params = buildSearchParams({
-                          q: search,
-                          city,
-                          state,
-                          type,
-                          minPrice,
-                          maxPrice,
-                          bedroomsMin,
-                          bathroomsMin,
+                      const newSort = e.target.value;
+                      setSort(newSort);
+                      const params = buildSearchParams({
+                        q: search,
+                        city,
+                        state,
+                        agencyId,
+                        agencyName,
+                        realtorId,
+                        realtorName,
+                        type,
+                        minPrice,
+                        maxPrice,
+                        bedroomsMin,
+                        bathroomsMin,
                           areaMin,
                           parkingSpots,
                           yearBuiltMin,
@@ -2484,7 +2622,7 @@ export default function Home() {
                         setSearch('');
                         setCity('');
                         setState('');
-                        const params = buildSearchParams({ type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                        const params = buildSearchParams({ agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2501,7 +2639,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setPurpose('');
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2518,7 +2656,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setType('');
-                        const params = buildSearchParams({ q: search, city, state, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2535,7 +2673,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setMinPrice('');
-                        const params = buildSearchParams({ q: search, city, state, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2552,7 +2690,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setMaxPrice('');
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2569,7 +2707,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setBedroomsMin('');
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2586,7 +2724,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setBathroomsMin('');
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, areaMin, purpose, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2603,7 +2741,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setPetFriendly(false);
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2620,7 +2758,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setFurnished(false);
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2637,7 +2775,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setHasPool(false);
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2654,7 +2792,7 @@ export default function Home() {
                     <button
                       onClick={() => {
                         setHasGym(false);
-                        const params = buildSearchParams({ q: search, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
+                        const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, page: 1 });
                         router.push(`/?${params}`);
                       }}
                       className="hover:bg-emerald-200/70 rounded-full p-0.5 transition-colors"
@@ -2795,6 +2933,10 @@ export default function Home() {
                       q: search,
                       city,
                       state,
+                      agencyId,
+                      agencyName,
+                      realtorId,
+                      realtorName,
                       type,
                       minPrice,
                       maxPrice,
@@ -2826,6 +2968,10 @@ export default function Home() {
                     q: search,
                     city,
                     state,
+                    agencyId,
+                    agencyName,
+                    realtorId,
+                    realtorName,
                     type,
                     minPrice,
                     maxPrice,
@@ -3257,6 +3403,10 @@ export default function Home() {
                   q: search,
                   city,
                   state,
+                  agencyId,
+                  agencyName,
+                  realtorId,
+                  realtorName,
                   type,
                   minPrice,
                   maxPrice,

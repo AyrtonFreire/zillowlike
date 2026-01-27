@@ -692,15 +692,6 @@ export default function AgencyTeamPage() {
                                   <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700">
                                     Parados: <span className="ml-1 tabular-nums">{m.stalledLeads}</span>
                                   </span>
-                                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
-                                    Ganhos: <span className="ml-1 tabular-nums">{Number(m.wonLeads || 0)}</span>
-                                  </span>
-                                  <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-700">
-                                    Perdidos: <span className="ml-1 tabular-nums text-gray-900">{Number(m.lostLeads || 0)}</span>
-                                  </span>
-                                  <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 font-semibold text-blue-700">
-                                    1ª resposta: <span className="ml-1 tabular-nums">{formatMinutes(m.avgFirstResponseMinutes ?? null)}</span>
-                                  </span>
                                 </div>
                               </div>
 

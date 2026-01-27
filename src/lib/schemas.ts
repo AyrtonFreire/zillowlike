@@ -164,6 +164,8 @@ export const PropertyQuerySchema = z.object({
   type: PropertyTypeEnum.optional(),
   purpose: PurposeEnum.optional(),
   q: z.string().max(200).optional(),
+  agencyId: z.string().max(80).optional(),
+  realtorId: z.string().max(80).optional(),
   minPrice: z.string().regex(/^\d+$/).optional(), // em centavos
   maxPrice: z.string().regex(/^\d+$/).optional(), // em centavos
   page: z.string().regex(/^\d+$/).optional(),

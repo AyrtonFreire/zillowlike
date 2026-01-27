@@ -3,6 +3,10 @@ export type Filters = {
   state?: string;
   type?: string;
   q?: string;
+  agencyId?: string;
+  agencyName?: string;
+  realtorId?: string;
+  realtorName?: string;
   minPrice?: string; // reais (inteiro em string)
   maxPrice?: string; // reais (inteiro em string)
   bedroomsMin?: string;
@@ -69,6 +73,10 @@ export function parseFiltersFromSearchParams(sp: URLSearchParams): Filters {
   f.state = get("state");
   f.type = get("type");
   f.q = get("q");
+  f.agencyId = get("agencyId");
+  f.agencyName = get("agencyName");
+  f.realtorId = get("realtorId");
+  f.realtorName = get("realtorName");
   const min0 = get("minPrice");
   const max0 = get("maxPrice");
   // no UI: guardar em reais (não centavos)
@@ -139,6 +147,10 @@ export function buildSearchParams(filters: Filters): string {
   if (filters.minPrice) p.set("minPrice", String(Number(filters.minPrice)));
   if (filters.maxPrice) p.set("maxPrice", String(Number(filters.maxPrice)));
   if (filters.q) p.set("q", filters.q);
+  if (filters.agencyId) p.set("agencyId", filters.agencyId);
+  if (filters.agencyName) p.set("agencyName", filters.agencyName);
+  if (filters.realtorId) p.set("realtorId", filters.realtorId);
+  if (filters.realtorName) p.set("realtorName", filters.realtorName);
   if (filters.bedroomsMin) p.set("bedroomsMin", String(Number(filters.bedroomsMin)));
   if (filters.bathroomsMin) p.set("bathroomsMin", String(Number(filters.bathroomsMin)));
   if (filters.areaMin) p.set("areaMin", String(Number(filters.areaMin)));

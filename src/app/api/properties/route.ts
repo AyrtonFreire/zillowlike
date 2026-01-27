@@ -87,6 +87,8 @@ export async function GET(req: NextRequest) {
       type: searchParams.get("type") ?? undefined,
       purpose: searchParams.get("purpose") ?? undefined,
       q: searchParams.get("q") ?? undefined,
+      agencyId: searchParams.get("agencyId") ?? undefined,
+      realtorId: searchParams.get("realtorId") ?? undefined,
       minPrice: searchParams.get("minPrice") ?? undefined,
       maxPrice: searchParams.get("maxPrice") ?? undefined,
       page: searchParams.get("page") ?? undefined,
@@ -110,7 +112,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { city, state, type, purpose, q, minPrice, maxPrice } = parsed.data as any;
+    const { city, state, type, purpose, q, minPrice, maxPrice, agencyId, realtorId } = parsed.data as any;
     const tag = (searchParams.get("tag") || "").toLowerCase();
     const pageRaw = Number(parsed.data.page ?? 1);
     const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
@@ -140,6 +142,8 @@ export async function GET(req: NextRequest) {
     }
     if (city) where.city = { equals: city, mode: 'insensitive' as Prisma.QueryMode };
     if (state) where.state = { equals: state, mode: 'insensitive' as Prisma.QueryMode };
+    if (agencyId) where.teamId = String(agencyId);
+    if (realtorId) where.capturerRealtorId = String(realtorId);
     if (type) {
       const upperType = String(type).toUpperCase();
       if (REMOVED_PROPERTY_TYPES.has(upperType)) {

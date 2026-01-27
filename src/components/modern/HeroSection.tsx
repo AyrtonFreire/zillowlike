@@ -6,13 +6,14 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-interface LocationSuggestion {
-  label: string;
-  city: string;
-  state: string;
-  neighborhood: string | null;
-  count: number;
-}
+type SearchSuggestion =
+  | { kind: "location"; label: string; city: string; state: string; neighborhood: string | null; count: number }
+  | { kind: "agency"; label: string; agencyId: string; count: number }
+  | { kind: "realtor"; label: string; realtorId: string; count: number };
+
+const isLocationSuggestion = (
+  s: SearchSuggestion
+): s is Extract<SearchSuggestion, { kind: "location" }> => s.kind === "location";
 
 export default function HeroSection() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -23,7 +24,7 @@ export default function HeroSection() {
   const [showPropertyTypeDropdown, setShowPropertyTypeDropdown] = useState(false);
   const [showPriceDropdown, setShowPriceDropdown] = useState(false);
   const [showBedroomsDropdown, setShowBedroomsDropdown] = useState(false);
-  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
@@ -54,7 +55,7 @@ export default function HeroSection() {
       if (searchQuery.length > 0) {
         setIsFetchingSuggestions(true);
         try {
-          const response = await fetch(`/api/locations?q=${encodeURIComponent(searchQuery)}`);
+          const response = await fetch(`/api/search-suggestions?q=${encodeURIComponent(searchQuery)}`);
           const data = await response.json();
           if (data.success) {
             setSuggestions(data.suggestions || []);
@@ -70,10 +71,10 @@ export default function HeroSection() {
         // Buscar sugestões populares (sem filtro)
         setIsFetchingSuggestions(true);
         try {
-          const response = await fetch('/api/locations');
+          const response = await fetch('/api/search-suggestions');
           const data = await response.json();
           if (data.success) {
-            let items = (data.suggestions?.slice(0, 5) || []) as LocationSuggestion[];
+            let items = (data.suggestions?.slice(0, 5) || []) as SearchSuggestion[];
 
             // Reordenar para colocar a última cidade buscada em primeiro lugar
             try {
@@ -81,12 +82,15 @@ export default function HeroSection() {
                 const lastCity = localStorage.getItem('lastCity');
                 const lastState = localStorage.getItem('lastState');
                 if (lastCity && lastState) {
-                  items = [...items].sort((a, b) => {
+                  const locs = items.filter(isLocationSuggestion);
+                  const others = items.filter((s) => !isLocationSuggestion(s));
+                  const sortedLocs = [...locs].sort((a, b) => {
                     const aIsLast = a.city === lastCity && a.state === lastState;
                     const bIsLast = b.city === lastCity && b.state === lastState;
                     if (aIsLast === bIsLast) return 0;
                     return aIsLast ? -1 : 1;
                   });
+                  items = [...sortedLocs, ...others];
                 }
               }
             } catch {}
@@ -186,16 +190,51 @@ export default function HeroSection() {
     }
   };
 
-  const handleSuggestionClick = (suggestion: LocationSuggestion) => {
+  const handleSuggestionClick = (suggestion: SearchSuggestion) => {
     setSearchQuery(suggestion.label);
     setShowSuggestions(false);
 
-    if (typeof window !== 'undefined' && suggestion.city && suggestion.state) {
-      try {
-        localStorage.setItem('lastCity', suggestion.city);
-        localStorage.setItem('lastState', suggestion.state);
-      } catch {}
+    if (isLocationSuggestion(suggestion)) {
+      if (typeof window !== 'undefined' && suggestion.city && suggestion.state) {
+        try {
+          localStorage.setItem('lastCity', suggestion.city);
+          localStorage.setItem('lastState', suggestion.state);
+        } catch {}
+      }
+      return;
     }
+
+    let params = new URLSearchParams();
+    if (propertyType) {
+      const typeMap: Record<string, string> = {
+        'Casa': 'HOUSE',
+        'Apartamento': 'APARTMENT',
+        'Condomínio': 'CONDO',
+        'Terreno': 'LAND',
+        'Comercial': 'COMMERCIAL',
+        'Rural': 'RURAL',
+        '': ''
+      };
+      const mapped = typeMap[propertyType] || '';
+      if (mapped) params.set('type', mapped);
+    }
+    if (priceRange) {
+      params.set('minPrice', priceRange);
+    }
+    if (bedrooms) {
+      params.set('bedroomsMin', bedrooms);
+    }
+    params.set('purpose', purpose);
+
+    if (suggestion.kind === 'agency') {
+      params.set('agencyId', suggestion.agencyId);
+      params.set('agencyName', suggestion.label);
+    } else {
+      params.set('realtorId', suggestion.realtorId);
+      params.set('realtorName', suggestion.label);
+    }
+
+    router.push(`/?${params.toString()}`);
   };
 
   return (
@@ -436,6 +475,53 @@ export default function HeroSection() {
                     </div>
                   ) : (
                     <div className="p-4">
+                      {(() => {
+                        const agencies = suggestions.filter((s) => s.kind === 'agency') as Extract<SearchSuggestion, { kind: 'agency' }>[];
+                        const realtors = suggestions.filter((s) => s.kind === 'realtor') as Extract<SearchSuggestion, { kind: 'realtor' }>[];
+                        if (agencies.length === 0 && realtors.length === 0) return null;
+                        return (
+                          <div className="mb-4">
+                            {agencies.length > 0 && (
+                              <div className="mb-4">
+                                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1">Imobiliárias</div>
+                                <div className="space-y-1">
+                                  {agencies.slice(0, 6).map((a, i) => (
+                                    <button
+                                      key={`${a.agencyId}-${i}`}
+                                      type="button"
+                                      onClick={() => handleSuggestionClick(a)}
+                                      className="w-full group flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded-lg transition-all text-left"
+                                    >
+                                      <span className="text-sm text-gray-700 group-hover:text-teal-700 font-medium">{a.label}</span>
+                                      <span className="text-xs text-gray-400 group-hover:text-teal-600">{a.count}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {realtors.length > 0 && (
+                              <div>
+                                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1">Corretores</div>
+                                <div className="space-y-1">
+                                  {realtors.slice(0, 6).map((r, i) => (
+                                    <button
+                                      key={`${r.realtorId}-${i}`}
+                                      type="button"
+                                      onClick={() => handleSuggestionClick(r)}
+                                      className="w-full group flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded-lg transition-all text-left"
+                                    >
+                                      <span className="text-sm text-gray-700 group-hover:text-teal-700 font-medium">{r.label}</span>
+                                      <span className="text-xs text-gray-400 group-hover:text-teal-600">{r.count}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       {searchQuery.length === 0 && (
                         <div className="px-2 pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                           Buscas Populares
@@ -444,7 +530,8 @@ export default function HeroSection() {
                       
                       {/* Agrupar por cidade */}
                       {(() => {
-                        const grouped = suggestions.reduce((acc, s) => {
+                        const locationSuggestions = suggestions.filter(isLocationSuggestion);
+                        const grouped = locationSuggestions.reduce((acc, s) => {
                           const key = `${s.city}, ${s.state}`;
                           if (!acc[key]) {
                             acc[key] = { city: s.city, state: s.state, neighborhoods: [], totalCount: 0, cityCount: null as number | null };
@@ -466,7 +553,7 @@ export default function HeroSection() {
                               initial={{ opacity: 0, y: -5 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: cityIndex * 0.05 }}
-                              onClick={() => handleSuggestionClick({ city: data.city, state: data.state, label: `${data.city}, ${data.state}`, count: data.totalCount, neighborhood: null })}
+                              onClick={() => handleSuggestionClick({ kind: 'location', city: data.city, state: data.state, label: `${data.city}, ${data.state}`, count: data.totalCount, neighborhood: null })}
                               className="w-full group flex items-center justify-between px-4 py-3 bg-gradient-to-r from-teal-50 to-blue-50 hover:from-teal-100 hover:to-blue-100 rounded-xl transition-all border border-teal-100"
                             >
                               <div className="flex items-center gap-3">
@@ -493,7 +580,7 @@ export default function HeroSection() {
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: (cityIndex * 0.05) + (nIndex * 0.02) }}
-                                    onClick={() => handleSuggestionClick({ city: data.city, state: data.state, label: `${n.name}, ${data.city}, ${data.state}`, count: n.count, neighborhood: n.name })}
+                                    onClick={() => handleSuggestionClick({ kind: 'location', city: data.city, state: data.state, label: `${n.name}, ${data.city}, ${data.state}`, count: n.count, neighborhood: n.name })}
                                     className="w-full group flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded-lg transition-all text-left"
                                   >
                                     <span className="text-sm text-gray-700 group-hover:text-teal-700 font-medium">
