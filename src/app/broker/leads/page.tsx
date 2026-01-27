@@ -18,7 +18,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import CountdownTimer from "@/components/queue/CountdownTimer";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
-import LeadSidePanel from "@/components/leads/LeadSidePanel";
 import { canonicalToBoardGroup } from "@/lib/lead-pipeline";
 import { getPusherClient } from "@/lib/pusher-client";
 import { ptBR } from "@/lib/i18n/property";
@@ -205,9 +204,6 @@ export default function MyLeadsPage() {
   const [notesLoading, setNotesLoading] = useState<Record<string, boolean>>({});
   const [notesError, setNotesError] = useState<Record<string, string | null>>({});
 
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-
   const [stagePickerLeadId, setStagePickerLeadId] = useState<string | null>(null);
   const [stageUpdating, setStageUpdating] = useState<Record<string, boolean>>({});
 
@@ -345,11 +341,6 @@ export default function MyLeadsPage() {
     setNextCursor(null);
     fetchLeads({ preserveTail: false });
   }, [pipelineFilter, dateFilter, nameFilter, cityFilter, typeFilter, realtorId, fetchLeads]);
-
-  const openLeadPanel = (id: string) => {
-    setSelectedLeadId(id);
-    setIsPanelOpen(true);
-  };
 
   useEffect(() => {
     if (!stagePickerLeadId) return;
@@ -1230,7 +1221,7 @@ export default function MyLeadsPage() {
                   {/* Card compacto - sempre visível */}
                   <div 
                     className="p-4 cursor-pointer"
-                    onClick={() => setExpandedLeadId(isExpanded ? null : lead.id)}
+                    onClick={() => router.push(`/broker/leads/${lead.id}`)}
                   >
                     <div className="sm:hidden">
                       <div className="flex gap-3">
@@ -1265,6 +1256,20 @@ export default function MyLeadsPage() {
                             </p>
                           )}
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedLeadId(isExpanded ? null : lead.id);
+                          }}
+                          className="flex-shrink-0 self-start p-1.5 rounded-lg hover:bg-gray-100"
+                          aria-label={isExpanded ? "Recolher" : "Expandir"}
+                        >
+                          <ChevronDown
+                            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                          />
+                        </button>
                       </div>
                     </div>
 
@@ -1351,9 +1356,19 @@ export default function MyLeadsPage() {
 
                         {/* Chevron para expandir */}
                         <div className="flex-shrink-0 self-center">
-                          <ChevronDown 
-                            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} 
-                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedLeadId(isExpanded ? null : lead.id);
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-gray-100"
+                            aria-label={isExpanded ? "Recolher" : "Expandir"}
+                          >
+                            <ChevronDown
+                              className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                            />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1599,7 +1614,7 @@ export default function MyLeadsPage() {
                           <tr
                             key={lead.id}
                             className={`cursor-pointer hover:bg-gray-50 ${lead.hasUnreadMessages ? "bg-blue-50/30" : ""}`}
-                            onClick={() => openLeadPanel(lead.id)}
+                            onClick={() => router.push(`/broker/leads/${lead.id}`)}
                           >
                             <td className="pl-2 pr-3 py-3">
                               <div className="flex items-center gap-3">
@@ -1624,18 +1639,22 @@ export default function MyLeadsPage() {
                             </td>
                             <td
                               className="px-3 py-3"
-                              onMouseEnter={(e) => {
-                                keepHoverPreviewOpen();
-                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                setHoverPreviewLead(lead);
-                                setHoverPreviewRect(rect);
-                              }}
-                              onMouseLeave={() => {
-                                closeHoverPreviewSoon();
-                              }}
                             >
                               <div className="min-w-0">
-                                <div className="font-semibold text-gray-900 truncate">{lead.property.title}</div>
+                                <div
+                                  className="font-semibold text-gray-900 truncate"
+                                  onMouseEnter={(e) => {
+                                    keepHoverPreviewOpen();
+                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                    setHoverPreviewLead(lead);
+                                    setHoverPreviewRect(rect);
+                                  }}
+                                  onMouseLeave={() => {
+                                    closeHoverPreviewSoon();
+                                  }}
+                                >
+                                  {lead.property.title}
+                                </div>
                                 <div className="text-xs text-gray-600 truncate">
                                   {lead.property.city}/{lead.property.state} • {ptBR.type(lead.property.type)}
                                 </div>
@@ -1728,13 +1747,6 @@ export default function MyLeadsPage() {
       </div>
 
       {previewNode}
-
-      <LeadSidePanel
-        open={isPanelOpen}
-        leadId={selectedLeadId}
-        onClose={() => setIsPanelOpen(false)}
-        onLeadUpdated={() => fetchLeads({ isBackground: true })}
-      />
     </div>
   );
 }
