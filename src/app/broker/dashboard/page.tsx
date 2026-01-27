@@ -23,15 +23,11 @@ import BrokerOnboarding, { resetBrokerOnboarding } from "@/components/onboarding
 import LeadSearchBar from "@/components/crm/LeadSearchBar";
 import { motion } from "framer-motion";
 import {
-  Bar,
-  BarChart,
   Cell,
   Pie,
   PieChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
 } from "recharts";
 
 interface Metrics {
@@ -142,8 +138,6 @@ interface MyLead {
     state: string;
   };
   pipelineStage?: PipelineStage;
-  nextActionDate?: string | null;
-  nextActionNote?: string | null;
 }
 
 type PipelineStage =
@@ -170,12 +164,6 @@ export default function BrokerDashboard() {
 
   const searchParams = useSearchParams();
   const previewUserId = searchParams.get("previewUserId");
-
-  const [pipelineCounts, setPipelineCounts] = useState<Record<PipelineStage, number> | null>(null);
-  const [pipelineLoading, setPipelineLoading] = useState(true);
-  const [pipelineError, setPipelineError] = useState<string | null>(null);
-  const [pipelineTrend, setPipelineTrend] = useState<{ value: number; isPositive: boolean } | null>(null);
-  const [pipelineFilterStage, setPipelineFilterStage] = useState<PipelineStage | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   const BROKER_CHAT_LAST_READ_PREFIX = "zlw_broker_chat_last_read_";
@@ -191,12 +179,6 @@ export default function BrokerDashboard() {
   useEffect(() => {
     if (userId) {
       fetchMyLeads();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (userId) {
-      fetchPipelineSummary();
     }
   }, [userId]);
 
@@ -289,71 +271,6 @@ export default function BrokerDashboard() {
     }
   };
 
-  const fetchPipelineSummary = async () => {
-    try {
-      setPipelineError(null);
-      setPipelineLoading(true);
-      const response = await fetch("/api/leads/my-pipeline");
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || `API error: ${response.status}`);
-      }
-      const initial: Record<PipelineStage, number> = {
-        NEW: 0,
-        CONTACT: 0,
-        VISIT: 0,
-        PROPOSAL: 0,
-        DOCUMENTS: 0,
-        WON: 0,
-        LOST: 0,
-      };
-
-      const now = new Date();
-      const startCurrent = new Date(now);
-      startCurrent.setDate(now.getDate() - 7);
-      const startPrev = new Date(now);
-      startPrev.setDate(now.getDate() - 14);
-      let currentWindow = 0;
-      let prevWindow = 0;
-
-      (Array.isArray(data) ? data : []).forEach((lead: any) => {
-        const stage = (lead.pipelineStage || "NEW") as PipelineStage;
-        if (initial[stage] !== undefined) {
-          initial[stage] += 1;
-        }
-
-        const createdAt = lead?.createdAt ? new Date(lead.createdAt) : null;
-        if (createdAt && !Number.isNaN(createdAt.getTime())) {
-          if (createdAt >= startCurrent) {
-            currentWindow += 1;
-          } else if (createdAt >= startPrev && createdAt < startCurrent) {
-            prevWindow += 1;
-          }
-        }
-      });
-
-      setPipelineCounts(initial);
-
-      if (prevWindow <= 0 && currentWindow <= 0) {
-        setPipelineTrend(null);
-      } else if (prevWindow <= 0 && currentWindow > 0) {
-        setPipelineTrend({ value: 100, isPositive: true });
-      } else {
-        const delta = ((currentWindow - prevWindow) / Math.max(1, prevWindow)) * 100;
-        setPipelineTrend({ value: Math.round(Math.abs(delta)), isPositive: delta >= 0 });
-      }
-    } catch (error) {
-      console.error("Error fetching pipeline summary:", error);
-      setPipelineCounts(null);
-      setPipelineError(
-        "Não conseguimos carregar o resumo do seu funil agora. Se quiser, atualize a página em alguns instantes."
-      );
-      setPipelineTrend(null);
-    } finally {
-      setPipelineLoading(false);
-    }
-  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -379,20 +296,37 @@ export default function BrokerDashboard() {
   );
 
   const dayTotal = newLeads.length + inServiceLeads.length;
-  const dayChartData = [
-    {
-      key: "in_service",
-      name: "Em atendimento",
-      value: inServiceLeads.length,
-      color: "#8b5cf6",
+  const pipelineStageMeta: Array<{ stage: PipelineStage; label: string; color: string }> = [
+    { stage: "NEW", label: "Novos", color: "#3b82f6" },
+    { stage: "CONTACT", label: "Contato", color: "#06b6d4" },
+    { stage: "VISIT", label: "Visita", color: "#14b8a6" },
+    { stage: "PROPOSAL", label: "Proposta", color: "#f59e0b" },
+    { stage: "DOCUMENTS", label: "Documentação", color: "#fb7185" },
+    { stage: "WON", label: "Fechado", color: "#22c55e" },
+    { stage: "LOST", label: "Perdido", color: "#94a3b8" },
+  ];
+  const pipelineCounts = pipelineStageMeta.reduce(
+    (acc, stage) => {
+      acc[stage.stage] = 0;
+      return acc;
     },
-    {
-      key: "new",
-      name: "Novos",
-      value: newLeads.length,
-      color: "#3b82f6",
-    },
-  ].filter((x) => x.value > 0);
+    {} as Record<PipelineStage, number>
+  );
+  myLeads.forEach((lead) => {
+    const stage = (lead.pipelineStage || "NEW") as PipelineStage;
+    if (pipelineCounts[stage] !== undefined) {
+      pipelineCounts[stage] += 1;
+    }
+  });
+  const pipelineTotal = myLeads.length;
+  const dayChartData = pipelineStageMeta
+    .map((m) => ({
+      key: m.stage.toLowerCase(),
+      name: m.label,
+      value: clampNumber(pipelineCounts[m.stage] || 0),
+      color: m.color,
+    }))
+    .filter((x) => x.value > 0);
 
   const dayBaseline = typeof metrics?.leadsLast7Days === "number" ? metrics.leadsLast7Days / 7 : null;
   const dayTrend =
@@ -402,42 +336,6 @@ export default function BrokerDashboard() {
           isPositive: leadsToday.length >= dayBaseline,
         }
       : null;
-
-  const pipelineStageMeta: Array<{ stage: PipelineStage; label: string; color: string }> = [
-    { stage: "NEW", label: "Novo", color: "#3b82f6" },
-    { stage: "CONTACT", label: "Contato", color: "#06b6d4" },
-    { stage: "VISIT", label: "Visita", color: "#14b8a6" },
-    { stage: "PROPOSAL", label: "Proposta", color: "#f59e0b" },
-    { stage: "DOCUMENTS", label: "Documentos", color: "#fb7185" },
-    { stage: "WON", label: "Ganho", color: "#22c55e" },
-    { stage: "LOST", label: "Perdido", color: "#94a3b8" },
-  ];
-
-  const pipelineTotal = pipelineCounts
-    ? Object.values(pipelineCounts).reduce((sum, value) => sum + value, 0)
-    : 0;
-  const pipelineChartData = pipelineCounts
-    ? pipelineStageMeta
-        .map((m) => ({
-          stage: m.stage,
-          name: m.label,
-          value: clampNumber(pipelineCounts[m.stage] || 0),
-          color: m.color,
-          pct: pipelineTotal > 0 ? (clampNumber(pipelineCounts[m.stage] || 0) / pipelineTotal) * 100 : 0,
-        }))
-        .filter((x) => x.value > 0)
-    : [];
-
-  const remindersToday = myLeads.filter((lead) => {
-    if (!lead.nextActionDate) return false;
-    const d = new Date(lead.nextActionDate);
-    return isSameDay(d, today) || d < today;
-  });
-
-  const sortedRemindersToday = [...remindersToday].sort((a, b) => {
-    if (!a.nextActionDate || !b.nextActionDate) return 0;
-    return new Date(a.nextActionDate).getTime() - new Date(b.nextActionDate).getTime();
-  });
 
   const filteredLeads = leads.filter((lead) => {
     if (leadFilter === "NEW") {
@@ -500,14 +398,6 @@ export default function BrokerDashboard() {
             subtitle="Reservados/atendendo"
             iconColor="text-purple-600"
             iconBgColor="bg-purple-50"
-          />
-          <MetricCard
-            title="Lembretes marcados"
-            value={metrics?.leadsWithReminders || 0}
-            icon={Clock}
-            subtitle="Leads com próxima ação"
-            iconColor="text-orange-600"
-            iconBgColor="bg-orange-50"
           />
         </div>
 
@@ -575,9 +465,9 @@ export default function BrokerDashboard() {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-medium text-gray-500">Total ativo</p>
-                      <p className="text-2xl font-semibold text-gray-900">{dayTotal}</p>
-                      <p className="mt-1 text-xs text-gray-500">Novos + em atendimento</p>
+                      <p className="text-xs font-medium text-gray-500">Total de leads</p>
+                      <p className="text-2xl font-semibold text-gray-900">{pipelineTotal}</p>
+                      <p className="mt-1 text-xs text-gray-500">Todos os status</p>
                     </div>
                     <div className="h-20 w-20">
                       <ResponsiveContainer width="100%" height="100%">
@@ -586,7 +476,7 @@ export default function BrokerDashboard() {
                             data={
                               dayChartData.length > 0
                                 ? dayChartData
-                                : [{ name: "Ativos", value: dayTotal, color: "#94a3b8" }]
+                                : [{ name: "Leads", value: pipelineTotal, color: "#94a3b8" }]
                             }
                             dataKey="value"
                             nameKey="name"
@@ -600,7 +490,7 @@ export default function BrokerDashboard() {
                             {(
                               dayChartData.length > 0
                                 ? dayChartData
-                                : [{ name: "Ativos", value: dayTotal, color: "#94a3b8" }]
+                                : [{ name: "Leads", value: pipelineTotal, color: "#94a3b8" }]
                             ).map((entry) => (
                               <Cell key={String((entry as any).name)} fill={(entry as any).color} />
                             ))}
@@ -698,250 +588,6 @@ export default function BrokerDashboard() {
           </StatCard>
         </div>
 
-        {/* Meu funil de leads */}
-        <div className="mb-8" data-onboarding="pipeline-section">
-          <StatCard
-            title="Meu funil de leads"
-            action={
-              <div className="flex items-center gap-2">
-                <span className="hidden sm:inline text-xs text-gray-500">vs 7d anteriores</span>
-                <TrendPill trend={pipelineTrend} />
-              </div>
-            }
-          >
-            {pipelineError ? (
-              <p className="text-sm text-gray-600">{pipelineError}</p>
-            ) : pipelineLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <div className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4">
-                  <Skeleton className="h-3 w-24 rounded" />
-                  <Skeleton className="mt-2 h-7 w-12 rounded" />
-                  <div className="mt-4 space-y-3">
-                    <div className="rounded-xl border border-gray-100 bg-white p-3">
-                      <Skeleton className="h-3 w-20 rounded" />
-                      <Skeleton className="mt-2 h-6 w-10 rounded" />
-                      <Skeleton className="mt-2 h-3 w-28 rounded" />
-                    </div>
-                    <div className="rounded-xl border border-gray-100 bg-white p-3">
-                      <Skeleton className="h-3 w-24 rounded" />
-                      <Skeleton className="mt-2 h-6 w-10 rounded" />
-                      <Skeleton className="mt-2 h-3 w-32 rounded" />
-                    </div>
-                    <div className="rounded-xl border border-gray-100 bg-white p-3">
-                      <Skeleton className="h-3 w-20 rounded" />
-                      <Skeleton className="mt-2 h-6 w-10 rounded" />
-                      <Skeleton className="mt-2 h-3 w-24 rounded" />
-                    </div>
-                  </div>
-                </div>
-                <div className="md:col-span-8 rounded-2xl border border-gray-100 bg-white p-4">
-                  <Skeleton className="h-4 w-44 rounded" />
-                  <Skeleton className="mt-2 h-3 w-64 rounded" />
-                  <div className="mt-6 space-y-3">
-                    <Skeleton className="h-5 w-full rounded" />
-                    <Skeleton className="h-5 w-11/12 rounded" />
-                    <Skeleton className="h-5 w-10/12 rounded" />
-                    <Skeleton className="h-5 w-9/12 rounded" />
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <Skeleton className="h-9 w-full rounded-xl" />
-                    <Skeleton className="h-9 w-full rounded-xl" />
-                    <Skeleton className="h-9 w-full rounded-xl" />
-                    <Skeleton className="h-9 w-full rounded-xl" />
-                  </div>
-                </div>
-              </div>
-            ) : !pipelineCounts ||
-              Object.values(pipelineCounts).reduce((sum, value) => sum + value, 0) === 0 ? (
-              <p className="text-sm text-gray-600">
-                Ainda não há leads suficientes para montar um funil completo. Assim que você começar a receber e atender leads,
-                este quadro mostra em que etapa estão suas oportunidades.
-              </p>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25 }}
-                className="grid grid-cols-1 md:grid-cols-12 gap-4"
-              >
-                <div className="md:col-span-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4">
-                  <p className="text-xs font-medium text-gray-500">Total no funil</p>
-                  <p className="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">{pipelineTotal}</p>
-
-                  <div className="mt-4 space-y-3">
-                    <div className="rounded-xl border border-gray-100 bg-white p-3">
-                      <p className="text-xs text-gray-500">Topo do funil</p>
-                      <p className="text-xl font-semibold text-gray-900 tabular-nums">{pipelineCounts.NEW + pipelineCounts.CONTACT}</p>
-                      <p className="text-xs text-gray-500 mt-1">Novos e primeiro contato</p>
-                    </div>
-                    <div className="rounded-xl border border-gray-100 bg-white p-3">
-                      <p className="text-xs text-gray-500">Em negociação</p>
-                      <p className="text-xl font-semibold text-gray-900 tabular-nums">{pipelineCounts.VISIT + pipelineCounts.PROPOSAL + pipelineCounts.DOCUMENTS}</p>
-                      <p className="text-xs text-gray-500 mt-1">Visitas, propostas e docs</p>
-                    </div>
-                    <div className="rounded-xl border border-gray-100 bg-white p-3">
-                      <p className="text-xs text-gray-500">Resultado</p>
-                      <p className="text-xl font-semibold text-gray-900 tabular-nums">{pipelineCounts.WON + pipelineCounts.LOST}</p>
-                      <p className="text-xs text-gray-500 mt-1">Ganho + perdido</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="md:col-span-8 rounded-2xl border border-gray-100 bg-white p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">Distribuição por etapa</p>
-                      <p className="text-xs text-gray-500 mt-1">Clique em uma etapa para filtrar</p>
-                    </div>
-                    {pipelineFilterStage ? (
-                      <button
-                        type="button"
-                        onClick={() => setPipelineFilterStage(null)}
-                        className="text-xs font-semibold text-gray-600 hover:text-gray-900"
-                      >
-                        Limpar filtro
-                      </button>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-4 h-56">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={pipelineChartData}
-                        layout="vertical"
-                        margin={{ top: 6, right: 18, bottom: 6, left: 0 }}
-                      >
-                        <XAxis type="number" hide />
-                        <YAxis
-                          type="category"
-                          dataKey="name"
-                          width={90}
-                          tick={{ fontSize: 12, fill: "#6b7280" }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <Tooltip
-                          cursor={{ fill: "rgba(15, 23, 42, 0.04)" }}
-                          contentStyle={{
-                            borderRadius: 12,
-                            border: "1px solid rgba(229,231,235,1)",
-                            boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
-                          }}
-                          formatter={(value: any, name: any, props: any) => {
-                            const pct = props?.payload?.pct;
-                            return [`${value} (${formatPercent(pct)})`, String(name || "")];
-                          }}
-                        />
-                        <Bar dataKey="value" radius={[10, 10, 10, 10]} isAnimationActive>
-                          {pipelineChartData.map((entry) => {
-                            const isDim = pipelineFilterStage ? entry.stage !== pipelineFilterStage : false;
-                            const fill = isDim ? hexToRgba(entry.color, 0.22) : entry.color;
-                            return (
-                              <Cell
-                                key={String(entry.stage)}
-                                fill={fill}
-                                onClick={() =>
-                                  setPipelineFilterStage((prev) => (prev === entry.stage ? null : (entry.stage as PipelineStage)))
-                                }
-                                cursor="pointer"
-                              />
-                            );
-                          })}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {pipelineChartData.slice(0, 8).map((row) => (
-                      <button
-                        key={String(row.stage)}
-                        type="button"
-                        onClick={() =>
-                          setPipelineFilterStage((prev) => (prev === row.stage ? null : (row.stage as PipelineStage)))
-                        }
-                        className={`rounded-xl border px-3 py-2 text-left transition-colors ${
-                          pipelineFilterStage && pipelineFilterStage !== row.stage
-                            ? "border-gray-100 bg-gray-50 opacity-60"
-                            : "border-gray-200 bg-white hover:bg-gray-50"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
-                            <span className="text-xs text-gray-600 truncate">{row.name}</span>
-                          </div>
-                          <span className="text-xs font-semibold text-gray-900 tabular-nums">{row.value}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </StatCard>
-        </div>
-
-        {/* Tarefas de hoje */}
-        <div className="mb-8" data-onboarding="tasks-section">
-          <StatCard title="Tarefas de hoje">
-            {sortedRemindersToday.length === 0 ? (
-              <p className="text-sm text-gray-600">
-                Você ainda não marcou lembretes específicos para os seus leads. Quando marcar um dia e um pequeno resumo na
-                ficha do lead, eles aparecem aqui para te ajudar a lembrar o que fazer.
-              </p>
-            ) : (
-              <div className="space-y-3 text-sm text-gray-700">
-                <p className="text-xs text-gray-500">
-                  Estes são os lembretes que você marcou para hoje (ou dias anteriores). Use como uma listinha rápida de
-                  próximos passos.
-                </p>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {sortedRemindersToday.map((lead) => {
-                    const due = lead.nextActionDate ? new Date(lead.nextActionDate) : null;
-                    const isOverdue = due && due < today && !isSameDay(due, today);
-                    const isToday = due && isSameDay(due, today);
-                    const label = isOverdue ? "Atrasado" : isToday ? "Hoje" : "Próximo";
-
-                    return (
-                      <div
-                        key={lead.id}
-                        className="flex items-start justify-between gap-3 border-b border-gray-100 pb-2 last:border-b-0"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold line-clamp-1">
-                            {lead.property?.title || "Lead"}
-                          </p>
-                          {lead.property && (
-                            <p className="text-xs text-gray-500">
-                              {lead.property.city} - {lead.property.state}
-                            </p>
-                          )}
-                          {lead.nextActionNote && (
-                            <p className="mt-1 text-xs text-gray-700 line-clamp-2">
-                              {lead.nextActionNote}
-                            </p>
-                          )}
-                          {due && (
-                            <p className="mt-1 text-[10px] text-gray-400">
-                              {label} · {due.toLocaleDateString("pt-BR")}
-                            </p>
-                          )}
-                        </div>
-                        <Link
-                          href={`/broker/leads/${lead.id}`}
-                          className="text-[11px] text-blue-600 hover:text-blue-700 flex-shrink-0"
-                        >
-                          Ver lead
-                        </Link>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </StatCard>
-        </div>
 
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
