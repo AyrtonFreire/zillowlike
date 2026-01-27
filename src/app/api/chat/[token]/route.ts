@@ -312,7 +312,18 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
 
     if (fromClient && lead.realtorId) {
       try {
-        await LeadAutoReplyService.enqueueForClientMessage({ leadId: String(lead.id), clientMessageId: String(message.id) });
+        const enqueueResult = await LeadAutoReplyService.enqueueForClientMessage({
+          leadId: String(lead.id),
+          clientMessageId: String(message.id),
+        });
+
+        if ((enqueueResult as any)?.enqueued) {
+          const timeoutMs = 6_000;
+          await Promise.race([
+            LeadAutoReplyService.processByClientMessageId(String(message.id)),
+            new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+          ]);
+        }
       } catch {
         // ignore
       }

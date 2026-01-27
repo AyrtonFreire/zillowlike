@@ -8,7 +8,19 @@
     },
     {
       "path": "/api/cron/archive-chats",
-      "schedule": "0 1 * * *"
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/lead-auto-reply",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/send-rating-request-emails",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/recalc-conversion-benchmarks",
+      "schedule": "30 5 * * *"
     }
   ]
 }

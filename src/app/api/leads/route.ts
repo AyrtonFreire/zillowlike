@@ -266,10 +266,18 @@ export async function POST(req: NextRequest) {
 
   if (assignedRealtorId && initialClientMessageId) {
     try {
-      await LeadAutoReplyService.enqueueForClientMessage({
+      const enqueueResult = await LeadAutoReplyService.enqueueForClientMessage({
         leadId: String(lead.id),
         clientMessageId: String(initialClientMessageId),
       });
+
+      if ((enqueueResult as any)?.enqueued) {
+        const timeoutMs = 6_000;
+        await Promise.race([
+          LeadAutoReplyService.processByClientMessageId(String(initialClientMessageId)),
+          new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+        ]);
+      }
     } catch {
     }
   }
