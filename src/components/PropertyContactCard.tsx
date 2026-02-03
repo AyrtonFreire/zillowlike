@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { User, Building2, MessageCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { User, Building2, MessageCircle, ExternalLink, Timer } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/contexts/ToastContext";
+import RatingStars from "@/components/queue/RatingStars";
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
@@ -58,6 +59,21 @@ export default function PropertyContactCard({
   hideOwnerContact,
 }: ContactCardProps) {
   const [loading, setLoading] = useState(false);
+  const [publicStatsLoading, setPublicStatsLoading] = useState(false);
+  const [publicStats, setPublicStats] = useState<null | {
+    avgRating: number;
+    totalRatings: number;
+    activeListings: number;
+    completedDeals: number;
+    avgResponseTime: number | null;
+    isFastResponder: boolean;
+    isTopProducer: boolean;
+    creci: string | null;
+    creciState: string | null;
+    headline: string | null;
+    city: string | null;
+    state: string | null;
+  }>(null);
   const toast = useToast();
   const { data: session } = useSession();
   const router = useRouter();
@@ -69,6 +85,55 @@ export default function PropertyContactCard({
   const hasPublicProfile =
     (isRealtorOrAgency && !!ownerPublicSlug) ||
     (!isRealtorOrAgency && !!ownerPublicProfileEnabled && !!ownerPublicSlug);
+
+  useEffect(() => {
+    const slug = String(ownerPublicSlug || "").trim();
+    if (!isRealtorOrAgency || !slug) {
+      setPublicStats(null);
+      return;
+    }
+
+    let cancelled = false;
+    setPublicStatsLoading(true);
+    fetch(`/api/public/realtors/${encodeURIComponent(slug)}/card`, { cache: "force-cache" })
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json) return null;
+
+        const stats = json?.stats || {};
+        const badges = json?.badges || {};
+        return {
+          avgRating: Number(stats.avgRating || 0),
+          totalRatings: Number(stats.totalRatings || 0),
+          activeListings: Number(stats.activeListings || 0),
+          completedDeals: Number(stats.completedDeals || 0),
+          avgResponseTime: stats.avgResponseTime == null ? null : Number(stats.avgResponseTime),
+          isFastResponder: Boolean(badges.isFastResponder),
+          isTopProducer: Boolean(badges.isTopProducer),
+          creci: json?.creci ? String(json.creci) : null,
+          creciState: json?.creciState ? String(json.creciState) : null,
+          headline: json?.headline ? String(json.headline) : null,
+          city: json?.city ? String(json.city) : null,
+          state: json?.state ? String(json.state) : null,
+        };
+      })
+      .then((next) => {
+        if (cancelled) return;
+        setPublicStats(next);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPublicStats(null);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setPublicStatsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isRealtorOrAgency, ownerPublicSlug]);
 
   const canShowWhatsApp = useMemo(() => {
     // Para corretores/imobiliárias: se houver opt-in no perfil, respeita; caso contrário, esconde.
@@ -164,63 +229,166 @@ export default function PropertyContactCard({
     }
   };
 
+  const ratingLabel = useMemo(() => {
+    const avg = publicStats?.avgRating ?? 0;
+    const total = publicStats?.totalRatings ?? 0;
+    if (!total || avg <= 0) return "";
+    return `${avg.toFixed(1)} (${total})`;
+  }, [publicStats?.avgRating, publicStats?.totalRatings]);
+
+  const responseLabel = useMemo(() => {
+    const v = publicStats?.avgResponseTime;
+    if (v == null || Number.isNaN(Number(v)) || Number(v) <= 0) return "";
+    const minutes = Math.round(Number(v));
+    if (minutes < 1) return "Responde rápido";
+    if (minutes < 60) return `Responde em ~${minutes} min`;
+    const hours = Math.round(minutes / 60);
+    return `Responde em ~${hours}h`;
+  }, [publicStats?.avgResponseTime]);
+
   return (
-    <div className="rounded-2xl border border-gray-200 p-6 bg-white shadow-sm">
+    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
       {/* Header: foto/logo do corretor/imobiliária (se aplicável) */}
       {isRealtorOrAgency && ownerName && (
-        <div className="mb-6 pb-6 border-b border-gray-200">
-          {hasPublicProfile ? (
-            <Link
-              href={`/realtor/${ownerPublicSlug}`}
-              className="flex items-center gap-3 rounded-lg -mx-1 px-1 hover:bg-teal/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-            >
-              {ownerImage ? (
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-teal/20">
-                  <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-b from-gray-50 to-white">
+          <div className="flex items-start justify-between gap-3">
+            {hasPublicProfile ? (
+              <Link
+                href={`/realtor/${ownerPublicSlug}`}
+                className="flex items-start gap-3 rounded-xl -mx-1 px-1 py-1 hover:bg-teal/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                {ownerImage ? (
+                  <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-teal/15 bg-white shadow-sm">
+                    <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal/10 to-teal/30 flex items-center justify-center border border-teal/10">
+                    {ownerRole === "AGENCY" ? (
+                      <Building2 className="w-7 h-7 text-teal" />
+                    ) : (
+                      <User className="w-7 h-7 text-teal" />
+                    )}
+                  </div>
+                )}
+
+                <div className="min-w-0">
+                  <p className="font-extrabold text-gray-900 text-base leading-tight line-clamp-2">{ownerName}</p>
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
+                  </p>
+                  {(publicStats?.headline || (publicStats?.city && publicStats?.state)) && (
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                      {publicStats?.headline
+                        ? publicStats.headline
+                        : `${publicStats?.city}/${publicStats?.state}`}
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal/20 to-teal/40 flex items-center justify-center">
-                  {ownerRole === "AGENCY" ? (
-                    <Building2 className="w-8 h-8 text-teal" />
-                  ) : (
-                    <User className="w-8 h-8 text-teal" />
+              </Link>
+            ) : (
+              <div className="flex items-start gap-3">
+                {ownerImage ? (
+                  <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-teal/15 bg-white shadow-sm">
+                    <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal/10 to-teal/30 flex items-center justify-center border border-teal/10">
+                    {ownerRole === "AGENCY" ? (
+                      <Building2 className="w-7 h-7 text-teal" />
+                    ) : (
+                      <User className="w-7 h-7 text-teal" />
+                    )}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="font-extrabold text-gray-900 text-base leading-tight line-clamp-2">{ownerName}</p>
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {hasPublicProfile && (
+              <Link
+                href={`/realtor/${ownerPublicSlug}`}
+                className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                title="Ver perfil"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </Link>
+            )}
+          </div>
+
+          {publicStatsLoading && (
+            <div className="mt-4 grid grid-cols-3 gap-2 animate-pulse">
+              <div className="h-10 rounded-xl bg-gray-200" />
+              <div className="h-10 rounded-xl bg-gray-200" />
+              <div className="h-10 rounded-xl bg-gray-200" />
+            </div>
+          )}
+
+          {!publicStatsLoading && publicStats && (
+            <div className="mt-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {publicStats.totalRatings > 0 && publicStats.avgRating > 0 && (
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-800">
+                    <RatingStars readonly rating={Math.round(publicStats.avgRating)} size="sm" />
+                    {ratingLabel}
+                    <span className="sr-only">Avaliações</span>
+                  </span>
+                )}
+
+                {publicStats.activeListings > 0 && (
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-800">
+                    <Building2 className="w-4 h-4 text-teal-700" />
+                    {publicStats.activeListings} anúncio{publicStats.activeListings === 1 ? "" : "s"}
+                  </span>
+                )}
+
+                {publicStats.completedDeals > 0 && (
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-800">
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold">
+                      ✓
+                    </span>
+                    {publicStats.completedDeals} fechado{publicStats.completedDeals === 1 ? "" : "s"}
+                  </span>
+                )}
+
+                {!!responseLabel && (
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-800">
+                    <Timer className="w-4 h-4 text-blue-700" />
+                    {responseLabel}
+                  </span>
+                )}
+              </div>
+
+              {(publicStats.isTopProducer || publicStats.isFastResponder || publicStats.creci) && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {publicStats.isTopProducer && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 text-[11px] font-bold">
+                      Top producer
+                    </span>
+                  )}
+                  {publicStats.isFastResponder && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full border border-blue-200 bg-blue-50 text-blue-800 text-[11px] font-bold">
+                      Responde rápido
+                    </span>
+                  )}
+                  {publicStats.creci && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full border border-gray-200 bg-white text-gray-700 text-[11px] font-semibold">
+                      CRECI {publicStats.creci}
+                      {publicStats.creciState ? `/${publicStats.creciState}` : ""}
+                    </span>
                   )}
                 </div>
               )}
-              <div>
-                <p className="font-semibold text-gray-900">{ownerName}</p>
-                <p className="text-sm text-gray-600">
-                  {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
-                </p>
-              </div>
-            </Link>
-          ) : (
-            <div className="flex items-center gap-3">
-              {ownerImage ? (
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-teal/20">
-                  <Image src={ownerImage} alt={ownerName} fill className="object-cover" />
-                </div>
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal/20 to-teal/40 flex items-center justify-center">
-                  {ownerRole === "AGENCY" ? (
-                    <Building2 className="w-8 h-8 text-teal" />
-                  ) : (
-                    <User className="w-8 h-8 text-teal" />
-                  )}
-                </div>
-              )}
-              <div>
-                <p className="font-semibold text-gray-900">{ownerName}</p>
-                <p className="text-sm text-gray-600">
-                  {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
-                </p>
-              </div>
             </div>
           )}
         </div>
       )}
 
-      <div className="px-0 py-0">
+      <div className="p-6">
         <h3 className="text-base font-semibold text-gray-900">Fale com o anunciante</h3>
 
         <div className="mt-3">
