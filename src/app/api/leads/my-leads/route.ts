@@ -10,6 +10,18 @@ type PipelineStage = "NEW" | "CONTACT" | "VISIT" | "PROPOSAL" | "DOCUMENTS" | "W
 const jsonSafe = <T,>(value: T): T | number =>
   typeof value === "bigint" ? Number(value) : value;
 
+function inferLeadOrigin(lead: any, sourceRaw: unknown): "WHATSAPP" | "SITE_CHAT" {
+  const source = String((sourceRaw as any) || "").toUpperCase();
+  if (source.includes("WHATSAPP")) return "WHATSAPP";
+
+  const msg = String((lead as any)?.message || "").toLowerCase();
+  if (msg.includes("whatsapp")) return "WHATSAPP";
+
+  if ((lead as any)?.clientChatToken) return "SITE_CHAT";
+
+  return "SITE_CHAT";
+}
+
 function clip(s: any, n: number) {
   return String(s || "")
     .trim()
@@ -317,11 +329,31 @@ export async function GET(request: NextRequest) {
 
         const rowById = new Map<string, any>(slice.map((r) => [String(r.id), r]));
 
+        const leadCreatedEvents = leadIds.length
+          ? await (prisma as any).leadEvent.findMany({
+              where: {
+                leadId: { in: leadIds },
+                type: "LEAD_CREATED",
+              },
+              orderBy: { createdAt: "desc" },
+              select: { leadId: true, metadata: true },
+            })
+          : [];
+
+        const sourceByLeadId = new Map<string, any>();
+        for (const ev of leadCreatedEvents as any[]) {
+          const k = String(ev?.leadId || "");
+          if (!k || sourceByLeadId.has(k)) continue;
+          sourceByLeadId.set(k, (ev as any)?.metadata?.source);
+        }
+
         const normalized = (orderedLeads as any[]).map((lead) => {
           const row = rowById.get(String(lead.id)) || null;
           const lastActivityAt = row?.last_activity_at ? new Date(row.last_activity_at).toISOString() : null;
+          const origin = inferLeadOrigin(lead, sourceByLeadId.get(String(lead.id)));
           return {
             ...lead,
+            origin,
             pipelineStage: lead.pipelineStage || mapStatusToStage(lead.status),
             hasUnreadMessages: !!row?.has_unread,
             lastMessageAt: lastActivityAt,
@@ -558,6 +590,24 @@ export async function GET(request: NextRequest) {
 
     const leadIds = orderedLeads.map((l) => String(l.id));
 
+    const leadCreatedEvents = leadIds.length
+      ? await (prisma as any).leadEvent.findMany({
+          where: {
+            leadId: { in: leadIds },
+            type: "LEAD_CREATED",
+          },
+          orderBy: { createdAt: "desc" },
+          select: { leadId: true, metadata: true },
+        })
+      : [];
+
+    const sourceByLeadId = new Map<string, any>();
+    for (const ev of leadCreatedEvents as any[]) {
+      const k = String(ev?.leadId || "");
+      if (!k || sourceByLeadId.has(k)) continue;
+      sourceByLeadId.set(k, (ev as any)?.metadata?.source);
+    }
+
     const [lastClientMsgs, lastInternalMsgs] = await Promise.all([
       leadIds.length
         ? (prisma as any).leadClientMessage.findMany({
@@ -594,6 +644,8 @@ export async function GET(request: NextRequest) {
       const leadId = String(lead.id);
       const lastClient = lastClientByLead.get(leadId) || null;
       const lastInternal = lastInternalByLead.get(leadId) || null;
+
+      const origin = inferLeadOrigin(lead, sourceByLeadId.get(leadId));
 
       const clientAt = lastClient?.createdAt ? new Date(lastClient.createdAt) : null;
       const internalAt = lastInternal?.createdAt ? new Date(lastInternal.createdAt) : null;
@@ -638,6 +690,7 @@ export async function GET(request: NextRequest) {
 
       return {
         ...lead,
+        origin,
         pipelineStage: lead.pipelineStage || mapStatusToStage(lead.status),
         hasUnreadMessages,
         lastMessageAt: lastMessageAt ? lastMessageAt.toISOString() : null,

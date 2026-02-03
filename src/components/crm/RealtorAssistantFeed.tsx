@@ -242,6 +242,38 @@ function shouldAutoResolveOnReply(itemType: string | null | undefined) {
   return t === "UNANSWERED_CLIENT_MESSAGE" || t === "NEW_LEAD" || t === "LEAD_NO_FIRST_CONTACT" || t === "STALE_LEAD";
 }
 
+function assistantTypeRank(itemType: string | null | undefined): number {
+  const t = String(itemType || "").trim();
+  if (t === "UNANSWERED_CLIENT_MESSAGE") return 1;
+  if (t === "VISIT_TODAY" || t === "VISIT_TOMORROW") return 2;
+  if (t === "OWNER_APPROVAL_PENDING") return 3;
+  if (t === "REMINDER_OVERDUE" || t === "REMINDER_TODAY") return 4;
+  if (t === "NEW_LEAD") return 5;
+  if (t === "LEAD_NO_FIRST_CONTACT") return 6;
+  if (t === "STALE_LEAD") return 7;
+  return 100;
+}
+
+function assistantDedupeKey(item: any): string {
+  const t = String(item?.type || "").trim();
+  if (!t) return "UNKNOWN";
+  if (t === "UNANSWERED_CLIENT_MESSAGE") return t;
+  return t;
+}
+
+function shouldSuppressSecondary(primaryType: string | null | undefined, secondaryType: string | null | undefined): boolean {
+  const p = String(primaryType || "").trim();
+  const s = String(secondaryType || "").trim();
+  if (!p || !s) return false;
+  if (p === "UNANSWERED_CLIENT_MESSAGE") {
+    return s === "NEW_LEAD" || s === "LEAD_NO_FIRST_CONTACT" || s === "STALE_LEAD";
+  }
+  if (p === "VISIT_TODAY" || p === "VISIT_TOMORROW") {
+    return s === "NEW_LEAD";
+  }
+  return false;
+}
+
 export default function RealtorAssistantFeed(props: {
   realtorId?: string;
   leadId?: string;
@@ -1418,6 +1450,9 @@ export default function RealtorAssistantFeed(props: {
               }
               return Array.from(map.entries()).map(([key, items]) => {
                 const sorted = [...items].sort((a, b) => {
+                  const ra = assistantTypeRank(a.type);
+                  const rb = assistantTypeRank(b.type);
+                  if (ra !== rb) return ra - rb;
                   const sa = typeof a.impactScore === "number" ? a.impactScore : 0;
                   const sb = typeof b.impactScore === "number" ? b.impactScore : 0;
                   if (sb !== sa) return sb - sa;
@@ -1428,7 +1463,21 @@ export default function RealtorAssistantFeed(props: {
                   if (ta !== tb) return ta - tb;
                   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
                 });
-                return { key, items: sorted };
+
+                const unique: AssistantItem[] = [];
+                const seen = new Set<string>();
+                for (const it of sorted) {
+                  const dk = assistantDedupeKey(it);
+                  if (seen.has(dk)) continue;
+                  seen.add(dk);
+                  unique.push(it);
+                }
+
+                const primary = unique[0];
+                const remaining = unique.slice(1).filter((st) => !shouldSuppressSecondary(primary?.type, st.type));
+                const secondary = remaining.slice(0, 1);
+
+                return { key, items: [primary, ...secondary].filter(Boolean) };
               });
             })();
 
@@ -1983,8 +2032,9 @@ export default function RealtorAssistantFeed(props: {
                         {subtasks.length > 0 && (
                           <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
                             <div className="flex items-center justify-between gap-3">
-                              <p className="text-[11px] font-semibold text-gray-800">Outras pendências deste lead</p>
-                              <p className="text-[11px] font-semibold text-gray-500">{subtasks.length}</p>
+                              <p className="text-[11px] font-semibold text-gray-800">
+                                {subtasks.length === 1 ? "Outra pendência deste lead" : "Outras pendências deste lead"}
+                              </p>
                             </div>
                             <div className="mt-3 space-y-2">
                               {subtasks.map((st) => {

@@ -78,7 +78,7 @@ function getLeadPipelineStage(lead: Lead): PipelineStage {
 
 interface Lead {
   id: string;
-  status: "RESERVED" | "ACCEPTED" | "COMPLETED";
+  status: "RESERVED" | "ACCEPTED" | "COMPLETED" | string;
   createdAt: string;
   reservedUntil?: string | null;
   respondedAt?: string | null;
@@ -92,6 +92,7 @@ interface Lead {
   lastMessageFromClient?: boolean;
   clientChatToken?: string | null;
   chatUrl?: string | null;
+  origin?: "WHATSAPP" | "SITE_CHAT" | string;
   property: {
     id: string;
     title: string;
@@ -711,6 +712,33 @@ export default function MyLeadsPage() {
     return `https://wa.me/${withCountry}`;
   };
 
+  const getOriginLabel = (lead: Lead) => {
+    const v = String((lead as any)?.origin || "").toUpperCase();
+    if (v === "WHATSAPP") return "WhatsApp";
+    return "Chat";
+  };
+
+  const getOriginPillClass = (lead: Lead) => {
+    const v = String((lead as any)?.origin || "").toUpperCase();
+    if (v === "WHATSAPP") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    return "bg-blue-50 text-blue-700 border-blue-200";
+  };
+
+  const getShortLeadId = (id: string) => {
+    const s = String(id || "");
+    if (!s) return "";
+    return s.length <= 8 ? s : s.slice(-8);
+  };
+
+  const copyLeadId = async (leadId: string) => {
+    try {
+      await navigator.clipboard.writeText(String(leadId));
+      toast.success("Copiado!", "ID do lead copiado para a área de transferência.");
+    } catch {
+      toast.error("Não foi possível copiar", "Seu navegador bloqueou a cópia. Tente novamente.");
+    }
+  };
+
   const isSameDay = (a: Date, b: Date) => {
     return (
       a.getFullYear() === b.getFullYear() &&
@@ -1255,6 +1283,25 @@ export default function MyLeadsPage() {
                               <span className="truncate">{addressLine}</span>
                             </p>
                           )}
+
+                          <div className="flex items-center gap-2 mt-2">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getOriginPillClass(lead)}`}
+                            >
+                              {getOriginLabel(lead)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyLeadId(lead.id);
+                              }}
+                              className="text-[10px] font-semibold text-gray-500 hover:text-gray-800"
+                              title={lead.id}
+                            >
+                              ID {getShortLeadId(lead.id)}
+                            </button>
+                          </div>
                         </div>
 
                         <button
@@ -1325,6 +1372,25 @@ export default function MyLeadsPage() {
                             <span>{ptBR.type(lead.property.type)}</span>
                             <span>•</span>
                             <span>{lastActivityLabel}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-2">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getOriginPillClass(lead)}`}
+                            >
+                              {getOriginLabel(lead)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyLeadId(lead.id);
+                              }}
+                              className="text-[10px] font-semibold text-gray-500 hover:text-gray-800"
+                              title={lead.id}
+                            >
+                              ID {getShortLeadId(lead.id)}
+                            </button>
                           </div>
 
                           {/* Alertas inline */}
@@ -1603,6 +1669,7 @@ export default function MyLeadsPage() {
                         <th className="pl-2 pr-3 py-3">Lead</th>
                         <th className="px-3 py-3">Imóvel</th>
                         <th className="px-3 py-3">Etapa</th>
+                        <th className="px-3 py-3">Origem</th>
                         <th className="px-3 py-3">Atividade</th>
                         <th className="px-3 py-3">Ações</th>
                       </tr>
@@ -1631,6 +1698,17 @@ export default function MyLeadsPage() {
                                     {lead.contact?.name || "Lead"}
                                   </div>
                                   <div className="text-xs text-gray-600 truncate">{lead.contact?.email || ""}</div>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      copyLeadId(lead.id);
+                                    }}
+                                    className="mt-0.5 text-[11px] text-gray-500 hover:text-gray-800 font-semibold"
+                                    title={lead.id}
+                                  >
+                                    ID {getShortLeadId(lead.id)}
+                                  </button>
                                   {lead.hasUnreadMessages && (
                                     <div className="text-[11px] text-blue-700 font-semibold">Mensagem não lida</div>
                                   )}
@@ -1690,6 +1768,13 @@ export default function MyLeadsPage() {
                               </div>
                             </td>
                             <td className="px-3 py-3">{renderStageSelector(lead)}</td>
+                            <td className="px-3 py-3">
+                              <span
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold border ${getOriginPillClass(lead)}`}
+                              >
+                                {getOriginLabel(lead)}
+                              </span>
+                            </td>
                             <td className="px-3 py-3">
                               <div className="text-gray-700">{lastActivityLabel}</div>
                               {lead.lastMessagePreview && (
