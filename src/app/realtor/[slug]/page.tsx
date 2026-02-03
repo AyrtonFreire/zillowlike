@@ -453,7 +453,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
           </div>
 
           {/* Right column: Properties */}
-          <div className="lg:col-span-2 space-y-6">
+          <div id="anuncios" className="lg:col-span-2 space-y-6">
             <ListaImoveis
               realtorName={name}
               soldProperties={soldProperties.map((p: any) => ({

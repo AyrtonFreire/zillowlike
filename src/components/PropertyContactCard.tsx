@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { User, Building2, MessageCircle, ExternalLink, Timer } from "lucide-react";
+import { User, Building2, MessageCircle, ExternalLink, Timer, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
@@ -381,6 +381,18 @@ export default function PropertyContactCard({
                       {publicStats.creciState ? `/${publicStats.creciState}` : ""}
                     </span>
                   )}
+                </div>
+              )}
+
+              {hasPublicProfile && (
+                <div className="mt-4">
+                  <Link
+                    href={`/realtor/${ownerPublicSlug}#anuncios`}
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-teal-700 hover:text-teal-800"
+                  >
+                    Ver todos os anúncios do anunciante
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
                 </div>
               )}
             </div>
