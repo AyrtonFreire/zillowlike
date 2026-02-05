@@ -3942,9 +3942,6 @@ export default function NewPropertyPage() {
 
                     {hasAnyVerifiedContact ? (
                       <div className="space-y-3">
-                        <p className="text-sm text-gray-600">
-                          Você já tem pelo menos um contato verificado. Você pode publicar seu anúncio.
-                        </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="p-3 bg-white rounded-lg border border-gray-200">
                             <div className="flex items-center gap-2">
