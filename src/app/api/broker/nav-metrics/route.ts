@@ -29,13 +29,29 @@ export async function GET(req: NextRequest) {
     const now = new Date();
 
     const [assistantOpen, unreadChats] = await Promise.all([
-      (prisma as any).assistantItem.count({
-        where: {
-          context: "REALTOR",
-          ownerId: String(userId),
-          OR: [{ status: "ACTIVE" }, { status: "SNOOZED", snoozedUntil: { lte: now } }],
-        },
-      }),
+      (async () => {
+        const items = await (prisma as any).assistantItem.findMany({
+          where: {
+            context: "REALTOR",
+            ownerId: String(userId),
+            OR: [{ status: "ACTIVE" }, { status: "SNOOZED", snoozedUntil: { lte: now } }],
+          },
+          select: {
+            id: true,
+            leadId: true,
+          },
+        });
+
+        const keys = new Set<string>();
+        for (const row of Array.isArray(items) ? items : []) {
+          const id = String((row as any)?.id || "");
+          const leadIdValue = (row as any)?.leadId;
+          const leadId = leadIdValue ? String(leadIdValue) : "";
+          if (!id) continue;
+          keys.add(leadId ? `lead:${leadId}` : `item:${id}`);
+        }
+        return keys.size;
+      })(),
       (async () => {
         const leadIdsRes = await (prisma as any).leadClientMessage.findMany({
           where: {
