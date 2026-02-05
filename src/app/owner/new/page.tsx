@@ -9,6 +9,7 @@ import { restrictToVerticalAxis, restrictToParentElement, restrictToWindowEdges 
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
+import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
 import { geocodeAddressParts } from "@/lib/geocode";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import { buildPropertyPath } from "@/lib/slug";
@@ -350,6 +351,11 @@ export default function NewPropertyPage() {
   const [contactMode, setContactMode] = useState<'DIRECT' | 'BROKER'>('DIRECT');
   const [contactPrefs, setContactPrefs] = useState<{ preferredHours?: string; chatFirst?: boolean; noCall?: boolean }>({ chatFirst: true });
   const [contactChannel, setContactChannel] = useState<"phone" | "email">("phone");
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profilePublicSlug, setProfilePublicSlug] = useState<string | null>(null);
+  const [profilePublicProfileEnabled, setProfilePublicProfileEnabled] = useState<boolean>(false);
+  const [profilePublicPhoneOptIn, setProfilePublicPhoneOptIn] = useState<boolean>(false);
   const [profilePhone, setProfilePhone] = useState<string | null>(null);
   const [profilePhoneVerified, setProfilePhoneVerified] = useState<boolean>(false);
   const [phoneConfirmedForListing, setPhoneConfirmedForListing] = useState(false);
@@ -465,6 +471,11 @@ export default function NewPropertyPage() {
         const data = await res.json();
         if (!data?.success || !data.user || cancelled) return;
         setUserRole(String(data.user.role || "USER").toUpperCase());
+        setProfileName(data.user.name || null);
+        setProfileImage(data.user.image || null);
+        setProfilePublicSlug(data.user.publicSlug || null);
+        setProfilePublicProfileEnabled(!!data.user.publicProfileEnabled);
+        setProfilePublicPhoneOptIn(!!data.user.publicPhoneOptIn);
         setProfilePhone(data.user.phone || "");
         setProfilePhoneVerified(!!data.user.phoneVerifiedAt);
         setProfileEmail(data.user.email || "");
@@ -1458,6 +1469,47 @@ export default function NewPropertyPage() {
 
   const finalTitle = customTitle.trim();
 
+  const previewImages = useMemo(() => {
+    const arr = images
+      .filter((i) => i.url)
+      .map((i) => ({ url: i.url, alt: i.alt || null }));
+    return arr.length ? arr : [{ url: "/placeholder.jpg", alt: null }];
+  }, [images]);
+
+  const reviewChecklist = useMemo(() => {
+    const hasTitle = finalTitle.length >= 3;
+    const hasPurpose = !!purpose;
+    const hasAtLeastOneImage = images.some((img) => img.url && img.url.trim().length > 0);
+    const hasAddressBasics = !!(street && city && state);
+    const hasMap = !!geo;
+    const hasDescription = (description || "").trim().length >= 50;
+
+    return [
+      { label: "Título do anúncio", done: hasTitle },
+      { label: "Finalidade (Venda/Aluguel)", done: hasPurpose },
+      { label: "Pelo menos 1 foto", done: hasAtLeastOneImage },
+      { label: "Endereço básico", done: hasAddressBasics },
+      { label: "Localização no mapa", done: hasMap },
+      { label: "Descrição (mín. 50 caracteres)", done: hasDescription },
+      { label: "Contato verificado", done: hasAnyVerifiedContact },
+    ];
+  }, [city, description, finalTitle.length, geo, hasAnyVerifiedContact, images, purpose, state, street]);
+
+  const jumpToStep = (step: number) => {
+    setCurrentStep(step);
+    window.setTimeout(() => {
+      try {
+        formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch {
+        try {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } catch {
+          window.scrollTo(0, 0);
+        }
+      }
+    }, 50);
+  };
+
   // Score de qualidade do anúncio
   const adQualityScore = useMemo(() => {
     let score = 0;
@@ -1523,7 +1575,7 @@ export default function NewPropertyPage() {
     { id: 3, name: "Fotos", description: "Imagens do imóvel" },
     { id: 4, name: "Descrição", description: "Título, texto e SEO" },
     { id: 5, name: "Dados do proprietário", description: "Informações internas (opcional)" },
-    { id: 6, name: "Revisão final", description: "Conferir dados e publicar" },
+    { id: 6, name: "Prévia do anúncio", description: "Ver como vai ficar e publicar" },
   ];
 
   const isStepComplete = (stepId: number) => {
@@ -3749,35 +3801,134 @@ export default function NewPropertyPage() {
 
               {currentStep === 6 && (
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Revisão final</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Prévia do anúncio</h2>
                   <p className="text-sm text-gray-600">
-                    Confira um resumo dos dados principais antes de publicar. Se algo estiver errado, volte para o passo
-                    correspondente para ajustar.
+                    Esta é uma prévia do seu anúncio antes de publicar. Os botões de contato e ações estão desativados nesta tela.
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700">
-                    <div className="space-y-1">
-                      <p><span className="font-medium">Finalidade:</span> {purpose === "RENT" ? "Aluguel" : "Venda"}</p>
-                      <p><span className="font-medium">Preço:</span> R$ {parseBRLToNumber(priceBRL).toLocaleString("pt-BR")}</p>
-                      <p><span className="font-medium">Tipo:</span> {type}</p>
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <span className="font-semibold">Prévia — rascunho:</span> o anúncio ainda não está público.
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                      <p className="text-sm font-semibold text-gray-900">Ajustes rápidos</p>
+                      <p className="text-xs text-gray-600 mt-1">Volte direto para a etapa certa para corrigir algo.</p>
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button type="button" onClick={() => jumpToStep(1)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar informações básicas</button>
+                        <button type="button" onClick={() => jumpToStep(2)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar detalhes</button>
+                        <button type="button" onClick={() => jumpToStep(3)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar fotos</button>
+                        <button type="button" onClick={() => jumpToStep(4)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar descrição</button>
+                        <button type="button" onClick={() => jumpToStep(5)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800 sm:col-span-2">Editar dados do proprietário</button>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <p><span className="font-medium">Endereço:</span> {addressString || "Não informado"}</p>
-                      <p><span className="font-medium">Quartos/Banheiros:</span> {bedrooms || "-"} / {bathrooms || "-"}</p>
-                      <p><span className="font-medium">Área:</span> {areaM2 || "-"} m²</p>
-                      {(builtAreaM2 || lotAreaM2 || privateAreaM2 || usableAreaM2) && (
-                        <p className="text-gray-600">
-                          <span className="font-medium">Medidas:</span>{" "}
-                          {builtAreaM2 ? `Construída ${builtAreaM2}m²` : ""}
-                          {builtAreaM2 && (lotAreaM2 || privateAreaM2 || usableAreaM2) ? " · " : ""}
-                          {lotAreaM2 ? `Terreno ${lotAreaM2}m²` : ""}
-                          {lotAreaM2 && (privateAreaM2 || usableAreaM2) ? " · " : ""}
-                          {privateAreaM2 ? `Privativa ${privateAreaM2}m²` : ""}
-                          {privateAreaM2 && usableAreaM2 ? " · " : ""}
-                          {usableAreaM2 ? `Útil ${usableAreaM2}m²` : ""}
-                        </p>
-                      )}
+
+                    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                      <p className="text-sm font-semibold text-gray-900">Checklist antes de publicar</p>
+                      <div className="mt-3 space-y-2">
+                        {reviewChecklist.map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-2 text-sm">
+                            <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-extrabold ${item.done ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-gray-50 border-gray-200 text-gray-400"}`}>{item.done ? "✓" : ""}</span>
+                            <span className={item.done ? "text-gray-800" : "text-gray-600"}>{item.label}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <PropertyDetailsModalJames
+                      propertyId={null}
+                      open
+                      variant="page"
+                      mode="preview"
+                      initialProperty={{
+                        id: "preview",
+                        title: finalTitle,
+                        metaTitle: metaTitle || null,
+                        metaDescription: metaDescription || null,
+                        description: description || "",
+                        price: Math.round(parseBRLToNumber(priceBRL) * 100),
+                        condoFee: condoFeeBRL ? Math.round(parseBRLToNumber(condoFeeBRL) * 100) : null,
+                        iptuYearly: iptuYearBRL ? Math.round(parseBRLToNumber(iptuYearBRL) * 100) : null,
+                        type,
+                        purpose: (purpose || "SALE") as any,
+                        videoUrl: videoUrl || null,
+                        street: street || "",
+                        neighborhood: neighborhood || null,
+                        city: city || "",
+                        state: state || "",
+                        postalCode: postalCode || null,
+                        latitude: geo?.lat ?? null,
+                        longitude: geo?.lng ?? null,
+                        bedrooms: bedrooms === "" ? null : Number(bedrooms),
+                        bathrooms: bathrooms === "" ? null : Number(bathrooms),
+                        areaM2: areaM2 === "" ? null : Number(areaM2),
+                        builtAreaM2: builtAreaM2 === "" ? null : Number(builtAreaM2),
+                        lotAreaM2: lotAreaM2 === "" ? null : Number(lotAreaM2),
+                        privateAreaM2: privateAreaM2 === "" ? null : Number(privateAreaM2),
+                        usableAreaM2: usableAreaM2 === "" ? null : Number(usableAreaM2),
+                        suites: suites === "" ? null : Number(suites as any),
+                        parkingSpots: parkingSpots === "" ? null : Number(parkingSpots as any),
+                        floor: floor === "" ? null : Number(floor as any),
+                        yearBuilt: yearBuilt === "" ? null : Number(yearBuilt as any),
+                        yearRenovated: yearRenovated === "" ? null : Number(yearRenovated as any),
+                        totalFloors: totalFloors === "" ? null : Number(totalFloors as any),
+                        furnished: conditionTags.includes("Mobiliado"),
+                        petFriendly: petFriendly || petsSmall || petsLarge,
+                        images: previewImages,
+                        conditionTags,
+                        hasBalcony,
+                        hasElevator,
+                        hasPool,
+                        hasGym,
+                        hasPlayground,
+                        hasPartyRoom,
+                        hasGourmet,
+                        hasConcierge24h,
+                        accRamps,
+                        accWideDoors,
+                        accAccessibleElevator,
+                        accTactile,
+                        comfortAC,
+                        comfortHeating,
+                        comfortSolar,
+                        comfortNoiseWindows,
+                        comfortLED,
+                        comfortWaterReuse,
+                        finishFloor: finishFloor ? (finishFloor === "porcelanato" ? "PORCELANATO" : finishFloor === "madeira" ? "MADEIRA" : finishFloor === "vinilico" ? "VINILICO" : "OUTRO") : null,
+                        finishCabinets,
+                        finishCounterGranite,
+                        finishCounterQuartz,
+                        viewSea,
+                        viewCity,
+                        positionFront,
+                        positionBack,
+                        sunByRoomNote: sunByRoomNote || null,
+                        petsSmall,
+                        petsLarge,
+                        condoRules: condoRules || null,
+                        secCCTV,
+                        secSallyPort,
+                        secNightGuard,
+                        secElectricFence,
+                        sunOrientation: sunOrientation ? (sunOrientation.toUpperCase() === "NASCENTE" ? "NASCENTE" : sunOrientation.toUpperCase() === "POENTE" ? "POENTE" : "OUTRA") : null,
+                        hidePrice,
+                        hideExactAddress,
+                        hideOwnerContact,
+                        hideCondoFee,
+                        hideIPTU,
+                        owner: {
+                          id: "me",
+                          name: profileName || "Você",
+                          image: profileImage,
+                          role: (userRole as any) || "USER",
+                          publicProfileEnabled: profilePublicProfileEnabled,
+                          publicSlug: profilePublicSlug,
+                          publicPhoneOptIn: profilePublicPhoneOptIn,
+                        },
+                      }}
+                    />
                   </div>
 
                   <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -4079,26 +4230,28 @@ export default function NewPropertyPage() {
             )}
 
             {/* Preview do card */}
-            <PropertyCardPremium
-              property={{
-                id: 'preview',
-                title: finalTitle,
-                price: parseBRLToNumber(priceBRL) * 100,
-                images: images.filter((i)=>i.url).map((i)=>({ url: i.url })),
-                city,
-                state,
-                bedrooms: bedrooms === '' ? undefined : Number(bedrooms),
-                bathrooms: bathrooms === '' ? undefined : Number(bathrooms),
-                areaM2: areaM2 === '' ? undefined : Number(areaM2),
-                neighborhood,
-                conditionTags,
-                type,
-                description: description,
-                purpose: (purpose || 'SALE') as 'SALE' | 'RENT',
-                videoUrl: videoUrl || null,
-              }}
-              watermark={showWatermark}
-            />
+            {currentStep !== 6 && (
+              <PropertyCardPremium
+                property={{
+                  id: 'preview',
+                  title: finalTitle,
+                  price: parseBRLToNumber(priceBRL) * 100,
+                  images: images.filter((i)=>i.url).map((i)=>({ url: i.url })),
+                  city,
+                  state,
+                  bedrooms: bedrooms === '' ? undefined : Number(bedrooms),
+                  bathrooms: bathrooms === '' ? undefined : Number(bathrooms),
+                  areaM2: areaM2 === '' ? undefined : Number(areaM2),
+                  neighborhood,
+                  conditionTags,
+                  type,
+                  description: description,
+                  purpose: (purpose || 'SALE') as 'SALE' | 'RENT',
+                  videoUrl: videoUrl || null,
+                }}
+                watermark={showWatermark}
+              />
+            )}
             {/* Contextual tips panel (modern glass/gradient) */}
             <div className="mt-4">
               <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">

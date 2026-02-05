@@ -33,6 +33,7 @@ type ContactCardProps = {
   propertyId: string;
   propertyTitle: string;
   propertyPurpose?: "SALE" | "RENT";
+  disableActions?: boolean;
   
   // Owner/Realtor info
   ownerRole: "USER" | "OWNER" | "REALTOR" | "AGENCY" | "ADMIN";
@@ -50,6 +51,7 @@ type ContactCardProps = {
 export default function PropertyContactCard({
   propertyId,
   propertyTitle,
+  disableActions,
   ownerRole,
   ownerName,
   ownerImage,
@@ -145,6 +147,7 @@ export default function PropertyContactCard({
 
   const handleWhatsAppClick = async () => {
     try {
+      if (disableActions) return;
       if (!canShowWhatsApp) {
         toast.info("Contato via WhatsApp não está disponível para este anúncio.");
         return;
@@ -177,6 +180,7 @@ export default function PropertyContactCard({
 
   const createLeadAndOpenChat = async () => {
     try {
+      if (disableActions) return;
       if (!isAuthenticated) {
         await signIn(undefined, { callbackUrl: getChatCallbackUrl() });
         return;
@@ -255,6 +259,9 @@ export default function PropertyContactCard({
             {hasPublicProfile ? (
               <Link
                 href={`/realtor/${ownerPublicSlug}`}
+                onClick={(e) => {
+                  if (disableActions) e.preventDefault();
+                }}
                 className="flex items-start gap-3 rounded-xl -mx-1 px-1 py-1 hover:bg-teal/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               >
                 {ownerImage ? (
@@ -312,6 +319,9 @@ export default function PropertyContactCard({
             {hasPublicProfile && (
               <Link
                 href={`/realtor/${ownerPublicSlug}`}
+                onClick={(e) => {
+                  if (disableActions) e.preventDefault();
+                }}
                 className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                 title="Ver perfil"
               >
@@ -343,6 +353,9 @@ export default function PropertyContactCard({
                   hasPublicProfile ? (
                     <Link
                       href={`/realtor/${ownerPublicSlug}#anuncios`}
+                      onClick={(e) => {
+                        if (disableActions) e.preventDefault();
+                      }}
                       className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-800 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                       title="Ver anúncios do anunciante"
                     >
@@ -407,7 +420,7 @@ export default function PropertyContactCard({
           <button
             type="button"
             onClick={handleWhatsAppClick}
-            disabled={!canShowWhatsApp}
+            disabled={!!disableActions || !canShowWhatsApp}
             className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white text-sm font-semibold px-4 py-3 shadow-sm hover:bg-[#128C7E] active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
           >
             <WhatsAppIcon className="w-5 h-5" />
@@ -427,7 +440,7 @@ export default function PropertyContactCard({
           <button
             type="button"
             onClick={createLeadAndOpenChat}
-            disabled={loading}
+            disabled={!!disableActions || loading}
             className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 text-white text-sm font-semibold px-4 py-3 shadow-sm hover:bg-teal-700 active:brightness-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
           >
             <MessageCircle className="w-5 h-5" />

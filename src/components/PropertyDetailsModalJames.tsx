@@ -23,9 +23,10 @@ type PropertyDetailsModalProps = {
   open: boolean;
   onClose?: () => void;
   variant?: "overlay" | "page";
-  mode?: "public" | "internal";
+  mode?: "public" | "internal" | "preview";
   backHref?: string;
   backLabel?: string;
+  initialProperty?: PropertyDetails | null;
 };
 
 type PropertyDetails = {
@@ -47,6 +48,8 @@ type PropertyDetails = {
   city: string;
   state: string;
   postalCode?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   bedrooms: number | null;
   bathrooms: number | null;
   areaM2: number | null;
@@ -141,7 +144,7 @@ const FEATURES_ICONS = {
 };
 
 export default function PropertyDetailsModalJames({ propertyId, open, onClose }: PropertyDetailsModalProps) {
-  const { variant = "overlay", mode = "public", backHref, backLabel } = arguments[0] as PropertyDetailsModalProps;
+  const { variant = "overlay", mode = "public", backHref, backLabel, initialProperty } = arguments[0] as PropertyDetailsModalProps;
   const router = useRouter();
   const isOpen = variant === "page" ? true : open;
   const [activePropertyId, setActivePropertyId] = useState<string | null>(propertyId);
@@ -255,8 +258,12 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const overlayHistoryPushedRef = useRef(false);
   const closingFromPopstateRef = useRef(false);
 
+  const isPreview = mode === "preview";
+  const isPublicLike = mode === "public" || mode === "preview";
+
   useEffect(() => {
     if (!isOpen) return;
+    if (isPreview) return;
     if (shouldLoadArea && shouldLoadRelated) return;
 
     const root = variant === "overlay" ? (scrollContainerRef.current ?? null) : null;
@@ -288,7 +295,15 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     return () => {
       try { obs.disconnect(); } catch {}
     };
-  }, [isOpen, shouldLoadArea, shouldLoadRelated, property, variant]);
+  }, [isOpen, shouldLoadArea, shouldLoadRelated, property, variant, isPreview]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!isPreview) return;
+    setLoading(false);
+    setError(null);
+    setProperty(initialProperty ?? null);
+  }, [isOpen, isPreview, initialProperty]);
 
   const poiCategories = useMemo(() => ([
     { key: 'schools', label: 'Escolas', Icon: School, items: nearbyPlaces.schools },
@@ -532,6 +547,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   // Fetch property data
   useEffect(() => {
     if (!isOpen) return;
+    if (isPreview) return;
     if (!activePropertyId) return;
     setLoading(true);
     setError(null);
@@ -557,7 +573,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
           setProperty(data.item);
 
           try {
-            if (activePropertyId && !trackedViewRef.current.has(activePropertyId)) {
+            if (mode === "public" && activePropertyId && !trackedViewRef.current.has(activePropertyId)) {
               trackedViewRef.current.add(activePropertyId);
               fetch(`/api/public/properties/${activePropertyId}/view`, { method: "POST" }).catch(() => {});
             }
@@ -572,10 +588,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         setError('Não conseguimos carregar os detalhes deste imóvel agora. Se quiser, volte à lista e tente novamente em instantes.');
       })
       .finally(() => setLoading(false));
-  }, [activePropertyId, isOpen]);
+  }, [activePropertyId, isOpen, isPreview, mode]);
 
   useEffect(() => {
     if (!isOpen) return;
+    if (mode !== "public") return;
     if (!shouldLoadRelated) return;
     if (!property?.id) return;
     if (relatedRequested) return;
@@ -598,7 +615,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         setSimilarProperties(arr);
       })
       .catch(() => setSimilarProperties([]));
-  }, [isOpen, shouldLoadRelated, property, relatedRequested]);
+  }, [isOpen, shouldLoadRelated, property, relatedRequested, mode]);
 
   useEffect(() => {
     setActivePropertyId(propertyId);
@@ -641,6 +658,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   useEffect(() => {
     const lat = (property as any)?.latitude;
     const lng = (property as any)?.longitude;
+    if (mode !== "public") return;
     if (!isOpen || !shouldLoadArea || !lat || !lng) return;
     let ignore = false;
     (async () => {
@@ -659,7 +677,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       }
     })();
     return () => { ignore = true; };
-  }, [isOpen, property, shouldLoadArea]);
+  }, [isOpen, property, shouldLoadArea, mode]);
 
   // Reset on close
   useEffect(() => {
@@ -781,6 +799,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   };
 
   const handleShare = async () => {
+    if (isPreview) return;
     const url = `${window.location.origin}${buildPropertyPath(String(propertyId || ""), property?.title || "")}`;
     if (navigator.share) {
       await navigator.share({ title: property?.title, url });
@@ -790,6 +809,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   };
 
   const handleFavorite = async () => {
+    if (isPreview) return;
     try {
       const method = isFavorite ? "DELETE" : "POST";
       await fetch("/api/favorites", {
@@ -870,7 +890,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
               : "w-full max-w-[1400px] bg-white md:rounded-2xl shadow-2xl overflow-y-auto"
           }
         >
-        {variant === "overlay" && photoViewMode !== "feed" && (
+        {!isPreview && variant === "overlay" && photoViewMode !== "feed" && (
           <div className="md:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-gray-100/80 shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
             <div className="flex items-center justify-between px-4 h-16 max-w-5xl mx-auto">
               <button
@@ -899,29 +919,32 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 </span>
               </Link>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleFavorite}
-                  className="p-2 rounded-full hover:bg-gray-100"
-                  aria-label="Salvar"
-                >
-                  <Heart className={`w-6 h-6 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-800"}`} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  className="p-2 rounded-full hover:bg-gray-100"
-                  aria-label="Compartilhar"
-                >
-                  <Share2 className="w-6 h-6 text-gray-800" />
-                </button>
-              </div>
+              {!isPreview && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleFavorite}
+                    className="p-2 rounded-full hover:bg-gray-100"
+                    aria-label="Salvar"
+                  >
+                    <Heart className={`w-6 h-6 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-800"}`} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="p-2 rounded-full hover:bg-gray-100"
+                    aria-label="Compartilhar"
+                  >
+                    <Share2 className="w-6 h-6 text-gray-800" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Header principal do modal (desktop/tablet). No mobile usamos controles sobre a foto. */}
+        {!isPreview && (
         <div className="sticky top-0 z-20 bg-white/85 backdrop-blur-xl border-b border-gray-200/70 hidden sm:block">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             {photoViewMode === "feed" ? (
@@ -994,6 +1017,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             </div>
           </div>
         </div>
+        )}
 
         {/* Conteúdo com transição animada */}
         <AnimatePresence mode="wait">
@@ -1162,23 +1186,31 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
             {variant === "page" && (
               <>
-                {/* Botão voltar no canto superior esquerdo - estilo Zillow */}
-                <Link
-                  href={backHref || (mode === "internal" ? "/broker/properties" : "/")}
-                  className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center"
-                >
-                  <ChevronLeft className="w-5 h-5 text-gray-800" />
-                </Link>
+                {!isPreview && (
+                  <>
+                    {/* Botão voltar no canto superior esquerdo - estilo Zillow */}
+                    <Link
+                      href={backHref || (mode === "internal" ? "/broker/properties" : "/")}
+                      className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-800" />
+                    </Link>
+                  </>
+                )}
 
-                {/* Ações no canto superior direito */}
-                <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-white rounded-full px-1 py-1 shadow-lg">
-                  <button onClick={handleFavorite} className="w-8 h-8 flex items-center justify-center">
-                    <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-700"}`} />
-                  </button>
-                  <button onClick={handleShare} className="w-8 h-8 flex items-center justify-center">
-                    <Share2 className="w-5 h-5 text-gray-700" />
-                  </button>
-                </div>
+                {!isPreview && (
+                  <>
+                    {/* Ações no canto superior direito */}
+                    <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-white rounded-full px-1 py-1 shadow-lg">
+                      <button onClick={handleFavorite} className="w-8 h-8 flex items-center justify-center">
+                        <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-700"}`} />
+                      </button>
+                      <button onClick={handleShare} className="w-8 h-8 flex items-center justify-center">
+                        <Share2 className="w-5 h-5 text-gray-700" />
+                      </button>
+                    </div>
+                  </>
+                )}
               </>
             )}
 
@@ -1677,16 +1709,17 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
             {/* Sidebar */}
             <div className="lg:col-span-1">
               <div className="sticky top-24 space-y-6">
-                {mode === "public" ? (
+                {isPublicLike ? (
                   <>
                     {/* Financing card will appear below the contact form */}
 
                     {/* Contact Card - Dynamic based on owner type and lead board setting */}
-                    <div className="hidden md:block">
+                    <div className={isPreview ? "" : "hidden md:block"}>
                       <PropertyContactCard
                         propertyId={property.id}
                         propertyTitle={property.title}
                         propertyPurpose={property.purpose}
+                        disableActions={isPreview}
                         ownerRole={property.owner?.role || "USER"}
                         ownerName={property.owner?.name || undefined}
                         ownerImage={property.owner?.image || undefined}
@@ -1714,7 +1747,9 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                               <p className="text-sm text-gray-600 mb-1">Parcela estimada (360x)</p>
                               <p className="text-2xl font-bold text-teal">{fmt(calculation.monthlyPayment)}<span className="text-sm text-gray-600 font-normal">/mês</span></p>
                             </div>
-                            <a href={`/financing/${property.id}`} target="_blank" rel="noopener noreferrer" className="block w-full text-center px-4 py-2 glass-teal text-white rounded-lg font-medium hover:opacity-90 transition-opacity">Ver opções de bancos →</a>
+                            {!isPreview && (
+                              <a href={`/financing/${property.id}`} target="_blank" rel="noopener noreferrer" className="block w-full text-center px-4 py-2 glass-teal text-white rounded-lg font-medium hover:opacity-90 transition-opacity">Ver opções de bancos →</a>
+                            )}
                             <p className="text-xs text-gray-500 text-center">*Simulação aproximada. Consulte seu banco.</p>
                           </div>
                         </div>
@@ -1796,14 +1831,16 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   <ChevronLeft className="w-5 h-5" />
                   <span className="text-sm font-medium">Voltar ao anúncio</span>
                 </button>
-                <div className="flex items-center gap-3">
-                  <button onClick={handleFavorite}>
-                    <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-700"}`} />
-                  </button>
-                  <button onClick={handleShare}>
-                    <Share2 className="w-5 h-5 text-gray-700" />
-                  </button>
-                </div>
+                {!isPreview && (
+                  <div className="flex items-center gap-3">
+                    <button onClick={handleFavorite}>
+                      <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-gray-700"}`} />
+                    </button>
+                    <button onClick={handleShare}>
+                      <Share2 className="w-5 h-5 text-gray-700" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
@@ -1952,31 +1989,35 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   <button
                     type="button"
                     onClick={() => setContactOverlayOpen(true)}
-                    className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl glass-teal text-white text-sm font-semibold shadow-md hover:shadow-lg transition-shadow"
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-teal-600 text-white font-semibold hover:bg-teal-700 transition-colors"
                   >
                     Entrar em contato
                   </button>
                 )}
 
-                {/* Botões secundários */}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleFavorite}
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    <Heart className={`w-4 h-4 ${isFavorite ? "fill-teal-500 text-teal-500" : ""}`} />
-                    Salvar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleShare}
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Compartilhar
-                  </button>
-                </div>
+                {!isPreview && (
+                  <>
+                    {/* Botões secundários */}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleFavorite}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <Heart className={`w-4 h-4 ${isFavorite ? "fill-teal-500 text-teal-500" : ""}`} />
+                        Salvar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleShare}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <Share2 className="w-4 h-4" />
+                        Compartilhar
+                      </button>
+                    </div>
+                  </>
+                )}
 
                 {/* Contador de fotos */}
                 <div className="text-xs text-teal-600 font-medium">
@@ -2031,20 +2072,24 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                     Entrar em contato
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={handleFavorite}
-                  className="inline-flex items-center gap-2 text-white hover:text-white/80"
-                >
-                  <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  className="hidden sm:inline-flex items-center gap-2 text-white hover:text-white/80"
-                >
-                  <Share2 className="w-5 h-5" />
-                </button>
+                {!isPreview && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleFavorite}
+                      className="inline-flex items-center gap-2 text-white hover:text-white/80"
+                    >
+                      <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleShare}
+                      className="hidden sm:inline-flex items-center gap-2 text-white hover:text-white/80"
+                    >
+                      <Share2 className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
