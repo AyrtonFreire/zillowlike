@@ -40,7 +40,8 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const navVariant = searchParams?.get("nav") ?? "3";
   const enableDropdown = navVariant !== "2";
   const useCompactPopover = navVariant === "3";
-  const [compactPopoverLeft, setCompactPopoverLeft] = useState(0);
+  const [menuAnchorLeft, setMenuAnchorLeft] = useState(0);
+  const [menuAnchorCenter, setMenuAnchorCenter] = useState(0);
 
   const clearHoverTimeout = () => {
     if (hoverCloseTimeoutRef.current) {
@@ -90,23 +91,24 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   }, []);
 
   useEffect(() => {
-    if (!useCompactPopover) return;
-    if (openMenu !== 'comprar' && openMenu !== 'alugar') return;
+    if (openMenu !== "comprar" && openMenu !== "alugar") return;
 
     const updateLeft = () => {
       const navEl = navRef.current;
-      const buttonEl = openMenu === 'comprar' ? buyButtonRef.current : rentButtonRef.current;
+      const buttonEl = openMenu === "comprar" ? buyButtonRef.current : rentButtonRef.current;
       if (!navEl || !buttonEl) return;
 
       const navRect = navEl.getBoundingClientRect();
       const buttonRect = buttonEl.getBoundingClientRect();
-      setCompactPopoverLeft(Math.max(0, buttonRect.left - navRect.left));
+      const left = Math.max(0, buttonRect.left - navRect.left);
+      setMenuAnchorLeft(left);
+      setMenuAnchorCenter(Math.max(0, left + buttonRect.width / 2));
     };
 
     updateLeft();
-    window.addEventListener('resize', updateLeft);
-    return () => window.removeEventListener('resize', updateLeft);
-  }, [openMenu, useCompactPopover]);
+    window.addEventListener("resize", updateLeft);
+    return () => window.removeEventListener("resize", updateLeft);
+  }, [openMenu]);
 
   // Inbox de mensagens internas para corretores - verifica se há conversas não lidas
   useEffect(() => {
@@ -444,7 +446,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const megaMenuBaseClass =
     "absolute inset-x-0 top-full z-[300] mt-3 bg-white/95 backdrop-blur-xl border-t border-gray-100/80 shadow-[0_18px_45px_rgba(15,23,42,0.45)]";
   const compactPopoverClass =
-    "absolute top-full z-[300] mt-3 w-[520px] max-w-[90vw] rounded-3xl border border-gray-200/70 bg-white/90 backdrop-blur-xl shadow-[0_24px_60px_rgba(15,23,42,0.22)] ring-1 ring-black/5 overflow-hidden";
+    "absolute top-full z-[300] mt-3 w-[560px] max-w-[92vw] rounded-[28px] border border-white/30 bg-white/80 backdrop-blur-2xl shadow-[0_40px_120px_rgba(0,0,0,0.35)] ring-1 ring-black/10 overflow-hidden";
 
   const isDashboardContext =
     pathname?.startsWith("/admin") ||
@@ -471,6 +473,19 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             : "bg-transparent"
         }`}
       >
+        <AnimatePresence>
+          {enableDropdown && (openMenu === "comprar" || openMenu === "alugar") && (
+            <motion.div
+              key="nav-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.16, ease: "easeOut" }}
+              className="fixed inset-0 z-[250] bg-black/30 backdrop-blur-[1px]"
+              onMouseDown={() => setOpenMenu(null)}
+            />
+          )}
+        </AnimatePresence>
         <div className="mx-auto max-w-7xl px-4">
           <div className="grid grid-cols-3 items-center h-16">
             {/* Left: Primary tabs with dropdowns (Desktop) */}
@@ -516,106 +531,127 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                     primary === 'comprar' ? 'w-full' : 'w-0 group-hover:w-full'
                   }`} />
                 </button>
-                {enableDropdown && openMenu === "comprar" && (
-                  <div
-                    className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
-                    style={useCompactPopover ? { left: compactPopoverLeft } : undefined}
-                    onMouseEnter={() => {
-                      clearHoverTimeout();
-                    }}
-                    onMouseLeave={() => {
-                      scheduleCloseMenu();
-                    }}
-                  >
-                    <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
-                    {useCompactPopover ? (
-                      <div className="p-6">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                          Explorar para comprar
-                        </div>
-                        <div className="mt-5">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                            {buyMenuSections[0]?.title}
+                <AnimatePresence>
+                  {enableDropdown && openMenu === "comprar" && (
+                    <motion.div
+                      key="buy-menu"
+                      initial={{ opacity: 0, y: -10, scale: 0.985 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.99 }}
+                      transition={{ duration: 0.16, ease: "easeOut" }}
+                      className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
+                      style={useCompactPopover ? { left: menuAnchorLeft } : undefined}
+                      onMouseEnter={() => {
+                        clearHoverTimeout();
+                      }}
+                      onMouseLeave={() => {
+                        scheduleCloseMenu();
+                      }}
+                    >
+                      <div
+                        className="absolute -top-2 h-4 w-4 rotate-45 rounded-[6px] border border-white/40 bg-white/80 backdrop-blur-2xl ring-1 ring-black/10"
+                        style={{
+                          left: useCompactPopover
+                            ? Math.max(24, menuAnchorCenter - menuAnchorLeft)
+                            : Math.max(24, menuAnchorCenter),
+                        }}
+                      />
+                      <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
+                      {useCompactPopover ? (
+                        <div className="p-7">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                            Explorar para comprar
                           </div>
-                          <div className="mt-3 grid grid-cols-2 gap-3">
-                            {buyMenuSections[0]?.items.map((item) => (
-                              <Link
-                                key={item.href}
-                                href={item.href}
-                                onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
-                                className="group flex items-start justify-between gap-3 rounded-2xl border border-gray-200/70 bg-white/70 px-3.5 py-3 text-left transition-all hover:bg-white hover:border-teal-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                              >
-                                <div className="flex items-start gap-3 min-w-0">
-                                  {item.icon ? (
-                                    <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
-                                      <item.icon className="h-5 w-5" />
-                                    </span>
-                                  ) : null}
-                                  <div className="min-w-0">
-                                    <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800 leading-tight">
-                                      {item.label}
-                                    </div>
-                                    {item.description ? (
-                                      <div className="text-[11px] font-normal text-gray-500 mt-0.5 line-clamp-1">
-                                        {item.description}
-                                      </div>
+                          <div className="mt-5">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                              {buyMenuSections[0]?.title}
+                            </div>
+                            <div className="mt-4 grid grid-cols-2 gap-3">
+                              {buyMenuSections[0]?.items.map((item) => (
+                                <Link
+                                  key={item.href}
+                                  href={item.href}
+                                  onClick={() => {
+                                    setOpenMenu(null);
+                                    setPrimary("comprar");
+                                  }}
+                                  className="group flex items-start justify-between gap-3 rounded-2xl border border-white/40 bg-white/60 px-4 py-3.5 text-left transition-all duration-200 hover:bg-white/85 hover:border-teal-200/70 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                                >
+                                  <div className="flex items-start gap-3 min-w-0">
+                                    {item.icon ? (
+                                      <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 text-teal-800 ring-1 ring-teal-100/70 shadow-sm">
+                                        <item.icon className="h-5 w-5" />
+                                      </span>
                                     ) : null}
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-900 leading-tight">
+                                        {item.label}
+                                      </div>
+                                      {item.description ? (
+                                        <div className="text-[11px] font-normal text-gray-600 mt-0.5 line-clamp-1">
+                                          {item.description}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                  <ChevronRight className="mt-1 h-4 w-4 text-gray-300 opacity-70 group-hover:opacity-100 group-hover:text-teal-600 transition-all" />
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mx-auto max-w-7xl px-10 py-8">
+                          <div className="mb-5 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                            Explorar para comprar
+                          </div>
+                          <div className="grid grid-cols-1 gap-8">
+                            {buyMenuSections.map((section) => (
+                              <div key={section.title}>
+                                <div className="flex items-center gap-2 px-1 pb-2">
+                                  <span className="h-5 w-1 rounded-full bg-teal-500/80" />
+                                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                    {section.title}
                                   </div>
                                 </div>
-                                <ChevronRight className="mt-1 h-4 w-4 text-gray-300 group-hover:text-teal-500 transition-colors" />
-                              </Link>
+                                <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+                                  {section.items.map((item) => (
+                                    <Link
+                                      key={item.href}
+                                      href={item.href}
+                                      className="group flex items-start justify-between gap-3 rounded-2xl border border-white/40 bg-white/60 px-4 py-3.5 text-left transition-all duration-200 hover:bg-white/85 hover:border-teal-200/70 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] hover:-translate-y-[1px]"
+                                      onClick={() => {
+                                        setOpenMenu(null);
+                                        setPrimary("comprar");
+                                      }}
+                                    >
+                                      <div className="flex items-start gap-3 min-w-0">
+                                        {item.icon ? (
+                                          <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 text-teal-800 ring-1 ring-teal-100/70 shadow-sm">
+                                            <item.icon className="h-5 w-5" />
+                                          </span>
+                                        ) : null}
+                                        <div className="min-w-0">
+                                          <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-900 leading-tight">
+                                            {item.label}
+                                          </div>
+                                          {"description" in item && item.description ? (
+                                            <div className="text-xs text-gray-600 mt-0.5 line-clamp-1">{item.description}</div>
+                                          ) : null}
+                                        </div>
+                                      </div>
+                                      <ChevronRight className="mt-1 h-4 w-4 text-gray-300 opacity-70 group-hover:opacity-100 group-hover:text-teal-600 transition-all" />
+                                    </Link>
+                                  ))}
+                                </div>
+                              </div>
                             ))}
                           </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="mx-auto max-w-7xl px-8 py-6">
-                        <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-                          Explorar para comprar
-                        </div>
-                        <div className="grid grid-cols-1 gap-8">
-                          {buyMenuSections.map((section) => (
-                            <div key={section.title}>
-                              <div className="flex items-center gap-2 px-1 pb-2">
-                                <span className="h-5 w-1 rounded-full bg-teal-500/80" />
-                                <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                                  {section.title}
-                                </div>
-                              </div>
-                              <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
-                                {section.items.map((item) => (
-                                  <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className="group flex items-start justify-between gap-3 rounded-2xl border border-gray-200/70 bg-white/70 px-4 py-3 text-left transition-all hover:bg-white hover:border-teal-200 hover:shadow-md"
-                                    onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
-                                  >
-                                    <div className="flex items-start gap-3 min-w-0">
-                                      {item.icon ? (
-                                        <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
-                                          <item.icon className="h-5 w-5" />
-                                        </span>
-                                      ) : null}
-                                      <div className="min-w-0">
-                                        <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800 leading-tight">
-                                          {item.label}
-                                        </div>
-                                        {'description' in item && item.description ? (
-                                          <div className="text-xs text-gray-500 mt-0.5 line-clamp-1">{item.description}</div>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                    <ChevronRight className="mt-1 h-4 w-4 text-gray-300 group-hover:text-teal-500 transition-colors" />
-                                  </Link>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Alugar */}
@@ -656,106 +692,127 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                     primary === 'alugar' ? 'w-full' : 'w-0 group-hover:w-full'
                   }`} />
                 </button>
-                {enableDropdown && openMenu === "alugar" && (
-                  <div
-                    className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
-                    style={useCompactPopover ? { left: compactPopoverLeft } : undefined}
-                    onMouseEnter={() => {
-                      clearHoverTimeout();
-                    }}
-                    onMouseLeave={() => {
-                      scheduleCloseMenu();
-                    }}
-                  >
-                    <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
-                    {useCompactPopover ? (
-                      <div className="p-6">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                          Explorar para alugar
-                        </div>
-                        <div className="mt-5">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                            {rentMenuSections[0]?.title}
+                <AnimatePresence>
+                  {enableDropdown && openMenu === "alugar" && (
+                    <motion.div
+                      key="rent-menu"
+                      initial={{ opacity: 0, y: -10, scale: 0.985 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.99 }}
+                      transition={{ duration: 0.16, ease: "easeOut" }}
+                      className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
+                      style={useCompactPopover ? { left: menuAnchorLeft } : undefined}
+                      onMouseEnter={() => {
+                        clearHoverTimeout();
+                      }}
+                      onMouseLeave={() => {
+                        scheduleCloseMenu();
+                      }}
+                    >
+                      <div
+                        className="absolute -top-2 h-4 w-4 rotate-45 rounded-[6px] border border-white/40 bg-white/80 backdrop-blur-2xl ring-1 ring-black/10"
+                        style={{
+                          left: useCompactPopover
+                            ? Math.max(24, menuAnchorCenter - menuAnchorLeft)
+                            : Math.max(24, menuAnchorCenter),
+                        }}
+                      />
+                      <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
+                      {useCompactPopover ? (
+                        <div className="p-7">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                            Explorar para alugar
                           </div>
-                          <div className="mt-3 grid grid-cols-2 gap-3">
-                            {rentMenuSections[0]?.items.map((item) => (
-                              <Link
-                                key={item.href}
-                                href={item.href}
-                                onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
-                                className="group flex items-start justify-between gap-3 rounded-2xl border border-gray-200/70 bg-white/70 px-3.5 py-3 text-left transition-all hover:bg-white hover:border-teal-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                              >
-                                <div className="flex items-start gap-3 min-w-0">
-                                  {item.icon ? (
-                                    <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
-                                      <item.icon className="h-5 w-5" />
-                                    </span>
-                                  ) : null}
-                                  <div className="min-w-0">
-                                    <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800 leading-tight">
-                                      {item.label}
-                                    </div>
-                                    {item.description ? (
-                                      <div className="text-[11px] font-normal text-gray-500 mt-0.5 line-clamp-1">
-                                        {item.description}
-                                      </div>
+                          <div className="mt-5">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                              {rentMenuSections[0]?.title}
+                            </div>
+                            <div className="mt-4 grid grid-cols-2 gap-3">
+                              {rentMenuSections[0]?.items.map((item) => (
+                                <Link
+                                  key={item.href}
+                                  href={item.href}
+                                  onClick={() => {
+                                    setOpenMenu(null);
+                                    setPrimary("alugar");
+                                  }}
+                                  className="group flex items-start justify-between gap-3 rounded-2xl border border-white/40 bg-white/60 px-4 py-3.5 text-left transition-all duration-200 hover:bg-white/85 hover:border-teal-200/70 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                                >
+                                  <div className="flex items-start gap-3 min-w-0">
+                                    {item.icon ? (
+                                      <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 text-teal-800 ring-1 ring-teal-100/70 shadow-sm">
+                                        <item.icon className="h-5 w-5" />
+                                      </span>
                                     ) : null}
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-900 leading-tight">
+                                        {item.label}
+                                      </div>
+                                      {item.description ? (
+                                        <div className="text-[11px] font-normal text-gray-600 mt-0.5 line-clamp-1">
+                                          {item.description}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                  <ChevronRight className="mt-1 h-4 w-4 text-gray-300 opacity-70 group-hover:opacity-100 group-hover:text-teal-600 transition-all" />
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mx-auto max-w-7xl px-10 py-8">
+                          <div className="mb-5 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                            Explorar para alugar
+                          </div>
+                          <div className="grid grid-cols-1 gap-8">
+                            {rentMenuSections.map((section) => (
+                              <div key={section.title}>
+                                <div className="flex items-center gap-2 px-1 pb-2">
+                                  <span className="h-5 w-1 rounded-full bg-teal-500/80" />
+                                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                    {section.title}
                                   </div>
                                 </div>
-                                <ChevronRight className="mt-1 h-4 w-4 text-gray-300 group-hover:text-teal-500 transition-colors" />
-                              </Link>
+                                <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+                                  {section.items.map((item) => (
+                                    <Link
+                                      key={item.href}
+                                      href={item.href}
+                                      className="group flex items-start justify-between gap-3 rounded-2xl border border-white/40 bg-white/60 px-4 py-3.5 text-left transition-all duration-200 hover:bg-white/85 hover:border-teal-200/70 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] hover:-translate-y-[1px]"
+                                      onClick={() => {
+                                        setOpenMenu(null);
+                                        setPrimary("alugar");
+                                      }}
+                                    >
+                                      <div className="flex items-start gap-3 min-w-0">
+                                        {item.icon ? (
+                                          <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 text-teal-800 ring-1 ring-teal-100/70 shadow-sm">
+                                            <item.icon className="h-5 w-5" />
+                                          </span>
+                                        ) : null}
+                                        <div className="min-w-0">
+                                          <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-900 leading-tight">
+                                            {item.label}
+                                          </div>
+                                          {"description" in item && item.description ? (
+                                            <div className="text-xs text-gray-600 mt-0.5 line-clamp-1">{item.description}</div>
+                                          ) : null}
+                                        </div>
+                                      </div>
+                                      <ChevronRight className="mt-1 h-4 w-4 text-gray-300 opacity-70 group-hover:opacity-100 group-hover:text-teal-600 transition-all" />
+                                    </Link>
+                                  ))}
+                                </div>
+                              </div>
                             ))}
                           </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="mx-auto max-w-7xl px-8 py-6">
-                        <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-                          Explorar para alugar
-                        </div>
-                        <div className="grid grid-cols-1 gap-8">
-                          {rentMenuSections.map((section) => (
-                            <div key={section.title}>
-                              <div className="flex items-center gap-2 px-1 pb-2">
-                                <span className="h-5 w-1 rounded-full bg-teal-500/80" />
-                                <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                                  {section.title}
-                                </div>
-                              </div>
-                              <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
-                                {section.items.map((item) => (
-                                  <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className="group flex items-start justify-between gap-3 rounded-2xl border border-gray-200/70 bg-white/70 px-4 py-3 text-left transition-all hover:bg-white hover:border-teal-200 hover:shadow-md"
-                                    onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
-                                  >
-                                    <div className="flex items-start gap-3 min-w-0">
-                                      {item.icon ? (
-                                        <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
-                                          <item.icon className="h-5 w-5" />
-                                        </span>
-                                      ) : null}
-                                      <div className="min-w-0">
-                                        <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800 leading-tight">
-                                          {item.label}
-                                        </div>
-                                        {'description' in item && item.description ? (
-                                          <div className="text-xs text-gray-500 mt-0.5 line-clamp-1">{item.description}</div>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                    <ChevronRight className="mt-1 h-4 w-4 text-gray-300 group-hover:text-teal-500 transition-colors" />
-                                  </Link>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Anunciar imóvel - redireciona para onboarding se necessário */}
