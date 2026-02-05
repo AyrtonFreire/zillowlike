@@ -2519,7 +2519,7 @@ export default function NewPropertyPage() {
 
       {/* Formulário de criação */}
       {!publishedProperty && (
-        <div className="mx-auto max-w-6xl px-4 py-8">
+        <div className={`mx-auto ${currentStep === 6 ? "max-w-screen-2xl" : "max-w-6xl"} px-4 py-8`}>
           <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
             <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
             <p>
@@ -2529,7 +2529,7 @@ export default function NewPropertyPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
+            <div className={`${currentStep === 6 ? "lg:col-span-3" : "lg:col-span-2"} space-y-6`}>
               <form ref={formRef} onSubmit={handleSubmit}>
                 <div className="flex items-center justify-end">
                   <span className="text-xs text-gray-500">
@@ -4174,63 +4174,63 @@ export default function NewPropertyPage() {
             </form>
           </div>
 
-          <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start space-y-4">
-            {/* Score de qualidade do anúncio */}
-            {false && (
-              <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    adQualityScore.level === 'excellent' ? 'bg-green-100 text-green-700' :
-                    adQualityScore.level === 'good' ? 'bg-blue-100 text-blue-700' :
-                    adQualityScore.level === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {adQualityScore.score}%
-                  </span>
+          {currentStep !== 6 && (
+            <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start space-y-4">
+              {/* Score de qualidade do anúncio */}
+              {false && (
+                <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      adQualityScore.level === 'excellent' ? 'bg-green-100 text-green-700' :
+                      adQualityScore.level === 'good' ? 'bg-blue-100 text-blue-700' :
+                      adQualityScore.level === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {adQualityScore.score}%
+                    </span>
+                  </div>
+                  
+                  {/* Barra de progresso */}
+                  <div className="h-2 rounded-full bg-gray-200 mb-3 overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        adQualityScore.level === 'excellent' ? 'bg-gradient-to-r from-green-400 to-green-500' :
+                        adQualityScore.level === 'good' ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
+                        adQualityScore.level === 'medium' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
+                        'bg-gradient-to-r from-red-400 to-red-500'
+                      }`}
+                      style={{ width: `${adQualityScore.score}%` }}
+                    />
+                  </div>
+                  
+                  {/* Checklist resumido */}
+                  <div className="space-y-1.5 text-xs">
+                    {adQualityScore.items.slice(0, 5).map((item, idx) => (
+                      <div key={idx} className={`flex items-center gap-2 ${item.done ? 'text-gray-700' : 'text-gray-400'}`}>
+                        {item.done ? (
+                          <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                          </svg>
+                        )}
+                        <span className={item.done ? '' : 'line-through'}>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {adQualityScore.score < 60 && (
+                    <p className="mt-3 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1.5">
+                      💡 Complete mais campos para aumentar a visibilidade do seu anúncio
+                    </p>
+                  )}
                 </div>
-                
-                {/* Barra de progresso */}
-                <div className="h-2 rounded-full bg-gray-200 mb-3 overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      adQualityScore.level === 'excellent' ? 'bg-gradient-to-r from-green-400 to-green-500' :
-                      adQualityScore.level === 'good' ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
-                      adQualityScore.level === 'medium' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
-                      'bg-gradient-to-r from-red-400 to-red-500'
-                    }`}
-                    style={{ width: `${adQualityScore.score}%` }}
-                  />
-                </div>
-                
-                {/* Checklist resumido */}
-                <div className="space-y-1.5 text-xs">
-                  {adQualityScore.items.slice(0, 5).map((item, idx) => (
-                    <div key={idx} className={`flex items-center gap-2 ${item.done ? 'text-gray-700' : 'text-gray-400'}`}>
-                      {item.done ? (
-                        <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      ) : (
-                        <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                        </svg>
-                      )}
-                      <span className={item.done ? '' : 'line-through'}>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-                
-                {adQualityScore.score < 60 && (
-                  <p className="mt-3 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1.5">
-                    💡 Complete mais campos para aumentar a visibilidade do seu anúncio
-                  </p>
-                )}
-              </div>
-            )}
+              )}
 
-            {/* Preview do card */}
-            {currentStep !== 6 && (
+              {/* Preview do card */}
               <PropertyCardPremium
                 property={{
                   id: 'preview',
@@ -4251,49 +4251,50 @@ export default function NewPropertyPage() {
                 }}
                 watermark={showWatermark}
               />
-            )}
-            {/* Contextual tips panel (modern glass/gradient) */}
-            <div className="mt-4">
-              <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
-                <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
-                  <div className="flex items-center justify-between px-4 pt-4">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/></svg>
-                      </span>
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-900">Dicas do passo</h3>
-                        <p className="text-[11px] text-gray-500 leading-4">Orientações rápidas para deixar seu anúncio melhor</p>
+
+              {/* Contextual tips panel (modern glass/gradient) */}
+              <div className="mt-4">
+                <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
+                  <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
+                    <div className="flex items-center justify-between px-4 pt-4">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/></svg>
+                        </span>
+                        <div>
+                          <h3 className="text-sm font-semibold text-gray-900">Dicas do passo</h3>
+                          <p className="text-[11px] text-gray-500 leading-4">Orientações rápidas para deixar seu anúncio melhor</p>
+                        </div>
                       </div>
+                      <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-gray-600">
+                        <span>Mostrar</span>
+                        <input type="checkbox" className="sr-only peer" checked={showTips} onChange={(e)=>setShowTips(e.target.checked)} />
+                        <span className="w-10 h-5 rounded-full bg-gray-300 peer-checked:bg-teal relative transition-colors">
+                          <span className="absolute top-1/2 -translate-y-1/2 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-all peer-checked:left-[1.375rem]"></span>
+                        </span>
+                      </label>
                     </div>
-                    <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-gray-600">
-                      <span>Mostrar</span>
-                      <input type="checkbox" className="sr-only peer" checked={showTips} onChange={(e)=>setShowTips(e.target.checked)} />
-                      <span className="w-10 h-5 rounded-full bg-gray-300 peer-checked:bg-teal relative transition-colors">
-                        <span className="absolute top-1/2 -translate-y-1/2 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-all peer-checked:left-[1.375rem]"></span>
-                      </span>
-                    </label>
+                    {showTips ? (
+                      <ul className="px-4 pb-4 pt-3 text-[13px] text-gray-800 space-y-2">
+                        {tipsForStep(currentStep).map((t, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="mt-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-r from-teal/15 to-teal-dark/15 text-teal">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                            </span>
+                            <span>{t}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="px-4 pb-4 pt-3">
+                        <p className="text-[12px] text-gray-500">Dicas ocultas. Ative quando desejar.</p>
+                      </div>
+                    )}
                   </div>
-                  {showTips ? (
-                    <ul className="px-4 pb-4 pt-3 text-[13px] text-gray-800 space-y-2">
-                      {tipsForStep(currentStep).map((t, i) => (
-                        <li key={i} className="flex items-start gap-2">
-                          <span className="mt-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-r from-teal/15 to-teal-dark/15 text-teal">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                          </span>
-                          <span>{t}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="px-4 pb-4 pt-3">
-                      <p className="text-[12px] text-gray-500">Dicas ocultas. Ative quando desejar.</p>
-                    </div>
-                  )}
                 </div>
               </div>
-            </div>
-          </aside>
+            </aside>
+          )}
         </div>
       </div>
       )}
