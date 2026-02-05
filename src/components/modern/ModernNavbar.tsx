@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useScroll, AnimatePresence } from "framer-motion";
-import { Menu, X, User, Heart, Bell, MessageCircle, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark, Home, HelpCircle } from "lucide-react";
+import { Menu, X, User, Heart, Bell, MessageCircle, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark, Home, HelpCircle, Building, LandPlot, Trees, Store, ChevronRight } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -378,12 +378,12 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     {
       title: "Por tipo de imóvel",
       items: [
-        { label: "Casas", href: "/explore/buy?type=HOUSE", description: "Casas unifamiliares" },
-        { label: "Apartamentos", href: "/explore/buy?type=APARTMENT", description: "Apartamentos e flats" },
-        { label: "Condomínios", href: "/explore/buy?type=CONDO", description: "Condomínios fechados" },
-        { label: "Terrenos", href: "/explore/buy?type=LAND", description: "Lotes e terrenos" },
-        { label: "Imóvel rural", href: "/explore/buy?type=RURAL", description: "Fazendas e sítios" },
-        { label: "Comercial", href: "/explore/buy?type=COMMERCIAL", description: "Imóveis comerciais" },
+        { label: "Casas", href: "/explore/buy?type=HOUSE", description: "Casas unifamiliares", icon: Home },
+        { label: "Apartamentos", href: "/explore/buy?type=APARTMENT", description: "Apartamentos e flats", icon: Building },
+        { label: "Condomínios", href: "/explore/buy?type=CONDO", description: "Condomínios fechados", icon: Building2 },
+        { label: "Terrenos", href: "/explore/buy?type=LAND", description: "Lotes e terrenos", icon: LandPlot },
+        { label: "Imóvel rural", href: "/explore/buy?type=RURAL", description: "Fazendas e sítios", icon: Trees },
+        { label: "Comercial", href: "/explore/buy?type=COMMERCIAL", description: "Imóveis comerciais", icon: Store },
       ],
     },
   ];
@@ -393,12 +393,12 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     {
       title: "Por tipo de imóvel",
       items: [
-        { label: "Casas", href: "/explore/rent?type=HOUSE", description: "Casas para locação" },
-        { label: "Apartamentos", href: "/explore/rent?type=APARTMENT", description: "Apartamentos para alugar" },
-        { label: "Condomínios", href: "/explore/rent?type=CONDO", description: "Condomínios fechados" },
-        { label: "Terrenos", href: "/explore/rent?type=LAND", description: "Lotes e terrenos" },
-        { label: "Imóvel rural", href: "/explore/rent?type=RURAL", description: "Fazendas e sítios" },
-        { label: "Comercial", href: "/explore/rent?type=COMMERCIAL", description: "Imóveis comerciais" },
+        { label: "Casas", href: "/explore/rent?type=HOUSE", description: "Casas para locação", icon: Home },
+        { label: "Apartamentos", href: "/explore/rent?type=APARTMENT", description: "Apartamentos para alugar", icon: Building },
+        { label: "Condomínios", href: "/explore/rent?type=CONDO", description: "Condomínios fechados", icon: Building2 },
+        { label: "Terrenos", href: "/explore/rent?type=LAND", description: "Lotes e terrenos", icon: LandPlot },
+        { label: "Imóvel rural", href: "/explore/rent?type=RURAL", description: "Fazendas e sítios", icon: Trees },
+        { label: "Comercial", href: "/explore/rent?type=COMMERCIAL", description: "Imóveis comerciais", icon: Store },
       ],
     },
   ];
@@ -444,7 +444,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const megaMenuBaseClass =
     "absolute inset-x-0 top-full z-[300] mt-3 bg-white/95 backdrop-blur-xl border-t border-gray-100/80 shadow-[0_18px_45px_rgba(15,23,42,0.45)]";
   const compactPopoverClass =
-    "absolute top-full z-[300] mt-3 w-[420px] max-w-[90vw] rounded-2xl border border-gray-200/80 bg-white/95 backdrop-blur-xl shadow-[0_18px_45px_rgba(15,23,42,0.20)]";
+    "absolute top-full z-[300] mt-3 w-[520px] max-w-[90vw] rounded-3xl border border-gray-200/70 bg-white/90 backdrop-blur-xl shadow-[0_24px_60px_rgba(15,23,42,0.22)] ring-1 ring-black/5 overflow-hidden";
 
   const isDashboardContext =
     pathname?.startsWith("/admin") ||
@@ -529,26 +529,40 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   >
                     <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
                     {useCompactPopover ? (
-                      <div className="p-5">
-                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                      <div className="p-6">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
                           Explorar para comprar
                         </div>
-                        <div className="mt-4">
-                          <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                        <div className="mt-5">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                             {buyMenuSections[0]?.title}
                           </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="mt-3 grid grid-cols-2 gap-3">
                             {buyMenuSections[0]?.items.map((item) => (
                               <Link
                                 key={item.href}
                                 href={item.href}
                                 onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
-                                className="rounded-xl border border-gray-200 bg-white/80 px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-white hover:border-teal-300 hover:text-teal-700"
+                                className="group flex items-start justify-between gap-3 rounded-2xl border border-gray-200/70 bg-white/70 px-3.5 py-3 text-left transition-all hover:bg-white hover:border-teal-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                               >
-                                <div>{item.label}</div>
-                                {item.description ? (
-                                  <div className="text-[11px] font-normal text-gray-500 mt-0.5">{item.description}</div>
-                                ) : null}
+                                <div className="flex items-start gap-3 min-w-0">
+                                  {item.icon ? (
+                                    <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+                                      <item.icon className="h-5 w-5" />
+                                    </span>
+                                  ) : null}
+                                  <div className="min-w-0">
+                                    <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800 leading-tight">
+                                      {item.label}
+                                    </div>
+                                    {item.description ? (
+                                      <div className="text-[11px] font-normal text-gray-500 mt-0.5 line-clamp-1">
+                                        {item.description}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <ChevronRight className="mt-1 h-4 w-4 text-gray-300 group-hover:text-teal-500 transition-colors" />
                               </Link>
                             ))}
                           </div>
@@ -568,22 +582,33 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                                   {section.title}
                                 </div>
                               </div>
-                              <ul className="space-y-1.5">
+                              <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
                                 {section.items.map((item) => (
-                                  <li key={item.href}>
-                                    <Link
-                                      href={item.href}
-                                      className="block px-2 py-2 rounded-lg text-sm text-gray-800 hover:bg-teal-50 group"
-                                      onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
-                                    >
-                                      <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
-                                      {'description' in item && (
-                                        <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
-                                      )}
-                                    </Link>
-                                  </li>
+                                  <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className="group flex items-start justify-between gap-3 rounded-2xl border border-gray-200/70 bg-white/70 px-4 py-3 text-left transition-all hover:bg-white hover:border-teal-200 hover:shadow-md"
+                                    onClick={() => { setOpenMenu(null); setPrimary('comprar'); }}
+                                  >
+                                    <div className="flex items-start gap-3 min-w-0">
+                                      {item.icon ? (
+                                        <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+                                          <item.icon className="h-5 w-5" />
+                                        </span>
+                                      ) : null}
+                                      <div className="min-w-0">
+                                        <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800 leading-tight">
+                                          {item.label}
+                                        </div>
+                                        {'description' in item && item.description ? (
+                                          <div className="text-xs text-gray-500 mt-0.5 line-clamp-1">{item.description}</div>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                    <ChevronRight className="mt-1 h-4 w-4 text-gray-300 group-hover:text-teal-500 transition-colors" />
+                                  </Link>
                                 ))}
-                              </ul>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -644,26 +669,40 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   >
                     <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
                     {useCompactPopover ? (
-                      <div className="p-5">
-                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                      <div className="p-6">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
                           Explorar para alugar
                         </div>
-                        <div className="mt-4">
-                          <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                        <div className="mt-5">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                             {rentMenuSections[0]?.title}
                           </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="mt-3 grid grid-cols-2 gap-3">
                             {rentMenuSections[0]?.items.map((item) => (
                               <Link
                                 key={item.href}
                                 href={item.href}
                                 onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
-                                className="rounded-xl border border-gray-200 bg-white/80 px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-white hover:border-teal-300 hover:text-teal-700"
+                                className="group flex items-start justify-between gap-3 rounded-2xl border border-gray-200/70 bg-white/70 px-3.5 py-3 text-left transition-all hover:bg-white hover:border-teal-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                               >
-                                <div>{item.label}</div>
-                                {item.description ? (
-                                  <div className="text-[11px] font-normal text-gray-500 mt-0.5">{item.description}</div>
-                                ) : null}
+                                <div className="flex items-start gap-3 min-w-0">
+                                  {item.icon ? (
+                                    <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+                                      <item.icon className="h-5 w-5" />
+                                    </span>
+                                  ) : null}
+                                  <div className="min-w-0">
+                                    <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800 leading-tight">
+                                      {item.label}
+                                    </div>
+                                    {item.description ? (
+                                      <div className="text-[11px] font-normal text-gray-500 mt-0.5 line-clamp-1">
+                                        {item.description}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <ChevronRight className="mt-1 h-4 w-4 text-gray-300 group-hover:text-teal-500 transition-colors" />
                               </Link>
                             ))}
                           </div>
@@ -683,22 +722,33 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                                   {section.title}
                                 </div>
                               </div>
-                              <ul className="space-y-1.5">
+                              <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
                                 {section.items.map((item) => (
-                                  <li key={item.href}>
-                                    <Link
-                                      href={item.href}
-                                      className="block px-2 py-2 rounded-lg text-sm text-gray-800 hover:bg-teal-50 group"
-                                      onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
-                                    >
-                                      <div className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</div>
-                                      {'description' in item && (
-                                        <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
-                                      )}
-                                    </Link>
-                                  </li>
+                                  <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className="group flex items-start justify-between gap-3 rounded-2xl border border-gray-200/70 bg-white/70 px-4 py-3 text-left transition-all hover:bg-white hover:border-teal-200 hover:shadow-md"
+                                    onClick={() => { setOpenMenu(null); setPrimary('alugar'); }}
+                                  >
+                                    <div className="flex items-start gap-3 min-w-0">
+                                      {item.icon ? (
+                                        <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+                                          <item.icon className="h-5 w-5" />
+                                        </span>
+                                      ) : null}
+                                      <div className="min-w-0">
+                                        <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800 leading-tight">
+                                          {item.label}
+                                        </div>
+                                        {'description' in item && item.description ? (
+                                          <div className="text-xs text-gray-500 mt-0.5 line-clamp-1">{item.description}</div>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                    <ChevronRight className="mt-1 h-4 w-4 text-gray-300 group-hover:text-teal-500 transition-colors" />
+                                  </Link>
                                 ))}
-                              </ul>
+                              </div>
                             </div>
                           ))}
                         </div>
