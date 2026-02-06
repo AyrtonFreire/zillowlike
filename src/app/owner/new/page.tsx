@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft } from "lucide-react";
+import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft, Eye, X } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -179,6 +179,174 @@ export default function NewPropertyPage() {
       (el as any).focus?.();
     }, 50);
   };
+
+  const previewInitialProperty = useMemo(() => {
+    return {
+      id: "preview",
+      title: finalTitle,
+      metaTitle: metaTitle || null,
+      metaDescription: metaDescription || null,
+      description: description || "",
+      price: Math.round(parseBRLToNumber(priceBRL) * 100),
+      condoFee: condoFeeBRL ? Math.round(parseBRLToNumber(condoFeeBRL) * 100) : null,
+      iptuYearly: iptuYearBRL ? Math.round(parseBRLToNumber(iptuYearBRL) * 100) : null,
+      type,
+      purpose: (purpose || "SALE") as any,
+      videoUrl: videoUrl || null,
+      street: street || "",
+      neighborhood: neighborhood || null,
+      city: city || "",
+      state: state || "",
+      postalCode: postalCode || null,
+      latitude: geo?.lat ?? null,
+      longitude: geo?.lng ?? null,
+      bedrooms: bedrooms === "" ? null : Number(bedrooms),
+      bathrooms: bathrooms === "" ? null : Number(bathrooms),
+      areaM2: areaM2 === "" ? null : Number(areaM2),
+      builtAreaM2: builtAreaM2 === "" ? null : Number(builtAreaM2),
+      lotAreaM2: lotAreaM2 === "" ? null : Number(lotAreaM2),
+      privateAreaM2: privateAreaM2 === "" ? null : Number(privateAreaM2),
+      usableAreaM2: usableAreaM2 === "" ? null : Number(usableAreaM2),
+      suites: suites === "" ? null : Number(suites as any),
+      parkingSpots: parkingSpots === "" ? null : Number(parkingSpots as any),
+      floor: floor === "" ? null : Number(floor as any),
+      yearBuilt: yearBuilt === "" ? null : Number(yearBuilt as any),
+      yearRenovated: yearRenovated === "" ? null : Number(yearRenovated as any),
+      totalFloors: totalFloors === "" ? null : Number(totalFloors as any),
+      furnished: conditionTags.includes("Mobiliado"),
+      petFriendly: petFriendly || petsSmall || petsLarge,
+      images: previewImages,
+      conditionTags,
+      hasBalcony,
+      hasElevator,
+      hasPool,
+      hasGym,
+      hasPlayground,
+      hasPartyRoom,
+      hasGourmet,
+      hasConcierge24h,
+      accRamps,
+      accWideDoors,
+      accAccessibleElevator,
+      accTactile,
+      comfortAC,
+      comfortHeating,
+      comfortSolar,
+      comfortNoiseWindows,
+      comfortLED,
+      comfortWaterReuse,
+      finishFloor: finishFloor ? (finishFloor === "porcelanato" ? "PORCELANATO" : finishFloor === "madeira" ? "MADEIRA" : finishFloor === "vinilico" ? "VINILICO" : "OUTRO") : null,
+      finishCabinets,
+      finishCounterGranite,
+      finishCounterQuartz,
+      viewSea,
+      viewCity,
+      positionFront,
+      positionBack,
+      sunByRoomNote: sunByRoomNote || null,
+      petsSmall,
+      petsLarge,
+      condoRules: condoRules || null,
+      secCCTV,
+      secSallyPort,
+      secNightGuard,
+      secElectricFence,
+      sunOrientation: sunOrientation ? (sunOrientation.toUpperCase() === "NASCENTE" ? "NASCENTE" : sunOrientation.toUpperCase() === "POENTE" ? "POENTE" : "OUTRA") : null,
+      hidePrice,
+      hideExactAddress,
+      hideOwnerContact,
+      hideCondoFee,
+      hideIPTU,
+      owner: {
+        id: "me",
+        name: profileName || "Você",
+        image: profileImage,
+        role: (userRole as any) || "USER",
+        publicProfileEnabled: profilePublicProfileEnabled,
+        publicSlug: profilePublicSlug,
+        publicPhoneOptIn: profilePublicPhoneOptIn,
+      },
+    };
+  }, [
+    accAccessibleElevator,
+    accRamps,
+    accTactile,
+    accWideDoors,
+    areaM2,
+    bathrooms,
+    bedrooms,
+    builtAreaM2,
+    city,
+    comfortAC,
+    comfortHeating,
+    comfortLED,
+    comfortNoiseWindows,
+    comfortSolar,
+    comfortWaterReuse,
+    condoFeeBRL,
+    condoRules,
+    conditionTags,
+    description,
+    finishCabinets,
+    finishCounterGranite,
+    finishCounterQuartz,
+    finishFloor,
+    floor,
+    finalTitle,
+    geo,
+    hasBalcony,
+    hasConcierge24h,
+    hasElevator,
+    hasGourmet,
+    hasGym,
+    hasPartyRoom,
+    hasPlayground,
+    hasPool,
+    hideCondoFee,
+    hideExactAddress,
+    hideIPTU,
+    hideOwnerContact,
+    hidePrice,
+    iptuYearBRL,
+    lotAreaM2,
+    metaDescription,
+    metaTitle,
+    neighborhood,
+    parkingSpots,
+    petFriendly,
+    petsLarge,
+    petsSmall,
+    postalCode,
+    positionBack,
+    positionFront,
+    previewImages,
+    priceBRL,
+    privateAreaM2,
+    profileImage,
+    profileName,
+    profilePublicPhoneOptIn,
+    profilePublicProfileEnabled,
+    profilePublicSlug,
+    purpose,
+    secCCTV,
+    secElectricFence,
+    secNightGuard,
+    secSallyPort,
+    state,
+    street,
+    suites,
+    sunByRoomNote,
+    sunOrientation,
+    totalFloors,
+    type,
+    usableAreaM2,
+    userRole,
+    videoUrl,
+    viewCity,
+    viewSea,
+    yearBuilt,
+    yearRenovated,
+  ]);
 
   useEffect(() => {
     const el = stepperItemRefs.current[currentStep];
@@ -370,6 +538,8 @@ export default function NewPropertyPage() {
   const [newEmailInput, setNewEmailInput] = useState("");
   const [savingNewEmail, setSavingNewEmail] = useState(false);
   const [emailConfirmedForListing, setEmailConfirmedForListing] = useState(false);
+
+  const [fullscreenPreviewOpen, setFullscreenPreviewOpen] = useState(false);
   
   // Dados privados do proprietário (não visíveis no anúncio)
   const [privateOwnerName, setPrivateOwnerName] = useState("");
@@ -2519,7 +2689,7 @@ export default function NewPropertyPage() {
 
       {/* Formulário de criação */}
       {!publishedProperty && (
-        <div className={`mx-auto ${currentStep === 6 ? "max-w-screen-2xl" : "max-w-6xl"} px-4 py-8`}>
+        <div className="mx-auto max-w-6xl px-4 py-8">
           <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
             <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
             <p>
@@ -2529,7 +2699,7 @@ export default function NewPropertyPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className={`${currentStep === 6 ? "lg:col-span-3" : "lg:col-span-2"} space-y-6`}>
+            <div className="lg:col-span-2 space-y-6">
               <form ref={formRef} onSubmit={handleSubmit}>
                 <div className="flex items-center justify-end">
                   <span className="text-xs text-gray-500">
@@ -3842,92 +4012,7 @@ export default function NewPropertyPage() {
                       open
                       variant="page"
                       mode="preview"
-                      initialProperty={{
-                        id: "preview",
-                        title: finalTitle,
-                        metaTitle: metaTitle || null,
-                        metaDescription: metaDescription || null,
-                        description: description || "",
-                        price: Math.round(parseBRLToNumber(priceBRL) * 100),
-                        condoFee: condoFeeBRL ? Math.round(parseBRLToNumber(condoFeeBRL) * 100) : null,
-                        iptuYearly: iptuYearBRL ? Math.round(parseBRLToNumber(iptuYearBRL) * 100) : null,
-                        type,
-                        purpose: (purpose || "SALE") as any,
-                        videoUrl: videoUrl || null,
-                        street: street || "",
-                        neighborhood: neighborhood || null,
-                        city: city || "",
-                        state: state || "",
-                        postalCode: postalCode || null,
-                        latitude: geo?.lat ?? null,
-                        longitude: geo?.lng ?? null,
-                        bedrooms: bedrooms === "" ? null : Number(bedrooms),
-                        bathrooms: bathrooms === "" ? null : Number(bathrooms),
-                        areaM2: areaM2 === "" ? null : Number(areaM2),
-                        builtAreaM2: builtAreaM2 === "" ? null : Number(builtAreaM2),
-                        lotAreaM2: lotAreaM2 === "" ? null : Number(lotAreaM2),
-                        privateAreaM2: privateAreaM2 === "" ? null : Number(privateAreaM2),
-                        usableAreaM2: usableAreaM2 === "" ? null : Number(usableAreaM2),
-                        suites: suites === "" ? null : Number(suites as any),
-                        parkingSpots: parkingSpots === "" ? null : Number(parkingSpots as any),
-                        floor: floor === "" ? null : Number(floor as any),
-                        yearBuilt: yearBuilt === "" ? null : Number(yearBuilt as any),
-                        yearRenovated: yearRenovated === "" ? null : Number(yearRenovated as any),
-                        totalFloors: totalFloors === "" ? null : Number(totalFloors as any),
-                        furnished: conditionTags.includes("Mobiliado"),
-                        petFriendly: petFriendly || petsSmall || petsLarge,
-                        images: previewImages,
-                        conditionTags,
-                        hasBalcony,
-                        hasElevator,
-                        hasPool,
-                        hasGym,
-                        hasPlayground,
-                        hasPartyRoom,
-                        hasGourmet,
-                        hasConcierge24h,
-                        accRamps,
-                        accWideDoors,
-                        accAccessibleElevator,
-                        accTactile,
-                        comfortAC,
-                        comfortHeating,
-                        comfortSolar,
-                        comfortNoiseWindows,
-                        comfortLED,
-                        comfortWaterReuse,
-                        finishFloor: finishFloor ? (finishFloor === "porcelanato" ? "PORCELANATO" : finishFloor === "madeira" ? "MADEIRA" : finishFloor === "vinilico" ? "VINILICO" : "OUTRO") : null,
-                        finishCabinets,
-                        finishCounterGranite,
-                        finishCounterQuartz,
-                        viewSea,
-                        viewCity,
-                        positionFront,
-                        positionBack,
-                        sunByRoomNote: sunByRoomNote || null,
-                        petsSmall,
-                        petsLarge,
-                        condoRules: condoRules || null,
-                        secCCTV,
-                        secSallyPort,
-                        secNightGuard,
-                        secElectricFence,
-                        sunOrientation: sunOrientation ? (sunOrientation.toUpperCase() === "NASCENTE" ? "NASCENTE" : sunOrientation.toUpperCase() === "POENTE" ? "POENTE" : "OUTRA") : null,
-                        hidePrice,
-                        hideExactAddress,
-                        hideOwnerContact,
-                        hideCondoFee,
-                        hideIPTU,
-                        owner: {
-                          id: "me",
-                          name: profileName || "Você",
-                          image: profileImage,
-                          role: (userRole as any) || "USER",
-                          publicProfileEnabled: profilePublicProfileEnabled,
-                          publicSlug: profilePublicSlug,
-                          publicPhoneOptIn: profilePublicPhoneOptIn,
-                        },
-                      }}
+                      initialProperty={previewInitialProperty as any}
                     />
                   </div>
 
@@ -3942,6 +4027,9 @@ export default function NewPropertyPage() {
 
                     {hasAnyVerifiedContact ? (
                       <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          Você já tem pelo menos um contato verificado. Você pode publicar seu anúncio.
+                        </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="p-3 bg-white rounded-lg border border-gray-200">
                             <div className="flex items-center gap-2">
@@ -4171,63 +4259,63 @@ export default function NewPropertyPage() {
             </form>
           </div>
 
-          {currentStep !== 6 && (
-            <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start space-y-4">
-              {/* Score de qualidade do anúncio */}
-              {false && (
-                <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                      adQualityScore.level === 'excellent' ? 'bg-green-100 text-green-700' :
-                      adQualityScore.level === 'good' ? 'bg-blue-100 text-blue-700' :
-                      adQualityScore.level === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {adQualityScore.score}%
-                    </span>
-                  </div>
-                  
-                  {/* Barra de progresso */}
-                  <div className="h-2 rounded-full bg-gray-200 mb-3 overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        adQualityScore.level === 'excellent' ? 'bg-gradient-to-r from-green-400 to-green-500' :
-                        adQualityScore.level === 'good' ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
-                        adQualityScore.level === 'medium' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
-                        'bg-gradient-to-r from-red-400 to-red-500'
-                      }`}
-                      style={{ width: `${adQualityScore.score}%` }}
-                    />
-                  </div>
-                  
-                  {/* Checklist resumido */}
-                  <div className="space-y-1.5 text-xs">
-                    {adQualityScore.items.slice(0, 5).map((item, idx) => (
-                      <div key={idx} className={`flex items-center gap-2 ${item.done ? 'text-gray-700' : 'text-gray-400'}`}>
-                        {item.done ? (
-                          <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        ) : (
-                          <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                          </svg>
-                        )}
-                        <span className={item.done ? '' : 'line-through'}>{item.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {adQualityScore.score < 60 && (
-                    <p className="mt-3 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1.5">
-                      💡 Complete mais campos para aumentar a visibilidade do seu anúncio
-                    </p>
-                  )}
+          <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start space-y-4">
+            {/* Score de qualidade do anúncio */}
+            {false && (
+              <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    adQualityScore.level === 'excellent' ? 'bg-green-100 text-green-700' :
+                    adQualityScore.level === 'good' ? 'bg-blue-100 text-blue-700' :
+                    adQualityScore.level === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {adQualityScore.score}%
+                  </span>
                 </div>
-              )}
+                
+                {/* Barra de progresso */}
+                <div className="h-2 rounded-full bg-gray-200 mb-3 overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      adQualityScore.level === 'excellent' ? 'bg-gradient-to-r from-green-400 to-green-500' :
+                      adQualityScore.level === 'good' ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
+                      adQualityScore.level === 'medium' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
+                      'bg-gradient-to-r from-red-400 to-red-500'
+                    }`}
+                    style={{ width: `${adQualityScore.score}%` }}
+                  />
+                </div>
+                
+                {/* Checklist resumido */}
+                <div className="space-y-1.5 text-xs">
+                  {adQualityScore.items.slice(0, 5).map((item, idx) => (
+                    <div key={idx} className={`flex items-center gap-2 ${item.done ? 'text-gray-700' : 'text-gray-400'}`}>
+                      {item.done ? (
+                        <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                        </svg>
+                      )}
+                      <span className={item.done ? '' : 'line-through'}>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+                
+                {adQualityScore.score < 60 && (
+                  <p className="mt-3 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1.5">
+                    💡 Complete mais campos para aumentar a visibilidade do seu anúncio
+                  </p>
+                )}
+              </div>
+            )}
 
-              {/* Preview do card */}
+            {/* Preview do card */}
+            {currentStep !== 6 && (
               <PropertyCardPremium
                 property={{
                   id: 'preview',
@@ -4248,9 +4336,33 @@ export default function NewPropertyPage() {
                 }}
                 watermark={showWatermark}
               />
-
-              {/* Contextual tips panel (modern glass/gradient) */}
-              <div className="mt-4">
+            )}
+            {/* Contextual tips panel (modern glass/gradient) */}
+            <div className="mt-4">
+              {currentStep === 6 ? (
+                <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
+                  <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
+                    <div className="px-4 pt-4 pb-4">
+                      <div className="flex items-start gap-3">
+                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal ring-1 ring-black/5">
+                          <Eye className="w-5 h-5" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-semibold text-gray-900">Prévia em tela cheia</h3>
+                          <p className="text-[11px] text-gray-500 leading-4">Abra para ver o anúncio com mais espaço e em formato de página.</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFullscreenPreviewOpen(true)}
+                        className="mt-3 w-full px-4 py-2.5 rounded-xl glass-teal text-white font-semibold text-sm hover:opacity-95 transition-opacity"
+                      >
+                        Ver prévia
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
                 <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
                   <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
                     <div className="flex items-center justify-between px-4 pt-4">
@@ -4289,11 +4401,37 @@ export default function NewPropertyPage() {
                     )}
                   </div>
                 </div>
-              </div>
-            </aside>
-          )}
+              )}
+            </div>
+          </aside>
         </div>
       </div>
+      )}
+
+      {fullscreenPreviewOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 p-3 sm:p-6" onClick={() => setFullscreenPreviewOpen(false)}>
+          <div className="relative w-full h-full max-w-7xl mx-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setFullscreenPreviewOpen(false)}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/90 hover:bg-white text-gray-900 shadow"
+              >
+                <X className="w-4 h-4" />
+                <span className="text-sm font-semibold">Fechar</span>
+              </button>
+            </div>
+            <div className="h-full overflow-auto rounded-2xl bg-white shadow-2xl ring-1 ring-black/10">
+              <PropertyDetailsModalJames
+                propertyId={null}
+                open
+                variant="page"
+                mode="preview"
+                initialProperty={previewInitialProperty as any}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {lightbox.open && images[lightbox.index]?.url && (
