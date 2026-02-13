@@ -3,9 +3,20 @@ import { prisma } from "@/lib/prisma";
 import { randomBytes } from "crypto";
 import { LeadDistributionService } from "@/lib/lead-distribution-service";
 import { LeadEventService } from "@/lib/lead-event-service";
+import { createPublicCode } from "@/lib/public-code";
 
 function responseId() {
   return randomBytes(12).toString("hex");
+}
+
+function isPublicCodeCollision(err: any) {
+  return (
+    err &&
+    String(err.code || "") === "P2002" &&
+    (Array.isArray(err?.meta?.target)
+      ? err.meta.target.includes("publicCode")
+      : String(err?.meta?.target || "").includes("publicCode"))
+  );
 }
 
 export async function POST(req: NextRequest, context: { params: Promise<{ token: string }> }) {
@@ -78,17 +89,27 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
                 });
               }
 
-              const lead = await (prisma as any).lead.create({
-                data: {
-                  propertyId: String(property.id),
-                  contactId: String(contact.id),
-                  message: body.message ? String(body.message) : null,
-                  isDirect: false,
-                  teamId: property.teamId ? String(property.teamId) : undefined,
-                  status: "PENDING",
-                },
-                select: { id: true },
-              });
+              let lead: any = null;
+              for (let attempt = 0; attempt < 8; attempt++) {
+                try {
+                  lead = await (prisma as any).lead.create({
+                    data: {
+                      propertyId: String(property.id),
+                      contactId: String(contact.id),
+                      publicCode: createPublicCode("L"),
+                      message: body.message ? String(body.message) : null,
+                      isDirect: false,
+                      teamId: property.teamId ? String(property.teamId) : undefined,
+                      status: "PENDING",
+                    },
+                    select: { id: true },
+                  });
+                  break;
+                } catch (err: any) {
+                  if (isPublicCodeCollision(err) && attempt < 7) continue;
+                  throw err;
+                }
+              }
 
               internalLeadId = String(lead.id);
 

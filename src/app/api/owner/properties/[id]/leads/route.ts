@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const { id } = await context.params;
 
     // Verify ownership of the property
-    const property = await prisma.property.findUnique({
+    const property = await (prisma as any).property.findUnique({
       where: { id },
       select: { ownerId: true },
     });
@@ -37,11 +37,12 @@ export async function GET(req: NextRequest, context: RouteContext) {
     }
 
     // Fetch leads for this property
-    const leads = await prisma.lead.findMany({
+    const leads: any[] = await (prisma as any).lead.findMany({
       where: { propertyId: id },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
+        publicCode: true,
         message: true,
         status: true,
         pipelineStage: true,
@@ -66,8 +67,9 @@ export async function GET(req: NextRequest, context: RouteContext) {
     });
 
     // Map leads to include contact info at top level
-    const mappedLeads = leads.map((lead) => ({
+    const mappedLeads = leads.map((lead: any) => ({
       id: lead.id,
+      publicCode: lead.publicCode ?? null,
       name: lead.contact?.name || lead.user?.name || "Sem nome",
       email: lead.contact?.email || lead.user?.email || "",
       phone: lead.contact?.phone || null,

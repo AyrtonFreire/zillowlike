@@ -44,12 +44,14 @@ export async function GET(req: NextRequest) {
       },
       select: {
         id: true,
+        publicCode: true,
         status: true,
         createdAt: true,
         pipelineStage: true,
         property: {
           select: {
             id: true,
+            publicCode: true,
             title: true,
             price: true,
             city: true,
@@ -99,6 +101,7 @@ export async function GET(req: NextRequest) {
 
       return {
         id: lead.id,
+        publicCode: (lead as any).publicCode ?? null,
         status: lead.status,
         createdAt: lead.createdAt,
         pipelineStage: lead.pipelineStage,

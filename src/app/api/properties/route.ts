@@ -7,6 +7,7 @@ import { Prisma } from "@prisma/client";
 import { createHash } from "crypto";
 import { requireRecoveryFactor } from "@/lib/recovery-factor";
 import { parseVideoUrl } from "@/lib/video";
+import { createPublicCode } from "@/lib/public-code";
 
 // Simple in-memory rate limiter: allow 5 POSTs per IP per minute (best-effort, free)
 const rateMap = new Map<string, number[]>();
@@ -45,6 +46,16 @@ function toBigIntOrNull(v: any): bigint | null {
 function toBigInt(v: any): bigint {
   const out = toBigIntOrNull(v);
   return out ?? BigInt(0);
+}
+
+function isPublicCodeCollision(err: any) {
+  return (
+    err &&
+    String(err.code || "") === "P2002" &&
+    (Array.isArray(err?.meta?.target)
+      ? err.meta.target.includes("publicCode")
+      : String(err?.meta?.target || "").includes("publicCode"))
+  );
 }
 
 function normalizeSearchParamsForCache(searchParams: URLSearchParams) {
@@ -944,7 +955,17 @@ export async function POST(req: NextRequest) {
         )
       );
     }
-    const created = await prisma.property.create({ data: createData, include: { images: true } });
+    let created: any = null;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      try {
+        createData.publicCode = createPublicCode("P");
+        created = await (prisma as any).property.create({ data: createData, include: { images: true } });
+        break;
+      } catch (err: any) {
+        if (isPublicCodeCollision(err) && attempt < 7) continue;
+        throw err;
+      }
+    }
     console.log("api/properties POST created", { id: created.id, ownerId: created.ownerId, city: created.city, state: created.state, status: created.status, requestId });
     const res = NextResponse.json(jsonSafe(created), { status: 201 });
     res.headers.set("x-request-id", requestId);

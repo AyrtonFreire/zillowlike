@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { createPublicCode } from '../src/lib/public-code';
 
 const prisma = new PrismaClient();
 
@@ -300,8 +301,9 @@ async function main() {
       // Distribui owners: primeiros 20 imóveis como pessoa física (OWNER), últimos 20 como corretor (REALTOR)
       const isPfOwner = totalCreated < 20;
 
-      const property = await prisma.property.create({
+      const property = await (prisma as any).property.create({
         data: {
+          publicCode: createPublicCode('P'),
           title: `${typeLabel} em ${neighborhood}`,
           description: `Excelente ${typeLabel.toLowerCase()} localizado no bairro ${neighborhood}, ${city.name}. ${
             type !== 'LAND' ? 'Imóvel com ótimo acabamento, ' : ''

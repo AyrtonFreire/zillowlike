@@ -14,6 +14,7 @@ type PropertyStatus = "ACTIVE" | "PAUSED" | "DRAFT";
 
 type AgencyProperty = {
   id: string;
+  publicCode?: string | null;
   title: string;
   price: number;
   status: PropertyStatus;
@@ -111,7 +112,7 @@ export default function AgencyPropertiesPage() {
       if (typeFilter && String(p.type) !== String(typeFilter)) return false;
       if (!q) return true;
 
-      const haystack = [p.id, p.title, p.street, p.neighborhood, p.city, p.state, p.type]
+      const haystack = [p.id, (p as any).publicCode, p.title, p.street, p.neighborhood, p.city, p.state, p.type]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -369,6 +370,7 @@ export default function AgencyPropertiesPage() {
                   <PropertyCardV2
                     key={p.id}
                     id={p.id}
+                    publicCode={(p as any).publicCode ?? null}
                     href={`/property/${p.id}`}
                     title={p.title}
                     price={p.price}

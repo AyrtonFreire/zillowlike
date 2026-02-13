@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { createPublicCode } from "@/lib/public-code";
 
 describe("GET /api/properties", () => {
   beforeAll(async () => {
     // Setup: Create test data
-    await prisma.property.create({
+    await (prisma as any).property.create({
       data: {
+        publicCode: createPublicCode("P"),
         title: "Test Property",
         description: "Test description",
         price: 100000,

@@ -10,6 +10,7 @@ import EmptyState from "@/components/ui/EmptyState";
 
 interface BrokerProperty {
   id: string;
+  publicCode?: string | null;
   title: string;
   price: number;
   status: "ACTIVE" | "PAUSED" | "DRAFT";
@@ -124,6 +125,8 @@ export default function BrokerPropertiesPage() {
       if (!search.trim()) return true;
       const q = search.toLowerCase();
       return (
+        String(p.id || "").toLowerCase().includes(q) ||
+        String((p as any).publicCode || "").toLowerCase().includes(q) ||
         p.title.toLowerCase().includes(q) ||
         p.city.toLowerCase().includes(q) ||
         (p.neighborhood || "").toLowerCase().includes(q) ||
@@ -315,6 +318,7 @@ export default function BrokerPropertiesPage() {
                   <PropertyCardV2
                     key={property.id}
                     id={property.id}
+                    publicCode={(property as any).publicCode ?? null}
                     href={`/broker/properties/${property.id}/overview`}
                     title={property.title}
                     price={property.price}

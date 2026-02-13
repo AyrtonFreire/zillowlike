@@ -208,6 +208,7 @@ model Favorite {
 
 model Property {
   id          String         @id @default(cuid())
+  publicCode  String?        @unique
   title       String
   metaTitle   String?
   metaDescription String?
@@ -587,6 +588,7 @@ model BackupRecoveryCode {
 // Leads submitted from property detail pages
 model Lead {
   id         String     @id @default(cuid())
+  publicCode String?    @unique
   property   Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   propertyId String
   user       User?      @relation(fields: [userId], references: [id])

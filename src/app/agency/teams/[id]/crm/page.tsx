@@ -13,6 +13,7 @@ import {
   buildAgencyLeadTemplateOptions,
   type AgencyLeadTemplateOption,
 } from "@/lib/agency-lead-message-templates";
+import { formatPublicCode } from "@/lib/public-code";
 
 type PipelineMember = {
   userId: string;
@@ -27,6 +28,7 @@ type PipelineMember = {
 
 type PipelineLead = {
   id: string;
+  publicCode?: string | null;
   status: string;
   pipelineStage: string;
   createdAt: string;
@@ -35,6 +37,7 @@ type PipelineLead = {
   contact?: { name?: string | null; phone?: string | null } | null;
   property?: {
     id?: string | null;
+    publicCode?: string | null;
     title?: string | null;
     price?: number | null;
     city?: string | null;
@@ -487,6 +490,7 @@ export default function AgencyTeamCrmPage() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr className="text-left text-[11px] font-semibold text-gray-600">
                 <th className="pl-2 pr-3 py-3">Lead</th>
+                <th className="px-3 py-3">ID</th>
                 <th className="px-3 py-3">Imóvel</th>
                 <th className="px-3 py-3">Etapa</th>
                 <th className="px-3 py-3">Responsável</th>
@@ -498,19 +502,24 @@ export default function AgencyTeamCrmPage() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td className="px-3 py-6 text-gray-600" colSpan={7}>
+                  <td className="px-3 py-6 text-gray-600" colSpan={8}>
                     Carregando...
                   </td>
                 </tr>
               ) : leads.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-8 text-gray-600" colSpan={7}>
+                  <td className="px-3 py-8 text-gray-600" colSpan={8}>
                     Nenhum lead encontrado com os filtros atuais.
                   </td>
                 </tr>
               ) : (
                 leads.map((l) => {
                   const leadId = String(l.id);
+                  const leadCode = l.publicCode ? formatPublicCode(String(l.publicCode)) : "";
+                  const shortLeadId = leadId.length <= 8 ? leadId : leadId.slice(-8);
+                  const displayId = leadCode || shortLeadId;
+                  const copyId = leadCode || leadId;
+
                   const pending = pendingMap.get(leadId) || null;
                   const slaAge = formatSlaAge(pending?.lastClientAt || null);
                   const assignedId = l.realtor?.id ? String(l.realtor.id) : "";
@@ -543,7 +552,22 @@ export default function AgencyTeamCrmPage() {
                         >
                           {l.contact?.name || `Lead ${leadId}`}
                         </button>
-                        <div className="text-[11px] text-gray-500">ID: {leadId}</div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            try {
+                              void navigator.clipboard.writeText(copyId);
+                            } catch {
+                              // ignore
+                            }
+                          }}
+                          className="text-[11px] font-semibold text-gray-600 hover:text-gray-900"
+                          title={copyId}
+                        >
+                          {displayId}
+                        </button>
                       </td>
                       <td className="px-3 py-3">
                         <div className="font-medium text-gray-900 line-clamp-1">{l.property?.title || "-"}</div>

@@ -12,6 +12,7 @@ type PropertyStatus = "ACTIVE" | "PAUSED" | "DRAFT";
 
 interface Property {
   id: string;
+  publicCode?: string | null;
   title: string;
   price: number;
   status: PropertyStatus;
@@ -136,9 +137,12 @@ export default function OwnerPropertiesPage() {
 
   const filteredProperties = properties.filter(p => {
     const matchesFilter = filter === "ALL" || p.status === filter;
-    const matchesSearch = search === "" || 
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.city.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchesSearch = search === "" ||
+      p.title.toLowerCase().includes(q) ||
+      p.city.toLowerCase().includes(q) ||
+      String(p.id || "").toLowerCase().includes(q) ||
+      String((p as any).publicCode || "").toLowerCase().includes(q);
     return matchesFilter && matchesSearch;
   });
 
@@ -272,6 +276,7 @@ export default function OwnerPropertiesPage() {
               <PropertyCardV2
                 key={property.id}
                 id={property.id}
+                publicCode={(property as any).publicCode ?? null}
                 href={`/owner/properties/${property.id}`}
                 title={property.title}
                 price={property.price}

@@ -139,6 +139,7 @@ export async function GET(req: NextRequest) {
       const conversion14dPct = views14d > 0 ? Math.round(((leads14d / views14d) * 100) * 10) / 10 : null;
       return {
       id: String(p.id),
+      publicCode: (p as any).publicCode ?? null,
       title: String(p.title || "Imóvel"),
       price: Number(p.price || 0),
       status: String(p.status || "ACTIVE"),

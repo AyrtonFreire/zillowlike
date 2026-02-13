@@ -4,6 +4,7 @@ import type { LeadStatus } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizePublicCodeInput } from "@/lib/public-code";
 
 type PipelineStage = "NEW" | "CONTACT" | "VISIT" | "PROPOSAL" | "DOCUMENTS" | "WON" | "LOST";
 
@@ -137,6 +138,9 @@ export async function GET(request: NextRequest) {
     const decodedCursor = decodeCursor(cursor);
     const stages = pipelineGroupToStages(pipelineGroup);
     const effectiveQuery = q || name;
+    const qCode = normalizePublicCodeInput(effectiveQuery);
+    const looksLikeLeadCode = /^L[0-9A-Z]{4,}$/.test(qCode);
+    const looksLikePropertyCode = /^P[0-9A-Z]{4,}$/.test(qCode);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -156,16 +160,24 @@ export async function GET(request: NextRequest) {
         if (city) whereSql.push(Prisma.sql`p.city ILIKE ${"%" + city + "%"}`);
         if (effectiveQuery && effectiveQuery.length >= 2) {
           const like = "%" + effectiveQuery + "%";
-          whereSql.push(
-            Prisma.sql`(
-              p.title ILIKE ${like} OR
-              p.city ILIKE ${like} OR
-              COALESCE(p.neighborhood,'') ILIKE ${like} OR
-              c.name ILIKE ${like} OR
-              c.email ILIKE ${like} OR
-              COALESCE(c.phone,'') ILIKE ${like}
-            )`
-          );
+          const orParts: Prisma.Sql[] = [
+            Prisma.sql`p.title ILIKE ${like}`,
+            Prisma.sql`p.city ILIKE ${like}`,
+            Prisma.sql`COALESCE(p.neighborhood,'') ILIKE ${like}`,
+            Prisma.sql`c.name ILIKE ${like}`,
+            Prisma.sql`c.email ILIKE ${like}`,
+            Prisma.sql`COALESCE(c.phone,'') ILIKE ${like}`,
+            Prisma.sql`l.id ILIKE ${like}`,
+          ];
+
+          if (looksLikeLeadCode) {
+            orParts.push(Prisma.sql`COALESCE(l."publicCode",'') ILIKE ${"%" + qCode + "%"}`);
+          }
+          if (looksLikePropertyCode) {
+            orParts.push(Prisma.sql`COALESCE(p."publicCode",'') ILIKE ${"%" + qCode + "%"}`);
+          }
+
+          whereSql.push(Prisma.sql`(${Prisma.join(orParts, " OR ")})`);
         }
 
         const cursorWhere = decodedCursor
@@ -287,6 +299,7 @@ export async function GET(request: NextRequest) {
             property: {
               select: {
                 id: true,
+                publicCode: true,
                 title: true,
                 price: true,
                 type: true,
@@ -414,6 +427,11 @@ export async function GET(request: NextRequest) {
               { contact: { name: { contains: effectiveQuery, mode: "insensitive" } } },
               { contact: { email: { contains: effectiveQuery, mode: "insensitive" } } },
               { contact: { phone: { contains: effectiveQuery, mode: "insensitive" } } },
+              { id: { contains: effectiveQuery, mode: "insensitive" } },
+              ...(looksLikeLeadCode ? [{ publicCode: { contains: qCode, mode: "insensitive" } }] : []),
+              ...(looksLikePropertyCode
+                ? [{ property: { is: { publicCode: { contains: qCode, mode: "insensitive" } } } }]
+                : []),
             ],
           }
         : {}),
@@ -548,6 +566,7 @@ export async function GET(request: NextRequest) {
         property: {
           select: {
             id: true,
+            publicCode: true,
             title: true,
             price: true,
             type: true,

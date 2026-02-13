@@ -5,10 +5,21 @@ import { RealtorAssistantService } from "./realtor-assistant-service";
 import { LeadAutoReplyService } from "./lead-auto-reply-service";
 import { randomBytes } from "crypto";
 import { LeadDistributionService } from "./lead-distribution-service";
+import { createPublicCode } from "./public-code";
 
 // Gera um token único para chat do cliente
 function generateChatToken(): string {
   return randomBytes(32).toString("hex");
+}
+
+function isPublicCodeCollision(err: any) {
+  return (
+    err &&
+    String(err.code || "") === "P2002" &&
+    (Array.isArray(err?.meta?.target)
+      ? err.meta.target.includes("publicCode")
+      : String(err?.meta?.target || "").includes("publicCode"))
+  );
 }
 
 /**
@@ -94,40 +105,50 @@ export class VisitSchedulingService {
 
     // Criar lead (unificando message e clientNotes no campo message)
     // Como já entra com horário marcado, iniciamos o funil em VISIT
-    const lead = await (prisma as any).lead.create({
-      data: {
-        propertyId,
-        contactId: contact.id,
-        realtorId: effectiveRealtorId, // Atribui ao corretor (auto se owner é REALTOR/AGENCY)
-        visitDate,
-        visitTime,
-        message: clientNotes, // Usando apenas campo message (clientNotes será deprecado)
-        status: effectiveRealtorId ? "ACCEPTED" : "PENDING", // Já aceito se tem corretor atribuído
-        isDirect,
-        candidatesCount: 0,
-        teamId: (property as any)?.teamId ?? undefined,
-        clientChatToken, // Token para o cliente acessar o chat
-        pipelineStage: "VISIT", // Lead já entra na etapa de visita agendada
-      },
-      include: {
-        property: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            type: true,
-            city: true,
-            state: true,
-            ownerId: true,
-            images: {
-              take: 1,
-              orderBy: { sortOrder: "asc" },
-            },
+    let lead: any = null;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      try {
+        lead = await (prisma as any).lead.create({
+          data: {
+            propertyId,
+            contactId: contact.id,
+            realtorId: effectiveRealtorId, // Atribui ao corretor (auto se owner é REALTOR/AGENCY)
+            publicCode: createPublicCode("L"),
+            visitDate,
+            visitTime,
+            message: clientNotes, // Usando apenas campo message (clientNotes será deprecado)
+            status: effectiveRealtorId ? "ACCEPTED" : "PENDING", // Já aceito se tem corretor atribuído
+            isDirect,
+            candidatesCount: 0,
+            teamId: (property as any)?.teamId ?? undefined,
+            clientChatToken, // Token para o cliente acessar o chat
+            pipelineStage: "VISIT", // Lead já entra na etapa de visita agendada
           },
-        },
-        contact: true,
-      },
-    });
+          include: {
+            property: {
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                type: true,
+                city: true,
+                state: true,
+                ownerId: true,
+                images: {
+                  take: 1,
+                  orderBy: { sortOrder: "asc" },
+                },
+              },
+            },
+            contact: true,
+          },
+        });
+        break;
+      } catch (err: any) {
+        if (isPublicCodeCollision(err) && attempt < 7) continue;
+        throw err;
+      }
+    }
 
     let initialClientMessageId: string | null = null;
     if (clientNotes && String(clientNotes).trim().length > 0) {

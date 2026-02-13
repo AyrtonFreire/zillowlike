@@ -21,6 +21,7 @@
     "worker": "tsx src/workers/index.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "tsx scripts/prisma-migrate-safe.ts",
+    "db:backfill:public-codes": "tsx scripts/backfill-public-codes.ts",
     "prisma:studio": "prisma studio",
     "test": "vitest",
     "test:ui": "vitest --ui",

@@ -8,6 +8,7 @@ import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { LeadDistributionService } from "@/lib/lead-distribution-service";
 import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
+import { createPublicCode } from "@/lib/public-code";
 
 // Gera um token único para chat do cliente
 function generateChatToken(): string {
@@ -17,6 +18,16 @@ function generateChatToken(): string {
 const rateMap = new Map<string, { ts: number[] }>();
 const WINDOW_MS = 60_000; // 1 min
 const MAX_REQUESTS = 10; // per IP per window
+
+function isPublicCodeCollision(err: any) {
+  return (
+    err &&
+    String(err.code || "") === "P2002" &&
+    (Array.isArray(err?.meta?.target)
+      ? err.meta.target.includes("publicCode")
+      : String(err?.meta?.target || "").includes("publicCode"))
+  );
+}
 
 function getIp(req: NextRequest) {
   const xfwd = req.headers.get("x-forwarded-for");
@@ -142,6 +153,7 @@ export async function POST(req: NextRequest) {
         select: {
           id: true,
           userId: true,
+          publicCode: true,
           clientChatToken: true,
           realtorId: true,
           status: true,
@@ -150,6 +162,22 @@ export async function POST(req: NextRequest) {
       });
 
       if (existing?.id) {
+        if (!existing.publicCode) {
+          for (let attempt = 0; attempt < 8; attempt++) {
+            try {
+              await (prisma as any).lead.update({
+                where: { id: existing.id },
+                data: { publicCode: createPublicCode("L") },
+                select: { id: true },
+              });
+              break;
+            } catch (err: any) {
+              if (isPublicCodeCollision(err) && attempt < 7) continue;
+              break;
+            }
+          }
+        }
+
         if (!existing.userId) {
           try {
             await (prisma as any).lead.update({
@@ -222,21 +250,31 @@ export async function POST(req: NextRequest) {
   });
 
   // Create lead with contact relation
-  const lead = await (prisma as any).lead.create({
-    data: {
-      propertyId,
-      contactId: contact.id,
-      userId: sessionUserId ? String(sessionUserId) : undefined,
-      message,
-      isDirect: isDirectFlag,
-      teamId: teamId ?? undefined,
-      clientChatToken, // Token para o cliente acessar o chat
-      // Se o owner é REALTOR/AGENCY, atribuir automaticamente como corretor responsável
-      realtorId: teamId && !isDirectFlag ? undefined : autoRealtorId,
-      // Se tem realtorId, já marca como ACCEPTED; caso contrário, segue fluxo padrão PENDING
-      status: teamId && !isDirectFlag ? "PENDING" : autoRealtorId ? "ACCEPTED" : "PENDING",
-    },
-  });
+  let lead: any = null;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      lead = await (prisma as any).lead.create({
+        data: {
+          propertyId,
+          contactId: contact.id,
+          userId: sessionUserId ? String(sessionUserId) : undefined,
+          publicCode: createPublicCode("L"),
+          message,
+          isDirect: isDirectFlag,
+          teamId: teamId ?? undefined,
+          clientChatToken, // Token para o cliente acessar o chat
+          // Se o owner é REALTOR/AGENCY, atribuir automaticamente como corretor responsável
+          realtorId: teamId && !isDirectFlag ? undefined : autoRealtorId,
+          // Se tem realtorId, já marca como ACCEPTED; caso contrário, segue fluxo padrão PENDING
+          status: teamId && !isDirectFlag ? "PENDING" : autoRealtorId ? "ACCEPTED" : "PENDING",
+        },
+      });
+      break;
+    } catch (err: any) {
+      if (isPublicCodeCollision(err) && attempt < 7) continue;
+      throw err;
+    }
+  }
 
   let initialClientMessageId: string | null = null;
   if (message && String(message).trim().length > 0) {

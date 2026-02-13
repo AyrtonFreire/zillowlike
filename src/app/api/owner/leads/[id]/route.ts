@@ -33,11 +33,13 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       },
       select: {
         id: true,
+        publicCode: true,
         status: true,
         createdAt: true,
         property: {
           select: {
             id: true,
+            publicCode: true,
             title: true,
             city: true,
             state: true,

@@ -21,6 +21,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { canonicalToBoardGroup } from "@/lib/lead-pipeline";
 import { getPusherClient } from "@/lib/pusher-client";
 import { ptBR } from "@/lib/i18n/property";
+import { formatPublicCode, normalizePublicCodeInput } from "@/lib/public-code";
 
 // Tipo de imóvel traduzido
 const PROPERTY_TYPES: Record<string, string> = {
@@ -78,6 +79,7 @@ function getLeadPipelineStage(lead: Lead): PipelineStage {
 
 interface Lead {
   id: string;
+  publicCode?: string | null;
   status: "RESERVED" | "ACCEPTED" | "COMPLETED" | string;
   createdAt: string;
   reservedUntil?: string | null;
@@ -95,6 +97,7 @@ interface Lead {
   origin?: "WHATSAPP" | "SITE_CHAT" | string;
   property: {
     id: string;
+    publicCode?: string | null;
     title: string;
     price: number;
     type: string;
@@ -730,6 +733,17 @@ export default function MyLeadsPage() {
     return s.length <= 8 ? s : s.slice(-8);
   };
 
+  const getLeadDisplayId = (lead: Lead) => {
+    const code = lead?.publicCode ? formatPublicCode(String(lead.publicCode)) : "";
+    if (code) return code;
+    return getShortLeadId(String(lead?.id || ""));
+  };
+
+  const getLeadCopyId = (lead: Lead) => {
+    const code = lead?.publicCode ? formatPublicCode(String(lead.publicCode)) : "";
+    return code || String(lead?.id || "");
+  };
+
   const copyLeadId = async (leadId: string) => {
     try {
       await navigator.clipboard.writeText(String(leadId));
@@ -841,10 +855,20 @@ export default function MyLeadsPage() {
     }
 
     if (nameFilter) {
-      const name = String(lead.contact?.name || "");
-      if (!name.toLowerCase().includes(nameFilter.toLowerCase())) {
-        return false;
-      }
+      const qRaw = String(nameFilter || "");
+      const q = qRaw.toLowerCase();
+      const qCode = normalizePublicCodeInput(qRaw);
+
+      const name = String(lead.contact?.name || "").toLowerCase();
+      const leadId = String(lead.id || "").toLowerCase();
+      const propId = String(lead.property?.id || "").toLowerCase();
+      const leadCode = normalizePublicCodeInput(String((lead as any)?.publicCode || ""));
+      const propCode = normalizePublicCodeInput(String((lead as any)?.property?.publicCode || ""));
+
+      const matchesText = name.includes(q) || leadId.includes(q) || propId.includes(q);
+      const matchesCode = !!qCode && (leadCode.includes(qCode) || propCode.includes(qCode));
+
+      if (!matchesText && !matchesCode) return false;
     }
 
     // City filter
@@ -1294,12 +1318,12 @@ export default function MyLeadsPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                copyLeadId(lead.id);
+                                copyLeadId(getLeadCopyId(lead));
                               }}
                               className="text-[10px] font-semibold text-gray-500 hover:text-gray-800"
-                              title={lead.id}
+                              title={getLeadCopyId(lead)}
                             >
-                              ID {getShortLeadId(lead.id)}
+                              ID {getLeadDisplayId(lead)}
                             </button>
                           </div>
                         </div>
@@ -1384,12 +1408,12 @@ export default function MyLeadsPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                copyLeadId(lead.id);
+                                copyLeadId(getLeadCopyId(lead));
                               }}
                               className="text-[10px] font-semibold text-gray-500 hover:text-gray-800"
-                              title={lead.id}
+                              title={getLeadCopyId(lead)}
                             >
-                              ID {getShortLeadId(lead.id)}
+                              ID {getLeadDisplayId(lead)}
                             </button>
                           </div>
 
@@ -1667,6 +1691,7 @@ export default function MyLeadsPage() {
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr className="text-left text-xs font-semibold text-gray-600">
                         <th className="pl-2 pr-3 py-3">Lead</th>
+                        <th className="px-3 py-3">ID</th>
                         <th className="px-3 py-3">Imóvel</th>
                         <th className="px-3 py-3">Etapa</th>
                         <th className="px-3 py-3">Origem</th>
@@ -1698,22 +1723,21 @@ export default function MyLeadsPage() {
                                     {lead.contact?.name || "Lead"}
                                   </div>
                                   <div className="text-xs text-gray-600 truncate">{lead.contact?.email || ""}</div>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      copyLeadId(lead.id);
-                                    }}
-                                    className="mt-0.5 text-[11px] text-gray-500 hover:text-gray-800 font-semibold"
-                                    title={lead.id}
-                                  >
-                                    ID {getShortLeadId(lead.id)}
-                                  </button>
                                   {lead.hasUnreadMessages && (
                                     <div className="text-[11px] text-blue-700 font-semibold">Mensagem não lida</div>
                                   )}
                                 </div>
                               </div>
+                            </td>
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => copyLeadId(getLeadCopyId(lead))}
+                                className="text-[11px] text-gray-500 hover:text-gray-800 font-semibold"
+                                title={getLeadCopyId(lead)}
+                              >
+                                {getLeadDisplayId(lead)}
+                              </button>
                             </td>
                             <td
                               className="px-3 py-3"

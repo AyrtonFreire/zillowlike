@@ -5,6 +5,7 @@ import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { authOptions } from "@/lib/auth";
 import { LeadDistributionService } from "@/lib/lead-distribution-service";
+import { createPublicCode } from "@/lib/public-code";
 
 export const runtime = "nodejs";
 
@@ -29,6 +30,16 @@ function checkRate(ip: string) {
   rec.ts.push(now);
   rateMap.set(ip, rec);
   return true;
+}
+
+function isPublicCodeCollision(err: any) {
+  return (
+    err &&
+    String(err.code || "") === "P2002" &&
+    (Array.isArray(err?.meta?.target)
+      ? err.meta.target.includes("publicCode")
+      : String(err?.meta?.target || "").includes("publicCode"))
+  );
 }
 
 function normalizePhoneDigits(raw: string) {
@@ -268,7 +279,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
           ? { ...baseWhere, teamId: payload.teamId ?? undefined }
           : { ...baseWhere, realtorId: payload.ownerId },
         orderBy: { updatedAt: "desc" },
-        select: { id: true, realtorId: true },
+        select: { id: true, realtorId: true, publicCode: true },
       });
 
       const ensureAssignedAgencyLead = async (leadId: string) => {
@@ -310,28 +321,55 @@ export async function POST(req: NextRequest, { params }: Ctx) {
             },
             select: { id: true },
           })
-        : await (prisma as any).lead.create({
-            data: {
-              propertyId: payload.propertyId,
-              ...(payload.isAgencyListing
-                ? {
-                    teamId: payload.teamId ?? undefined,
-                    status: "PENDING",
-                    isDirect: false,
-                    pipelineStage: "NEW",
-                  }
-                : {
-                    realtorId: payload.ownerId,
-                    teamId: payload.teamId ?? undefined,
-                    status: "ACCEPTED",
-                    pipelineStage: "NEW",
-                    isDirect: true,
-                  }),
-              ...(sessionUserId ? { userId: String(sessionUserId) } : {}),
-              message: "Interesse via WhatsApp",
-            },
-            select: { id: true },
-          });
+        : await (async () => {
+            for (let attempt = 0; attempt < 8; attempt++) {
+              try {
+                return await (prisma as any).lead.create({
+                  data: {
+                    propertyId: payload.propertyId,
+                    publicCode: createPublicCode("L"),
+                    ...(payload.isAgencyListing
+                      ? {
+                          teamId: payload.teamId ?? undefined,
+                          status: "PENDING",
+                          isDirect: false,
+                          pipelineStage: "NEW",
+                        }
+                      : {
+                          realtorId: payload.ownerId,
+                          teamId: payload.teamId ?? undefined,
+                          status: "ACCEPTED",
+                          pipelineStage: "NEW",
+                          isDirect: true,
+                        }),
+                    ...(sessionUserId ? { userId: String(sessionUserId) } : {}),
+                    message: "Interesse via WhatsApp",
+                  },
+                  select: { id: true },
+                });
+              } catch (err: any) {
+                if (isPublicCodeCollision(err) && attempt < 7) continue;
+                throw err;
+              }
+            }
+            throw new Error("Failed to create lead");
+          })();
+
+      if (existingLead?.id && !existingLead.publicCode) {
+        for (let attempt = 0; attempt < 8; attempt++) {
+          try {
+            await (prisma as any).lead.update({
+              where: { id: String(existingLead.id) },
+              data: { publicCode: createPublicCode("L") },
+              select: { id: true },
+            });
+            break;
+          } catch (err: any) {
+            if (isPublicCodeCollision(err) && attempt < 7) continue;
+            break;
+          }
+        }
+      }
 
       let effectiveRealtorId = payload.ownerId;
       if (payload.isAgencyListing) {

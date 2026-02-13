@@ -9,9 +9,11 @@ import { MessageCircle, MapPin, RefreshCcw, Search } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import { formatPublicCode } from "@/lib/public-code";
 
 interface OwnerLeadListItem {
   id: string;
+  publicCode?: string | null;
   status: string;
   createdAt: string;
   pipelineStage?: string | null;
@@ -19,6 +21,7 @@ interface OwnerLeadListItem {
   lastMessageAt?: string | null;
   property: {
     id: string;
+    publicCode?: string | null;
     title: string;
     price?: number;
     city: string;
@@ -124,7 +127,10 @@ export default function OwnerLeadsPage() {
       const title = String(lead.property?.title || "").toLowerCase();
       const contact = String(lead.contact?.name || lead.contact?.email || "").toLowerCase();
       const city = String(lead.property?.city || "").toLowerCase();
-      return title.includes(q) || contact.includes(q) || city.includes(q);
+      const id = String(lead.id || "").toLowerCase();
+      const leadCode = lead.publicCode ? formatPublicCode(String(lead.publicCode)).toLowerCase() : "";
+      const propCode = lead.property?.publicCode ? formatPublicCode(String(lead.property.publicCode)).toLowerCase() : "";
+      return title.includes(q) || contact.includes(q) || city.includes(q) || id.includes(q) || leadCode.includes(q) || propCode.includes(q);
     });
   }, [leads, query, propertyIdFilter]);
 
@@ -193,6 +199,9 @@ export default function OwnerLeadsPage() {
             {filtered.map((lead) => {
               const img = lead.property?.images?.[0]?.url || "/placeholder.jpg";
               const contactName = lead.contact?.name || lead.contact?.email || "Contato";
+              const leadCode = lead.publicCode ? formatPublicCode(String(lead.publicCode)) : "";
+              const displayId = leadCode || (lead.id.length <= 8 ? lead.id : lead.id.slice(-8));
+              const copyId = leadCode || lead.id;
               return (
                 <Link
                   key={lead.id}
@@ -208,6 +217,21 @@ export default function OwnerLeadsPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-gray-900 line-clamp-2">{lead.property.title}</p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              try {
+                                void navigator.clipboard.writeText(String(copyId));
+                              } catch {
+                              }
+                            }}
+                            className="mt-1 inline-flex items-center text-[11px] font-semibold text-gray-500 hover:text-gray-800"
+                            title={copyId}
+                          >
+                            ID {displayId}
+                          </button>
                           <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
                             <span className="truncate">

@@ -293,6 +293,7 @@ export async function GET(req: NextRequest) {
       })()
       return {
         id: p.id,
+        publicCode: (p as any).publicCode ?? null,
         title: p.title,
         price: typeof p.price === "bigint" ? Number(p.price) : p.price,
         status: p.status,

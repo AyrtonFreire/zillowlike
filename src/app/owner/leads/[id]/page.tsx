@@ -8,13 +8,16 @@ import DashboardLayout from "@/components/DashboardLayout";
 import CenteredSpinner from "@/components/ui/CenteredSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import { getPusherClient } from "@/lib/pusher-client";
+import { formatPublicCode } from "@/lib/public-code";
 
 interface OwnerLead {
   id: string;
+  publicCode?: string | null;
   status: string;
   createdAt: string;
   property: {
     id: string;
+    publicCode?: string | null;
     title: string;
     city: string;
     state: string;
@@ -251,6 +254,21 @@ export default function OwnerLeadChatPage() {
           <div>
             <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Conversa sobre</p>
             <h1 className="text-lg font-semibold text-gray-900">{lead.property.title}</h1>
+            <button
+              type="button"
+              onClick={() => {
+                const code = lead.publicCode ? formatPublicCode(String(lead.publicCode)) : "";
+                const copyId = code || String(lead.id);
+                try {
+                  void navigator.clipboard.writeText(copyId);
+                } catch {
+                }
+              }}
+              className="mt-1 inline-flex items-center text-[11px] font-semibold text-gray-500 hover:text-gray-800"
+              title={lead.publicCode ? formatPublicCode(String(lead.publicCode)) : lead.id}
+            >
+              ID {lead.publicCode ? formatPublicCode(String(lead.publicCode)) : lead.id}
+            </button>
             <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
               <Calendar className="w-4 h-4" />
               <span>Lead criado em {formatDateTime(lead.createdAt)}</span>

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Home, MapPin, Eye, Users, Target, Timer, ExternalLink } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
+import { formatPublicCode } from "@/lib/public-code";
 
 function TooltipMetric({
   id,
@@ -90,6 +91,7 @@ function TooltipMetric({
 
 interface PropertyCardV2Props {
   id: string;
+  publicCode?: string | null;
   href: string;
   title: string;
   price: number;
@@ -128,6 +130,7 @@ interface PropertyCardV2Props {
 
 export default function PropertyCardV2({
   id,
+  publicCode = null,
   href,
   title,
   price,
@@ -153,6 +156,18 @@ export default function PropertyCardV2({
   badges = [],
 }: PropertyCardV2Props) {
   const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
+
+  const displayId = useMemo(() => {
+    const code = publicCode ? formatPublicCode(String(publicCode)) : "";
+    if (code) return code;
+    const s = String(id || "");
+    return s.length <= 8 ? s : s.slice(-8);
+  }, [id, publicCode]);
+
+  const copyId = useMemo(() => {
+    const code = publicCode ? formatPublicCode(String(publicCode)) : "";
+    return code || String(id || "");
+  }, [id, publicCode]);
 
   const isTapMode = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -264,10 +279,27 @@ export default function PropertyCardV2({
               <h3 className="text-[15px] sm:text-base font-semibold text-gray-900 line-clamp-2 group-hover:text-teal-700 transition-colors">
                 {title}
               </h3>
-              <span className="inline-flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap">
-                <ExternalLink className="w-3.5 h-3.5" />
-                Abrir
-              </span>
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                      void navigator.clipboard.writeText(copyId);
+                    } catch {
+                    }
+                  }}
+                  className="text-[11px] font-semibold text-gray-500 hover:text-gray-800"
+                  title={copyId}
+                >
+                  {displayId}
+                </button>
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Abrir
+                </span>
+              </div>
             </div>
 
             <div className="flex items-start gap-1.5 text-[13px] sm:text-sm text-gray-600 mt-1">

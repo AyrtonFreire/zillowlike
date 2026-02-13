@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizePublicCodeInput } from "@/lib/public-code";
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,23 +31,28 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q")?.trim() || "";
+    const qCode = normalizePublicCodeInput(query);
+    const looksLikeLeadCode = /^L[0-9A-Z]{4,}$/.test(qCode);
+    const looksLikePropertyCode = /^P[0-9A-Z]{4,}$/.test(qCode);
 
     if (!query || query.length < 2) {
       return NextResponse.json({ leads: [] });
     }
 
     // Buscar leads do corretor que correspondem à query
-    const leads = await prisma.lead.findMany({
+    const leads = await (prisma as any).lead.findMany({
       where: {
         realtorId: userId,
         pipelineStage: { notIn: ["WON", "LOST"] },
         OR: [
+          ...(looksLikeLeadCode ? [{ publicCode: { contains: qCode, mode: "insensitive" } }] : []),
           {
             property: {
               OR: [
                 { title: { contains: query, mode: "insensitive" } },
                 { city: { contains: query, mode: "insensitive" } },
                 { neighborhood: { contains: query, mode: "insensitive" } },
+                ...(looksLikePropertyCode ? [{ publicCode: { contains: qCode, mode: "insensitive" } }] : []),
               ],
             },
           },
@@ -65,6 +71,7 @@ export async function GET(request: NextRequest) {
         property: {
           select: {
             id: true,
+            publicCode: true,
             title: true,
             city: true,
             state: true,
@@ -89,12 +96,14 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      leads: leads.map((lead) => ({
+      leads: (leads as any[]).map((lead: any) => ({
         id: lead.id,
+        publicCode: (lead as any).publicCode ?? null,
         status: lead.status,
         pipelineStage: lead.pipelineStage,
         property: {
           id: lead.property.id,
+          publicCode: (lead as any)?.property?.publicCode ?? null,
           title: lead.property.title,
           city: lead.property.city,
           state: lead.property.state,

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit-log";
 import { captureException } from "@/lib/sentry";
 import { logger } from "@/lib/logger";
+import { normalizePublicCodeInput } from "@/lib/public-code";
 
 function jsonSafe<T>(data: T): any {
   return JSON.parse(
@@ -129,7 +130,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       return "NEW";
     };
 
-    const filters: Prisma.LeadWhereInput[] = [];
+    const filters: any[] = [];
     filters.push({
       OR: [
         { teamId: id },
@@ -150,12 +151,20 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     }
     if (q) {
       const qNorm = q.toLowerCase();
+      const qCode = normalizePublicCodeInput(q);
+      const looksLikeLeadCode = /^L[0-9A-Z]{4,}$/.test(qCode);
+      const looksLikePropertyCode = /^P[0-9A-Z]{4,}$/.test(qCode);
+
       filters.push({
         OR: [
           { id: { contains: qNorm, mode: "insensitive" } },
+          ...(looksLikeLeadCode ? [{ publicCode: { contains: qCode, mode: "insensitive" as const } }] : []),
           { contact: { is: { name: { contains: qNorm, mode: "insensitive" } } } },
           { contact: { is: { phone: { contains: qNorm, mode: "insensitive" } } } },
           { property: { is: { title: { contains: qNorm, mode: "insensitive" } } } },
+          ...(looksLikePropertyCode
+            ? [{ property: { is: { publicCode: { contains: qCode, mode: "insensitive" as const } } } }]
+            : []),
           { property: { is: { city: { contains: qNorm, mode: "insensitive" } } } },
           { property: { is: { state: { contains: qNorm, mode: "insensitive" } } } },
           { realtor: { is: { name: { contains: qNorm, mode: "insensitive" } } } },
@@ -164,10 +173,11 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       });
     }
 
-    const baseWhere: Prisma.LeadWhereInput = filters.length ? { AND: filters } : {};
+    const baseWhere: any = filters.length ? { AND: filters } : {};
 
-    const leadSelect = {
+    const leadSelect: any = {
       id: true,
+      publicCode: true,
       status: true,
       pipelineStage: true,
       createdAt: true,
@@ -176,6 +186,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       property: {
         select: {
           id: true,
+          publicCode: true,
           title: true,
           price: true,
           type: true,
@@ -197,7 +208,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
           username: true,
         },
       },
-    } as const;
+    };
 
     const orderBy = [{ createdAt: "desc" as const }, { id: "desc" as const }];
 
@@ -261,7 +272,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     let hasMore = false;
 
     if (!onlyPendingReply) {
-      const rows = await prisma.lead.findMany({
+      const rows = await (prisma as any).lead.findMany({
         where: baseWhere as any,
         select: leadSelect as any,
         orderBy: orderBy as any,
@@ -285,7 +296,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       let scanHasMore = false;
 
       for (let guard = 0; guard < 10 && pageLeads.length < limit; guard++) {
-        const batch = await prisma.lead.findMany({
+        const batch = await (prisma as any).lead.findMany({
           where: baseWhere as any,
           select: leadSelect as any,
           orderBy: orderBy as any,
@@ -331,6 +342,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     const normalized = pageLeads.map((lead: any) => ({
       id: lead.id,
+      publicCode: (lead as any).publicCode ?? null,
       status: lead.status,
       pipelineStage: lead.pipelineStage || mapStatusToStage(lead.status),
       createdAt: lead.createdAt,
