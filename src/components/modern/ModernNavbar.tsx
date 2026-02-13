@@ -481,7 +481,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.16, ease: "easeOut" }}
-              className="fixed inset-0 z-[250] bg-black/30 backdrop-blur-[1px]"
+              className="fixed left-0 right-0 bottom-0 top-16 z-[250] bg-black/30 backdrop-blur-[1px]"
               onMouseDown={() => setOpenMenu(null)}
             />
           )}
