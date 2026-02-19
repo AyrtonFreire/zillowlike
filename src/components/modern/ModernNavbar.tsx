@@ -489,11 +489,24 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         <div className="mx-auto max-w-7xl px-4">
           <div className="grid grid-cols-3 items-center h-16">
             {/* Left: Primary tabs with dropdowns (Desktop) */}
-            <div className="flex items-center justify-start gap-7">
+            <div className="flex items-center justify-start gap-4">
+              <Link href="/" className="flex items-center gap-2">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xl transition-colors ${
+                  forceLight ? 'bg-teal-600 text-white' : 'bg-white/20 backdrop-blur text-white'
+                }`}>
+                  O
+                </div>
+                <span className={`hidden lg:block text-xl font-bold transition-colors ${
+                  forceLight ? 'text-gray-900' : 'text-white'
+                }`}>OggaHub</span>
+              </Link>
+            </div>
+
+            {/* Center: Logo */}
+            <div className="flex items-center justify-center gap-7">
             
             {/* Desktop menu */}
             <div className="hidden md:flex items-center gap-7">
-              {/* Comprar */}
               <div
                 className=""
                 onMouseEnter={() => {
@@ -654,7 +667,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 </AnimatePresence>
               </div>
 
-              {/* Alugar */}
               <div
                 className=""
                 onMouseEnter={() => {
@@ -815,7 +827,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 </AnimatePresence>
               </div>
 
-              {/* Anunciar imóvel - redireciona para onboarding se necessário */}
               <Link
                 href="/start"
                 className={`font-semibold text-[15px] transition-colors relative group ${
@@ -833,24 +844,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 }`} />
               </Link>
             </div>
-          </div>
 
-          {/* Center: Logo */}
-          <div className="flex items-center justify-center gap-4">
-            <Link href="/" className="flex items-center gap-2">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xl transition-colors ${
-                forceLight ? 'bg-teal-600 text-white' : 'bg-white/20 backdrop-blur text-white'
-              }`}>
-                O
-              </div>
-              <span className={`hidden lg:block text-xl font-bold transition-colors ${
-                forceLight ? 'text-gray-900' : 'text-white'
-              }`}>OggaHub</span>
-            </Link>
-          </div>
-          
-          {/* Right: Context links (3) + account */}
-          <div className="flex items-center justify-end gap-2">
             <div
               className="hidden lg:block"
               onMouseEnter={() => setOpenMenu("recursos")}
@@ -1026,15 +1020,19 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   </div>
                 )}
               </div>
-            ) : (
-              <button
-                onClick={() => signIn()}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm bg-white/20 backdrop-blur text-white hover:bg-white/30`}
-              >
-                Entrar
-              </button>
-            )}
-          </div>
+            ) : null}
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              {!session && (
+                <button
+                  onClick={() => signIn()}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm bg-white/20 backdrop-blur text-white hover:bg-white/30`}
+                >
+                  Entrar
+                </button>
+              )}
+            </div>
 
           {/* Mobile Menu Button (duplicated copy removed; controlled on the left) */}
           </div>
