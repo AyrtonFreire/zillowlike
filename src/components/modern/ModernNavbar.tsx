@@ -499,7 +499,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const heroMegaMenuWideClass =
     "absolute top-full left-1/2 z-[300] mt-3 w-[1040px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
   const heroMegaMenuCompactClass =
-    "absolute top-full z-[300] mt-3 w-[920px] max-w-[calc(100vw-32px)] rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
+    "absolute top-full left-1/2 z-[300] mt-3 w-[920px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
 
   const splitMenuItems = <T,>(items: T[]) => {
     const mid = Math.ceil(items.length / 2);
@@ -706,7 +706,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       exit={{ opacity: 0, y: -8, scale: 0.99 }}
                       transition={{ duration: 0.16, ease: "easeOut" }}
                       className={useCompactPopover ? heroMegaMenuCompactClass : heroMegaMenuWideClass}
-                      style={useCompactPopover ? { left: menuAnchorLeft } : undefined}
                       onMouseEnter={() => {
                         clearHoverTimeout();
                       }}
@@ -775,7 +774,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       exit={{ opacity: 0, y: -8, scale: 0.99 }}
                       transition={{ duration: 0.16, ease: "easeOut" }}
                       className={useCompactPopover ? heroMegaMenuCompactClass : heroMegaMenuWideClass}
-                      style={useCompactPopover ? { left: menuAnchorLeft } : undefined}
                       onMouseEnter={() => {
                         clearHoverTimeout();
                       }}
