@@ -497,9 +497,9 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     "absolute top-full z-[300] mt-3 w-[560px] max-w-[92vw] rounded-[28px] border border-white/30 bg-white/80 backdrop-blur-2xl shadow-[0_40px_120px_rgba(0,0,0,0.35)] ring-1 ring-black/10 overflow-hidden";
 
   const heroMegaMenuWideClass =
-    "absolute top-full left-1/2 z-[300] mt-3 w-[1040px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
+    "absolute top-full left-1/2 z-[300] mt-3 w-[1040px] max-w-[calc(100vw-32px)] rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
   const heroMegaMenuCompactClass =
-    "absolute top-full left-1/2 z-[300] mt-3 w-[920px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
+    "absolute top-full left-1/2 z-[300] mt-3 w-[920px] max-w-[calc(100vw-32px)] rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
 
   const splitMenuItems = <T,>(items: T[]) => {
     const mid = Math.ceil(items.length / 2);
@@ -706,6 +706,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       exit={{ opacity: 0, y: -8, scale: 0.99 }}
                       transition={{ duration: 0.16, ease: "easeOut" }}
                       className={useCompactPopover ? heroMegaMenuCompactClass : heroMegaMenuWideClass}
+                      style={{ x: "-50%" }}
                       onMouseEnter={() => {
                         clearHoverTimeout();
                       }}
@@ -774,6 +775,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       exit={{ opacity: 0, y: -8, scale: 0.99 }}
                       transition={{ duration: 0.16, ease: "easeOut" }}
                       className={useCompactPopover ? heroMegaMenuCompactClass : heroMegaMenuWideClass}
+                      style={{ x: "-50%" }}
                       onMouseEnter={() => {
                         clearHoverTimeout();
                       }}
