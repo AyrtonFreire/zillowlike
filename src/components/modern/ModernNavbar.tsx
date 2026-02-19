@@ -390,6 +390,30 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     },
   ];
 
+  const buyMenuMedia = [
+    {
+      title: "Casas em destaque",
+      subtitle: "Explore opções para comprar",
+      href: "/explore/buy",
+      image:
+        "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      title: "Bairros populares",
+      subtitle: "Veja regiões da sua cidade",
+      href: "/explore/buy",
+      image:
+        "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      title: "Comparar imóveis",
+      subtitle: "Salve favoritos para decidir",
+      href: "/favorites",
+      image:
+        "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=900&q=80",
+    },
+  ];
+
   // Mega menu Alugar - inspirado em Zillow/Daft/James Edition
   const rentMenuSections = [
     {
@@ -402,6 +426,30 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         { label: "Imóvel rural", href: "/explore/rent?type=RURAL", description: "Fazendas e sítios", icon: Trees },
         { label: "Comercial", href: "/explore/rent?type=COMMERCIAL", description: "Imóveis comerciais", icon: Store },
       ],
+    },
+  ];
+
+  const rentMenuMedia = [
+    {
+      title: "Apartamentos",
+      subtitle: "Ofertas para alugar",
+      href: "/explore/rent?type=APARTMENT",
+      image:
+        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      title: "Casas",
+      subtitle: "Mais espaço para viver",
+      href: "/explore/rent?type=HOUSE",
+      image:
+        "https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      title: "Favoritos",
+      subtitle: "Salve e compare",
+      href: "/favorites",
+      image:
+        "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=900&q=80",
     },
   ];
 
@@ -447,6 +495,111 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     "absolute inset-x-0 top-full z-[300] mt-3 bg-white/95 backdrop-blur-xl border-t border-gray-100/80 shadow-[0_18px_45px_rgba(15,23,42,0.45)]";
   const compactPopoverClass =
     "absolute top-full z-[300] mt-3 w-[560px] max-w-[92vw] rounded-[28px] border border-white/30 bg-white/80 backdrop-blur-2xl shadow-[0_40px_120px_rgba(0,0,0,0.35)] ring-1 ring-black/10 overflow-hidden";
+
+  const heroMegaMenuWideClass =
+    "absolute top-full left-1/2 z-[300] mt-3 w-[1040px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
+  const heroMegaMenuCompactClass =
+    "absolute top-full z-[300] mt-3 w-[920px] max-w-[calc(100vw-32px)] rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
+
+  const splitMenuItems = <T,>(items: T[]) => {
+    const mid = Math.ceil(items.length / 2);
+    return [items.slice(0, mid), items.slice(mid)];
+  };
+
+  const renderHeroMegaMenu = (opts: {
+    title: string;
+    sectionTitle: string;
+    items: Array<{ label: string; href: string; description?: string }>;
+    media: Array<{ title: string; subtitle: string; href: string; image: string }>;
+    onNavigate: () => void;
+  }) => {
+    const [col1, col2] = splitMenuItems(opts.items);
+
+    return (
+      <div className="p-7">
+        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+          {opts.title}
+        </div>
+        <div className="mt-6 grid grid-cols-[1.1fr_0.9fr] gap-10">
+          <div className="grid grid-cols-2 gap-10">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                {opts.sectionTitle}
+              </div>
+              <ul className="mt-4 space-y-1">
+                {col1.map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={opts.onNavigate}
+                      className="group flex items-start gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-gray-50"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800">
+                          {item.label}
+                        </div>
+                        {item.description ? (
+                          <div className="text-xs text-gray-600 leading-snug">
+                            {item.description}
+                          </div>
+                        ) : null}
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">Mais opções</div>
+              <ul className="mt-4 space-y-1">
+                {col2.map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={opts.onNavigate}
+                      className="group flex items-start gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-gray-50"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800">
+                          {item.label}
+                        </div>
+                        {item.description ? (
+                          <div className="text-xs text-gray-600 leading-snug">
+                            {item.description}
+                          </div>
+                        ) : null}
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            {opts.media.map((card) => (
+              <Link
+                key={card.title}
+                href={card.href}
+                onClick={opts.onNavigate}
+                className="group relative isolate flex h-[210px] flex-col justify-end overflow-hidden rounded-3xl ring-1 ring-black/5 transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_55px_rgba(15,23,42,0.18)]"
+              >
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url('${card.image}')` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-black/5" />
+                <div className="relative p-4">
+                  <div className="text-sm font-semibold text-white">{card.title}</div>
+                  <div className="mt-0.5 text-xs text-white/85">{card.subtitle}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const isDashboardContext =
     pathname?.startsWith("/admin") ||
@@ -552,7 +705,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.99 }}
                       transition={{ duration: 0.16, ease: "easeOut" }}
-                      className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
+                      className={useCompactPopover ? heroMegaMenuCompactClass : heroMegaMenuWideClass}
                       style={useCompactPopover ? { left: menuAnchorLeft } : undefined}
                       onMouseEnter={() => {
                         clearHoverTimeout();
@@ -561,107 +714,16 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         scheduleCloseMenu();
                       }}
                     >
-                      <div
-                        className="absolute -top-2 h-4 w-4 rotate-45 rounded-[6px] border border-white/40 bg-white/80 backdrop-blur-2xl ring-1 ring-black/10"
-                        style={{
-                          left: useCompactPopover
-                            ? Math.max(24, menuAnchorCenter - menuAnchorLeft)
-                            : Math.max(24, menuAnchorCenter),
-                        }}
-                      />
-                      <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
-                      {useCompactPopover ? (
-                        <div className="p-7">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                            Explorar para comprar
-                          </div>
-                          <div className="mt-5">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                              {buyMenuSections[0]?.title}
-                            </div>
-                            <div className="mt-4 grid grid-cols-2 gap-3">
-                              {buyMenuSections[0]?.items.map((item) => (
-                                <Link
-                                  key={item.href}
-                                  href={item.href}
-                                  onClick={() => {
-                                    setOpenMenu(null);
-                                    setPrimary("comprar");
-                                  }}
-                                  className="group flex items-start justify-between gap-3 rounded-2xl border border-white/40 bg-white/60 px-4 py-3.5 text-left transition-all duration-200 hover:bg-white/85 hover:border-teal-200/70 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                                >
-                                  <div className="flex items-start gap-3 min-w-0">
-                                    {item.icon ? (
-                                      <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 text-teal-800 ring-1 ring-teal-100/70 shadow-sm">
-                                        <item.icon className="h-5 w-5" />
-                                      </span>
-                                    ) : null}
-                                    <div className="min-w-0">
-                                      <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-900 leading-tight">
-                                        {item.label}
-                                      </div>
-                                      {item.description ? (
-                                        <div className="text-[11px] font-normal text-gray-600 mt-0.5 line-clamp-1">
-                                          {item.description}
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                  <ChevronRight className="mt-1 h-4 w-4 text-gray-300 opacity-70 group-hover:opacity-100 group-hover:text-teal-600 transition-all" />
-                                </Link>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mx-auto max-w-7xl px-10 py-8">
-                          <div className="mb-5 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-                            Explorar para comprar
-                          </div>
-                          <div className="grid grid-cols-1 gap-8">
-                            {buyMenuSections.map((section) => (
-                              <div key={section.title}>
-                                <div className="flex items-center gap-2 px-1 pb-2">
-                                  <span className="h-5 w-1 rounded-full bg-teal-500/80" />
-                                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                                    {section.title}
-                                  </div>
-                                </div>
-                                <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-                                  {section.items.map((item) => (
-                                    <Link
-                                      key={item.href}
-                                      href={item.href}
-                                      className="group flex items-start justify-between gap-3 rounded-2xl border border-white/40 bg-white/60 px-4 py-3.5 text-left transition-all duration-200 hover:bg-white/85 hover:border-teal-200/70 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] hover:-translate-y-[1px]"
-                                      onClick={() => {
-                                        setOpenMenu(null);
-                                        setPrimary("comprar");
-                                      }}
-                                    >
-                                      <div className="flex items-start gap-3 min-w-0">
-                                        {item.icon ? (
-                                          <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 text-teal-800 ring-1 ring-teal-100/70 shadow-sm">
-                                            <item.icon className="h-5 w-5" />
-                                          </span>
-                                        ) : null}
-                                        <div className="min-w-0">
-                                          <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-900 leading-tight">
-                                            {item.label}
-                                          </div>
-                                          {"description" in item && item.description ? (
-                                            <div className="text-xs text-gray-600 mt-0.5 line-clamp-1">{item.description}</div>
-                                          ) : null}
-                                        </div>
-                                      </div>
-                                      <ChevronRight className="mt-1 h-4 w-4 text-gray-300 opacity-70 group-hover:opacity-100 group-hover:text-teal-600 transition-all" />
-                                    </Link>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      {renderHeroMegaMenu({
+                        title: "Explorar para comprar",
+                        sectionTitle: buyMenuSections[0]?.title ?? "",
+                        items: buyMenuSections[0]?.items ?? [],
+                        media: buyMenuMedia,
+                        onNavigate: () => {
+                          setOpenMenu(null);
+                          setPrimary("comprar");
+                        },
+                      })}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -712,7 +774,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.99 }}
                       transition={{ duration: 0.16, ease: "easeOut" }}
-                      className={useCompactPopover ? compactPopoverClass : megaMenuBaseClass}
+                      className={useCompactPopover ? heroMegaMenuCompactClass : heroMegaMenuWideClass}
                       style={useCompactPopover ? { left: menuAnchorLeft } : undefined}
                       onMouseEnter={() => {
                         clearHoverTimeout();
@@ -721,107 +783,16 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         scheduleCloseMenu();
                       }}
                     >
-                      <div
-                        className="absolute -top-2 h-4 w-4 rotate-45 rounded-[6px] border border-white/40 bg-white/80 backdrop-blur-2xl ring-1 ring-black/10"
-                        style={{
-                          left: useCompactPopover
-                            ? Math.max(24, menuAnchorCenter - menuAnchorLeft)
-                            : Math.max(24, menuAnchorCenter),
-                        }}
-                      />
-                      <div className="absolute -top-3 left-0 right-0 h-3 bg-transparent" />
-                      {useCompactPopover ? (
-                        <div className="p-7">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                            Explorar para alugar
-                          </div>
-                          <div className="mt-5">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                              {rentMenuSections[0]?.title}
-                            </div>
-                            <div className="mt-4 grid grid-cols-2 gap-3">
-                              {rentMenuSections[0]?.items.map((item) => (
-                                <Link
-                                  key={item.href}
-                                  href={item.href}
-                                  onClick={() => {
-                                    setOpenMenu(null);
-                                    setPrimary("alugar");
-                                  }}
-                                  className="group flex items-start justify-between gap-3 rounded-2xl border border-white/40 bg-white/60 px-4 py-3.5 text-left transition-all duration-200 hover:bg-white/85 hover:border-teal-200/70 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-light focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                                >
-                                  <div className="flex items-start gap-3 min-w-0">
-                                    {item.icon ? (
-                                      <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 text-teal-800 ring-1 ring-teal-100/70 shadow-sm">
-                                        <item.icon className="h-5 w-5" />
-                                      </span>
-                                    ) : null}
-                                    <div className="min-w-0">
-                                      <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-900 leading-tight">
-                                        {item.label}
-                                      </div>
-                                      {item.description ? (
-                                        <div className="text-[11px] font-normal text-gray-600 mt-0.5 line-clamp-1">
-                                          {item.description}
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                  <ChevronRight className="mt-1 h-4 w-4 text-gray-300 opacity-70 group-hover:opacity-100 group-hover:text-teal-600 transition-all" />
-                                </Link>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mx-auto max-w-7xl px-10 py-8">
-                          <div className="mb-5 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-                            Explorar para alugar
-                          </div>
-                          <div className="grid grid-cols-1 gap-8">
-                            {rentMenuSections.map((section) => (
-                              <div key={section.title}>
-                                <div className="flex items-center gap-2 px-1 pb-2">
-                                  <span className="h-5 w-1 rounded-full bg-teal-500/80" />
-                                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                                    {section.title}
-                                  </div>
-                                </div>
-                                <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-                                  {section.items.map((item) => (
-                                    <Link
-                                      key={item.href}
-                                      href={item.href}
-                                      className="group flex items-start justify-between gap-3 rounded-2xl border border-white/40 bg-white/60 px-4 py-3.5 text-left transition-all duration-200 hover:bg-white/85 hover:border-teal-200/70 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] hover:-translate-y-[1px]"
-                                      onClick={() => {
-                                        setOpenMenu(null);
-                                        setPrimary("alugar");
-                                      }}
-                                    >
-                                      <div className="flex items-start gap-3 min-w-0">
-                                        {item.icon ? (
-                                          <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 text-teal-800 ring-1 ring-teal-100/70 shadow-sm">
-                                            <item.icon className="h-5 w-5" />
-                                          </span>
-                                        ) : null}
-                                        <div className="min-w-0">
-                                          <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-900 leading-tight">
-                                            {item.label}
-                                          </div>
-                                          {"description" in item && item.description ? (
-                                            <div className="text-xs text-gray-600 mt-0.5 line-clamp-1">{item.description}</div>
-                                          ) : null}
-                                        </div>
-                                      </div>
-                                      <ChevronRight className="mt-1 h-4 w-4 text-gray-300 opacity-70 group-hover:opacity-100 group-hover:text-teal-600 transition-all" />
-                                    </Link>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      {renderHeroMegaMenu({
+                        title: "Explorar para alugar",
+                        sectionTitle: rentMenuSections[0]?.title ?? "",
+                        items: rentMenuSections[0]?.items ?? [],
+                        media: rentMenuMedia,
+                        onNavigate: () => {
+                          setOpenMenu(null);
+                          setPrimary("alugar");
+                        },
+                      })}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -829,7 +800,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
               <Link
                 href="/start"
-                className={`font-semibold text-[15px] transition-colors relative group ${
+                className={`whitespace-nowrap font-semibold text-[15px] transition-colors relative group ${
                   forceLight
                     ? (primary === 'anunciar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
                     : (primary === 'anunciar' ? 'text-white' : 'text-white/90 hover:text-white')
@@ -949,82 +920,81 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 )}
               </Link>
             )}
-            {session ? (
-              <div className="relative" id="user-menu-trigger">
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors hover:bg-white/10`}
-                  aria-haspopup="menu"
-                  aria-expanded={userMenuOpen}
-                >
-                  <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white font-medium text-sm">
-                    {session.user?.name?.charAt(0).toUpperCase() || "U"}
-                  </div>
-                </button>
-                {userMenuOpen && (
-                  <div
-                    id="user-menu-dropdown"
-                    className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-16px)] bg-white rounded-xl border border-gray-200 shadow-xl z-[20000]"
-                  >
-                    <ul className="py-1 text-sm text-gray-800">
-                      {role === 'OWNER' && (
-                        <>
-                          <li><Link href="/owner/dashboard" className="block px-4 py-2 hover:bg-gray-50">Dashboard</Link></li>
-                          <li><Link href="/owner/properties" className="block px-4 py-2 hover:bg-gray-50">Meus anúncios</Link></li>
-                          <li><Link href="/owner/leads" className="block px-4 py-2 hover:bg-gray-50">Meus leads</Link></li>
-                          <li><hr className="my-1" /></li>
-                        </>
-                      )}
-
-                      {role === 'REALTOR' && (
-                        <>
-                          <li><Link href="/broker/dashboard" className="block px-4 py-2 hover:bg-gray-50">CRM</Link></li>
-                          <li><hr className="my-1" /></li>
-                        </>
-                      )}
-
-                      {role === 'AGENCY' && (
-                        <>
-                          <li><Link href="/agency" className="block px-4 py-2 hover:bg-gray-50">CRM</Link></li>
-                          <li><Link href="/start" className="block px-4 py-2 hover:bg-gray-50">Cadastrar imóvel</Link></li>
-                          <li><hr className="my-1" /></li>
-                        </>
-                      )}
-
-                      {role === 'ADMIN' && (
-                        <>
-                          <li><Link href="/admin" className="block px-4 py-2 hover:bg-gray-50">Painel Admin</Link></li>
-                          <li><Link href="/admin/properties" className="block px-4 py-2 hover:bg-gray-50">Gerenciar imóveis</Link></li>
-                          <li><Link href="/admin/users" className="block px-4 py-2 hover:bg-gray-50">Usuários</Link></li>
-                          <li><hr className="my-1" /></li>
-                        </>
-                      )}
-
-                      {role === 'USER' && (
-                        <>
-                          <li>
-                            <Link href="/chats" className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50">
-                              <MessageCircle className="w-4 h-4 text-gray-400" />
-                              <span>Conversas</span>
-                            </Link>
-                          </li>
-                          <li><hr className="my-1" /></li>
-                        </>
-                      )}
-                      <li><Link href="/account" className="block px-4 py-2 hover:bg-gray-50">Minha conta</Link></li>
-                      <li><Link href="/favorites" className="block px-4 py-2 hover:bg-gray-50">Favoritos</Link></li>
-                      <li><Link href="/saved-searches" className="block px-4 py-2 hover:bg-gray-50">Buscas salvas</Link></li>
-                      <li><hr className="my-1" /></li>
-                      <li><button onClick={() => signOut({ callbackUrl: "/" })} className="w-full text-left px-4 py-2 hover:bg-gray-50">Sair</button></li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ) : null}
             </div>
 
             <div className="flex items-center justify-end gap-2">
-              {!session && (
+              {session ? (
+                <div className="relative" id="user-menu-trigger">
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors hover:bg-white/10`}
+                    aria-haspopup="menu"
+                    aria-expanded={userMenuOpen}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white font-medium text-sm">
+                      {session.user?.name?.charAt(0).toUpperCase() || "U"}
+                    </div>
+                  </button>
+                  {userMenuOpen && (
+                    <div
+                      id="user-menu-dropdown"
+                      className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-16px)] bg-white rounded-xl border border-gray-200 shadow-xl z-[20000]"
+                    >
+                      <ul className="py-1 text-sm text-gray-800">
+                        {role === 'OWNER' && (
+                          <>
+                            <li><Link href="/owner/dashboard" className="block px-4 py-2 hover:bg-gray-50">Dashboard</Link></li>
+                            <li><Link href="/owner/properties" className="block px-4 py-2 hover:bg-gray-50">Meus anúncios</Link></li>
+                            <li><Link href="/owner/leads" className="block px-4 py-2 hover:bg-gray-50">Meus leads</Link></li>
+                            <li><hr className="my-1" /></li>
+                          </>
+                        )}
+
+                        {role === 'REALTOR' && (
+                          <>
+                            <li><Link href="/broker/dashboard" className="block px-4 py-2 hover:bg-gray-50">CRM</Link></li>
+                            <li><hr className="my-1" /></li>
+                          </>
+                        )}
+
+                        {role === 'AGENCY' && (
+                          <>
+                            <li><Link href="/agency" className="block px-4 py-2 hover:bg-gray-50">CRM</Link></li>
+                            <li><Link href="/start" className="block px-4 py-2 hover:bg-gray-50">Cadastrar imóvel</Link></li>
+                            <li><hr className="my-1" /></li>
+                          </>
+                        )}
+
+                        {role === 'ADMIN' && (
+                          <>
+                            <li><Link href="/admin" className="block px-4 py-2 hover:bg-gray-50">Painel Admin</Link></li>
+                            <li><Link href="/admin/properties" className="block px-4 py-2 hover:bg-gray-50">Gerenciar imóveis</Link></li>
+                            <li><Link href="/admin/users" className="block px-4 py-2 hover:bg-gray-50">Usuários</Link></li>
+                            <li><hr className="my-1" /></li>
+                          </>
+                        )}
+
+                        {role === 'USER' && (
+                          <>
+                            <li>
+                              <Link href="/chats" className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50">
+                                <MessageCircle className="w-4 h-4 text-gray-400" />
+                                <span>Conversas</span>
+                              </Link>
+                            </li>
+                            <li><hr className="my-1" /></li>
+                          </>
+                        )}
+                        <li><Link href="/account" className="block px-4 py-2 hover:bg-gray-50">Minha conta</Link></li>
+                        <li><Link href="/favorites" className="block px-4 py-2 hover:bg-gray-50">Favoritos</Link></li>
+                        <li><Link href="/saved-searches" className="block px-4 py-2 hover:bg-gray-50">Buscas salvas</Link></li>
+                        <li><hr className="my-1" /></li>
+                        <li><button onClick={() => signOut({ callbackUrl: "/" })} className="w-full text-left px-4 py-2 hover:bg-gray-50">Sair</button></li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
                 <button
                   onClick={() => signIn()}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm bg-white/20 backdrop-blur text-white hover:bg-white/30`}
