@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter, Jura, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import "../styles/design-system.css";
@@ -20,6 +20,12 @@ const fontDisplay = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-display",
   display: "swap",
+});
+const fontLogo = Jura({
+  subsets: ["latin"],
+  variable: "--font-logo",
+  display: "swap",
+  weight: ["400", "500", "600"],
 });
 export const metadata: Metadata = {
   title: "OggaHub - Petrolina e Juazeiro",
@@ -65,7 +71,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${fontSans.variable} ${fontDisplay.variable} font-sans antialiased`}>
+      <body className={`${fontSans.variable} ${fontDisplay.variable} ${fontLogo.variable} font-sans antialiased`}>
         {/* Skip link for keyboard users */}
         <a href="#content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:bg-white focus:text-blue-700 focus:ring-2 focus:ring-blue-600 focus:px-3 focus:py-2 rounded">
           Pular para o conteúdo

@@ -9,6 +9,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import MobileHeaderZillow from "./MobileHeaderZillow";
 import HowItWorksModal from "./HowItWorksModal";
 import { getPusherClient } from "@/lib/pusher-client";
+import BrandLogo from "@/components/BrandLogo";
 
 interface ModernNavbarProps {
   forceLight?: boolean;
@@ -643,16 +644,11 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
           <div className="grid grid-cols-3 items-center h-16">
             {/* Left: Primary tabs with dropdowns (Desktop) */}
             <div className="flex items-center justify-start gap-4">
-              <Link href="/" className="flex items-center gap-2">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xl transition-colors ${
-                  forceLight ? 'bg-teal-600 text-white' : 'bg-white/20 backdrop-blur text-white'
-                }`}>
-                  O
-                </div>
-                <span className={`hidden lg:block text-xl font-bold transition-colors ${
-                  forceLight ? 'text-gray-900' : 'text-white'
-                }`}>OggaHub</span>
-              </Link>
+              <BrandLogo
+                tone={forceLight ? "dark" : "light"}
+                size={40}
+                wordmarkClassName="hidden lg:block text-xl font-semibold tracking-tight"
+              />
             </div>
 
             {/* Center: Logo */}

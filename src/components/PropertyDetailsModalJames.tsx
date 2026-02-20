@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import Button from "./ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
+import BrandLogo from "@/components/BrandLogo";
 import { getLowestFinancing } from "@/lib/financing";
 import { normalizePOIs } from "@/lib/overpass";
 import { buildPropertyPath } from "@/lib/slug";
@@ -902,22 +903,16 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
                 <ChevronLeft className="w-6 h-6 text-gray-800" />
               </button>
 
-              <Link
-                href="/"
+              <BrandLogo
+                tone="dark"
+                size={36}
+                className="rounded-lg -mx-1 px-1 hover:bg-gray-100 transition-colors"
+                wordmarkClassName="text-lg font-semibold tracking-tight"
                 onClick={() => {
                   overlayHistoryPushedRef.current = false;
                   onClose?.();
                 }}
-                className="flex items-center gap-2 rounded-lg -mx-1 px-1 hover:bg-gray-100 transition-colors"
-                aria-label="Ir para a página principal"
-              >
-                <div className="w-9 h-9 rounded-full bg-brand-teal flex items-center justify-center shadow-sm">
-                  <span className="text-white font-bold text-base">O</span>
-                </div>
-                <span className="text-lg font-semibold tracking-tight text-slate-900">
-                  OggaHub
-                </span>
-              </Link>
+              />
 
               {!isPreview && (
                 <div className="flex items-center gap-2">

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Menu, X, User, Heart, Bell, MessageCircle, ChevronDown, ChevronRight, Home, Building2, Megaphone, LineChart, Users, Bookmark, ClipboardList, LogOut, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
+import BrandLogo from "@/components/BrandLogo";
 
 interface MobileHeaderZillowProps {
   variant?: "overlay" | "solid";
@@ -194,18 +195,11 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
           </button>
 
           {/* Center: Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full bg-brand-teal flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-base">O</span>
-            </div>
-            <span
-              className={`text-lg font-semibold tracking-tight ${
-                isOverlay ? "text-white" : "text-slate-900"
-              }`}
-            >
-              OggaHub
-            </span>
-          </Link>
+          <BrandLogo
+            tone={isOverlay ? "light" : "dark"}
+            size={36}
+            wordmarkClassName="text-lg font-semibold tracking-tight"
+          />
 
           {/* Right: Notifications + User Menu */}
           <div className="flex items-center gap-2">
