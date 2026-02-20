@@ -164,7 +164,8 @@ export async function GET(req: NextRequest) {
       ? new Date(snoozedFutureAgg._min.snoozedUntil).getTime()
       : 0;
 
-    const key = `${String(userId)}:${leadId || "all"}:${limit}:${order}:${cursor || ""}:${qq || ""}:${priority || ""}:${category || ""}:${includeSnoozed ? "1" : "0"}`;
+    const ETAG_VERSION = 2;
+    const key = `${ETAG_VERSION}:${String(userId)}:${leadId || "all"}:${limit}:${order}:${cursor || ""}:${qq || ""}:${priority || ""}:${category || ""}:${includeSnoozed ? "1" : "0"}`;
     const etag = `W/\"assistant-items:${key}:${maxUpdatedAt}:${totalCount}:${effectiveActiveCount}:${snoozedFutureCount}:${nextWakeAtMs}\"`;
 
     const ifNoneMatch = req.headers.get("if-none-match");
