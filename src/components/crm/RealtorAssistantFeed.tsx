@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import Image from "next/image";
 import {
   CheckCircle2,
   ChevronDown,
@@ -45,6 +46,8 @@ type AssistantItem = {
     id: string;
     property?: {
       id: string;
+      publicCode?: string | null;
+      imageUrl?: string | null;
       title?: string | null;
       price?: number | null;
       hidePrice?: boolean | null;
@@ -1544,6 +1547,33 @@ export default function RealtorAssistantFeed(props: {
                     const hasPropertySummary = !!property;
                     const propertyTitle = String(property?.title || "").trim();
                     const propertyPrice = property?.hidePrice ? "Consulte" : formatPriceBRL(property?.price) || "";
+                    const propertyCode = property?.publicCode ? String(property.publicCode).trim() : "";
+                    const propertyFallbackCode = property?.id
+                      ? String(property.id).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()
+                      : "";
+                    const propertyIdentifier = propertyCode ? propertyCode : propertyFallbackCode;
+                    const propertyLocation = [
+                      property?.neighborhood ? String(property.neighborhood).trim() : "",
+                      [property?.city ? String(property.city).trim() : "", property?.state ? String(property.state).trim() : ""]
+                        .filter(Boolean)
+                        .join("/"),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
+                    const propertyMetaBits = [
+                      property?.type ? String(property.type).trim() : "",
+                      typeof property?.bedrooms === "number" && Number.isFinite(property.bedrooms)
+                        ? `${property.bedrooms}q`
+                        : "",
+                      typeof property?.bathrooms === "number" && Number.isFinite(property.bathrooms)
+                        ? `${property.bathrooms}b`
+                        : "",
+                      typeof property?.areaM2 === "number" && Number.isFinite(property.areaM2)
+                        ? `${property.areaM2}m²`
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
 
                     const weeklyPreview =
                       String(item.type || "").trim() === "WEEKLY_SUMMARY"
@@ -2016,14 +2046,55 @@ export default function RealtorAssistantFeed(props: {
                             {hasPropertySummary && (
                               <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
                                 <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="text-[11px] font-semibold text-gray-500">Imóvel</p>
-                                    <p className="mt-0.5 text-[13px] font-semibold text-gray-900 line-clamp-1">
-                                      {propertyTitle || "(sem título)"}
-                                    </p>
+                                  <div className="flex items-start gap-3 min-w-0">
+                                    <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
+                                      {property?.imageUrl ? (
+                                        <Image
+                                          src={property.imageUrl}
+                                          alt={propertyTitle || "Imóvel"}
+                                          fill
+                                          sizes="56px"
+                                          className="object-cover"
+                                        />
+                                      ) : (
+                                        <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200" />
+                                      )}
+                                    </div>
+
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-[11px] font-semibold text-gray-500">Imóvel</p>
+                                        {propertyIdentifier ? (
+                                          <span className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-700 tabular-nums">
+                                            {propertyCode ? `#${propertyIdentifier}` : `ID ${propertyIdentifier}`}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <p className="mt-0.5 text-[13px] font-semibold text-gray-900 line-clamp-1">
+                                        {propertyTitle || "(sem título)"}
+                                      </p>
+                                      {propertyLocation ? (
+                                        <p className="mt-0.5 text-[11px] text-gray-600 line-clamp-1">{propertyLocation}</p>
+                                      ) : null}
+                                      {propertyMetaBits ? (
+                                        <p className="mt-0.5 text-[11px] text-gray-500 line-clamp-1">{propertyMetaBits}</p>
+                                      ) : null}
+                                    </div>
                                   </div>
-                                  <div className="flex-shrink-0 text-[13px] font-extrabold text-gray-900">
-                                    {propertyPrice || "—"}
+
+                                  <div className="flex-shrink-0 text-right">
+                                    <div className="text-[13px] font-extrabold text-gray-900">
+                                      {propertyPrice || "—"}
+                                    </div>
+                                    {property?.purpose ? (
+                                      <div className="mt-1 inline-flex items-center rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-700">
+                                        {String(property.purpose).toUpperCase() === "SALE"
+                                          ? "Venda"
+                                          : String(property.purpose).toUpperCase() === "RENT"
+                                            ? "Aluguel"
+                                            : String(property.purpose)}
+                                      </div>
+                                    ) : null}
                                   </div>
                                 </div>
                               </div>

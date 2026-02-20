@@ -359,6 +359,7 @@ export class RealtorAssistantService {
               property: {
                 select: {
                   id: true,
+                  publicCode: true,
                   title: true,
                   price: true,
                   hidePrice: true,
@@ -370,6 +371,15 @@ export class RealtorAssistantService {
                   areaM2: true,
                   type: true,
                   purpose: true,
+                  images: {
+                    select: {
+                      url: true,
+                    },
+                    orderBy: {
+                      sortOrder: "asc",
+                    },
+                    take: 1,
+                  },
                 },
               },
             },
@@ -458,6 +468,7 @@ export class RealtorAssistantService {
             property: l?.property
               ? {
                   id: String(l.property.id),
+                  publicCode: l.property.publicCode || null,
                   title: l.property.title || null,
                   price: typeof l.property.price === "number" ? l.property.price : null,
                   hidePrice: typeof l.property.hidePrice === "boolean" ? l.property.hidePrice : null,
@@ -469,6 +480,9 @@ export class RealtorAssistantService {
                   areaM2: typeof l.property.areaM2 === "number" ? l.property.areaM2 : null,
                   type: l.property.type || null,
                   purpose: l.property.purpose || null,
+                  imageUrl: Array.isArray((l.property as any).images) && (l.property as any).images[0]?.url
+                    ? String((l.property as any).images[0].url)
+                    : null,
                 }
               : null,
             leadHealthScore: health.leadHealthScore,
