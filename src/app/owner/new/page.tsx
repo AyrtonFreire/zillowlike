@@ -1826,7 +1826,16 @@ export default function NewPropertyPage() {
     }
   ) => {
     const entries = Object.entries(errors).filter(([, msg]) => typeof msg === "string" && msg.trim());
-    if (entries.length === 0) return;
+    if (entries.length === 0) {
+      setToast({
+        message:
+          options?.message ||
+          options?.title ||
+          "Não foi possível publicar. Revise os campos e tente novamente.",
+        type: "error",
+      });
+      return;
+    }
 
     setFieldErrors(errors);
 
@@ -1866,6 +1875,11 @@ export default function NewPropertyPage() {
         if (issue.fieldId) scrollToFieldId(issue.fieldId);
       }
     );
+
+    const firstMsg = entries[0]?.[1];
+    if (firstMsg) {
+      setToast({ message: firstMsg, type: "error" });
+    }
   };
 
   function tipsForStep(step: number): string[] {
@@ -2126,6 +2140,11 @@ export default function NewPropertyPage() {
             title: "Confira os campos antes de publicar",
             message: "Revise os itens abaixo e tente novamente.",
           });
+        } else {
+          openPublishIssues(
+            { publish: "Alguns campos obrigatórios estão inválidos ou faltando. Revise e tente novamente." },
+            { title: "Confira os campos antes de publicar" }
+          );
         }
         return;
       }
