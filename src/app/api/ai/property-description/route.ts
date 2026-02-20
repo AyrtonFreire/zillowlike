@@ -40,6 +40,15 @@ function numberField<T extends z.ZodTypeAny>(schema: T) {
   return z.preprocess(parseMaybeNumber, schema.nullable().optional());
 }
 
+function preprocessStringArrayMax(v: unknown, max: number) {
+  if (!Array.isArray(v)) return v;
+  const cleaned = v
+    .map((x) => String(x || "").trim())
+    .filter(Boolean);
+  const deduped = Array.from(new Set(cleaned));
+  return deduped.slice(0, max);
+}
+
 function clampText(s: string, max: number) {
   const t = String(s || "").trim();
   if (t.length <= max) return t;
@@ -160,7 +169,10 @@ const BodySchema = z.object({
   floor: numberField(z.number().int().min(0).max(300)),
   yearBuilt: numberField(z.number().int().min(0).max(3000)),
   yearRenovated: numberField(z.number().int().min(0).max(3000)),
-  conditionTags: z.array(z.string().max(80)).max(20).optional().nullable(),
+  conditionTags: z.preprocess(
+    (v) => preprocessStringArrayMax(v, 80),
+    z.array(z.string().max(80)).max(80).optional().nullable()
+  ),
   amenities: z
     .object({
       hasBalcony: z.boolean().optional(),
