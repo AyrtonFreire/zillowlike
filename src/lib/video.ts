@@ -9,7 +9,15 @@ export type ParsedVideo = {
 
 function safeUrl(input: string): URL | null {
   try {
-    return new URL(input);
+    const raw = (input || "").trim();
+    if (!raw) return null;
+
+    // Permite colar links sem protocolo (ex.: 'www.youtube.com/...', 'youtu.be/...')
+    if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw)) {
+      return new URL(`https://${raw}`);
+    }
+
+    return new URL(raw);
   } catch {
     return null;
   }

@@ -104,7 +104,7 @@ export const PropertyCreateSchema = z
       totalFloors: z.number().int().min(0).max(200).nullable().optional(),
     })
     .optional(),
-  conditionTags: z.array(ConditionTagEnum).max(12).optional(),
+  conditionTags: z.array(ConditionTagEnum).max(80).optional(),
   // Dados privados do proprietário (visíveis apenas para o dono do imóvel)
   privateData: z.object({
     ownerName: z.string().max(200).nullable().optional(),

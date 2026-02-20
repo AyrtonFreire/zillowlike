@@ -1777,6 +1777,7 @@ export default function NewPropertyPage() {
       purpose: { title: "Finalidade", step: 1 },
       priceBRL: { title: "Preço", step: 1 },
       type: { title: "Tipo de imóvel", step: 1 },
+      conditionTags: { title: "Características", step: 2 },
       postalCode: { title: "CEP", step: 1 },
       street: { title: "Rua", step: 1 },
       addressNumber: { title: "Número", step: 1 },
@@ -2112,6 +2113,7 @@ export default function NewPropertyPage() {
           else if (p === "videoUrl") next.videoUrl = "Link de vídeo inválido. Use YouTube ou Vimeo.";
           else if (p === "priceBRL") next.priceBRL = "Informe um preço válido.";
           else if (p === "type") next.type = "Selecione o tipo de imóvel.";
+          else if (p === "conditionTags") next.conditionTags = "Muitas características selecionadas. Remova algumas e tente novamente.";
           else if (p === "address.postalCode") next.postalCode = "Informe um CEP válido.";
           else if (p === "address.street") next.street = "Informe a rua.";
           else if (p === "address.neighborhood") next.neighborhood = "Informe o bairro.";
@@ -2189,6 +2191,7 @@ export default function NewPropertyPage() {
             else if (p === "videoUrl") next.videoUrl = "Link de vídeo inválido. Use YouTube ou Vimeo.";
             else if (p === "priceBRL") next.priceBRL = "Informe um preço válido.";
             else if (p === "type") next.type = "Selecione o tipo de imóvel.";
+            else if (p === "conditionTags") next.conditionTags = "Muitas características selecionadas. Remova algumas e tente novamente.";
             else if (p === "address.postalCode") next.postalCode = "Informe um CEP válido.";
             else if (p === "address.street") next.street = "Informe a rua.";
             else if (p === "address.neighborhood") next.neighborhood = "Informe o bairro.";
