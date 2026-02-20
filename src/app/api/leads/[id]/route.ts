@@ -249,6 +249,16 @@ export async function DELETE(_req: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
+    if (role !== "ADMIN") {
+      return NextResponse.json(
+        {
+          error:
+            "Exclusão permanente de lead está desabilitada. Use 'Encerrar lead' para fechar no funil (sem apagar histórico).",
+        },
+        { status: 403 }
+      );
+    }
+
     const { id } = await context.params;
 
     const lead: any = await (prisma as any).lead.findUnique({

@@ -1215,7 +1215,7 @@ export default function RealtorAssistantFeed(props: {
     }
   };
 
-  const requestDeleteLead = async (item: AssistantItem) => {
+  const requestCloseLead = async (item: AssistantItem) => {
     const leadId = item.leadId ? String(item.leadId) : null;
     if (!leadId) return;
 
@@ -1232,7 +1232,11 @@ export default function RealtorAssistantFeed(props: {
       setError(null);
       setActingId(item.id);
 
-      const res = await fetch(`/api/leads/${encodeURIComponent(leadId)}`, { method: "DELETE" });
+      const res = await fetch(`/api/leads/${encodeURIComponent(leadId)}/pipeline`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: "LOST" }),
+      });
       const json = await res.json().catch(() => null);
 
       if (!res.ok || !json?.success) {
@@ -1241,10 +1245,10 @@ export default function RealtorAssistantFeed(props: {
           (res.status === 401
             ? "Sua sessão expirou. Entre novamente e tente de novo."
             : res.status === 403
-              ? "Você não tem permissão para excluir este lead."
+              ? "Você não tem permissão para encerrar este lead."
               : res.status === 404
-                ? "Este lead não existe mais (provavelmente já foi removido)."
-                : "Não conseguimos excluir este lead agora.");
+                ? "Este lead não existe mais."
+                : "Não conseguimos encerrar este lead agora.");
         throw new Error(msg);
       }
 
@@ -1253,7 +1257,7 @@ export default function RealtorAssistantFeed(props: {
         .map((it) => String(it.id));
       resolveItemsOptimistically(idsToResolve.length > 0 ? idsToResolve : [String(item.id)]);
 
-      showSuccess(String(item.id), "Lead excluído");
+      showSuccess(String(item.id), "Lead encerrado");
 
       setDeleteConfirmForId(null);
       etagRef.current = null;
@@ -1264,7 +1268,7 @@ export default function RealtorAssistantFeed(props: {
         fetchItems();
       }, 1200);
     } catch (err: any) {
-      setError(err?.message || "Não conseguimos excluir este lead agora.");
+      setError(err?.message || "Não conseguimos encerrar este lead agora.");
     } finally {
       setActingId(null);
     }
@@ -2213,11 +2217,11 @@ export default function RealtorAssistantFeed(props: {
                               {isResolvedPreview ? "Feito" : isReminder ? "Concluir" : resolveLabel}
                             </button>
 
-                            {!!item.leadId && !isReminder && !isAgencyNotice && (
+                            {item.status === "ACTIVE" && item.leadId && (
                               <button
                                 type="button"
-                                disabled={actingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
-                                onClick={() => requestDeleteLead(item)}
+                                disabled={isTransientPreview || item.status !== "ACTIVE"}
+                                onClick={() => requestCloseLead(item)}
                                 className={
                                   deleteConfirmForId === item.id
                                     ? "inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-red-200 bg-red-50 text-[13px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-60"
@@ -2225,12 +2229,12 @@ export default function RealtorAssistantFeed(props: {
                                 }
                                 title={
                                   deleteConfirmForId === item.id
-                                    ? "Clique novamente para excluir permanentemente"
-                                    : "Excluir lead"
+                                    ? "Clique novamente para encerrar"
+                                    : "Encerrar lead"
                                 }
                               >
                                 <Trash2 className="w-4 h-4" />
-                                {deleteConfirmForId === item.id ? "Confirmar" : "Excluir lead"}
+                                {deleteConfirmForId === item.id ? "Confirmar" : "Encerrar lead"}
                               </button>
                             )}
 
