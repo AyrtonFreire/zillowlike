@@ -1299,7 +1299,6 @@ export default function NewPropertyPage() {
       try {
         const payload = {
           description,
-          aiDescriptionGenerations,
           customTitle,
           metaTitle,
           metaDescription,
@@ -1360,9 +1359,6 @@ export default function NewPropertyPage() {
           petsLarge,
           condoFeeMinBRL: condoFeeBRL,
           iptuMinBRL: iptuYearBRL,
-          keywords,
-          conditionTags: mergedTags,
-          images: images.filter((i) => i.url).map((i) => ({ url: i.url })),
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
 
