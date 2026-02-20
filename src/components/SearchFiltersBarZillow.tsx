@@ -243,10 +243,10 @@ export default function SearchFiltersBarZillow({
   );
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full min-h-0 bg-gray-50">
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-4 space-y-6">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="px-4 pt-6 pb-4 space-y-6">
           
           {/* Finalidade: Para venda / Para alugar */}
           <div className="space-y-3">
@@ -256,8 +256,8 @@ export default function SearchFiltersBarZillow({
                 onClick={() => updateFilter('purpose', 'SALE')}
                 className={`px-3 py-2 rounded-full text-xs font-semibold border transition-colors ${
                   localFilters.purpose === 'SALE'
-                    ? 'bg-emerald-600 text-white border-emerald-700'
-                    : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                    ? 'glass-teal text-white border-teal-dark'
+                    : 'bg-white border-gray-300 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                 }`}
               >
                 Comprar
@@ -266,8 +266,8 @@ export default function SearchFiltersBarZillow({
                 onClick={() => updateFilter('purpose', 'RENT')}
                 className={`px-3 py-2 rounded-full text-xs font-semibold border transition-colors ${
                   localFilters.purpose === 'RENT'
-                    ? 'bg-emerald-600 text-white border-emerald-700'
-                    : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                    ? 'glass-teal text-white border-teal-dark'
+                    : 'bg-white border-gray-300 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                 }`}
               >
                 Alugar
@@ -579,7 +579,7 @@ export default function SearchFiltersBarZillow({
       <div className="border-t border-gray-200 bg-white px-4 py-4 shadow-lg">
         {/* Result count - Destacado */}
         {resultsLabel && (
-          <div className="mb-3 flex items-center justify-center gap-2 py-2 px-4 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg border border-teal-100">
+          <div className="mb-3 flex items-center justify-center gap-2 py-2 px-4 bg-gradient-to-r from-teal-50 to-teal-100 rounded-lg border border-teal-100">
             <Home className="w-4 h-4 text-teal-600" />
             <span className="text-sm font-semibold text-gray-800">
               {resultsLabel}

@@ -94,14 +94,14 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
                       placeholder="Mínimo"
                       value={filters.minPrice}
                       onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
                     />
                     <input
                       type="text"
                       placeholder="Máximo"
                       value={filters.maxPrice}
                       onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -125,8 +125,8 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
                         onClick={() => setFilters({ ...filters, propertyType: type })}
                         className={`px-4 py-3 border-2 rounded-xl font-medium transition-all ${
                           filters.propertyType === type
-                            ? "border-blue-600 bg-blue-50 text-blue-600"
-                            : "border-gray-200 hover:border-blue-600 hover:bg-blue-50"
+                            ? "border-teal-600 bg-teal-50 text-teal-700"
+                            : "border-gray-200 hover:border-teal-600 hover:bg-teal-50"
                         }`}
                       >
                         {ptBR.type(type)}
@@ -147,8 +147,8 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
                         onClick={() => setFilters({ ...filters, bedrooms: String(num) })}
                         className={`flex-1 py-3 border-2 rounded-xl font-semibold transition-all ${
                           filters.bedrooms === String(num)
-                            ? "border-blue-600 bg-blue-50 text-blue-600"
-                            : "border-gray-200 hover:border-blue-600 hover:bg-blue-50"
+                            ? "border-teal-600 bg-teal-50 text-teal-700"
+                            : "border-gray-200 hover:border-teal-600 hover:bg-teal-50"
                         }`}
                       >
                         {num}
@@ -169,8 +169,8 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
                         onClick={() => setFilters({ ...filters, bathrooms: String(num) })}
                         className={`flex-1 py-3 border-2 rounded-xl font-semibold transition-all ${
                           filters.bathrooms === String(num)
-                            ? "border-blue-600 bg-blue-50 text-blue-600"
-                            : "border-gray-200 hover:border-blue-600 hover:bg-blue-50"
+                            ? "border-teal-600 bg-teal-50 text-teal-700"
+                            : "border-gray-200 hover:border-teal-600 hover:bg-teal-50"
                         }`}
                       >
                         {num}

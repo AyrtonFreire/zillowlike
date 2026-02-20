@@ -23,6 +23,23 @@ type AiPropertyText = {
   metaDescription: string;
 };
 
+function parseMaybeNumber(v: unknown) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string") {
+    const trimmed = v.trim();
+    if (!trimmed) return null;
+    const normalized = trimmed.replace(",", ".");
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function numberField<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess(parseMaybeNumber, schema.nullable().optional());
+}
+
 function clampText(s: string, max: number) {
   const t = String(s || "").trim();
   if (t.length <= max) return t;
@@ -131,18 +148,18 @@ const BodySchema = z.object({
   title: z.string().max(120).optional().nullable(),
   type: z.string().max(40).optional().nullable(),
   purpose: z.enum(["SALE", "RENT"]).optional().nullable(),
-  priceBRL: z.number().int().nonnegative().optional().nullable(),
+  priceBRL: numberField(z.number().int().nonnegative()),
   neighborhood: z.string().max(120).optional().nullable(),
   city: z.string().max(120).optional().nullable(),
   state: z.string().max(10).optional().nullable(),
-  bedrooms: z.number().int().min(0).max(50).optional().nullable(),
-  bathrooms: z.number().min(0).max(50).optional().nullable(),
-  areaM2: z.number().int().min(0).max(100000).optional().nullable(),
-  suites: z.number().int().min(0).max(50).optional().nullable(),
-  parkingSpots: z.number().int().min(0).max(50).optional().nullable(),
-  floor: z.number().int().min(0).max(300).optional().nullable(),
-  yearBuilt: z.number().int().min(0).max(3000).optional().nullable(),
-  yearRenovated: z.number().int().min(0).max(3000).optional().nullable(),
+  bedrooms: numberField(z.number().int().min(0).max(50)),
+  bathrooms: numberField(z.number().min(0).max(50)),
+  areaM2: numberField(z.number().int().min(0).max(100000)),
+  suites: numberField(z.number().int().min(0).max(50)),
+  parkingSpots: numberField(z.number().int().min(0).max(50)),
+  floor: numberField(z.number().int().min(0).max(300)),
+  yearBuilt: numberField(z.number().int().min(0).max(3000)),
+  yearRenovated: numberField(z.number().int().min(0).max(3000)),
   conditionTags: z.array(z.string().max(80)).max(20).optional().nullable(),
   amenities: z
     .object({
@@ -157,7 +174,7 @@ const BodySchema = z.object({
     })
     .optional()
     .nullable(),
-  images: z.array(z.string().url().max(1500)).max(12).optional().nullable(),
+  images: z.array(z.string().url().max(4000)).max(12).optional().nullable(),
 });
 
 function toCloudinaryThumb(url: string) {
