@@ -403,6 +403,31 @@ export class RealtorAssistantService {
         : [],
     ]);
 
+    const propertyIds = Array.from(
+      new Set(
+        (leadRows || [])
+          .map((l: any) => (l?.property?.id ? String(l.property.id) : null))
+          .filter(Boolean)
+      )
+    ) as string[];
+
+    const coverRows = propertyIds.length
+      ? await prisma.image.findMany({
+          where: { propertyId: { in: propertyIds } },
+          select: { propertyId: true, url: true },
+          orderBy: [{ propertyId: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+        })
+      : [];
+
+    const coverMap = new Map<string, string>();
+    for (const row of coverRows || []) {
+      const pid = String((row as any).propertyId || "");
+      if (!pid || coverMap.has(pid)) continue;
+      const url = (row as any).url ? String((row as any).url) : "";
+      if (!url) continue;
+      coverMap.set(pid, url);
+    }
+
     const lastClientMap = new Map<string, { createdAt: Date; content: string | null }>();
     for (const m of lastClientMessages || []) {
       const id = String((m as any).leadId);
@@ -470,7 +495,15 @@ export class RealtorAssistantService {
                   id: String(l.property.id),
                   publicCode: l.property.publicCode || null,
                   title: l.property.title || null,
-                  price: typeof l.property.price === "number" ? l.property.price : null,
+                  price:
+                    typeof (l.property as any).price === "number"
+                      ? (l.property as any).price
+                      : typeof (l.property as any).price === "bigint"
+                        ? (() => {
+                            const n = Number((l.property as any).price);
+                            return Number.isSafeInteger(n) ? n : null;
+                          })()
+                        : null,
                   hidePrice: typeof l.property.hidePrice === "boolean" ? l.property.hidePrice : null,
                   neighborhood: l.property.neighborhood || null,
                   city: l.property.city || null,
@@ -480,9 +513,11 @@ export class RealtorAssistantService {
                   areaM2: typeof l.property.areaM2 === "number" ? l.property.areaM2 : null,
                   type: l.property.type || null,
                   purpose: l.property.purpose || null,
-                  imageUrl: Array.isArray((l.property as any).images) && (l.property as any).images[0]?.url
-                    ? String((l.property as any).images[0].url)
-                    : null,
+                  imageUrl:
+                    coverMap.get(String(l.property.id)) ||
+                    (Array.isArray((l.property as any).images) && (l.property as any).images[0]?.url
+                      ? String((l.property as any).images[0].url)
+                      : null),
                 }
               : null,
             leadHealthScore: health.leadHealthScore,

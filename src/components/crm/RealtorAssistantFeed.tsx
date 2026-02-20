@@ -1552,6 +1552,9 @@ export default function RealtorAssistantFeed(props: {
                       ? String(property.id).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()
                       : "";
                     const propertyIdentifier = propertyCode ? propertyCode : propertyFallbackCode;
+                    const propertyHref = property?.id
+                      ? `/broker/properties/${encodeURIComponent(String(property.id))}/overview`
+                      : "";
                     const propertyLocation = [
                       property?.neighborhood ? String(property.neighborhood).trim() : "",
                       [property?.city ? String(property.city).trim() : "", property?.state ? String(property.state).trim() : ""]
@@ -2044,7 +2047,16 @@ export default function RealtorAssistantFeed(props: {
                             </div>
 
                             {hasPropertySummary && (
-                              <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                              <button
+                                type="button"
+                                disabled={!propertyHref}
+                                onClick={() => {
+                                  if (!propertyHref) return;
+                                  router.push(propertyHref);
+                                }}
+                                className="mt-4 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-100/70 focus:outline-none focus:ring-2 focus:ring-teal-500/30 disabled:cursor-default"
+                                title={propertyHref ? "Abrir imóvel" : undefined}
+                              >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="flex items-start gap-3 min-w-0">
                                     <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
@@ -2097,7 +2109,7 @@ export default function RealtorAssistantFeed(props: {
                                     ) : null}
                                   </div>
                                 </div>
-                              </div>
+                              </button>
                             )}
 
                         {subtasks.length > 0 && (
