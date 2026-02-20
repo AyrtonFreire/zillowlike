@@ -1067,7 +1067,11 @@ export default function NewPropertyPage() {
       if (typeof d.yearBuilt !== 'undefined') setYearBuilt(d.yearBuilt);
       if (typeof d.yearRenovated !== 'undefined') setYearRenovated(d.yearRenovated);
       if (typeof d.totalFloors !== 'undefined') setTotalFloors(d.totalFloors);
-      if (typeof d.aiDescriptionGenerations === 'number') setAiDescriptionGenerations(d.aiDescriptionGenerations);
+      if (typeof d.aiDescriptionGenerations === 'number') {
+        const existingAiDesc = String(d.aiGeneratedDescription || "").trim();
+        const consumed = d.aiDescriptionGenerations >= 1 && existingAiDesc.length >= 30;
+        setAiDescriptionGenerations(consumed ? 1 : 0);
+      }
       if (Array.isArray(d.images)) setImages(d.images);
       if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
       if (typeof d.petFriendly === 'boolean') setPetFriendly(d.petFriendly);
@@ -1197,7 +1201,11 @@ export default function NewPropertyPage() {
         if (typeof d.yearBuilt !== 'undefined') setYearBuilt(d.yearBuilt);
         if (typeof d.yearRenovated !== 'undefined') setYearRenovated(d.yearRenovated);
         if (typeof d.totalFloors !== 'undefined') setTotalFloors(d.totalFloors);
-        if (typeof d.aiDescriptionGenerations === 'number') setAiDescriptionGenerations(d.aiDescriptionGenerations);
+        if (typeof d.aiDescriptionGenerations === 'number') {
+          const existingAiDesc = String(d.aiGeneratedDescription || "").trim();
+          const consumed = d.aiDescriptionGenerations >= 1 && existingAiDesc.length >= 30;
+          setAiDescriptionGenerations(consumed ? 1 : 0);
+        }
         if (Array.isArray(d.images)) setImages(d.images);
         if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
         if (typeof d.petFriendly === 'boolean') setPetFriendly(d.petFriendly);
@@ -1323,47 +1331,24 @@ export default function NewPropertyPage() {
           petFriendly,
           capturerRealtorId,
           currentStep,
-          iptuYearBRL,
-          condoFeeBRL,
-          // Dados privados do proprietário
-          privateOwnerName,
-          privateOwnerPhone,
-          privateOwnerEmail,
-          privateOwnerAddress,
-          privateOwnerPriceBRL,
-          privateBrokerFeePercent,
-          privateBrokerFeeFixedBRL,
-          privateExclusive,
-          privateExclusiveUntil,
-          privateOccupied,
-          privateOccupantInfo,
-          privateKeyLocation,
-          privateNotes,
-          // Configurações de visibilidade
-          hidePrice,
-          hideExactAddress,
-          hideOwnerContact,
-          hideCondoFee,
-          hideIPTU,
-          hasBalcony,
-          hasElevator,
           hasPool,
           hasGym,
+          hasElevator,
+          hasBalcony,
           hasPlayground,
           hasPartyRoom,
           hasGourmet,
           hasConcierge24h,
-          accRamps,
-          accWideDoors,
-          accAccessibleElevator,
-          accTactile,
           comfortAC,
           comfortHeating,
           comfortSolar,
           comfortNoiseWindows,
           comfortLED,
           comfortWaterReuse,
-          finishFloor,
+          accRamps,
+          accWideDoors,
+          accAccessibleElevator,
+          accTactile,
           finishCabinets,
           finishCounterGranite,
           finishCounterQuartz,
@@ -1371,15 +1356,13 @@ export default function NewPropertyPage() {
           viewCity,
           positionFront,
           positionBack,
-          sunByRoomNote,
-          sunOrientation,
           petsSmall,
           petsLarge,
-          condoRules,
-          secCCTV,
-          secSallyPort,
-          secNightGuard,
-          secElectricFence,
+          condoFeeMinBRL: condoFeeBRL,
+          iptuMinBRL: iptuYearBRL,
+          keywords,
+          conditionTags: mergedTags,
+          images: images.filter((i) => i.url).map((i) => ({ url: i.url })),
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
 
@@ -3121,11 +3104,19 @@ export default function NewPropertyPage() {
                           const text = (json?.data?.description as string | undefined) || "";
 
                           const warning = json?.data?._aiWarning;
+                          const consumed = !!json?.data?.generationConsumed;
                           if (warning || !text.trim()) {
+                            const extra =
+                              warning?.code ||
+                              (typeof warning?.status === "number" ? `HTTP ${warning.status}` : "") ||
+                              "";
                             setAiGenerateWarning(
                               "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
                             );
-                            setToast({ message: "IA indisponível no momento — preencha manualmente.", type: "info" });
+                            setToast({ message: `IA indisponível no momento${extra ? ` (${extra})` : ""} — preencha manualmente.`, type: "info" });
+                            if (!consumed) {
+                              setAiDescriptionGenerations(0);
+                            }
                           }
 
                           // Se a IA voltou em modo fallback, o backend pode enviar description vazia.
@@ -3135,8 +3126,10 @@ export default function NewPropertyPage() {
                           if (text.trim()) setDescription(text);
                           if (nextMetaTitle.trim()) setMetaTitle(nextMetaTitle);
                           if (nextMetaDescription.trim()) setMetaDescription(nextMetaDescription);
-                          setAiDescriptionGenerations(1);
-                          setToast({ message: warning || !text.trim() ? "Campos atualizados (revise manualmente)." : "Campos preenchidos com IA!", type: warning || !text.trim() ? "info" : "success" });
+                          if (consumed) {
+                            setAiDescriptionGenerations(1);
+                          }
+                          setToast({ message: consumed ? "Campos preenchidos com IA!" : "Campos atualizados (revise manualmente).", type: consumed ? "success" : "info" });
                         } catch {
                           setAiGenerateWarning(
                             "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."

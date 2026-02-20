@@ -253,7 +253,9 @@ async function handler(req: NextRequest) {
 
   const data = (draft?.data || {}) as any;
   const generations = Number(data.aiDescriptionGenerations || 0);
-  if (generations >= 1) {
+  const existingGeneratedDescription = String(data.aiGeneratedDescription || "").trim();
+  const alreadyConsumed = generations >= 1 && existingGeneratedDescription.length >= 30;
+  if (alreadyConsumed) {
     return errorResponse(
       "Limite atingido para este imóvel",
       429,
@@ -405,6 +407,8 @@ async function handler(req: NextRequest) {
       description: "", // o client vai manter a descrição atual se vier vazio
       metaTitle: defaultMetaTitleFromInput(b),
       metaDescription: defaultMetaDescriptionFromInput(b),
+      generationConsumed: false,
+      _aiWarning: { code: "AI_UNAVAILABLE" },
     };
     return successResponse(fallback, "OK");
   }
@@ -417,6 +421,7 @@ async function handler(req: NextRequest) {
       description: "",
       metaTitle: defaultMetaTitleFromInput(b),
       metaDescription: defaultMetaDescriptionFromInput(b),
+      generationConsumed: false,
     };
     return successResponse(
       {
@@ -435,6 +440,8 @@ async function handler(req: NextRequest) {
       description: "",
       metaTitle: defaultMetaTitleFromInput(b),
       metaDescription: defaultMetaDescriptionFromInput(b),
+      generationConsumed: false,
+      _aiWarning: { code: "AI_EMPTY_RESPONSE" },
     };
     return successResponse(fallback, "OK");
   }
@@ -446,6 +453,7 @@ async function handler(req: NextRequest) {
       description: "",
       metaTitle: defaultMetaTitleFromInput(b),
       metaDescription: defaultMetaDescriptionFromInput(b),
+      generationConsumed: false,
     };
     return successResponse(
       {
@@ -466,6 +474,18 @@ async function handler(req: NextRequest) {
   const safeMetaTitle = metaTitle ? clampText(metaTitle, 65) : defaultMetaTitleFromInput(b);
   const safeMetaDescription = metaDescription ? clampText(metaDescription, 155) : defaultMetaDescriptionFromInput(b);
 
+  if (!safeDescription || safeDescription.trim().length < 30) {
+    const fallback = {
+      title: safeTitle,
+      description: "",
+      metaTitle: safeMetaTitle,
+      metaDescription: safeMetaDescription,
+      generationConsumed: false,
+      _aiWarning: { code: "AI_DESCRIPTION_EMPTY" },
+    };
+    return successResponse(fallback as any, "OK");
+  }
+
   const nextData = {
     ...data,
     aiDescriptionGenerations: 1,
@@ -483,7 +503,13 @@ async function handler(req: NextRequest) {
   });
 
   return successResponse(
-    { title: safeTitle, description: safeDescription, metaTitle: safeMetaTitle, metaDescription: safeMetaDescription },
+    {
+      title: safeTitle,
+      description: safeDescription,
+      metaTitle: safeMetaTitle,
+      metaDescription: safeMetaDescription,
+      generationConsumed: true,
+    },
     "OK"
   );
 }

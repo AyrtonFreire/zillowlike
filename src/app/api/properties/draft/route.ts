@@ -56,10 +56,8 @@ export async function PUT(req: NextRequest) {
     const incomingData = data as any;
 
     const existingGen = Number(existingData.aiDescriptionGenerations || 0);
-    const incomingGen = Number(incomingData.aiDescriptionGenerations || 0);
-    if (incomingGen < existingGen) {
-      incomingData.aiDescriptionGenerations = existingGen;
-    }
+    // O client não pode alterar o contador de IA. Mantém sempre o valor do servidor.
+    incomingData.aiDescriptionGenerations = existingGen;
 
     if (typeof incomingData.aiGeneratedDescription === "undefined" && typeof existingData.aiGeneratedDescription !== "undefined") {
       incomingData.aiGeneratedDescription = existingData.aiGeneratedDescription;
