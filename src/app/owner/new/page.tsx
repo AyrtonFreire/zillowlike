@@ -3078,14 +3078,40 @@ export default function NewPropertyPage() {
                             }),
                           });
 
-                          const json = await res.json().catch(() => null);
+                          const rawText = await res.text().catch(() => "");
+                          let json: any = null;
+                          try {
+                            json = rawText ? JSON.parse(rawText) : null;
+                          } catch {
+                            json = null;
+                          }
                           if (res.status === 429) {
                             setAiDescriptionGenerations(1);
                             setToast({ message: json?.error || "Limite atingido para este imóvel", type: "error" });
                             return;
                           }
                           if (!res.ok) {
-                            setToast({ message: json?.error || "Falha ao gerar descrição", type: "error" });
+                            const details =
+                              (Array.isArray(json?.details)
+                                ? json.details
+                                    .map((d: any) => {
+                                      const path = Array.isArray(d?.path) ? d.path.join(".") : String(d?.path || "");
+                                      const msg = String(d?.message || "");
+                                      return [path, msg].filter(Boolean).join(": ");
+                                    })
+                                    .filter(Boolean)
+                                    .slice(0, 4)
+                                    .join(" | ")
+                                : null) ||
+                              (typeof json?.details === "string" ? json.details : null);
+
+                            const msg =
+                              json?.error ||
+                              details ||
+                              (json?.code ? `Erro (${json.code})` : null) ||
+                              `Falha ao gerar descrição (HTTP ${res.status})`;
+
+                            setToast({ message: msg, type: "error" });
                             return;
                           }
 

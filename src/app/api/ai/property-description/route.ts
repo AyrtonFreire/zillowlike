@@ -234,12 +234,17 @@ async function handler(req: NextRequest) {
   const rawBody = await req.json().catch(() => null);
   const parsedBody = BodySchema.safeParse(rawBody);
   if (!parsedBody.success) {
-    return errorResponse(
-      "Invalid payload",
-      400,
-      parsedBody.error.issues,
-      "VALIDATION_ERROR"
-    );
+    const fallback = {
+      title: clampText(String(rawBody?.title || "Imóvel"), 70) || "Imóvel",
+      description: "",
+      metaTitle: clampText("Imóvel à venda", 65),
+      metaDescription: clampText("Veja fotos e detalhes.", 155),
+      _aiWarning: {
+        code: "INVALID_PAYLOAD",
+        issues: parsedBody.error.issues,
+      },
+    } as any;
+    return successResponse(fallback, "OK");
   }
 
   const draft = await prisma.propertyDraft.findUnique({

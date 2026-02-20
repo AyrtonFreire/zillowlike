@@ -559,13 +559,39 @@ export default function EditPropertyPage() {
         }),
       });
 
-      const json = await res.json().catch(() => null);
+      const rawText = await res.text().catch(() => "");
+      let json: any = null;
+      try {
+        json = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        json = null;
+      }
       if (res.status === 429) {
         alert(json?.error || "Limite atingido. Tente novamente mais tarde.");
         return;
       }
       if (!res.ok) {
-        alert(json?.error || "Falha ao gerar texto com IA");
+        const details =
+          (Array.isArray(json?.details)
+            ? json.details
+                .map((d: any) => {
+                  const path = Array.isArray(d?.path) ? d.path.join(".") : String(d?.path || "");
+                  const msg = String(d?.message || "");
+                  return [path, msg].filter(Boolean).join(": ");
+                })
+                .filter(Boolean)
+                .slice(0, 4)
+                .join(" | ")
+            : null) ||
+          (typeof json?.details === "string" ? json.details : null);
+
+        const msg =
+          json?.error ||
+          details ||
+          (json?.code ? `Erro (${json.code})` : null) ||
+          `Falha ao gerar texto com IA (HTTP ${res.status})`;
+
+        alert(msg);
         return;
       }
 
