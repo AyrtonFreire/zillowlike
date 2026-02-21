@@ -159,7 +159,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [isFavorite, setIsFavorite] = useState(false);
   const [photoViewMode, setPhotoViewMode] = useState<"feed" | "fullscreen" | null>(null);
   const [showThumbGrid, setShowThumbGrid] = useState(false);
+  const [fullscreenTab, setFullscreenTab] = useState<"photos" | "video">("photos");
   const handleClose = useCallback(() => {
+    if (variant === "overlay" && typeof window !== "undefined") {
+      document.body.style.overflow = "";
+    }
     if (variant === "overlay" && typeof window !== "undefined") {
       if (overlayHistoryPushedRef.current && !closingFromPopstateRef.current) {
         try {
@@ -643,6 +647,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setPhotoViewMode(null);
       setCurrentImageIndex(0);
       setShowThumbGrid(false);
+      setFullscreenTab("photos");
       setActivePropertyId(id);
       requestAnimationFrame(() => {
         try {
@@ -862,6 +867,18 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     );
   }
 
+  const parsedVideo = useMemo(() => {
+    const raw = (property?.videoUrl || "").trim();
+    if (!raw) return null;
+    return parseVideoUrl(raw);
+  }, [property?.videoUrl]);
+
+  const videoThumbUrl = useMemo(() => {
+    if (!parsedVideo) return null;
+    if (parsedVideo.provider === "YOUTUBE") return `https://i.ytimg.com/vi/${parsedVideo.id}/hqdefault.jpg`;
+    return null;
+  }, [parsedVideo]);
+
   if (!property) return null;
 
   const displayImages = property.images.slice(0, 5);
@@ -1026,22 +1043,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             >
         {/* Gallery */}
         <div className="max-w-screen-2xl mx-auto md:px-6 lg:px-8 md:py-6">
-          {property?.videoUrl && parseVideoUrl(property.videoUrl) && (
-            <div className="mb-4">
-              <div className="relative w-full overflow-hidden rounded-xl border border-gray-200 bg-black aspect-video">
-                <iframe
-                  src={parseVideoUrl(property.videoUrl)?.embedUrl}
-                  title="Vídeo do imóvel"
-                  className="absolute inset-0 w-full h-full"
-                  loading="lazy"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  sandbox="allow-scripts allow-same-origin allow-presentation"
-                />
-              </div>
-            </div>
-          )}
-
           {/* Mobile: swipeable gallery - IGUAL AO CARD */}
           <div
             ref={mobContainerRef}
@@ -1227,6 +1228,21 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                 ))}
               </div>
             )}
+
+            {parsedVideo ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFullscreenTab("video");
+                  setPhotoViewMode("fullscreen");
+                }}
+                className="absolute bottom-4 left-4 z-10 px-3 py-2 rounded-lg bg-black/70 text-white text-xs font-semibold inline-flex items-center gap-2 hover:bg-black/80"
+              >
+                <Video className="w-4 h-4" />
+                Vídeo
+              </button>
+            ) : null}
           </div>
 
           {/* Desktop: mosaic */}
@@ -1260,42 +1276,85 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {displayImages.slice(1, 5).map((img: { url: string; alt?: string | null }, i: number) => (
-                <div
-                  key={i}
-                  className="relative rounded-lg overflow-hidden cursor-pointer"
-                  onClick={() => setPhotoViewMode("feed")}
-                >
-                  <img
-                    src={cloudinaryUrl(img.url, "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0")}
-                    srcSet={cloudinarySrcSet(
-                      img.url,
-                      "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0",
-                      "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_2.0"
-                    )}
-                    alt={`${property.title} ${i + 2}`}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      const el = e.currentTarget;
-                      if (el.dataset.fallback === "1") return;
-                      el.dataset.fallback = "1";
-                      el.src = img.url;
-                    }}
-                  />
-                  {i === 3 && property.images.length > 5 && (
-                    <button
+              {(() => {
+                const tiles: Array<{ kind: "video" } | { kind: "image"; img: { url: string; alt?: string | null }; imageNumber: number }> = [];
+                if (parsedVideo) tiles.push({ kind: "video" });
+                displayImages.slice(1, 5).forEach((img, idx) => {
+                  tiles.push({ kind: "image", img, imageNumber: idx + 2 });
+                });
+
+                return tiles.slice(0, 4).map((tile, i) => {
+                  const showAllOverlay = tile.kind === "image" && i === 3 && property.images.length > 5;
+
+                  if (tile.kind === "video") {
+                    return (
+                      <button
+                        key="video-tile"
+                        type="button"
+                        className="relative rounded-lg overflow-hidden cursor-pointer bg-black"
+                        onClick={() => {
+                          setFullscreenTab("video");
+                          setPhotoViewMode("fullscreen");
+                        }}
+                      >
+                        {videoThumbUrl ? (
+                          <img
+                            src={videoThumbUrl}
+                            alt="Vídeo do imóvel"
+                            className="absolute inset-0 w-full h-full object-cover opacity-90"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 w-full h-full bg-black" />
+                        )}
+                        <div className="absolute inset-0 bg-black/25" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
+                            <Video className="w-6 h-6 text-gray-900" />
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={`img-tile-${i}`}
+                      className="relative rounded-lg overflow-hidden cursor-pointer"
                       onClick={() => setPhotoViewMode("feed")}
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-medium hover:bg-black/60 transition-colors"
                     >
-                      <span className="flex items-center gap-2">
-                        <span className="text-lg">📷</span>
-                        Ver todas as fotos
-                      </span>
-                    </button>
-                  )}
-                </div>
-              ))}
+                      <img
+                        src={cloudinaryUrl(tile.img.url, "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0")}
+                        srcSet={cloudinarySrcSet(
+                          tile.img.url,
+                          "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0",
+                          "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_2.0"
+                        )}
+                        alt={`${property.title} ${tile.imageNumber}`}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (el.dataset.fallback === "1") return;
+                          el.dataset.fallback = "1";
+                          el.src = tile.img.url;
+                        }}
+                      />
+                      {showAllOverlay && (
+                        <button
+                          onClick={() => setPhotoViewMode("feed")}
+                          className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-medium hover:bg-black/60 transition-colors"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="text-lg">📷</span>
+                            Ver todas as fotos
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
 
@@ -1874,8 +1933,11 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   {/* Desktop: layout 1 grande + 2 menores */}
                   <div className="hidden md:block px-4 py-4 space-y-3">
                     {(() => {
+                      const items: Array<{ kind: "image"; idx: number } | { kind: "video" }> = property.images.map((_img, idx) => ({ kind: "image", idx }));
+                      if (parsedVideo) items.splice(1, 0, { kind: "video" });
+
                       const groups: { main: number; thumbs: number[] }[] = [];
-                      const total = property.images.length;
+                      const total = items.length;
                       for (let i = 0; i < total; i += 3) {
                         const main = i;
                         const thumbs: number[] = [];
@@ -1883,57 +1945,133 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                         if (i + 2 < total) thumbs.push(i + 2);
                         groups.push({ main, thumbs });
                       }
-                      return groups.map((g, idx) => (
-                        <div key={idx} className="space-y-2">
+
+                      const renderMain = (it: (typeof items)[number], key: string) => {
+                        if (it.kind === "video") {
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              className="relative w-full aspect-[16/9] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity bg-black"
+                              onClick={() => {
+                                setFullscreenTab("video");
+                                setPhotoViewMode("fullscreen");
+                              }}
+                            >
+                              {videoThumbUrl ? (
+                                <img src={videoThumbUrl} alt="Vídeo do imóvel" className="absolute inset-0 w-full h-full object-cover opacity-90" loading="lazy" />
+                              ) : (
+                                <div className="absolute inset-0 w-full h-full bg-black" />
+                              )}
+                              <div className="absolute inset-0 bg-black/25" />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center">
+                                  <Video className="w-7 h-7 text-gray-900" />
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        }
+
+                        const img = property.images[it.idx];
+                        return (
                           <div
+                            key={key}
                             className="relative w-full aspect-[16/9] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
-                            onClick={() => { setCurrentImageIndex(g.main); setPhotoViewMode("fullscreen"); }}
+                            onClick={() => {
+                              setFullscreenTab("photos");
+                              setCurrentImageIndex(it.idx);
+                              setPhotoViewMode("fullscreen");
+                            }}
                           >
                             <img
-                              src={cloudinaryUrl(property.images[g.main]?.url, "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_1.0")}
+                              src={cloudinaryUrl(img?.url, "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_1.0")}
                               srcSet={cloudinarySrcSet(
-                                property.images[g.main]?.url,
+                                img?.url,
                                 "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_1.0",
                                 "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_2.0"
                               )}
-                              alt={`${property.title} ${g.main + 1}`}
+                              alt={`${property.title} ${it.idx + 1}`}
                               className="absolute inset-0 w-full h-full object-cover"
-                              loading={g.main === 0 ? "eager" : "lazy"}
-                              fetchPriority={g.main === 0 ? "high" : undefined}
+                              loading={it.idx === 0 ? "eager" : "lazy"}
+                              fetchPriority={it.idx === 0 ? "high" : undefined}
                               onError={(e) => {
                                 const el = e.currentTarget;
                                 if (el.dataset.fallback === "1") return;
                                 el.dataset.fallback = "1";
-                                el.src = property.images[g.main]?.url || "/placeholder.jpg";
+                                el.src = img?.url || "/placeholder.jpg";
                               }}
                             />
                           </div>
+                        );
+                      };
+
+                      const renderThumb = (it: (typeof items)[number], key: string) => {
+                        if (it.kind === "video") {
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              className="relative w-full aspect-square rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity bg-black"
+                              onClick={() => {
+                                setFullscreenTab("video");
+                                setPhotoViewMode("fullscreen");
+                              }}
+                            >
+                              {videoThumbUrl ? (
+                                <img src={videoThumbUrl} alt="Vídeo do imóvel" className="absolute inset-0 w-full h-full object-cover opacity-90" loading="lazy" />
+                              ) : (
+                                <div className="absolute inset-0 w-full h-full bg-black" />
+                              )}
+                              <div className="absolute inset-0 bg-black/25" />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
+                                  <Video className="w-5 h-5 text-gray-900" />
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        }
+
+                        const img = property.images[it.idx];
+                        return (
+                          <div
+                            key={key}
+                            className="relative w-full aspect-[4/3] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
+                            onClick={() => {
+                              setFullscreenTab("photos");
+                              setCurrentImageIndex(it.idx);
+                              setPhotoViewMode("fullscreen");
+                            }}
+                          >
+                            <img
+                              src={cloudinaryUrl(img?.url, "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0")}
+                              srcSet={cloudinarySrcSet(
+                                img?.url,
+                                "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0",
+                                "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_2.0"
+                              )}
+                              alt={`${property.title} ${it.idx + 1}`}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              loading="lazy"
+                              onError={(e) => {
+                                const el = e.currentTarget;
+                                if (el.dataset.fallback === "1") return;
+                                el.dataset.fallback = "1";
+                                el.src = img?.url || "/placeholder.jpg";
+                              }}
+                            />
+                          </div>
+                        );
+                      };
+
+                      return groups.map((g, idx) => (
+                        <div key={idx} className="space-y-2">
+                          {renderMain(items[g.main], `main-${idx}`)}
                           {g.thumbs.length > 0 && (
                             <div className="grid grid-cols-2 gap-2">
                               {g.thumbs.map((ti) => (
-                                <div
-                                  key={ti}
-                                  className="relative w-full aspect-[4/3] rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
-                                  onClick={() => { setCurrentImageIndex(ti); setPhotoViewMode("fullscreen"); }}
-                                >
-                                  <img
-                                    src={cloudinaryUrl(property.images[ti]?.url, "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0")}
-                                    srcSet={cloudinarySrcSet(
-                                      property.images[ti]?.url,
-                                      "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0",
-                                      "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_2.0"
-                                    )}
-                                    alt={`${property.title} ${ti + 1}`}
-                                    className="absolute inset-0 w-full h-full object-cover"
-                                    loading="lazy"
-                                    onError={(e) => {
-                                      const el = e.currentTarget;
-                                      if (el.dataset.fallback === "1") return;
-                                      el.dataset.fallback = "1";
-                                      el.src = property.images[ti]?.url || "/placeholder.jpg";
-                                    }}
-                                  />
-                                </div>
+                                renderThumb(items[ti], `thumb-${idx}-${ti}`)
                               ))}
                             </div>
                           )}
@@ -2050,10 +2188,25 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                 <span className="hidden sm:inline">Voltar ao anúncio</span>
               </button>
               
-              {/* Centro - "Fotos" com underline */}
-              <div className="flex flex-col items-center">
-                <span className="text-white font-medium">Fotos</span>
-                <div className="w-12 h-0.5 bg-white/60 mt-1 rounded-full" />
+              <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
+                <button
+                  type="button"
+                  onClick={() => setFullscreenTab("photos")}
+                  className={`text-sm font-semibold ${fullscreenTab === "photos" ? "text-white" : "text-white/70 hover:text-white"}`}
+                >
+                  Fotos
+                  {fullscreenTab === "photos" ? <div className="w-full h-0.5 bg-white/60 mt-1 rounded-full" /> : null}
+                </button>
+                {parsedVideo ? (
+                  <button
+                    type="button"
+                    onClick={() => setFullscreenTab("video")}
+                    className={`text-sm font-semibold ${fullscreenTab === "video" ? "text-white" : "text-white/70 hover:text-white"}`}
+                  >
+                    Vídeo
+                    {fullscreenTab === "video" ? <div className="w-full h-0.5 bg-white/60 mt-1 rounded-full" /> : null}
+                  </button>
+                ) : null}
               </div>
 
               {/* Ações à direita */}
@@ -2088,141 +2241,154 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               </div>
             </div>
 
-            {/* Main image area - swipeable IGUAL AO CARD */}
-            <div
-              ref={fsContainerRef}
-              className="flex-1 relative overflow-hidden"
-              style={{ touchAction: 'pan-y' }}
-              onTouchStart={(e) => {
-                if (!property || e.touches.length !== 1) return;
-                setFsContainerW(fsContainerRef.current?.clientWidth || window.innerWidth);
-                const t = e.touches[0];
-                const now = performance.now();
-                fsSwipeStartX.current = t.clientX;
-                fsSwipeStartY.current = t.clientY;
-                fsSwipeStartTime.current = now;
-                fsSwipeLastX.current = t.clientX;
-                fsSwipeLastTime.current = now;
-                fsSwipeLock.current = null;
-                setFsIsDragging(true);
-                setFsDragX(0);
-              }}
-              onTouchMove={(e) => {
-                if (fsSwipeStartX.current == null || fsSwipeStartY.current == null || !property) return;
-                const t = e.touches[0];
-                const currentX = t.clientX;
-                const currentY = t.clientY;
-                const now = performance.now();
-                fsSwipeLastX.current = currentX;
-                fsSwipeLastTime.current = now;
-
-                const dxTotal = currentX - fsSwipeStartX.current;
-                const dyTotal = currentY - fsSwipeStartY.current;
-
-                if (!fsSwipeLock.current) {
-                  const dx0 = Math.abs(dxTotal);
-                  const dy0 = Math.abs(dyTotal);
-                  const intentionThreshold = 8;
-                  if (dx0 < intentionThreshold && dy0 < intentionThreshold) return;
-                  fsSwipeLock.current = dx0 > dy0 ? "horizontal" : "vertical";
-                }
-
-                if (fsSwipeLock.current === "vertical") return;
-
-                // Rubber-band nas bordas
-                let dx = dxTotal;
-                const atFirst = currentImageIndex === 0;
-                const atLast = currentImageIndex === property.images.length - 1;
-                if ((atFirst && dx > 0) || (atLast && dx < 0)) {
-                  dx = dx * 0.35;
-                }
-                setFsDragX(dx);
-                e.preventDefault();
-              }}
-              onTouchEnd={() => {
-                const startX = fsSwipeStartX.current;
-                const lastX = fsSwipeLastX.current;
-                const startT = fsSwipeStartTime.current;
-                const lastT = fsSwipeLastTime.current;
-                const lock = fsSwipeLock.current;
-
-                if (startX != null && lastX != null && lock === "horizontal" && property && property.images.length > 1) {
-                  const dx = lastX - startX;
-                  const dt = Math.max(1, (lastT ?? performance.now()) - (startT ?? performance.now()));
-                  const velocity = dx / dt;
-                  const distanceThreshold = Math.max(50, fsContainerW * 0.15);
-                  const velocityThreshold = 0.5;
-                  const total = property.images.length;
-
-                  if (velocity <= -velocityThreshold || dx <= -distanceThreshold) {
-                    setCurrentImageIndex((prev) => Math.min(total - 1, prev + 1));
-                  } else if (velocity >= velocityThreshold || dx >= distanceThreshold) {
-                    setCurrentImageIndex((prev) => Math.max(0, prev - 1));
-                  }
-                }
-
-                fsSwipeStartX.current = null;
-                fsSwipeStartY.current = null;
-                fsSwipeStartTime.current = null;
-                fsSwipeLastX.current = null;
-                fsSwipeLastTime.current = null;
-                fsSwipeLock.current = null;
-                setFsIsDragging(false);
-                setFsDragX(0);
-              }}
-            >
-              {/* Setas de navegação - fora da imagem */}
-              <button
-                aria-label="Anterior"
-                onClick={prevImage}
-                className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-lg text-gray-800 flex items-center justify-center hover:bg-gray-100 z-10"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
-                aria-label="Próxima"
-                onClick={nextImage}
-                className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-lg text-gray-800 flex items-center justify-center hover:bg-gray-100 z-10"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-
-              {/* Todas as imagens lado a lado - segue o dedo */}
-              <motion.div
-                animate={{ x: fsIsDragging ? -currentImageIndex * fsContainerW + fsDragX : -currentImageIndex * fsContainerW }}
-                transition={fsIsDragging ? { type: 'tween', duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
-                className="flex h-full items-center"
-                style={{ width: `${property.images.length * 100}%` }}
-              >
-                {property.images.map((img: { url: string; alt?: string | null }, i: number) => (
-                  <div key={i} className="relative h-full flex items-center justify-center" style={{ width: `${100 / property.images.length}%` }}>
-                    <img
-                      src={cloudinaryUrl(img.url, "f_auto,q_auto:good,w_1400,c_limit,dpr_1.0")}
-                      srcSet={cloudinarySrcSet(
-                        img.url,
-                        "f_auto,q_auto:good,w_1400,c_limit,dpr_1.0",
-                        "f_auto,q_auto:good,w_1400,c_limit,dpr_2.0"
-                      )}
-                      alt={`${property.title} - foto ${i + 1}`}
-                      className="absolute inset-0 w-full h-full object-contain"
-                      loading={i === currentImageIndex ? "eager" : "lazy"}
-                      fetchPriority={i === currentImageIndex ? "high" : undefined}
-                      onError={(e) => {
-                        const el = e.currentTarget;
-                        if (el.dataset.fallback === "1") return;
-                        el.dataset.fallback = "1";
-                        el.src = img.url || "/placeholder.jpg";
-                      }}
+            {fullscreenTab === "video" && parsedVideo ? (
+              <div className="flex-1 flex items-center justify-center p-4">
+                <div className="w-full max-w-5xl">
+                  <div className="relative w-full overflow-hidden rounded-xl border border-white/10 bg-black aspect-video">
+                    <iframe
+                      src={parsedVideo.embedUrl}
+                      title="Vídeo do imóvel"
+                      className="absolute inset-0 w-full h-full"
+                      loading="lazy"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allow="autoplay; encrypted-media; picture-in-picture"
+                      sandbox="allow-scripts allow-same-origin allow-presentation"
                     />
                   </div>
-                ))}
-              </motion.div>
-
-              {/* Badge contador no canto */}
-              <div className="absolute top-4 right-4 bg-black/70 text-white text-sm font-medium px-3 py-1.5 rounded-lg z-10">
-                {currentImageIndex + 1} de {property.images.length}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div
+                ref={fsContainerRef}
+                className="flex-1 relative overflow-hidden"
+                style={{ touchAction: 'pan-y' }}
+                onTouchStart={(e) => {
+                  if (!property || e.touches.length !== 1) return;
+                  setFsContainerW(fsContainerRef.current?.clientWidth || window.innerWidth);
+                  const t = e.touches[0];
+                  const now = performance.now();
+                  fsSwipeStartX.current = t.clientX;
+                  fsSwipeStartY.current = t.clientY;
+                  fsSwipeStartTime.current = now;
+                  fsSwipeLastX.current = t.clientX;
+                  fsSwipeLastTime.current = now;
+                  fsSwipeLock.current = null;
+                  setFsIsDragging(true);
+                  setFsDragX(0);
+                }}
+                onTouchMove={(e) => {
+                  if (fsSwipeStartX.current == null || fsSwipeStartY.current == null || !property) return;
+                  const t = e.touches[0];
+                  const currentX = t.clientX;
+                  const currentY = t.clientY;
+                  const now = performance.now();
+                  fsSwipeLastX.current = currentX;
+                  fsSwipeLastTime.current = now;
+
+                  const dxTotal = currentX - fsSwipeStartX.current;
+                  const dyTotal = currentY - fsSwipeStartY.current;
+
+                  if (!fsSwipeLock.current) {
+                    const dx0 = Math.abs(dxTotal);
+                    const dy0 = Math.abs(dyTotal);
+                    const intentionThreshold = 8;
+                    if (dx0 < intentionThreshold && dy0 < intentionThreshold) return;
+                    fsSwipeLock.current = dx0 > dy0 ? "horizontal" : "vertical";
+                  }
+
+                  if (fsSwipeLock.current === "vertical") return;
+
+                  let dx = dxTotal;
+                  const atFirst = currentImageIndex === 0;
+                  const atLast = currentImageIndex === property.images.length - 1;
+                  if ((atFirst && dx > 0) || (atLast && dx < 0)) {
+                    dx = dx * 0.35;
+                  }
+                  setFsDragX(dx);
+                  e.preventDefault();
+                }}
+                onTouchEnd={() => {
+                  const startX = fsSwipeStartX.current;
+                  const lastX = fsSwipeLastX.current;
+                  const startT = fsSwipeStartTime.current;
+                  const lastT = fsSwipeLastTime.current;
+                  const lock = fsSwipeLock.current;
+
+                  if (startX != null && lastX != null && lock === "horizontal" && property && property.images.length > 1) {
+                    const dx = lastX - startX;
+                    const dt = Math.max(1, (lastT ?? performance.now()) - (startT ?? performance.now()));
+                    const velocity = dx / dt;
+                    const distanceThreshold = Math.max(50, fsContainerW * 0.15);
+                    const velocityThreshold = 0.5;
+                    const total = property.images.length;
+
+                    if (velocity <= -velocityThreshold || dx <= -distanceThreshold) {
+                      setCurrentImageIndex((prev) => Math.min(total - 1, prev + 1));
+                    } else if (velocity >= velocityThreshold || dx >= distanceThreshold) {
+                      setCurrentImageIndex((prev) => Math.max(0, prev - 1));
+                    }
+                  }
+
+                  fsSwipeStartX.current = null;
+                  fsSwipeStartY.current = null;
+                  fsSwipeStartTime.current = null;
+                  fsSwipeLastX.current = null;
+                  fsSwipeLastTime.current = null;
+                  fsSwipeLock.current = null;
+                  setFsIsDragging(false);
+                  setFsDragX(0);
+                }}
+              >
+                <button
+                  aria-label="Anterior"
+                  onClick={prevImage}
+                  className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-lg text-gray-800 flex items-center justify-center hover:bg-gray-100 z-10"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <button
+                  aria-label="Próxima"
+                  onClick={nextImage}
+                  className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-lg text-gray-800 flex items-center justify-center hover:bg-gray-100 z-10"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+
+                <motion.div
+                  animate={{ x: fsIsDragging ? -currentImageIndex * fsContainerW + fsDragX : -currentImageIndex * fsContainerW }}
+                  transition={fsIsDragging ? { type: 'tween', duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+                  className="flex h-full items-center"
+                  style={{ width: `${property.images.length * 100}%` }}
+                >
+                  {property.images.map((img: { url: string; alt?: string | null }, i: number) => (
+                    <div key={i} className="relative h-full flex items-center justify-center" style={{ width: `${100 / property.images.length}%` }}>
+                      <img
+                        src={cloudinaryUrl(img.url, "f_auto,q_auto:good,w_1400,c_limit,dpr_1.0")}
+                        srcSet={cloudinarySrcSet(
+                          img.url,
+                          "f_auto,q_auto:good,w_1400,c_limit,dpr_1.0",
+                          "f_auto,q_auto:good,w_1400,c_limit,dpr_2.0"
+                        )}
+                        alt={`${property.title} - foto ${i + 1}`}
+                        className="absolute inset-0 w-full h-full object-contain"
+                        loading={i === currentImageIndex ? "eager" : "lazy"}
+                        fetchPriority={i === currentImageIndex ? "high" : undefined}
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (el.dataset.fallback === "1") return;
+                          el.dataset.fallback = "1";
+                          el.src = img.url || "/placeholder.jpg";
+                        }}
+                      />
+                    </div>
+                  ))}
+                </motion.div>
+
+                <div className="absolute top-4 right-4 bg-black/70 text-white text-sm font-medium px-3 py-1.5 rounded-lg z-10">
+                  {currentImageIndex + 1} de {property.images.length}
+                </div>
+              </div>
+            )}
 
             {/* Info caption no rodapé - estilo Zillow */}
             <div className="bg-[#2b2b2b] py-3 px-4 text-center shrink-0">
@@ -2252,10 +2418,32 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                 </button>
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                {parsedVideo ? (
+                  <button
+                    key="grid-video"
+                    onClick={() => {
+                      setShowThumbGrid(false);
+                      setFullscreenTab("video");
+                    }}
+                    className={`relative w-full aspect-square rounded-md overflow-hidden ring-2 ${fullscreenTab === 'video' ? 'ring-teal-500' : 'ring-transparent hover:ring-teal-300'} bg-black`}
+                  >
+                    {videoThumbUrl ? (
+                      <img src={videoThumbUrl} alt="Vídeo do imóvel" className="absolute inset-0 w-full h-full object-cover opacity-90" loading="lazy" />
+                    ) : (
+                      <div className="absolute inset-0 w-full h-full bg-black" />
+                    )}
+                    <div className="absolute inset-0 bg-black/25" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center">
+                        <Video className="w-5 h-5 text-gray-900" />
+                      </div>
+                    </div>
+                  </button>
+                ) : null}
                 {property.images.map((img: { url: string; alt?: string | null }, i: number) => (
                   <button
                     key={`grid-${i}`}
-                    onClick={() => { setCurrentImageIndex(i); setShowThumbGrid(false); }}
+                    onClick={() => { setFullscreenTab("photos"); setCurrentImageIndex(i); setShowThumbGrid(false); }}
                     className={`relative w-full pt-[66%] rounded-md overflow-hidden ring-2 ${i === currentImageIndex ? 'ring-teal-500' : 'ring-transparent hover:ring-teal-300'}`}
                   >
                     <img
