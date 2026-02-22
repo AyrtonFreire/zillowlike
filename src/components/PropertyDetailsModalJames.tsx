@@ -160,6 +160,17 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [photoViewMode, setPhotoViewMode] = useState<"feed" | "fullscreen" | null>(null);
   const [showThumbGrid, setShowThumbGrid] = useState(false);
   const [fullscreenTab, setFullscreenTab] = useState<"photos" | "video">("photos");
+  const parsedVideo = useMemo(() => {
+    const raw = (property?.videoUrl || "").trim();
+    if (!raw) return null;
+    return parseVideoUrl(raw);
+  }, [property?.videoUrl]);
+
+  const videoThumbUrl = useMemo(() => {
+    if (!parsedVideo) return null;
+    if (parsedVideo.provider === "YOUTUBE") return `https://i.ytimg.com/vi/${parsedVideo.id}/hqdefault.jpg`;
+    return null;
+  }, [parsedVideo]);
   const handleClose = useCallback(() => {
     if (variant === "overlay" && typeof window !== "undefined") {
       document.body.style.overflow = "";
@@ -866,18 +877,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       </div>
     );
   }
-
-  const parsedVideo = useMemo(() => {
-    const raw = (property?.videoUrl || "").trim();
-    if (!raw) return null;
-    return parseVideoUrl(raw);
-  }, [property?.videoUrl]);
-
-  const videoThumbUrl = useMemo(() => {
-    if (!parsedVideo) return null;
-    if (parsedVideo.provider === "YOUTUBE") return `https://i.ytimg.com/vi/${parsedVideo.id}/hqdefault.jpg`;
-    return null;
-  }, [parsedVideo]);
 
   if (!property) return null;
 
