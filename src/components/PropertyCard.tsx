@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useCallback } from "react";
 import type { ApiProperty } from "@/types/api";
-import { Heart, MapPin, Bed, Bath, Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Heart, MapPin, Bed, Bath, Maximize2, ChevronLeft, ChevronRight, Video } from "lucide-react";
 import { buildPropertyPath } from "@/lib/slug";
 import { ptBR } from "@/lib/i18n/property";
 
@@ -54,6 +54,7 @@ export default function PropertyCard({
 
   const totalImages = p.images?.length || 0;
   const hasMultipleImages = totalImages > 1;
+  const hasVideo = !!(p.videoUrl || p.videoId || (Array.isArray(p.media) && p.media.some((m) => m.type === "video")));
 
   const handleClick = (e: React.MouseEvent) => {
     // Prevent default link behavior and open overlay on desktop
@@ -182,18 +183,30 @@ export default function PropertyCard({
           </div>
 
           {/* Botão Favoritar */}
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onFavoriteToggle?.(p.id);
-            }}
-            className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white transition-all duration-200 shadow-lg hover:scale-110"
-            aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-            aria-pressed={isFavorite}
-          >
-            <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
-          </button>
+          <div className="absolute top-4 right-4 z-10 flex flex-col items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onFavoriteToggle?.(p.id);
+              }}
+              className="p-2.5 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white transition-all duration-200 shadow-lg hover:scale-110"
+              aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+              aria-pressed={isFavorite}
+            >
+              <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
+            </button>
+
+            {hasVideo && (
+              <div
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm text-gray-700 shadow-lg"
+                title="Este imóvel possui vídeo"
+                aria-hidden="true"
+              >
+                <Video className="w-4 h-4" />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Conteúdo - 30% da altura */}

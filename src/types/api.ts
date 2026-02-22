@@ -30,6 +30,9 @@ export type ApiProperty = {
   bathrooms?: number | null;
   areaM2?: number | null;
   images: { id: string; url: string }[];
+  videoUrl?: string | null;
+  videoId?: string | null;
+  media?: { type: "image" | "video"; url: string }[];
   // Optional amenities/extra metadata (may be missing depending on source)
   suites?: number | null;
   parkingSpots?: number | null;

@@ -465,19 +465,31 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           ))}
         </div>
 
-        {/* Favorite Button */}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={handleFavorite}
-          className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-teal/5 transition-colors"
-          aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-        >
-          <Heart
-            className={`w-5 h-5 transition-colors ${
-              isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"
-            }`}
-          />
-        </motion.button>
+        <div className="absolute top-3 right-3 z-10 flex flex-col items-center gap-2">
+          {/* Favorite Button */}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={handleFavorite}
+            className="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-teal/5 transition-colors"
+            aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+          >
+            <Heart
+              className={`w-5 h-5 transition-colors ${
+                isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"
+              }`}
+            />
+          </motion.button>
+
+          {hasVideo && (
+            <div
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm text-gray-700 shadow-lg"
+              aria-label="Este imóvel possui vídeo"
+              title="Este imóvel possui vídeo"
+            >
+              <Video className="w-4 h-4" />
+            </div>
+          )}
+        </div>
 
         {/* Image Carousel */}
         <div
@@ -565,14 +577,6 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               {watermark && (
                 <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-2">
                   <span className="text-[10px] font-semibold text-white/80 bg-black/30 px-2 py-1 rounded-md">OggaHub</span>
-                </div>
-              )}
-
-              {hasVideo && (
-                <div className="absolute bottom-3 left-3 z-10">
-                  <div className="flex items-center justify-center w-7 h-7 rounded-full bg-black/65 text-white shadow-md">
-                    <Video className="w-3.5 h-3.5" />
-                  </div>
                 </div>
               )}
 

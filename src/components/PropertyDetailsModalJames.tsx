@@ -1702,7 +1702,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium mb-8"
                   >
-                    Ver no Google Maps →
+                    Explorar no Google Maps →
                   </a>
 
                   <div className="md:hidden mb-8">
