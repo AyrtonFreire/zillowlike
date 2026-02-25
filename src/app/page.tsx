@@ -283,6 +283,38 @@ export default function Home() {
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const searchInputRef = useRef<HTMLDivElement>(null);
+  const [recentSearches, setRecentSearches] = useState<Array<{ label: string; params: string; ts: number }>>([]);
+
+  const loadRecentSearches = useCallback(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const raw = window.localStorage.getItem('zlw_recent_searches_v1');
+      const arr = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(arr)) {
+        const cleaned = arr
+          .filter((x: any) => x && typeof x.label === 'string' && typeof x.params === 'string')
+          .sort((a: any, b: any) => Number(b.ts || 0) - Number(a.ts || 0))
+          .slice(0, 3)
+          .map((x: any) => ({ label: x.label, params: x.params, ts: Number(x.ts || 0) }));
+        setRecentSearches(cleaned);
+      }
+    } catch {
+    }
+  }, []);
+
+  const rememberRecentSearch = useCallback((entry: { label: string; params: string; ts: number }) => {
+    try {
+      if (typeof window === 'undefined') return;
+      const raw = window.localStorage.getItem('zlw_recent_searches_v1');
+      const arr = raw ? JSON.parse(raw) : [];
+      const next = Array.isArray(arr) ? arr : [];
+      const filtered = next.filter((x: any) => x && typeof x.params === 'string' && x.params !== entry.params);
+      filtered.unshift(entry);
+      window.localStorage.setItem('zlw_recent_searches_v1', JSON.stringify(filtered.slice(0, 3)));
+      setRecentSearches(filtered.slice(0, 3));
+    } catch {
+    }
+  }, []);
 
   // Parse dos parâmetros da URL
   useEffect(() => {
@@ -548,6 +580,7 @@ export default function Home() {
         page: 1,
       });
 
+      rememberRecentSearch({ label: suggestion.label, params, ts: Date.now() });
       router.push(`/?${params}`);
       return;
     }
@@ -578,6 +611,7 @@ export default function Home() {
         page: 1,
       });
 
+      rememberRecentSearch({ label: suggestion.label, params, ts: Date.now() });
       router.push(`/?${params}`);
       return;
     }
@@ -607,8 +641,9 @@ export default function Home() {
       page: 1,
     });
 
+    rememberRecentSearch({ label: suggestion.label, params, ts: Date.now() });
     router.push(`/?${params}`);
-  }, [type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, router]);
+  }, [type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, router, rememberRecentSearch]);
 
   // Aplicar busca quando usuário aperta Enter ou clica na lupa
   const applySearch = useCallback(() => {
@@ -645,8 +680,9 @@ export default function Home() {
     });
 
     setShowSearchSuggestions(false);
+    rememberRecentSearch({ label: query || searchInput, params, ts: Date.now() });
     router.push(`/?${params}`);
-  }, [searchInput, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, router]);
+  }, [searchInput, city, state, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, router, rememberRecentSearch]);
 
   // Helper para buscar categoria com fallback por localidade (pode receber city/state overrides)
   const fetchCategory = useCallback(async (baseParams: Record<string, any>, loc?: { city?: string; state?: string }) => {
@@ -1841,7 +1877,10 @@ export default function Home() {
                           setSearchInput(e.target.value);
                           setShowSearchSuggestions(true);
                         }}
-                        onFocus={() => setShowSearchSuggestions(true)}
+                        onFocus={() => {
+                          setShowSearchSuggestions(true);
+                          if (!searchInput.trim()) loadRecentSearches();
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             applySearch();
@@ -1862,12 +1901,42 @@ export default function Home() {
                     </div>
                     
                     {/* Autocomplete Dropdown */}
-                    {showSearchSuggestions && searchSuggestions.length > 0 && (
+                    {showSearchSuggestions && ((searchInput.trim().length === 0 && recentSearches.length > 0) || searchSuggestions.length > 0) && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] max-h-80 overflow-y-auto pointer-events-auto">
+                        {searchInput.trim().length === 0 && recentSearches.length > 0 && (
+                          <div className="border-b border-gray-100">
+                            {recentSearches.map((r, idx) => (
+                              <button
+                                key={`recent-${idx}`}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setShowSearchSuggestions(false);
+                                  setSearchInput(r.label);
+                                  router.push(`/?${r.params}`);
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">{r.label}</div>
+                                    <div className="text-xs text-gray-500 mt-0.5">Busca recente</div>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         {searchSuggestions.map((suggestion, idx) => (
                           <button
                             key={idx}
-                            onClick={() => handleSelectSuggestion(suggestion)}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleSelectSuggestion(suggestion);
+                            }}
                             className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
                           >
                             <div className="flex items-start justify-between">
@@ -2267,7 +2336,10 @@ export default function Home() {
                             setSearchInput(e.target.value);
                             setShowSearchSuggestions(true);
                           }}
-                          onFocus={() => setShowSearchSuggestions(true)}
+                          onFocus={() => {
+                            setShowSearchSuggestions(true);
+                            if (!searchInput.trim()) loadRecentSearches();
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               applySearch();
@@ -2288,12 +2360,42 @@ export default function Home() {
                       </div>
                       
                       {/* Autocomplete Dropdown Mobile */}
-                      {showSearchSuggestions && searchSuggestions.length > 0 && (
+                      {showSearchSuggestions && ((searchInput.trim().length === 0 && recentSearches.length > 0) || searchSuggestions.length > 0) && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] max-h-80 overflow-y-auto pointer-events-auto">
+                          {searchInput.trim().length === 0 && recentSearches.length > 0 && (
+                            <div className="border-b border-gray-100">
+                              {recentSearches.map((r, idx) => (
+                                <button
+                                  key={`recent-m-${idx}`}
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setShowSearchSuggestions(false);
+                                    setSearchInput(r.label);
+                                    router.push(`/?${r.params}`);
+                                  }}
+                                  className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="font-medium text-gray-900">{r.label}</div>
+                                      <div className="text-xs text-gray-500 mt-0.5">Busca recente</div>
+                                    </div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           {searchSuggestions.map((suggestion, idx) => (
                             <button
                               key={idx}
-                              onClick={() => handleSelectSuggestion(suggestion)}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleSelectSuggestion(suggestion);
+                              }}
                               className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
                             >
                               <div className="flex items-start justify-between">

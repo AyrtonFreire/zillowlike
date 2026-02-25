@@ -20,6 +20,8 @@ type MapProps = {
   autoLoad?: boolean;
 };
 
+type BoundsLiteral = { north: number; south: number; east: number; west: number };
+
 function isFiniteNumber(n: any): n is number {
   return typeof n === "number" && Number.isFinite(n);
 }
@@ -31,6 +33,44 @@ function formatPriceBRL(cents: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(cents / 100);
+}
+
+function computeCityLikeRestriction(items: Item[], fallback: [number, number]): BoundsLiteral {
+  const valid = (items || []).filter(
+    (p) => isFiniteNumber(p.latitude) && isFiniteNumber(p.longitude) && p.latitude !== 0 && p.longitude !== 0
+  );
+
+  let minLat = fallback[0];
+  let maxLat = fallback[0];
+  let minLng = fallback[1];
+  let maxLng = fallback[1];
+
+  if (valid.length > 0) {
+    minLat = Math.min(...valid.map((p) => p.latitude));
+    maxLat = Math.max(...valid.map((p) => p.latitude));
+    minLng = Math.min(...valid.map((p) => p.longitude));
+    maxLng = Math.max(...valid.map((p) => p.longitude));
+  }
+
+  const cLat = (minLat + maxLat) / 2;
+  const cLng = (minLng + maxLng) / 2;
+  const latSpan = Math.max(0.001, maxLat - minLat);
+  const lngSpan = Math.max(0.001, maxLng - minLng);
+
+  // Allow "city" exploration: expand bounds around results, but cap to avoid world-wide panning
+  const expandFactor = 3.5;
+  const minSpan = 0.18; // ~20km+ depending on latitude
+  const maxSpan = 1.2;  // ~130km, enough for metro/regional view
+
+  const spanLat = Math.min(maxSpan, Math.max(minSpan, latSpan * expandFactor));
+  const spanLng = Math.min(maxSpan, Math.max(minSpan, lngSpan * expandFactor));
+
+  return {
+    north: cLat + spanLat / 2,
+    south: cLat - spanLat / 2,
+    east: cLng + spanLng / 2,
+    west: cLng - spanLng / 2,
+  };
 }
 
 export default function GoogleMapWithPriceBubbles({
@@ -48,6 +88,7 @@ export default function GoogleMapWithPriceBubbles({
   const debounceRef = useRef<any>(null);
   const userMovedRef = useRef(false);
   const lastBoundsKeyRef = useRef<string | null>(null);
+  const restrictionRef = useRef<BoundsLiteral | null>(null);
   const userMoveListenersRef = useRef<any[]>([]);
   const renderRef = useRef<(() => void) | null>(null);
 
@@ -129,11 +170,17 @@ export default function GoogleMapWithPriceBubbles({
 
     let map: any;
     try {
+      const restrictionBounds = computeCityLikeRestriction(items || [], center);
+      restrictionRef.current = restrictionBounds;
       map = new google.maps.Map(containerRef.current, {
         center: { lat: center[0], lng: center[1] },
         zoom: 13,
         minZoom: 10,
         maxZoom: 18,
+        restriction: {
+          latLngBounds: restrictionBounds,
+          strictBounds: true,
+        },
         mapId,
         disableDefaultUI: true,
         zoomControl: true,
@@ -165,6 +212,36 @@ export default function GoogleMapWithPriceBubbles({
     }
 
   }, [ready, isLoading]);
+
+  // Update restriction only when it looks like the search "moved" to a different city/region.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!ready || isLoading) return;
+
+    const next = computeCityLikeRestriction(items || [], center);
+    const prev = restrictionRef.current;
+    if (!prev) {
+      restrictionRef.current = next;
+      try {
+        map.setOptions({ restriction: { latLngBounds: next, strictBounds: true } });
+      } catch {}
+      return;
+    }
+
+    const prevCLat = (prev.north + prev.south) / 2;
+    const prevCLng = (prev.east + prev.west) / 2;
+    const nextCLat = (next.north + next.south) / 2;
+    const nextCLng = (next.east + next.west) / 2;
+
+    const centerShift = Math.max(Math.abs(prevCLat - nextCLat), Math.abs(prevCLng - nextCLng));
+    if (centerShift < 0.25) return;
+
+    restrictionRef.current = next;
+    try {
+      map.setOptions({ restriction: { latLngBounds: next, strictBounds: true } });
+    } catch {}
+  }, [items, center, ready, isLoading]);
 
   // Cleanup only on unmount (avoid resetting map on items/center changes)
   useEffect(() => {

@@ -212,7 +212,7 @@ export default function GoogleMap(props: Props) {
         latLngBounds: bounds,
         strictBounds: true,
       };
-      options.scrollwheel = false;
+      options.scrollwheel = true;
       options.disableDoubleClickZoom = true;
       options.gestureHandling = "greedy";
     }
