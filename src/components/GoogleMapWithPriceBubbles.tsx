@@ -53,6 +53,7 @@ export default function GoogleMapWithPriceBubbles({
   const [activated, setActivated] = useState(false);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const fatalErrorRef = useRef(false);
 
   const center = useMemo(() => {
     if (Array.isArray(items) && items.length > 0) {
@@ -114,18 +115,30 @@ export default function GoogleMapWithPriceBubbles({
     if (mapRef.current) return;
 
     const google = (window as any).google;
+    if (!google?.maps?.Map || typeof google.maps.Map !== "function") {
+      setLoadError(
+        "Google Maps não inicializou corretamente. Verifique restrições da API Key (referrer), billing e APIs habilitadas."
+      );
+      return;
+    }
     const mapId = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "").trim() || undefined;
 
-    const map = new google.maps.Map(containerRef.current, {
-      center: { lat: center[0], lng: center[1] },
-      zoom: 13,
-      mapId,
-      disableDefaultUI: true,
-      zoomControl: true,
-      clickableIcons: false,
-      keyboardShortcuts: false,
-      gestureHandling: "greedy",
-    });
+    let map: any;
+    try {
+      map = new google.maps.Map(containerRef.current, {
+        center: { lat: center[0], lng: center[1] },
+        zoom: 13,
+        mapId,
+        disableDefaultUI: true,
+        zoomControl: true,
+        clickableIcons: false,
+        keyboardShortcuts: false,
+        gestureHandling: "greedy",
+      });
+    } catch (err: any) {
+      setLoadError(String(err?.message || err || "Failed to initialize Google Maps"));
+      return;
+    }
 
     mapRef.current = map;
 
@@ -205,7 +218,26 @@ export default function GoogleMapWithPriceBubbles({
     const map = mapRef.current;
     if (!map || isLoading) return;
 
+    if (fatalErrorRef.current) return;
+
     const google = (window as any).google;
+    if (!google?.maps?.OverlayView || typeof google.maps.OverlayView !== "function") {
+      setLoadError(
+        "Google Maps não inicializou corretamente (OverlayView indisponível). Verifique a API Key/restrições."
+      );
+      return;
+    }
+
+    try {
+      // Smoke-test constructors that we will use
+      if (!google?.maps?.LatLng || typeof google.maps.LatLng !== "function") {
+        throw new Error("Google Maps LatLng indisponível");
+      }
+    } catch (err: any) {
+      fatalErrorRef.current = true;
+      setLoadError(String(err?.message || err || "Google Maps initialization error"));
+      return;
+    }
 
     const clearOverlays = () => {
       for (const ov of overlaysRef.current) {
@@ -226,7 +258,14 @@ export default function GoogleMapWithPriceBubbles({
         draw() {
           const proj = this.getProjection();
           if (!proj) return;
-          const pt = proj.fromLatLngToDivPixel(new google.maps.LatLng(position.lat, position.lng));
+          const LatLng = google.maps.LatLng;
+          if (!LatLng) return;
+          let pt: any = null;
+          try {
+            pt = proj.fromLatLngToDivPixel(new LatLng(position.lat, position.lng));
+          } catch {
+            return;
+          }
           if (!pt) return;
           el.style.left = `${pt.x}px`;
           el.style.top = `${pt.y}px`;
@@ -396,40 +435,48 @@ export default function GoogleMapWithPriceBubbles({
     };
 
     const render = () => {
-      clearOverlays();
-      const zoom = map.getZoom?.();
-      if (!isFiniteNumber(zoom)) return;
-      const clusters = clusterByGrid(zoom);
-      const highlightedId = highlightedIdRef.current;
+      try {
+        clearOverlays();
+        const zoom = map.getZoom?.();
+        if (!isFiniteNumber(zoom)) return;
+        const clusters = clusterByGrid(zoom);
+        const highlightedId = highlightedIdRef.current;
 
-      for (const c of clusters) {
-        if (c.isCluster) {
-          const isHighlighted = c.items.some((it) => it.id === highlightedId);
-          const el = buildClusterEl(c.items.length, isHighlighted, { lat: c.lat, lng: c.lng });
-          overlaysRef.current.push(createOverlay({ lat: c.lat, lng: c.lng }, el));
-        } else {
-          const item = c.items[0];
-          const el = buildPriceEl(item, item.id === highlightedId);
-          overlaysRef.current.push(createOverlay({ lat: item.latitude, lng: item.longitude }, el));
+        for (const c of clusters) {
+          if (c.isCluster) {
+            const isHighlighted = c.items.some((it) => it.id === highlightedId);
+            const el = buildClusterEl(c.items.length, isHighlighted, { lat: c.lat, lng: c.lng });
+            overlaysRef.current.push(createOverlay({ lat: c.lat, lng: c.lng }, el));
+          } else {
+            const item = c.items[0];
+            const el = buildPriceEl(item, item.id === highlightedId);
+            overlaysRef.current.push(createOverlay({ lat: item.latitude, lng: item.longitude }, el));
+          }
         }
-      }
 
-      // bounds change (debounced)
-      if (onBoundsChange) {
-        if (!userMovedRef.current) return;
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-          try {
-            const b = map.getBounds?.();
-            if (!b) return;
-            onBoundsChange({
-              minLat: b.getSouthWest().lat(),
-              maxLat: b.getNorthEast().lat(),
-              minLng: b.getSouthWest().lng(),
-              maxLng: b.getNorthEast().lng(),
-            });
-          } catch {}
-        }, 500);
+        // bounds change (debounced)
+        if (onBoundsChange) {
+          if (!userMovedRef.current) return;
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            try {
+              const b = map.getBounds?.();
+              if (!b) return;
+              onBoundsChange({
+                minLat: b.getSouthWest().lat(),
+                maxLat: b.getNorthEast().lat(),
+                minLng: b.getSouthWest().lng(),
+                maxLng: b.getNorthEast().lng(),
+              });
+            } catch {}
+          }, 500);
+        }
+      } catch (err: any) {
+        fatalErrorRef.current = true;
+        try {
+          clearOverlays();
+        } catch {}
+        setLoadError(String(err?.message || err || "Google Maps overlay rendering error"));
       }
     };
 

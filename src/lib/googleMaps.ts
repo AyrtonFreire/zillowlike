@@ -1,5 +1,29 @@
 let googleMapsPromise: Promise<any> | null = null;
 
+function waitForGoogleMapsReady(resolve: (g: any) => void, reject: (e: Error) => void) {
+  const start = Date.now();
+  const maxWaitMs = 8000;
+
+  const check = () => {
+    const g = (window as any).google;
+    if (g?.maps?.Map && g?.maps?.OverlayView) {
+      resolve(g);
+      return;
+    }
+    if (Date.now() - start > maxWaitMs) {
+      reject(
+        new Error(
+          "Google Maps failed to initialize. Check API key, HTTP referrer restrictions, billing, and enabled APIs."
+        )
+      );
+      return;
+    }
+    setTimeout(check, 50);
+  };
+
+  check();
+}
+
 export function loadGoogleMaps() {
   if (typeof window === "undefined") return Promise.reject(new Error("Google Maps can only be loaded in the browser"));
 
@@ -7,7 +31,16 @@ export function loadGoogleMaps() {
   if (!key) return Promise.reject(new Error("Missing NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"));
 
   const w = window as any;
-  if (w.google?.maps) return Promise.resolve(w.google);
+  if (w.google?.maps?.Map && w.google?.maps?.OverlayView) return Promise.resolve(w.google);
+  if (w.google?.maps) {
+    return new Promise((resolve, reject) => {
+      try {
+        waitForGoogleMapsReady(resolve, reject);
+      } catch (err: any) {
+        reject(new Error(err?.message || "Google Maps failed to initialize"));
+      }
+    });
+  }
 
   if (googleMapsPromise) return googleMapsPromise;
 
@@ -17,7 +50,21 @@ export function loadGoogleMaps() {
       if (existing.dataset.googleMapsFailed === "1") {
         try { existing.remove(); } catch {}
       } else {
-        existing.addEventListener("load", () => resolve((window as any).google), { once: true });
+        existing.addEventListener(
+          "load",
+          () => {
+            try {
+              waitForGoogleMapsReady(resolve, (e) => {
+                googleMapsPromise = null;
+                reject(e);
+              });
+            } catch (err: any) {
+              googleMapsPromise = null;
+              reject(new Error(err?.message || "Google Maps failed to initialize"));
+            }
+          },
+          { once: true }
+        );
         existing.addEventListener(
           "error",
           () => {
@@ -36,7 +83,19 @@ export function loadGoogleMaps() {
     script.defer = true;
     script.dataset.googleMaps = "1";
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly&libraries=marker&loading=async`;
-    script.onload = () => resolve((window as any).google);
+    script.onload = () => {
+      try {
+        waitForGoogleMapsReady(resolve, (e) => {
+          googleMapsPromise = null;
+          try { script.dataset.googleMapsFailed = "1"; } catch {}
+          reject(e);
+        });
+      } catch (err: any) {
+        googleMapsPromise = null;
+        try { script.dataset.googleMapsFailed = "1"; } catch {}
+        reject(new Error(err?.message || "Google Maps failed to initialize"));
+      }
+    };
     script.onerror = () => {
       googleMapsPromise = null;
       try { script.dataset.googleMapsFailed = "1"; } catch {}
