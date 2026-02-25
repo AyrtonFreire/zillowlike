@@ -23,6 +23,20 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: NPM diagnostics (safe)
+        run: |
+          node --version
+          npm --version
+          echo "registry=$(npm config get registry)"
+          echo "always-auth=$(npm config get always-auth)"
+          node -e "console.log('has_NODE_AUTH_TOKEN=' + String(!!process.env.NODE_AUTH_TOKEN))"
+          node -e "console.log('has_NPM_TOKEN=' + String(!!process.env.NPM_TOKEN))"
+
+      - name: Force public npm registry
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          npm config set always-auth false
+
       - name: Install
         run: npm ci
 
