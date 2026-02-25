@@ -48,6 +48,13 @@ function toBigInt(v: any): bigint {
   return out ?? BigInt(0);
 }
 
+function toCentsBigInt(v: any): bigint {
+  if (v === null || typeof v === "undefined" || v === "") return BigInt(0);
+  const n = Number(v);
+  if (!Number.isFinite(n)) return BigInt(0);
+  return BigInt(Math.round(n * 100));
+}
+
 function isPublicCodeCollision(err: any) {
   return (
     err &&
@@ -168,8 +175,8 @@ export async function GET(req: NextRequest) {
     }
     if (minPrice || maxPrice) {
       where.price = {};
-      if (minPrice) where.price.gte = toBigInt(minPrice);
-      if (maxPrice) where.price.lte = toBigInt(maxPrice);
+      if (minPrice) where.price.gte = toCentsBigInt(minPrice);
+      if (maxPrice) where.price.lte = toCentsBigInt(maxPrice);
     }
     if (bedroomsMin) where.bedrooms = { gte: bedroomsMin };
     if (bathroomsMin) where.bathrooms = { gte: bathroomsMin };

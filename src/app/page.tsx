@@ -2154,7 +2154,7 @@ export default function Home() {
                   </div>
 
                   {/* Home Type */}
-                  <div className="relative">
+                  <div className="relative" data-filter-root="type">
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'type' ? null : 'type')}
                       data-dropdown="type"
@@ -2204,7 +2204,7 @@ export default function Home() {
                   </div>
 
                   {/* Area Filter */}
-                  <div className="relative">
+                  <div className="relative" data-filter-root="area">
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'area' ? null : 'area')}
                       data-dropdown="area"
@@ -2261,7 +2261,7 @@ export default function Home() {
                   </div>
 
                   {/* Parking Spots Filter */}
-                  <div className="relative">
+                  <div className="relative" data-filter-root="parking">
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'parking' ? null : 'parking')}
                       data-dropdown="parking"

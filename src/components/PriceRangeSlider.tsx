@@ -86,11 +86,11 @@ export default function PriceRangeSlider({
       onClick={(e) => e.stopPropagation()}
     >
       {/* Trilho base */}
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-gray-200/80" />
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-gray-200/80 z-0" />
 
       {/* Faixa ativa */}
       <div
-        className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 shadow-[0_0_0_1px_rgba(16,185,129,0.45)]"
+        className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 shadow-[0_0_0_1px_rgba(16,185,129,0.45)] z-0"
         style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
       />
 
@@ -106,7 +106,7 @@ export default function PriceRangeSlider({
         onPointerUp={() => commit(internalMin, internalMax)}
         onTouchEnd={() => commit(internalMin, internalMax)}
         onKeyUp={() => commit(internalMin, internalMax)}
-        className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 w-full appearance-none bg-transparent
+        className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 w-full appearance-none bg-transparent z-20
           [&::-webkit-slider-thumb]:pointer-events-auto
           [&::-webkit-slider-thumb]:appearance-none
           [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4
@@ -139,7 +139,7 @@ export default function PriceRangeSlider({
         onPointerUp={() => commit(internalMin, internalMax)}
         onTouchEnd={() => commit(internalMin, internalMax)}
         onKeyUp={() => commit(internalMin, internalMax)}
-        className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 w-full appearance-none bg-transparent
+        className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 w-full appearance-none bg-transparent z-10
           [&::-webkit-slider-thumb]:pointer-events-auto
           [&::-webkit-slider-thumb]:appearance-none
           [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4

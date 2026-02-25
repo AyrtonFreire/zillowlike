@@ -137,7 +137,7 @@ export default function GoogleMapWithPriceBubbles({
 
   // Load script
   useEffect(() => {
-    if (!activated || isLoading) return;
+    if (!activated) return;
     let cancelled = false;
     loadGoogleMaps()
       .then(() => {
@@ -156,8 +156,6 @@ export default function GoogleMapWithPriceBubbles({
     if (!ready) return;
     if (!containerRef.current) return;
     if (mapRef.current) return;
-
-    if (isLoading) return;
 
     const google = (window as any).google;
     if (!google?.maps?.Map || typeof google.maps.Map !== "function") {
@@ -603,24 +601,13 @@ export default function GoogleMapWithPriceBubbles({
     };
   }, [items, isLoading, onBoundsChange, onHoverChange, mapNonce]);
 
-  const showPlaceholder = isLoading || !activated || !ready;
-
-  if (isLoading) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Carregando mapa...</p>
-        </div>
-      </div>
-    );
-  }
+  const showPlaceholder = !activated || !ready;
 
   return (
     <div className="w-full h-full relative">
       {showPlaceholder ? (
         <div
-          className="absolute inset-0 flex items-center justify-center bg-gray-100"
+          className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100"
           onClick={() => setActivated(true)}
           role="button"
           tabIndex={0}
@@ -632,10 +619,19 @@ export default function GoogleMapWithPriceBubbles({
         </div>
       ) : null}
 
-      <div ref={containerRef} className="absolute inset-0" />
+      <div ref={containerRef} className="absolute inset-0 z-0" />
+
+      {isLoading ? (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/75 backdrop-blur-[1px]">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-700 font-medium">Carregando imóveis…</p>
+          </div>
+        </div>
+      ) : null}
 
       {loadError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/95">
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/95">
           <div className="max-w-md px-6 text-center">
             <div className="text-sm font-semibold text-gray-900">Não foi possível carregar o mapa</div>
             <div className="text-xs text-gray-600 mt-1">{loadError}</div>
