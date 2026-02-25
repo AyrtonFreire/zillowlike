@@ -237,6 +237,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [poiLoading, setPoiLoading] = useState(false);
   const [poiOpen, setPoiOpen] = useState(false);
   const poiFetchedKeyRef = useRef<string | null>(null);
+  const [poiSource, setPoiSource] = useState<'google' | 'osm' | null>(null);
   const trackedViewRef = useRef<Set<string>>(new Set());
   // Lightbox touch resistance state
   const lbStartX = useRef<number | null>(null);
@@ -324,6 +325,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     { key: 'banks', label: 'Bancos', Icon: Landmark, items: nearbyPlaces.banks },
     { key: 'fuel', label: 'Postos', Icon: Fuel, items: nearbyPlaces.fuel },
     { key: 'bakeries', label: 'Padarias', Icon: ShoppingCart, items: nearbyPlaces.bakeries },
+    { key: 'parks', label: 'Parques', Icon: MapPin, items: nearbyPlaces.parks },
+    { key: 'gyms', label: 'Academias', Icon: Dumbbell, items: nearbyPlaces.gyms },
     { key: 'hospitals', label: 'Hospitais', Icon: Hospital, items: nearbyPlaces.hospitals },
     { key: 'malls', label: 'Shopping Centers', Icon: Building, items: nearbyPlaces.malls },
   ]), [nearbyPlaces]);
@@ -339,6 +342,28 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setActivePOITab(availableKeys[0] as any);
     }
   }, [activePOITab, poiCategories]);
+
+  const mapPoiList = useMemo(() => {
+    const list: any[] = [];
+    const push = (arr: any[], emoji: string) => {
+      (arr || []).slice(0, 3).forEach((p: any) => {
+        if (typeof p?.lat !== 'number' || typeof p?.lng !== 'number') return;
+        list.push({ lat: p.lat, lng: p.lng, label: p.name, emoji });
+      });
+    };
+    push(nearbyPlaces.schools, '🏫');
+    push(nearbyPlaces.pharmacies, '💊');
+    push(nearbyPlaces.markets, '🛒');
+    push(nearbyPlaces.restaurants, '🍽️');
+    push(nearbyPlaces.banks, '🏦');
+    push(nearbyPlaces.fuel, '⛽');
+    push(nearbyPlaces.bakeries, '🥐');
+    push(nearbyPlaces.hospitals, '🏥');
+    push(nearbyPlaces.malls, '🛍️');
+    push(nearbyPlaces.parks, '🌳');
+    push(nearbyPlaces.gyms, '💪');
+    return list;
+  }, [nearbyPlaces]);
 
   // Distância aproximada
   const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -684,14 +709,47 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     (async () => {
       try {
         setPoiLoading(true);
-        const res = await fetch(`/api/overpass?lat=${lat}&lng=${lng}&radius=2000`, { method: 'GET' });
-        if (!res.ok) throw new Error(`overpass proxy ${res.status}`);
-        const { elements } = await res.json();
-        const data = normalizePOIs(elements || []);
-        if (!ignore) setNearbyPlaces(data as any);
+        const pickPayload = (d: any) => ({
+          schools: Array.isArray(d?.schools) ? d.schools : [],
+          markets: Array.isArray(d?.markets) ? d.markets : [],
+          pharmacies: Array.isArray(d?.pharmacies) ? d.pharmacies : [],
+          restaurants: Array.isArray(d?.restaurants) ? d.restaurants : [],
+          hospitals: Array.isArray(d?.hospitals) ? d.hospitals : [],
+          malls: Array.isArray(d?.malls) ? d.malls : [],
+          parks: Array.isArray(d?.parks) ? d.parks : [],
+          gyms: Array.isArray(d?.gyms) ? d.gyms : [],
+          fuel: Array.isArray(d?.fuel) ? d.fuel : [],
+          bakeries: Array.isArray(d?.bakeries) ? d.bakeries : [],
+          banks: Array.isArray(d?.banks) ? d.banks : [],
+        });
+
+        try {
+          const placesRes = await fetch(`/api/places-nearby?lat=${lat}&lng=${lng}&radius=2000&perCat=10`, { method: 'GET' });
+          const placesJson = await placesRes.json().catch(() => null);
+          if (placesRes.ok && placesJson?.ok) {
+            if (!ignore) {
+              setPoiSource('google');
+              setNearbyPlaces(pickPayload(placesJson) as any);
+            }
+            return;
+          }
+          throw new Error(String(placesJson?.error || `places proxy ${placesRes.status}`));
+        } catch {
+          const res = await fetch(`/api/overpass?lat=${lat}&lng=${lng}&radius=2000`, { method: 'GET' });
+          if (!res.ok) throw new Error(`overpass proxy ${res.status}`);
+          const { elements } = await res.json();
+          const data = normalizePOIs(elements || []);
+          if (!ignore) {
+            setPoiSource('osm');
+            setNearbyPlaces(data as any);
+          }
+        }
       } catch (err) {
         console.warn('POIs load failed (silent):', err);
-        if (!ignore) setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+        if (!ignore) {
+          setPoiSource(null);
+          setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
+        }
       } finally {
         if (!ignore) setPoiLoading(false);
       }
@@ -718,6 +776,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setShouldLoadArea(false);
       setShouldLoadRelated(false);
       setPoiOpen(false);
+      setPoiSource(null);
       poiFetchedKeyRef.current = null;
     }
   }, [isOpen]);
@@ -1616,11 +1675,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                                     latitude: (property as any).latitude,
                                     longitude: (property as any).longitude,
                                   }]}
-                                  pois={{
-                                    mode: 'auto' as const,
-                                    center: [(property as any).latitude, (property as any).longitude],
-                                    radius: 1000,
-                                  }}
+                                  pois={{ mode: 'list' as const, items: mapPoiList as any }}
                                   hideRefitButton
                                   centeredPriceMarkers
                                   simplePin
@@ -1670,11 +1725,32 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                                 <div className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
                                   {selectedList.slice(0, 8).map((p: any, idx: number) => {
                                     const dist = hasCoords && typeof p.lat === 'number' && typeof p.lng === 'number' ? formatDistance(haversine(lat, lng, p.lat, p.lng)) : null;
+                                    const rating = typeof p?.rating === 'number' && Number.isFinite(p.rating) ? p.rating : null;
+                                    const userRatingCount = typeof p?.userRatingCount === 'number' && Number.isFinite(p.userRatingCount) ? p.userRatingCount : null;
+                                    const openNow = typeof p?.openNow === 'boolean' ? p.openNow : null;
+                                    const address = typeof p?.address === 'string' ? p.address : null;
                                     return (
                                       <div key={`poi-${idx}`} className="flex items-center justify-between gap-3 px-4 py-3 bg-white">
                                         <div className="min-w-0">
                                           <div className="text-sm font-medium text-gray-900 truncate">{p.name}</div>
                                           <div className="text-xs text-gray-500">{(selected as any).label}</div>
+                                          {(rating != null || openNow != null || address) ? (
+                                            <div className="text-[11px] text-gray-500 mt-1 flex flex-wrap gap-x-2 gap-y-1">
+                                              {rating != null && (
+                                                <span className="inline-flex items-center gap-1">
+                                                  <span className="text-yellow-600">★</span>
+                                                  <span className="font-semibold text-gray-700">{rating.toFixed(1)}</span>
+                                                  {userRatingCount != null ? <span>({userRatingCount})</span> : null}
+                                                </span>
+                                              )}
+                                              {openNow != null ? (
+                                                <span className={openNow ? 'text-emerald-700 font-semibold' : 'text-rose-700 font-semibold'}>
+                                                  {openNow ? 'Aberto agora' : 'Fechado agora'}
+                                                </span>
+                                              ) : null}
+                                              {address ? <span className="truncate">{address}</span> : null}
+                                            </div>
+                                          ) : null}
                                         </div>
                                         {dist && (
                                           <span className="shrink-0 text-[11px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
@@ -1689,7 +1765,13 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                             ) : !poiLoading ? (
                               <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mt-4 mb-6 text-center">
                                 <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
-                                <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {poiSource === 'google'
+                                    ? 'Os dados são carregados do Google e podem variar.'
+                                    : poiSource === 'osm'
+                                    ? 'Os dados são carregados do OpenStreetMap e podem variar.'
+                                    : 'Não foi possível carregar os estabelecimentos agora. Tente novamente em instantes.'}
+                                </p>
                               </div>
                             ) : null}
 
