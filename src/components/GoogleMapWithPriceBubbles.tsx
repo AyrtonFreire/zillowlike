@@ -65,12 +65,18 @@ export default function GoogleMapWithPriceBubbles({
   // Activate when visible
   useEffect(() => {
     if (activated) return;
-    if (!autoLoad) return;
+    if (autoLoad) {
+      // Eager-load when requested (search results page needs map immediately)
+      setActivated(true);
+      return;
+    }
+
     const el = containerRef.current;
     if (!el || typeof IntersectionObserver === "undefined") {
       setActivated(true);
       return;
     }
+
     const obs = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
@@ -80,6 +86,7 @@ export default function GoogleMapWithPriceBubbles({
       },
       { root: null, threshold: 0.15, rootMargin: "300px" }
     );
+
     obs.observe(el);
     return () => obs.disconnect();
   }, [activated, autoLoad]);

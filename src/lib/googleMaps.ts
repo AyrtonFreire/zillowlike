@@ -35,7 +35,7 @@ export function loadGoogleMaps() {
     script.async = true;
     script.defer = true;
     script.dataset.googleMaps = "1";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly&libraries=marker`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly&libraries=marker&loading=async`;
     script.onload = () => resolve((window as any).google);
     script.onerror = () => {
       googleMapsPromise = null;

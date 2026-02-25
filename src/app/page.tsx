@@ -3006,7 +3006,7 @@ export default function Home() {
                 <MapWithPriceBubbles
                   items={properties}
                   isLoading={isLoading}
-                  autoLoad={false}
+                  autoLoad={true}
                   onBoundsChange={async (bounds) => {
                   // Fetch properties within the new map bounds MANTENDO os filtros ativos
                   const params = buildSearchParams({

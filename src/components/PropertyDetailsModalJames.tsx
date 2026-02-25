@@ -236,6 +236,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const [activePOITab, setActivePOITab] = useState<'schools' | 'markets' | 'pharmacies' | 'restaurants' | 'hospitals' | 'clinics' | 'parks' | 'gyms' | 'fuel' | 'bakeries' | 'banks'>('schools');
   const [poiLoading, setPoiLoading] = useState(false);
   const [poiOpen, setPoiOpen] = useState(false);
+  const poiFetchedKeyRef = useRef<string | null>(null);
   const trackedViewRef = useRef<Set<string>>(new Set());
   // Lightbox touch resistance state
   const lbStartX = useRef<number | null>(null);
@@ -280,22 +281,17 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   useEffect(() => {
     if (!isOpen) return;
     if (isPreview) return;
-    if (shouldLoadArea && shouldLoadRelated) return;
+    if (shouldLoadRelated) return;
 
     const root = variant === "overlay" ? (scrollContainerRef.current ?? null) : null;
-    const areaEl = areaSectionRef.current;
     const relatedEl = relatedSectionRef.current;
 
-    if ((!areaEl || shouldLoadArea) && (!relatedEl || shouldLoadRelated)) return;
+    if (!relatedEl || shouldLoadRelated) return;
 
     const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
-          if (areaEl && entry.target === areaEl && !shouldLoadArea) {
-            setShouldLoadArea(true);
-            try { obs.unobserve(areaEl); } catch {}
-          }
           if (relatedEl && entry.target === relatedEl && !shouldLoadRelated) {
             setShouldLoadRelated(true);
             try { obs.unobserve(relatedEl); } catch {}
@@ -305,13 +301,12 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       { root, rootMargin: "200px 0px" }
     );
 
-    if (areaEl && !shouldLoadArea) obs.observe(areaEl);
     if (relatedEl && !shouldLoadRelated) obs.observe(relatedEl);
 
     return () => {
       try { obs.disconnect(); } catch {}
     };
-  }, [isOpen, shouldLoadArea, shouldLoadRelated, property, variant, isPreview]);
+  }, [isOpen, shouldLoadRelated, property, variant, isPreview]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -652,9 +647,11 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setSimilarProperties([]);
       setNearbyPlaces({ schools: [], markets: [], pharmacies: [], restaurants: [], hospitals: [], malls: [], parks: [], gyms: [], fuel: [], bakeries: [], banks: [] });
       setPoiLoading(false);
+      setPoiOpen(false);
       setRelatedRequested(false);
       setShouldLoadArea(false);
       setShouldLoadRelated(false);
+      poiFetchedKeyRef.current = null;
       setPhotoViewMode(null);
       setCurrentImageIndex(0);
       setShowThumbGrid(false);
@@ -676,7 +673,13 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     const lat = (property as any)?.latitude;
     const lng = (property as any)?.longitude;
     if (mode !== "public") return;
-    if (!isOpen || !shouldLoadArea || !lat || !lng) return;
+    if (!isOpen || !poiOpen || !shouldLoadArea || !lat || !lng) return;
+
+    const id = (property as any)?.id;
+    const key = `${id ?? ""}:${String(lat)}:${String(lng)}`;
+    if (poiFetchedKeyRef.current === key) return;
+    poiFetchedKeyRef.current = key;
+
     let ignore = false;
     (async () => {
       try {
@@ -694,7 +697,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       }
     })();
     return () => { ignore = true; };
-  }, [isOpen, property, shouldLoadArea, mode]);
+  }, [isOpen, property, shouldLoadArea, mode, poiOpen]);
 
   // Reset on close
   useEffect(() => {
@@ -714,6 +717,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       setRelatedRequested(false);
       setShouldLoadArea(false);
       setShouldLoadRelated(false);
+      setPoiOpen(false);
+      poiFetchedKeyRef.current = null;
     }
   }, [isOpen]);
 
@@ -1553,98 +1558,95 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
 
               {mode === "public" && (
                 <div ref={areaSectionRef} className="py-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Explore a Região</h3>
+                  {(() => {
+                    const lat = (property as any).latitude;
+                    const lng = (property as any).longitude;
+                    const hasCoords = typeof lat === 'number' && typeof lng === 'number';
 
-                  {/* Mapa com POIs */}
-                  {shouldLoadArea && (property as any).latitude && (property as any).longitude && (
-                    <div className="rounded-2xl border border-teal/10 overflow-hidden bg-white shadow-sm">
-                      <Map
-                        items={[{
-                          id: property.id,
-                          price: property.price,
-                          latitude: (property as any).latitude,
-                          longitude: (property as any).longitude,
-                        }]}
-                        pois={{
-                          mode: 'auto' as const,
-                          center: [(property as any).latitude, (property as any).longitude],
-                          radius: 1000,
-                        }}
-                        hideRefitButton
-                        centeredPriceMarkers
-                        simplePin
-                        limitInteraction={{ minZoom: 13, maxZoom: 16, radiusMeters: 2000 }}
-                      />
-                    </div>
-                  )}
+                    const available = poiCategories
+                      .filter((c) => Array.isArray(c.items) && (c.items as any[]).length > 0)
+                      .map((c) => {
+                        const base = ((c.items as any[]) || []).slice();
+                        base.sort((a: any, b: any) => {
+                          if (hasCoords) {
+                            const d1 = (a.lat - lat) * (a.lat - lat) + (a.lng - lng) * (a.lng - lng);
+                            const d2 = (b.lat - lat) * (b.lat - lat) + (b.lng - lng) * (b.lng - lng);
+                            return d1 - d2;
+                          }
+                          return String(a.name).localeCompare(String(b.name));
+                        });
+                        return { ...c, sorted: base };
+                      });
 
-                  {/* Skeleton de POIs */}
-                  {poiLoading && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                      {Array.from({ length: 6 }).map((_v: unknown, i: number) => (
-                        <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 animate-pulse">
-                          <div className="h-4 w-32 bg-gray-200 rounded mb-3" />
-                          <div className="space-y-2">
-                            <div className="h-3 w-5/6 bg-gray-200 rounded" />
-                            <div className="h-3 w-2/3 bg-gray-200 rounded" />
-                            <div className="h-3 w-3/4 bg-gray-200 rounded" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    const totalPois = (available as any[]).reduce((acc: number, c: any) => acc + (((c.items as any[]) || []).length), 0);
 
-                  {!shouldLoadArea ? (
-                    <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
-                      <p className="text-sm text-gray-600">Carregando mapa e pontos de interesse...</p>
-                      <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
-                    </div>
-                  ) : (nearbyPlaces.schools.length > 0 || nearbyPlaces.markets.length > 0 || nearbyPlaces.pharmacies.length > 0 || nearbyPlaces.restaurants.length > 0 || nearbyPlaces.hospitals.length > 0 || nearbyPlaces.parks.length > 0 || nearbyPlaces.gyms.length > 0 || nearbyPlaces.fuel.length > 0 || nearbyPlaces.bakeries.length > 0 || nearbyPlaces.banks.length > 0 || nearbyPlaces.malls.length > 0) ? (
-                    <div className="mb-6">
-                      {(() => {
-                        const lat = (property as any).latitude;
-                        const lng = (property as any).longitude;
-                        const hasCoords = typeof lat === 'number' && typeof lng === 'number';
+                    const selected = (available as any[]).find((c: any) => c.key === activePOITab) || (available as any[])[0];
+                    const selectedList = (selected as any)?.sorted || [];
 
-                        const available = poiCategories
-                          .filter((c) => Array.isArray(c.items) && (c.items as any[]).length > 0)
-                          .map((c) => {
-                            const base = ((c.items as any[]) || []).slice();
-                            base.sort((a: any, b: any) => {
-                              if (hasCoords) {
-                                const d1 = (a.lat - lat) * (a.lat - lat) + (a.lng - lng) * (a.lng - lng);
-                                const d2 = (b.lat - lat) * (b.lat - lat) + (b.lng - lng) * (b.lng - lng);
-                                return d1 - d2;
-                              }
-                              return String(a.name).localeCompare(String(b.name));
-                            });
-                            return { ...c, sorted: base };
-                          });
+                    const toggle = () => {
+                      setPoiOpen((v) => {
+                        const next = !v;
+                        if (next && !shouldLoadArea) setShouldLoadArea(true);
+                        return next;
+                      });
+                    };
 
-                        if (available.length === 0) return null;
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          onClick={toggle}
+                          className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+                        >
+                          <span className="text-sm font-semibold text-gray-900">Explore a Região</span>
+                          <span className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                            <span>{totalPois}</span>
+                            <ChevronDown className={`w-4 h-4 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
+                          </span>
+                        </button>
 
-                        const selected = (available as any[]).find((c: any) => c.key === activePOITab) || (available as any[])[0];
-                        const selectedList = (selected as any).sorted || [];
-
-                        const totalPois = (available as any[]).reduce((acc: number, c: any) => acc + (((c.items as any[]) || []).length), 0);
-
-                        return (
+                        {poiOpen && (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => setPoiOpen((v) => !v)}
-                              className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
-                            >
-                              <span className="text-sm font-semibold text-gray-900">Estabelecimentos próximos</span>
-                              <span className="flex items-center gap-2 text-xs font-semibold text-gray-600">
-                                <span>{totalPois}</span>
-                                <ChevronDown className={`w-4 h-4 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
-                              </span>
-                            </button>
+                            {shouldLoadArea && hasCoords && (
+                              <div className="mt-4 h-64 md:h-72 rounded-2xl border border-teal/10 overflow-hidden bg-white shadow-sm">
+                                <Map
+                                  items={[{
+                                    id: property.id,
+                                    price: property.price,
+                                    latitude: (property as any).latitude,
+                                    longitude: (property as any).longitude,
+                                  }]}
+                                  pois={{
+                                    mode: 'auto' as const,
+                                    center: [(property as any).latitude, (property as any).longitude],
+                                    radius: 1000,
+                                  }}
+                                  hideRefitButton
+                                  centeredPriceMarkers
+                                  simplePin
+                                  limitInteraction={{ minZoom: 13, maxZoom: 16, radiusMeters: 2000 }}
+                                />
+                              </div>
+                            )}
 
-                            {poiOpen && (
-                              <>
-                                <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                            {poiLoading && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 mb-6">
+                                {Array.from({ length: 6 }).map((_v: unknown, i: number) => (
+                                  <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 animate-pulse">
+                                    <div className="h-4 w-32 bg-gray-200 rounded mb-3" />
+                                    <div className="space-y-2">
+                                      <div className="h-3 w-5/6 bg-gray-200 rounded" />
+                                      <div className="h-3 w-2/3 bg-gray-200 rounded" />
+                                      <div className="h-3 w-3/4 bg-gray-200 rounded" />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {!poiLoading && available.length > 0 ? (
+                              <div className="mt-4 mb-6">
+                                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                                   {(available as any[]).map((c: any) => (
                                     <button
                                       key={`poi-tab-${c.key}`}
@@ -1683,27 +1685,27 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                                     );
                                   })}
                                 </div>
-                              </>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  ) : (
-                    <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mb-6 text-center">
-                      <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
-                      <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
-                    </div>
-                  )}
+                              </div>
+                            ) : !poiLoading ? (
+                              <div className="bg-stone-50 border border-stone-200 rounded-lg p-6 mt-4 mb-6 text-center">
+                                <p className="text-sm text-gray-600">Nenhum estabelecimento encontrado nos arredores (2 km).</p>
+                                <p className="text-xs text-gray-500 mt-1">Os dados são carregados do OpenStreetMap e podem variar.</p>
+                              </div>
+                            ) : null}
 
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.street}, ${property.city}, ${property.state}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium mb-8"
-                  >
-                    Explorar no Google Maps →
-                  </a>
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.street}, ${property.city}, ${property.state}`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium mb-8"
+                            >
+                              Explorar no Google Maps →
+                            </a>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   <div className="md:hidden mb-8">
                     <PropertyContactCard
