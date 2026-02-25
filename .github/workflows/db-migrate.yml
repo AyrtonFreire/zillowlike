@@ -32,13 +32,16 @@ jobs:
           node -e "console.log('has_NODE_AUTH_TOKEN=' + String(!!process.env.NODE_AUTH_TOKEN))"
           node -e "console.log('has_NPM_TOKEN=' + String(!!process.env.NPM_TOKEN))"
 
-      - name: Force public npm registry
+      - name: Prepare npm userconfig
         run: |
-          npm config set registry https://registry.npmjs.org/
-          npm config set always-auth false
+          echo "registry=https://registry.npmjs.org/" > "$RUNNER_TEMP/.npmrc"
+          echo "always-auth=false" >> "$RUNNER_TEMP/.npmrc"
 
       - name: Install
-        run: npm ci
+        run: npm ci --userconfig "$RUNNER_TEMP/.npmrc"
+        env:
+          NODE_AUTH_TOKEN: ""
+          NPM_TOKEN: ""
 
       - name: Validate DB secrets
         run: |
