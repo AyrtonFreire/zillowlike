@@ -41,13 +41,13 @@ const nextConfig: NextConfig = {
   async headers() {
     const cspDirectives = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "style-src-attr 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https: https://res.cloudinary.com",
+      "img-src 'self' data: blob: https: https://res.cloudinary.com https://maps.gstatic.com https://maps.googleapis.com",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' https://vitals.vercel-insights.com https://api.cloudinary.com https://*.supabase.co https://*.pusher.com wss://*.pusher.com https://nominatim.openstreetmap.org",
+      "connect-src 'self' https://vitals.vercel-insights.com https://api.cloudinary.com https://*.supabase.co https://*.pusher.com wss://*.pusher.com https://nominatim.openstreetmap.org https://maps.googleapis.com https://maps.gstatic.com",
       "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com",
       "frame-ancestors 'none'",
     ];
