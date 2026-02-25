@@ -47,6 +47,7 @@ export default function GoogleMapWithPriceBubbles({
   const idleListenerRef = useRef<any>(null);
   const debounceRef = useRef<any>(null);
   const userMovedRef = useRef(false);
+  const lastBoundsKeyRef = useRef<string | null>(null);
   const userMoveListenersRef = useRef<any[]>([]);
   const renderRef = useRef<(() => void) | null>(null);
 
@@ -110,9 +111,11 @@ export default function GoogleMapWithPriceBubbles({
 
   // Init map
   useEffect(() => {
-    if (!ready || isLoading) return;
+    if (!ready) return;
     if (!containerRef.current) return;
     if (mapRef.current) return;
+
+    if (isLoading) return;
 
     const google = (window as any).google;
     if (!google?.maps?.Map || typeof google.maps.Map !== "function") {
@@ -155,6 +158,10 @@ export default function GoogleMapWithPriceBubbles({
       userMoveListenersRef.current = [];
     }
 
+  }, [ready, isLoading]);
+
+  // Cleanup only on unmount (avoid resetting map on items/center changes)
+  useEffect(() => {
     return () => {
       try {
         if (idleListenerRef.current) idleListenerRef.current.remove();
@@ -166,7 +173,7 @@ export default function GoogleMapWithPriceBubbles({
       idleListenerRef.current = null;
       mapRef.current = null;
     };
-  }, [ready, isLoading, center]);
+  }, []);
 
   // Highlight state from events
   const highlightedIdRef = useRef<string | null>(null);
@@ -457,17 +464,25 @@ export default function GoogleMapWithPriceBubbles({
         // bounds change (debounced)
         if (onBoundsChange) {
           if (!userMovedRef.current) return;
+          // Only trigger once per user interaction; new drag/zoom will set it again
+          userMovedRef.current = false;
           if (debounceRef.current) clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
             try {
               const b = map.getBounds?.();
               if (!b) return;
-              onBoundsChange({
+
+              const payload = {
                 minLat: b.getSouthWest().lat(),
                 maxLat: b.getNorthEast().lat(),
                 minLng: b.getSouthWest().lng(),
                 maxLng: b.getNorthEast().lng(),
-              });
+              };
+
+              const key = `${payload.minLat.toFixed(5)},${payload.maxLat.toFixed(5)},${payload.minLng.toFixed(5)},${payload.maxLng.toFixed(5)}`;
+              if (lastBoundsKeyRef.current === key) return;
+              lastBoundsKeyRef.current = key;
+              onBoundsChange(payload);
             } catch {}
           }, 500);
         }
