@@ -15,7 +15,7 @@ import { buildPropertyPath } from "@/lib/slug";
 import { ptBR } from "@/lib/i18n/property";
 import { parseVideoUrl } from "@/lib/video";
 
-const Map = dynamic(() => import("@/components/Map"), { ssr: false });
+const Map = dynamic(() => import("@/components/GoogleMap"), { ssr: false });
 const SimilarCarousel = dynamic(() => import("@/components/SimilarCarousel"), { ssr: false });
 const PropertyContactCard = dynamic(() => import("@/components/PropertyContactCard"), { ssr: false });
 

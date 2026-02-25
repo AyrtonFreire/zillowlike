@@ -14,7 +14,7 @@ import { ptBR } from "@/lib/i18n/property";
 
 type Property = ApiProperty;
 
-const Map = dynamic(() => import("@/components/Map"), { ssr: false });
+const Map = dynamic(() => import("@/components/GoogleMap"), { ssr: false });
 
 export default function HomeClient() {
   const router = useRouter();

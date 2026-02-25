@@ -29,7 +29,7 @@ import type { ApiProperty } from "@/types/api";
 import { ptBR } from "@/lib/i18n/property";
 
 type Property = ApiProperty;
-const MapWithPriceBubbles = dynamic(() => import("@/components/MapWithPriceBubbles"), { ssr: false });
+const MapWithPriceBubbles = dynamic(() => import("@/components/GoogleMapWithPriceBubbles"), { ssr: false });
 
 type SearchSuggestion =
   | { kind: "location"; label: string; city: string; state: string; neighborhood: string | null; count: number }
@@ -3006,6 +3006,7 @@ export default function Home() {
                 <MapWithPriceBubbles
                   items={properties}
                   isLoading={isLoading}
+                  autoLoad={false}
                   onBoundsChange={async (bounds) => {
                   // Fetch properties within the new map bounds MANTENDO os filtros ativos
                   const params = buildSearchParams({
@@ -3442,6 +3443,7 @@ export default function Home() {
             <MapWithPriceBubbles
               items={properties}
               isLoading={isLoading}
+              autoLoad={true}
               onBoundsChange={async (bounds) => {
                 // Fetch properties within the new map bounds MANTENDO os filtros ativos (mobile)
                 const params = buildSearchParams({
