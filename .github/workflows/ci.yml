@@ -22,25 +22,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-
-      - name: NPM diagnostics (safe)
-        run: |
-          node --version
-          npm --version
-          echo "registry=$(npm config get registry)"
-          echo "always-auth=$(npm config get always-auth)"
-          node -e "console.log('has_NODE_AUTH_TOKEN=' + String(!!process.env.NODE_AUTH_TOKEN))"
-          node -e "console.log('has_NPM_TOKEN=' + String(!!process.env.NPM_TOKEN))"
-
-      - name: Prepare npm userconfig
-        run: |
-          echo "registry=https://registry.npmjs.org/" > "$RUNNER_TEMP/.npmrc"
       
       - name: Install dependencies
-        run: npm ci --userconfig "$RUNNER_TEMP/.npmrc"
-        env:
-          NODE_AUTH_TOKEN: ""
-          NPM_TOKEN: ""
+        run: npm ci
       
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -88,26 +72,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-
-      - name: NPM diagnostics (safe)
-        run: |
-          node --version
-          npm --version
-          echo "registry=$(npm config get registry)"
-          echo "always-auth=$(npm config get always-auth)"
-          node -e "console.log('has_NODE_AUTH_TOKEN=' + String(!!process.env.NODE_AUTH_TOKEN))"
-          node -e "console.log('has_NPM_TOKEN=' + String(!!process.env.NPM_TOKEN))"
-
-      - name: Prepare npm userconfig
-        run: |
-          echo "registry=https://registry.npmjs.org/" > "$RUNNER_TEMP/.npmrc"
-          echo "always-auth=false" >> "$RUNNER_TEMP/.npmrc"
       
       - name: Install dependencies
-        run: npm ci --userconfig "$RUNNER_TEMP/.npmrc"
-        env:
-          NODE_AUTH_TOKEN: ""
-          NPM_TOKEN: ""
+        run: npm ci
       
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -139,25 +106,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-
-      - name: NPM diagnostics (safe)
-        run: |
-          node --version
-          npm --version
-          echo "registry=$(npm config get registry)"
-          echo "always-auth=$(npm config get always-auth)"
-          node -e "console.log('has_NODE_AUTH_TOKEN=' + String(!!process.env.NODE_AUTH_TOKEN))"
-          node -e "console.log('has_NPM_TOKEN=' + String(!!process.env.NPM_TOKEN))"
-
-      - name: Prepare npm userconfig
-        run: |
-          echo "registry=https://registry.npmjs.org/" > "$RUNNER_TEMP/.npmrc"
       
       - name: Install dependencies
-        run: npm ci --userconfig "$RUNNER_TEMP/.npmrc"
-        env:
-          NODE_AUTH_TOKEN: ""
-          NPM_TOKEN: ""
+        run: npm ci
       
       - name: Generate Prisma Client
         run: npx prisma generate

@@ -55,6 +55,7 @@ export default function GoogleMapWithPriceBubbles({
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const fatalErrorRef = useRef(false);
+  const [mapNonce, setMapNonce] = useState(0);
 
   const center = useMemo(() => {
     if (Array.isArray(items) && items.length > 0) {
@@ -131,6 +132,8 @@ export default function GoogleMapWithPriceBubbles({
       map = new google.maps.Map(containerRef.current, {
         center: { lat: center[0], lng: center[1] },
         zoom: 13,
+        minZoom: 10,
+        maxZoom: 18,
         mapId,
         disableDefaultUI: true,
         zoomControl: true,
@@ -144,6 +147,9 @@ export default function GoogleMapWithPriceBubbles({
     }
 
     mapRef.current = map;
+    try {
+      setMapNonce((n) => n + 1);
+    } catch {}
 
     // Mark that the user moved the map (avoid onBoundsChange on initial idle)
     const onUserMoved = () => {
@@ -518,7 +524,7 @@ export default function GoogleMapWithPriceBubbles({
       idleListenerRef.current = null;
       renderRef.current = null;
     };
-  }, [items, isLoading, onBoundsChange, onHoverChange]);
+  }, [items, isLoading, onBoundsChange, onHoverChange, mapNonce]);
 
   const showPlaceholder = isLoading || !activated || !ready;
 
