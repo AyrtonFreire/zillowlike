@@ -201,6 +201,38 @@ export default function HeroSection() {
           localStorage.setItem('lastState', suggestion.state);
         } catch {}
       }
+
+      let params = new URLSearchParams();
+      params.set('city', suggestion.city);
+      params.set('state', suggestion.state);
+      if (suggestion.neighborhood) {
+        params.set('q', suggestion.neighborhood);
+      }
+
+      if (propertyType) {
+        const typeMap: Record<string, string> = {
+          'Casa': 'HOUSE',
+          'Apartamento': 'APARTMENT',
+          'Condomínio': 'CONDO',
+          'Terreno': 'LAND',
+          'Comercial': 'COMMERCIAL',
+          'Rural': 'RURAL',
+          '': ''
+        };
+        const mapped = typeMap[propertyType] || '';
+        if (mapped) params.set('type', mapped);
+      }
+
+      if (priceRange) {
+        params.set('minPrice', priceRange);
+      }
+
+      if (bedrooms) {
+        params.set('bedroomsMin', bedrooms);
+      }
+
+      params.set('purpose', purpose);
+      router.push(`/?${params.toString()}`);
       return;
     }
 
