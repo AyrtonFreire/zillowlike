@@ -133,7 +133,10 @@ async function searchNearby(params: {
 
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(`Places error ${res.status}: ${txt.slice(0, 300)}`);
+    const err: any = new Error(`Places error ${res.status}: ${txt.slice(0, 600)}`);
+    err.status = res.status;
+    err.upstream = txt.slice(0, 2000);
+    throw err;
   }
 
   const data = await res.json();
@@ -209,8 +212,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "lat/lng required", ...emptyPayload() }, { status: 400 });
     }
 
-    const key =
-      (process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "").trim();
+    const key = (
+      process.env.GOOGLE_PLACES_API_KEY ||
+      process.env.GOOGLE_MAPS_API_KEY ||
+      (process.env.NODE_ENV !== "production" ? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY : "") ||
+      ""
+    ).trim();
     if (!key) {
       return NextResponse.json(
         { ok: false, error: "Missing GOOGLE_PLACES_API_KEY", ...emptyPayload() },
@@ -264,9 +271,11 @@ export async function GET(req: NextRequest) {
     out.headers.set("Cache-Control", "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800");
     return out;
   } catch (e: any) {
+    const statusRaw = Number((e as any)?.status);
+    const status = Number.isFinite(statusRaw) && statusRaw >= 400 && statusRaw <= 599 ? statusRaw : 502;
     return NextResponse.json(
       { ok: false, error: String(e?.message || e), ...emptyPayload() },
-      { status: 502 }
+      { status }
     );
   }
 }
