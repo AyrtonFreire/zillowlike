@@ -102,7 +102,7 @@ function formatListingDescription(raw: string) {
       .split(/\n\n+/)
       .map((p) => p.replace(/^\s*[-•]\s+/gm, "").trim())
       .filter(Boolean)
-      .slice(0, 4);
+      .slice(0, 8);
     return paras.map((p) => wrapText(p, 88)).join("\n\n");
   }
 
@@ -115,10 +115,12 @@ function formatListingDescription(raw: string) {
     return wrapText(base, 88);
   }
 
-  const p1 = sentences.slice(0, Math.min(3, sentences.length)).join(" ");
-  const p2 = sentences.slice(Math.min(3, sentences.length), Math.min(6, sentences.length)).join(" ");
-  const p3 = sentences.slice(Math.min(6, sentences.length)).join(" ");
-  const paragraphs = [p1, p2, p3].map((p) => p.trim()).filter(Boolean);
+  const paragraphs: string[] = [];
+  for (let i = 0; i < sentences.length; i += 3) {
+    const chunk = sentences.slice(i, i + 3).join(" ").trim();
+    if (chunk) paragraphs.push(chunk);
+    if (paragraphs.length >= 8) break;
+  }
   return paragraphs.map((p) => wrapText(p, 88)).join("\n\n");
 }
 
@@ -332,7 +334,7 @@ async function handler(req: NextRequest) {
     "   - Prova: mencionar que há fotos/detalhes ou que o valor está atualizado, sem inventar.\n" +
     "   - CTA leve: 'Veja fotos', 'Saiba mais', 'Agende uma visita', 'Fale com um corretor'.\n" +
     "   - Proibido: telefone, e-mail, links, emojis, urgência/agressividade, superlativos.\n" +
-    "4) description (Texto do anúncio): pelo menos 3 parágrafos, separados por uma linha em branco (\\n\\n).\n" +
+    "4) description (Texto do anúncio): pelo menos 5 parágrafos, separados por uma linha em branco (\\n\\n).\n" +
     "   - Cada parágrafo deve ter 2 a 4 frases.\n" +
     "   - Use quebras de linha (\\n) dentro dos parágrafos para deixar o texto agradável de ler.\n" +
     "5) Não invente fatos. Não inferir: vista, metragem não informada, mobília, vagas, andar, condomínio/IPTU, reforma, alto padrão, proximidade de pontos de interesse, orientação solar, etc., a menos que esteja nos dados ou claramente visível nas fotos.\n" +
@@ -382,7 +384,7 @@ async function handler(req: NextRequest) {
           model,
           messages: payloadMessages,
           temperature: 0.6,
-          max_tokens: 1000,
+          max_tokens: 1800,
         }),
         signal: controller.signal,
       });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft, Eye, X } from "lucide-react";
+import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft, Eye, X, Sparkles, CheckCircle2, Circle, ArrowUpRight, FileText, Search, ShieldCheck, Star } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -11,6 +11,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
 import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
 import { geocodeAddressParts } from "@/lib/geocode";
+import { loadGoogleMaps } from "@/lib/googleMaps";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import { buildPropertyPath } from "@/lib/slug";
 import { parseVideoUrl } from "@/lib/video";
@@ -104,13 +105,11 @@ export default function NewPropertyPage() {
   const [positionBack, setPositionBack] = useState(false); // fundos
   const [petsSmall, setPetsSmall] = useState(false);
   const [petsLarge, setPetsLarge] = useState(false);
-  const [condoRules, setCondoRules] = useState('');
   const [secCCTV, setSecCCTV] = useState(false);
   const [secSallyPort, setSecSallyPort] = useState(false);
   const [secNightGuard, setSecNightGuard] = useState(false);
   const [secElectricFence, setSecElectricFence] = useState(false);
   // Accordion visibility
-  const [openAcc, setOpenAcc] = useState<{[k:string]:boolean}>({});
   const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
 
   const clearFieldError = (key: string) => {
@@ -243,52 +242,6 @@ export default function NewPropertyPage() {
   );
 
   // Contadores para grupos de detalhes (usados nos headers dos accordions)
-  const accAccessibilityCount = (accRamps ? 1 : 0) + (accWideDoors ? 1 : 0) + (accAccessibleElevator ? 1 : 0) + (accTactile ? 1 : 0);
-  const accComfortCount = (comfortAC ? 1 : 0) + (comfortHeating ? 1 : 0) + (comfortSolar ? 1 : 0) + (comfortNoiseWindows ? 1 : 0) + (comfortLED ? 1 : 0) + (comfortWaterReuse ? 1 : 0);
-  const accFinishCount = (finishFloor ? 1 : 0) + (finishCabinets ? 1 : 0) + (finishCounterGranite ? 1 : 0) + (finishCounterQuartz ? 1 : 0);
-  const accViewCount = (viewSea ? 1 : 0) + (viewCity ? 1 : 0) + (positionFront ? 1 : 0) + (positionBack ? 1 : 0) + (sunByRoomNote ? 1 : 0);
-  const accPetsCount = (petsSmall ? 1 : 0) + (petsLarge ? 1 : 0) + (condoRules ? 1 : 0);
-  const accSecurityCount = (secCCTV ? 1 : 0) + (secSallyPort ? 1 : 0) + (secNightGuard ? 1 : 0) + (secElectricFence ? 1 : 0);
-  const accMeasuresCount = [builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2].filter((v) => String(v || "").trim()).length;
-  const accFeaturesCount = (hasBalcony ? 1 : 0) + (petFriendly ? 1 : 0) + conditionTags.filter((t) => PROPERTY_FEATURE_TAG_SET.has(t)).length;
-  const accCondoCount =
-    (hasElevator ? 1 : 0) +
-    (hasPool ? 1 : 0) +
-    (hasGym ? 1 : 0) +
-    (hasGourmet ? 1 : 0) +
-    (hasPlayground ? 1 : 0) +
-    (hasPartyRoom ? 1 : 0) +
-    (hasConcierge24h ? 1 : 0);
-  const accConditionCount = conditionTags.filter((t) => CONDITION_STATUS_SET.has(t) || CONDITION_EXTRA_SET.has(t)).length;
-
-  // Auto-open accordions if any inner field is filled
-  useEffect(() => {
-    const next = { ...openAcc } as any;
-    const accFilled = accRamps || accWideDoors || accAccessibleElevator || accTactile;
-    if (accFilled) next.acc_acc = true;
-    const ceFilled = comfortAC || comfortHeating || comfortSolar || comfortNoiseWindows || comfortLED || comfortWaterReuse;
-    if (ceFilled) next.acc_ce = true;
-    const finFilled = !!finishFloor || finishCabinets || finishCounterGranite || finishCounterQuartz;
-    if (finFilled) next.acc_fin = true;
-    const viewFilled = viewSea || viewCity || positionFront || positionBack || !!sunByRoomNote;
-    if (viewFilled) next.acc_view = true;
-    const petsFilled = petsSmall || petsLarge || !!condoRules;
-    if (petsFilled) next.acc_pets = true;
-    const secFilled = secCCTV || secSallyPort || secNightGuard || secElectricFence;
-    if (secFilled) next.acc_sec = true;
-
-    const measuresFilled = !!builtAreaM2 || !!lotAreaM2 || !!privateAreaM2 || !!usableAreaM2;
-    if (measuresFilled) next.acc_measures = true;
-    const featureTagsFilled = conditionTags.some((t) => PROPERTY_FEATURE_TAG_SET.has(t));
-    const featuresFilled = hasBalcony || petFriendly || featureTagsFilled;
-    if (featuresFilled) next.acc_features = true;
-    const condoFilled = hasElevator || hasPool || hasGym || hasGourmet || hasPlayground || hasPartyRoom || hasConcierge24h;
-    if (condoFilled) next.acc_condo = true;
-    const conditionFilled = conditionTags.some((t) => CONDITION_STATUS_SET.has(t) || CONDITION_EXTRA_SET.has(t));
-    if (conditionFilled) next.acc_condition = true;
-    setOpenAcc(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, hasBalcony, petFriendly, conditionTags, hasElevator, hasPool, hasGym, hasGourmet, hasPlayground, hasPartyRoom, hasConcierge24h]);
 
   // Heurística: sugerir capa movendo imagem com nome/fachada
   function suggestCover() {
@@ -397,13 +350,12 @@ export default function NewPropertyPage() {
   const [hideCondoFee, setHideCondoFee] = useState(false);
   const [hideIPTU, setHideIPTU] = useState(false);
   
-  // Leaflet
+  // Map
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const leafletMap = useRef<any>(null);
-  const leafletMarker = useRef<any>(null);
-  const leafletResizeHandler = useRef<(() => void) | null>(null);
-  const leafletModuleRef = useRef<any>(null);
-  const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const googleMap = useRef<any>(null);
+  const googleMarker = useRef<any>(null);
+  const [googleMapsReady, setGoogleMapsReady] = useState(false);
+  const [googleMapsError, setGoogleMapsError] = useState<string | null>(null);
 
   const openLightbox = (i: number) => setLightbox({ open: true, index: i });
   const closeLightbox = () => setLightbox({ open: false, index: 0 });
@@ -450,16 +402,13 @@ export default function NewPropertyPage() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const mod: any = await import("leaflet");
-        if (cancelled) return;
-        leafletModuleRef.current = mod?.default ?? mod;
-        setLeafletLoaded(true);
-      } catch (e) {
-        console.error("Failed to load Leaflet:", e);
-      }
-    })();
+    loadGoogleMaps()
+      .then(() => {
+        if (!cancelled) setGoogleMapsReady(true);
+      })
+      .catch((e) => {
+        if (!cancelled) setGoogleMapsError(String(e?.message || e));
+      });
     return () => {
       cancelled = true;
     };
@@ -529,78 +478,72 @@ export default function NewPropertyPage() {
 
   useEffect(() => {
     if (currentStep === 1) return;
-    if (typeof window !== 'undefined' && leafletResizeHandler.current) {
-      try { window.removeEventListener('resize', leafletResizeHandler.current); } catch {}
-      leafletResizeHandler.current = null;
+    if (googleMarker.current) {
+      try { googleMarker.current.setMap(null); } catch {}
+      googleMarker.current = null;
     }
-    if (leafletMap.current) {
-      try { leafletMap.current.remove(); } catch {}
-      leafletMap.current = null;
+    googleMap.current = null;
+    if (mapContainerRef.current) {
+      try { mapContainerRef.current.innerHTML = ""; } catch {}
     }
-    leafletMarker.current = null;
   }, [currentStep]);
 
-  // Initialize/Update Leaflet map when on Step 2 and geo available
+  // Initialize/Update map when on Step 1 and geo available
   useEffect(() => {
-    if (!leafletLoaded || currentStep !== 1) return;
+    if (!googleMapsReady || currentStep !== 1) return;
     if (!mapContainerRef.current) return;
-    const L = leafletModuleRef.current;
-    if (!L) return;
-    const container = mapContainerRef.current;
-    const existingContainer = leafletMap.current?.getContainer?.() || leafletMap.current?._container;
-    if (leafletMap.current && existingContainer && existingContainer !== container) {
-      try { leafletMap.current.remove(); } catch {}
-      leafletMap.current = null;
-      leafletMarker.current = null;
-    }
-    // Create map once
-    if (!leafletMap.current) {
-      const center: [number, number] = geo ? [geo.lat, geo.lng] : [-9.3986, -40.5017]; // Petrolina as default
-      leafletMap.current = L.map(container).setView(center, 14);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' }).addTo(leafletMap.current);
-      // Ensure correct sizing after render
-      setTimeout(() => { try { leafletMap.current.invalidateSize(); } catch {} }, 0);
-      // Invalidate on resize
-      const onResize = () => { try { leafletMap.current?.invalidateSize(); } catch {} };
-      leafletResizeHandler.current = onResize;
-      window.addEventListener('resize', onResize);
-    }
-    // Create/update marker when geo exists
-    if (geo && leafletMap.current) {
-      const addressPin = L.divIcon({
-        html: `<div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:#0f766e;color:#fff;border-radius:9999px;box-shadow:0 10px 30px rgba(0,0,0,.22);border:2px solid #ffffff"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.134 2 5 5.134 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></div>`,
-        className: "",
-        iconSize: [34, 34],
-        iconAnchor: [17, 34],
+    if (googleMapsError) return;
+
+    const google = (window as any).google;
+    const mapId = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "").trim() || undefined;
+    const center = geo ? { lat: geo.lat, lng: geo.lng } : { lat: -9.3986, lng: -40.5017 };
+
+    if (!googleMap.current) {
+      googleMap.current = new google.maps.Map(mapContainerRef.current, {
+        center,
+        zoom: 14,
+        mapId,
+        disableDefaultUI: true,
+        zoomControl: true,
+        clickableIcons: false,
+        keyboardShortcuts: false,
       });
-      const geoTuple = [geo.lat, geo.lng] as [number, number];
-      if (!leafletMarker.current) {
-        // Create marker
-        try {
-          leafletMarker.current = L.marker(geoTuple, { draggable: true, icon: addressPin }).addTo(leafletMap.current);
-          leafletMarker.current.on('dragend', () => {
-            const p = leafletMarker.current.getLatLng();
-            setGeo({ lat: p.lat, lng: p.lng });
-          });
-        } catch (e) {
-          console.error('Error creating marker:', e);
-        }
-      } else {
-        // Update existing marker position
-        try {
-          leafletMarker.current.setLatLng(geoTuple);
-        } catch (e) {
-          console.error('Error updating marker:', e);
-        }
-      }
-      // Center map
-      try {
-        leafletMap.current.setView(geoTuple);
-      } catch (e) {
-        console.error('Error centering map:', e);
-      }
     }
-  }, [leafletLoaded, currentStep, geo]);
+
+    if (geo && googleMap.current) {
+      try { googleMap.current.panTo({ lat: geo.lat, lng: geo.lng }); } catch {}
+    }
+
+    const shouldHaveMarker = !!geo && !!String(addressNumber || "").trim();
+    if (!shouldHaveMarker) {
+      if (googleMarker.current) {
+        try { googleMarker.current.setMap(null); } catch {}
+        googleMarker.current = null;
+      }
+      return;
+    }
+
+    if (!googleMarker.current) {
+      try {
+        googleMarker.current = new google.maps.Marker({
+          position: { lat: geo!.lat, lng: geo!.lng },
+          map: googleMap.current,
+          draggable: true,
+        });
+        googleMarker.current.addListener("dragend", () => {
+          try {
+            const p = googleMarker.current.getPosition?.();
+            if (!p) return;
+            setGeo({ lat: p.lat(), lng: p.lng() });
+          } catch {}
+        });
+      } catch {}
+    } else {
+      try { googleMarker.current.setMap(googleMap.current); } catch {}
+      try { googleMarker.current.setDraggable(true); } catch {}
+      try { googleMarker.current.setPosition({ lat: geo!.lat, lng: geo!.lng }); } catch {}
+    }
+  }, [googleMapsReady, googleMapsError, currentStep, geo, addressNumber]);
 
   // Helper to geocode with or without number
   async function geocodeNow(withNumber: boolean) {
@@ -618,9 +561,9 @@ export default function NewPropertyPage() {
       if (result && result.lat && result.lng) {
         setGeo({ lat: result.lat, lng: result.lng });
         // if we don't have number, ensure no marker yet
-        if (!withNumber && leafletMarker.current && leafletMap.current) {
-          try { leafletMap.current.removeLayer(leafletMarker.current); } catch {}
-          leafletMarker.current = null;
+        if (!withNumber && googleMarker.current) {
+          try { googleMarker.current.setMap(null); } catch {}
+          googleMarker.current = null;
         }
       }
     } catch (e) {
@@ -1157,7 +1100,6 @@ export default function NewPropertyPage() {
 
       if (typeof d.petsSmall === 'boolean') setPetsSmall(d.petsSmall);
       if (typeof d.petsLarge === 'boolean') setPetsLarge(d.petsLarge);
-      if (typeof d.condoRules === 'string') setCondoRules(d.condoRules);
 
       if (typeof d.secCCTV === 'boolean') setSecCCTV(d.secCCTV);
       if (typeof d.secSallyPort === 'boolean') setSecSallyPort(d.secSallyPort);
@@ -1296,7 +1238,6 @@ export default function NewPropertyPage() {
 
         if (typeof d.petsSmall === 'boolean') setPetsSmall(d.petsSmall);
         if (typeof d.petsLarge === 'boolean') setPetsLarge(d.petsLarge);
-        if (typeof d.condoRules === 'string') setCondoRules(d.condoRules);
 
         if (typeof d.secCCTV === 'boolean') setSecCCTV(d.secCCTV);
         if (typeof d.secSallyPort === 'boolean') setSecSallyPort(d.secSallyPort);
@@ -1402,7 +1343,6 @@ export default function NewPropertyPage() {
           sunOrientation,
           petsSmall,
           petsLarge,
-          condoRules,
           secCCTV,
           secSallyPort,
           secNightGuard,
@@ -1419,7 +1359,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, addressNumber, addressComplement, conditionTags, petFriendly, capturerRealtorId, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, sunOrientation, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
+  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, addressNumber, addressComplement, conditionTags, petFriendly, capturerRealtorId, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, sunOrientation, petsSmall, petsLarge, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1488,12 +1428,15 @@ export default function NewPropertyPage() {
       delete next.geo;
       return next;
     });
-    if (leafletMarker.current && leafletMap.current) {
-      try { leafletMap.current.removeLayer(leafletMarker.current); } catch {}
-      leafletMarker.current = null;
+    if (googleMarker.current) {
+      try { googleMarker.current.setMap(null); } catch {}
+      googleMarker.current = null;
     }
-    if (leafletMap.current) {
-      try { leafletMap.current.setView([-9.3986, -40.5017], 14); } catch {}
+    if (googleMap.current) {
+      try {
+        googleMap.current.setZoom(14);
+        googleMap.current.panTo({ lat: -9.3986, lng: -40.5017 });
+      } catch {}
     }
   };
 
@@ -1606,7 +1549,6 @@ export default function NewPropertyPage() {
       sunByRoomNote: sunByRoomNote || null,
       petsSmall,
       petsLarge,
-      condoRules: condoRules || null,
       secCCTV,
       secSallyPort,
       secNightGuard,
@@ -1644,7 +1586,6 @@ export default function NewPropertyPage() {
     comfortSolar,
     comfortWaterReuse,
     condoFeeBRL,
-    condoRules,
     conditionTags,
     description,
     finishCabinets,
@@ -1710,62 +1651,100 @@ export default function NewPropertyPage() {
 
   // Score de qualidade do anúncio
   const adQualityScore = useMemo(() => {
-    let score = 0;
-    const maxScore = 100;
-    const items: { label: string; done: boolean; points: number }[] = [];
-    
-    // Campos obrigatórios (50 pontos)
-    const hasPurpose = !!purpose;
-    items.push({ label: 'Finalidade (Venda/Aluguel)', done: hasPurpose, points: 10 });
-    score += hasPurpose ? 10 : 0;
-    
-    const hasPrice = parseBRLToNumber(priceBRL) > 0;
-    items.push({ label: 'Preço definido', done: hasPrice, points: 10 });
-    score += hasPrice ? 10 : 0;
-    
-    const hasType = !!type;
-    items.push({ label: 'Tipo de imóvel', done: hasType, points: 5 });
-    score += hasType ? 5 : 0;
-    
-    const hasAddress = !!geo;
-    items.push({ label: 'Endereço validado', done: hasAddress, points: 15 });
-    score += hasAddress ? 15 : 0;
-    
-    const imageCount = images.filter(i => i.url && !i.pending).length;
-    const hasMinImages = imageCount >= 1;
-    items.push({ label: 'Pelo menos 1 foto', done: hasMinImages, points: 10 });
-    score += hasMinImages ? 10 : 0;
-    
-    // Campos recomendados (30 pontos)
-    const hasDescription = description.length >= 50;
-    items.push({ label: 'Descrição detalhada (50+ chars)', done: hasDescription, points: 10 });
-    score += hasDescription ? 10 : 0;
-    
-    const hasDetails = bedrooms !== '' || bathrooms !== '' || areaM2 !== '';
-    items.push({ label: 'Detalhes (quartos/área)', done: hasDetails, points: 10 });
-    score += hasDetails ? 10 : 0;
-    
-    const hasGoodImages = imageCount >= 5;
-    items.push({ label: '5+ fotos (recomendado)', done: hasGoodImages, points: 10 });
-    score += hasGoodImages ? 10 : 0;
-    
-    // Diferenciais (20 pontos)
-    const hasAmenities = hasBalcony || hasPool || hasGym || hasElevator || hasConcierge24h;
-    items.push({ label: 'Diferenciais do imóvel', done: hasAmenities, points: 10 });
-    score += hasAmenities ? 10 : 0;
-    
-    const hasExcellentImages = imageCount >= 10;
-    items.push({ label: '10+ fotos (destaque)', done: hasExcellentImages, points: 10 });
-    score += hasExcellentImages ? 10 : 0;
-    
-    // Classificação
-    let level: 'low' | 'medium' | 'good' | 'excellent' = 'low';
-    if (score >= 80) level = 'excellent';
-    else if (score >= 60) level = 'good';
-    else if (score >= 40) level = 'medium';
-    
-    return { score, maxScore, level, items, imageCount };
-  }, [purpose, priceBRL, type, geo, images, description, bedrooms, bathrooms, areaM2, hasBalcony, hasPool, hasGym, hasElevator, hasConcierge24h]);
+    type QualityCategory = "Essenciais" | "Mídia" | "Conteúdo" | "SEO" | "Confiança";
+    type QualityItem = {
+      key: string;
+      label: string;
+      done: boolean;
+      points: number;
+      category: QualityCategory;
+      step: number;
+      fieldId?: string;
+      hint?: string;
+    };
+
+    const imageCount = images.filter((i) => i.url && !i.pending).length;
+    const hasCover = imageCount >= 1 && Boolean(images[0]?.url) && !images[0]?.pending;
+
+    const numBedrooms = bedrooms === "" ? NaN : Number(bedrooms as any);
+    const numBathrooms = bathrooms === "" ? NaN : Number(bathrooms as any);
+    const numArea = areaM2 === "" ? NaN : Number(areaM2 as any);
+    const hasDetails = Number.isFinite(numBedrooms) && Number.isFinite(numBathrooms) && Number.isFinite(numArea) && numArea >= 0;
+
+    const hasDescriptionLen = String(description || "").trim().length >= 300;
+    const hasDescriptionParagraphs = /\n\n/.test(String(description || "").trim());
+    const hasTitle = finalTitle.trim().length >= 3;
+    const hasFeatures =
+      Boolean(hasBalcony) ||
+      Boolean(petFriendly) ||
+      Boolean(petsSmall) ||
+      Boolean(petsLarge) ||
+      Boolean(hasElevator) ||
+      Boolean(hasPool) ||
+      Boolean(hasGym) ||
+      Boolean(hasGourmet) ||
+      Boolean(hasPlayground) ||
+      Boolean(hasPartyRoom) ||
+      Boolean(hasConcierge24h) ||
+      (Array.isArray(conditionTags) && conditionTags.length >= 2);
+
+    const hasMetaTitle = String(metaTitle || "").trim().length >= 10 && String(metaTitle || "").trim().length <= 65;
+    const hasMetaDescription =
+      String(metaDescription || "").trim().length >= 30 && String(metaDescription || "").trim().length <= 155;
+
+    const baseItems: QualityItem[] = [
+      { key: "purpose", label: "Finalidade (Venda/Aluguel)", done: !!purpose, points: 10, category: "Essenciais", step: 1, fieldId: "purpose" },
+      { key: "price", label: "Preço definido", done: parseBRLToNumber(priceBRL) > 0, points: 10, category: "Essenciais", step: 1, fieldId: "priceBRL" },
+      { key: "type", label: "Tipo de imóvel", done: !!type, points: 6, category: "Essenciais", step: 1, fieldId: "type" },
+      { key: "address", label: "Endereço (rua/cidade/UF)", done: Boolean(street && city && state), points: 10, category: "Essenciais", step: 1, fieldId: "street" },
+      { key: "geo", label: "Localização no mapa", done: !!geo, points: 8, category: "Essenciais", step: 1, fieldId: "geo" },
+      { key: "details", label: "Detalhes (quartos/banheiros/área)", done: hasDetails, points: 6, category: "Essenciais", step: 2, fieldId: "bedrooms" },
+
+      { key: "img1", label: "Pelo menos 1 foto", done: imageCount >= 1, points: 8, category: "Mídia", step: 3, fieldId: "images" },
+      { key: "img6", label: "6+ fotos (recomendado)", done: imageCount >= 6, points: 6, category: "Mídia", step: 3, fieldId: "images" },
+      { key: "img10", label: "10+ fotos (premium)", done: imageCount >= 10, points: 4, category: "Mídia", step: 3, fieldId: "images" },
+      { key: "cover", label: "Capa definida (1ª foto)", done: hasCover, points: 2, category: "Mídia", step: 3, fieldId: "images" },
+
+      { key: "title", label: "Título do anúncio", done: hasTitle, points: 6, category: "Conteúdo", step: 4, fieldId: "title" },
+      { key: "descLen", label: "Texto do anúncio (300+ caracteres)", done: hasDescriptionLen, points: 6, category: "Conteúdo", step: 4, fieldId: "description" },
+      { key: "descPara", label: "Texto com parágrafos", done: hasDescriptionParagraphs, points: 4, category: "Conteúdo", step: 4, fieldId: "description" },
+      { key: "features", label: "Diferenciais e características", done: hasFeatures, points: 2, category: "Conteúdo", step: 2, fieldId: "conditionTags" },
+
+      { key: "metaTitle", label: "Meta Title (SEO)", done: hasMetaTitle, points: 3, category: "SEO", step: 4, fieldId: "metaTitle" },
+      { key: "metaDesc", label: "Meta Description (SEO)", done: hasMetaDescription, points: 3, category: "SEO", step: 4, fieldId: "metaDescription" },
+
+      { key: "verified", label: "Contato verificado", done: hasAnyVerifiedContact, points: 6, category: "Confiança", step: 6, fieldId: "contactVerification" },
+    ];
+
+    const achieved = baseItems.reduce((sum, it) => sum + (it.done ? it.points : 0), 0);
+    const total = baseItems.reduce((sum, it) => sum + it.points, 0);
+    const score = total > 0 ? Math.min(100, Math.max(0, Math.round((achieved / total) * 100))) : 0;
+
+    let level: "low" | "medium" | "good" | "excellent" = "low";
+    if (score >= 90) level = "excellent";
+    else if (score >= 75) level = "good";
+    else if (score >= 55) level = "medium";
+
+    const categories = ("Essenciais,Mídia,Conteúdo,SEO,Confiança".split(",") as QualityCategory[]).map((name) => {
+      const list = baseItems.filter((it) => it.category === name);
+      const doneCount = list.filter((it) => it.done).length;
+      return {
+        name,
+        doneCount,
+        totalCount: list.length,
+        achieved: list.reduce((sum, it) => sum + (it.done ? it.points : 0), 0),
+        total: list.reduce((sum, it) => sum + it.points, 0),
+        items: list,
+      };
+    });
+
+    const missing = baseItems
+      .filter((it) => !it.done)
+      .slice()
+      .sort((a, b) => b.points - a.points);
+
+    return { score, level, items: baseItems, categories, missing, imageCount, achieved, total };
+  }, [purpose, priceBRL, type, street, city, state, geo, bedrooms, bathrooms, areaM2, images, description, finalTitle, conditionTags, hasBalcony, petFriendly, petsSmall, petsLarge, hasElevator, hasPool, hasGym, hasGourmet, hasPlayground, hasPartyRoom, hasConcierge24h, metaTitle, metaDescription, hasAnyVerifiedContact]);
 
   const steps = [
     { id: 1, name: "Informações básicas", description: "Preço, tipo e endereço" },
@@ -2122,7 +2101,6 @@ export default function NewPropertyPage() {
           // Pets / Políticas
           petsSmall,
           petsLarge,
-          condoRules,
           // Outros
           sunOrientation: !sunOrientation ? null : (sunOrientation.toUpperCase() === 'NASCENTE' ? 'NASCENTE' : sunOrientation.toUpperCase() === 'POENTE' ? 'POENTE' : 'OUTRA'),
           yearRenovated: yearRenovated === "" ? null : Number(yearRenovated as any),
@@ -3112,8 +3090,15 @@ export default function NewPropertyPage() {
                       </div>
                     </div>
 
-                    <div className="mt-4 h-64 rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
-                      <div ref={mapContainerRef} className="w-full h-full" />
+                    <div className="mt-4 h-64 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 relative">
+                      <div ref={mapContainerRef} className="absolute inset-0" />
+                      {googleMapsError && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/90 px-4 text-center">
+                          <div className="text-xs text-gray-700">
+                            {googleMapsError}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -3439,40 +3424,6 @@ export default function NewPropertyPage() {
                     <Input id="parkingSpots" label="Vagas" value={parkingSpots as any} error={fieldErrors.parkingSpots} onChange={(e) => { setParkingSpots(e.target.value); clearFieldError("parkingSpots"); }} inputMode="numeric" optional />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Select
-                      label="Mobília"
-                      value={conditionTags.find((t) => FURNISHING_SET.has(t)) || ""}
-                      onChange={(e) => {
-                        const next = String(e.target.value || "");
-                        setConditionTags((prev) => {
-                          const cleaned = prev.filter((t) => !FURNISHING_SET.has(t));
-                          if (!next) return cleaned;
-                          return [...cleaned, next];
-                        });
-                      }}
-                      optional
-                    >
-                      <option value="">Não informar</option>
-                      {CONDITION_EXTRA_OPTIONS.map((tag) => (
-                        <option key={tag} value={tag}>{tag}</option>
-                      ))}
-                    </Select>
-                    <div className="pt-2">
-                      <Checkbox
-                        checked={petFriendly}
-                        onChange={(e) => {
-                          const next = e.target.checked;
-                          setPetFriendly(next);
-                          if (!next) {
-                            setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
-                          }
-                        }}
-                        label="Aceita pets"
-                      />
-                    </div>
-                  </div>
-
                   <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                     <button
                       type="button"
@@ -3485,275 +3436,169 @@ export default function NewPropertyPage() {
                   </div>
 
                   {showAdvancedDetails && (
-                    <>
-
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setOpenAcc((p) => ({ ...p, acc_condition: !p.acc_condition }))}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                    >
-                      <span className="text-sm font-semibold text-gray-800">
-                        🛠️ Condição do imóvel
-                        {accConditionCount > 0 && (
-                          <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accConditionCount}</span>
-                        )}
-                      </span>
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condition ? 'rotate-180' : ''}`} />
-                    </button>
-                    {openAcc.acc_condition && (
-                      <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                        <div className="space-y-4">
+                    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 space-y-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <div className="text-sm font-semibold text-gray-900">Condição e mobília</div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {CONDITION_STATUS_OPTIONS.map((tag) => (
-                              <Checkbox
-                                key={tag}
-                                checked={conditionTags.includes(tag)}
-                                onChange={() => toggleConditionTag(tag)}
-                                label={tag}
-                              />
+                              <Checkbox key={tag} checked={conditionTags.includes(tag)} onChange={() => toggleConditionTag(tag)} label={tag} />
                             ))}
                           </div>
-                          <div>
-                            <div className="text-xs font-semibold text-gray-600 mb-2">Móveis</div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <div className="pt-2">
+                            <Select
+                              label="Mobília"
+                              value={conditionTags.find((t) => FURNISHING_SET.has(t)) || ""}
+                              onChange={(e) => {
+                                const next = String(e.target.value || "");
+                                setConditionTags((prev) => {
+                                  const cleaned = prev.filter((t) => !FURNISHING_SET.has(t));
+                                  if (!next) return cleaned;
+                                  return [...cleaned, next];
+                                });
+                              }}
+                              optional
+                            >
+                              <option value="">Não informar</option>
                               {CONDITION_EXTRA_OPTIONS.map((tag) => (
-                                <Checkbox
-                                  key={tag}
-                                  checked={conditionTags.includes(tag)}
-                                  onChange={() => toggleConditionTag(tag)}
-                                  label={tag}
-                                />
+                                <option key={tag} value={tag}>{tag}</option>
                               ))}
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="text-sm font-semibold text-gray-900">Medidas do imóvel</div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
+                            <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
+                            <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
+                            <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <div className="text-sm font-semibold text-gray-900">Características do imóvel</div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
+                            <Checkbox
+                              checked={petFriendly}
+                              onChange={(e) => {
+                                const next = e.target.checked;
+                                setPetFriendly(next);
+                                if (!next) {
+                                  setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
+                                }
+                              }}
+                              label="Aceita pets"
+                            />
+                            {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
+                              <Checkbox key={tag} checked={conditionTags.includes(tag)} onChange={() => toggleConditionTag(tag)} label={tag} />
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="text-sm font-semibold text-gray-900">Condomínio / áreas comuns</div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
+                            <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
+                            <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
+                            <Checkbox checked={hasGourmet} onChange={(e) => setHasGourmet(e.target.checked)} label="Espaço gourmet" />
+                            <Checkbox checked={hasPlayground} onChange={(e) => setHasPlayground(e.target.checked)} label="Playground" />
+                            <Checkbox checked={hasPartyRoom} onChange={(e) => setHasPartyRoom(e.target.checked)} label="Salão de festas" />
+                            <Checkbox checked={hasConcierge24h} onChange={(e) => setHasConcierge24h(e.target.checked)} label="Portaria 24h" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <div className="text-sm font-semibold text-gray-900">Segurança</div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Checkbox checked={secCCTV} onChange={(e) => setSecCCTV(e.target.checked)} label="CFTV / Câmeras" />
+                            <Checkbox checked={secSallyPort} onChange={(e) => setSecSallyPort(e.target.checked)} label="Clausura (sally port)" />
+                            <Checkbox checked={secNightGuard} onChange={(e) => setSecNightGuard(e.target.checked)} label="Ronda noturna" />
+                            <Checkbox checked={secElectricFence} onChange={(e) => setSecElectricFence(e.target.checked)} label="Cerca elétrica" />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="text-sm font-semibold text-gray-900">Conforto e energia</div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Checkbox checked={comfortAC} onChange={(e) => setComfortAC(e.target.checked)} label="Ar-condicionado" />
+                            <Checkbox checked={comfortHeating} onChange={(e) => setComfortHeating(e.target.checked)} label="Aquecimento" />
+                            <Checkbox checked={comfortSolar} onChange={(e) => setComfortSolar(e.target.checked)} label="Energia solar" />
+                            <Checkbox checked={comfortNoiseWindows} onChange={(e) => setComfortNoiseWindows(e.target.checked)} label="Janelas anti-ruído" />
+                            <Checkbox checked={comfortLED} onChange={(e) => setComfortLED(e.target.checked)} label="Iluminação LED" />
+                            <Checkbox checked={comfortWaterReuse} onChange={(e) => setComfortWaterReuse(e.target.checked)} label="Reúso de água" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <div className="text-sm font-semibold text-gray-900">Acabamentos</div>
+                          <div className="space-y-3">
+                            <Select label="Piso principal" value={finishFloor} onChange={(e) => setFinishFloor(e.target.value)} optional>
+                              <option value="">Selecione</option>
+                              <option value="porcelanato">Porcelanato</option>
+                              <option value="madeira">Madeira</option>
+                              <option value="vinilico">Vinílico</option>
+                            </Select>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Checkbox checked={finishCabinets} onChange={(e) => setFinishCabinets(e.target.checked)} label="Armários planejados" />
+                              <Checkbox checked={finishCounterGranite} onChange={(e) => setFinishCounterGranite(e.target.checked)} label="Bancada granito" />
+                              <Checkbox checked={finishCounterQuartz} onChange={(e) => setFinishCounterQuartz(e.target.checked)} label="Bancada quartzo" />
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
 
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setOpenAcc((p) => ({ ...p, acc_measures: !p.acc_measures }))}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                    >
-                      <span className="text-sm font-semibold text-gray-800">
-                        📐 Medidas do imóvel
-                        {accMeasuresCount > 0 && (
-                          <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accMeasuresCount}</span>
-                        )}
-                      </span>
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_measures ? 'rotate-180' : ''}`} />
-                    </button>
-                    {openAcc.acc_measures && (
-                      <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                          <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
-                          <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
-                          <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
-                          <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
+                        <div className="space-y-3">
+                          <div className="text-sm font-semibold text-gray-900">Vista, posição e pets</div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
+                            <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
+                            <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="De frente (voltado para a rua)" />
+                            <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Fundos (mais silencioso)" />
+                            <Checkbox checked={petsSmall} onChange={(e) => setPetsSmall(e.target.checked)} label="Aceita pets pequenos" />
+                            <Checkbox checked={petsLarge} onChange={(e) => setPetsLarge(e.target.checked)} label="Aceita pets grandes" />
+                          </div>
+                          <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
+                            <option value="">Selecione</option>
+                            <option value="NASCENTE">Nascente (sol da manhã)</option>
+                            <option value="POENTE">Poente (sol da tarde)</option>
+                            <option value="OUTRA">Outra</option>
+                          </Select>
                         </div>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setOpenAcc((p) => ({ ...p, acc_features: !p.acc_features }))}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                    >
-                      <span className="text-sm font-semibold text-gray-800">
-                        🏠 Características do imóvel
-                        {accFeaturesCount > 0 && (
-                          <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFeaturesCount}</span>
-                        )}
-                      </span>
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_features ? 'rotate-180' : ''}`} />
-                    </button>
-                    {openAcc.acc_features && (
-                      <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
-                          <Checkbox
-                            checked={petFriendly}
-                            onChange={(e) => {
-                              const next = e.target.checked;
-                              setPetFriendly(next);
-                              if (!next) {
-                                setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
-                              }
-                            }}
-                            label="Aceita pets"
-                          />
-                          {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
-                            <Checkbox
-                              key={tag}
-                              checked={conditionTags.includes(tag)}
-                              onChange={() => toggleConditionTag(tag)}
-                              label={tag}
-                            />
-                          ))}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <div className="text-sm font-semibold text-gray-900">Acessibilidade</div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Checkbox checked={accRamps} onChange={(e) => setAccRamps(e.target.checked)} label="Rampas de acesso" />
+                            <Checkbox checked={accWideDoors} onChange={(e) => setAccWideDoors(e.target.checked)} label="Portas largas" />
+                            <Checkbox checked={accAccessibleElevator} onChange={(e) => setAccAccessibleElevator(e.target.checked)} label="Elevador acessível" />
+                            <Checkbox checked={accTactile} onChange={(e) => setAccTactile(e.target.checked)} label="Piso tátil" />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="text-sm font-semibold text-gray-900">Ano e taxas</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
+                            <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
+                            <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
+                            <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
+                            <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
+                            <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
+                          </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setOpenAcc((p) => ({ ...p, acc_condo: !p.acc_condo }))}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                    >
-                      <span className="text-sm font-semibold text-gray-800">
-                        🏢 Condomínio / áreas comuns
-                        {accCondoCount > 0 && (
-                          <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accCondoCount}</span>
-                        )}
-                      </span>
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condo ? 'rotate-180' : ''}`} />
-                    </button>
-                    {openAcc.acc_condo && (
-                      <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
-                          <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
-                          <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
-                          <Checkbox checked={hasGourmet} onChange={(e) => setHasGourmet(e.target.checked)} label="Espaço gourmet" />
-                          <Checkbox checked={hasPlayground} onChange={(e) => setHasPlayground(e.target.checked)} label="Playground" />
-                          <Checkbox checked={hasPartyRoom} onChange={(e) => setHasPartyRoom(e.target.checked)} label="Salão de festas" />
-                          <Checkbox checked={hasConcierge24h} onChange={(e) => setHasConcierge24h(e.target.checked)} label="Portaria 24h" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Segurança */}
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_sec: !p.acc_sec }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                      <span className="text-sm font-semibold text-gray-800">🔒 Segurança {accSecurityCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accSecurityCount}</span>}</span>
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_sec ? 'rotate-180' : ''}`} />
-                    </button>
-                    {openAcc.acc_sec && (
-                      <div className="px-4 pb-4 pt-3 grid grid-cols-2 gap-3 bg-gray-50/50 border-t border-gray-100">
-                        <Checkbox checked={secCCTV} onChange={(e) => setSecCCTV(e.target.checked)} label="CFTV / Câmeras" />
-                        <Checkbox checked={secSallyPort} onChange={(e) => setSecSallyPort(e.target.checked)} label="Clausura (sally port)" />
-                        <Checkbox checked={secNightGuard} onChange={(e) => setSecNightGuard(e.target.checked)} label="Ronda noturna" />
-                        <Checkbox checked={secElectricFence} onChange={(e) => setSecElectricFence(e.target.checked)} label="Cerca elétrica" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Conforto e Energia */}
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_ce: !p.acc_ce }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                      <span className="text-sm font-semibold text-gray-800">❄️ Conforto e Energia {accComfortCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accComfortCount}</span>}</span>
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_ce ? 'rotate-180' : ''}`} />
-                    </button>
-                    {openAcc.acc_ce && (
-                      <div className="px-4 pb-4 pt-3 grid grid-cols-2 gap-3 bg-gray-50/50 border-t border-gray-100">
-                        <Checkbox checked={comfortAC} onChange={(e) => setComfortAC(e.target.checked)} label="Ar-condicionado" />
-                        <Checkbox checked={comfortHeating} onChange={(e) => setComfortHeating(e.target.checked)} label="Aquecimento" />
-                        <Checkbox checked={comfortSolar} onChange={(e) => setComfortSolar(e.target.checked)} label="Energia solar" />
-                        <Checkbox checked={comfortNoiseWindows} onChange={(e) => setComfortNoiseWindows(e.target.checked)} label="Janelas anti-ruído" />
-                        <Checkbox checked={comfortLED} onChange={(e) => setComfortLED(e.target.checked)} label="Iluminação LED" />
-                        <Checkbox checked={comfortWaterReuse} onChange={(e) => setComfortWaterReuse(e.target.checked)} label="Reúso de água" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Acabamentos */}
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_fin: !p.acc_fin }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                      <span className="text-sm font-semibold text-gray-800">✨ Acabamentos {accFinishCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFinishCount}</span>}</span>
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_fin ? 'rotate-180' : ''}`} />
-                    </button>
-                    {openAcc.acc_fin && (
-                      <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
-                        <Select label="Piso principal" value={finishFloor} onChange={(e) => setFinishFloor(e.target.value)} optional>
-                          <option value="">Selecione</option>
-                          <option value="porcelanato">Porcelanato</option>
-                          <option value="madeira">Madeira</option>
-                          <option value="vinilico">Vinílico</option>
-                        </Select>
-                        <div className="grid grid-cols-2 gap-3">
-                          <Checkbox checked={finishCabinets} onChange={(e) => setFinishCabinets(e.target.checked)} label="Armários planejados" />
-                          <Checkbox checked={finishCounterGranite} onChange={(e) => setFinishCounterGranite(e.target.checked)} label="Bancada granito" />
-                          <Checkbox checked={finishCounterQuartz} onChange={(e) => setFinishCounterQuartz(e.target.checked)} label="Bancada quartzo" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Vista e Posição */}
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_view: !p.acc_view }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                      <span className="text-sm font-semibold text-gray-800">🌅 Vista e Posição {accViewCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accViewCount}</span>}</span>
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_view ? 'rotate-180' : ''}`} />
-                    </button>
-                    {openAcc.acc_view && (
-                      <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
-                        <div className="grid grid-cols-2 gap-3">
-                          <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
-                          <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
-                          <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="De frente (voltado para a rua)" />
-                          <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Fundos (mais silencioso)" />
-                        </div>
-                        <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
-                          <option value="">Selecione</option>
-                          <option value="NASCENTE">Nascente (sol da manhã)</option>
-                          <option value="POENTE">Poente (sol da tarde)</option>
-                          <option value="OUTRA">Outra</option>
-                        </Select>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Acessibilidade */}
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_acc: !p.acc_acc }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                      <span className="text-sm font-semibold text-gray-800">♿ Acessibilidade {accAccessibilityCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accAccessibilityCount}</span>}</span>
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_acc ? 'rotate-180' : ''}`} />
-                    </button>
-                    {openAcc.acc_acc && (
-                      <div className="px-4 pb-4 pt-3 grid grid-cols-2 gap-3 bg-gray-50/50 border-t border-gray-100">
-                        <Checkbox checked={accRamps} onChange={(e) => setAccRamps(e.target.checked)} label="Rampas de acesso" />
-                        <Checkbox checked={accWideDoors} onChange={(e) => setAccWideDoors(e.target.checked)} label="Portas largas" />
-                        <Checkbox checked={accAccessibleElevator} onChange={(e) => setAccAccessibleElevator(e.target.checked)} label="Elevador acessível" />
-                        <Checkbox checked={accTactile} onChange={(e) => setAccTactile(e.target.checked)} label="Piso tátil" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Pets e Regras */}
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button type="button" onClick={() => setOpenAcc(p => ({ ...p, acc_pets: !p.acc_pets }))} className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                      <span className="text-sm font-semibold text-gray-800">🐾 Pets e Regras {accPetsCount > 0 && <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accPetsCount}</span>}</span>
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_pets ? 'rotate-180' : ''}`} />
-                    </button>
-                    {openAcc.acc_pets && (
-                      <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
-                        <div className="grid grid-cols-2 gap-3">
-                          <Checkbox checked={petsSmall} onChange={(e) => setPetsSmall(e.target.checked)} label="Aceita pets pequenos" />
-                          <Checkbox checked={petsLarge} onChange={(e) => setPetsLarge(e.target.checked)} label="Aceita pets grandes" />
-                        </div>
-                        <Input label="Regras do condomínio (breve)" value={condoRules} onChange={(e) => setCondoRules(e.target.value)} optional />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Ano e taxas */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
-                    <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
-                    <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
-                    <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
-                    <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
-                    <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
-                  </div>
-
-                    </>
+                    </div>
                   )}
 
                 </div>
@@ -4452,55 +4297,162 @@ export default function NewPropertyPage() {
           <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start space-y-4">
             {/* Score de qualidade do anúncio */}
             {true && (
-              <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    adQualityScore.level === 'excellent' ? 'bg-green-100 text-green-700' :
-                    adQualityScore.level === 'good' ? 'bg-blue-100 text-blue-700' :
-                    adQualityScore.level === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {adQualityScore.score}%
-                  </span>
-                </div>
-                
-                {/* Barra de progresso */}
-                <div className="h-2 rounded-full bg-gray-200 mb-3 overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      adQualityScore.level === 'excellent' ? 'bg-gradient-to-r from-green-400 to-green-500' :
-                      adQualityScore.level === 'good' ? 'bg-gradient-to-r from-blue-400 to-blue-500' :
-                      adQualityScore.level === 'medium' ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
-                      'bg-gradient-to-r from-red-400 to-red-500'
-                    }`}
-                    style={{ width: `${adQualityScore.score}%` }}
-                  />
-                </div>
-                
-                {/* Checklist resumido */}
-                <div className="space-y-1.5 text-xs">
-                  {adQualityScore.items.slice(0, 5).map((item, idx) => (
-                    <div key={idx} className={`flex items-center gap-2 ${item.done ? 'text-gray-700' : 'text-gray-400'}`}>
-                      {item.done ? (
-                        <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      ) : (
-                        <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                        </svg>
-                      )}
-                      <span className={item.done ? '' : 'line-through'}>{item.label}</span>
+              <div className="relative rounded-3xl p-[1px] bg-gradient-to-br from-teal/30 via-teal-dark/20 to-sky-500/20">
+                <div className="rounded-3xl bg-white/80 backdrop-blur-md border border-white/40 shadow-sm">
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-teal/15 to-sky-500/10 text-teal ring-1 ring-black/5">
+                            <Sparkles className="w-5 h-5" />
+                          </span>
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
+                            <p className="text-[11px] text-gray-500 leading-4">Pontuação baseada nos campos que mais impactam conversão e busca.</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0">
+                        <div className="relative w-14 h-14">
+                          <svg className="w-14 h-14 -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="44" stroke="rgba(17,24,39,0.08)" strokeWidth="10" fill="none" />
+                            <circle
+                              cx="50"
+                              cy="50"
+                              r="44"
+                              strokeLinecap="round"
+                              stroke={
+                                adQualityScore.level === "excellent"
+                                  ? "#10b981"
+                                  : adQualityScore.level === "good"
+                                  ? "#0ea5e9"
+                                  : adQualityScore.level === "medium"
+                                  ? "#f59e0b"
+                                  : "#ef4444"
+                              }
+                              strokeWidth="10"
+                              fill="none"
+                              strokeDasharray={2 * Math.PI * 44}
+                              strokeDashoffset={(1 - adQualityScore.score / 100) * (2 * Math.PI * 44)}
+                              className="transition-all duration-700"
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center">
+                              <div className="text-sm font-extrabold text-gray-900 leading-none">{adQualityScore.score}%</div>
+                              <div className="text-[9px] text-gray-500 leading-none mt-0.5">{adQualityScore.achieved}/{adQualityScore.total}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  ))}
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {adQualityScore.categories.map((c) => (
+                        <span
+                          key={c.name}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/70 border border-gray-200 text-[11px] text-gray-700"
+                          title={`${c.doneCount}/${c.totalCount}`}
+                        >
+                          <span className="font-semibold">{c.name}</span>
+                          <span className="text-gray-400">{c.doneCount}/{c.totalCount}</span>
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 rounded-2xl bg-white/60 border border-gray-200 p-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-gray-900">Próximas melhorias</p>
+                        <p className="text-[11px] text-gray-500">Top {Math.min(3, adQualityScore.missing.length)} itens</p>
+                      </div>
+
+                      {adQualityScore.missing.length === 0 ? (
+                        <div className="mt-2 flex items-start gap-2">
+                          <Star className="w-4 h-4 text-emerald-600 mt-0.5" />
+                          <p className="text-xs text-gray-700">Seu anúncio está excelente. Revise fotos e texto final antes de publicar.</p>
+                        </div>
+                      ) : (
+                        <div className="mt-2 space-y-2">
+                          {adQualityScore.missing.slice(0, 3).map((it) => (
+                            <button
+                              key={it.key}
+                              type="button"
+                              onClick={() => {
+                                setCurrentStep(it.step);
+                                if (it.fieldId) scrollToFieldId(it.fieldId);
+                              }}
+                              className="w-full group flex items-center justify-between gap-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 px-3 py-2 transition-colors"
+                            >
+                              <span className="min-w-0 flex items-center gap-2">
+                                <Circle className="w-4 h-4 text-gray-300 group-hover:text-teal-600" />
+                                <span className="text-xs font-semibold text-gray-800 truncate">{it.label}</span>
+                              </span>
+                              <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700">
+                                <span>Ir</span>
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => jumpToStep(3)}
+                          className="px-2 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-800 inline-flex items-center justify-center gap-1"
+                        >
+                          <ImageIcon className="w-4 h-4 text-teal-700" />
+                          Fotos
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => jumpToStep(4)}
+                          className="px-2 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-800 inline-flex items-center justify-center gap-1"
+                        >
+                          <FileText className="w-4 h-4 text-teal-700" />
+                          Texto
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => jumpToStep(6)}
+                          className="px-2 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-800 inline-flex items-center justify-center gap-1"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-teal-700" />
+                          Publicar
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between rounded-2xl border border-gray-200 bg-white/60 px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Search className="w-4 h-4 text-teal-700" />
+                        <p className="text-[11px] text-gray-600 truncate">Dica: 8–15 fotos e descrição bem segmentada convertem mais.</p>
+                      </div>
+                      <span
+                        className={
+                          "text-[11px] font-bold px-2 py-1 rounded-full " +
+                          (adQualityScore.level === "excellent"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : adQualityScore.level === "good"
+                            ? "bg-sky-100 text-sky-700"
+                            : adQualityScore.level === "medium"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-rose-100 text-rose-700")
+                        }
+                      >
+                        {adQualityScore.level === "excellent"
+                          ? "Premium"
+                          : adQualityScore.level === "good"
+                          ? "Ótimo"
+                          : adQualityScore.level === "medium"
+                          ? "Em progresso"
+                          : "Básico"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                
-                {adQualityScore.score < 60 && (
-                  <p className="mt-3 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1.5">
-                    💡 Complete mais campos para aumentar a visibilidade do seu anúncio
-                  </p>
-                )}
               </div>
             )}
 
