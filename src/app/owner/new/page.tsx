@@ -23,7 +23,7 @@ import Checkbox from "@/components/ui/Checkbox";
 import Textarea from "@/components/ui/Textarea";
 import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 
-type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File };
+type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File; width?: number; height?: number };
 
 export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -300,6 +300,60 @@ export default function NewPropertyPage() {
   const dropInputRef = useRef<HTMLInputElement | null>(null);
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const candidates = images
+      .map((img, idx) => ({ img, idx }))
+      .filter(({ img }) => Boolean(img?.url || img?.file) && !img.pending)
+      .filter(({ img }) => !(typeof img.width === "number" && typeof img.height === "number"))
+      .slice(0, 20);
+    if (!candidates.length) return;
+
+    const loadOne = ({ img, idx }: { img: ImageInput; idx: number }) =>
+      new Promise<{ idx: number; width: number; height: number } | null>((resolve) => {
+        const src = img.file ? URL.createObjectURL(img.file) : img.url;
+        if (!src) {
+          resolve(null);
+          return;
+        }
+        const im = new window.Image();
+        im.decoding = "async" as any;
+        im.onload = () => {
+          const width = Number(im.naturalWidth || 0);
+          const height = Number(im.naturalHeight || 0);
+          if (img.file) URL.revokeObjectURL(src);
+          resolve(width > 0 && height > 0 ? { idx, width, height } : null);
+        };
+        im.onerror = () => {
+          if (img.file) URL.revokeObjectURL(src);
+          resolve(null);
+        };
+        im.src = src;
+      });
+
+    Promise.all(candidates.map(loadOne)).then((res) => {
+      if (cancelled) return;
+      const updates = res.filter(Boolean) as { idx: number; width: number; height: number }[];
+      if (!updates.length) return;
+      setImages((prev) => {
+        let changed = false;
+        const next = [...prev];
+        for (const u of updates) {
+          const existing = next[u.idx];
+          if (!existing) continue;
+          if (existing.width === u.width && existing.height === u.height) continue;
+          next[u.idx] = { ...existing, width: u.width, height: u.height };
+          changed = true;
+        }
+        return changed ? next : prev;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [images]);
   // Tips toggle (persisted)
   const [showTips, setShowTips] = useState<boolean>(false);
   const [showWatermark, setShowWatermark] = useState<boolean>(false);
@@ -1651,7 +1705,7 @@ export default function NewPropertyPage() {
 
   // Score de qualidade do anúncio
   const adQualityScore = useMemo(() => {
-    type QualityCategory = "Essenciais" | "Mídia" | "Conteúdo" | "SEO" | "Confiança";
+    type QualityCategory = "Básico" | "Fotos" | "Texto" | "Diferenciais" | "Publicação";
     type QualityItem = {
       key: string;
       label: string;
@@ -1666,54 +1720,79 @@ export default function NewPropertyPage() {
     const imageCount = images.filter((i) => i.url && !i.pending).length;
     const hasCover = imageCount >= 1 && Boolean(images[0]?.url) && !images[0]?.pending;
 
+    const measuredPhotos = images
+      .filter((i) => i.url && !i.pending)
+      .filter((i) => typeof i.width === "number" && typeof i.height === "number")
+      .map((i) => ({
+        width: Number(i.width || 0),
+        height: Number(i.height || 0),
+        minSide: Math.min(Number(i.width || 0), Number(i.height || 0)),
+      }))
+      .filter((x) => x.width > 0 && x.height > 0);
+    const goodResCount = measuredPhotos.filter((p) => p.minSide >= 900).length;
+    const veryLowResCount = measuredPhotos.filter((p) => p.minSide > 0 && p.minSide < 600).length;
+    const requiredGoodRes = Math.min(6, imageCount);
+    const hasGoodResolution = imageCount > 0 && measuredPhotos.length >= requiredGoodRes && goodResCount >= requiredGoodRes && veryLowResCount === 0;
+
     const numBedrooms = bedrooms === "" ? NaN : Number(bedrooms as any);
     const numBathrooms = bathrooms === "" ? NaN : Number(bathrooms as any);
     const numArea = areaM2 === "" ? NaN : Number(areaM2 as any);
     const hasDetails = Number.isFinite(numBedrooms) && Number.isFinite(numBathrooms) && Number.isFinite(numArea) && numArea >= 0;
 
-    const hasDescriptionLen = String(description || "").trim().length >= 300;
+    const hasDescriptionLen = String(description || "").trim().length >= 450;
+    const hasDescriptionStrong = String(description || "").trim().length >= 900;
     const hasDescriptionParagraphs = /\n\n/.test(String(description || "").trim());
     const hasTitle = finalTitle.trim().length >= 3;
-    const hasFeatures =
-      Boolean(hasBalcony) ||
-      Boolean(petFriendly) ||
-      Boolean(petsSmall) ||
-      Boolean(petsLarge) ||
-      Boolean(hasElevator) ||
-      Boolean(hasPool) ||
-      Boolean(hasGym) ||
-      Boolean(hasGourmet) ||
-      Boolean(hasPlayground) ||
-      Boolean(hasPartyRoom) ||
-      Boolean(hasConcierge24h) ||
-      (Array.isArray(conditionTags) && conditionTags.length >= 2);
+    const titleWords = finalTitle.trim().split(/\s+/).filter(Boolean);
+    const hasStrongTitle = finalTitle.trim().length >= 18 && titleWords.length >= 3;
+    const optionalTagsCount = Array.isArray(conditionTags)
+      ? conditionTags.filter((t) => PROPERTY_FEATURE_TAG_SET.has(t)).length
+      : 0;
+    const amenityCount = [
+      hasBalcony,
+      hasElevator,
+      hasPool,
+      hasGym,
+      hasGourmet,
+      hasPlayground,
+      hasPartyRoom,
+      hasConcierge24h,
+    ].filter(Boolean).length;
+    const petCount = petFriendly || petsSmall || petsLarge ? 1 : 0;
+    const optionalFeaturesCount = optionalTagsCount + amenityCount + petCount;
+    const hasSomeFeatures = optionalFeaturesCount >= 1;
+    const hasStrongFeatures = optionalFeaturesCount >= 4;
 
     const hasMetaTitle = String(metaTitle || "").trim().length >= 10 && String(metaTitle || "").trim().length <= 65;
-    const hasMetaDescription =
-      String(metaDescription || "").trim().length >= 30 && String(metaDescription || "").trim().length <= 155;
+    const hasMetaDescription = String(metaDescription || "").trim().length >= 50 && String(metaDescription || "").trim().length <= 155;
 
     const baseItems: QualityItem[] = [
-      { key: "purpose", label: "Finalidade (Venda/Aluguel)", done: !!purpose, points: 10, category: "Essenciais", step: 1, fieldId: "purpose" },
-      { key: "price", label: "Preço definido", done: parseBRLToNumber(priceBRL) > 0, points: 10, category: "Essenciais", step: 1, fieldId: "priceBRL" },
-      { key: "type", label: "Tipo de imóvel", done: !!type, points: 6, category: "Essenciais", step: 1, fieldId: "type" },
-      { key: "address", label: "Endereço (rua/cidade/UF)", done: Boolean(street && city && state), points: 10, category: "Essenciais", step: 1, fieldId: "street" },
-      { key: "geo", label: "Localização no mapa", done: !!geo, points: 8, category: "Essenciais", step: 1, fieldId: "geo" },
-      { key: "details", label: "Detalhes (quartos/banheiros/área)", done: hasDetails, points: 6, category: "Essenciais", step: 2, fieldId: "bedrooms" },
+      { key: "purpose", label: "Finalidade (venda ou aluguel)", done: !!purpose, points: 7, category: "Básico", step: 1, fieldId: "purpose" },
+      { key: "price", label: "Preço do imóvel", done: parseBRLToNumber(priceBRL) > 0, points: 7, category: "Básico", step: 1, fieldId: "priceBRL" },
+      { key: "type", label: "Tipo de imóvel", done: !!type, points: 4, category: "Básico", step: 1, fieldId: "type" },
+      { key: "address", label: "Endereço preenchido", done: Boolean(street && city && state), points: 7, category: "Básico", step: 1, fieldId: "street" },
+      { key: "geo", label: "Ponto no mapa", done: !!geo, points: 5, category: "Básico", step: 1, fieldId: "geo" },
+      { key: "details", label: "Quartos, banheiros e área", done: hasDetails, points: 5, category: "Básico", step: 2, fieldId: "bedrooms" },
 
-      { key: "img1", label: "Pelo menos 1 foto", done: imageCount >= 1, points: 8, category: "Mídia", step: 3, fieldId: "images" },
-      { key: "img6", label: "6+ fotos (recomendado)", done: imageCount >= 6, points: 6, category: "Mídia", step: 3, fieldId: "images" },
-      { key: "img10", label: "10+ fotos (premium)", done: imageCount >= 10, points: 4, category: "Mídia", step: 3, fieldId: "images" },
-      { key: "cover", label: "Capa definida (1ª foto)", done: hasCover, points: 2, category: "Mídia", step: 3, fieldId: "images" },
+      { key: "img1", label: "Adicionar ao menos 1 foto", done: imageCount >= 1, points: 8, category: "Fotos", step: 3, fieldId: "images" },
+      { key: "img6", label: "6+ fotos (recomendado)", done: imageCount >= 6, points: 8, category: "Fotos", step: 3, fieldId: "images" },
+      { key: "img12", label: "12+ fotos (ótimo)", done: imageCount >= 12, points: 3, category: "Fotos", step: 3, fieldId: "images" },
+      { key: "img15", label: "15+ fotos (destaque)", done: imageCount >= 15, points: 4, category: "Fotos", step: 3, fieldId: "images" },
+      { key: "cover", label: "Escolher uma boa capa", done: hasCover, points: 2, category: "Fotos", step: 3, fieldId: "images" },
+      { key: "imgQuality", label: "Fotos nítidas (boa resolução)", done: hasGoodResolution, points: 10, category: "Fotos", step: 3, fieldId: "images", hint: "Evite fotos pequenas/embaçadas — isso reduz cliques." },
 
-      { key: "title", label: "Título do anúncio", done: hasTitle, points: 6, category: "Conteúdo", step: 4, fieldId: "title" },
-      { key: "descLen", label: "Texto do anúncio (300+ caracteres)", done: hasDescriptionLen, points: 6, category: "Conteúdo", step: 4, fieldId: "description" },
-      { key: "descPara", label: "Texto com parágrafos", done: hasDescriptionParagraphs, points: 4, category: "Conteúdo", step: 4, fieldId: "description" },
-      { key: "features", label: "Diferenciais e características", done: hasFeatures, points: 2, category: "Conteúdo", step: 2, fieldId: "conditionTags" },
+      { key: "title", label: "Título do anúncio", done: hasTitle, points: 6, category: "Texto", step: 4, fieldId: "title" },
+      { key: "titleStrong", label: "Título mais completo", done: hasStrongTitle, points: 2, category: "Texto", step: 4, fieldId: "title", hint: "Diga o que é + diferencial (ex: 'Apto 2 quartos com varanda')." },
+      { key: "descLen", label: "Texto do anúncio (mín. recomendado)", done: hasDescriptionLen, points: 6, category: "Texto", step: 4, fieldId: "description" },
+      { key: "descStrong", label: "Texto mais detalhado", done: hasDescriptionStrong, points: 2, category: "Texto", step: 4, fieldId: "description" },
+      { key: "descPara", label: "Texto com parágrafos", done: hasDescriptionParagraphs, points: 4, category: "Texto", step: 4, fieldId: "description" },
+      { key: "metaTitle", label: "Título para Google", done: hasMetaTitle, points: 3, category: "Texto", step: 4, fieldId: "metaTitle" },
+      { key: "metaDesc", label: "Resumo para Google", done: hasMetaDescription, points: 3, category: "Texto", step: 4, fieldId: "metaDescription" },
 
-      { key: "metaTitle", label: "Meta Title (SEO)", done: hasMetaTitle, points: 3, category: "SEO", step: 4, fieldId: "metaTitle" },
-      { key: "metaDesc", label: "Meta Description (SEO)", done: hasMetaDescription, points: 3, category: "SEO", step: 4, fieldId: "metaDescription" },
+      { key: "featSome", label: "Adicionar diferenciais do imóvel", done: hasSomeFeatures, points: 3, category: "Diferenciais", step: 2, fieldId: "conditionTags" },
+      { key: "featStrong", label: "Diferenciais bem completos", done: hasStrongFeatures, points: 4, category: "Diferenciais", step: 2, fieldId: "conditionTags" },
 
-      { key: "verified", label: "Contato verificado", done: hasAnyVerifiedContact, points: 6, category: "Confiança", step: 6, fieldId: "contactVerification" },
+      { key: "verified", label: "Verificar seu contato", done: hasAnyVerifiedContact, points: 3, category: "Publicação", step: 6, fieldId: "contactVerification" },
     ];
 
     const achieved = baseItems.reduce((sum, it) => sum + (it.done ? it.points : 0), 0);
@@ -1725,13 +1804,14 @@ export default function NewPropertyPage() {
     else if (score >= 75) level = "good";
     else if (score >= 55) level = "medium";
 
-    const categories = ("Essenciais,Mídia,Conteúdo,SEO,Confiança".split(",") as QualityCategory[]).map((name) => {
+    const categories = ("Básico,Fotos,Texto,Diferenciais,Publicação".split(",") as QualityCategory[]).map((name) => {
       const list = baseItems.filter((it) => it.category === name);
       const doneCount = list.filter((it) => it.done).length;
       return {
         name,
         doneCount,
         totalCount: list.length,
+        missingCount: list.filter((it) => !it.done).length,
         achieved: list.reduce((sum, it) => sum + (it.done ? it.points : 0), 0),
         total: list.reduce((sum, it) => sum + it.points, 0),
         items: list,
@@ -1743,8 +1823,8 @@ export default function NewPropertyPage() {
       .slice()
       .sort((a, b) => b.points - a.points);
 
-    return { score, level, items: baseItems, categories, missing, imageCount, achieved, total };
-  }, [purpose, priceBRL, type, street, city, state, geo, bedrooms, bathrooms, areaM2, images, description, finalTitle, conditionTags, hasBalcony, petFriendly, petsSmall, petsLarge, hasElevator, hasPool, hasGym, hasGourmet, hasPlayground, hasPartyRoom, hasConcierge24h, metaTitle, metaDescription, hasAnyVerifiedContact]);
+    return { score, level, items: baseItems, categories, missing, imageCount, achieved, total, optionalFeaturesCount, goodResCount, measuredPhotoCount: measuredPhotos.length };
+  }, [purpose, priceBRL, type, street, city, state, geo, bedrooms, bathrooms, areaM2, images, description, finalTitle, conditionTags, PROPERTY_FEATURE_TAG_SET, hasBalcony, petFriendly, petsSmall, petsLarge, hasElevator, hasPool, hasGym, hasGourmet, hasPlayground, hasPartyRoom, hasConcierge24h, metaTitle, metaDescription, hasAnyVerifiedContact]);
 
   const steps = [
     { id: 1, name: "Informações básicas", description: "Preço, tipo e endereço" },
@@ -4308,7 +4388,7 @@ export default function NewPropertyPage() {
                           </span>
                           <div className="min-w-0">
                             <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
-                            <p className="text-[11px] text-gray-500 leading-4">Pontuação baseada nos campos que mais impactam conversão e busca.</p>
+                            <p className="text-[11px] text-gray-500 leading-4">Quanto mais completo, mais visitas e mais contatos.</p>
                           </div>
                         </div>
                       </div>
@@ -4348,17 +4428,39 @@ export default function NewPropertyPage() {
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {adQualityScore.categories.map((c) => (
-                        <span
-                          key={c.name}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/70 border border-gray-200 text-[11px] text-gray-700"
-                          title={`${c.doneCount}/${c.totalCount}`}
-                        >
-                          <span className="font-semibold">{c.name}</span>
-                          <span className="text-gray-400">{c.doneCount}/{c.totalCount}</span>
-                        </span>
-                      ))}
+                    <div className="mt-4 rounded-2xl bg-white/60 border border-gray-200 p-3">
+                      <p className="text-xs font-semibold text-gray-900">Resumo rápido</p>
+                      <div className="mt-2 space-y-2">
+                        {adQualityScore.categories.map((c) => {
+                          const status = c.missingCount === 0 ? "OK" : c.missingCount <= 1 ? "Quase" : "Melhorar";
+                          const pill =
+                            status === "OK"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : status === "Quase"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-rose-100 text-rose-700";
+                          const icon = status === "OK" ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          ) : (
+                            <Circle className="w-4 h-4 text-gray-300" />
+                          );
+                          return (
+                            <div key={c.name} className="flex items-center justify-between gap-3">
+                              <div className="min-w-0 flex items-center gap-2">
+                                {icon}
+                                <span className="text-xs font-semibold text-gray-800 truncate">{c.name}</span>
+                              </div>
+                              <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${pill}`}>{status}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {adQualityScore.measuredPhotoCount > 0 && adQualityScore.goodResCount < Math.min(6, adQualityScore.imageCount) && (
+                        <p className="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-2">
+                          Suas fotos parecem pequenas/sem nitidez. Trocar por imagens melhores costuma aumentar muito os cliques.
+                        </p>
+                      )}
                     </div>
 
                     <div className="mt-4 rounded-2xl bg-white/60 border border-gray-200 p-3">
@@ -4370,7 +4472,7 @@ export default function NewPropertyPage() {
                       {adQualityScore.missing.length === 0 ? (
                         <div className="mt-2 flex items-start gap-2">
                           <Star className="w-4 h-4 text-emerald-600 mt-0.5" />
-                          <p className="text-xs text-gray-700">Seu anúncio está excelente. Revise fotos e texto final antes de publicar.</p>
+                          <p className="text-xs text-gray-700">Está bem completo. Se puder, adicione mais fotos boas para destacar ainda mais.</p>
                         </div>
                       ) : (
                         <div className="mt-2 space-y-2">
@@ -4389,7 +4491,7 @@ export default function NewPropertyPage() {
                                 <span className="text-xs font-semibold text-gray-800 truncate">{it.label}</span>
                               </span>
                               <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700">
-                                <span>Ir</span>
+                                <span>Melhorar</span>
                                 <ArrowUpRight className="w-3.5 h-3.5" />
                               </span>
                             </button>
@@ -4428,7 +4530,7 @@ export default function NewPropertyPage() {
                     <div className="mt-3 flex items-center justify-between rounded-2xl border border-gray-200 bg-white/60 px-3 py-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <Search className="w-4 h-4 text-teal-700" />
-                        <p className="text-[11px] text-gray-600 truncate">Dica: 8–15 fotos e descrição bem segmentada convertem mais.</p>
+                        <p className="text-[11px] text-gray-600 truncate">Dica: 12+ fotos nítidas e texto detalhado geram mais contatos.</p>
                       </div>
                       <span
                         className={
@@ -4443,12 +4545,12 @@ export default function NewPropertyPage() {
                         }
                       >
                         {adQualityScore.level === "excellent"
-                          ? "Premium"
+                          ? "Pronto para destaque"
                           : adQualityScore.level === "good"
-                          ? "Ótimo"
+                          ? "Muito bom"
                           : adQualityScore.level === "medium"
-                          ? "Em progresso"
-                          : "Básico"}
+                          ? "Bom (dá pra melhorar)"
+                          : "Precisa melhorar"}
                       </span>
                     </div>
                   </div>
