@@ -1659,7 +1659,6 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                         >
                           <span className="text-sm font-semibold text-gray-900">Explore a Região</span>
                           <span className="flex items-center gap-2 text-xs font-semibold text-gray-600">
-                            <span>{totalPois}</span>
                             <ChevronDown className={`w-4 h-4 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
                           </span>
                         </button>
