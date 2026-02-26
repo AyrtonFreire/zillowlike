@@ -201,6 +201,7 @@ function normalizePlaces(raw: any[], perCategory: number) {
 }
 
 export async function GET(req: NextRequest) {
+  let keySource = "";
   try {
     const { searchParams } = new URL(req.url);
     const lat = Number(searchParams.get("lat"));
@@ -212,15 +213,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "lat/lng required", ...emptyPayload() }, { status: 400 });
     }
 
-    const key = (
-      process.env.GOOGLE_PLACES_API_KEY ||
-      process.env.GOOGLE_MAPS_API_KEY ||
-      (process.env.NODE_ENV !== "production" ? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY : "") ||
+    const keyRaw = (
+      (process.env.GOOGLE_PLACES_API_KEY ? ((keySource = "GOOGLE_PLACES_API_KEY"), process.env.GOOGLE_PLACES_API_KEY) : "") ||
+      (process.env.GOOGLE_MAPS_API_KEY ? ((keySource = "GOOGLE_MAPS_API_KEY"), process.env.GOOGLE_MAPS_API_KEY) : "") ||
+      (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+        ? ((keySource = "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"), process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)
+        : "") ||
       ""
-    ).trim();
+    );
+    const key = keyRaw.trim();
     if (!key) {
       return NextResponse.json(
-        { ok: false, error: "Missing GOOGLE_PLACES_API_KEY", ...emptyPayload() },
+        { ok: false, error: "Missing GOOGLE_PLACES_API_KEY", keySource, ...emptyPayload() },
         { status: 500 }
       );
     }
@@ -229,7 +233,7 @@ export async function GET(req: NextRequest) {
 
     const cachedRedis = await redisGet(cacheKey);
     if (cachedRedis) {
-      const res = NextResponse.json({ ok: true, cached: true, source: "google_places", ...cachedRedis }, { status: 200 });
+      const res = NextResponse.json({ ok: true, cached: true, source: "google_places", keySource, ...cachedRedis }, { status: 200 });
       res.headers.set("Cache-Control", "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800");
       return res;
     }
@@ -237,7 +241,7 @@ export async function GET(req: NextRequest) {
     const now = Date.now();
     const cachedMem = memCache.get(cacheKey);
     if (cachedMem && now - cachedMem.t <= MEM_TTL_MS) {
-      const res = NextResponse.json({ ok: true, cached: true, source: "google_places", ...cachedMem.v }, { status: 200 });
+      const res = NextResponse.json({ ok: true, cached: true, source: "google_places", keySource, ...cachedMem.v }, { status: 200 });
       res.headers.set("Cache-Control", "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800");
       return res;
     }
@@ -267,14 +271,14 @@ export async function GET(req: NextRequest) {
     touchMem(cacheKey, { v: payload, t: now });
     await redisSetEx(cacheKey, payload, 7 * 24 * 60 * 60);
 
-    const out = NextResponse.json({ ok: true, cached: false, source: "google_places", ...payload }, { status: 200 });
+    const out = NextResponse.json({ ok: true, cached: false, source: "google_places", keySource, ...payload }, { status: 200 });
     out.headers.set("Cache-Control", "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800");
     return out;
   } catch (e: any) {
     const statusRaw = Number((e as any)?.status);
     const status = Number.isFinite(statusRaw) && statusRaw >= 400 && statusRaw <= 599 ? statusRaw : 502;
     return NextResponse.json(
-      { ok: false, error: String(e?.message || e), ...emptyPayload() },
+      { ok: false, error: String(e?.message || e), keySource, ...emptyPayload() },
       { status }
     );
   }
