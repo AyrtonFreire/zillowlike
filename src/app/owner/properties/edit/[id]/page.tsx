@@ -115,6 +115,8 @@ export default function EditPropertyPage() {
   const [type, setType] = useState("HOUSE");
   const [status, setStatus] = useState("ACTIVE");
   const [street, setStreet] = useState("");
+  const [streetNumber, setStreetNumber] = useState("");
+  const [addressComplement, setAddressComplement] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -212,6 +214,8 @@ export default function EditPropertyPage() {
         setStatus(p.status);
         setPurpose(p.purpose || "");
         setStreet(p.street);
+        setStreetNumber(p.streetNumber || "");
+        setAddressComplement(p.addressComplement || "");
         setNeighborhood(p.neighborhood || "");
         setCity(p.city);
         setState(p.state);
@@ -386,6 +390,8 @@ export default function EditPropertyPage() {
           purpose: purpose || null,
           ...(userRole === "AGENCY" ? { capturerRealtorId: capturerRealtorId ? capturerRealtorId : null } : {}),
           street,
+          streetNumber: streetNumber ? streetNumber : null,
+          addressComplement: addressComplement ? addressComplement : null,
           neighborhood,
           city,
           state,
@@ -405,8 +411,8 @@ export default function EditPropertyPage() {
           yearRenovated: yearRenovated ? parseInt(yearRenovated) : null,
           furnished,
           petFriendly,
-          condoFee: condoFeeBRL ? parseBRLToNumber(condoFeeBRL) * 100 : null,
-          iptuYearly: iptuYearlyBRL ? parseBRLToNumber(iptuYearlyBRL) * 100 : null,
+          condoFee: condoFeeBRL ? Math.round(parseBRLToNumber(condoFeeBRL) * 100) : null,
+          iptuYearly: iptuYearlyBRL ? Math.round(parseBRLToNumber(iptuYearlyBRL) * 100) : null,
           hasBalcony,
           hasElevator,
           hasPool,
@@ -865,6 +871,31 @@ export default function EditPropertyPage() {
                       type="text"
                       value={neighborhood}
                       onChange={(e) => setNeighborhood(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Número
+                    </label>
+                    <input
+                      type="text"
+                      value={streetNumber}
+                      onChange={(e) => setStreetNumber(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Complemento
+                    </label>
+                    <input
+                      type="text"
+                      value={addressComplement}
+                      onChange={(e) => setAddressComplement(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>

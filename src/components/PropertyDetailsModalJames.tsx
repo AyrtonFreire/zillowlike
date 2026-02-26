@@ -45,6 +45,8 @@ type PropertyDetails = {
   videoProvider?: 'YOUTUBE' | 'VIMEO' | null;
   videoId?: string | null;
   street: string;
+  streetNumber?: string | null;
+  addressComplement?: string | null;
   neighborhood: string | null;
   city: string;
   state: string;
@@ -478,6 +480,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         type: property.type,
         purpose: property.purpose || "",
         street: property.street || "",
+        addressNumber: property.streetNumber || "",
+        addressComplement: property.addressComplement || "",
         neighborhood: property.neighborhood || "",
         city: property.city || "",
         state: property.state || "",
@@ -496,7 +500,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         yearRenovated: property.yearRenovated ?? "",
         totalFloors: property.totalFloors ?? "",
         images: images.length ? images : [{ url: "", useUrl: false }],
-        addressNumber: "",
         conditionTags,
         petFriendly: !!property.petFriendly,
         currentStep: 1,
@@ -1775,7 +1778,11 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                             ) : null}
 
                             <a
-                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.street}, ${property.city}, ${property.state}`)}`}
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                property.hideExactAddress
+                                  ? `${property.neighborhood || property.city}, ${property.city}, ${property.state}`
+                                  : `${property.street}${property.streetNumber ? `, ${property.streetNumber}` : ''}, ${property.city}, ${property.state}`
+                              )}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium mb-8"
@@ -2192,8 +2199,9 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                 <div>
                   <div className="text-base font-semibold text-gray-900 mb-1">{property.title}</div>
                   <div className="text-sm text-teal-600">
-                    {property.street && `${property.street}, `}
-                    {property.neighborhood && `${property.neighborhood}`}
+                    {property.hideExactAddress
+                      ? (property.neighborhood || "")
+                      : `${property.street}${property.streetNumber ? `, ${property.streetNumber}` : ""}${property.addressComplement ? ` • ${property.addressComplement}` : ""}`}
                   </div>
                   <div className="text-sm text-gray-500">
                     {property.city}, {property.state}

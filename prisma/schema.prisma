@@ -230,6 +230,8 @@ model Property {
 
   // Location & address
   street       String
+  streetNumber String?
+  addressComplement String?
   neighborhood String?
   city         String
   state        String

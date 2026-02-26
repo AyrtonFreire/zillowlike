@@ -30,6 +30,7 @@ export const PropertyCreateSchema = z
     .int()
     .positive()
     .max(1_000_000_000), // até R$ 1 bi (inteiro em reais)
+  condoFee: z.number().int().nonnegative().nullable().optional(), // em centavos
   type: PropertyTypeEnum,
   purpose: PurposeEnum.optional(),
   capturerRealtorId: z.string().trim().min(1).optional().nullable(),
@@ -42,6 +43,8 @@ export const PropertyCreateSchema = z
     city: z.string().min(1).max(120),
     state: z.string().min(1).max(10),
     postalCode: z.string().max(20).optional().nullable(),
+    number: z.string().max(40).optional().nullable(),
+    complement: z.string().max(120).optional().nullable(),
   }),
   geo: z
     .object({
@@ -139,7 +142,7 @@ export const PropertyCreateSchema = z
         sortOrder: z.number().int().min(0).optional(),
       })
     )
-    .max(30)
+    .max(20)
     .optional(),
   })
   .superRefine((value, ctx) => {
@@ -168,6 +171,11 @@ export const PropertyQuerySchema = z.object({
   realtorId: z.string().max(80).optional(),
   minPrice: z.string().regex(/^\d+$/).optional(), // em centavos
   maxPrice: z.string().regex(/^\d+$/).optional(), // em centavos
+  condoFeeMin: z.string().regex(/^\d+$/).optional(), // reais (inteiro)
+  condoFeeMax: z.string().regex(/^\d+$/).optional(), // reais (inteiro)
+  iptuMin: z.string().regex(/^\d+$/).optional(), // reais (inteiro)
+  iptuMax: z.string().regex(/^\d+$/).optional(), // reais (inteiro)
+  keywords: z.string().max(200).optional(),
   page: z.string().regex(/^\d+$/).optional(),
   pageSize: z.string().regex(/^\d+$/).optional(),
   sort: z.enum(["recent","price_asc","price_desc","area_desc"]).optional(),

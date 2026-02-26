@@ -30,6 +30,8 @@ export async function GET(req: NextRequest, context: RouteContext) {
         videoProvider: true,
         videoId: true,
         street: true,
+        streetNumber: true,
+        addressComplement: true,
         neighborhood: true,
         city: true,
         state: true,
@@ -114,7 +116,15 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const res = NextResponse.json({ item: jsonSafe(item) });
+    const safeItem = jsonSafe(item);
+    if ((safeItem as any)?.hideExactAddress) {
+      (safeItem as any).street = "";
+      (safeItem as any).streetNumber = null;
+      (safeItem as any).addressComplement = null;
+      (safeItem as any).postalCode = null;
+    }
+
+    const res = NextResponse.json({ item: safeItem });
     res.headers.set("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
     return res;
   } catch (e) {

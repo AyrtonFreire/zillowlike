@@ -222,7 +222,9 @@ export async function GET(req: NextRequest) {
     // Pets
     const petsSmall = searchParams.get("petsSmall");
     const petsLarge = searchParams.get("petsLarge");
+    const condoFeeMin = searchParams.get("condoFeeMin");
     const condoFeeMax = searchParams.get("condoFeeMax");
+    const iptuMin = searchParams.get("iptuMin");
     const iptuMax = searchParams.get("iptuMax");
     const keywords = searchParams.get("keywords");
     
@@ -268,10 +270,15 @@ export async function GET(req: NextRequest) {
     // Pets
     if (petsSmall === "true") where.petsSmall = true;
     if (petsLarge === "true") where.petsLarge = true;
-    if (condoFeeMax) where.condoFee = { lte: toBigInt(condoFeeMax) };
-    if (iptuMax) {
-      // IPTU não existe no schema atual, mas preparado para quando adicionar
-      // where.iptu = { lte: Number(iptuMax) };
+    if (condoFeeMin || condoFeeMax) {
+      where.condoFee = {};
+      if (condoFeeMin) where.condoFee.gte = toCentsBigInt(condoFeeMin);
+      if (condoFeeMax) where.condoFee.lte = toCentsBigInt(condoFeeMax);
+    }
+    if (iptuMin || iptuMax) {
+      where.iptuYearly = {};
+      if (iptuMin) where.iptuYearly.gte = toCentsBigInt(iptuMin);
+      if (iptuMax) where.iptuYearly.lte = toCentsBigInt(iptuMax);
     }
     
     if (q || keywords) {
@@ -700,7 +707,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { title, metaTitle, metaDescription, description, priceBRL, type, purpose, capturerRealtorId, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility, videoUrl } = parsed.data;
+    const { title, metaTitle, metaDescription, description, priceBRL, condoFee, type, purpose, capturerRealtorId, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility, videoUrl } = parsed.data;
 
     const parsedVideo = typeof videoUrl === "string" && videoUrl.trim() ? parseVideoUrl(videoUrl) : null;
 
@@ -811,6 +818,8 @@ export async function POST(req: NextRequest) {
       ...(capturerRealtorId ? { capturerRealtorId: String(capturerRealtorId) } : {}),
       ownerId: userId || undefined,
       street: address.street,
+      streetNumber: address.number ?? null,
+      addressComplement: address.complement ?? null,
       neighborhood: address.neighborhood ?? null,
       city: address.city,
       state: address.state,
@@ -819,6 +828,7 @@ export async function POST(req: NextRequest) {
       longitude,
       furnished: typeof furnished === 'boolean' ? furnished : null,
       petFriendly: typeof petFriendly === 'boolean' ? petFriendly : null,
+      condoFee: toBigIntOrNull(condoFee),
       bedrooms: details?.bedrooms ?? null,
       bathrooms: details?.bathrooms ?? null,
       areaM2: details?.areaM2 ?? null,

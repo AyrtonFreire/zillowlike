@@ -144,6 +144,8 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       "capturerRealtorId",
       "videoUrl",
       "street",
+      "streetNumber",
+      "addressComplement",
       "neighborhood",
       "city",
       "state",

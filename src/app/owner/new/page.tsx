@@ -111,6 +111,7 @@ export default function NewPropertyPage() {
   const [secElectricFence, setSecElectricFence] = useState(false);
   // Accordion visibility
   const [openAcc, setOpenAcc] = useState<{[k:string]:boolean}>({});
+  const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
 
   const clearFieldError = (key: string) => {
     setFieldErrors((prev) => {
@@ -333,6 +334,7 @@ export default function NewPropertyPage() {
   const [state, setState] = useState("PE");
   const [postalCode, setPostalCode] = useState("");
   const [addressNumber, setAddressNumber] = useState("");
+  const [addressComplement, setAddressComplement] = useState("");
   const numberInputRef = useRef<HTMLInputElement | null>(null);
   const [cepValid, setCepValid] = useState(false);
   const [lightbox, setLightbox] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
@@ -736,18 +738,32 @@ export default function NewPropertyPage() {
   async function handleDroppedFiles(fileList: FileList | File[]) {
     const files: File[] = toFiles(fileList).filter((f: File) => f.type.startsWith('image/'));
     if (files.length === 0) return;
+
+    const MAX_IMAGES = 20;
+    const existingCount = images.filter((img) => !!img.url || !!img.pending || !!img.reserved).length;
+    const remaining = Math.max(0, MAX_IMAGES - existingCount);
+    if (remaining <= 0) {
+      setToast({ message: `Você já atingiu o limite de ${MAX_IMAGES} fotos.`, type: "info" });
+      return;
+    }
+
+    const cappedFiles = files.slice(0, remaining);
+    if (cappedFiles.length !== files.length) {
+      setToast({ message: `Limitamos a ${MAX_IMAGES} fotos por anúncio.`, type: "info" });
+    }
+
     // 1) Determinar índices-alvo: sempre APPEND para evitar colisões/off-by-one
     const startIndex = (!images.length || (images.length === 1 && !images[0].url)) ? 0 : images.length;
-    const targetIndices: number[] = Array.from({ length: files.length }, (_, k) => startIndex + k);
+    const targetIndices: number[] = Array.from({ length: cappedFiles.length }, (_, k) => startIndex + k);
     // Se havia apenas 1 slot vazio inicial, substituí-lo por placeholders
     if (images.length === 1 && !images[0].url) {
-      setImages(() => files.map(() => ({ url: "", reserved: true })) as ImageInput[]);
+      setImages(() => cappedFiles.map(() => ({ url: "", reserved: true })) as ImageInput[]);
     } else {
-      setImages((prev) => [...prev, ...files.map(() => ({ url: "", reserved: true }))]);
+      setImages((prev) => [...prev, ...cappedFiles.map(() => ({ url: "", reserved: true }))]);
     }
     // 2) Upload sequencial preenchendo cada índice
-    for (let k = 0; k < files.length; k++) {
-      const file = files[k];
+    for (let k = 0; k < cappedFiles.length; k++) {
+      const file = cappedFiles[k];
       const targetIndex = targetIndices[k];
 
       let processedFile: File;
@@ -918,6 +934,7 @@ export default function NewPropertyPage() {
     setState("PE");
     setPostalCode("");
     setAddressNumber("");
+    setAddressComplement("");
     setBedrooms("");
     setBathrooms("");
     setAreaM2("");
@@ -1054,6 +1071,8 @@ export default function NewPropertyPage() {
       if (d.city) setCity(d.city);
       if (d.state) setState(d.state);
       if (d.postalCode) setPostalCode(d.postalCode);
+      if (typeof d.addressNumber === 'string') setAddressNumber(d.addressNumber);
+      if (typeof d.addressComplement === 'string') setAddressComplement(d.addressComplement);
       if (typeof d.bedrooms !== 'undefined') setBedrooms(d.bedrooms);
       if (typeof d.bathrooms !== 'undefined') setBathrooms(d.bathrooms);
       if (typeof d.areaM2 !== 'undefined') setAreaM2(d.areaM2);
@@ -1188,6 +1207,8 @@ export default function NewPropertyPage() {
         if (d.city) setCity(d.city);
         if (d.state) setState(d.state);
         if (d.postalCode) setPostalCode(d.postalCode);
+        if (typeof d.addressNumber === 'string') setAddressNumber(d.addressNumber);
+        if (typeof d.addressComplement === 'string') setAddressComplement(d.addressComplement);
         if (typeof d.bedrooms !== "undefined") setBedrooms(d.bedrooms);
         if (typeof d.bathrooms !== "undefined") setBathrooms(d.bathrooms);
         if (typeof d.areaM2 !== "undefined") setAreaM2(d.areaM2);
@@ -1326,6 +1347,7 @@ export default function NewPropertyPage() {
           totalFloors,
           images,
           addressNumber,
+          addressComplement,
           conditionTags,
           petFriendly,
           capturerRealtorId,
@@ -1348,6 +1370,7 @@ export default function NewPropertyPage() {
           accWideDoors,
           accAccessibleElevator,
           accTactile,
+          finishFloor,
           finishCabinets,
           finishCounterGranite,
           finishCounterQuartz,
@@ -1357,8 +1380,63 @@ export default function NewPropertyPage() {
           positionBack,
           petsSmall,
           petsLarge,
-          condoFeeMinBRL: condoFeeBRL,
-          iptuMinBRL: iptuYearBRL,
+          condoFeeBRL,
+          iptuYearBRL,
+          privateOwnerName,
+          privateOwnerPhone,
+          privateOwnerEmail,
+          privateOwnerAddress,
+          privateOwnerPriceBRL,
+          privateBrokerFeePercent,
+          privateBrokerFeeFixedBRL,
+          privateExclusive,
+          privateExclusiveUntil,
+          privateOccupied,
+          privateOccupantInfo,
+          privateKeyLocation,
+          privateNotes,
+          hidePrice,
+          hideExactAddress,
+          hideOwnerContact,
+          hideCondoFee,
+          hideIPTU,
+          hasBalcony,
+          hasElevator,
+          hasPool,
+          hasGym,
+          hasPlayground,
+          hasPartyRoom,
+          hasGourmet,
+          hasConcierge24h,
+          accRamps,
+          accWideDoors,
+          accAccessibleElevator,
+          accTactile,
+          comfortAC,
+          comfortHeating,
+          comfortSolar,
+          comfortNoiseWindows,
+          comfortLED,
+          comfortWaterReuse,
+          finishFloor,
+          finishCabinets,
+          finishCounterGranite,
+          finishCounterQuartz,
+          viewSea,
+          viewCity,
+          positionFront,
+          positionBack,
+          sunByRoomNote,
+          sunOrientation,
+          petsSmall,
+          petsLarge,
+          condoRules,
+          secCCTV,
+          secSallyPort,
+          secNightGuard,
+          secElectricFence,
+          isSubmitting,
+          publishedProperty,
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
 
@@ -1371,7 +1449,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, conditionTags, petFriendly, capturerRealtorId, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, sunOrientation, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
+  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, addressNumber, addressComplement, conditionTags, petFriendly, capturerRealtorId, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, sunOrientation, petsSmall, petsLarge, condoRules, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1423,6 +1501,7 @@ export default function NewPropertyPage() {
     setPostalCode("");
     setStreet("");
     setAddressNumber("");
+    setAddressComplement("");
     setNeighborhood("");
     setCity("");
     setState("");
@@ -1736,7 +1815,6 @@ export default function NewPropertyPage() {
         !!purpose &&
         !!type &&
         !!street &&
-        !!neighborhood &&
         !!city &&
         !!state &&
         hasValidCep &&
@@ -1977,7 +2055,7 @@ export default function NewPropertyPage() {
       // Exige ao menos uma imagem válida
       const hasAtLeastOneImage = images.some((img) => img.url && img.url.trim().length > 0);
       if (!hasAtLeastOneImage) {
-        openPublishIssues({ images: "Adicione pelo menos uma foto do imóvel." });
+        openPublishIssues({ images: "Adicione ao menos uma foto do imóvel." });
         return;
       }
 
@@ -2011,10 +2089,19 @@ export default function NewPropertyPage() {
         description,
         videoUrl: videoUrl || "",
         priceBRL: parseBRLToNumber(priceBRL),
+        condoFee: condoFeeBRL ? Math.round(parseBRLToNumber(condoFeeBRL) * 100) : null,
         type,
         purpose,
         capturerRealtorId: capturerRealtorId ? capturerRealtorId : null,
-        address: { street, neighborhood, city, state, postalCode, number: addressNumber || undefined },
+        address: {
+          street,
+          neighborhood: neighborhood ? neighborhood : null,
+          city,
+          state,
+          postalCode: postalCode ? postalCode : null,
+          number: addressNumber ? addressNumber : null,
+          complement: addressComplement ? addressComplement : null,
+        },
         geo: geo ? { lat: geo.lat, lng: geo.lng } : undefined,
         furnished: isFurnished,
         petFriendly: isPetFriendly,
@@ -2116,7 +2203,6 @@ export default function NewPropertyPage() {
           else if (p === "conditionTags") next.conditionTags = "Muitas características selecionadas. Remova algumas e tente novamente.";
           else if (p === "address.postalCode") next.postalCode = "Informe um CEP válido.";
           else if (p === "address.street") next.street = "Informe a rua.";
-          else if (p === "address.neighborhood") next.neighborhood = "Informe o bairro.";
           else if (p === "address.city") next.city = "Informe a cidade.";
           else if (p === "address.state") next.state = "Informe o estado (UF).";
           else if (p === "geo.lat" || p === "geo.lng") next.geo = "Valide o endereço no mapa.";
@@ -2194,7 +2280,6 @@ export default function NewPropertyPage() {
             else if (p === "conditionTags") next.conditionTags = "Muitas características selecionadas. Remova algumas e tente novamente.";
             else if (p === "address.postalCode") next.postalCode = "Informe um CEP válido.";
             else if (p === "address.street") next.street = "Informe a rua.";
-            else if (p === "address.neighborhood") next.neighborhood = "Informe o bairro.";
             else if (p === "address.city") next.city = "Informe a cidade.";
             else if (p === "address.state") next.state = "Informe o estado (UF).";
             else if (p === "geo.lat" || p === "geo.lng") next.geo = "Valide o endereço no mapa.";
@@ -2295,10 +2380,9 @@ export default function NewPropertyPage() {
         applyErrorsAndFocus(1, { postalCode: "Informe um CEP válido (8 dígitos)." });
         return;
       }
-      if (!street || !neighborhood || !city || !state) {
+      if (!street || !city || !state) {
         const errs: Record<string, string> = {};
         if (!street) errs.street = "Informe a rua.";
-        if (!neighborhood) errs.neighborhood = "Informe o bairro.";
         if (!city) errs.city = "Informe a cidade.";
         if (!state) errs.state = "Informe o estado (UF).";
         applyErrorsAndFocus(1, errs);
@@ -2309,7 +2393,7 @@ export default function NewPropertyPage() {
       const res = await geocodeAddressParts({
         street,
         number: addressNumber || undefined, // opcional
-        neighborhood,
+        neighborhood: neighborhood || undefined,
         city,
         state,
         postalCode,
@@ -2804,6 +2888,47 @@ export default function NewPropertyPage() {
                     </p>
                   </div>
 
+                  {!hasAnyVerifiedContact && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold">Para publicar, você precisa verificar telefone ou e-mail. Leva ~30s.</p>
+                          <p className="text-xs mt-1 text-amber-800">Você pode fazer isso agora e continuar preenchendo normalmente.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (profilePhone && !profilePhoneVerified) {
+                              setShowPhoneVerificationModal(true);
+                              return;
+                            }
+                            if (profileEmail && !profileEmailVerified) {
+                              try {
+                                const r = await fetch("/api/auth/resend-verification", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ email: profileEmail }),
+                                });
+                                if (r.ok) {
+                                  setToast({ message: "Enviamos um link de verificação para seu e-mail.", type: "success" });
+                                } else {
+                                  setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
+                                }
+                              } catch {
+                                setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
+                              }
+                              return;
+                            }
+                            window.location.href = "/profile";
+                          }}
+                          className="shrink-0 px-3 py-2 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700"
+                        >
+                          Verificar agora
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {userRole === "AGENCY" && (
                     <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                       <div className="px-4 py-3 bg-white border-b border-gray-100">
@@ -2941,17 +3066,24 @@ export default function NewPropertyPage() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                      <Input
+                        id="addressComplement"
+                        label="Complemento"
+                        value={addressComplement}
+                        onChange={(e) => setAddressComplement(e.target.value)}
+                        optional
+                      />
                       <Input
                         id="neighborhood"
                         label="Bairro"
-                        required
                         value={neighborhood}
                         error={fieldErrors.neighborhood}
                         onChange={(e) => {
                           setNeighborhood(e.target.value);
                           clearFieldError("neighborhood");
                         }}
+                        optional
                       />
                       <Input
                         id="city"
@@ -3335,9 +3467,55 @@ export default function NewPropertyPage() {
                     <Input id="areaM2" label="Área (m²)" required value={areaM2} error={fieldErrors.areaM2} onChange={(e) => { setAreaM2(e.target.value); clearFieldError("areaM2"); }} inputMode="numeric" />
                     <Input id="suites" label="Suítes" value={suites as any} error={fieldErrors.suites} onChange={(e) => { setSuites(e.target.value); clearFieldError("suites"); }} inputMode="numeric" optional />
                     <Input id="parkingSpots" label="Vagas" value={parkingSpots as any} error={fieldErrors.parkingSpots} onChange={(e) => { setParkingSpots(e.target.value); clearFieldError("parkingSpots"); }} inputMode="numeric" optional />
-                    <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
-                    <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
                   </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Select
+                      label="Mobília"
+                      value={conditionTags.find((t) => FURNISHING_SET.has(t)) || ""}
+                      onChange={(e) => {
+                        const next = String(e.target.value || "");
+                        setConditionTags((prev) => {
+                          const cleaned = prev.filter((t) => !FURNISHING_SET.has(t));
+                          if (!next) return cleaned;
+                          return [...cleaned, next];
+                        });
+                      }}
+                      optional
+                    >
+                      <option value="">Não informar</option>
+                      {CONDITION_EXTRA_OPTIONS.map((tag) => (
+                        <option key={tag} value={tag}>{tag}</option>
+                      ))}
+                    </Select>
+                    <div className="pt-2">
+                      <Checkbox
+                        checked={petFriendly}
+                        onChange={(e) => {
+                          const next = e.target.checked;
+                          setPetFriendly(next);
+                          if (!next) {
+                            setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
+                          }
+                        }}
+                        label="Aceita pets"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedDetails((p) => !p)}
+                      className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    >
+                      <span className="text-sm font-semibold text-gray-800">Detalhes avançados (opcional)</span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showAdvancedDetails ? 'rotate-180' : ''}`} />
+                    </button>
+                  </div>
+
+                  {showAdvancedDetails && (
+                    <>
 
                   <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                     <button
@@ -3597,11 +3775,16 @@ export default function NewPropertyPage() {
 
                   {/* Ano e taxas */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
+                    <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
                     <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
                     <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
                     <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
                     <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
                   </div>
+
+                    </>
+                  )}
 
                 </div>
               )}
@@ -4298,7 +4481,7 @@ export default function NewPropertyPage() {
 
           <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start space-y-4">
             {/* Score de qualidade do anúncio */}
-            {false && (
+            {true && (
               <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
