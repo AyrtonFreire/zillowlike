@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft, Eye, X, Sparkles, CheckCircle2, Circle, ArrowUpRight, FileText, Search, ShieldCheck, Star } from "lucide-react";
+import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ArrowLeft, Eye, X, Sparkles, CheckCircle2, Circle, ArrowUpRight, FileText, Search, ShieldCheck, Star } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -1091,9 +1091,9 @@ export default function NewPropertyPage() {
       if (typeof d.petFriendly === 'boolean') setPetFriendly(d.petFriendly);
       else if (Array.isArray(d.conditionTags) && d.conditionTags.includes('Aceita pets')) setPetFriendly(true);
 
-      const stepFromApi = typeof draft.currentStep === "number" ? draft.currentStep : d.currentStep;
-      if (typeof stepFromApi === "number" && stepFromApi >= 1 && stepFromApi <= 7) {
-        setCurrentStep(stepFromApi);
+      const stepFromDraft = d.currentStep;
+      if (typeof stepFromDraft === "number" && stepFromDraft >= 1 && stepFromDraft <= 7) {
+        setCurrentStep(stepFromDraft);
       }
 
       // Campos privados do proprietário
@@ -3662,7 +3662,6 @@ export default function NewPropertyPage() {
                         </div>
                       </div>
                     </div>
-                  </div>
                   </div>
                 </div>
               )}
