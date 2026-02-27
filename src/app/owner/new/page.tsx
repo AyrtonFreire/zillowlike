@@ -110,18 +110,31 @@ export default function NewPropertyPage() {
   const [secNightGuard, setSecNightGuard] = useState(false);
   const [secElectricFence, setSecElectricFence] = useState(false);
 
-  const [openAcc, setOpenAcc] = useState<{ [k: string]: boolean }>({
-    acc_condition: true,
-    acc_measures: true,
-    acc_features: true,
-    acc_condo: true,
-    acc_sec: true,
-    acc_comfort: true,
-    acc_fin: true,
-    acc_view: true,
-    acc_acc: true,
-    acc_pets: true,
-  });
+  const DEFAULT_OPEN_ACC = useMemo(
+    () => ({
+      acc_condition: true,
+      acc_measures: true,
+      acc_features: true,
+      acc_condo: true,
+      acc_sec: true,
+      acc_comfort: true,
+      acc_fin: true,
+      acc_view: true,
+      acc_acc: true,
+      acc_pets: true,
+    }),
+    []
+  );
+
+  const [openAcc, setOpenAcc] = useState<{ [k: string]: boolean }>(() => ({ ...DEFAULT_OPEN_ACC }));
+  const didInitAccordionsRef = useRef(false);
+
+  useEffect(() => {
+    if (currentStep !== 2) return;
+    if (didInitAccordionsRef.current) return;
+    didInitAccordionsRef.current = true;
+    setOpenAcc({ ...DEFAULT_OPEN_ACC });
+  }, [currentStep, DEFAULT_OPEN_ACC]);
 
   const clearFieldError = (key: string) => {
     setFieldErrors((prev) => {
