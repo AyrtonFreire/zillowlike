@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ArrowLeft, Eye, X, Sparkles, CheckCircle2, Circle, ArrowUpRight, FileText, Search, ShieldCheck, Star } from "lucide-react";
+import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft, Eye, X, Sparkles, CheckCircle2, Circle, ArrowUpRight, FileText, Search, ShieldCheck, Star } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -109,6 +109,19 @@ export default function NewPropertyPage() {
   const [secSallyPort, setSecSallyPort] = useState(false);
   const [secNightGuard, setSecNightGuard] = useState(false);
   const [secElectricFence, setSecElectricFence] = useState(false);
+
+  const [openAcc, setOpenAcc] = useState<{ [k: string]: boolean }>({
+    acc_condition: true,
+    acc_measures: true,
+    acc_features: true,
+    acc_condo: true,
+    acc_sec: true,
+    acc_comfort: true,
+    acc_fin: true,
+    acc_view: true,
+    acc_acc: true,
+    acc_pets: true,
+  });
 
   const clearFieldError = (key: string) => {
     setFieldErrors((prev) => {
@@ -240,6 +253,41 @@ export default function NewPropertyPage() {
   );
 
   // Contadores para grupos de detalhes (usados nos headers dos accordions)
+  const accAccessibilityCount = (accRamps ? 1 : 0) + (accWideDoors ? 1 : 0) + (accAccessibleElevator ? 1 : 0) + (accTactile ? 1 : 0);
+  const accComfortCount =
+    (comfortAC ? 1 : 0) +
+    (comfortHeating ? 1 : 0) +
+    (comfortSolar ? 1 : 0) +
+    (comfortNoiseWindows ? 1 : 0) +
+    (comfortLED ? 1 : 0) +
+    (comfortWaterReuse ? 1 : 0);
+  const accFinishCount =
+    (finishFloor ? 1 : 0) +
+    (finishCabinets ? 1 : 0) +
+    (finishCounterGranite ? 1 : 0) +
+    (finishCounterQuartz ? 1 : 0);
+  const accViewCount =
+    (viewSea ? 1 : 0) +
+    (viewCity ? 1 : 0) +
+    (positionFront ? 1 : 0) +
+    (positionBack ? 1 : 0) +
+    (sunByRoomNote ? 1 : 0);
+  const accPetsCount = (petsSmall ? 1 : 0) + (petsLarge ? 1 : 0);
+  const accSecurityCount = (secCCTV ? 1 : 0) + (secSallyPort ? 1 : 0) + (secNightGuard ? 1 : 0) + (secElectricFence ? 1 : 0);
+  const accMeasuresCount = [builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2].filter((v) => String(v || "").trim()).length;
+  const accFeaturesCount =
+    (hasBalcony ? 1 : 0) +
+    (petFriendly ? 1 : 0) +
+    conditionTags.filter((t) => PROPERTY_FEATURE_TAG_SET.has(t)).length;
+  const accCondoCount =
+    (hasElevator ? 1 : 0) +
+    (hasPool ? 1 : 0) +
+    (hasGym ? 1 : 0) +
+    (hasGourmet ? 1 : 0) +
+    (hasPlayground ? 1 : 0) +
+    (hasPartyRoom ? 1 : 0) +
+    (hasConcierge24h ? 1 : 0);
+  const accConditionCount = conditionTags.filter((t) => CONDITION_STATUS_SET.has(t) || CONDITION_EXTRA_SET.has(t)).length;
 
   // Heurística: sugerir capa movendo imagem com nome/fachada
   function suggestCover() {
@@ -3498,171 +3546,330 @@ export default function NewPropertyPage() {
                     <Input id="parkingSpots" label="Vagas" value={parkingSpots as any} error={fieldErrors.parkingSpots} onChange={(e) => { setParkingSpots(e.target.value); clearFieldError("parkingSpots"); }} inputMode="numeric" optional />
                   </div>
 
-                  <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 space-y-6">
+
+                  <div>
                     <div className="text-sm font-semibold text-gray-900">Detalhes avançados (opcional)</div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-gray-900">Condição e mobília</div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          {CONDITION_STATUS_OPTIONS.map((tag) => (
-                            <Checkbox key={tag} checked={conditionTags.includes(tag)} onChange={() => toggleConditionTag(tag)} label={tag} />
-                          ))}
-                        </div>
-                        <div className="pt-2">
-                          <Select
-                            label="Mobília"
-                            value={conditionTags.find((t) => FURNISHING_SET.has(t)) || ""}
-                            onChange={(e) => {
-                              const next = String(e.target.value || "");
-                              setConditionTags((prev) => {
-                                const cleaned = prev.filter((t) => !FURNISHING_SET.has(t));
-                                if (!next) return cleaned;
-                                return [...cleaned, next];
-                              });
-                            }}
-                            optional
-                          >
-                            <option value="">Não informar</option>
-                            {CONDITION_EXTRA_OPTIONS.map((tag) => (
-                              <option key={tag} value={tag}>{tag}</option>
-                            ))}
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-gray-900">Medidas do imóvel</div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                          <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
-                          <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
-                          <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
-                          <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-gray-900">Características do imóvel</div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
-                          <Checkbox
-                            checked={petFriendly}
-                            onChange={(e) => {
-                              const next = e.target.checked;
-                              setPetFriendly(next);
-                              if (!next) {
-                                setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
-                              }
-                            }}
-                            label="Aceita pets"
-                          />
-                          {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
-                            <Checkbox key={tag} checked={conditionTags.includes(tag)} onChange={() => toggleConditionTag(tag)} label={tag} />
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-gray-900">Condomínio / áreas comuns</div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
-                          <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
-                          <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
-                          <Checkbox checked={hasGourmet} onChange={(e) => setHasGourmet(e.target.checked)} label="Espaço gourmet" />
-                          <Checkbox checked={hasPlayground} onChange={(e) => setHasPlayground(e.target.checked)} label="Playground" />
-                          <Checkbox checked={hasPartyRoom} onChange={(e) => setHasPartyRoom(e.target.checked)} label="Salão de festas" />
-                          <Checkbox checked={hasConcierge24h} onChange={(e) => setHasConcierge24h(e.target.checked)} label="Portaria 24h" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-gray-900">Segurança</div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <Checkbox checked={secCCTV} onChange={(e) => setSecCCTV(e.target.checked)} label="CFTV / Câmeras" />
-                          <Checkbox checked={secSallyPort} onChange={(e) => setSecSallyPort(e.target.checked)} label="Clausura (sally port)" />
-                          <Checkbox checked={secNightGuard} onChange={(e) => setSecNightGuard(e.target.checked)} label="Ronda noturna" />
-                          <Checkbox checked={secElectricFence} onChange={(e) => setSecElectricFence(e.target.checked)} label="Cerca elétrica" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-gray-900">Conforto e energia</div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <Checkbox checked={comfortAC} onChange={(e) => setComfortAC(e.target.checked)} label="Ar-condicionado" />
-                          <Checkbox checked={comfortHeating} onChange={(e) => setComfortHeating(e.target.checked)} label="Aquecimento" />
-                          <Checkbox checked={comfortSolar} onChange={(e) => setComfortSolar(e.target.checked)} label="Energia solar" />
-                          <Checkbox checked={comfortNoiseWindows} onChange={(e) => setComfortNoiseWindows(e.target.checked)} label="Janelas anti-ruído" />
-                          <Checkbox checked={comfortLED} onChange={(e) => setComfortLED(e.target.checked)} label="Iluminação LED" />
-                          <Checkbox checked={comfortWaterReuse} onChange={(e) => setComfortWaterReuse(e.target.checked)} label="Reúso de água" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-gray-900">Acabamentos</div>
-                        <div className="space-y-3">
-                          <Select label="Piso principal" value={finishFloor} onChange={(e) => setFinishFloor(e.target.value)} optional>
-                            <option value="">Selecione</option>
-                            <option value="porcelanato">Porcelanato</option>
-                            <option value="madeira">Madeira</option>
-                            <option value="vinilico">Vinílico</option>
-                          </Select>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Checkbox checked={finishCabinets} onChange={(e) => setFinishCabinets(e.target.checked)} label="Armários planejados" />
-                            <Checkbox checked={finishCounterGranite} onChange={(e) => setFinishCounterGranite(e.target.checked)} label="Bancada granito" />
-                            <Checkbox checked={finishCounterQuartz} onChange={(e) => setFinishCounterQuartz(e.target.checked)} label="Bancada quartzo" />
+                    <div className="mt-3 space-y-4">
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpenAcc((p) => ({ ...p, acc_condition: !p.acc_condition }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="text-sm font-semibold text-gray-800">
+                            Condição do imóvel
+                            {accConditionCount > 0 && (
+                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accConditionCount}</span>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condition ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openAcc.acc_condition && (
+                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {CONDITION_STATUS_OPTIONS.map((tag) => (
+                                  <Checkbox
+                                    key={tag}
+                                    checked={conditionTags.includes(tag)}
+                                    onChange={() => toggleConditionTag(tag)}
+                                    label={tag}
+                                  />
+                                ))}
+                              </div>
+                              <div>
+                                <div className="text-xs font-semibold text-gray-600 mb-2">Móveis</div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                  {CONDITION_EXTRA_OPTIONS.map((tag) => (
+                                    <Checkbox
+                                      key={tag}
+                                      checked={conditionTags.includes(tag)}
+                                      onChange={() => toggleConditionTag(tag)}
+                                      label={tag}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-gray-900">Vista, posição e pets</div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
-                          <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
-                          <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="De frente (voltado para a rua)" />
-                          <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Fundos (mais silencioso)" />
-                          <Checkbox checked={petsSmall} onChange={(e) => setPetsSmall(e.target.checked)} label="Aceita pets pequenos" />
-                          <Checkbox checked={petsLarge} onChange={(e) => setPetsLarge(e.target.checked)} label="Aceita pets grandes" />
-                        </div>
-                        <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
-                          <option value="">Selecione</option>
-                          <option value="NASCENTE">Nascente (sol da manhã)</option>
-                          <option value="POENTE">Poente (sol da tarde)</option>
-                          <option value="OUTRA">Outra</option>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-gray-900">Acessibilidade</div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <Checkbox checked={accRamps} onChange={(e) => setAccRamps(e.target.checked)} label="Rampas de acesso" />
-                          <Checkbox checked={accWideDoors} onChange={(e) => setAccWideDoors(e.target.checked)} label="Portas largas" />
-                          <Checkbox checked={accAccessibleElevator} onChange={(e) => setAccAccessibleElevator(e.target.checked)} label="Elevador acessível" />
-                          <Checkbox checked={accTactile} onChange={(e) => setAccTactile(e.target.checked)} label="Piso tátil" />
-                        </div>
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpenAcc((p) => ({ ...p, acc_measures: !p.acc_measures }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="text-sm font-semibold text-gray-800">
+                            Medidas do imóvel
+                            {accMeasuresCount > 0 && (
+                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accMeasuresCount}</span>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_measures ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openAcc.acc_measures && (
+                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                              <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
+                              <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
+                              <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
+                              <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-gray-900">Ano e taxas</div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
-                          <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
-                          <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
-                          <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
-                          <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
-                          <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
-                        </div>
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpenAcc((p) => ({ ...p, acc_features: !p.acc_features }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="text-sm font-semibold text-gray-800">
+                            Características do imóvel
+                            {accFeaturesCount > 0 && (
+                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFeaturesCount}</span>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_features ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openAcc.acc_features && (
+                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
+                              <Checkbox
+                                checked={petFriendly}
+                                onChange={(e) => {
+                                  const next = e.target.checked;
+                                  setPetFriendly(next);
+                                  if (!next) {
+                                    setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
+                                  }
+                                }}
+                                label="Aceita pets"
+                              />
+                              {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
+                                <Checkbox
+                                  key={tag}
+                                  checked={conditionTags.includes(tag)}
+                                  onChange={() => toggleConditionTag(tag)}
+                                  label={tag}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpenAcc((p) => ({ ...p, acc_condo: !p.acc_condo }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="text-sm font-semibold text-gray-800">
+                            Condomínio / áreas comuns
+                            {accCondoCount > 0 && (
+                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accCondoCount}</span>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condo ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openAcc.acc_condo && (
+                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
+                              <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
+                              <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
+                              <Checkbox checked={hasGourmet} onChange={(e) => setHasGourmet(e.target.checked)} label="Espaço gourmet" />
+                              <Checkbox checked={hasPlayground} onChange={(e) => setHasPlayground(e.target.checked)} label="Playground" />
+                              <Checkbox checked={hasPartyRoom} onChange={(e) => setHasPartyRoom(e.target.checked)} label="Salão de festas" />
+                              <Checkbox checked={hasConcierge24h} onChange={(e) => setHasConcierge24h(e.target.checked)} label="Portaria 24h" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpenAcc((p) => ({ ...p, acc_sec: !p.acc_sec }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="text-sm font-semibold text-gray-800">
+                            Segurança
+                            {accSecurityCount > 0 && (
+                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accSecurityCount}</span>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_sec ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openAcc.acc_sec && (
+                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                            <div className="grid grid-cols-2 gap-3">
+                              <Checkbox checked={secCCTV} onChange={(e) => setSecCCTV(e.target.checked)} label="CFTV / Câmeras" />
+                              <Checkbox checked={secSallyPort} onChange={(e) => setSecSallyPort(e.target.checked)} label="Clausura (sally port)" />
+                              <Checkbox checked={secNightGuard} onChange={(e) => setSecNightGuard(e.target.checked)} label="Ronda noturna" />
+                              <Checkbox checked={secElectricFence} onChange={(e) => setSecElectricFence(e.target.checked)} label="Cerca elétrica" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpenAcc((p) => ({ ...p, acc_comfort: !p.acc_comfort }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="text-sm font-semibold text-gray-800">
+                            Conforto e energia
+                            {accComfortCount > 0 && (
+                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accComfortCount}</span>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_comfort ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openAcc.acc_comfort && (
+                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                            <div className="grid grid-cols-2 gap-3">
+                              <Checkbox checked={comfortAC} onChange={(e) => setComfortAC(e.target.checked)} label="Ar-condicionado" />
+                              <Checkbox checked={comfortHeating} onChange={(e) => setComfortHeating(e.target.checked)} label="Aquecimento" />
+                              <Checkbox checked={comfortSolar} onChange={(e) => setComfortSolar(e.target.checked)} label="Energia solar" />
+                              <Checkbox checked={comfortNoiseWindows} onChange={(e) => setComfortNoiseWindows(e.target.checked)} label="Janelas anti-ruído" />
+                              <Checkbox checked={comfortLED} onChange={(e) => setComfortLED(e.target.checked)} label="Iluminação LED" />
+                              <Checkbox checked={comfortWaterReuse} onChange={(e) => setComfortWaterReuse(e.target.checked)} label="Reúso de água" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpenAcc((p) => ({ ...p, acc_fin: !p.acc_fin }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="text-sm font-semibold text-gray-800">
+                            Acabamentos
+                            {accFinishCount > 0 && (
+                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFinishCount}</span>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_fin ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openAcc.acc_fin && (
+                          <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
+                            <Select label="Piso principal" value={finishFloor} onChange={(e) => setFinishFloor(e.target.value)} optional>
+                              <option value="">Selecione</option>
+                              <option value="porcelanato">Porcelanato</option>
+                              <option value="madeira">Madeira</option>
+                              <option value="vinilico">Vinílico</option>
+                            </Select>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Checkbox checked={finishCabinets} onChange={(e) => setFinishCabinets(e.target.checked)} label="Armários planejados" />
+                              <Checkbox checked={finishCounterGranite} onChange={(e) => setFinishCounterGranite(e.target.checked)} label="Bancada granito" />
+                              <Checkbox checked={finishCounterQuartz} onChange={(e) => setFinishCounterQuartz(e.target.checked)} label="Bancada quartzo" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpenAcc((p) => ({ ...p, acc_view: !p.acc_view }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="text-sm font-semibold text-gray-800">
+                            Vista e posição
+                            {accViewCount > 0 && (
+                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accViewCount}</span>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_view ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openAcc.acc_view && (
+                          <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
+                            <div className="grid grid-cols-2 gap-3">
+                              <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
+                              <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
+                              <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="De frente (voltado para a rua)" />
+                              <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Fundos (mais silencioso)" />
+                            </div>
+                            <Input label="Sol nos cômodos (opcional)" value={sunByRoomNote} onChange={(e) => setSunByRoomNote(e.target.value)} optional />
+                            <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
+                              <option value="">Selecione</option>
+                              <option value="NASCENTE">Nascente (sol da manhã)</option>
+                              <option value="POENTE">Poente (sol da tarde)</option>
+                              <option value="OUTRA">Outra</option>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpenAcc((p) => ({ ...p, acc_acc: !p.acc_acc }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="text-sm font-semibold text-gray-800">
+                            Acessibilidade
+                            {accAccessibilityCount > 0 && (
+                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accAccessibilityCount}</span>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_acc ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openAcc.acc_acc && (
+                          <div className="px-4 pb-4 pt-3 grid grid-cols-2 gap-3 bg-gray-50/50 border-t border-gray-100">
+                            <Checkbox checked={accRamps} onChange={(e) => setAccRamps(e.target.checked)} label="Rampas de acesso" />
+                            <Checkbox checked={accWideDoors} onChange={(e) => setAccWideDoors(e.target.checked)} label="Portas largas" />
+                            <Checkbox checked={accAccessibleElevator} onChange={(e) => setAccAccessibleElevator(e.target.checked)} label="Elevador acessível" />
+                            <Checkbox checked={accTactile} onChange={(e) => setAccTactile(e.target.checked)} label="Piso tátil" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpenAcc((p) => ({ ...p, acc_pets: !p.acc_pets }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="text-sm font-semibold text-gray-800">
+                            Pets
+                            {accPetsCount > 0 && (
+                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accPetsCount}</span>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_pets ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openAcc.acc_pets && (
+                          <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
+                            <div className="grid grid-cols-2 gap-3">
+                              <Checkbox checked={petsSmall} onChange={(e) => setPetsSmall(e.target.checked)} label="Aceita pets pequenos" />
+                              <Checkbox checked={petsLarge} onChange={(e) => setPetsLarge(e.target.checked)} label="Aceita pets grandes" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
+                        <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
+                        <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
+                        <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
+                        <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
+                        <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
                       </div>
                     </div>
                   </div>
+
                 </div>
               )}
 
