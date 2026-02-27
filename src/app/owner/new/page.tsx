@@ -112,27 +112,24 @@ export default function NewPropertyPage() {
 
   const DEFAULT_OPEN_ACC = useMemo(
     () => ({
-      acc_condition: true,
-      acc_measures: true,
-      acc_features: true,
-      acc_condo: true,
-      acc_sec: true,
-      acc_comfort: true,
-      acc_fin: true,
-      acc_view: true,
-      acc_acc: true,
-      acc_pets: true,
+      acc_condition: false,
+      acc_measures: false,
+      acc_features: false,
+      acc_condo: false,
+      acc_sec: false,
+      acc_comfort: false,
+      acc_fin: false,
+      acc_view: false,
+      acc_acc: false,
+      acc_pets: false,
     }),
     []
   );
 
   const [openAcc, setOpenAcc] = useState<{ [k: string]: boolean }>(() => ({ ...DEFAULT_OPEN_ACC }));
-  const didInitAccordionsRef = useRef(false);
 
   useEffect(() => {
     if (currentStep !== 2) return;
-    if (didInitAccordionsRef.current) return;
-    didInitAccordionsRef.current = true;
     setOpenAcc({ ...DEFAULT_OPEN_ACC });
   }, [currentStep, DEFAULT_OPEN_ACC]);
 
