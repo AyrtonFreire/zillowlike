@@ -2760,7 +2760,7 @@ export default function NewPropertyPage() {
 
       {/* Formulário de criação */}
       {!publishedProperty && (
-        <div className="mx-auto max-w-6xl px-4 py-8">
+        <div className="mx-auto max-w-6xl px-4 py-8 pb-[calc(env(safe-area-inset-bottom)+8rem)] sm:pb-8">
           <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
             <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
             <p>
@@ -2830,7 +2830,7 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
 
-                <div className="sm:hidden fixed inset-x-0 bottom-0 z-[3000] bg-white/90 backdrop-blur border-t p-2">
+                <div className="sm:hidden fixed inset-x-0 bottom-0 z-[3000] bg-white/90 backdrop-blur border-t px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
                   <div className="flex gap-2">
                     <button
                       type="button"
