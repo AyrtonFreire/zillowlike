@@ -109,8 +109,6 @@ export default function NewPropertyPage() {
   const [secSallyPort, setSecSallyPort] = useState(false);
   const [secNightGuard, setSecNightGuard] = useState(false);
   const [secElectricFence, setSecElectricFence] = useState(false);
-  // Accordion visibility
-  const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
 
   const clearFieldError = (key: string) => {
     setFieldErrors((prev) => {
@@ -1092,9 +1090,12 @@ export default function NewPropertyPage() {
       if (Array.isArray(d.conditionTags)) setConditionTags(d.conditionTags);
       if (typeof d.petFriendly === 'boolean') setPetFriendly(d.petFriendly);
       else if (Array.isArray(d.conditionTags) && d.conditionTags.includes('Aceita pets')) setPetFriendly(true);
-      if (typeof d.currentStep === 'number' && d.currentStep >= 1 && d.currentStep <= 7) {
-        setCurrentStep(d.currentStep);
+
+      const stepFromApi = typeof draft.currentStep === "number" ? draft.currentStep : d.currentStep;
+      if (typeof stepFromApi === "number" && stepFromApi >= 1 && stepFromApi <= 7) {
+        setCurrentStep(stepFromApi);
       }
+
       // Campos privados do proprietário
       if (d.privateOwnerName) setPrivateOwnerName(d.privateOwnerName);
       if (d.privateOwnerPhone) setPrivateOwnerPhone(d.privateOwnerPhone);
@@ -1162,14 +1163,7 @@ export default function NewPropertyPage() {
 
       if (typeof d.capturerRealtorId === 'string') setCapturerRealtorId(d.capturerRealtorId);
 
-      if (d.cloneFromPropertyId) {
-        setToast({ message: "Anúncio clonado. Revise os campos antes de publicar.", type: "info" });
-        try {
-          const next = { ...d };
-          delete (next as any).cloneFromPropertyId;
-          window.localStorage.setItem(SAVE_KEY, JSON.stringify(next));
-        } catch {}
-      }
+      try { window.localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch {}
     } catch {}
   }, []);
 
@@ -2421,7 +2415,7 @@ export default function NewPropertyPage() {
       const res = await geocodeAddressParts({
         street,
         number: addressNumber || undefined, // opcional
-        neighborhood: neighborhood || undefined,
+        neighborhood,
         city,
         state,
         postalCode,
@@ -3504,183 +3498,172 @@ export default function NewPropertyPage() {
                     <Input id="parkingSpots" label="Vagas" value={parkingSpots as any} error={fieldErrors.parkingSpots} onChange={(e) => { setParkingSpots(e.target.value); clearFieldError("parkingSpots"); }} inputMode="numeric" optional />
                   </div>
 
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setShowAdvancedDetails((p) => !p)}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                    >
-                      <span className="text-sm font-semibold text-gray-800">Detalhes avançados (opcional)</span>
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showAdvancedDetails ? 'rotate-180' : ''}`} />
-                    </button>
-                  </div>
+                  <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 space-y-6">
+                    <div className="text-sm font-semibold text-gray-900">Detalhes avançados (opcional)</div>
 
-                  {showAdvancedDetails && (
-                    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 space-y-6">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <div className="text-sm font-semibold text-gray-900">Condição e mobília</div>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {CONDITION_STATUS_OPTIONS.map((tag) => (
-                              <Checkbox key={tag} checked={conditionTags.includes(tag)} onChange={() => toggleConditionTag(tag)} label={tag} />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold text-gray-900">Condição e mobília</div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {CONDITION_STATUS_OPTIONS.map((tag) => (
+                            <Checkbox key={tag} checked={conditionTags.includes(tag)} onChange={() => toggleConditionTag(tag)} label={tag} />
+                          ))}
+                        </div>
+                        <div className="pt-2">
+                          <Select
+                            label="Mobília"
+                            value={conditionTags.find((t) => FURNISHING_SET.has(t)) || ""}
+                            onChange={(e) => {
+                              const next = String(e.target.value || "");
+                              setConditionTags((prev) => {
+                                const cleaned = prev.filter((t) => !FURNISHING_SET.has(t));
+                                if (!next) return cleaned;
+                                return [...cleaned, next];
+                              });
+                            }}
+                            optional
+                          >
+                            <option value="">Não informar</option>
+                            {CONDITION_EXTRA_OPTIONS.map((tag) => (
+                              <option key={tag} value={tag}>{tag}</option>
                             ))}
-                          </div>
-                          <div className="pt-2">
-                            <Select
-                              label="Mobília"
-                              value={conditionTags.find((t) => FURNISHING_SET.has(t)) || ""}
-                              onChange={(e) => {
-                                const next = String(e.target.value || "");
-                                setConditionTags((prev) => {
-                                  const cleaned = prev.filter((t) => !FURNISHING_SET.has(t));
-                                  if (!next) return cleaned;
-                                  return [...cleaned, next];
-                                });
-                              }}
-                              optional
-                            >
-                              <option value="">Não informar</option>
-                              {CONDITION_EXTRA_OPTIONS.map((tag) => (
-                                <option key={tag} value={tag}>{tag}</option>
-                              ))}
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="text-sm font-semibold text-gray-900">Medidas do imóvel</div>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
-                            <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
-                            <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
-                            <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <div className="text-sm font-semibold text-gray-900">Características do imóvel</div>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
-                            <Checkbox
-                              checked={petFriendly}
-                              onChange={(e) => {
-                                const next = e.target.checked;
-                                setPetFriendly(next);
-                                if (!next) {
-                                  setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
-                                }
-                              }}
-                              label="Aceita pets"
-                            />
-                            {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
-                              <Checkbox key={tag} checked={conditionTags.includes(tag)} onChange={() => toggleConditionTag(tag)} label={tag} />
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="text-sm font-semibold text-gray-900">Condomínio / áreas comuns</div>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
-                            <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
-                            <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
-                            <Checkbox checked={hasGourmet} onChange={(e) => setHasGourmet(e.target.checked)} label="Espaço gourmet" />
-                            <Checkbox checked={hasPlayground} onChange={(e) => setHasPlayground(e.target.checked)} label="Playground" />
-                            <Checkbox checked={hasPartyRoom} onChange={(e) => setHasPartyRoom(e.target.checked)} label="Salão de festas" />
-                            <Checkbox checked={hasConcierge24h} onChange={(e) => setHasConcierge24h(e.target.checked)} label="Portaria 24h" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <div className="text-sm font-semibold text-gray-900">Segurança</div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Checkbox checked={secCCTV} onChange={(e) => setSecCCTV(e.target.checked)} label="CFTV / Câmeras" />
-                            <Checkbox checked={secSallyPort} onChange={(e) => setSecSallyPort(e.target.checked)} label="Clausura (sally port)" />
-                            <Checkbox checked={secNightGuard} onChange={(e) => setSecNightGuard(e.target.checked)} label="Ronda noturna" />
-                            <Checkbox checked={secElectricFence} onChange={(e) => setSecElectricFence(e.target.checked)} label="Cerca elétrica" />
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="text-sm font-semibold text-gray-900">Conforto e energia</div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Checkbox checked={comfortAC} onChange={(e) => setComfortAC(e.target.checked)} label="Ar-condicionado" />
-                            <Checkbox checked={comfortHeating} onChange={(e) => setComfortHeating(e.target.checked)} label="Aquecimento" />
-                            <Checkbox checked={comfortSolar} onChange={(e) => setComfortSolar(e.target.checked)} label="Energia solar" />
-                            <Checkbox checked={comfortNoiseWindows} onChange={(e) => setComfortNoiseWindows(e.target.checked)} label="Janelas anti-ruído" />
-                            <Checkbox checked={comfortLED} onChange={(e) => setComfortLED(e.target.checked)} label="Iluminação LED" />
-                            <Checkbox checked={comfortWaterReuse} onChange={(e) => setComfortWaterReuse(e.target.checked)} label="Reúso de água" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <div className="text-sm font-semibold text-gray-900">Acabamentos</div>
-                          <div className="space-y-3">
-                            <Select label="Piso principal" value={finishFloor} onChange={(e) => setFinishFloor(e.target.value)} optional>
-                              <option value="">Selecione</option>
-                              <option value="porcelanato">Porcelanato</option>
-                              <option value="madeira">Madeira</option>
-                              <option value="vinilico">Vinílico</option>
-                            </Select>
-                            <div className="grid grid-cols-2 gap-3">
-                              <Checkbox checked={finishCabinets} onChange={(e) => setFinishCabinets(e.target.checked)} label="Armários planejados" />
-                              <Checkbox checked={finishCounterGranite} onChange={(e) => setFinishCounterGranite(e.target.checked)} label="Bancada granito" />
-                              <Checkbox checked={finishCounterQuartz} onChange={(e) => setFinishCounterQuartz(e.target.checked)} label="Bancada quartzo" />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="text-sm font-semibold text-gray-900">Vista, posição e pets</div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
-                            <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
-                            <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="De frente (voltado para a rua)" />
-                            <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Fundos (mais silencioso)" />
-                            <Checkbox checked={petsSmall} onChange={(e) => setPetsSmall(e.target.checked)} label="Aceita pets pequenos" />
-                            <Checkbox checked={petsLarge} onChange={(e) => setPetsLarge(e.target.checked)} label="Aceita pets grandes" />
-                          </div>
-                          <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
-                            <option value="">Selecione</option>
-                            <option value="NASCENTE">Nascente (sol da manhã)</option>
-                            <option value="POENTE">Poente (sol da tarde)</option>
-                            <option value="OUTRA">Outra</option>
                           </Select>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <div className="text-sm font-semibold text-gray-900">Acessibilidade</div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Checkbox checked={accRamps} onChange={(e) => setAccRamps(e.target.checked)} label="Rampas de acesso" />
-                            <Checkbox checked={accWideDoors} onChange={(e) => setAccWideDoors(e.target.checked)} label="Portas largas" />
-                            <Checkbox checked={accAccessibleElevator} onChange={(e) => setAccAccessibleElevator(e.target.checked)} label="Elevador acessível" />
-                            <Checkbox checked={accTactile} onChange={(e) => setAccTactile(e.target.checked)} label="Piso tátil" />
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="text-sm font-semibold text-gray-900">Ano e taxas</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
-                            <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
-                            <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
-                            <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
-                            <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
-                            <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
-                          </div>
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold text-gray-900">Medidas do imóvel</div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
+                          <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
+                          <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
+                          <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
                         </div>
                       </div>
                     </div>
-                  )}
 
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold text-gray-900">Características do imóvel</div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
+                          <Checkbox
+                            checked={petFriendly}
+                            onChange={(e) => {
+                              const next = e.target.checked;
+                              setPetFriendly(next);
+                              if (!next) {
+                                setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
+                              }
+                            }}
+                            label="Aceita pets"
+                          />
+                          {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
+                            <Checkbox key={tag} checked={conditionTags.includes(tag)} onChange={() => toggleConditionTag(tag)} label={tag} />
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold text-gray-900">Condomínio / áreas comuns</div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
+                          <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
+                          <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
+                          <Checkbox checked={hasGourmet} onChange={(e) => setHasGourmet(e.target.checked)} label="Espaço gourmet" />
+                          <Checkbox checked={hasPlayground} onChange={(e) => setHasPlayground(e.target.checked)} label="Playground" />
+                          <Checkbox checked={hasPartyRoom} onChange={(e) => setHasPartyRoom(e.target.checked)} label="Salão de festas" />
+                          <Checkbox checked={hasConcierge24h} onChange={(e) => setHasConcierge24h(e.target.checked)} label="Portaria 24h" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold text-gray-900">Segurança</div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Checkbox checked={secCCTV} onChange={(e) => setSecCCTV(e.target.checked)} label="CFTV / Câmeras" />
+                          <Checkbox checked={secSallyPort} onChange={(e) => setSecSallyPort(e.target.checked)} label="Clausura (sally port)" />
+                          <Checkbox checked={secNightGuard} onChange={(e) => setSecNightGuard(e.target.checked)} label="Ronda noturna" />
+                          <Checkbox checked={secElectricFence} onChange={(e) => setSecElectricFence(e.target.checked)} label="Cerca elétrica" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold text-gray-900">Conforto e energia</div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Checkbox checked={comfortAC} onChange={(e) => setComfortAC(e.target.checked)} label="Ar-condicionado" />
+                          <Checkbox checked={comfortHeating} onChange={(e) => setComfortHeating(e.target.checked)} label="Aquecimento" />
+                          <Checkbox checked={comfortSolar} onChange={(e) => setComfortSolar(e.target.checked)} label="Energia solar" />
+                          <Checkbox checked={comfortNoiseWindows} onChange={(e) => setComfortNoiseWindows(e.target.checked)} label="Janelas anti-ruído" />
+                          <Checkbox checked={comfortLED} onChange={(e) => setComfortLED(e.target.checked)} label="Iluminação LED" />
+                          <Checkbox checked={comfortWaterReuse} onChange={(e) => setComfortWaterReuse(e.target.checked)} label="Reúso de água" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold text-gray-900">Acabamentos</div>
+                        <div className="space-y-3">
+                          <Select label="Piso principal" value={finishFloor} onChange={(e) => setFinishFloor(e.target.value)} optional>
+                            <option value="">Selecione</option>
+                            <option value="porcelanato">Porcelanato</option>
+                            <option value="madeira">Madeira</option>
+                            <option value="vinilico">Vinílico</option>
+                          </Select>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Checkbox checked={finishCabinets} onChange={(e) => setFinishCabinets(e.target.checked)} label="Armários planejados" />
+                            <Checkbox checked={finishCounterGranite} onChange={(e) => setFinishCounterGranite(e.target.checked)} label="Bancada granito" />
+                            <Checkbox checked={finishCounterQuartz} onChange={(e) => setFinishCounterQuartz(e.target.checked)} label="Bancada quartzo" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold text-gray-900">Vista, posição e pets</div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
+                          <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
+                          <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="De frente (voltado para a rua)" />
+                          <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Fundos (mais silencioso)" />
+                          <Checkbox checked={petsSmall} onChange={(e) => setPetsSmall(e.target.checked)} label="Aceita pets pequenos" />
+                          <Checkbox checked={petsLarge} onChange={(e) => setPetsLarge(e.target.checked)} label="Aceita pets grandes" />
+                        </div>
+                        <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
+                          <option value="">Selecione</option>
+                          <option value="NASCENTE">Nascente (sol da manhã)</option>
+                          <option value="POENTE">Poente (sol da tarde)</option>
+                          <option value="OUTRA">Outra</option>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold text-gray-900">Acessibilidade</div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Checkbox checked={accRamps} onChange={(e) => setAccRamps(e.target.checked)} label="Rampas de acesso" />
+                          <Checkbox checked={accWideDoors} onChange={(e) => setAccWideDoors(e.target.checked)} label="Portas largas" />
+                          <Checkbox checked={accAccessibleElevator} onChange={(e) => setAccAccessibleElevator(e.target.checked)} label="Elevador acessível" />
+                          <Checkbox checked={accTactile} onChange={(e) => setAccTactile(e.target.checked)} label="Piso tátil" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold text-gray-900">Ano e taxas</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
+                          <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
+                          <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
+                          <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
+                          <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
+                          <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  </div>
                 </div>
               )}
 
