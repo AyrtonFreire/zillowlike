@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Home, Building2, Landmark, Building, Warehouse, House, Camera, Image as ImageIcon, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft, Eye, X, Sparkles, CheckCircle2, Circle, ArrowUpRight, FileText, Search, ShieldCheck, Star } from "lucide-react";
+import { Home, Building2, Landmark, Building, Warehouse, House, Camera, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft, Eye, X } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -1745,128 +1745,6 @@ export default function NewPropertyPage() {
     yearRenovated,
   ]);
 
-  // Score de qualidade do anúncio
-  const adQualityScore = useMemo(() => {
-    type QualityCategory = "Básico" | "Fotos" | "Texto" | "Diferenciais" | "Publicação";
-    type QualityItem = {
-      key: string;
-      label: string;
-      done: boolean;
-      points: number;
-      category: QualityCategory;
-      step: number;
-      fieldId?: string;
-      hint?: string;
-    };
-
-    const imageCount = images.filter((i) => i.url && !i.pending).length;
-    const hasCover = imageCount >= 1 && Boolean(images[0]?.url) && !images[0]?.pending;
-
-    const measuredPhotos = images
-      .filter((i) => i.url && !i.pending)
-      .filter((i) => typeof i.width === "number" && typeof i.height === "number")
-      .map((i) => ({
-        width: Number(i.width || 0),
-        height: Number(i.height || 0),
-        minSide: Math.min(Number(i.width || 0), Number(i.height || 0)),
-      }))
-      .filter((x) => x.width > 0 && x.height > 0);
-    const goodResCount = measuredPhotos.filter((p) => p.minSide >= 900).length;
-    const veryLowResCount = measuredPhotos.filter((p) => p.minSide > 0 && p.minSide < 600).length;
-    const requiredGoodRes = Math.min(6, imageCount);
-    const hasGoodResolution = imageCount > 0 && measuredPhotos.length >= requiredGoodRes && goodResCount >= requiredGoodRes && veryLowResCount === 0;
-
-    const numBedrooms = bedrooms === "" ? NaN : Number(bedrooms as any);
-    const numBathrooms = bathrooms === "" ? NaN : Number(bathrooms as any);
-    const numArea = areaM2 === "" ? NaN : Number(areaM2 as any);
-    const hasDetails = Number.isFinite(numBedrooms) && Number.isFinite(numBathrooms) && Number.isFinite(numArea) && numArea >= 0;
-
-    const hasDescriptionLen = String(description || "").trim().length >= 450;
-    const hasDescriptionStrong = String(description || "").trim().length >= 900;
-    const hasDescriptionParagraphs = /\n\n/.test(String(description || "").trim());
-    const hasTitle = finalTitle.trim().length >= 3;
-    const titleWords = finalTitle.trim().split(/\s+/).filter(Boolean);
-    const hasStrongTitle = finalTitle.trim().length >= 18 && titleWords.length >= 3;
-    const optionalTagsCount = Array.isArray(conditionTags)
-      ? conditionTags.filter((t) => PROPERTY_FEATURE_TAG_SET.has(t)).length
-      : 0;
-    const amenityCount = [
-      hasBalcony,
-      hasElevator,
-      hasPool,
-      hasGym,
-      hasGourmet,
-      hasPlayground,
-      hasPartyRoom,
-      hasConcierge24h,
-    ].filter(Boolean).length;
-    const petCount = petFriendly || petsSmall || petsLarge ? 1 : 0;
-    const optionalFeaturesCount = optionalTagsCount + amenityCount + petCount;
-    const hasSomeFeatures = optionalFeaturesCount >= 1;
-    const hasStrongFeatures = optionalFeaturesCount >= 4;
-
-    const hasMetaTitle = String(metaTitle || "").trim().length >= 10 && String(metaTitle || "").trim().length <= 65;
-    const hasMetaDescription = String(metaDescription || "").trim().length >= 50 && String(metaDescription || "").trim().length <= 155;
-
-    const baseItems: QualityItem[] = [
-      { key: "purpose", label: "Finalidade (venda ou aluguel)", done: !!purpose, points: 7, category: "Básico", step: 1, fieldId: "purpose" },
-      { key: "price", label: "Preço do imóvel", done: parseBRLToNumber(priceBRL) > 0, points: 7, category: "Básico", step: 1, fieldId: "priceBRL" },
-      { key: "type", label: "Tipo de imóvel", done: !!type, points: 4, category: "Básico", step: 1, fieldId: "type" },
-      { key: "address", label: "Endereço preenchido", done: Boolean(street && city && state), points: 7, category: "Básico", step: 1, fieldId: "street" },
-      { key: "geo", label: "Ponto no mapa", done: !!geo, points: 5, category: "Básico", step: 1, fieldId: "geo" },
-      { key: "details", label: "Quartos, banheiros e área", done: hasDetails, points: 5, category: "Básico", step: 2, fieldId: "bedrooms" },
-
-      { key: "img1", label: "Adicionar ao menos 1 foto", done: imageCount >= 1, points: 8, category: "Fotos", step: 3, fieldId: "images" },
-      { key: "img6", label: "6+ fotos (recomendado)", done: imageCount >= 6, points: 8, category: "Fotos", step: 3, fieldId: "images" },
-      { key: "img12", label: "12+ fotos (ótimo)", done: imageCount >= 12, points: 3, category: "Fotos", step: 3, fieldId: "images" },
-      { key: "img15", label: "15+ fotos (destaque)", done: imageCount >= 15, points: 4, category: "Fotos", step: 3, fieldId: "images" },
-      { key: "cover", label: "Escolher uma boa capa", done: hasCover, points: 2, category: "Fotos", step: 3, fieldId: "images" },
-      { key: "imgQuality", label: "Fotos nítidas (boa resolução)", done: hasGoodResolution, points: 10, category: "Fotos", step: 3, fieldId: "images", hint: "Evite fotos pequenas/embaçadas — isso reduz cliques." },
-
-      { key: "title", label: "Título do anúncio", done: hasTitle, points: 6, category: "Texto", step: 4, fieldId: "title" },
-      { key: "titleStrong", label: "Título mais completo", done: hasStrongTitle, points: 2, category: "Texto", step: 4, fieldId: "title", hint: "Diga o que é + diferencial (ex: 'Apto 2 quartos com varanda')." },
-      { key: "descLen", label: "Texto do anúncio (mín. recomendado)", done: hasDescriptionLen, points: 6, category: "Texto", step: 4, fieldId: "description" },
-      { key: "descStrong", label: "Texto mais detalhado", done: hasDescriptionStrong, points: 2, category: "Texto", step: 4, fieldId: "description" },
-      { key: "descPara", label: "Texto com parágrafos", done: hasDescriptionParagraphs, points: 4, category: "Texto", step: 4, fieldId: "description" },
-      { key: "metaTitle", label: "Título para Google", done: hasMetaTitle, points: 3, category: "Texto", step: 4, fieldId: "metaTitle" },
-      { key: "metaDesc", label: "Resumo para Google", done: hasMetaDescription, points: 3, category: "Texto", step: 4, fieldId: "metaDescription" },
-
-      { key: "featSome", label: "Adicionar diferenciais do imóvel", done: hasSomeFeatures, points: 3, category: "Diferenciais", step: 2, fieldId: "conditionTags" },
-      { key: "featStrong", label: "Diferenciais bem completos", done: hasStrongFeatures, points: 4, category: "Diferenciais", step: 2, fieldId: "conditionTags" },
-
-      { key: "verified", label: "Verificar seu contato", done: hasAnyVerifiedContact, points: 3, category: "Publicação", step: 6, fieldId: "contactVerification" },
-    ];
-
-    const achieved = baseItems.reduce((sum, it) => sum + (it.done ? it.points : 0), 0);
-    const total = baseItems.reduce((sum, it) => sum + it.points, 0);
-    const score = total > 0 ? Math.min(100, Math.max(0, Math.round((achieved / total) * 100))) : 0;
-
-    let level: "low" | "medium" | "good" | "excellent" = "low";
-    if (score >= 90) level = "excellent";
-    else if (score >= 75) level = "good";
-    else if (score >= 55) level = "medium";
-
-    const categories = ("Básico,Fotos,Texto,Diferenciais,Publicação".split(",") as QualityCategory[]).map((name) => {
-      const list = baseItems.filter((it) => it.category === name);
-      const doneCount = list.filter((it) => it.done).length;
-      return {
-        name,
-        doneCount,
-        totalCount: list.length,
-        missingCount: list.filter((it) => !it.done).length,
-        achieved: list.reduce((sum, it) => sum + (it.done ? it.points : 0), 0),
-        total: list.reduce((sum, it) => sum + it.points, 0),
-        items: list,
-      };
-    });
-
-    const missing = baseItems
-      .filter((it) => !it.done)
-      .slice()
-      .sort((a, b) => b.points - a.points);
-
-    return { score, level, items: baseItems, categories, missing, imageCount, achieved, total, optionalFeaturesCount, goodResCount, measuredPhotoCount: measuredPhotos.length };
-  }, [purpose, priceBRL, type, street, city, state, geo, bedrooms, bathrooms, areaM2, images, description, finalTitle, conditionTags, PROPERTY_FEATURE_TAG_SET, hasBalcony, petFriendly, petsSmall, petsLarge, hasElevator, hasPool, hasGym, hasGourmet, hasPlayground, hasPartyRoom, hasConcierge24h, metaTitle, metaDescription, hasAnyVerifiedContact]);
 
   const steps = [
     { id: 1, name: "Informações básicas", description: "Preço, tipo e endereço" },
@@ -3554,6 +3432,48 @@ export default function NewPropertyPage() {
                       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                         <button
                           type="button"
+                          onClick={() => setOpenAcc((p) => ({ ...p, acc_features: !p.acc_features }))}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <span className="text-sm font-semibold text-gray-800">
+                            ✨ Características do imóvel
+                            {accFeaturesCount > 0 && (
+                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFeaturesCount}</span>
+                            )}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_features ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openAcc.acc_features && (
+                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
+                              <Checkbox
+                                checked={petFriendly}
+                                onChange={(e) => {
+                                  const next = e.target.checked;
+                                  setPetFriendly(next);
+                                  if (!next) {
+                                    setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
+                                  }
+                                }}
+                                label="Aceita pets"
+                              />
+                              {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
+                                <Checkbox
+                                  key={tag}
+                                  checked={conditionTags.includes(tag)}
+                                  onChange={() => toggleConditionTag(tag)}
+                                  label={tag}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <button
+                          type="button"
                           onClick={() => setOpenAcc((p) => ({ ...p, acc_condition: !p.acc_condition }))}
                           className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
@@ -3617,48 +3537,6 @@ export default function NewPropertyPage() {
                               <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
                               <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
                               <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setOpenAcc((p) => ({ ...p, acc_features: !p.acc_features }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="text-sm font-semibold text-gray-800">
-                            ✨ Características do imóvel
-                            {accFeaturesCount > 0 && (
-                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFeaturesCount}</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_features ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openAcc.acc_features && (
-                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
-                              <Checkbox
-                                checked={petFriendly}
-                                onChange={(e) => {
-                                  const next = e.target.checked;
-                                  setPetFriendly(next);
-                                  if (!next) {
-                                    setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
-                                  }
-                                }}
-                                label="Aceita pets"
-                              />
-                              {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
-                                <Checkbox
-                                  key={tag}
-                                  checked={conditionTags.includes(tag)}
-                                  onChange={() => toggleConditionTag(tag)}
-                                  label={tag}
-                                />
-                              ))}
                             </div>
                           </div>
                         )}
@@ -4564,188 +4442,6 @@ export default function NewPropertyPage() {
           </div>
 
           <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start space-y-4">
-            {/* Score de qualidade do anúncio */}
-            {true && (
-              <div className="relative rounded-3xl p-[1px] bg-gradient-to-br from-teal/30 via-teal-dark/20 to-sky-500/20">
-                <div className="rounded-3xl bg-white/80 backdrop-blur-md border border-white/40 shadow-sm">
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-teal/15 to-sky-500/10 text-teal ring-1 ring-black/5">
-                            <Sparkles className="w-5 h-5" />
-                          </span>
-                          <div className="min-w-0">
-                            <h3 className="text-sm font-semibold text-gray-900">Qualidade do anúncio</h3>
-                            <p className="text-[11px] text-gray-500 leading-4">Quanto mais completo, mais visitas e mais contatos.</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="shrink-0">
-                        <div className="relative w-14 h-14">
-                          <svg className="w-14 h-14 -rotate-90" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="44" stroke="rgba(17,24,39,0.08)" strokeWidth="10" fill="none" />
-                            <circle
-                              cx="50"
-                              cy="50"
-                              r="44"
-                              strokeLinecap="round"
-                              stroke={
-                                adQualityScore.level === "excellent"
-                                  ? "#10b981"
-                                  : adQualityScore.level === "good"
-                                  ? "#0ea5e9"
-                                  : adQualityScore.level === "medium"
-                                  ? "#f59e0b"
-                                  : "#ef4444"
-                              }
-                              strokeWidth="10"
-                              fill="none"
-                              strokeDasharray={2 * Math.PI * 44}
-                              strokeDashoffset={(1 - adQualityScore.score / 100) * (2 * Math.PI * 44)}
-                              className="transition-all duration-700"
-                            />
-                          </svg>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-center">
-                              <div className="text-sm font-extrabold text-gray-900 leading-none">{adQualityScore.score}%</div>
-                              <div className="text-[9px] text-gray-500 leading-none mt-0.5">{adQualityScore.achieved}/{adQualityScore.total}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-2xl bg-white/60 border border-gray-200 p-3">
-                      <p className="text-xs font-semibold text-gray-900">Resumo rápido</p>
-                      <div className="mt-2 space-y-2">
-                        {adQualityScore.categories.map((c) => {
-                          const status = c.missingCount === 0 ? "OK" : c.missingCount <= 1 ? "Quase" : "Melhorar";
-                          const pill =
-                            status === "OK"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : status === "Quase"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-rose-100 text-rose-700";
-                          const icon = status === "OK" ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          ) : (
-                            <Circle className="w-4 h-4 text-gray-300" />
-                          );
-                          return (
-                            <div key={c.name} className="flex items-center justify-between gap-3">
-                              <div className="min-w-0 flex items-center gap-2">
-                                {icon}
-                                <span className="text-xs font-semibold text-gray-800 truncate">{c.name}</span>
-                              </div>
-                              <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${pill}`}>{status}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {adQualityScore.measuredPhotoCount > 0 && adQualityScore.goodResCount < Math.min(6, adQualityScore.imageCount) && (
-                        <p className="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-2">
-                          Suas fotos parecem pequenas/sem nitidez. Trocar por imagens melhores costuma aumentar muito os cliques.
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="mt-4 rounded-2xl bg-white/60 border border-gray-200 p-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-gray-900">Próximas melhorias</p>
-                        <p className="text-[11px] text-gray-500">Top {Math.min(3, adQualityScore.missing.length)} itens</p>
-                      </div>
-
-                      {adQualityScore.missing.length === 0 ? (
-                        <div className="mt-2 flex items-start gap-2">
-                          <Star className="w-4 h-4 text-emerald-600 mt-0.5" />
-                          <p className="text-xs text-gray-700">Está bem completo. Se puder, adicione mais fotos boas para destacar ainda mais.</p>
-                        </div>
-                      ) : (
-                        <div className="mt-2 space-y-2">
-                          {adQualityScore.missing.slice(0, 3).map((it) => (
-                            <button
-                              key={it.key}
-                              type="button"
-                              onClick={() => {
-                                setCurrentStep(it.step);
-                                if (it.fieldId) scrollToFieldId(it.fieldId);
-                              }}
-                              className="w-full group flex items-center justify-between gap-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 px-3 py-2 transition-colors"
-                            >
-                              <span className="min-w-0 flex items-center gap-2">
-                                <Circle className="w-4 h-4 text-gray-300 group-hover:text-teal-600" />
-                                <span className="text-xs font-semibold text-gray-800 truncate">{it.label}</span>
-                              </span>
-                              <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700">
-                                <span>Melhorar</span>
-                                <ArrowUpRight className="w-3.5 h-3.5" />
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="mt-3 grid grid-cols-3 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => jumpToStep(3)}
-                          className="px-2 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-800 inline-flex items-center justify-center gap-1"
-                        >
-                          <ImageIcon className="w-4 h-4 text-teal-700" />
-                          Fotos
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => jumpToStep(4)}
-                          className="px-2 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-800 inline-flex items-center justify-center gap-1"
-                        >
-                          <FileText className="w-4 h-4 text-teal-700" />
-                          Texto
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => jumpToStep(6)}
-                          className="px-2 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-800 inline-flex items-center justify-center gap-1"
-                        >
-                          <ShieldCheck className="w-4 h-4 text-teal-700" />
-                          Publicar
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between rounded-2xl border border-gray-200 bg-white/60 px-3 py-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Search className="w-4 h-4 text-teal-700" />
-                        <p className="text-[11px] text-gray-600 truncate">Dica: 12+ fotos nítidas e texto detalhado geram mais contatos.</p>
-                      </div>
-                      <span
-                        className={
-                          "text-[11px] font-bold px-2 py-1 rounded-full " +
-                          (adQualityScore.level === "excellent"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : adQualityScore.level === "good"
-                            ? "bg-sky-100 text-sky-700"
-                            : adQualityScore.level === "medium"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-rose-100 text-rose-700")
-                        }
-                      >
-                        {adQualityScore.level === "excellent"
-                          ? "Pronto para destaque"
-                          : adQualityScore.level === "good"
-                          ? "Muito bom"
-                          : adQualityScore.level === "medium"
-                          ? "Bom (dá pra melhorar)"
-                          : "Precisa melhorar"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Preview do card */}
             {currentStep !== 6 && (
