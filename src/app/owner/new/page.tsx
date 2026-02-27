@@ -71,7 +71,6 @@ export default function NewPropertyPage() {
   const [parkingSpots, setParkingSpots] = useState<string | number>("");
   const [suites, setSuites] = useState<string | number>("");
   const [floor, setFloor] = useState<string | number>("");
-  const [totalFloors, setTotalFloors] = useState<string | number>("");
   const [hasElevator, setHasElevator] = useState(false);
   const [hasBalcony, setHasBalcony] = useState(false);
   const [hasGourmet, setHasGourmet] = useState(false);
@@ -957,6 +956,32 @@ export default function NewPropertyPage() {
   }, [confirmDelete.open]);
 
   const SAVE_KEY = "owner_new_draft";
+  const LAST_PUBLISHED_KEY = "owner_new_last_published";
+
+  const setLastPublished = (p: { id: string; title: string; url: string } | null) => {
+    if (typeof window === "undefined") return;
+    try {
+      if (!p) {
+        window.sessionStorage.removeItem(LAST_PUBLISHED_KEY);
+      } else {
+        window.sessionStorage.setItem(LAST_PUBLISHED_KEY, JSON.stringify({ ...p, ts: Date.now() }));
+      }
+    } catch {}
+  };
+
+  const getLastPublished = (): { id: string; title: string; url: string } | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.sessionStorage.getItem(LAST_PUBLISHED_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      if (typeof parsed.id !== "string" || typeof parsed.title !== "string" || typeof parsed.url !== "string") return null;
+      return { id: parsed.id, title: parsed.title, url: parsed.url };
+    } catch {
+      return null;
+    }
+  };
 
   // dnd-kit: sensors e item ordenável
   const sensors = useSensors(
@@ -1000,7 +1025,6 @@ export default function NewPropertyPage() {
     setFloor("");
     setYearBuilt("");
     setYearRenovated("");
-    setTotalFloors("");
     setCondoFeeBRL("");
     setIptuYearBRL("");
     setImages([{ url: "", useUrl: false }]);
@@ -1042,6 +1066,13 @@ export default function NewPropertyPage() {
   useEffect(() => {
     resetForm();
     const onPageShow = (e: any) => {
+      const last = getLastPublished();
+      if (last) {
+        clearDraft();
+        resetForm();
+        setPublishedProperty(last);
+        return;
+      }
       if (e && e.persisted) resetForm();
     };
     if (typeof window !== "undefined") {
@@ -1138,7 +1169,6 @@ export default function NewPropertyPage() {
       if (typeof d.floor !== 'undefined') setFloor(d.floor);
       if (typeof d.yearBuilt !== 'undefined') setYearBuilt(d.yearBuilt);
       if (typeof d.yearRenovated !== 'undefined') setYearRenovated(d.yearRenovated);
-      if (typeof d.totalFloors !== 'undefined') setTotalFloors(d.totalFloors);
       if (typeof d.aiDescriptionGenerations === 'number') {
         const existingAiDesc = String(d.aiGeneratedDescription || "").trim();
         const consumed = d.aiDescriptionGenerations >= 1 && existingAiDesc.length >= 30;
@@ -1269,7 +1299,6 @@ export default function NewPropertyPage() {
         if (typeof d.floor !== 'undefined') setFloor(d.floor);
         if (typeof d.yearBuilt !== 'undefined') setYearBuilt(d.yearBuilt);
         if (typeof d.yearRenovated !== 'undefined') setYearRenovated(d.yearRenovated);
-        if (typeof d.totalFloors !== 'undefined') setTotalFloors(d.totalFloors);
         if (typeof d.aiDescriptionGenerations === 'number') {
           const existingAiDesc = String(d.aiGeneratedDescription || "").trim();
           const consumed = d.aiDescriptionGenerations >= 1 && existingAiDesc.length >= 30;
@@ -1391,7 +1420,6 @@ export default function NewPropertyPage() {
           floor,
           yearBuilt,
           yearRenovated,
-          totalFloors,
           images,
           addressNumber,
           addressComplement,
@@ -1465,7 +1493,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, totalFloors, images, addressNumber, addressComplement, conditionTags, petFriendly, capturerRealtorId, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, sunOrientation, petsSmall, petsLarge, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
+  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, images, addressNumber, addressComplement, conditionTags, petFriendly, capturerRealtorId, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, sunOrientation, petsSmall, petsLarge, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1621,7 +1649,6 @@ export default function NewPropertyPage() {
       floor: floor === "" ? null : Number(floor as any),
       yearBuilt: yearBuilt === "" ? null : Number(yearBuilt as any),
       yearRenovated: yearRenovated === "" ? null : Number(yearRenovated as any),
-      totalFloors: totalFloors === "" ? null : Number(totalFloors as any),
       furnished: conditionTags.includes("Mobiliado"),
       petFriendly: petFriendly || petsSmall || petsLarge,
       images: previewImages,
@@ -1744,7 +1771,6 @@ export default function NewPropertyPage() {
     suites,
     sunByRoomNote,
     sunOrientation,
-    totalFloors,
     type,
     usableAreaM2,
     userRole,
@@ -1832,10 +1858,9 @@ export default function NewPropertyPage() {
       suites: { title: "Suítes", step: 2 },
       parkingSpots: { title: "Vagas", step: 2 },
       floor: { title: "Andar", step: 2 },
-      totalFloors: { title: "Total de andares", step: 2 },
       yearBuilt: { title: "Ano de construção", step: 2 },
       yearRenovated: { title: "Ano de reforma", step: 2 },
-      iptuYearBRL: { title: "IPTU", step: 6 },
+      iptuYearBRL: { title: "IPTU", step: 2 },
       images: { title: "Fotos", step: 3 },
       title: { title: "Título do anúncio", step: 4 },
       metaTitle: { title: "Meta Title", step: 4 },
@@ -2114,7 +2139,6 @@ export default function NewPropertyPage() {
           // Outros
           sunOrientation: !sunOrientation ? null : (sunOrientation.toUpperCase() === 'NASCENTE' ? 'NASCENTE' : sunOrientation.toUpperCase() === 'POENTE' ? 'POENTE' : 'OUTRA'),
           yearRenovated: yearRenovated === "" ? null : Number(yearRenovated as any),
-          totalFloors: totalFloors === "" ? null : Number(totalFloors as any),
         },
         // Dados privados do proprietário (visíveis apenas para o dono)
         privateData: {
@@ -2174,7 +2198,6 @@ export default function NewPropertyPage() {
           else if (p === "details.suites") next.suites = "Informe um número válido de suítes.";
           else if (p === "details.parkingSpots") next.parkingSpots = "Informe um número válido de vagas.";
           else if (p === "details.floor") next.floor = "Informe um andar válido.";
-          else if (p === "details.totalFloors") next.totalFloors = "Informe o total de andares válido.";
           else if (p === "details.yearBuilt") next.yearBuilt = "Ano de construção deve ser entre 1800 e 2100.";
           else if (p === "details.yearRenovated") next.yearRenovated = "Ano de reforma deve ser entre 1800 e 2100.";
           else if (p === "visibility.iptuYearly") next.iptuYearBRL = "Informe um valor de IPTU válido.";
@@ -2251,7 +2274,6 @@ export default function NewPropertyPage() {
             else if (p === "details.suites") next.suites = "Informe um número válido de suítes.";
             else if (p === "details.parkingSpots") next.parkingSpots = "Informe um número válido de vagas.";
             else if (p === "details.floor") next.floor = "Informe um andar válido.";
-            else if (p === "details.totalFloors") next.totalFloors = "Informe o total de andares válido.";
             else if (p === "details.yearBuilt") next.yearBuilt = "Ano de construção deve ser entre 1800 e 2100.";
             else if (p === "details.yearRenovated") next.yearRenovated = "Ano de reforma deve ser entre 1800 e 2100.";
             else if (p === "visibility.iptuYearly") next.iptuYearBRL = "Informe um valor de IPTU válido.";
@@ -2289,6 +2311,12 @@ export default function NewPropertyPage() {
       resetForm();
 
       setPublishedProperty({
+        id: result.id,
+        title: finalTitle,
+        url: propertyUrl,
+      });
+
+      setLastPublished({
         id: result.id,
         title: finalTitle,
         url: propertyUrl,
@@ -2400,7 +2428,6 @@ export default function NewPropertyPage() {
       checkNonNeg("suites", "Suítes", suites);
       checkNonNeg("parkingSpots", "Vagas", parkingSpots);
       checkNonNeg("floor", "Andar", floor);
-      checkNonNeg("totalFloors", "Total de andares", totalFloors);
 
       if (areaM2 !== "" && areaM2 !== null && areaM2 !== undefined) {
         const n = Number(areaM2);
@@ -2710,6 +2737,7 @@ export default function NewPropertyPage() {
                 <button
                   onClick={() => {
                     setPublishedProperty(null);
+                    setLastPublished(null);
                     clearDraft();
                     resetForm();
                   }}
@@ -3432,6 +3460,11 @@ export default function NewPropertyPage() {
                     <Input id="areaM2" label="Área (m²)" required value={areaM2} error={fieldErrors.areaM2} onChange={(e) => { setAreaM2(e.target.value); clearFieldError("areaM2"); }} inputMode="numeric" />
                     <Input id="suites" label="Suítes" value={suites as any} error={fieldErrors.suites} onChange={(e) => { setSuites(e.target.value); clearFieldError("suites"); }} inputMode="numeric" optional />
                     <Input id="parkingSpots" label="Vagas" value={parkingSpots as any} error={fieldErrors.parkingSpots} onChange={(e) => { setParkingSpots(e.target.value); clearFieldError("parkingSpots"); }} inputMode="numeric" optional />
+                    <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
+                    <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
+                    <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
+                    <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
+                    <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
                   </div>
 
 
@@ -3746,18 +3779,8 @@ export default function NewPropertyPage() {
                           </div>
                         )}
                       </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
-                        <Input id="totalFloors" label="Total de andares" value={totalFloors as any} error={fieldErrors.totalFloors} onChange={(e) => { setTotalFloors(e.target.value); clearFieldError("totalFloors"); }} inputMode="numeric" optional />
-                        <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
-                        <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
-                        <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
-                        <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
-                      </div>
                     </div>
                   </div>
-
                 </div>
               )}
 
