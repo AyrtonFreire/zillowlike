@@ -539,11 +539,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800">
                           {item.label}
                         </div>
-                        {item.description ? (
-                          <div className="text-xs text-gray-600 leading-snug">
-                            {item.description}
-                          </div>
-                        ) : null}
                       </div>
                     </Link>
                   </li>
@@ -564,11 +559,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800">
                           {item.label}
                         </div>
-                        {item.description ? (
-                          <div className="text-xs text-gray-600 leading-snug">
-                            {item.description}
-                          </div>
-                        ) : null}
                       </div>
                     </Link>
                   </li>
@@ -592,7 +582,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-black/5" />
                 <div className="relative p-4">
                   <div className="text-sm font-semibold text-white">{card.title}</div>
-                  <div className="mt-0.5 text-xs text-white/85">{card.subtitle}</div>
                 </div>
               </Link>
             ))}
