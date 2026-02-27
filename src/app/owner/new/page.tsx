@@ -3558,7 +3558,7 @@ export default function NewPropertyPage() {
                           className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
                           <span className="text-sm font-semibold text-gray-800">
-                            Condição do imóvel
+                            🏠 Condição do imóvel
                             {accConditionCount > 0 && (
                               <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accConditionCount}</span>
                             )}
@@ -3603,7 +3603,7 @@ export default function NewPropertyPage() {
                           className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
                           <span className="text-sm font-semibold text-gray-800">
-                            Medidas do imóvel
+                            📏 Medidas do imóvel
                             {accMeasuresCount > 0 && (
                               <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accMeasuresCount}</span>
                             )}
@@ -3629,7 +3629,7 @@ export default function NewPropertyPage() {
                           className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
                           <span className="text-sm font-semibold text-gray-800">
-                            Características do imóvel
+                            ✨ Características do imóvel
                             {accFeaturesCount > 0 && (
                               <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFeaturesCount}</span>
                             )}
@@ -3671,7 +3671,7 @@ export default function NewPropertyPage() {
                           className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
                           <span className="text-sm font-semibold text-gray-800">
-                            Condomínio / áreas comuns
+                            🏢 Condomínio / áreas comuns
                             {accCondoCount > 0 && (
                               <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accCondoCount}</span>
                             )}
@@ -3700,7 +3700,7 @@ export default function NewPropertyPage() {
                           className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
                           <span className="text-sm font-semibold text-gray-800">
-                            Segurança
+                            🔒 Segurança
                             {accSecurityCount > 0 && (
                               <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accSecurityCount}</span>
                             )}
@@ -3726,7 +3726,7 @@ export default function NewPropertyPage() {
                           className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
                           <span className="text-sm font-semibold text-gray-800">
-                            Conforto e energia
+                            🌿 Conforto e energia
                             {accComfortCount > 0 && (
                               <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accComfortCount}</span>
                             )}
@@ -3754,7 +3754,7 @@ export default function NewPropertyPage() {
                           className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
                           <span className="text-sm font-semibold text-gray-800">
-                            Acabamentos
+                            🧱 Acabamentos
                             {accFinishCount > 0 && (
                               <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFinishCount}</span>
                             )}
@@ -3785,7 +3785,7 @@ export default function NewPropertyPage() {
                           className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
                           <span className="text-sm font-semibold text-gray-800">
-                            Vista e posição
+                            🌅 Vista e posição
                             {accViewCount > 0 && (
                               <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accViewCount}</span>
                             )}
@@ -3818,7 +3818,7 @@ export default function NewPropertyPage() {
                           className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
                           <span className="text-sm font-semibold text-gray-800">
-                            Acessibilidade
+                            ♿ Acessibilidade
                             {accAccessibilityCount > 0 && (
                               <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accAccessibilityCount}</span>
                             )}
@@ -3842,7 +3842,7 @@ export default function NewPropertyPage() {
                           className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
                           <span className="text-sm font-semibold text-gray-800">
-                            Pets
+                            🐾 Pets
                             {accPetsCount > 0 && (
                               <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accPetsCount}</span>
                             )}
