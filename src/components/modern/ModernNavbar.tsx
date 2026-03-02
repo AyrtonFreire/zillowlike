@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useScroll, AnimatePresence } from "framer-motion";
-import { Menu, X, User, Heart, Bell, MessageCircle, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark, Home, HelpCircle, Building, LandPlot, Trees, Store, ChevronRight } from "lucide-react";
+import { Menu, X, User, Heart, Bell, MessageCircle, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark, Home, HelpCircle, Building, LandPlot, Trees, Store, ChevronRight, type LucideIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -510,7 +510,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const renderHeroMegaMenu = (opts: {
     title: string;
     sectionTitle: string;
-    items: Array<{ label: string; href: string; description?: string }>;
+    items: Array<{ label: string; href: string; description?: string; icon?: LucideIcon }>;
     media: Array<{ title: string; subtitle: string; href: string; image: string }>;
     onNavigate: () => void;
   }) => {
@@ -521,70 +521,96 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
           {opts.title}
         </div>
-        <div className="mt-6 grid grid-cols-[1.1fr_0.9fr] gap-10">
-          <div className="grid grid-cols-2 gap-10">
+        <div className="mt-6 grid grid-cols-[1.1fr_0.9fr] gap-0">
+          <div className="grid grid-cols-2 gap-8 pr-10">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                 {opts.sectionTitle}
               </div>
-              <ul className="mt-4 space-y-1">
-                {col1.map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={opts.onNavigate}
-                      className="group flex items-start gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-gray-50"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800">
-                          {item.label}
+              <ul className="mt-4 space-y-2">
+                {col1.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={opts.onNavigate}
+                        className="group flex items-center justify-between gap-4 rounded-2xl px-3 py-2.5 transition-all hover:bg-gradient-to-r hover:from-teal-50 hover:to-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 ring-1 ring-black/5 text-gray-700 transition-colors group-hover:bg-teal-50 group-hover:text-teal-800">
+                            {Icon ? <Icon className="h-4 w-4" /> : null}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[15px] font-semibold text-gray-900 transition-colors group-hover:text-teal-900 truncate">
+                              {item.label}
+                            </div>
+                            {item.description ? (
+                              <div className="text-xs text-gray-500 mt-0.5 truncate">{item.description}</div>
+                            ) : null}
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
+                        <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300 transition-colors group-hover:text-teal-500" />
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">Mais opções</div>
-              <ul className="mt-4 space-y-1">
-                {col2.map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={opts.onNavigate}
-                      className="group flex items-start gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-gray-50"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-gray-900 group-hover:text-teal-800">
-                          {item.label}
+              <ul className="mt-4 space-y-2">
+                {col2.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={opts.onNavigate}
+                        className="group flex items-center justify-between gap-4 rounded-2xl px-3 py-2.5 transition-all hover:bg-gradient-to-r hover:from-teal-50 hover:to-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 ring-1 ring-black/5 text-gray-700 transition-colors group-hover:bg-teal-50 group-hover:text-teal-800">
+                            {Icon ? <Icon className="h-4 w-4" /> : null}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[15px] font-semibold text-gray-900 transition-colors group-hover:text-teal-900 truncate">
+                              {item.label}
+                            </div>
+                            {item.description ? (
+                              <div className="text-xs text-gray-500 mt-0.5 truncate">{item.description}</div>
+                            ) : null}
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
+                        <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300 transition-colors group-hover:text-teal-500" />
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            {opts.media.map((card) => (
-              <Link
-                key={card.title}
-                href={card.href}
-                onClick={opts.onNavigate}
-                className="group relative isolate flex h-[210px] flex-col justify-end overflow-hidden rounded-3xl ring-1 ring-black/5 transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_55px_rgba(15,23,42,0.18)]"
-              >
-                <div
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{ backgroundImage: `url('${card.image}')` }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-black/5" />
-                <div className="relative p-4">
-                  <div className="text-sm font-semibold text-white">{card.title}</div>
-                </div>
-              </Link>
-            ))}
+          <div className="border-l border-gray-100 pl-10">
+            <div className="grid grid-cols-3 gap-4">
+              {opts.media.map((card) => (
+                <Link
+                  key={card.title}
+                  href={card.href}
+                  onClick={opts.onNavigate}
+                  className="group relative isolate flex h-[210px] flex-col justify-end overflow-hidden rounded-3xl ring-1 ring-black/5 transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_55px_rgba(15,23,42,0.18)]"
+                >
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url('${card.image}')` }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-black/5" />
+                  <div className="relative p-4">
+                    <div className="text-sm font-semibold text-white">{card.title}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </div>
