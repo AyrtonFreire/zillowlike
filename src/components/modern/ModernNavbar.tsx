@@ -535,19 +535,16 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       <Link
                         href={item.href}
                         onClick={opts.onNavigate}
-                        className="group flex items-center justify-between gap-4 rounded-2xl px-3 py-2.5 transition-all hover:bg-gradient-to-r hover:from-teal-50 hover:to-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
+                        className="group flex items-center justify-between gap-4 rounded-2xl px-3 py-3 transition-all hover:bg-gradient-to-r hover:from-teal-50 hover:to-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 ring-1 ring-black/5 text-gray-700 transition-colors group-hover:bg-teal-50 group-hover:text-teal-800">
                             {Icon ? <Icon className="h-4 w-4" /> : null}
                           </div>
                           <div className="min-w-0">
-                            <div className="text-[15px] font-semibold text-gray-900 transition-colors group-hover:text-teal-900 truncate">
+                            <div className="text-sm font-semibold leading-tight text-gray-900 transition-colors group-hover:text-teal-900 truncate">
                               {item.label}
                             </div>
-                            {item.description ? (
-                              <div className="text-xs text-gray-500 mt-0.5 truncate">{item.description}</div>
-                            ) : null}
                           </div>
                         </div>
                         <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300 transition-colors group-hover:text-teal-500" />
@@ -567,19 +564,16 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       <Link
                         href={item.href}
                         onClick={opts.onNavigate}
-                        className="group flex items-center justify-between gap-4 rounded-2xl px-3 py-2.5 transition-all hover:bg-gradient-to-r hover:from-teal-50 hover:to-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
+                        className="group flex items-center justify-between gap-4 rounded-2xl px-3 py-3 transition-all hover:bg-gradient-to-r hover:from-teal-50 hover:to-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 ring-1 ring-black/5 text-gray-700 transition-colors group-hover:bg-teal-50 group-hover:text-teal-800">
                             {Icon ? <Icon className="h-4 w-4" /> : null}
                           </div>
                           <div className="min-w-0">
-                            <div className="text-[15px] font-semibold text-gray-900 transition-colors group-hover:text-teal-900 truncate">
+                            <div className="text-sm font-semibold leading-tight text-gray-900 transition-colors group-hover:text-teal-900 truncate">
                               {item.label}
                             </div>
-                            {item.description ? (
-                              <div className="text-xs text-gray-500 mt-0.5 truncate">{item.description}</div>
-                            ) : null}
                           </div>
                         </div>
                         <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300 transition-colors group-hover:text-teal-500" />
