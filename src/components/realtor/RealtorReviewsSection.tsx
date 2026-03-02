@@ -40,6 +40,8 @@ type EligibilityResponse = {
   eligible: boolean;
   leadId: string | null;
   requiresLogin?: boolean;
+  reason?: string | null;
+  nextEligibleAt?: string | null;
 };
 
 type Props = {
@@ -77,6 +79,8 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
   const [eligible, setEligible] = useState(false);
   const [requiresLogin, setRequiresLogin] = useState(false);
   const [eligibleLeadId, setEligibleLeadId] = useState<string | null>(null);
+  const [eligibilityReason, setEligibilityReason] = useState<string | null>(null);
+  const [nextEligibleAt, setNextEligibleAt] = useState<string | null>(null);
 
   const [writeOpen, setWriteOpen] = useState(false);
   const [draftStars, setDraftStars] = useState(0);
@@ -113,17 +117,45 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
         setEligible(false);
         setEligibleLeadId(null);
         setRequiresLogin(false);
+        setEligibilityReason(null);
+        setNextEligibleAt(null);
         return;
       }
       setEligible(Boolean(data.eligible));
       setEligibleLeadId(data.leadId || null);
       setRequiresLogin(Boolean(data.requiresLogin));
+      setEligibilityReason(data.reason || null);
+      setNextEligibleAt(data.nextEligibleAt || null);
     } catch {
       setEligible(false);
       setEligibleLeadId(null);
       setRequiresLogin(false);
+      setEligibilityReason(null);
+      setNextEligibleAt(null);
     }
   }, [realtorId]);
+
+  const eligibilityHint = useMemo(() => {
+    if (requiresLogin) return null;
+    if (eligible) return null;
+    if (eligibilityReason === "AWAITING_RESPONSE") {
+      return "Você poderá avaliar 24h após o corretor responder.";
+    }
+    if (eligibilityReason === "COOLDOWN" && nextEligibleAt) {
+      const d = new Date(nextEligibleAt);
+      if (!Number.isNaN(d.getTime())) {
+        return `Avaliação disponível em ${d.toLocaleString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        })}.`;
+      }
+      return "A avaliação ficará disponível 24h após a resposta do corretor.";
+    }
+    return null;
+  }, [eligible, eligibilityReason, nextEligibleAt, requiresLogin]);
 
   const fetchRatings = useCallback(async () => {
     setLoading(true);
@@ -294,11 +326,12 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
   }, [histogram, histogramTotal, totalRatings]);
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <section id="avaliacoes" className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Avaliações</h2>
           <p className="text-sm text-gray-500 mt-1">Somente avaliações de clientes que viraram lead.</p>
+          {eligibilityHint && <p className="text-sm text-gray-600 mt-2">{eligibilityHint}</p>}
         </div>
 
         {requiresLogin ? (

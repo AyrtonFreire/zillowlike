@@ -89,11 +89,6 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     return "Profissional";
   }, [property]);
 
-  const showAgencyLogo = useMemo(() => {
-    const r = String(property.owner?.role || "").toUpperCase();
-    return r === "REALTOR" && !!property.team?.id;
-  }, [property.owner?.role, property.team?.id]);
-
   const intelligentBadges = useMemo(() => {
     const badges: Array<{
       key: string;
@@ -815,29 +810,6 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     </span>
                   </div>
                 )}
-
-                {showAgencyLogo ? (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="relative w-24 h-8 overflow-hidden flex items-center justify-center opacity-90"
-                    title={property.team?.name || ""}
-                    aria-label={property.team?.name ? `Imobiliária ${property.team.name}` : "Imobiliária"}
-                  >
-                    {property.team?.owner?.image ? (
-                      <Image
-                        src={property.team.owner.image}
-                        alt={property.team?.name || "Imobiliária"}
-                        fill
-                        className="object-contain"
-                        sizes="80px"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-normal text-gray-500 px-2">
-                        <span className="truncate">{String(property.team?.name || "")}</span>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
               </div>
             ) : (
               <div aria-hidden="true" className="w-full" />

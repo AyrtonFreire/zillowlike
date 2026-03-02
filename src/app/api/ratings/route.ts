@@ -37,11 +37,34 @@ export const POST = withRateLimit(
     },
     select: {
       id: true,
+      respondedAt: true,
     },
   });
 
   if (!lead) {
     return errorResponse("Lead not found", 404, null, "LEAD_NOT_FOUND");
+  }
+
+  if (!(lead as any)?.respondedAt) {
+    return errorResponse(
+      "Você poderá avaliar após o corretor responder.",
+      400,
+      null,
+      "AWAITING_RESPONSE"
+    );
+  }
+
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const respondedAt = new Date((lead as any).respondedAt);
+  if (Number.isFinite(respondedAt.getTime()) && respondedAt > cutoff) {
+    const nextEligibleAt = new Date(respondedAt.getTime() + 24 * 60 * 60 * 1000);
+    return errorResponse(
+      "A avaliação ficará disponível 24h após a resposta do corretor.",
+      400,
+      { nextEligibleAt: nextEligibleAt.toISOString() },
+      "RATING_COOLDOWN"
+    );
   }
 
   // Verifica se já existe avaliação para este lead

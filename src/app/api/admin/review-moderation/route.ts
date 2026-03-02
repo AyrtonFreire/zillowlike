@@ -5,6 +5,40 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
+async function recomputeRealtorStats(realtorId: string) {
+  const agg = await (prisma as any).realtorRating.aggregate({
+    where: { realtorId, status: "PUBLISHED" },
+    _avg: { rating: true },
+    _count: { _all: true },
+  });
+
+  const totalRatings = Number(agg?._count?._all || 0);
+  const avgRating = totalRatings > 0 ? Number(agg?._avg?.rating || 0) : null;
+
+  await (prisma as any).realtorStats.upsert({
+    where: { realtorId },
+    create: { realtorId, avgRating, totalRatings },
+    update: { avgRating, totalRatings },
+  });
+}
+
+async function recomputeOwnerStats(ownerId: string) {
+  const agg = await (prisma as any).ownerRating.aggregate({
+    where: { ownerId, status: "PUBLISHED" },
+    _avg: { rating: true },
+    _count: { _all: true },
+  });
+
+  const totalRatings = Number(agg?._count?._all || 0);
+  const avgRating = totalRatings > 0 ? Number(agg?._avg?.rating || 0) : null;
+
+  await (prisma as any).ownerStats.upsert({
+    where: { ownerId },
+    create: { ownerId, avgRating, totalRatings },
+    update: { avgRating, totalRatings },
+  });
+}
+
 const Schema = z.object({
   targetType: z.enum(["REALTOR", "OWNER"]),
   ratingId: z.string().min(1),
@@ -39,14 +73,24 @@ export async function PATCH(req: NextRequest) {
       const rating = await (prisma as any).realtorRating.update({
         where: { id: ratingId },
         data: { status },
+        select: { id: true, realtorId: true, status: true },
       });
+
+      if (rating?.realtorId) {
+        await recomputeRealtorStats(String(rating.realtorId));
+      }
       return NextResponse.json({ success: true, rating });
     }
 
     const rating = await (prisma as any).ownerRating.update({
       where: { id: ratingId },
       data: { status },
+      select: { id: true, ownerId: true, status: true },
     });
+
+    if (rating?.ownerId) {
+      await recomputeOwnerStats(String(rating.ownerId));
+    }
     return NextResponse.json({ success: true, rating });
   } catch (error) {
     console.error("Error moderating review:", error);

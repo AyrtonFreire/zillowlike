@@ -41,19 +41,20 @@ async function sendRatingRequestEmails() {
     where: {
       userId: { not: null },
       realtorId: { not: null },
-      createdAt: { lte: cutoff },
+      respondedAt: { not: null, lte: cutoff },
       rating: null,
       ratingRequestEmailSentAt: null,
     },
     select: {
       id: true,
       createdAt: true,
+      respondedAt: true,
       ratingRequestEmailSentAt: true,
       user: { select: { id: true, name: true, email: true } },
       realtor: { select: { id: true, name: true, publicSlug: true, publicProfileEnabled: true } },
       property: { select: { title: true } },
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: { respondedAt: "asc" },
     take: 200,
   });
 
