@@ -94,8 +94,8 @@ type PropertyDetails = {
   finishCounterQuartz?: boolean | null;
   viewSea?: boolean | null;
   viewCity?: boolean | null;
-  positionFront?: boolean | null;
-  positionBack?: boolean | null;
+  viewRiver?: boolean | null;
+  viewLake?: boolean | null;
   sunByRoomNote?: string | null;
   petsSmall?: boolean | null;
   petsLarge?: boolean | null;
@@ -530,8 +530,8 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
         finishCounterQuartz: !!property.finishCounterQuartz,
         viewSea: !!property.viewSea,
         viewCity: !!property.viewCity,
-        positionFront: !!property.positionFront,
-        positionBack: !!property.positionBack,
+        viewRiver: typeof (property as any).viewRiver === "boolean" ? !!(property as any).viewRiver : !!(property as any).positionFront,
+        viewLake: typeof (property as any).viewLake === "boolean" ? !!(property as any).viewLake : !!(property as any).positionBack,
         sunByRoomNote: property.sunByRoomNote || "",
         petsSmall: !!property.petsSmall,
         petsLarge: !!property.petsLarge,
@@ -1577,8 +1577,8 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                   if ((property as any).secElectricFence) allFeatures.push({ icon: <Zap className="w-5 h-5 text-gray-600" />, label: "Cerca Elétrica" });
                   if ((property as any).viewSea) allFeatures.push({ icon: <Waves className="w-5 h-5 text-gray-600" />, label: "Vista para Mar" });
                   if ((property as any).viewCity) allFeatures.push({ icon: <Building2 className="w-5 h-5 text-gray-600" />, label: "Vista para Cidade" });
-                  if ((property as any).positionFront) allFeatures.push({ icon: <ArrowUp className="w-5 h-5 text-gray-600" />, label: "Frente" });
-                  if ((property as any).positionBack) allFeatures.push({ icon: <ArrowDown className="w-5 h-5 text-gray-600" />, label: "Fundos" });
+                  if ((property as any).viewRiver || (property as any).positionFront) allFeatures.push({ icon: <ArrowUp className="w-5 h-5 text-gray-600" />, label: "Vista para o rio" });
+                  if ((property as any).viewLake || (property as any).positionBack) allFeatures.push({ icon: <ArrowDown className="w-5 h-5 text-gray-600" />, label: "Vista para o lago" });
                   if ((property as any).accRamps) allFeatures.push({ icon: <Accessibility className="w-5 h-5 text-gray-600" />, label: "Rampa de Acesso" });
                   if ((property as any).accWideDoors) allFeatures.push({ icon: <DoorOpen className="w-5 h-5 text-gray-600" />, label: "Portas Largas" });
                   if ((property as any).accAccessibleElevator) allFeatures.push({ icon: <Accessibility className="w-5 h-5 text-gray-600" />, label: "Elevador Acessível" });

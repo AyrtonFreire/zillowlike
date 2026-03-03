@@ -217,8 +217,8 @@ export async function GET(req: NextRequest) {
     // Vista / Posição
     const viewSea = searchParams.get("viewSea");
     const viewCity = searchParams.get("viewCity");
-    const positionFront = searchParams.get("positionFront");
-    const positionBack = searchParams.get("positionBack");
+    const viewRiver = searchParams.get("viewRiver") || searchParams.get("positionFront");
+    const viewLake = searchParams.get("viewLake") || searchParams.get("positionBack");
     // Pets
     const petsSmall = searchParams.get("petsSmall");
     const petsLarge = searchParams.get("petsLarge");
@@ -265,8 +265,8 @@ export async function GET(req: NextRequest) {
     // Vista / Posição
     if (viewSea === "true") where.viewSea = true;
     if (viewCity === "true") where.viewCity = true;
-    if (positionFront === "true") where.positionFront = true;
-    if (positionBack === "true") where.positionBack = true;
+    if (viewRiver === "true") where.viewRiver = true;
+    if (viewLake === "true") where.viewLake = true;
     // Pets
     if (petsSmall === "true") where.petsSmall = true;
     if (petsLarge === "true") where.petsLarge = true;
@@ -442,6 +442,8 @@ export async function GET(req: NextRequest) {
               finishCounterQuartz: true,
               viewSea: true,
               viewCity: true,
+              viewRiver: true,
+              viewLake: true,
               positionFront: true,
               positionBack: true,
               sunByRoomNote: true,
@@ -465,6 +467,12 @@ export async function GET(req: NextRequest) {
       items = nextItems as any[];
 
       items = jsonSafe(items);
+      items = (Array.isArray(items) ? items : []).map((it: any) => {
+        if (!it || typeof it !== "object") return it;
+        if (typeof it.viewRiver !== "boolean" && typeof it.positionFront === "boolean") it.viewRiver = it.positionFront;
+        if (typeof it.viewLake !== "boolean" && typeof it.positionBack === "boolean") it.viewLake = it.positionBack;
+        return it;
+      });
 
       if (process.env.NODE_ENV !== "production") {
         console.log("api/properties GET", {
@@ -869,8 +877,10 @@ export async function POST(req: NextRequest) {
       // Vista / Posição
       viewSea: (details as any)?.viewSea ?? null,
       viewCity: (details as any)?.viewCity ?? null,
-      positionFront: (details as any)?.positionFront ?? null,
-      positionBack: (details as any)?.positionBack ?? null,
+      viewRiver: (details as any)?.viewRiver ?? (details as any)?.positionFront ?? null,
+      viewLake: (details as any)?.viewLake ?? (details as any)?.positionBack ?? null,
+      positionFront: (details as any)?.positionFront ?? (details as any)?.viewRiver ?? null,
+      positionBack: (details as any)?.positionBack ?? (details as any)?.viewLake ?? null,
       sunByRoomNote: (details as any)?.sunByRoomNote ?? null,
       // Pets / Políticas
       petsSmall: (details as any)?.petsSmall ?? null,

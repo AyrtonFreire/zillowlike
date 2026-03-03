@@ -164,8 +164,8 @@ export default function EditPropertyPage() {
   const [finishCounterQuartz, setFinishCounterQuartz] = useState(false);
   const [viewSea, setViewSea] = useState(false);
   const [viewCity, setViewCity] = useState(false);
-  const [positionFront, setPositionFront] = useState(false);
-  const [positionBack, setPositionBack] = useState(false);
+  const [viewRiver, setViewRiver] = useState(false);
+  const [viewLake, setViewLake] = useState(false);
   const [sunByRoomNote, setSunByRoomNote] = useState("");
   const [petsSmall, setPetsSmall] = useState(false);
   const [petsLarge, setPetsLarge] = useState(false);
@@ -261,8 +261,8 @@ export default function EditPropertyPage() {
         setFinishCounterQuartz(!!p.finishCounterQuartz);
         setViewSea(!!p.viewSea);
         setViewCity(!!p.viewCity);
-        setPositionFront(!!p.positionFront);
-        setPositionBack(!!p.positionBack);
+        setViewRiver(typeof (p as any).viewRiver === 'boolean' ? !!(p as any).viewRiver : !!(p as any).positionFront);
+        setViewLake(typeof (p as any).viewLake === 'boolean' ? !!(p as any).viewLake : !!(p as any).positionBack);
         setSunByRoomNote(p.sunByRoomNote || "");
         setPetsSmall(!!p.petsSmall);
         setPetsLarge(!!p.petsLarge);
@@ -437,8 +437,8 @@ export default function EditPropertyPage() {
           finishCounterQuartz,
           viewSea,
           viewCity,
-          positionFront,
-          positionBack,
+          viewRiver,
+          viewLake,
           sunByRoomNote,
           petsSmall,
           petsLarge,
@@ -1293,6 +1293,7 @@ export default function EditPropertyPage() {
                       >
                         <option value="">Selecione</option>
                         <option value="PORCELANATO">Porcelanato</option>
+                        <option value="CERAMICA">Cerâmica</option>
                         <option value="MADEIRA">Madeira</option>
                         <option value="VINILICO">Vinílico</option>
                         <option value="OUTRO">Outro</option>
@@ -1355,20 +1356,20 @@ export default function EditPropertyPage() {
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                       <input
                         type="checkbox"
-                        checked={positionFront}
-                        onChange={(e) => setPositionFront(e.target.checked)}
+                        checked={viewRiver}
+                        onChange={(e) => setViewRiver(e.target.checked)}
                         className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span>De frente (voltado para a rua)</span>
+                      <span>Vista para o rio</span>
                     </label>
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                       <input
                         type="checkbox"
-                        checked={positionBack}
-                        onChange={(e) => setPositionBack(e.target.checked)}
+                        checked={viewLake}
+                        onChange={(e) => setViewLake(e.target.checked)}
                         className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span>Fundos (mais silencioso)</span>
+                      <span>Vista para o lago</span>
                     </label>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

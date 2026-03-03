@@ -46,8 +46,8 @@ type FilterValues = {
   // Vista / Posição
   viewSea: boolean;
   viewCity: boolean;
-  positionFront: boolean;
-  positionBack: boolean;
+  viewRiver: boolean;
+  viewLake: boolean;
   // Pets
   petsSmall: boolean;
   petsLarge: boolean;
@@ -107,7 +107,7 @@ export default function SearchFiltersBarZillow({
       comfortLED: false, comfortWaterReuse: false,
       accRamps: false, accWideDoors: false, accAccessibleElevator: false, accTactile: false,
       finishCabinets: false, finishCounterGranite: false, finishCounterQuartz: false,
-      viewSea: false, viewCity: false, positionFront: false, positionBack: false,
+      viewSea: false, viewCity: false, viewRiver: false, viewLake: false,
       petsSmall: false, petsLarge: false,
       condoFeeMin: '', condoFeeMax: '', iptuMin: '', iptuMax: '', keywords: ''
     };
@@ -170,8 +170,8 @@ export default function SearchFiltersBarZillow({
           finishCounterQuartz: localFilters.finishCounterQuartz ? 'true' : '',
           viewSea: localFilters.viewSea ? 'true' : '',
           viewCity: localFilters.viewCity ? 'true' : '',
-          positionFront: localFilters.positionFront ? 'true' : '',
-          positionBack: localFilters.positionBack ? 'true' : '',
+          viewRiver: localFilters.viewRiver ? 'true' : '',
+          viewLake: localFilters.viewLake ? 'true' : '',
           petsSmall: localFilters.petsSmall ? 'true' : '',
           petsLarge: localFilters.petsLarge ? 'true' : '',
           condoFeeMin: localFilters.condoFeeMin,
@@ -553,8 +553,8 @@ export default function SearchFiltersBarZillow({
             <div className="grid grid-cols-2 gap-2">
               <AmenityButton active={localFilters.viewSea} onClick={() => updateFilter('viewSea', !localFilters.viewSea)} icon={<Waves className="w-4 h-4" />} label="Vista Mar" />
               <AmenityButton active={localFilters.viewCity} onClick={() => updateFilter('viewCity', !localFilters.viewCity)} icon={<Building2 className="w-4 h-4" />} label="Vista Cidade" />
-              <AmenityButton active={localFilters.positionFront} onClick={() => updateFilter('positionFront', !localFilters.positionFront)} icon={<ArrowUp className="w-4 h-4" />} label="Frente" />
-              <AmenityButton active={localFilters.positionBack} onClick={() => updateFilter('positionBack', !localFilters.positionBack)} icon={<ArrowDown className="w-4 h-4" />} label="Fundos" />
+              <AmenityButton active={localFilters.viewRiver} onClick={() => updateFilter('viewRiver', !localFilters.viewRiver)} icon={<ArrowUp className="w-4 h-4" />} label="Vista Rio" />
+              <AmenityButton active={localFilters.viewLake} onClick={() => updateFilter('viewLake', !localFilters.viewLake)} icon={<ArrowDown className="w-4 h-4" />} label="Vista Lago" />
             </div>
           </div>
 

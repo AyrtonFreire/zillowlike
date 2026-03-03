@@ -51,6 +51,8 @@ export type Filters = {
   finishCounterQuartz?: string;
   viewSea?: string;
   viewCity?: string;
+  viewRiver?: string;
+  viewLake?: string;
   positionFront?: string;
   positionBack?: string;
   petsSmall?: string;
@@ -127,6 +129,8 @@ export function parseFiltersFromSearchParams(sp: URLSearchParams): Filters {
   f.finishCounterQuartz = get("finishCounterQuartz");
   f.viewSea = get("viewSea");
   f.viewCity = get("viewCity");
+  f.viewRiver = get("viewRiver") || get("positionFront");
+  f.viewLake = get("viewLake") || get("positionBack");
   f.positionFront = get("positionFront");
   f.positionBack = get("positionBack");
   f.petsSmall = get("petsSmall");
@@ -196,8 +200,8 @@ export function buildSearchParams(filters: Filters): string {
   if (filters.finishCounterQuartz) p.set("finishCounterQuartz", filters.finishCounterQuartz);
   if (filters.viewSea) p.set("viewSea", filters.viewSea);
   if (filters.viewCity) p.set("viewCity", filters.viewCity);
-  if (filters.positionFront) p.set("positionFront", filters.positionFront);
-  if (filters.positionBack) p.set("positionBack", filters.positionBack);
+  if (filters.viewRiver) p.set("viewRiver", filters.viewRiver);
+  if (filters.viewLake) p.set("viewLake", filters.viewLake);
   if (filters.petsSmall) p.set("petsSmall", filters.petsSmall);
   if (filters.petsLarge) p.set("petsLarge", filters.petsLarge);
   if (filters.condoFeeMin) p.set("condoFeeMin", filters.condoFeeMin);

@@ -78,6 +78,8 @@ export async function GET(req: NextRequest, context: RouteContext) {
         finishCounterQuartz: true,
         viewSea: true,
         viewCity: true,
+        viewRiver: true,
+        viewLake: true,
         positionFront: true,
         positionBack: true,
         sunByRoomNote: true,
@@ -117,6 +119,8 @@ export async function GET(req: NextRequest, context: RouteContext) {
     }
 
     const safeItem = jsonSafe(item);
+    (safeItem as any).viewRiver = typeof (safeItem as any).viewRiver === "boolean" ? (safeItem as any).viewRiver : (safeItem as any).positionFront;
+    (safeItem as any).viewLake = typeof (safeItem as any).viewLake === "boolean" ? (safeItem as any).viewLake : (safeItem as any).positionBack;
     if ((safeItem as any)?.hideExactAddress) {
       (safeItem as any).street = "";
       (safeItem as any).streetNumber = null;

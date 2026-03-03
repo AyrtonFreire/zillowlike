@@ -94,8 +94,8 @@ export const PropertyCreateSchema = z
       // Vista / Posição
       viewSea: z.boolean().optional(),
       viewCity: z.boolean().optional(),
-      positionFront: z.boolean().optional(),
-      positionBack: z.boolean().optional(),
+      viewRiver: z.boolean().optional(),
+      viewLake: z.boolean().optional(),
       sunByRoomNote: z.string().max(500).optional(),
       // Pets / Políticas
       petsSmall: z.boolean().optional(),

@@ -197,6 +197,8 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       // Vista / posição
       "viewSea",
       "viewCity",
+      "viewRiver",
+      "viewLake",
       "positionFront",
       "positionBack",
       "sunByRoomNote",

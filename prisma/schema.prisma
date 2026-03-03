@@ -294,6 +294,8 @@ model Property {
   // Vista / Posição
   viewSea       Boolean?
   viewCity      Boolean?
+  viewRiver     Boolean?
+  viewLake      Boolean?
   positionFront Boolean?
   positionBack  Boolean?
   sunByRoomNote String?

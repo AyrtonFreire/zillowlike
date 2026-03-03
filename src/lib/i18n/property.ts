@@ -46,6 +46,8 @@ export const ptBR = {
     finishCounterQuartz: 'Bancada em quartzo',
     viewSea: 'Vista para o mar',
     viewCity: 'Vista para a cidade',
+    viewRiver: 'Vista para o rio',
+    viewLake: 'Vista para o lago',
     positionFront: 'Vista para o rio',
     positionBack: 'Vista para o lago',
     petsSmall: 'Aceita pets pequenos',
@@ -54,13 +56,21 @@ export const ptBR = {
 };
 
 export function amenitiesFromProperty(p: any): string[] {
+  const hasViewRiver = !!p?.viewRiver || !!p?.positionFront;
+  const hasViewLake = !!p?.viewLake || !!p?.positionBack;
   const keys = [
     'hasBalcony','hasElevator','hasPool','hasGym','hasPlayground','hasPartyRoom','hasGourmet','hasConcierge24h',
     'accRamps','accWideDoors','accAccessibleElevator','accTactile',
     'comfortAC','comfortHeating','comfortSolar','comfortNoiseWindows','comfortLED','comfortWaterReuse',
     'finishCabinets','finishCounterGranite','finishCounterQuartz',
-    'viewSea','viewCity','positionFront','positionBack',
+    'viewSea','viewCity','viewRiver','viewLake',
     'petsSmall','petsLarge'
   ];
-  return keys.filter(k => !!p?.[k]).map(k => ptBR.amenityLabel(k));
+  return keys
+    .filter((k) => {
+      if (k === 'viewRiver') return hasViewRiver;
+      if (k === 'viewLake') return hasViewLake;
+      return !!p?.[k];
+    })
+    .map((k) => ptBR.amenityLabel(k));
 }

@@ -273,8 +273,8 @@ export default function Home() {
   const [finishCounterGranite, setFinishCounterGranite] = useState(false);
   const [finishCounterQuartz, setFinishCounterQuartz] = useState(false);
   const [viewCity, setViewCity] = useState(false);
-  const [positionFront, setPositionFront] = useState(false);
-  const [positionBack, setPositionBack] = useState(false);
+  const [viewRiver, setViewRiver] = useState(false);
+  const [viewLake, setViewLake] = useState(false);
   const [petsSmall, setPetsSmall] = useState(false);
   const [petsLarge, setPetsLarge] = useState(false);
   
@@ -354,6 +354,8 @@ export default function Home() {
     setHasElevator(filters.hasElevator === "true");
     setHasBalcony(filters.hasBalcony === "true");
     setViewSea(filters.viewSea === "true");
+    setViewRiver(filters.viewRiver === "true");
+    setViewLake(filters.viewLake === "true");
     setCondoFeeMin(filters.condoFeeMin || "");
     setCondoFeeMax(filters.condoFeeMax || "");
     setIptuMin(filters.iptuMin || "");
@@ -432,8 +434,8 @@ export default function Home() {
     if (finishCounterQuartz) count++;
     if (viewSea) count++;
     if (viewCity) count++;
-    if (positionFront) count++;
-    if (positionBack) count++;
+    if (viewRiver) count++;
+    if (viewLake) count++;
     if (petsSmall) count++;
     if (petsLarge) count++;
     if (condoFeeMin) count++;
@@ -450,7 +452,7 @@ export default function Home() {
     comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse,
     accRamps, accWideDoors, accAccessibleElevator, accTactile,
     finishCabinets, finishCounterGranite, finishCounterQuartz,
-    viewSea, viewCity, positionFront, positionBack,
+    viewSea, viewCity, viewRiver, viewLake,
     petsSmall, petsLarge, condoFeeMin, condoFeeMax, iptuMin, iptuMax,
     keywords, yearBuiltMin, yearBuiltMax
   ]);
@@ -849,8 +851,8 @@ export default function Home() {
       finishCounterQuartz: finishCounterQuartz ? "true" : "",
       viewSea: viewSea ? "true" : "",
       viewCity: viewCity ? "true" : "",
-      positionFront: positionFront ? "true" : "",
-      positionBack: positionBack ? "true" : "",
+      viewRiver: viewRiver ? "true" : "",
+      viewLake: viewLake ? "true" : "",
       petsSmall: petsSmall ? "true" : "",
       petsLarge: petsLarge ? "true" : "",
       condoFeeMin,
@@ -957,8 +959,8 @@ export default function Home() {
     finishCounterQuartz,
     viewSea,
     viewCity,
-    positionFront,
-    positionBack,
+    viewRiver,
+    viewLake,
     petsSmall,
     petsLarge,
     condoFeeMin,
@@ -1018,8 +1020,8 @@ export default function Home() {
         finishCounterQuartz: finishCounterQuartz ? "true" : "",
         viewSea: viewSea ? "true" : "",
         viewCity: viewCity ? "true" : "",
-        positionFront: positionFront ? "true" : "",
-        positionBack: positionBack ? "true" : "",
+        viewRiver: viewRiver ? "true" : "",
+        viewLake: viewLake ? "true" : "",
         petsSmall: petsSmall ? "true" : "",
         petsLarge: petsLarge ? "true" : "",
         condoFeeMin,
@@ -2682,8 +2684,8 @@ export default function Home() {
                           finishCounterQuartz: finishCounterQuartz ? 'true' : '',
                           viewSea: viewSea ? 'true' : '',
                           viewCity: viewCity ? 'true' : '',
-                          positionFront: positionFront ? 'true' : '',
-                          positionBack: positionBack ? 'true' : '',
+                          viewRiver: viewRiver ? 'true' : '',
+                          viewLake: viewLake ? 'true' : '',
                           petsSmall: petsSmall ? 'true' : '',
                           petsLarge: petsLarge ? 'true' : '',
                           condoFeeMin,
@@ -3025,8 +3027,8 @@ export default function Home() {
                               setFinishCounterQuartz(false);
                               setViewSea(false);
                               setViewCity(false);
-                              setPositionFront(false);
-                              setPositionBack(false);
+                              setViewRiver(false);
+                              setViewLake(false);
                               setPetsSmall(false);
                               setPetsLarge(false);
                               setCondoFeeMin("");
@@ -3383,8 +3385,8 @@ export default function Home() {
             finishCounterQuartz,
             viewSea,
             viewCity,
-            positionFront,
-            positionBack,
+            viewRiver,
+            viewLake,
             petsSmall,
             petsLarge,
             condoFeeMin,
@@ -3434,8 +3436,8 @@ export default function Home() {
             setFinishCounterQuartz(newFilters.finishCounterQuartz);
             setViewSea(newFilters.viewSea);
             setViewCity(newFilters.viewCity);
-            setPositionFront(newFilters.positionFront);
-            setPositionBack(newFilters.positionBack);
+            setViewRiver(newFilters.viewRiver);
+            setViewLake(newFilters.viewLake);
             setPetsSmall(newFilters.petsSmall);
             setPetsLarge(newFilters.petsLarge);
             setCondoFeeMin(newFilters.condoFeeMin);
@@ -3496,8 +3498,8 @@ export default function Home() {
               finishCounterQuartz: appliedFilters.finishCounterQuartz ? 'true' : '',
               viewSea: appliedFilters.viewSea ? 'true' : '',
               viewCity: appliedFilters.viewCity ? 'true' : '',
-              positionFront: appliedFilters.positionFront ? 'true' : '',
-              positionBack: appliedFilters.positionBack ? 'true' : '',
+              viewRiver: appliedFilters.viewRiver ? 'true' : '',
+              viewLake: appliedFilters.viewLake ? 'true' : '',
               petsSmall: appliedFilters.petsSmall ? 'true' : '',
               petsLarge: appliedFilters.petsLarge ? 'true' : '',
               condoFeeMin: appliedFilters.condoFeeMin,

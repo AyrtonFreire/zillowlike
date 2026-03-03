@@ -101,8 +101,8 @@ export default function NewPropertyPage() {
   const [finishCounterQuartz, setFinishCounterQuartz] = useState(false);
   const [viewSea, setViewSea] = useState(false);
   const [viewCity, setViewCity] = useState(false);
-  const [positionFront, setPositionFront] = useState(false);
-  const [positionBack, setPositionBack] = useState(false);
+  const [viewRiver, setViewRiver] = useState(false);
+  const [viewLake, setViewLake] = useState(false);
   const [petsSmall, setPetsSmall] = useState(false);
   const [petsLarge, setPetsLarge] = useState(false);
   const [secCCTV, setSecCCTV] = useState(false);
@@ -282,8 +282,8 @@ export default function NewPropertyPage() {
   const accViewCount =
     (viewSea ? 1 : 0) +
     (viewCity ? 1 : 0) +
-    (positionFront ? 1 : 0) +
-    (positionBack ? 1 : 0) +
+    (viewRiver ? 1 : 0) +
+    (viewLake ? 1 : 0) +
     (sunByRoomNote ? 1 : 0);
   const accPetsCount = (petsSmall ? 1 : 0) + (petsLarge ? 1 : 0);
   const accSecurityCount = (secCCTV ? 1 : 0) + (secSallyPort ? 1 : 0) + (secNightGuard ? 1 : 0) + (secElectricFence ? 1 : 0);
@@ -1241,8 +1241,10 @@ export default function NewPropertyPage() {
 
       if (typeof d.viewSea === 'boolean') setViewSea(d.viewSea);
       if (typeof d.viewCity === 'boolean') setViewCity(d.viewCity);
-      if (typeof d.positionFront === 'boolean') setPositionFront(d.positionFront);
-      if (typeof d.positionBack === 'boolean') setPositionBack(d.positionBack);
+      if (typeof d.viewRiver === 'boolean') setViewRiver(d.viewRiver);
+      else if (typeof d.positionFront === 'boolean') setViewRiver(d.positionFront);
+      if (typeof d.viewLake === 'boolean') setViewLake(d.viewLake);
+      else if (typeof d.positionBack === 'boolean') setViewLake(d.positionBack);
       if (typeof d.sunByRoomNote === 'string') setSunByRoomNote(d.sunByRoomNote);
       if (typeof d.sunOrientation === 'string') setSunOrientation(d.sunOrientation);
 
@@ -1372,8 +1374,10 @@ export default function NewPropertyPage() {
 
         if (typeof d.viewSea === 'boolean') setViewSea(d.viewSea);
         if (typeof d.viewCity === 'boolean') setViewCity(d.viewCity);
-        if (typeof d.positionFront === 'boolean') setPositionFront(d.positionFront);
-        if (typeof d.positionBack === 'boolean') setPositionBack(d.positionBack);
+        if (typeof d.viewRiver === 'boolean') setViewRiver(d.viewRiver);
+        else if (typeof d.positionFront === 'boolean') setViewRiver(d.positionFront);
+        if (typeof d.viewLake === 'boolean') setViewLake(d.viewLake);
+        else if (typeof d.positionBack === 'boolean') setViewLake(d.positionBack);
         if (typeof d.sunByRoomNote === 'string') setSunByRoomNote(d.sunByRoomNote);
         if (typeof d.sunOrientation === 'string') setSunOrientation(d.sunOrientation);
 
@@ -1477,8 +1481,8 @@ export default function NewPropertyPage() {
           finishCounterQuartz,
           viewSea,
           viewCity,
-          positionFront,
-          positionBack,
+          viewRiver,
+          viewLake,
           sunByRoomNote,
           sunOrientation,
           petsSmall,
@@ -1499,7 +1503,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, images, addressNumber, addressComplement, conditionTags, petFriendly, capturerRealtorId, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, positionFront, positionBack, sunByRoomNote, sunOrientation, petsSmall, petsLarge, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
+  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, images, addressNumber, addressComplement, conditionTags, petFriendly, capturerRealtorId, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, viewRiver, viewLake, sunByRoomNote, sunOrientation, petsSmall, petsLarge, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -1683,8 +1687,8 @@ export default function NewPropertyPage() {
       finishCounterQuartz,
       viewSea,
       viewCity,
-      positionFront,
-      positionBack,
+      viewRiver,
+      viewLake,
       sunByRoomNote: sunByRoomNote || null,
       petsSmall,
       petsLarge,
@@ -1757,8 +1761,6 @@ export default function NewPropertyPage() {
     petsLarge,
     petsSmall,
     postalCode,
-    positionBack,
-    positionFront,
     previewImages,
     priceBRL,
     privateAreaM2,
@@ -1783,8 +1785,8 @@ export default function NewPropertyPage() {
     videoUrl,
     viewCity,
     viewSea,
-    positionBack,
-    positionFront,
+    viewRiver,
+    viewLake,
     yearBuilt,
     yearRenovated,
   ]);
@@ -2145,8 +2147,8 @@ export default function NewPropertyPage() {
           // Vista / Posição
           viewSea,
           viewCity,
-          positionFront,
-          positionBack,
+          viewRiver,
+          viewLake,
           sunByRoomNote,
           // Pets / Políticas
           petsSmall,
@@ -3735,8 +3737,8 @@ export default function NewPropertyPage() {
                             <div className="grid grid-cols-2 gap-3">
                               <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
                               <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
-                              <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="Vista para o rio" />
-                              <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Vista para o lago" />
+                              <Checkbox checked={viewRiver} onChange={(e) => setViewRiver(e.target.checked)} label="Vista para o rio" />
+                              <Checkbox checked={viewLake} onChange={(e) => setViewLake(e.target.checked)} label="Vista para o lago" />
                             </div>
                             <Input label="Sol nos cômodos (opcional)" value={sunByRoomNote} onChange={(e) => setSunByRoomNote(e.target.value)} optional />
                             <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
