@@ -3158,164 +3158,153 @@ export default function NewPropertyPage() {
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900">Preencher com IA</p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Gere título, texto e metas a partir dos dados do imóvel (1 preenchimento gratuito por anúncio).
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex flex-col sm:flex-row justify-center gap-2">
-                      <button
-                        type="button"
-                        disabled={
-                          isGeneratingDescription ||
-                          aiDescriptionGenerations >= 1 ||
-                          images.some((i) => i.pending) ||
-                          !images.some((i) => i.url && !i.pending)
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={
+                        isGeneratingDescription ||
+                        aiDescriptionGenerations >= 1 ||
+                        images.some((i) => i.pending) ||
+                        !images.some((i) => i.url && !i.pending)
+                      }
+                      onClick={async () => {
+                        if (isGeneratingDescription) return;
+                        const readyImages = images
+                          .filter((i) => i.url && !i.pending)
+                          .map((i) => i.url)
+                          .slice(0, 10);
+                        if (readyImages.length === 0) {
+                          setToast({ message: "Adicione ao menos 1 foto antes de gerar a descrição.", type: "error" });
+                          return;
                         }
-                        onClick={async () => {
-                          if (isGeneratingDescription) return;
-                          const readyImages = images
-                            .filter((i) => i.url && !i.pending)
-                            .map((i) => i.url)
-                            .slice(0, 10);
-                          if (readyImages.length === 0) {
-                            setToast({ message: "Adicione ao menos 1 foto antes de gerar a descrição.", type: "error" });
+
+                        setIsGeneratingDescription(true);
+                        setAiGenerateWarning(null);
+                        try {
+                          const res = await fetch("/api/ai/property-description", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              title: finalTitle ? finalTitle : null,
+                              type,
+                              purpose: purpose || null,
+                              priceBRL: parseBRLToNumber(priceBRL) || null,
+                              neighborhood: neighborhood || null,
+                              city: city || null,
+                              state: state || null,
+                              bedrooms: bedrooms === "" ? null : Number(bedrooms),
+                              bathrooms: bathrooms === "" ? null : Number(bathrooms),
+                              areaM2: areaM2 === "" ? null : Number(areaM2),
+                              conditionTags,
+                              amenities: {
+                                hasBalcony,
+                                hasElevator,
+                                hasPool,
+                                hasGym,
+                                hasPlayground,
+                                hasPartyRoom,
+                                hasGourmet,
+                                hasConcierge24h,
+                              },
+                              images: readyImages,
+                            }),
+                          });
+
+                          const rawText = await res.text().catch(() => "");
+                          let json: any = null;
+                          try {
+                            json = rawText ? JSON.parse(rawText) : null;
+                          } catch {
+                            json = null;
+                          }
+                          if (res.status === 429) {
+                            setAiDescriptionGenerations(1);
+                            setToast({ message: json?.error || "Limite atingido para este imóvel", type: "error" });
+                            return;
+                          }
+                          if (!res.ok) {
+                            const details =
+                              (Array.isArray(json?.details)
+                                ? json.details
+                                    .map((d: any) => {
+                                      const path = Array.isArray(d?.path) ? d.path.join(".") : String(d?.path || "");
+                                      const msg = String(d?.message || "");
+                                      return [path, msg].filter(Boolean).join(": ");
+                                    })
+                                    .filter(Boolean)
+                                    .slice(0, 4)
+                                    .join(" | ")
+                                : null) ||
+                              (typeof json?.details === "string" ? json.details : null);
+
+                            const msg =
+                              json?.error ||
+                              details ||
+                              (json?.code ? `Erro (${json.code})` : null) ||
+                              `Falha ao gerar descrição (HTTP ${res.status})`;
+
+                            setToast({ message: msg, type: "error" });
                             return;
                           }
 
-                          setIsGeneratingDescription(true);
-                          setAiGenerateWarning(null);
-                          try {
-                            const res = await fetch("/api/ai/property-description", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                title: finalTitle ? finalTitle : null,
-                                type,
-                                purpose: purpose || null,
-                                priceBRL: parseBRLToNumber(priceBRL) || null,
-                                neighborhood: neighborhood || null,
-                                city: city || null,
-                                state: state || null,
-                                bedrooms: bedrooms === "" ? null : Number(bedrooms),
-                                bathrooms: bathrooms === "" ? null : Number(bathrooms),
-                                areaM2: areaM2 === "" ? null : Number(areaM2),
-                                conditionTags,
-                                amenities: {
-                                  hasBalcony,
-                                  hasElevator,
-                                  hasPool,
-                                  hasGym,
-                                  hasPlayground,
-                                  hasPartyRoom,
-                                  hasGourmet,
-                                  hasConcierge24h,
-                                },
-                                images: readyImages,
-                              }),
-                            });
+                          const nextTitle = (json?.data?.title as string | undefined) || "";
+                          const nextMetaTitle = (json?.data?.metaTitle as string | undefined) || "";
+                          const nextMetaDescription = (json?.data?.metaDescription as string | undefined) || "";
+                          const text = (json?.data?.description as string | undefined) || "";
 
-                            const rawText = await res.text().catch(() => "");
-                            let json: any = null;
-                            try {
-                              json = rawText ? JSON.parse(rawText) : null;
-                            } catch {
-                              json = null;
-                            }
-                            if (res.status === 429) {
-                              setAiDescriptionGenerations(1);
-                              setToast({ message: json?.error || "Limite atingido para este imóvel", type: "error" });
-                              return;
-                            }
-                            if (!res.ok) {
-                              const details =
-                                (Array.isArray(json?.details)
-                                  ? json.details
-                                      .map((d: any) => {
-                                        const path = Array.isArray(d?.path) ? d.path.join(".") : String(d?.path || "");
-                                        const msg = String(d?.message || "");
-                                        return [path, msg].filter(Boolean).join(": ");
-                                      })
-                                      .filter(Boolean)
-                                      .slice(0, 4)
-                                      .join(" | ")
-                                  : null) ||
-                                (typeof json?.details === "string" ? json.details : null);
-
-                              const msg =
-                                json?.error ||
-                                details ||
-                                (json?.code ? `Erro (${json.code})` : null) ||
-                                `Falha ao gerar descrição (HTTP ${res.status})`;
-
-                              setToast({ message: msg, type: "error" });
-                              return;
-                            }
-
-                            const nextTitle = (json?.data?.title as string | undefined) || "";
-                            const nextMetaTitle = (json?.data?.metaTitle as string | undefined) || "";
-                            const nextMetaDescription = (json?.data?.metaDescription as string | undefined) || "";
-                            const text = (json?.data?.description as string | undefined) || "";
-
-                            const warning = json?.data?._aiWarning;
-                            const consumed = !!json?.data?.generationConsumed;
-                            if (warning || !text.trim()) {
-                              const extra =
-                                warning?.code ||
-                                (typeof warning?.status === "number" ? `HTTP ${warning.status}` : "") ||
-                                "";
-                              setAiGenerateWarning(
-                                "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
-                              );
-                              setToast({ message: `IA indisponível no momento${extra ? ` (${extra})` : ""} — preencha manualmente.`, type: "info" });
-                              if (!consumed) {
-                                setAiDescriptionGenerations(0);
-                              }
-                            }
-
-                            if (nextTitle.trim()) setCustomTitle(nextTitle);
-                            if (text.trim()) setDescription(text);
-                            if (nextMetaTitle.trim()) setMetaTitle(nextMetaTitle);
-                            if (nextMetaDescription.trim()) setMetaDescription(nextMetaDescription);
-                            if (consumed) {
-                              setAiDescriptionGenerations(1);
-                            }
-                            setToast({ message: consumed ? "Campos preenchidos com IA!" : "Campos atualizados (revise manualmente).", type: consumed ? "success" : "info" });
-                          } catch {
+                          const warning = json?.data?._aiWarning;
+                          const consumed = !!json?.data?.generationConsumed;
+                          if (warning || !text.trim()) {
+                            const extra =
+                              warning?.code ||
+                              (typeof warning?.status === "number" ? `HTTP ${warning.status}` : "") ||
+                              "";
                             setAiGenerateWarning(
                               "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
                             );
-                            setToast({ message: "IA indisponível no momento — preencha manualmente.", type: "info" });
-                          } finally {
-                            setIsGeneratingDescription(false);
+                            setToast({ message: `IA indisponível no momento${extra ? ` (${extra})` : ""} — preencha manualmente.`, type: "info" });
+                            if (!consumed) {
+                              setAiDescriptionGenerations(0);
+                            }
                           }
-                        }}
-                        className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isGeneratingDescription
-                          ? "Gerando..."
-                          : aiDescriptionGenerations >= 1
-                          ? "Limite atingido"
-                          : "Preencher Campos com IA"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDescription("");
-                          setMetaTitle("");
-                          setMetaDescription("");
-                          setVideoUrl("");
-                        }}
-                        className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
-                      >
-                        Limpar campos
-                      </button>
-                    </div>
+
+                          if (nextTitle.trim()) setCustomTitle(nextTitle);
+                          if (text.trim()) setDescription(text);
+                          if (nextMetaTitle.trim()) setMetaTitle(nextMetaTitle);
+                          if (nextMetaDescription.trim()) setMetaDescription(nextMetaDescription);
+                          if (consumed) {
+                            setAiDescriptionGenerations(1);
+                          }
+                          setToast({ message: consumed ? "Campos preenchidos com IA!" : "Campos atualizados (revise manualmente).", type: consumed ? "success" : "info" });
+                        } catch {
+                          setAiGenerateWarning(
+                            "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
+                          );
+                          setToast({ message: "IA indisponível no momento — preencha manualmente.", type: "info" });
+                        } finally {
+                          setIsGeneratingDescription(false);
+                        }
+                      }}
+                      className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isGeneratingDescription
+                        ? "Gerando..."
+                        : aiDescriptionGenerations >= 1
+                        ? "Limite atingido"
+                        : "Preencher Campos com IA"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDescription("");
+                        setMetaTitle("");
+                        setMetaDescription("");
+                        setVideoUrl("");
+                      }}
+                      className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                    >
+                      Limpar campos
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
