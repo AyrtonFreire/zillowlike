@@ -2871,26 +2871,26 @@ export default function NewPropertyPage() {
                   ) : (
                     <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
                       <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
-                        <div className="flex items-center justify-between px-4 pt-4">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal">
+                        <button
+                          type="button"
+                          onClick={() => setShowTips((v) => !v)}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-white/0 hover:bg-gray-50/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal shrink-0">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/></svg>
                             </span>
-                            <div>
+                            <div className="min-w-0">
                               <h3 className="text-sm font-semibold text-gray-900">Dicas do passo</h3>
-                              <p className="text-[11px] text-gray-500 leading-4">Orientações rápidas para deixar seu anúncio melhor</p>
+                              <p className="text-[11px] text-gray-500 leading-4 truncate">
+                                {showTips ? "Clique para ocultar" : "Opcional — clique para ver"}
+                              </p>
                             </div>
                           </div>
-                          <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-gray-600">
-                            <span>Mostrar</span>
-                            <input type="checkbox" className="sr-only peer" checked={showTips} onChange={(e)=>setShowTips(e.target.checked)} />
-                            <span className="w-10 h-5 rounded-full bg-gray-300 peer-checked:bg-teal relative transition-colors">
-                              <span className="absolute top-1/2 -translate-y-1/2 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-all peer-checked:left-[1.375rem]"></span>
-                            </span>
-                          </label>
-                        </div>
-                        {showTips ? (
-                          <ul className="px-4 pb-4 pt-3 text-[13px] text-gray-800 space-y-2">
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showTips ? 'rotate-180' : ''}`} />
+                        </button>
+                        {showTips && (
+                          <ul className="px-4 pb-4 pt-1 text-[13px] text-gray-800 space-y-2">
                             {tipsForStep(currentStep).map((t, i) => (
                               <li key={i} className="flex items-start gap-2">
                                 <span className="mt-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-r from-teal/15 to-teal-dark/15 text-teal">
@@ -2900,10 +2900,6 @@ export default function NewPropertyPage() {
                               </li>
                             ))}
                           </ul>
-                        ) : (
-                          <div className="px-4 pb-4 pt-3">
-                            <p className="text-[12px] text-gray-500">Dicas ocultas. Ative quando desejar.</p>
-                          </div>
                         )}
                       </div>
                     </div>
@@ -3566,34 +3562,34 @@ export default function NewPropertyPage() {
 
                   {/* Números principais */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-12 gap-4">
-                    <div className="lg:col-span-4">
+                    <div className="lg:col-span-2">
                       <Input id="bedrooms" label="Quartos" required value={bedrooms} error={fieldErrors.bedrooms} onChange={(e) => { setBedrooms(e.target.value); clearFieldError("bedrooms"); }} inputMode="numeric" />
                     </div>
-                    <div className="lg:col-span-4">
+                    <div className="lg:col-span-2">
                       <Input id="bathrooms" label="Banheiros" required value={bathrooms} error={fieldErrors.bathrooms} onChange={(e) => { setBathrooms(e.target.value); clearFieldError("bathrooms"); }} inputMode="numeric" />
                     </div>
-                    <div className="lg:col-span-4">
+                    <div className="lg:col-span-2">
                       <Input id="areaM2" label="Área (m²)" required value={areaM2} error={fieldErrors.areaM2} onChange={(e) => { setAreaM2(e.target.value); clearFieldError("areaM2"); }} inputMode="numeric" />
                     </div>
-                    <div className="lg:col-span-3">
+                    <div className="lg:col-span-2">
                       <Input id="suites" label="Suítes" value={suites as any} error={fieldErrors.suites} onChange={(e) => { setSuites(e.target.value); clearFieldError("suites"); }} inputMode="numeric" optional />
                     </div>
-                    <div className="lg:col-span-3">
+                    <div className="lg:col-span-2">
                       <Input id="parkingSpots" label="Vagas" value={parkingSpots as any} error={fieldErrors.parkingSpots} onChange={(e) => { setParkingSpots(e.target.value); clearFieldError("parkingSpots"); }} inputMode="numeric" optional />
                     </div>
-                    <div className="lg:col-span-3">
+                    <div className="lg:col-span-2">
                       <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
                     </div>
                     <div className="lg:col-span-3">
                       <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
                     </div>
-                    <div className="lg:col-span-4">
+                    <div className="lg:col-span-3">
                       <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
                     </div>
-                    <div className="lg:col-span-4">
+                    <div className="lg:col-span-3">
                       <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
                     </div>
-                    <div className="lg:col-span-4">
+                    <div className="lg:col-span-3">
                       <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
                     </div>
                   </div>
@@ -3716,9 +3712,7 @@ export default function NewPropertyPage() {
                             </div>
                           )}
                         </div>
-                      </div>
 
-                      <div className="lg:col-span-6 space-y-4">
                         <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                           <button
                             type="button"
@@ -3773,7 +3767,9 @@ export default function NewPropertyPage() {
                             </div>
                           )}
                         </div>
+                      </div>
 
+                      <div className="lg:col-span-6 space-y-4">
                         <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                           <button
                             type="button"
