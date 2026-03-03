@@ -8,7 +8,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis, restrictToParentElement, restrictToWindowEdges } from "@dnd-kit/modifiers";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
-import PropertyCardPremium from "@/components/modern/PropertyCardPremium";
 import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
 import { geocodeAddressParts } from "@/lib/geocode";
 import { loadGoogleMaps } from "@/lib/googleMaps";
@@ -26,7 +25,7 @@ import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File; width?: number; height?: number };
 
 export default function NewPropertyPage() {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type?: "success"|"error"|"info" } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -415,7 +414,7 @@ export default function NewPropertyPage() {
   }, [images]);
   // Tips toggle (persisted)
   const [showTips, setShowTips] = useState<boolean>(false);
-  const [showWatermark, setShowWatermark] = useState<boolean>(false);
+  
   const [contactMode, setContactMode] = useState<'DIRECT' | 'BROKER'>('DIRECT');
   const [contactPrefs, setContactPrefs] = useState<{ preferredHours?: string; chatFirst?: boolean; noCall?: boolean }>({ chatFirst: true });
   const [contactChannel, setContactChannel] = useState<"phone" | "email">("phone");
@@ -2777,24 +2776,22 @@ export default function NewPropertyPage() {
 
       {/* Formulário de criação */}
       {!publishedProperty && (
-        <div className="mx-auto max-w-6xl px-4 py-8 pb-[calc(env(safe-area-inset-bottom)+8rem)] sm:pb-8">
-          <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
-            <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
-            <p>
-              Para publicar, você precisa ter pelo menos um canal verificado (telefone ou e-mail). Você pode ajustar isso em{' '}
-              <Link href="/profile" className="font-semibold text-teal hover:text-teal-dark underline-offset-2 hover:underline">Meu Perfil</Link>.
-            </p>
-          </div>
+        <div className="mx-auto max-w-7xl px-4 py-8 pb-[calc(env(safe-area-inset-bottom)+8rem)] sm:pb-8">
+          <form ref={formRef} onSubmit={handleSubmit}>
+            <div className="flex items-center justify-end">
+              <span className="text-xs text-gray-500">
+                Etapa {currentStep} de {steps.length}
+              </span>
+            </div>
+            <div className="mb-6 rounded-xl border border-teal-100 bg-teal/5 px-4 py-3 text-sm text-gray-800">
+              <p className="font-semibold mb-1">Antes de publicar seu imóvel</p>
+              <p>
+                Para publicar, você precisa ter pelo menos um canal verificado (telefone ou e-mail). Você pode ajustar isso em{' '}
+                <Link href="/profile" className="font-semibold text-teal hover:text-teal-dark underline-offset-2 hover:underline">Meu Perfil</Link>.
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <form ref={formRef} onSubmit={handleSubmit}>
-                <div className="flex items-center justify-end">
-                  <span className="text-xs text-gray-500">
-                    Etapa {currentStep} de {steps.length}
-                  </span>
-                </div>
-
+            <div className="space-y-6">
                 <div
                   ref={stepperScrollRef}
                   className="bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40 px-2 py-3 rounded-xl ring-1 ring-black/5 overflow-x-auto mb-8"
@@ -2845,6 +2842,72 @@ export default function NewPropertyPage() {
                       })()
                     ))}
                   </div>
+                </div>
+
+                <div className="mb-6">
+                  {currentStep === 6 ? (
+                    <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
+                      <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
+                        <div className="px-4 pt-4 pb-4">
+                          <div className="flex items-start gap-3">
+                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal ring-1 ring-black/5">
+                              <Eye className="w-5 h-5" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-sm font-semibold text-gray-900">Prévia em tela cheia</h3>
+                              <p className="text-[11px] text-gray-500 leading-4">Abra para ver o anúncio com mais espaço e em formato de página.</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setFullscreenPreviewOpen(true)}
+                            className="mt-3 w-full px-4 py-2.5 rounded-xl glass-teal text-white font-semibold text-sm hover:opacity-95 transition-opacity"
+                          >
+                            Ver prévia
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
+                      <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
+                        <div className="flex items-center justify-between px-4 pt-4">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/></svg>
+                            </span>
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-900">Dicas do passo</h3>
+                              <p className="text-[11px] text-gray-500 leading-4">Orientações rápidas para deixar seu anúncio melhor</p>
+                            </div>
+                          </div>
+                          <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-gray-600">
+                            <span>Mostrar</span>
+                            <input type="checkbox" className="sr-only peer" checked={showTips} onChange={(e)=>setShowTips(e.target.checked)} />
+                            <span className="w-10 h-5 rounded-full bg-gray-300 peer-checked:bg-teal relative transition-colors">
+                              <span className="absolute top-1/2 -translate-y-1/2 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-all peer-checked:left-[1.375rem]"></span>
+                            </span>
+                          </label>
+                        </div>
+                        {showTips ? (
+                          <ul className="px-4 pb-4 pt-3 text-[13px] text-gray-800 space-y-2">
+                            {tipsForStep(currentStep).map((t, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="mt-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-r from-teal/15 to-teal-dark/15 text-teal">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                <span>{t}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="px-4 pb-4 pt-3">
+                            <p className="text-[12px] text-gray-500">Dicas ocultas. Ative quando desejar.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="sm:hidden fixed inset-x-0 bottom-0 z-[3000] bg-white/90 backdrop-blur border-t px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
@@ -2954,8 +3017,8 @@ export default function NewPropertyPage() {
                       </div>
                     </div>
                   )}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+                    <div className="lg:col-span-3">
                       <Select
                         id="purpose"
                         label="Finalidade"
@@ -2972,7 +3035,7 @@ export default function NewPropertyPage() {
                         <option value="RENT">Aluguel</option>
                       </Select>
                     </div>
-                    <div>
+                    <div className="lg:col-span-4">
                       <Input
                         id="priceBRL"
                         label="Preço (R$)"
@@ -2987,7 +3050,7 @@ export default function NewPropertyPage() {
                         inputMode="numeric"
                       />
                     </div>
-                    <div>
+                    <div className="lg:col-span-5">
                       <Select
                         id="type"
                         label="Tipo de imóvel"
@@ -3035,126 +3098,146 @@ export default function NewPropertyPage() {
                       busca.
                     </p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <Input
-                        id="postalCode"
-                        label="CEP"
-                        required
-                        value={postalCode}
-                        error={fieldErrors.postalCode}
-                        onChange={(e) => {
-                          setPostalCode(formatCEP(e.target.value));
-                          clearFieldError("postalCode");
-                        }}
-                        placeholder="Ex: 56300-000"
-                        inputMode="numeric"
-                      />
-                      <Input
-                        id="street"
-                        label="Rua"
-                        required
-                        value={street}
-                        error={fieldErrors.street}
-                        onChange={(e) => {
-                          setStreet(e.target.value);
-                          clearFieldError("street");
-                        }}
-                      />
-                      <Input
-                        id="addressNumber"
-                        ref={numberInputRef}
-                        label="Número"
-                        value={addressNumber}
-                        onChange={(e) => setAddressNumber(e.target.value)}
-                        optional
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                      <Input
-                        id="addressComplement"
-                        label="Complemento"
-                        value={addressComplement}
-                        onChange={(e) => setAddressComplement(e.target.value)}
-                        optional
-                      />
-                      <Input
-                        id="neighborhood"
-                        label="Bairro"
-                        value={neighborhood}
-                        error={fieldErrors.neighborhood}
-                        onChange={(e) => {
-                          setNeighborhood(e.target.value);
-                          clearFieldError("neighborhood");
-                        }}
-                        optional
-                      />
-                      <Input
-                        id="city"
-                        label="Cidade"
-                        required
-                        value={city}
-                        error={fieldErrors.city}
-                        onChange={(e) => {
-                          setCity(e.target.value);
-                          clearFieldError("city");
-                        }}
-                      />
-                      <Input
-                        id="state"
-                        label="Estado (UF)"
-                        required
-                        value={state}
-                        error={fieldErrors.state}
-                        onChange={(e) => {
-                          setState(e.target.value.toUpperCase());
-                          clearFieldError("state");
-                        }}
-                        maxLength={2}
-                      />
-                    </div>
-
-                    {addressString && (
-                      <p className="text-xs text-gray-500">Endereço atual: {addressString}</p>
-                    )}
-
-                    <div className="mt-4">
-                      {fieldErrors.geo && <div id="geo" className="mb-2 text-xs text-danger">{fieldErrors.geo}</div>}
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {isGeocoding ? (
-                            <div className="w-3.5 h-3.5 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
-                          ) : (
-                            <MapPinIcon className="w-3.5 h-3.5 text-teal-700" />
-                          )}
-                          <span className="text-xs text-gray-600 truncate">
-                            {isGeocoding
-                              ? "Atualizando mapa..."
-                              : geoPreview
-                              ? `Ponto aproximado: ${geoPreview}`
-                              : "O mapa é atualizado automaticamente conforme você preenche o endereço."}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleGeocode}
-                          disabled={isGeocoding || !addressString}
-                          className="text-xs font-semibold text-teal-700 hover:text-teal-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Atualizar
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 h-64 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 relative">
-                      <div ref={mapContainerRef} className="absolute inset-0" />
-                      {googleMapsError && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-white/90 px-4 text-center">
-                          <div className="text-xs text-gray-700">
-                            {googleMapsError}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                      <div className="lg:col-span-7 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+                          <div className="lg:col-span-3">
+                            <Input
+                              id="postalCode"
+                              label="CEP"
+                              required
+                              value={postalCode}
+                              error={fieldErrors.postalCode}
+                              onChange={(e) => {
+                                setPostalCode(formatCEP(e.target.value));
+                                clearFieldError("postalCode");
+                              }}
+                              placeholder="Ex: 56300-000"
+                              inputMode="numeric"
+                            />
+                          </div>
+                          <div className="lg:col-span-6">
+                            <Input
+                              id="street"
+                              label="Rua"
+                              required
+                              value={street}
+                              error={fieldErrors.street}
+                              onChange={(e) => {
+                                setStreet(e.target.value);
+                                clearFieldError("street");
+                              }}
+                            />
+                          </div>
+                          <div className="lg:col-span-3">
+                            <Input
+                              id="addressNumber"
+                              ref={numberInputRef}
+                              label="Número"
+                              value={addressNumber}
+                              onChange={(e) => setAddressNumber(e.target.value)}
+                              optional
+                            />
                           </div>
                         </div>
-                      )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+                          <div className="lg:col-span-3">
+                            <Input
+                              id="addressComplement"
+                              label="Complemento"
+                              value={addressComplement}
+                              onChange={(e) => setAddressComplement(e.target.value)}
+                              optional
+                            />
+                          </div>
+                          <div className="lg:col-span-3">
+                            <Input
+                              id="neighborhood"
+                              label="Bairro"
+                              value={neighborhood}
+                              error={fieldErrors.neighborhood}
+                              onChange={(e) => {
+                                setNeighborhood(e.target.value);
+                                clearFieldError("neighborhood");
+                              }}
+                              optional
+                            />
+                          </div>
+                          <div className="lg:col-span-4">
+                            <Input
+                              id="city"
+                              label="Cidade"
+                              required
+                              value={city}
+                              error={fieldErrors.city}
+                              onChange={(e) => {
+                                setCity(e.target.value);
+                                clearFieldError("city");
+                              }}
+                            />
+                          </div>
+                          <div className="lg:col-span-2">
+                            <Input
+                              id="state"
+                              label="Estado (UF)"
+                              required
+                              value={state}
+                              error={fieldErrors.state}
+                              onChange={(e) => {
+                                setState(e.target.value.toUpperCase());
+                                clearFieldError("state");
+                              }}
+                              maxLength={2}
+                            />
+                          </div>
+                        </div>
+
+                        {addressString && (
+                          <p className="text-xs text-gray-500">Endereço atual: {addressString}</p>
+                        )}
+
+                        <div>
+                          {fieldErrors.geo && <div id="geo" className="mb-2 text-xs text-danger">{fieldErrors.geo}</div>}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {isGeocoding ? (
+                                <div className="w-3.5 h-3.5 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
+                              ) : (
+                                <MapPinIcon className="w-3.5 h-3.5 text-teal-700" />
+                              )}
+                              <span className="text-xs text-gray-600 truncate">
+                                {isGeocoding
+                                  ? "Atualizando mapa..."
+                                  : geoPreview
+                                  ? `Ponto aproximado: ${geoPreview}`
+                                  : "O mapa é atualizado automaticamente conforme você preenche o endereço."}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleGeocode}
+                              disabled={isGeocoding || !addressString}
+                              className="text-xs font-semibold text-teal-700 hover:text-teal-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Atualizar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="lg:col-span-5">
+                        <div className="h-64 lg:h-full lg:min-h-[420px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50 relative">
+                          <div ref={mapContainerRef} className="absolute inset-0" />
+                          {googleMapsError && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-white/90 px-4 text-center">
+                              <div className="text-xs text-gray-700">
+                                {googleMapsError}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -3170,293 +3253,303 @@ export default function NewPropertyPage() {
                     </p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <button
-                      type="button"
-                      disabled={
-                        isGeneratingDescription ||
-                        aiDescriptionGenerations >= 1 ||
-                        images.some((i) => i.pending) ||
-                        !images.some((i) => i.url && !i.pending)
-                      }
-                      onClick={async () => {
-                        if (isGeneratingDescription) return;
-                        const readyImages = images
-                          .filter((i) => i.url && !i.pending)
-                          .map((i) => i.url)
-                          .slice(0, 10);
-                        if (readyImages.length === 0) {
-                          setToast({ message: "Adicione ao menos 1 foto antes de gerar a descrição.", type: "error" });
-                          return;
-                        }
-
-                        setIsGeneratingDescription(true);
-                        setAiGenerateWarning(null);
-                        try {
-                          const res = await fetch("/api/ai/property-description", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              title: finalTitle ? finalTitle : null,
-                              type,
-                              purpose: purpose || null,
-                              priceBRL: parseBRLToNumber(priceBRL) || null,
-                              neighborhood: neighborhood || null,
-                              city: city || null,
-                              state: state || null,
-                              bedrooms: bedrooms === "" ? null : Number(bedrooms),
-                              bathrooms: bathrooms === "" ? null : Number(bathrooms),
-                              areaM2: areaM2 === "" ? null : Number(areaM2),
-                              conditionTags,
-                              amenities: {
-                                hasBalcony,
-                                hasElevator,
-                                hasPool,
-                                hasGym,
-                                hasPlayground,
-                                hasPartyRoom,
-                                hasGourmet,
-                                hasConcierge24h,
-                              },
-                              images: readyImages,
-                            }),
-                          });
-
-                          const rawText = await res.text().catch(() => "");
-                          let json: any = null;
-                          try {
-                            json = rawText ? JSON.parse(rawText) : null;
-                          } catch {
-                            json = null;
-                          }
-                          if (res.status === 429) {
-                            setAiDescriptionGenerations(1);
-                            setToast({ message: json?.error || "Limite atingido para este imóvel", type: "error" });
-                            return;
-                          }
-                          if (!res.ok) {
-                            const details =
-                              (Array.isArray(json?.details)
-                                ? json.details
-                                    .map((d: any) => {
-                                      const path = Array.isArray(d?.path) ? d.path.join(".") : String(d?.path || "");
-                                      const msg = String(d?.message || "");
-                                      return [path, msg].filter(Boolean).join(": ");
-                                    })
-                                    .filter(Boolean)
-                                    .slice(0, 4)
-                                    .join(" | ")
-                                : null) ||
-                              (typeof json?.details === "string" ? json.details : null);
-
-                            const msg =
-                              json?.error ||
-                              details ||
-                              (json?.code ? `Erro (${json.code})` : null) ||
-                              `Falha ao gerar descrição (HTTP ${res.status})`;
-
-                            setToast({ message: msg, type: "error" });
-                            return;
-                          }
-
-                          const nextTitle = (json?.data?.title as string | undefined) || "";
-                          const nextMetaTitle = (json?.data?.metaTitle as string | undefined) || "";
-                          const nextMetaDescription = (json?.data?.metaDescription as string | undefined) || "";
-                          const text = (json?.data?.description as string | undefined) || "";
-
-                          const warning = json?.data?._aiWarning;
-                          const consumed = !!json?.data?.generationConsumed;
-                          if (warning || !text.trim()) {
-                            const extra =
-                              warning?.code ||
-                              (typeof warning?.status === "number" ? `HTTP ${warning.status}` : "") ||
-                              "";
-                            setAiGenerateWarning(
-                              "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
-                            );
-                            setToast({ message: `IA indisponível no momento${extra ? ` (${extra})` : ""} — preencha manualmente.`, type: "info" });
-                            if (!consumed) {
-                              setAiDescriptionGenerations(0);
-                            }
-                          }
-
-                          // Se a IA voltou em modo fallback, o backend pode enviar description vazia.
-                          // Nesses casos, não bloqueia o usuário com erro e não sobrescreve campos com vazio.
-
-                          if (nextTitle.trim()) setCustomTitle(nextTitle);
-                          if (text.trim()) setDescription(text);
-                          if (nextMetaTitle.trim()) setMetaTitle(nextMetaTitle);
-                          if (nextMetaDescription.trim()) setMetaDescription(nextMetaDescription);
-                          if (consumed) {
-                            setAiDescriptionGenerations(1);
-                          }
-                          setToast({ message: consumed ? "Campos preenchidos com IA!" : "Campos atualizados (revise manualmente).", type: consumed ? "success" : "info" });
-                        } catch {
-                          setAiGenerateWarning(
-                            "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
-                          );
-                          setToast({ message: "IA indisponível no momento — preencha manualmente.", type: "info" });
-                        } finally {
-                          setIsGeneratingDescription(false);
-                        }
-                      }}
-                      className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isGeneratingDescription
-                        ? "Gerando..."
-                        : aiDescriptionGenerations >= 1
-                        ? "Limite atingido"
-                        : "Preencher Campos com IA"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDescription("");
-                        setMetaTitle("");
-                        setMetaDescription("");
-                        setVideoUrl("");
-                      }}
-                      className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
-                    >
-                      Limpar campos
-                    </button>
-                  </div>
-
-                  <div className="pt-2">
-                    <Input
-                      id="title"
-                      type="text"
-                      label="Título do anúncio"
-                      required
-                      value={customTitle}
-                      error={fieldErrors.title}
-                      onChange={(e) => {
-                        setCustomTitle(e.target.value);
-                        clearFieldError("title");
-                        setAiGenerateWarning(null);
-                      }}
-                      placeholder="Ex: Casa em Petrolina"
-                      maxLength={70}
-                    />
-                    {aiGenerateWarning && (
-                      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                        {aiGenerateWarning}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Input
-                        id="metaTitle"
-                        type="text"
-                        label="Meta Title"
-                        value={metaTitle}
-                        onChange={(e) => {
-                          setMetaTitle(e.target.value);
-                          clearFieldError("metaTitle");
-                        }}
-                        placeholder="Título otimizado para Google (até 65 caracteres)"
-                        maxLength={65}
-                        error={fieldErrors.metaTitle}
-                      />
-                      <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                        <span />
-                        <span>{metaTitle.length}/65</span>
-                      </div>
-                    </div>
-                    <div>
-                      <Input
-                        id="metaDescription"
-                        type="text"
-                        label="Meta Description"
-                        value={metaDescription}
-                        onChange={(e) => {
-                          setMetaDescription(e.target.value);
-                          clearFieldError("metaDescription");
-                        }}
-                        placeholder="Descrição curta para Google (até 155 caracteres)"
-                        maxLength={155}
-                        error={fieldErrors.metaDescription}
-                      />
-                      <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                        <span />
-                        <span>{metaDescription.length}/155</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border border-gray-200 rounded-xl p-4 bg-white">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-900">Vídeo do imóvel (YouTube/Vimeo)</h3>
-                        <p className="text-xs text-gray-600 mt-1">Cole o link do vídeo.</p>
-                      </div>
-                      {videoUrl && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setVideoUrl("");
-                            clearFieldError("videoUrl");
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-7 space-y-4">
+                      <div className="pt-2">
+                        <Input
+                          id="title"
+                          type="text"
+                          label="Título do anúncio"
+                          required
+                          value={customTitle}
+                          error={fieldErrors.title}
+                          onChange={(e) => {
+                            setCustomTitle(e.target.value);
+                            clearFieldError("title");
+                            setAiGenerateWarning(null);
                           }}
-                          className="text-xs font-semibold text-gray-600 hover:text-gray-800"
-                        >
-                          Remover
-                        </button>
-                      )}
-                    </div>
+                          placeholder="Ex: Casa em Petrolina"
+                          maxLength={70}
+                        />
+                        {aiGenerateWarning && (
+                          <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                            {aiGenerateWarning}
+                          </div>
+                        )}
+                      </div>
 
-                    <div className="mt-3">
-                      <Input
-                        id="videoUrl"
-                        label="Link do vídeo"
-                        value={videoUrl}
-                        error={fieldErrors.videoUrl}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setVideoUrl(v);
-                          if (!v.trim()) {
-                            clearFieldError("videoUrl");
-                          }
-                        }}
-                        placeholder="https://youtu.be/... ou https://vimeo.com/..."
-                        optional
-                      />
-                    </div>
-
-                    {videoUrl && parseVideoUrl(videoUrl) && (
-                      <div className="mt-3">
-                        <div className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-black aspect-video">
-                          <iframe
-                            src={parseVideoUrl(videoUrl)?.embedUrl}
-                            title="Vídeo do imóvel"
-                            className="absolute inset-0 w-full h-full"
-                            loading="lazy"
-                            referrerPolicy="strict-origin-when-cross-origin"
-                            allow="autoplay; encrypted-media; picture-in-picture"
-                            sandbox="allow-scripts allow-same-origin allow-presentation"
-                          />
+                      <div>
+                        <Textarea
+                          label="Texto do anúncio"
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          rows={10}
+                          className="resize-y"
+                          placeholder="Use este espaço para explicar os pontos fortes do imóvel, estado de conservação, diferenciais, etc."
+                        />
+                        <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                          <span>
+                            {aiDescriptionGenerations >= 1
+                              ? "Você já usou o preenchimento gratuito deste anúncio."
+                              : "Você ainda tem 1 preenchimento gratuito para este anúncio."}
+                          </span>
+                          <span>{description.length} caracteres</span>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  <div>
-                    <Textarea
-                      label="Texto do anúncio"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={8}
-                      className="resize-y"
-                      placeholder="Use este espaço para explicar os pontos fortes do imóvel, estado de conservação, diferenciais, etc."
-                    />
-                    <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                      <span>
-                        {aiDescriptionGenerations >= 1
-                          ? "Você já usou o preenchimento gratuito deste anúncio."
-                          : "Você ainda tem 1 preenchimento gratuito para este anúncio."}
-                      </span>
-                      <span>{description.length} caracteres</span>
+                    <div className="lg:col-span-5 space-y-4">
+                      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="flex flex-col sm:flex-row lg:flex-col gap-2">
+                          <button
+                            type="button"
+                            disabled={
+                              isGeneratingDescription ||
+                              aiDescriptionGenerations >= 1 ||
+                              images.some((i) => i.pending) ||
+                              !images.some((i) => i.url && !i.pending)
+                            }
+                            onClick={async () => {
+                              if (isGeneratingDescription) return;
+                              const readyImages = images
+                                .filter((i) => i.url && !i.pending)
+                                .map((i) => i.url)
+                                .slice(0, 10);
+                              if (readyImages.length === 0) {
+                                setToast({ message: "Adicione ao menos 1 foto antes de gerar a descrição.", type: "error" });
+                                return;
+                              }
+
+                              setIsGeneratingDescription(true);
+                              setAiGenerateWarning(null);
+                              try {
+                                const res = await fetch("/api/ai/property-description", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    title: finalTitle ? finalTitle : null,
+                                    type,
+                                    purpose: purpose || null,
+                                    priceBRL: parseBRLToNumber(priceBRL) || null,
+                                    neighborhood: neighborhood || null,
+                                    city: city || null,
+                                    state: state || null,
+                                    bedrooms: bedrooms === "" ? null : Number(bedrooms),
+                                    bathrooms: bathrooms === "" ? null : Number(bathrooms),
+                                    areaM2: areaM2 === "" ? null : Number(areaM2),
+                                    conditionTags,
+                                    amenities: {
+                                      hasBalcony,
+                                      hasElevator,
+                                      hasPool,
+                                      hasGym,
+                                      hasPlayground,
+                                      hasPartyRoom,
+                                      hasGourmet,
+                                      hasConcierge24h,
+                                    },
+                                    images: readyImages,
+                                  }),
+                                });
+
+                                const rawText = await res.text().catch(() => "");
+                                let json: any = null;
+                                try {
+                                  json = rawText ? JSON.parse(rawText) : null;
+                                } catch {
+                                  json = null;
+                                }
+                                if (res.status === 429) {
+                                  setAiDescriptionGenerations(1);
+                                  setToast({ message: json?.error || "Limite atingido para este imóvel", type: "error" });
+                                  return;
+                                }
+                                if (!res.ok) {
+                                  const details =
+                                    (Array.isArray(json?.details)
+                                      ? json.details
+                                          .map((d: any) => {
+                                            const path = Array.isArray(d?.path) ? d.path.join(".") : String(d?.path || "");
+                                            const msg = String(d?.message || "");
+                                            return [path, msg].filter(Boolean).join(": ");
+                                          })
+                                          .filter(Boolean)
+                                          .slice(0, 4)
+                                          .join(" | ")
+                                      : null) ||
+                                    (typeof json?.details === "string" ? json.details : null);
+
+                                  const msg =
+                                    json?.error ||
+                                    details ||
+                                    (json?.code ? `Erro (${json.code})` : null) ||
+                                    `Falha ao gerar descrição (HTTP ${res.status})`;
+
+                                  setToast({ message: msg, type: "error" });
+                                  return;
+                                }
+
+                                const nextTitle = (json?.data?.title as string | undefined) || "";
+                                const nextMetaTitle = (json?.data?.metaTitle as string | undefined) || "";
+                                const nextMetaDescription = (json?.data?.metaDescription as string | undefined) || "";
+                                const text = (json?.data?.description as string | undefined) || "";
+
+                                const warning = json?.data?._aiWarning;
+                                const consumed = !!json?.data?.generationConsumed;
+                                if (warning || !text.trim()) {
+                                  const extra =
+                                    warning?.code ||
+                                    (typeof warning?.status === "number" ? `HTTP ${warning.status}` : "") ||
+                                    "";
+                                  setAiGenerateWarning(
+                                    "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
+                                  );
+                                  setToast({ message: `IA indisponível no momento${extra ? ` (${extra})` : ""} — preencha manualmente.`, type: "info" });
+                                  if (!consumed) {
+                                    setAiDescriptionGenerations(0);
+                                  }
+                                }
+
+                                // Se a IA voltou em modo fallback, o backend pode enviar description vazia.
+                                // Nesses casos, não bloqueia o usuário com erro e não sobrescreve campos com vazio.
+
+                                if (nextTitle.trim()) setCustomTitle(nextTitle);
+                                if (text.trim()) setDescription(text);
+                                if (nextMetaTitle.trim()) setMetaTitle(nextMetaTitle);
+                                if (nextMetaDescription.trim()) setMetaDescription(nextMetaDescription);
+                                if (consumed) {
+                                  setAiDescriptionGenerations(1);
+                                }
+                                setToast({ message: consumed ? "Campos preenchidos com IA!" : "Campos atualizados (revise manualmente).", type: consumed ? "success" : "info" });
+                              } catch {
+                                setAiGenerateWarning(
+                                  "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
+                                );
+                                setToast({ message: "IA indisponível no momento — preencha manualmente.", type: "info" });
+                              } finally {
+                                setIsGeneratingDescription(false);
+                              }
+                            }}
+                            className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isGeneratingDescription
+                              ? "Gerando..."
+                              : aiDescriptionGenerations >= 1
+                              ? "Limite atingido"
+                              : "Preencher Campos com IA"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDescription("");
+                              setMetaTitle("");
+                              setMetaDescription("");
+                              setVideoUrl("");
+                            }}
+                            className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                          >
+                            Limpar campos
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                          <div>
+                            <Input
+                              id="metaTitle"
+                              type="text"
+                              label="Meta Title"
+                              value={metaTitle}
+                              onChange={(e) => {
+                                setMetaTitle(e.target.value);
+                                clearFieldError("metaTitle");
+                              }}
+                              placeholder="Título otimizado para Google (até 65 caracteres)"
+                              maxLength={65}
+                              error={fieldErrors.metaTitle}
+                            />
+                            <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                              <span />
+                              <span>{metaTitle.length}/65</span>
+                            </div>
+                          </div>
+                          <div>
+                            <Input
+                              id="metaDescription"
+                              type="text"
+                              label="Meta Description"
+                              value={metaDescription}
+                              onChange={(e) => {
+                                setMetaDescription(e.target.value);
+                                clearFieldError("metaDescription");
+                              }}
+                              placeholder="Descrição curta para Google (até 155 caracteres)"
+                              maxLength={155}
+                              error={fieldErrors.metaDescription}
+                            />
+                            <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                              <span />
+                              <span>{metaDescription.length}/155</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border border-gray-200 rounded-xl p-4 bg-white">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-sm font-semibold text-gray-900">Vídeo do imóvel (YouTube/Vimeo)</h3>
+                            <p className="text-xs text-gray-600 mt-1">Cole o link do vídeo.</p>
+                          </div>
+                          {videoUrl && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVideoUrl("");
+                                clearFieldError("videoUrl");
+                              }}
+                              className="text-xs font-semibold text-gray-600 hover:text-gray-800"
+                            >
+                              Remover
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="mt-3">
+                          <Input
+                            id="videoUrl"
+                            label="Link do vídeo"
+                            value={videoUrl}
+                            error={fieldErrors.videoUrl}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setVideoUrl(v);
+                              if (!v.trim()) {
+                                clearFieldError("videoUrl");
+                              }
+                            }}
+                            placeholder="https://youtu.be/... ou https://vimeo.com/..."
+                            optional
+                          />
+                        </div>
+
+                        {videoUrl && parseVideoUrl(videoUrl) && (
+                          <div className="mt-3">
+                            <div className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-black aspect-video">
+                              <iframe
+                                src={parseVideoUrl(videoUrl)?.embedUrl}
+                                title="Vídeo do imóvel"
+                                className="absolute inset-0 w-full h-full"
+                                loading="lazy"
+                                referrerPolicy="strict-origin-when-cross-origin"
+                                allow="autoplay; encrypted-media; picture-in-picture"
+                                sandbox="allow-scripts allow-same-origin allow-presentation"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3472,85 +3565,75 @@ export default function NewPropertyPage() {
                   </div>
 
                   {/* Números principais */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <Input id="bedrooms" label="Quartos" required value={bedrooms} error={fieldErrors.bedrooms} onChange={(e) => { setBedrooms(e.target.value); clearFieldError("bedrooms"); }} inputMode="numeric" />
-                    <Input id="bathrooms" label="Banheiros" required value={bathrooms} error={fieldErrors.bathrooms} onChange={(e) => { setBathrooms(e.target.value); clearFieldError("bathrooms"); }} inputMode="numeric" />
-                    <Input id="areaM2" label="Área (m²)" required value={areaM2} error={fieldErrors.areaM2} onChange={(e) => { setAreaM2(e.target.value); clearFieldError("areaM2"); }} inputMode="numeric" />
-                    <Input id="suites" label="Suítes" value={suites as any} error={fieldErrors.suites} onChange={(e) => { setSuites(e.target.value); clearFieldError("suites"); }} inputMode="numeric" optional />
-                    <Input id="parkingSpots" label="Vagas" value={parkingSpots as any} error={fieldErrors.parkingSpots} onChange={(e) => { setParkingSpots(e.target.value); clearFieldError("parkingSpots"); }} inputMode="numeric" optional />
-                    <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
-                    <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
-                    <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
-                    <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
-                    <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-12 gap-4">
+                    <div className="lg:col-span-4">
+                      <Input id="bedrooms" label="Quartos" required value={bedrooms} error={fieldErrors.bedrooms} onChange={(e) => { setBedrooms(e.target.value); clearFieldError("bedrooms"); }} inputMode="numeric" />
+                    </div>
+                    <div className="lg:col-span-4">
+                      <Input id="bathrooms" label="Banheiros" required value={bathrooms} error={fieldErrors.bathrooms} onChange={(e) => { setBathrooms(e.target.value); clearFieldError("bathrooms"); }} inputMode="numeric" />
+                    </div>
+                    <div className="lg:col-span-4">
+                      <Input id="areaM2" label="Área (m²)" required value={areaM2} error={fieldErrors.areaM2} onChange={(e) => { setAreaM2(e.target.value); clearFieldError("areaM2"); }} inputMode="numeric" />
+                    </div>
+                    <div className="lg:col-span-3">
+                      <Input id="suites" label="Suítes" value={suites as any} error={fieldErrors.suites} onChange={(e) => { setSuites(e.target.value); clearFieldError("suites"); }} inputMode="numeric" optional />
+                    </div>
+                    <div className="lg:col-span-3">
+                      <Input id="parkingSpots" label="Vagas" value={parkingSpots as any} error={fieldErrors.parkingSpots} onChange={(e) => { setParkingSpots(e.target.value); clearFieldError("parkingSpots"); }} inputMode="numeric" optional />
+                    </div>
+                    <div className="lg:col-span-3">
+                      <Input id="floor" label="Andar" value={floor as any} error={fieldErrors.floor} onChange={(e) => { setFloor(e.target.value); clearFieldError("floor"); }} inputMode="numeric" optional />
+                    </div>
+                    <div className="lg:col-span-3">
+                      <Input id="yearBuilt" label="Ano de construção" value={yearBuilt as any} error={fieldErrors.yearBuilt} onChange={(e) => { setYearBuilt(e.target.value); clearFieldError("yearBuilt"); }} inputMode="numeric" optional />
+                    </div>
+                    <div className="lg:col-span-4">
+                      <Input id="yearRenovated" label="Ano de reforma" value={yearRenovated as any} error={fieldErrors.yearRenovated} onChange={(e) => { setYearRenovated(e.target.value); clearFieldError("yearRenovated"); }} inputMode="numeric" optional />
+                    </div>
+                    <div className="lg:col-span-4">
+                      <Input label="Condomínio (R$/mês)" value={condoFeeBRL} onChange={(e) => setCondoFeeBRL(formatBRLInput(e.target.value))} inputMode="numeric" optional />
+                    </div>
+                    <div className="lg:col-span-4">
+                      <Input id="iptuYearBRL" label="IPTU (R$/ano)" value={iptuYearBRL} error={fieldErrors.iptuYearBRL} onChange={(e) => { setIptuYearBRL(formatBRLInput(e.target.value)); clearFieldError("iptuYearBRL"); }} inputMode="numeric" optional />
+                    </div>
                   </div>
 
 
                   <div>
                     <div className="text-sm font-semibold text-gray-900">Detalhes avançados (opcional)</div>
 
-                    <div className="mt-3 space-y-4">
-                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setOpenAcc((p) => ({ ...p, acc_features: !p.acc_features }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="text-sm font-semibold text-gray-800">
-                            ✨ Características do imóvel
-                            {accFeaturesCount > 0 && (
-                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFeaturesCount}</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_features ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openAcc.acc_features && (
-                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
-                              <Checkbox
-                                checked={petFriendly}
-                                onChange={(e) => {
-                                  const next = e.target.checked;
-                                  setPetFriendly(next);
-                                  if (!next) {
-                                    setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
-                                  }
-                                }}
-                                label="Aceita pets"
-                              />
-                              {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
-                                <Checkbox
-                                  key={tag}
-                                  checked={conditionTags.includes(tag)}
-                                  onChange={() => toggleConditionTag(tag)}
-                                  label={tag}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setOpenAcc((p) => ({ ...p, acc_condition: !p.acc_condition }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="text-sm font-semibold text-gray-800">
-                            🏠 Condição do imóvel
-                            {accConditionCount > 0 && (
-                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accConditionCount}</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condition ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openAcc.acc_condition && (
-                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                            <div className="space-y-4">
+                    <div className="mt-3 grid grid-cols-1 lg:grid-cols-12 gap-4">
+                      <div className="space-y-4 lg:col-span-6">
+                        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setOpenAcc((p) => ({ ...p, acc_features: !p.acc_features }))}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            <span className="text-sm font-semibold text-gray-800">
+                              ✨ Características do imóvel
+                              {accFeaturesCount > 0 && (
+                                <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFeaturesCount}</span>
+                              )}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_features ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openAcc.acc_features && (
+                            <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                {CONDITION_STATUS_OPTIONS.map((tag) => (
+                                <Checkbox checked={hasBalcony} onChange={(e) => setHasBalcony(e.target.checked)} label="Varanda" />
+                                <Checkbox
+                                  checked={petFriendly}
+                                  onChange={(e) => {
+                                    const next = e.target.checked;
+                                    setPetFriendly(next);
+                                    if (!next) {
+                                      setConditionTags((prev) => prev.filter((t) => t !== 'Aceita pets'));
+                                    }
+                                  }}
+                                  label="Aceita pets"
+                                />
+                                {PROPERTY_FEATURE_TAG_OPTIONS.map((tag) => (
                                   <Checkbox
                                     key={tag}
                                     checked={conditionTags.includes(tag)}
@@ -3559,10 +3642,29 @@ export default function NewPropertyPage() {
                                   />
                                 ))}
                               </div>
-                              <div>
-                                <div className="text-xs font-semibold text-gray-600 mb-2">Móveis</div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setOpenAcc((p) => ({ ...p, acc_condition: !p.acc_condition }))}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            <span className="text-sm font-semibold text-gray-800">
+                              🏠 Condição do imóvel
+                              {accConditionCount > 0 && (
+                                <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accConditionCount}</span>
+                              )}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condition ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openAcc.acc_condition && (
+                            <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                              <div className="space-y-4">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                  {CONDITION_EXTRA_OPTIONS.map((tag) => (
+                                  {CONDITION_STATUS_OPTIONS.map((tag) => (
                                     <Checkbox
                                       key={tag}
                                       checked={conditionTags.includes(tag)}
@@ -3571,240 +3673,254 @@ export default function NewPropertyPage() {
                                     />
                                   ))}
                                 </div>
+                                <div>
+                                  <div className="text-xs font-semibold text-gray-600 mb-2">Móveis</div>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {CONDITION_EXTRA_OPTIONS.map((tag) => (
+                                      <Checkbox
+                                        key={tag}
+                                        checked={conditionTags.includes(tag)}
+                                        onChange={() => toggleConditionTag(tag)}
+                                        label={tag}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setOpenAcc((p) => ({ ...p, acc_measures: !p.acc_measures }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="text-sm font-semibold text-gray-800">
-                            📏 Medidas do imóvel
-                            {accMeasuresCount > 0 && (
-                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accMeasuresCount}</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_measures ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openAcc.acc_measures && (
-                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                              <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
-                              <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
-                              <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
-                              <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
+                        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setOpenAcc((p) => ({ ...p, acc_measures: !p.acc_measures }))}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            <span className="text-sm font-semibold text-gray-800">
+                              📏 Medidas do imóvel
+                              {accMeasuresCount > 0 && (
+                                <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accMeasuresCount}</span>
+                              )}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_measures ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openAcc.acc_measures && (
+                            <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <Input id="builtAreaM2" label="Área construída (m²)" value={builtAreaM2} error={fieldErrors.builtAreaM2} onChange={(e) => { setBuiltAreaM2(e.target.value); clearFieldError("builtAreaM2"); }} inputMode="numeric" optional />
+                                <Input id="lotAreaM2" label="Área do terreno (m²)" value={lotAreaM2} error={fieldErrors.lotAreaM2} onChange={(e) => { setLotAreaM2(e.target.value); clearFieldError("lotAreaM2"); }} inputMode="numeric" optional />
+                                <Input id="privateAreaM2" label="Área privativa (m²)" value={privateAreaM2} error={fieldErrors.privateAreaM2} onChange={(e) => { setPrivateAreaM2(e.target.value); clearFieldError("privateAreaM2"); }} inputMode="numeric" optional />
+                                <Input id="usableAreaM2" label="Área útil (m²)" value={usableAreaM2} error={fieldErrors.usableAreaM2} onChange={(e) => { setUsableAreaM2(e.target.value); clearFieldError("usableAreaM2"); }} inputMode="numeric" optional />
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
 
-                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setOpenAcc((p) => ({ ...p, acc_condo: !p.acc_condo }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="text-sm font-semibold text-gray-800">
-                            🏢 Condomínio / áreas comuns
-                            {accCondoCount > 0 && (
-                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accCondoCount}</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condo ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openAcc.acc_condo && (
-                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
-                              <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
-                              <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
-                              <Checkbox checked={hasGourmet} onChange={(e) => setHasGourmet(e.target.checked)} label="Espaço gourmet" />
-                              <Checkbox checked={hasPlayground} onChange={(e) => setHasPlayground(e.target.checked)} label="Playground" />
-                              <Checkbox checked={hasPartyRoom} onChange={(e) => setHasPartyRoom(e.target.checked)} label="Salão de festas" />
-                              <Checkbox checked={hasConcierge24h} onChange={(e) => setHasConcierge24h(e.target.checked)} label="Portaria 24h" />
+                      <div className="lg:col-span-6 space-y-4">
+                        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setOpenAcc((p) => ({ ...p, acc_condo: !p.acc_condo }))}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            <span className="text-sm font-semibold text-gray-800">
+                              🏢 Condomínio / áreas comuns
+                              {accCondoCount > 0 && (
+                                <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accCondoCount}</span>
+                              )}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_condo ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openAcc.acc_condo && (
+                            <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <Checkbox checked={hasElevator} onChange={(e) => setHasElevator(e.target.checked)} label="Elevador" />
+                                <Checkbox checked={hasPool} onChange={(e) => setHasPool(e.target.checked)} label="Piscina" />
+                                <Checkbox checked={hasGym} onChange={(e) => setHasGym(e.target.checked)} label="Academia" />
+                                <Checkbox checked={hasGourmet} onChange={(e) => setHasGourmet(e.target.checked)} label="Espaço gourmet" />
+                                <Checkbox checked={hasPlayground} onChange={(e) => setHasPlayground(e.target.checked)} label="Playground" />
+                                <Checkbox checked={hasPartyRoom} onChange={(e) => setHasPartyRoom(e.target.checked)} label="Salão de festas" />
+                                <Checkbox checked={hasConcierge24h} onChange={(e) => setHasConcierge24h(e.target.checked)} label="Portaria 24h" />
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setOpenAcc((p) => ({ ...p, acc_sec: !p.acc_sec }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="text-sm font-semibold text-gray-800">
-                            🔒 Segurança
-                            {accSecurityCount > 0 && (
-                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accSecurityCount}</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_sec ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openAcc.acc_sec && (
-                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                            <div className="grid grid-cols-2 gap-3">
-                              <Checkbox checked={secCCTV} onChange={(e) => setSecCCTV(e.target.checked)} label="CFTV / Câmeras" />
-                              <Checkbox checked={secSallyPort} onChange={(e) => setSecSallyPort(e.target.checked)} label="Clausura (sally port)" />
-                              <Checkbox checked={secNightGuard} onChange={(e) => setSecNightGuard(e.target.checked)} label="Ronda noturna" />
-                              <Checkbox checked={secElectricFence} onChange={(e) => setSecElectricFence(e.target.checked)} label="Cerca elétrica" />
+                        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setOpenAcc((p) => ({ ...p, acc_sec: !p.acc_sec }))}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            <span className="text-sm font-semibold text-gray-800">
+                              🔒 Segurança
+                              {accSecurityCount > 0 && (
+                                <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accSecurityCount}</span>
+                              )}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_sec ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openAcc.acc_sec && (
+                            <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                              <div className="grid grid-cols-2 gap-3">
+                                <Checkbox checked={secCCTV} onChange={(e) => setSecCCTV(e.target.checked)} label="CFTV / Câmeras" />
+                                <Checkbox checked={secSallyPort} onChange={(e) => setSecSallyPort(e.target.checked)} label="Clausura (sally port)" />
+                                <Checkbox checked={secNightGuard} onChange={(e) => setSecNightGuard(e.target.checked)} label="Ronda noturna" />
+                                <Checkbox checked={secElectricFence} onChange={(e) => setSecElectricFence(e.target.checked)} label="Cerca elétrica" />
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setOpenAcc((p) => ({ ...p, acc_comfort: !p.acc_comfort }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="text-sm font-semibold text-gray-800">
-                            🌿 Conforto e energia
-                            {accComfortCount > 0 && (
-                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accComfortCount}</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_comfort ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openAcc.acc_comfort && (
-                          <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
-                            <div className="grid grid-cols-2 gap-3">
-                              <Checkbox checked={comfortAC} onChange={(e) => setComfortAC(e.target.checked)} label="Ar-condicionado" />
-                              <Checkbox checked={comfortHeating} onChange={(e) => setComfortHeating(e.target.checked)} label="Aquecimento" />
-                              <Checkbox checked={comfortSolar} onChange={(e) => setComfortSolar(e.target.checked)} label="Energia solar" />
-                              <Checkbox checked={comfortNoiseWindows} onChange={(e) => setComfortNoiseWindows(e.target.checked)} label="Janelas anti-ruído" />
-                              <Checkbox checked={comfortLED} onChange={(e) => setComfortLED(e.target.checked)} label="Iluminação LED" />
-                              <Checkbox checked={comfortWaterReuse} onChange={(e) => setComfortWaterReuse(e.target.checked)} label="Reúso de água" />
+                        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setOpenAcc((p) => ({ ...p, acc_comfort: !p.acc_comfort }))}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            <span className="text-sm font-semibold text-gray-800">
+                              🌿 Conforto e energia
+                              {accComfortCount > 0 && (
+                                <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accComfortCount}</span>
+                              )}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_comfort ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openAcc.acc_comfort && (
+                            <div className="px-4 pb-4 pt-3 bg-gray-50/50 border-t border-gray-100">
+                              <div className="grid grid-cols-2 gap-3">
+                                <Checkbox checked={comfortAC} onChange={(e) => setComfortAC(e.target.checked)} label="Ar-condicionado" />
+                                <Checkbox checked={comfortHeating} onChange={(e) => setComfortHeating(e.target.checked)} label="Aquecimento" />
+                                <Checkbox checked={comfortSolar} onChange={(e) => setComfortSolar(e.target.checked)} label="Energia solar" />
+                                <Checkbox checked={comfortNoiseWindows} onChange={(e) => setComfortNoiseWindows(e.target.checked)} label="Janelas anti-ruído" />
+                                <Checkbox checked={comfortLED} onChange={(e) => setComfortLED(e.target.checked)} label="Iluminação LED" />
+                                <Checkbox checked={comfortWaterReuse} onChange={(e) => setComfortWaterReuse(e.target.checked)} label="Reúso de água" />
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setOpenAcc((p) => ({ ...p, acc_fin: !p.acc_fin }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="text-sm font-semibold text-gray-800">
-                            🧱 Acabamentos
-                            {accFinishCount > 0 && (
-                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFinishCount}</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_fin ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openAcc.acc_fin && (
-                          <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
-                            <Select label="Piso principal" value={finishFloor} onChange={(e) => setFinishFloor(e.target.value)} optional>
-                              <option value="">Selecione</option>
-                              <option value="porcelanato">Porcelanato</option>
-                              <option value="ceramica">Cerâmica</option>
-                              <option value="madeira">Madeira</option>
-                              <option value="vinilico">Vinílico</option>
-                            </Select>
-                            <div className="grid grid-cols-2 gap-3">
-                              <Checkbox checked={finishCabinets} onChange={(e) => setFinishCabinets(e.target.checked)} label="Armários planejados" />
-                              <Checkbox checked={finishCounterGranite} onChange={(e) => setFinishCounterGranite(e.target.checked)} label="Bancada granito" />
-                              <Checkbox checked={finishCounterQuartz} onChange={(e) => setFinishCounterQuartz(e.target.checked)} label="Bancada quartzo" />
+                        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setOpenAcc((p) => ({ ...p, acc_fin: !p.acc_fin }))}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            <span className="text-sm font-semibold text-gray-800">
+                              🧱 Acabamentos
+                              {accFinishCount > 0 && (
+                                <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accFinishCount}</span>
+                              )}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_fin ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openAcc.acc_fin && (
+                            <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
+                              <Select label="Piso principal" value={finishFloor} onChange={(e) => setFinishFloor(e.target.value)} optional>
+                                <option value="">Selecione</option>
+                                <option value="porcelanato">Porcelanato</option>
+                                <option value="ceramica">Cerâmica</option>
+                                <option value="madeira">Madeira</option>
+                                <option value="vinilico">Vinílico</option>
+                              </Select>
+                              <div className="grid grid-cols-2 gap-3">
+                                <Checkbox checked={finishCabinets} onChange={(e) => setFinishCabinets(e.target.checked)} label="Armários planejados" />
+                                <Checkbox checked={finishCounterGranite} onChange={(e) => setFinishCounterGranite(e.target.checked)} label="Bancada granito" />
+                                <Checkbox checked={finishCounterQuartz} onChange={(e) => setFinishCounterQuartz(e.target.checked)} label="Bancada quartzo" />
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setOpenAcc((p) => ({ ...p, acc_view: !p.acc_view }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="text-sm font-semibold text-gray-800">
-                            🌅 Vista e posição
-                            {accViewCount > 0 && (
-                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accViewCount}</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_view ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openAcc.acc_view && (
-                          <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
-                            <div className="grid grid-cols-2 gap-3">
-                              <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
-                              <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
-                              <Checkbox checked={viewRiver} onChange={(e) => setViewRiver(e.target.checked)} label="Vista para o rio" />
-                              <Checkbox checked={viewLake} onChange={(e) => setViewLake(e.target.checked)} label="Vista para o lago" />
+                        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setOpenAcc((p) => ({ ...p, acc_acc: !p.acc_acc }))}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            <span className="text-sm font-semibold text-gray-800">
+                              ♿ Acessibilidade
+                              {accAccessibilityCount > 0 && (
+                                <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accAccessibilityCount}</span>
+                              )}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_acc ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openAcc.acc_acc && (
+                            <div className="px-4 pb-4 pt-3 grid grid-cols-2 gap-3 bg-gray-50/50 border-t border-gray-100">
+                              <Checkbox checked={accRamps} onChange={(e) => setAccRamps(e.target.checked)} label="Rampas de acesso" />
+                              <Checkbox checked={accWideDoors} onChange={(e) => setAccWideDoors(e.target.checked)} label="Portas largas" />
+                              <Checkbox checked={accAccessibleElevator} onChange={(e) => setAccAccessibleElevator(e.target.checked)} label="Elevador acessível" />
+                              <Checkbox checked={accTactile} onChange={(e) => setAccTactile(e.target.checked)} label="Piso tátil" />
                             </div>
-                            <Input label="Sol nos cômodos (opcional)" value={sunByRoomNote} onChange={(e) => setSunByRoomNote(e.target.value)} optional />
-                            <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
-                              <option value="">Selecione</option>
-                              <option value="NASCENTE">Nascente (sol da manhã)</option>
-                              <option value="POENTE">Poente (sol da tarde)</option>
-                              <option value="OUTRA">Outra</option>
-                            </Select>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
 
-                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setOpenAcc((p) => ({ ...p, acc_acc: !p.acc_acc }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="text-sm font-semibold text-gray-800">
-                            ♿ Acessibilidade
-                            {accAccessibilityCount > 0 && (
-                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accAccessibilityCount}</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_acc ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openAcc.acc_acc && (
-                          <div className="px-4 pb-4 pt-3 grid grid-cols-2 gap-3 bg-gray-50/50 border-t border-gray-100">
-                            <Checkbox checked={accRamps} onChange={(e) => setAccRamps(e.target.checked)} label="Rampas de acesso" />
-                            <Checkbox checked={accWideDoors} onChange={(e) => setAccWideDoors(e.target.checked)} label="Portas largas" />
-                            <Checkbox checked={accAccessibleElevator} onChange={(e) => setAccAccessibleElevator(e.target.checked)} label="Elevador acessível" />
-                            <Checkbox checked={accTactile} onChange={(e) => setAccTactile(e.target.checked)} label="Piso tátil" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setOpenAcc((p) => ({ ...p, acc_pets: !p.acc_pets }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <span className="text-sm font-semibold text-gray-800">
-                            🐾 Pets
-                            {accPetsCount > 0 && (
-                              <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accPetsCount}</span>
-                            )}
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_pets ? 'rotate-180' : ''}`} />
-                        </button>
-                        {openAcc.acc_pets && (
-                          <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
-                            <div className="grid grid-cols-2 gap-3">
-                              <Checkbox checked={petsSmall} onChange={(e) => setPetsSmall(e.target.checked)} label="Aceita pets pequenos" />
-                              <Checkbox checked={petsLarge} onChange={(e) => setPetsLarge(e.target.checked)} label="Aceita pets grandes" />
+                        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setOpenAcc((p) => ({ ...p, acc_view: !p.acc_view }))}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            <span className="text-sm font-semibold text-gray-800">
+                              🌅 Vista e posição
+                              {accViewCount > 0 && (
+                                <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accViewCount}</span>
+                              )}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_view ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openAcc.acc_view && (
+                            <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
+                              <div className="grid grid-cols-2 gap-3">
+                                <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
+                                <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
+                                <Checkbox checked={viewRiver} onChange={(e) => setViewRiver(e.target.checked)} label="Vista para o rio" />
+                                <Checkbox checked={viewLake} onChange={(e) => setViewLake(e.target.checked)} label="Vista para o lago" />
+                              </div>
+                              <Input label="Sol nos cômodos (opcional)" value={sunByRoomNote} onChange={(e) => setSunByRoomNote(e.target.value)} optional />
+                              <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
+                                <option value="">Selecione</option>
+                                <option value="NASCENTE">Nascente (sol da manhã)</option>
+                                <option value="POENTE">Poente (sol da tarde)</option>
+                                <option value="OUTRA">Outra</option>
+                              </Select>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
+
+                        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setOpenAcc((p) => ({ ...p, acc_pets: !p.acc_pets }))}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            <span className="text-sm font-semibold text-gray-800">
+                              🐾 Pets
+                              {accPetsCount > 0 && (
+                                <span className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{accPetsCount}</span>
+                              )}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${openAcc.acc_pets ? 'rotate-180' : ''}`} />
+                          </button>
+                          {openAcc.acc_pets && (
+                            <div className="px-4 pb-4 pt-3 space-y-3 bg-gray-50/50 border-t border-gray-100">
+                              <div className="grid grid-cols-2 gap-3">
+                                <Checkbox checked={petsSmall} onChange={(e) => setPetsSmall(e.target.checked)} label="Aceita pets pequenos" />
+                                <Checkbox checked={petsLarge} onChange={(e) => setPetsLarge(e.target.checked)} label="Aceita pets grandes" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
-
-              {currentStep === 3 && (
-                <div className="space-y-4">
+{currentStep === 3 && (
+                <div className="space-y-6">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Fotos do imóvel *</h2>
                     <p className="text-sm text-gray-600 mt-1">
@@ -3818,202 +3934,208 @@ export default function NewPropertyPage() {
                     </div>
                   )}
 
-                  {/* Área de upload */}
-                  <div
-                    className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                      isFileDragOver 
-                        ? "border-teal-500 bg-teal-50 scale-[1.02]" 
-                        : "border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400"
-                    }`}
-                    onDragOver={(e) => { e.preventDefault(); setIsFileDragOver(true); }}
-                    onDragLeave={() => setIsFileDragOver(false)}
-                    onDrop={async (e) => {
-                      e.preventDefault();
-                      setIsFileDragOver(false);
-                      clearFieldError("images");
-                      if (e.dataTransfer?.files?.length) await handleDroppedFiles(e.dataTransfer.files);
-                    }}
-                    onClick={() => dropInputRef.current?.click()}
-                  >
-                    <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 flex items-center justify-center">
-                      <Camera className="w-7 h-7 text-teal-600" />
-                    </div>
-                    <p className="font-medium text-gray-800 mb-1">
-                      <span className="sm:hidden">Toque para adicionar fotos</span>
-                      <span className="hidden sm:inline">Clique ou arraste imagens</span>
-                    </p>
-                    <p className="text-sm text-gray-500">JPG, PNG • Máximo 10MB por foto</p>
-                    <input
-                      ref={dropInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      onChange={async (e) => {
-                        if (e.target.files?.length) {
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-8 space-y-4">
+                      {/* Área de upload */}
+                      <div
+                        className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                          isFileDragOver 
+                            ? "border-teal-500 bg-teal-50 scale-[1.02]" 
+                            : "border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400"
+                        }`}
+                        onDragOver={(e) => { e.preventDefault(); setIsFileDragOver(true); }}
+                        onDragLeave={() => setIsFileDragOver(false)}
+                        onDrop={async (e) => {
+                          e.preventDefault();
+                          setIsFileDragOver(false);
                           clearFieldError("images");
-                          await handleDroppedFiles(e.target.files);
-                          e.target.value = "";
-                        }
-                      }}
-                    />
-                  </div>
-
-                  {/* Contador e dicas */}
-                  {images.filter(img => img.url).length > 0 && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">
-                        <span className="font-semibold text-gray-900">{images.filter(img => img.url).length}</span> foto(s) adicionada(s)
-                      </span>
-                      <span className="text-gray-500 text-xs">Arraste para reordenar</span>
-                    </div>
-                  )}
-
-                  {/* Grid de imagens com drag & drop */}
-                  {images.filter(img => img.url || img.pending).length > 0 && (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={(event) => {
-                        const { active, over } = event;
-                        if (over && active.id !== over.id) {
-                          setImages((prev) => {
-                            const oldIndex = prev.findIndex((_, i) => `img-${i}` === active.id);
-                            const newIndex = prev.findIndex((_, i) => `img-${i}` === over.id);
-                            return arrayMove(prev, oldIndex, newIndex);
-                          });
-                        }
-                      }}
-                    >
-                      <SortableContext items={images.map((_, i) => `img-${i}`)} strategy={rectSortingStrategy}>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                          {images.map((img, idx) => {
-                            if (!img.url && !img.pending) return null;
-                            const isFirst = idx === 0;
-                            return (
-                              <SortableItem key={`img-${idx}`} id={`img-${idx}`}>
-                                <div className="relative group aspect-square rounded-xl overflow-hidden border-2 border-gray-200 bg-gray-100 hover:border-teal-400 transition-colors">
-                                  {/* Badge CAPA */}
-                                  {isFirst && img.url && (
-                                    <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-gradient-to-r from-teal-600 to-teal-500 text-white text-xs font-bold rounded-md shadow-lg">
-                                      📸 CAPA
-                                    </div>
-                                  )}
-
-                                  {/* Imagem */}
-                                  {img.url ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                      src={img.url}
-                                      alt={img.alt || `Imagem ${idx + 1}`}
-                                      className="w-full h-full object-cover"
-                                      draggable={false}
-                                      onClick={(e) => { e.stopPropagation(); openLightbox(idx); }}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                                      <div className="text-center p-3">
-                                        <div className="w-8 h-8 mx-auto mb-2 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
-                                        <span className="text-xs text-gray-500">Enviando...</span>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Barra de progresso durante upload */}
-                                  {img.pending && typeof img.progress === 'number' && (
-                                    <div className="absolute inset-x-0 bottom-0 bg-black/60 p-2">
-                                      <div className="flex items-center gap-2">
-                                        <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                          <div 
-                                            className="h-full bg-gradient-to-r from-teal-400 to-teal-500 transition-all duration-300"
-                                            style={{ width: `${img.progress}%` }}
-                                          />
-                                        </div>
-                                        <span className="text-xs text-white font-medium">{img.progress}%</span>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Erro no upload */}
-                                  {img.error && (
-                                    <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center">
-                                      <div className="text-center text-white p-2">
-                                        <span className="text-2xl">⚠️</span>
-                                        <p className="text-xs mt-1">{img.error}</p>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Overlay de ações */}
-                                  {img.url && !img.pending && (
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end justify-center opacity-0 group-hover:opacity-100">
-                                      <div className="flex gap-2 p-3 w-full">
-                                        {!isFirst && (
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setImages(prev => {
-                                                const newArr = [...prev];
-                                                const [item] = newArr.splice(idx, 1);
-                                                newArr.unshift(item);
-                                                return newArr;
-                                              });
-                                              setToast({ message: "Foto definida como capa!", type: "success" });
-                                            }}
-                                            onPointerDown={(e) => e.stopPropagation()}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                            onTouchStart={(e) => e.stopPropagation()}
-                                            className="flex-1 py-1.5 bg-white/90 hover:bg-white text-gray-800 text-xs font-semibold rounded-lg transition-colors"
-                                          >
-                                            Usar como capa
-                                          </button>
-                                        )}
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            lastFocusRef.current = e.currentTarget;
-                                            setConfirmDelete({ open: true, index: idx });
-                                          }}
-                                          onPointerDown={(e) => e.stopPropagation()}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                          onTouchStart={(e) => e.stopPropagation()}
-                                          className="px-3 py-1.5 bg-red-500/90 hover:bg-red-500 text-white text-xs font-semibold rounded-lg transition-colors"
-                                        >
-                                          ✕
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Indicador de drag */}
-                                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="w-6 h-6 bg-white/90 rounded-md flex items-center justify-center shadow">
-                                      <svg className="w-3.5 h-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                                      </svg>
-                                    </div>
-                                  </div>
-                                </div>
-                              </SortableItem>
-                            );
-                          })}
+                          if (e.dataTransfer?.files?.length) await handleDroppedFiles(e.dataTransfer.files);
+                        }}
+                        onClick={() => dropInputRef.current?.click()}
+                      >
+                        <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 flex items-center justify-center">
+                          <Camera className="w-7 h-7 text-teal-600" />
                         </div>
-                      </SortableContext>
-                    </DndContext>
-                  )}
-
-                  {/* Dica de qualidade */}
-                  {images.filter(img => img.url).length > 0 && images.filter(img => img.url).length < 5 && (
-                    <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                      <span className="text-lg">💡</span>
-                      <div className="text-sm text-amber-800">
-                        <p className="font-medium">Dica: Anúncios com 5+ fotos recebem 2x mais visualizações!</p>
-                        <p className="text-amber-700 mt-0.5">Adicione mais fotos para destacar seu imóvel.</p>
+                        <p className="font-medium text-gray-800 mb-1">
+                          <span className="sm:hidden">Toque para adicionar fotos</span>
+                          <span className="hidden sm:inline">Clique ou arraste imagens</span>
+                        </p>
+                        <p className="text-sm text-gray-500">JPG, PNG • Máximo 10MB por foto</p>
+                        <input
+                          ref={dropInputRef}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={async (e) => {
+                            if (e.target.files?.length) {
+                              clearFieldError("images");
+                              await handleDroppedFiles(e.target.files);
+                              e.target.value = "";
+                            }
+                          }}
+                        />
                       </div>
+
+                      {/* Contador e dicas */}
+                      {images.filter(img => img.url).length > 0 && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">
+                            <span className="font-semibold text-gray-900">{images.filter(img => img.url).length}</span> foto(s) adicionada(s)
+                          </span>
+                          <span className="text-gray-500 text-xs">Arraste para reordenar</span>
+                        </div>
+                      )}
+
+                      {/* Grid de imagens com drag & drop */}
+                      {images.filter(img => img.url || img.pending).length > 0 && (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={(event) => {
+                            const { active, over } = event;
+                            if (over && active.id !== over.id) {
+                              setImages((prev) => {
+                                const oldIndex = prev.findIndex((_, i) => `img-${i}` === active.id);
+                                const newIndex = prev.findIndex((_, i) => `img-${i}` === over.id);
+                                return arrayMove(prev, oldIndex, newIndex);
+                              });
+                            }
+                          }}
+                        >
+                          <SortableContext items={images.map((_, i) => `img-${i}`)} strategy={rectSortingStrategy}>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                              {images.map((img, idx) => {
+                                if (!img.url && !img.pending) return null;
+                                const isFirst = idx === 0;
+                                return (
+                                  <SortableItem key={`img-${idx}`} id={`img-${idx}`}>
+                                    <div className="relative group aspect-square rounded-xl overflow-hidden border-2 border-gray-200 bg-gray-100 hover:border-teal-400 transition-colors">
+                                      {/* Badge CAPA */}
+                                      {isFirst && img.url && (
+                                        <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-gradient-to-r from-teal-600 to-teal-500 text-white text-xs font-bold rounded-md shadow-lg">
+                                          📸 CAPA
+                                        </div>
+                                      )}
+
+                                      {/* Imagem */}
+                                      {img.url ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                          src={img.url}
+                                          alt={img.alt || `Imagem ${idx + 1}`}
+                                          className="w-full h-full object-cover"
+                                          draggable={false}
+                                          onClick={(e) => { e.stopPropagation(); openLightbox(idx); }}
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                          <div className="text-center p-3">
+                                            <div className="w-8 h-8 mx-auto mb-2 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
+                                            <span className="text-xs text-gray-500">Enviando...</span>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Barra de progresso durante upload */}
+                                      {img.pending && typeof img.progress === 'number' && (
+                                        <div className="absolute inset-x-0 bottom-0 bg-black/60 p-2">
+                                          <div className="flex items-center gap-2">
+                                            <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                              <div 
+                                                className="h-full bg-gradient-to-r from-teal-400 to-teal-500 transition-all duration-300"
+                                                style={{ width: `${img.progress}%` }}
+                                              />
+                                            </div>
+                                            <span className="text-xs text-white font-medium">{img.progress}%</span>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Erro no upload */}
+                                      {img.error && (
+                                        <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center">
+                                          <div className="text-center text-white p-2">
+                                            <span className="text-2xl">⚠️</span>
+                                            <p className="text-xs mt-1">{img.error}</p>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Overlay de ações */}
+                                      {img.url && !img.pending && (
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end justify-center opacity-0 group-hover:opacity-100">
+                                          <div className="flex gap-2 p-3 w-full">
+                                            {!isFirst && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setImages(prev => {
+                                                    const newArr = [...prev];
+                                                    const [item] = newArr.splice(idx, 1);
+                                                    newArr.unshift(item);
+                                                    return newArr;
+                                                  });
+                                                  setToast({ message: "Foto definida como capa!", type: "success" });
+                                                }}
+                                                onPointerDown={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                onTouchStart={(e) => e.stopPropagation()}
+                                                className="flex-1 py-1.5 bg-white/90 hover:bg-white text-gray-800 text-xs font-semibold rounded-lg transition-colors"
+                                              >
+                                                Usar como capa
+                                              </button>
+                                            )}
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                lastFocusRef.current = e.currentTarget;
+                                                setConfirmDelete({ open: true, index: idx });
+                                              }}
+                                              onPointerDown={(e) => e.stopPropagation()}
+                                              onMouseDown={(e) => e.stopPropagation()}
+                                              onTouchStart={(e) => e.stopPropagation()}
+                                              className="px-3 py-1.5 bg-red-500/90 hover:bg-red-500 text-white text-xs font-semibold rounded-lg transition-colors"
+                                            >
+                                              ✕
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Indicador de drag */}
+                                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="w-6 h-6 bg-white/90 rounded-md flex items-center justify-center shadow">
+                                          <svg className="w-3.5 h-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                                          </svg>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </SortableItem>
+                                );
+                              })}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      )}
                     </div>
-                  )}
+
+                    <div className="lg:col-span-4 space-y-4">
+                      {/* Dica de qualidade */}
+                      {images.filter(img => img.url).length > 0 && images.filter(img => img.url).length < 5 && (
+                        <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                          <span className="text-lg">💡</span>
+                          <div className="text-sm text-amber-800">
+                            <p className="font-medium">Dica: Anúncios com 5+ fotos recebem 2x mais visualizações!</p>
+                            <p className="text-amber-700 mt-0.5">Adicione mais fotos para destacar seu imóvel.</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -4026,185 +4148,191 @@ export default function NewPropertyPage() {
                     </p>
                   </div>
 
-                  {/* Informações de contato do proprietário */}
-                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                    <h3 className="font-medium text-gray-900 mb-3">Contato do proprietário</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Input
-                        label="Nome do proprietário"
-                        value={privateOwnerName}
-                        onChange={(e) => setPrivateOwnerName(e.target.value)}
-                        placeholder="Ex: João Silva"
-                      />
-                      <Input
-                        label="Telefone do proprietário"
-                        value={privateOwnerPhone}
-                        onChange={(e) => setPrivateOwnerPhone(e.target.value)}
-                        placeholder="Ex: (11) 99999-9999"
-                      />
-                      <Input
-                        label="E-mail do proprietário"
-                        value={privateOwnerEmail}
-                        onChange={(e) => setPrivateOwnerEmail(e.target.value)}
-                        placeholder="Ex: joao@email.com"
-                      />
-                      <Input
-                        label="Endereço do proprietário"
-                        value={privateOwnerAddress}
-                        onChange={(e) => setPrivateOwnerAddress(e.target.value)}
-                        placeholder="Para correspondência"
-                      />
-                    </div>
-                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-7 space-y-6">
+                      {/* Informações de contato do proprietário */}
+                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                        <h3 className="font-medium text-gray-900 mb-3">Contato do proprietário</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <Input
+                            label="Nome do proprietário"
+                            value={privateOwnerName}
+                            onChange={(e) => setPrivateOwnerName(e.target.value)}
+                            placeholder="Ex: João Silva"
+                          />
+                          <Input
+                            label="Telefone do proprietário"
+                            value={privateOwnerPhone}
+                            onChange={(e) => setPrivateOwnerPhone(e.target.value)}
+                            placeholder="Ex: (11) 99999-9999"
+                          />
+                          <Input
+                            label="E-mail do proprietário"
+                            value={privateOwnerEmail}
+                            onChange={(e) => setPrivateOwnerEmail(e.target.value)}
+                            placeholder="Ex: joao@email.com"
+                          />
+                          <Input
+                            label="Endereço do proprietário"
+                            value={privateOwnerAddress}
+                            onChange={(e) => setPrivateOwnerAddress(e.target.value)}
+                            placeholder="Para correspondência"
+                          />
+                        </div>
+                      </div>
 
-                  {/* Informações financeiras */}
-                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                    <h3 className="font-medium text-gray-900 mb-3">Valores e comissão</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <Input
-                        label="Valor desejado pelo proprietário (R$)"
-                        value={privateOwnerPriceBRL}
-                        onChange={(e) => setPrivateOwnerPriceBRL(formatBRLInput(e.target.value))}
-                        placeholder="Valor que ele quer receber"
-                        inputMode="numeric"
-                      />
-                      <Input
-                        label="Taxa de corretagem (%)"
-                        value={privateBrokerFeePercent}
-                        onChange={(e) => setPrivateBrokerFeePercent(e.target.value.replace(/[^0-9.,]/g, ''))}
-                        placeholder="Ex: 5"
-                        inputMode="decimal"
-                      />
-                      <Input
-                        label="Ou taxa fixa (R$)"
-                        value={privateBrokerFeeFixedBRL}
-                        onChange={(e) => setPrivateBrokerFeeFixedBRL(formatBRLInput(e.target.value))}
-                        placeholder="Ex: 10.000"
-                        inputMode="numeric"
-                      />
-                    </div>
-                  </div>
+                      {/* Informações financeiras */}
+                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                        <h3 className="font-medium text-gray-900 mb-3">Valores e comissão</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <Input
+                            label="Valor desejado pelo proprietário (R$)"
+                            value={privateOwnerPriceBRL}
+                            onChange={(e) => setPrivateOwnerPriceBRL(formatBRLInput(e.target.value))}
+                            placeholder="Valor que ele quer receber"
+                            inputMode="numeric"
+                          />
+                          <Input
+                            label="Taxa de corretagem (%)"
+                            value={privateBrokerFeePercent}
+                            onChange={(e) => setPrivateBrokerFeePercent(e.target.value.replace(/[^0-9.,]/g, ''))}
+                            placeholder="Ex: 5"
+                            inputMode="decimal"
+                          />
+                          <Input
+                            label="Ou taxa fixa (R$)"
+                            value={privateBrokerFeeFixedBRL}
+                            onChange={(e) => setPrivateBrokerFeeFixedBRL(formatBRLInput(e.target.value))}
+                            placeholder="Ex: 10.000"
+                            inputMode="numeric"
+                          />
+                        </div>
+                      </div>
 
-                  {/* Exclusividade */}
-                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                    <h3 className="font-medium text-gray-900 mb-3">Exclusividade</h3>
-                    <div className="space-y-4">
-                      <Checkbox
-                        label="Imóvel exclusivo (só você pode vender)"
-                        checked={privateExclusive}
-                        onChange={(e) => setPrivateExclusive(e.target.checked)}
-                      />
-                      {privateExclusive && (
-                        <Input
-                          label="Exclusividade até"
-                          type="date"
-                          value={privateExclusiveUntil}
-                          onChange={(e) => setPrivateExclusiveUntil(e.target.value)}
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Situação do imóvel */}
-                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                    <h3 className="font-medium text-gray-900 mb-3">Situação do imóvel</h3>
-                    <div className="space-y-4">
-                      <Checkbox
-                        label="Imóvel está ocupado"
-                        checked={privateOccupied === true}
-                        onChange={(e) => setPrivateOccupied(e.target.checked ? true : null)}
-                      />
-                      <Checkbox
-                        label="Imóvel desocupado"
-                        checked={privateOccupied === false}
-                        onChange={(e) => setPrivateOccupied(e.target.checked ? false : null)}
-                      />
-                      {privateOccupied === true && (
-                        <Input
-                          label="Quem mora / informações do contrato"
-                          value={privateOccupantInfo}
-                          onChange={(e) => setPrivateOccupantInfo(e.target.value)}
-                          placeholder="Ex: Inquilino até dezembro, contrato de 12 meses"
-                        />
-                      )}
-                      <Input
-                        label="Onde está a chave"
-                        value={privateKeyLocation}
-                        onChange={(e) => setPrivateKeyLocation(e.target.value)}
-                        placeholder="Ex: Com o porteiro, ou na imobiliária X"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Notas internas */}
-                  <div>
-                    <Textarea
-                      label="Observações internas"
-                      value={privateNotes}
-                      onChange={(e) => setPrivateNotes(e.target.value)}
-                      rows={3}
-                      className="resize-y"
-                      placeholder="Anotações particulares sobre este imóvel ou negociação..."
-                    />
-                  </div>
-
-                  {/* Seção de visibilidade */}
-                  <div className="pt-6 border-t border-gray-200">
-                    <h3 className="font-semibold text-gray-900 mb-2">Privacidade do anúncio</h3>
-                    <p className="text-sm text-gray-500 mb-4">
-                      Escolha quais informações devem ficar ocultas no anúncio público. Clientes interessados precisarão entrar em contato para saber.
-                    </p>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <Checkbox
-                          label="Ocultar preço (mostrar 'Consulte')"
-                          checked={hidePrice}
-                          onChange={(e) => setHidePrice(e.target.checked)}
+                      {/* Notas internas */}
+                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                        <Textarea
+                          label="Observações internas"
+                          value={privateNotes}
+                          onChange={(e) => setPrivateNotes(e.target.value)}
+                          rows={3}
+                          className="resize-y"
+                          placeholder="Anotações particulares sobre este imóvel ou negociação..."
                         />
                       </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <Checkbox
-                          label="Ocultar endereço exato (só bairro)"
-                          checked={hideExactAddress}
-                          onChange={(e) => setHideExactAddress(e.target.checked)}
-                        />
+                    </div>
+
+                    <div className="lg:col-span-5 space-y-6">
+                      {/* Exclusividade */}
+                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                        <h3 className="font-medium text-gray-900 mb-3">Exclusividade</h3>
+                        <div className="space-y-4">
+                          <Checkbox
+                            label="Imóvel exclusivo (só você pode vender)"
+                            checked={privateExclusive}
+                            onChange={(e) => setPrivateExclusive(e.target.checked)}
+                          />
+                          {privateExclusive && (
+                            <Input
+                              label="Exclusividade até"
+                              type="date"
+                              value={privateExclusiveUntil}
+                              onChange={(e) => setPrivateExclusiveUntil(e.target.value)}
+                            />
+                          )}
+                        </div>
                       </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <Checkbox
-                          label="Ocultar WhatsApp/telefone do anúncio (somente chat)"
-                          checked={hideOwnerContact}
-                          onChange={(e) => setHideOwnerContact(e.target.checked)}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Se desmarcado, o botão de WhatsApp ficará disponível apenas para usuários logados e com e-mail verificado.
+
+                      {/* Situação do imóvel */}
+                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                        <h3 className="font-medium text-gray-900 mb-3">Situação do imóvel</h3>
+                        <div className="space-y-4">
+                          <Checkbox
+                            label="Imóvel está ocupado"
+                            checked={privateOccupied === true}
+                            onChange={(e) => setPrivateOccupied(e.target.checked ? true : null)}
+                          />
+                          <Checkbox
+                            label="Imóvel desocupado"
+                            checked={privateOccupied === false}
+                            onChange={(e) => setPrivateOccupied(e.target.checked ? false : null)}
+                          />
+                          {privateOccupied === true && (
+                            <Input
+                              label="Quem mora / informações do contrato"
+                              value={privateOccupantInfo}
+                              onChange={(e) => setPrivateOccupantInfo(e.target.value)}
+                              placeholder="Ex: Inquilino até dezembro, contrato de 12 meses"
+                            />
+                          )}
+                          <Input
+                            label="Onde está a chave"
+                            value={privateKeyLocation}
+                            onChange={(e) => setPrivateKeyLocation(e.target.value)}
+                            placeholder="Ex: Com o porteiro, ou na imobiliária X"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Seção de visibilidade */}
+                      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                        <h3 className="font-semibold text-gray-900 mb-2">Privacidade do anúncio</h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                          Escolha quais informações devem ficar ocultas no anúncio público. Clientes interessados precisarão entrar em contato para saber.
                         </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <Checkbox
+                              label="Ocultar preço (mostrar 'Consulte')"
+                              checked={hidePrice}
+                              onChange={(e) => setHidePrice(e.target.checked)}
+                            />
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <Checkbox
+                              label="Ocultar endereço exato (só bairro)"
+                              checked={hideExactAddress}
+                              onChange={(e) => setHideExactAddress(e.target.checked)}
+                            />
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <Checkbox
+                              label="Ocultar WhatsApp/telefone do anúncio (somente chat)"
+                              checked={hideOwnerContact}
+                              onChange={(e) => setHideOwnerContact(e.target.checked)}
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              Se desmarcado, o botão de WhatsApp ficará disponível apenas para usuários logados e com e-mail verificado.
+                            </p>
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <Checkbox
+                              label="Ocultar taxa de condomínio"
+                              checked={hideCondoFee}
+                              onChange={(e) => setHideCondoFee(e.target.checked)}
+                            />
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <Checkbox
+                              label="Ocultar IPTU"
+                              checked={hideIPTU}
+                              onChange={(e) => setHideIPTU(e.target.checked)}
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              O valor do IPTU é informado na etapa de características do imóvel.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Campo de IPTU */}
                       </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <Checkbox
-                          label="Ocultar taxa de condomínio"
-                          checked={hideCondoFee}
-                          onChange={(e) => setHideCondoFee(e.target.checked)}
-                        />
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <Checkbox
-                          label="Ocultar IPTU"
-                          checked={hideIPTU}
-                          onChange={(e) => setHideIPTU(e.target.checked)}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          O valor do IPTU é informado na etapa de características do imóvel.
-                        </p>
-                      </div>
+
+                      <p className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
+                        💡 Esses campos são opcionais e salvos junto com o imóvel. Você poderá editá-los depois na página do imóvel.
+                      </p>
                     </div>
-
-                    {/* Campo de IPTU */}
                   </div>
-
-                  <p className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-                    💡 Esses campos são opcionais e salvos junto com o imóvel. Você poderá editá-los depois na página do imóvel.
-                  </p>
                 </div>
               )}
 
@@ -4219,244 +4347,248 @@ export default function NewPropertyPage() {
                     <span className="font-semibold">Prévia — rascunho:</span> o anúncio ainda não está público.
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                      <p className="text-sm font-semibold text-gray-900">Ajustes rápidos</p>
-                      <p className="text-xs text-gray-600 mt-1">Volte direto para a etapa certa para corrigir algo.</p>
-                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <button type="button" onClick={() => jumpToStep(1)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar informações básicas</button>
-                        <button type="button" onClick={() => jumpToStep(2)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar detalhes</button>
-                        <button type="button" onClick={() => jumpToStep(3)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar fotos</button>
-                        <button type="button" onClick={() => jumpToStep(4)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar descrição</button>
-                        <button type="button" onClick={() => jumpToStep(5)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800 sm:col-span-2">Editar dados do proprietário</button>
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-8">
+                      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                        <PropertyDetailsModalJames
+                          propertyId={null}
+                          open
+                          variant="page"
+                          mode="preview"
+                          initialProperty={previewInitialProperty as any}
+                        />
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                      <p className="text-sm font-semibold text-gray-900">Checklist antes de publicar</p>
-                      <div className="mt-3 space-y-2">
-                        {reviewChecklist.map((item, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-sm">
-                            <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-extrabold ${item.done ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-gray-50 border-gray-200 text-gray-400"}`}>{item.done ? "✓" : ""}</span>
-                            <span className={item.done ? "text-gray-800" : "text-gray-600"}>{item.label}</span>
+                    <div className="lg:col-span-4 space-y-4">
+                      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <p className="text-sm font-semibold text-gray-900">Ajustes rápidos</p>
+                        <p className="text-xs text-gray-600 mt-1">Volte direto para a etapa certa para corrigir algo.</p>
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
+                          <button type="button" onClick={() => jumpToStep(1)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar informações básicas</button>
+                          <button type="button" onClick={() => jumpToStep(2)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar detalhes</button>
+                          <button type="button" onClick={() => jumpToStep(3)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar fotos</button>
+                          <button type="button" onClick={() => jumpToStep(4)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar descrição</button>
+                          <button type="button" onClick={() => jumpToStep(5)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800">Editar dados do proprietário</button>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <p className="text-sm font-semibold text-gray-900">Checklist antes de publicar</p>
+                        <div className="mt-3 space-y-2">
+                          {reviewChecklist.map((item, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-sm">
+                              <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-extrabold ${item.done ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-gray-50 border-gray-200 text-gray-400"}`}>{item.done ? "✓" : ""}</span>
+                              <span className={item.done ? "text-gray-800" : "text-gray-600"}>{item.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <p className="font-semibold text-gray-900 mb-3">Contato para publicação</p>
+
+                        {fieldErrors.contactVerification && (
+                          <div id="contactVerification" className="mb-2 text-xs text-danger">
+                            {fieldErrors.contactVerification}
                           </div>
-                        ))}
+                        )}
+
+                        {hasAnyVerifiedContact ? (
+                          <div className="space-y-3">
+                            <p className="text-sm text-gray-600">
+                              Você já tem pelo menos um contato verificado. Você pode publicar seu anúncio.
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+                              <div className="p-3 bg-white rounded-lg border border-gray-200">
+                                <div className="flex items-center gap-2">
+                                  <Phone className="w-4 h-4 text-teal-700" />
+                                  <p className="font-medium text-gray-900">Telefone</p>
+                                </div>
+                                <p className="text-sm text-gray-700 mt-1">{profilePhone || "Não cadastrado"}</p>
+                                <p className={`text-xs mt-1 ${profilePhoneVerified ? "text-green-600" : "text-amber-600"}`}>
+                                  {profilePhoneVerified ? "Verificado" : "Não verificado"}
+                                </p>
+                              </div>
+                              <div className="p-3 bg-white rounded-lg border border-gray-200">
+                                <div className="flex items-center gap-2">
+                                  <Mail className="w-4 h-4 text-teal-700" />
+                                  <p className="font-medium text-gray-900">E-mail</p>
+                                </div>
+                                <p className="text-sm text-gray-700 mt-1">{profileEmail || "Não cadastrado"}</p>
+                                <p className={`text-xs mt-1 ${profileEmailVerified ? "text-green-600" : "text-amber-600"}`}>
+                                  {profileEmailVerified ? "Verificado" : "Não verificado"}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Se quiser alterar ou verificar outros contatos, vá em <Link href="/profile" className="text-teal-700 hover:underline">Meu Perfil</Link>.
+                            </p>
+                          </div>
+                        ) : (
+                          <>
+
+                            <div className="space-y-3">
+                              <p className="text-sm text-gray-600">
+                                Para publicar, verifique pelo menos um canal de contato (telefone ou e-mail).
+                              </p>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+                                <div className="p-3 bg-white rounded-lg border border-gray-200">
+                                  <div className="flex items-center gap-2">
+                                    <Phone className="w-4 h-4 text-teal-700" />
+                                    <p className="font-medium text-gray-900">Telefone</p>
+                                  </div>
+
+                                  {profilePhone ? (
+                                    <div className="mt-2">
+                                      <p className="text-sm text-gray-700">{profilePhone}</p>
+                                      <p className="text-xs text-amber-600 mt-1">Não verificado</p>
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowPhoneVerificationModal(true)}
+                                        className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
+                                      >
+                                        Verificar por SMS →
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="mt-2">
+                                      <p className="text-sm text-gray-500">Você não tem telefone cadastrado.</p>
+                                      <div className="mt-2 flex gap-2">
+                                        <input
+                                          type="tel"
+                                          value={newPhoneInput}
+                                          onChange={(e) => setNewPhoneInput(e.target.value.replace(/\D/g, ""))}
+                                          placeholder="11999999999"
+                                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                        />
+                                        <button
+                                          type="button"
+                                          disabled={!newPhoneInput.trim() || savingNewPhone}
+                                          onClick={async () => {
+                                            if (!newPhoneInput.trim()) return;
+                                            setSavingNewPhone(true);
+                                            try {
+                                              const res = await fetch("/api/user/profile", {
+                                                method: "PATCH",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ phone: newPhoneInput }),
+                                              });
+                                              if (res.ok) {
+                                                setProfilePhone(newPhoneInput);
+                                                setProfilePhoneVerified(false);
+                                                setShowPhoneVerificationModal(true);
+                                              } else {
+                                                setToast({ message: "Erro ao salvar telefone", type: "error" });
+                                              }
+                                            } catch {
+                                              setToast({ message: "Erro ao salvar telefone", type: "error" });
+                                            } finally {
+                                              setSavingNewPhone(false);
+                                            }
+                                          }}
+                                          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                          {savingNewPhone ? "Salvando..." : "Salvar"}
+                                        </button>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-1">Digite apenas números (DDD + número)</p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="p-3 bg-white rounded-lg border border-gray-200">
+                                  <div className="flex items-center gap-2">
+                                    <Mail className="w-4 h-4 text-teal-700" />
+                                    <p className="font-medium text-gray-900">E-mail</p>
+                                  </div>
+
+                                  {profileEmail ? (
+                                    <div className="mt-2">
+                                      <p className="text-sm text-gray-700">{profileEmail}</p>
+                                      <p className="text-xs text-amber-600 mt-1">Não verificado</p>
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          try {
+                                            const r = await fetch("/api/auth/resend-verification", {
+                                              method: "POST",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ email: profileEmail }),
+                                            });
+                                            if (r.ok) {
+                                              setToast({ message: "Enviamos um link de verificação para seu e-mail.", type: "success" });
+                                            } else {
+                                              setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
+                                            }
+                                          } catch {
+                                            setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
+                                          }
+                                        }}
+                                        className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
+                                      >
+                                        Reenviar verificação →
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="mt-2">
+                                      <p className="text-sm text-gray-500">Você não tem e-mail cadastrado.</p>
+                                      <div className="mt-2 flex gap-2">
+                                        <input
+                                          type="email"
+                                          value={newEmailInput}
+                                          onChange={(e) => setNewEmailInput(e.target.value)}
+                                          placeholder="seuemail@exemplo.com"
+                                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                                        />
+                                        <button
+                                          type="button"
+                                          disabled={!newEmailInput.trim() || savingNewEmail}
+                                          onClick={async () => {
+                                            if (!newEmailInput.trim()) return;
+                                            setSavingNewEmail(true);
+                                            try {
+                                              const res = await fetch("/api/user/profile", {
+                                                method: "PATCH",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ email: newEmailInput.trim() }),
+                                              });
+                                              const j = await res.json().catch(() => null);
+                                              if (res.ok && j?.success && j.user) {
+                                                setProfileEmail(j.user.email || newEmailInput.trim());
+                                                setProfileEmailVerified(!!j.user.emailVerified);
+                                                setEmailConfirmedForListing(false);
+                                                setEmailMode("existing");
+                                                setToast({ message: "Enviamos um link de verificação para o seu e-mail.", type: "success" });
+                                              } else {
+                                                setToast({ message: j?.error || "Erro ao salvar e-mail", type: "error" });
+                                              }
+                                            } catch {
+                                              setToast({ message: "Erro ao salvar e-mail", type: "error" });
+                                            } finally {
+                                              setSavingNewEmail(false);
+                                            }
+                                          }}
+                                          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                          {savingNewEmail ? "Salvando..." : "Salvar"}
+                                        </button>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-1">Você precisará clicar no link enviado para confirmar.</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <p className="text-xs text-gray-500">
+                                Depois de verificar, volte aqui e atualize a página (ou aguarde alguns segundos) para liberar a publicação.
+                              </p>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <PropertyDetailsModalJames
-                      propertyId={null}
-                      open
-                      variant="page"
-                      mode="preview"
-                      initialProperty={previewInitialProperty as any}
-                    />
-                  </div>
-
-                  <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <p className="font-semibold text-gray-900 mb-3">Contato para publicação</p>
-
-                    {fieldErrors.contactVerification && (
-                      <div id="contactVerification" className="mb-2 text-xs text-danger">
-                        {fieldErrors.contactVerification}
-                      </div>
-                    )}
-
-                    {hasAnyVerifiedContact ? (
-                      <div className="space-y-3">
-                        <p className="text-sm text-gray-600">
-                          Você já tem pelo menos um contato verificado. Você pode publicar seu anúncio.
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="p-3 bg-white rounded-lg border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <Phone className="w-4 h-4 text-teal-700" />
-                              <p className="font-medium text-gray-900">Telefone</p>
-                            </div>
-                            <p className="text-sm text-gray-700 mt-1">{profilePhone || "Não cadastrado"}</p>
-                            <p className={`text-xs mt-1 ${profilePhoneVerified ? "text-green-600" : "text-amber-600"}`}>
-                              {profilePhoneVerified ? "Verificado" : "Não verificado"}
-                            </p>
-                          </div>
-                          <div className="p-3 bg-white rounded-lg border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <Mail className="w-4 h-4 text-teal-700" />
-                              <p className="font-medium text-gray-900">E-mail</p>
-                            </div>
-                            <p className="text-sm text-gray-700 mt-1">{profileEmail || "Não cadastrado"}</p>
-                            <p className={`text-xs mt-1 ${profileEmailVerified ? "text-green-600" : "text-amber-600"}`}>
-                              {profileEmailVerified ? "Verificado" : "Não verificado"}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          Se quiser alterar ou verificar outros contatos, vá em <Link href="/profile" className="text-teal-700 hover:underline">Meu Perfil</Link>.
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-
-                        <div className="space-y-3">
-                          <p className="text-sm text-gray-600">
-                            Para publicar, verifique pelo menos um canal de contato (telefone ou e-mail).
-                          </p>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="p-3 bg-white rounded-lg border border-gray-200">
-                              <div className="flex items-center gap-2">
-                                <Phone className="w-4 h-4 text-teal-700" />
-                                <p className="font-medium text-gray-900">Telefone</p>
-                              </div>
-
-                              {profilePhone ? (
-                                <div className="mt-2">
-                                  <p className="text-sm text-gray-700">{profilePhone}</p>
-                                  <p className="text-xs text-amber-600 mt-1">Não verificado</p>
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowPhoneVerificationModal(true)}
-                                    className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
-                                  >
-                                    Verificar por SMS →
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="mt-2">
-                                  <p className="text-sm text-gray-500">Você não tem telefone cadastrado.</p>
-                                  <div className="mt-2 flex gap-2">
-                                    <input
-                                      type="tel"
-                                      value={newPhoneInput}
-                                      onChange={(e) => setNewPhoneInput(e.target.value.replace(/\D/g, ""))}
-                                      placeholder="11999999999"
-                                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                                    />
-                                    <button
-                                      type="button"
-                                      disabled={!newPhoneInput.trim() || savingNewPhone}
-                                      onClick={async () => {
-                                        if (!newPhoneInput.trim()) return;
-                                        setSavingNewPhone(true);
-                                        try {
-                                          const res = await fetch("/api/user/profile", {
-                                            method: "PATCH",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ phone: newPhoneInput }),
-                                          });
-                                          if (res.ok) {
-                                            setProfilePhone(newPhoneInput);
-                                            setProfilePhoneVerified(false);
-                                            setShowPhoneVerificationModal(true);
-                                          } else {
-                                            setToast({ message: "Erro ao salvar telefone", type: "error" });
-                                          }
-                                        } catch {
-                                          setToast({ message: "Erro ao salvar telefone", type: "error" });
-                                        } finally {
-                                          setSavingNewPhone(false);
-                                        }
-                                      }}
-                                      className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      {savingNewPhone ? "Salvando..." : "Salvar"}
-                                    </button>
-                                  </div>
-                                  <p className="text-xs text-gray-500 mt-1">Digite apenas números (DDD + número)</p>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="p-3 bg-white rounded-lg border border-gray-200">
-                              <div className="flex items-center gap-2">
-                                <Mail className="w-4 h-4 text-teal-700" />
-                                <p className="font-medium text-gray-900">E-mail</p>
-                              </div>
-
-                              {profileEmail ? (
-                                <div className="mt-2">
-                                  <p className="text-sm text-gray-700">{profileEmail}</p>
-                                  <p className="text-xs text-amber-600 mt-1">Não verificado</p>
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      try {
-                                        const r = await fetch("/api/auth/resend-verification", {
-                                          method: "POST",
-                                          headers: { "Content-Type": "application/json" },
-                                          body: JSON.stringify({ email: profileEmail }),
-                                        });
-                                        if (r.ok) {
-                                          setToast({ message: "Enviamos um link de verificação para seu e-mail.", type: "success" });
-                                        } else {
-                                          setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
-                                        }
-                                      } catch {
-                                        setToast({ message: "Não foi possível reenviar a verificação agora.", type: "error" });
-                                      }
-                                    }}
-                                    className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
-                                  >
-                                    Reenviar verificação →
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="mt-2">
-                                  <p className="text-sm text-gray-500">Você não tem e-mail cadastrado.</p>
-                                  <div className="mt-2 flex gap-2">
-                                    <input
-                                      type="email"
-                                      value={newEmailInput}
-                                      onChange={(e) => setNewEmailInput(e.target.value)}
-                                      placeholder="seuemail@exemplo.com"
-                                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                                    />
-                                    <button
-                                      type="button"
-                                      disabled={!newEmailInput.trim() || savingNewEmail}
-                                      onClick={async () => {
-                                        if (!newEmailInput.trim()) return;
-                                        setSavingNewEmail(true);
-                                        try {
-                                          const res = await fetch("/api/user/profile", {
-                                            method: "PATCH",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ email: newEmailInput.trim() }),
-                                          });
-                                          const j = await res.json().catch(() => null);
-                                          if (res.ok && j?.success && j.user) {
-                                            setProfileEmail(j.user.email || newEmailInput.trim());
-                                            setProfileEmailVerified(!!j.user.emailVerified);
-                                            setEmailConfirmedForListing(false);
-                                            setEmailMode("existing");
-                                            setToast({ message: "Enviamos um link de verificação para o seu e-mail.", type: "success" });
-                                          } else {
-                                            setToast({ message: j?.error || "Erro ao salvar e-mail", type: "error" });
-                                          }
-                                        } catch {
-                                          setToast({ message: "Erro ao salvar e-mail", type: "error" });
-                                        } finally {
-                                          setSavingNewEmail(false);
-                                        }
-                                      }}
-                                      className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      {savingNewEmail ? "Salvando..." : "Salvar"}
-                                    </button>
-                                  </div>
-                                  <p className="text-xs text-gray-500 mt-1">Você precisará clicar no link enviado para confirmar.</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <p className="text-xs text-gray-500">
-                            Depois de verificar, volte aqui e atualize a página (ou aguarde alguns segundos) para liberar a publicação.
-                          </p>
-                        </div>
-                      </>
-                    )}
                   </div>
                 </div>
               )}
@@ -4496,103 +4628,9 @@ export default function NewPropertyPage() {
                   </button>
                 )}
               </div>
-            </form>
-          </div>
-
-          <aside className="hidden lg:block lg:col-span-1 sticky top-6 self-start space-y-4">
-
-            {/* Preview do card */}
-            {currentStep !== 6 && (
-              <PropertyCardPremium
-                property={{
-                  id: 'preview',
-                  title: finalTitle,
-                  price: parseBRLToNumber(priceBRL) * 100,
-                  images: images.filter((i)=>i.url).map((i)=>({ url: i.url })),
-                  city,
-                  state,
-                  bedrooms: bedrooms === '' ? undefined : Number(bedrooms),
-                  bathrooms: bathrooms === '' ? undefined : Number(bathrooms),
-                  areaM2: areaM2 === '' ? undefined : Number(areaM2),
-                  neighborhood,
-                  conditionTags,
-                  type,
-                  description: description,
-                  purpose: (purpose || 'SALE') as 'SALE' | 'RENT',
-                  videoUrl: videoUrl || null,
-                }}
-                watermark={showWatermark}
-              />
-            )}
-            {/* Contextual tips panel (modern glass/gradient) */}
-            <div className="mt-4">
-              {currentStep === 6 ? (
-                <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
-                  <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
-                    <div className="px-4 pt-4 pb-4">
-                      <div className="flex items-start gap-3">
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal ring-1 ring-black/5">
-                          <Eye className="w-5 h-5" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="text-sm font-semibold text-gray-900">Prévia em tela cheia</h3>
-                          <p className="text-[11px] text-gray-500 leading-4">Abra para ver o anúncio com mais espaço e em formato de página.</p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setFullscreenPreviewOpen(true)}
-                        className="mt-3 w-full px-4 py-2.5 rounded-xl glass-teal text-white font-semibold text-sm hover:opacity-95 transition-opacity"
-                      >
-                        Ver prévia
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
-                  <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
-                    <div className="flex items-center justify-between px-4 pt-4">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/></svg>
-                        </span>
-                        <div>
-                          <h3 className="text-sm font-semibold text-gray-900">Dicas do passo</h3>
-                          <p className="text-[11px] text-gray-500 leading-4">Orientações rápidas para deixar seu anúncio melhor</p>
-                        </div>
-                      </div>
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-gray-600">
-                        <span>Mostrar</span>
-                        <input type="checkbox" className="sr-only peer" checked={showTips} onChange={(e)=>setShowTips(e.target.checked)} />
-                        <span className="w-10 h-5 rounded-full bg-gray-300 peer-checked:bg-teal relative transition-colors">
-                          <span className="absolute top-1/2 -translate-y-1/2 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-all peer-checked:left-[1.375rem]"></span>
-                        </span>
-                      </label>
-                    </div>
-                    {showTips ? (
-                      <ul className="px-4 pb-4 pt-3 text-[13px] text-gray-800 space-y-2">
-                        {tipsForStep(currentStep).map((t, i) => (
-                          <li key={i} className="flex items-start gap-2">
-                            <span className="mt-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-r from-teal/15 to-teal-dark/15 text-teal">
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                            </span>
-                            <span>{t}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="px-4 pb-4 pt-3">
-                        <p className="text-[12px] text-gray-500">Dicas ocultas. Ative quando desejar.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
-          </aside>
+          </form>
         </div>
-      </div>
       )}
 
       {fullscreenPreviewOpen && (
