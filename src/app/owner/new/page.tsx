@@ -412,9 +412,6 @@ export default function NewPropertyPage() {
       cancelled = true;
     };
   }, [images]);
-  // Tips toggle (persisted)
-  const [showTips, setShowTips] = useState<boolean>(false);
-  
   const [contactMode, setContactMode] = useState<'DIRECT' | 'BROKER'>('DIRECT');
   const [contactPrefs, setContactPrefs] = useState<{ preferredHours?: string; chatFirst?: boolean; noCall?: boolean }>({ chatFirst: true });
   const [contactChannel, setContactChannel] = useState<"phone" | "email">("phone");
@@ -497,11 +494,6 @@ export default function NewPropertyPage() {
   };
 
   useEffect(() => {
-    // Tips preference
-    try {
-      const pref = localStorage.getItem("owner_post_tips");
-      if (pref !== null) setShowTips(pref === "1");
-    } catch {}
     if (!lightbox.open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeLightbox();
@@ -562,11 +554,6 @@ export default function NewPropertyPage() {
   const canPublish = useMemo(() => {
     return hasAnyVerifiedContact;
   }, [hasAnyVerifiedContact]);
-
-  // Persist tips preference
-  useEffect(() => {
-    try { localStorage.setItem("owner_post_tips", showTips ? "1" : "0"); } catch {}
-  }, [showTips]);
 
   // Evita que soltar arquivo fora do dropzone navegue para a imagem
   useEffect(() => {
@@ -1796,7 +1783,7 @@ export default function NewPropertyPage() {
     { id: 2, name: "Detalhes", description: "Quartos, banheiros e área" },
     { id: 3, name: "Fotos", description: "Imagens do imóvel" },
     { id: 4, name: "Descrição", description: "Título, texto e SEO" },
-    { id: 5, name: "Dados do proprietário", description: "Informações internas (opcional)" },
+    { id: 5, name: "Dados do Proprietário", description: "Informações internas (opcional)" },
     { id: 6, name: "Prévia do anúncio", description: "Ver como vai ficar e publicar" },
   ];
 
@@ -1953,49 +1940,6 @@ export default function NewPropertyPage() {
       setToast({ message: firstMsg, type: "error" });
     }
   };
-
-  function tipsForStep(step: number): string[] {
-    switch (step) {
-      case 1:
-        return [
-          "Defina Venda ou Aluguel primeiro para orientar os campos.",
-          "Preço sem centavos: use pontos para milhares (ex.: 450.000).",
-          "Escolha o tipo certo (Casa, Apto, etc.) para filtros funcionarem bem.",
-          "Preencha o endereço com cuidado para melhorar a busca e o mapa.",
-        ];
-      case 2:
-        return [
-          "Informe quartos/banheiros/área quando souber: ajuda o interessado a decidir.",
-          "Tags como 'Reformado', 'Vaga coberta' e 'Varanda' aumentam relevância.",
-          "Evite números exagerados; transparência gera melhores contatos.",
-        ];
-      case 3:
-        return [
-          "Adicione ao menos 1 foto; 8–15 fotos boas geram mais interesse.",
-          "Prefira luz natural; mantenha os ambientes organizados.",
-          "Arraste para ordenar; dá destaque às melhores fotos primeiro.",
-        ];
-      case 4:
-        return [
-          "Clique em 'Preencher Campos com IA' para gerar título, descrição e metas com base nos dados e fotos.",
-          "Depois você pode editar todos os campos manualmente.",
-          "Uma boa descrição aumenta a conversão e melhora a qualidade do anúncio.",
-        ];
-      case 5:
-        return [
-          "Esses dados são apenas para seu controle e não aparecem no anúncio.",
-          "Use para registrar informações do proprietário, comissão e chave.",
-          "Você pode preencher depois; essa etapa é opcional.",
-        ];
-      case 6:
-        return [
-          "Revise os dados com calma antes de publicar o anúncio.",
-          "Use os botões 'Editar' para voltar rapidamente a qualquer etapa.",
-        ];
-      default:
-        return [];
-    }
-  }
 
   async function handleGeocode() {
     if (!addressString) return;
@@ -2844,8 +2788,8 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
 
-                <div className="mb-6">
-                  {currentStep === 6 ? (
+                {currentStep === 6 && (
+                  <div className="mb-6">
                     <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
                       <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
                         <div className="px-4 pt-4 pb-4">
@@ -2868,43 +2812,8 @@ export default function NewPropertyPage() {
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
-                      <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
-                        <button
-                          type="button"
-                          onClick={() => setShowTips((v) => !v)}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-white/0 hover:bg-gray-50/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal shrink-0">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="M5.6 5.6l2.1 2.1"/><path d="M16.3 16.3l2.1 2.1"/><path d="M5.6 18.4l2.1-2.1"/><path d="M16.3 7.7l2.1-2.1"/></svg>
-                            </span>
-                            <div className="min-w-0">
-                              <h3 className="text-sm font-semibold text-gray-900">Dicas do passo</h3>
-                              <p className="text-[11px] text-gray-500 leading-4 truncate">
-                                {showTips ? "Clique para ocultar" : "Opcional — clique para ver"}
-                              </p>
-                            </div>
-                          </div>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showTips ? 'rotate-180' : ''}`} />
-                        </button>
-                        {showTips && (
-                          <ul className="px-4 pb-4 pt-1 text-[13px] text-gray-800 space-y-2">
-                            {tipsForStep(currentStep).map((t, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <span className="mt-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-r from-teal/15 to-teal-dark/15 text-teal">
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                                </span>
-                                <span>{t}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 <div className="sm:hidden fixed inset-x-0 bottom-0 z-[3000] bg-white/90 backdrop-blur border-t px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
                   <div className="flex gap-2">
@@ -3249,6 +3158,166 @@ export default function NewPropertyPage() {
                     </p>
                   </div>
 
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">Preencher com IA</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Gere título, texto e metas a partir dos dados do imóvel (1 preenchimento gratuito por anúncio).
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-col sm:flex-row justify-center gap-2">
+                      <button
+                        type="button"
+                        disabled={
+                          isGeneratingDescription ||
+                          aiDescriptionGenerations >= 1 ||
+                          images.some((i) => i.pending) ||
+                          !images.some((i) => i.url && !i.pending)
+                        }
+                        onClick={async () => {
+                          if (isGeneratingDescription) return;
+                          const readyImages = images
+                            .filter((i) => i.url && !i.pending)
+                            .map((i) => i.url)
+                            .slice(0, 10);
+                          if (readyImages.length === 0) {
+                            setToast({ message: "Adicione ao menos 1 foto antes de gerar a descrição.", type: "error" });
+                            return;
+                          }
+
+                          setIsGeneratingDescription(true);
+                          setAiGenerateWarning(null);
+                          try {
+                            const res = await fetch("/api/ai/property-description", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                title: finalTitle ? finalTitle : null,
+                                type,
+                                purpose: purpose || null,
+                                priceBRL: parseBRLToNumber(priceBRL) || null,
+                                neighborhood: neighborhood || null,
+                                city: city || null,
+                                state: state || null,
+                                bedrooms: bedrooms === "" ? null : Number(bedrooms),
+                                bathrooms: bathrooms === "" ? null : Number(bathrooms),
+                                areaM2: areaM2 === "" ? null : Number(areaM2),
+                                conditionTags,
+                                amenities: {
+                                  hasBalcony,
+                                  hasElevator,
+                                  hasPool,
+                                  hasGym,
+                                  hasPlayground,
+                                  hasPartyRoom,
+                                  hasGourmet,
+                                  hasConcierge24h,
+                                },
+                                images: readyImages,
+                              }),
+                            });
+
+                            const rawText = await res.text().catch(() => "");
+                            let json: any = null;
+                            try {
+                              json = rawText ? JSON.parse(rawText) : null;
+                            } catch {
+                              json = null;
+                            }
+                            if (res.status === 429) {
+                              setAiDescriptionGenerations(1);
+                              setToast({ message: json?.error || "Limite atingido para este imóvel", type: "error" });
+                              return;
+                            }
+                            if (!res.ok) {
+                              const details =
+                                (Array.isArray(json?.details)
+                                  ? json.details
+                                      .map((d: any) => {
+                                        const path = Array.isArray(d?.path) ? d.path.join(".") : String(d?.path || "");
+                                        const msg = String(d?.message || "");
+                                        return [path, msg].filter(Boolean).join(": ");
+                                      })
+                                      .filter(Boolean)
+                                      .slice(0, 4)
+                                      .join(" | ")
+                                  : null) ||
+                                (typeof json?.details === "string" ? json.details : null);
+
+                              const msg =
+                                json?.error ||
+                                details ||
+                                (json?.code ? `Erro (${json.code})` : null) ||
+                                `Falha ao gerar descrição (HTTP ${res.status})`;
+
+                              setToast({ message: msg, type: "error" });
+                              return;
+                            }
+
+                            const nextTitle = (json?.data?.title as string | undefined) || "";
+                            const nextMetaTitle = (json?.data?.metaTitle as string | undefined) || "";
+                            const nextMetaDescription = (json?.data?.metaDescription as string | undefined) || "";
+                            const text = (json?.data?.description as string | undefined) || "";
+
+                            const warning = json?.data?._aiWarning;
+                            const consumed = !!json?.data?.generationConsumed;
+                            if (warning || !text.trim()) {
+                              const extra =
+                                warning?.code ||
+                                (typeof warning?.status === "number" ? `HTTP ${warning.status}` : "") ||
+                                "";
+                              setAiGenerateWarning(
+                                "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
+                              );
+                              setToast({ message: `IA indisponível no momento${extra ? ` (${extra})` : ""} — preencha manualmente.`, type: "info" });
+                              if (!consumed) {
+                                setAiDescriptionGenerations(0);
+                              }
+                            }
+
+                            if (nextTitle.trim()) setCustomTitle(nextTitle);
+                            if (text.trim()) setDescription(text);
+                            if (nextMetaTitle.trim()) setMetaTitle(nextMetaTitle);
+                            if (nextMetaDescription.trim()) setMetaDescription(nextMetaDescription);
+                            if (consumed) {
+                              setAiDescriptionGenerations(1);
+                            }
+                            setToast({ message: consumed ? "Campos preenchidos com IA!" : "Campos atualizados (revise manualmente).", type: consumed ? "success" : "info" });
+                          } catch {
+                            setAiGenerateWarning(
+                              "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
+                            );
+                            setToast({ message: "IA indisponível no momento — preencha manualmente.", type: "info" });
+                          } finally {
+                            setIsGeneratingDescription(false);
+                          }
+                        }}
+                        className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isGeneratingDescription
+                          ? "Gerando..."
+                          : aiDescriptionGenerations >= 1
+                          ? "Limite atingido"
+                          : "Preencher Campos com IA"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDescription("");
+                          setMetaTitle("");
+                          setMetaDescription("");
+                          setVideoUrl("");
+                        }}
+                        className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                      >
+                        Limpar campos
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <div className="lg:col-span-7 space-y-4">
                       <div className="pt-2">
@@ -3295,160 +3364,6 @@ export default function NewPropertyPage() {
                     </div>
 
                     <div className="lg:col-span-5 space-y-4">
-                      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                        <div className="flex flex-col sm:flex-row lg:flex-col gap-2">
-                          <button
-                            type="button"
-                            disabled={
-                              isGeneratingDescription ||
-                              aiDescriptionGenerations >= 1 ||
-                              images.some((i) => i.pending) ||
-                              !images.some((i) => i.url && !i.pending)
-                            }
-                            onClick={async () => {
-                              if (isGeneratingDescription) return;
-                              const readyImages = images
-                                .filter((i) => i.url && !i.pending)
-                                .map((i) => i.url)
-                                .slice(0, 10);
-                              if (readyImages.length === 0) {
-                                setToast({ message: "Adicione ao menos 1 foto antes de gerar a descrição.", type: "error" });
-                                return;
-                              }
-
-                              setIsGeneratingDescription(true);
-                              setAiGenerateWarning(null);
-                              try {
-                                const res = await fetch("/api/ai/property-description", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({
-                                    title: finalTitle ? finalTitle : null,
-                                    type,
-                                    purpose: purpose || null,
-                                    priceBRL: parseBRLToNumber(priceBRL) || null,
-                                    neighborhood: neighborhood || null,
-                                    city: city || null,
-                                    state: state || null,
-                                    bedrooms: bedrooms === "" ? null : Number(bedrooms),
-                                    bathrooms: bathrooms === "" ? null : Number(bathrooms),
-                                    areaM2: areaM2 === "" ? null : Number(areaM2),
-                                    conditionTags,
-                                    amenities: {
-                                      hasBalcony,
-                                      hasElevator,
-                                      hasPool,
-                                      hasGym,
-                                      hasPlayground,
-                                      hasPartyRoom,
-                                      hasGourmet,
-                                      hasConcierge24h,
-                                    },
-                                    images: readyImages,
-                                  }),
-                                });
-
-                                const rawText = await res.text().catch(() => "");
-                                let json: any = null;
-                                try {
-                                  json = rawText ? JSON.parse(rawText) : null;
-                                } catch {
-                                  json = null;
-                                }
-                                if (res.status === 429) {
-                                  setAiDescriptionGenerations(1);
-                                  setToast({ message: json?.error || "Limite atingido para este imóvel", type: "error" });
-                                  return;
-                                }
-                                if (!res.ok) {
-                                  const details =
-                                    (Array.isArray(json?.details)
-                                      ? json.details
-                                          .map((d: any) => {
-                                            const path = Array.isArray(d?.path) ? d.path.join(".") : String(d?.path || "");
-                                            const msg = String(d?.message || "");
-                                            return [path, msg].filter(Boolean).join(": ");
-                                          })
-                                          .filter(Boolean)
-                                          .slice(0, 4)
-                                          .join(" | ")
-                                      : null) ||
-                                    (typeof json?.details === "string" ? json.details : null);
-
-                                  const msg =
-                                    json?.error ||
-                                    details ||
-                                    (json?.code ? `Erro (${json.code})` : null) ||
-                                    `Falha ao gerar descrição (HTTP ${res.status})`;
-
-                                  setToast({ message: msg, type: "error" });
-                                  return;
-                                }
-
-                                const nextTitle = (json?.data?.title as string | undefined) || "";
-                                const nextMetaTitle = (json?.data?.metaTitle as string | undefined) || "";
-                                const nextMetaDescription = (json?.data?.metaDescription as string | undefined) || "";
-                                const text = (json?.data?.description as string | undefined) || "";
-
-                                const warning = json?.data?._aiWarning;
-                                const consumed = !!json?.data?.generationConsumed;
-                                if (warning || !text.trim()) {
-                                  const extra =
-                                    warning?.code ||
-                                    (typeof warning?.status === "number" ? `HTTP ${warning.status}` : "") ||
-                                    "";
-                                  setAiGenerateWarning(
-                                    "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
-                                  );
-                                  setToast({ message: `IA indisponível no momento${extra ? ` (${extra})` : ""} — preencha manualmente.`, type: "info" });
-                                  if (!consumed) {
-                                    setAiDescriptionGenerations(0);
-                                  }
-                                }
-
-                                // Se a IA voltou em modo fallback, o backend pode enviar description vazia.
-                                // Nesses casos, não bloqueia o usuário com erro e não sobrescreve campos com vazio.
-
-                                if (nextTitle.trim()) setCustomTitle(nextTitle);
-                                if (text.trim()) setDescription(text);
-                                if (nextMetaTitle.trim()) setMetaTitle(nextMetaTitle);
-                                if (nextMetaDescription.trim()) setMetaDescription(nextMetaDescription);
-                                if (consumed) {
-                                  setAiDescriptionGenerations(1);
-                                }
-                                setToast({ message: consumed ? "Campos preenchidos com IA!" : "Campos atualizados (revise manualmente).", type: consumed ? "success" : "info" });
-                              } catch {
-                                setAiGenerateWarning(
-                                  "A OpenAI está passando por dificuldades técnicas no momento. Por favor, preencha o título e o texto do anúncio manualmente e tente novamente mais tarde."
-                                );
-                                setToast({ message: "IA indisponível no momento — preencha manualmente.", type: "info" });
-                              } finally {
-                                setIsGeneratingDescription(false);
-                              }
-                            }}
-                            className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isGeneratingDescription
-                              ? "Gerando..."
-                              : aiDescriptionGenerations >= 1
-                              ? "Limite atingido"
-                              : "Preencher Campos com IA"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDescription("");
-                              setMetaTitle("");
-                              setMetaDescription("");
-                              setVideoUrl("");
-                            }}
-                            className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
-                          >
-                            Limpar campos
-                          </button>
-                        </div>
-                      </div>
-
                       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                           <div>
@@ -4138,7 +4053,7 @@ export default function NewPropertyPage() {
               {currentStep === 5 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Dados do proprietário</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Dados do Proprietário e Privacidade do Anúncio</h2>
                     <p className="text-sm text-gray-600 mt-1">
                       Informações internas para seu controle. Esses dados <strong>não aparecem no anúncio</strong> e só você pode ver.
                     </p>
