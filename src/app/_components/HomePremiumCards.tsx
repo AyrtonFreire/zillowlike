@@ -171,10 +171,7 @@ function CardOverlay({
           contentAlign === "bottom" ? "justify-end" : "justify-center"
         }`}
       >
-        <div className={`inline-flex w-fit items-center rounded-full border px-3 py-1.5 text-[11px] font-semibold ${a.chip}`}>
-          OggaHub
-        </div>
-        <h3 className="mt-4 text-2xl lg:text-3xl font-display text-white max-w-[30rem]">
+        <h3 className="text-2xl lg:text-3xl font-display text-white max-w-[30rem]">
           {card.title}
         </h3>
         <p className="mt-3 text-sm lg:text-base text-white/80 leading-relaxed max-w-[36rem]">
@@ -210,10 +207,7 @@ function MobileCard({ card }: { card: Card }) {
       </div>
 
       <div className="absolute inset-0 p-4 flex flex-col justify-end">
-        <div className={`inline-flex w-fit items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${a.chip}`}>
-          OggaHub
-        </div>
-        <p className="mt-2 text-base font-semibold text-white leading-snug">
+        <p className="text-base font-semibold text-white leading-snug">
           {card.title}
         </p>
         <p className="mt-1 text-xs text-white/75 line-clamp-2">{card.desc}</p>

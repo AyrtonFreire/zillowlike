@@ -420,6 +420,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   const mapFinishFloorToDraft = (v?: string | null) => {
     const s = (v || "").toString().toUpperCase();
     if (s === "PORCELANATO") return "porcelanato";
+    if (s === "CERAMICA") return "ceramica";
     if (s === "MADEIRA") return "madeira";
     if (s === "VINILICO") return "vinilico";
     return "";

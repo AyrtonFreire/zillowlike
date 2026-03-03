@@ -88,6 +88,10 @@ export default function LeadDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [isEditingClientNotes, setIsEditingClientNotes] = useState(false);
+  const [clientNotesDraft, setClientNotesDraft] = useState("");
+  const [clientNotesSaving, setClientNotesSaving] = useState(false);
+
   const [similarItems, setSimilarItems] = useState<SimilarPropertyItem[]>([]);
   const [similarLoading, setSimilarLoading] = useState(false);
   const [similarError, setSimilarError] = useState<string | null>(null);
@@ -172,6 +176,44 @@ export default function LeadDetailPage() {
       setLoading(false);
     }
   }, [leadId]);
+
+  const handleEditClientNotes = useCallback(() => {
+    setClientNotesDraft(lead?.clientNotes || "");
+    setIsEditingClientNotes(true);
+  }, [lead?.clientNotes]);
+
+  const handleCancelClientNotes = useCallback(() => {
+    setIsEditingClientNotes(false);
+    setClientNotesDraft("");
+  }, []);
+
+  const handleSaveClientNotes = useCallback(async () => {
+    if (!leadId) return;
+    try {
+      setClientNotesSaving(true);
+      const response = await fetch(`/api/leads/${leadId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clientNotes: clientNotesDraft }),
+        }
+      );
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || "Não foi possível salvar as observações.");
+      }
+
+      setLead(data.lead);
+      setIsEditingClientNotes(false);
+      toast.success("Observações salvas");
+    } catch (err: any) {
+      console.error("Error saving client notes:", err);
+      toast.error("Erro ao salvar", err?.message || "Não foi possível salvar as observações.");
+    } finally {
+      setClientNotesSaving(false);
+    }
+  }, [leadId, clientNotesDraft, toast]);
 
   const fetchSimilar = useCallback(async () => {
     try {
@@ -468,10 +510,50 @@ export default function LeadDetailPage() {
               </div>
 
               <div className="mt-3 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                <div className="font-semibold text-gray-800">Observações</div>
-                <div className="mt-1 whitespace-pre-wrap">
-                  {lead.clientNotes || lead.message || "Não informado"}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-semibold text-gray-800">Observações</div>
+                  {!isEditingClientNotes ? (
+                    <button
+                      type="button"
+                      onClick={handleEditClientNotes}
+                      className="text-[11px] font-semibold text-teal-700 hover:text-teal-800"
+                    >
+                      Editar
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCancelClientNotes}
+                        disabled={clientNotesSaving}
+                        className="text-[11px] font-semibold text-gray-600 hover:text-gray-700 disabled:opacity-60"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveClientNotes}
+                        disabled={clientNotesSaving}
+                        className="text-[11px] font-semibold text-teal-700 hover:text-teal-800 disabled:opacity-60"
+                      >
+                        {clientNotesSaving ? "Salvando..." : "Salvar"}
+                      </button>
+                    </div>
+                  )}
                 </div>
+
+                {!isEditingClientNotes ? (
+                  <div className="mt-1 whitespace-pre-wrap">
+                    {lead.clientNotes || lead.message || "Não informado"}
+                  </div>
+                ) : (
+                  <textarea
+                    value={clientNotesDraft}
+                    onChange={(e) => setClientNotesDraft(e.target.value)}
+                    rows={4}
+                    className="mt-2 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-[12px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-300"
+                  />
+                )}
               </div>
             </div>
           </div>

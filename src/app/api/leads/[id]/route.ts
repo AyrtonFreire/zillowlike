@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
+import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
@@ -229,6 +230,278 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     logger.error("Error fetching lead by id", { error });
     return NextResponse.json(
       { error: "Não conseguimos carregar este lead agora." },
+      { status: 500 }
+    );
+  }
+}
+
+const patchSchema = z
+  .object({
+    clientNotes: z.string().max(2000, "As observações estão muito longas.").nullable().optional(),
+  })
+  .strict();
+
+export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  try {
+    const session: any = await getServerSession(authOptions);
+
+    if (!session) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    }
+
+    const userId = session.userId || session.user?.id;
+    const role = session.role || session.user?.role;
+
+    if (!userId) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    }
+
+    const { id } = await context.params;
+
+    const json = await req.json().catch(() => null);
+    const parsed = patchSchema.safeParse(json);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Dados inválidos", issues: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+
+    const lead = await (prisma as any).lead.findUnique({
+      where: { id },
+      include: {
+        property: {
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            type: true,
+            city: true,
+            state: true,
+            neighborhood: true,
+            street: true,
+            bedrooms: true,
+            bathrooms: true,
+            areaM2: true,
+            builtAreaM2: true,
+            usableAreaM2: true,
+            lotAreaM2: true,
+            privateAreaM2: true,
+            suites: true,
+            parkingSpots: true,
+            floor: true,
+            furnished: true,
+            petFriendly: true,
+            condoFee: true,
+            purpose: true,
+            teamId: true,
+            ownerId: true,
+            images: {
+              take: 1,
+              orderBy: { sortOrder: "asc" },
+            },
+          },
+        },
+        contact: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        realtor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!lead) {
+      return NextResponse.json({ error: "Lead não encontrado" }, { status: 404 });
+    }
+
+    let agencyTeamId: string | null = null;
+    if (role === "AGENCY") {
+      const profile = await (prisma as any).agencyProfile.findUnique({
+        where: { userId: String(userId) },
+        select: { teamId: true },
+      });
+      agencyTeamId = profile?.teamId ? String(profile.teamId) : null;
+
+      if (!agencyTeamId) {
+        return NextResponse.json({ error: "Perfil de agência sem time associado." }, { status: 403 });
+      }
+    }
+
+    let isTeamOwner = false;
+    const teamId = (lead as any).teamId || (lead.property as any)?.teamId || null;
+
+    if (teamId) {
+      const team = await (prisma as any).team.findUnique({
+        where: { id: teamId },
+        select: { ownerId: true },
+      });
+
+      if (team && team.ownerId === userId) {
+        isTeamOwner = true;
+      }
+    }
+
+    if (role === "AGENCY") {
+      const effectiveTeamId = teamId ? String(teamId) : null;
+      const sameTeam = !!effectiveTeamId && !!agencyTeamId && effectiveTeamId === String(agencyTeamId);
+
+      let realtorIsTeamMember = false;
+      const realtorId = (lead as any)?.realtorId ? String((lead as any).realtorId) : "";
+      if (!sameTeam && realtorId) {
+        const membership = await (prisma as any).teamMember.findFirst({
+          where: {
+            teamId: String(agencyTeamId),
+            userId: realtorId,
+          },
+          select: { id: true },
+        });
+        realtorIsTeamMember = !!membership?.id;
+      }
+
+      if (!sameTeam && !realtorIsTeamMember) {
+        return NextResponse.json({ error: "Você só pode editar leads do seu time." }, { status: 403 });
+      }
+    }
+
+    if (role !== "ADMIN" && (lead as any).realtorId !== userId && !isTeamOwner) {
+      return NextResponse.json(
+        {
+          error:
+            "Você só pode editar observações dos leads que está atendendo ou que pertencem a times dos quais você é responsável.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const rawNotes = parsed.data.clientNotes;
+    const normalizedNotes =
+      typeof rawNotes === "string"
+        ? rawNotes.trim().length
+          ? rawNotes.trim()
+          : null
+        : rawNotes === null
+          ? null
+          : undefined;
+
+    const updated = await (prisma as any).lead.update({
+      where: { id },
+      data: {
+        ...(normalizedNotes === undefined ? {} : { clientNotes: normalizedNotes }),
+      },
+      include: {
+        property: {
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            type: true,
+            city: true,
+            state: true,
+            neighborhood: true,
+            street: true,
+            bedrooms: true,
+            bathrooms: true,
+            areaM2: true,
+            builtAreaM2: true,
+            usableAreaM2: true,
+            lotAreaM2: true,
+            privateAreaM2: true,
+            suites: true,
+            parkingSpots: true,
+            floor: true,
+            furnished: true,
+            petFriendly: true,
+            condoFee: true,
+            purpose: true,
+            teamId: true,
+            ownerId: true,
+            images: {
+              take: 1,
+              orderBy: { sortOrder: "asc" },
+            },
+          },
+        },
+        contact: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        realtor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    const normalizedLead = {
+      ...updated,
+      property: updated.property
+        ? {
+            ...updated.property,
+            price: jsonSafe(updated.property.price),
+            condoFee: jsonSafe((updated.property as any).condoFee),
+          }
+        : updated.property,
+    };
+
+    void createAuditLog({
+      level: "INFO",
+      action: "LEAD_CLIENT_NOTES_UPDATE",
+      actorId: String(userId),
+      actorEmail: session.user?.email || null,
+      actorRole: String(role || ""),
+      targetType: "LEAD",
+      targetId: String(id),
+      metadata: {
+        updatedClientNotes: normalizedNotes !== undefined,
+      },
+    });
+
+    if ((updated as any).realtorId) {
+      try {
+        await RealtorAssistantService.recalculateForRealtor(String((updated as any).realtorId));
+      } catch {
+        // ignore
+      }
+    }
+
+    return NextResponse.json({ success: true, lead: normalizedLead });
+  } catch (error) {
+    captureException(error, { route: "/api/leads/[id]" });
+    logger.error("Error patching lead", { error });
+    return NextResponse.json(
+      { error: "Não conseguimos salvar as observações deste lead agora." },
       { status: 500 }
     );
   }

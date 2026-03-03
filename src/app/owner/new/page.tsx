@@ -43,6 +43,7 @@ export default function NewPropertyPage() {
   const stepperScrollRef = useRef<HTMLDivElement | null>(null);
   const stepperItemRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const formRef = useRef<HTMLFormElement | null>(null);
+  const submitIntentRef = useRef(false);
   
   const [description, setDescription] = useState("");
   const [aiDescriptionGenerations, setAiDescriptionGenerations] = useState<number>(0);
@@ -100,8 +101,8 @@ export default function NewPropertyPage() {
   const [finishCounterQuartz, setFinishCounterQuartz] = useState(false);
   const [viewSea, setViewSea] = useState(false);
   const [viewCity, setViewCity] = useState(false);
-  const [positionFront, setPositionFront] = useState(false); // frente
-  const [positionBack, setPositionBack] = useState(false); // fundos
+  const [positionFront, setPositionFront] = useState(false);
+  const [positionBack, setPositionBack] = useState(false);
   const [petsSmall, setPetsSmall] = useState(false);
   const [petsLarge, setPetsLarge] = useState(false);
   const [secCCTV, setSecCCTV] = useState(false);
@@ -201,12 +202,15 @@ export default function NewPropertyPage() {
   };
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
     const el = stepperItemRefs.current[currentStep];
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }, [currentStep]);
   const CONDITION_STATUS_OPTIONS: string[] = useMemo(
-    () => ["Novo", "Reformado", "Em obras", "Em construção", "Na planta"],
+    () => ["Novo", "Imóvel usado", "Reformado", "Em obras", "Em construção", "Na planta"],
     []
   );
   const CONDITION_EXTRA_OPTIONS: string[] = useMemo(
@@ -447,7 +451,7 @@ export default function NewPropertyPage() {
   const [privateBrokerFeeFixedBRL, setPrivateBrokerFeeFixedBRL] = useState("");
   const [privateExclusive, setPrivateExclusive] = useState(false);
   const [privateExclusiveUntil, setPrivateExclusiveUntil] = useState("");
-  const [privateOccupied, setPrivateOccupied] = useState(false);
+  const [privateOccupied, setPrivateOccupied] = useState<boolean | null>(null);
   const [privateOccupantInfo, setPrivateOccupantInfo] = useState("");
   const [privateKeyLocation, setPrivateKeyLocation] = useState("");
   const [privateNotes, setPrivateNotes] = useState("");
@@ -1041,7 +1045,7 @@ export default function NewPropertyPage() {
     setPrivateBrokerFeeFixedBRL("");
     setPrivateExclusive(false);
     setPrivateExclusiveUntil("");
-    setPrivateOccupied(false);
+    setPrivateOccupied(null);
     setPrivateOccupantInfo("");
     setPrivateKeyLocation("");
     setPrivateNotes("");
@@ -1194,7 +1198,8 @@ export default function NewPropertyPage() {
       if (d.privateBrokerFeeFixedBRL) setPrivateBrokerFeeFixedBRL(d.privateBrokerFeeFixedBRL);
       if (typeof d.privateExclusive === 'boolean') setPrivateExclusive(d.privateExclusive);
       if (d.privateExclusiveUntil) setPrivateExclusiveUntil(d.privateExclusiveUntil);
-      if (typeof d.privateOccupied === 'boolean') setPrivateOccupied(d.privateOccupied);
+      if (d.privateOccupied === null) setPrivateOccupied(null);
+      else if (typeof d.privateOccupied === 'boolean') setPrivateOccupied(d.privateOccupied);
       if (d.privateOccupantInfo) setPrivateOccupantInfo(d.privateOccupantInfo);
       if (d.privateKeyLocation) setPrivateKeyLocation(d.privateKeyLocation);
       if (d.privateNotes) setPrivateNotes(d.privateNotes);
@@ -1324,7 +1329,8 @@ export default function NewPropertyPage() {
         if (d.privateBrokerFeeFixedBRL) setPrivateBrokerFeeFixedBRL(d.privateBrokerFeeFixedBRL);
         if (typeof d.privateExclusive === 'boolean') setPrivateExclusive(d.privateExclusive);
         if (d.privateExclusiveUntil) setPrivateExclusiveUntil(d.privateExclusiveUntil);
-        if (typeof d.privateOccupied === 'boolean') setPrivateOccupied(d.privateOccupied);
+        if (d.privateOccupied === null) setPrivateOccupied(null);
+        else if (typeof d.privateOccupied === 'boolean') setPrivateOccupied(d.privateOccupied);
         if (d.privateOccupantInfo) setPrivateOccupantInfo(d.privateOccupantInfo);
         if (d.privateKeyLocation) setPrivateKeyLocation(d.privateKeyLocation);
         if (d.privateNotes) setPrivateNotes(d.privateNotes);
@@ -1671,7 +1677,7 @@ export default function NewPropertyPage() {
       comfortNoiseWindows,
       comfortLED,
       comfortWaterReuse,
-      finishFloor: finishFloor ? (finishFloor === "porcelanato" ? "PORCELANATO" : finishFloor === "madeira" ? "MADEIRA" : finishFloor === "vinilico" ? "VINILICO" : "OUTRO") : null,
+      finishFloor: finishFloor ? (finishFloor === "porcelanato" ? "PORCELANATO" : finishFloor === "madeira" ? "MADEIRA" : finishFloor === "vinilico" ? "VINILICO" : finishFloor === "ceramica" ? "CERAMICA" : "OUTRO") : null,
       finishCabinets,
       finishCounterGranite,
       finishCounterQuartz,
@@ -1777,6 +1783,8 @@ export default function NewPropertyPage() {
     videoUrl,
     viewCity,
     viewSea,
+    positionBack,
+    positionFront,
     yearBuilt,
     yearRenovated,
   ]);
@@ -2015,6 +2023,13 @@ export default function NewPropertyPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (currentStep !== 6 || !submitIntentRef.current) {
+      return;
+    }
+
+    submitIntentRef.current = false;
+    setSubmitIntent(false);
+
     setFieldErrors({});
 
     if (finalTitle.length < 3) {
@@ -2123,7 +2138,7 @@ export default function NewPropertyPage() {
           comfortLED,
           comfortWaterReuse,
           // Acabamentos
-          finishFloor: !finishFloor ? null : (finishFloor === 'porcelanato' ? 'PORCELANATO' : finishFloor === 'madeira' ? 'MADEIRA' : finishFloor === 'vinilico' ? 'VINILICO' : 'OUTRO'),
+          finishFloor: !finishFloor ? null : (finishFloor === 'porcelanato' ? 'PORCELANATO' : finishFloor === 'madeira' ? 'MADEIRA' : finishFloor === 'vinilico' ? 'VINILICO' : finishFloor === 'ceramica' ? 'CERAMICA' : 'OUTRO'),
           finishCabinets,
           finishCounterGranite,
           finishCounterQuartz,
@@ -2151,7 +2166,7 @@ export default function NewPropertyPage() {
           brokerFeeFixed: privateBrokerFeeFixedBRL ? parseBRLToNumber(privateBrokerFeeFixedBRL) * 100 : null,
           exclusive: privateExclusive,
           exclusiveUntil: privateExclusiveUntil ? new Date(privateExclusiveUntil).toISOString() : null,
-          occupied: privateOccupied,
+          occupied: privateOccupied === null ? undefined : privateOccupied,
           occupantInfo: privateOccupantInfo || null,
           keyLocation: privateKeyLocation || null,
           notes: privateNotes || null,
@@ -2853,6 +2868,7 @@ export default function NewPropertyPage() {
                         type="button"
                         onClick={() => {
                           if (isSubmitting) return;
+                          submitIntentRef.current = true;
                           setSubmitIntent(true);
                           void handleSubmit({ preventDefault: () => {} } as any);
                         }}
@@ -3687,6 +3703,7 @@ export default function NewPropertyPage() {
                             <Select label="Piso principal" value={finishFloor} onChange={(e) => setFinishFloor(e.target.value)} optional>
                               <option value="">Selecione</option>
                               <option value="porcelanato">Porcelanato</option>
+                              <option value="ceramica">Cerâmica</option>
                               <option value="madeira">Madeira</option>
                               <option value="vinilico">Vinílico</option>
                             </Select>
@@ -3718,8 +3735,8 @@ export default function NewPropertyPage() {
                             <div className="grid grid-cols-2 gap-3">
                               <Checkbox checked={viewSea} onChange={(e) => setViewSea(e.target.checked)} label="Vista para o mar" />
                               <Checkbox checked={viewCity} onChange={(e) => setViewCity(e.target.checked)} label="Vista para cidade" />
-                              <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="De frente (voltado para a rua)" />
-                              <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Fundos (mais silencioso)" />
+                              <Checkbox checked={positionFront} onChange={(e) => setPositionFront(e.target.checked)} label="Vista para o rio" />
+                              <Checkbox checked={positionBack} onChange={(e) => setPositionBack(e.target.checked)} label="Vista para o lago" />
                             </div>
                             <Input label="Sol nos cômodos (opcional)" value={sunByRoomNote} onChange={(e) => setSunByRoomNote(e.target.value)} optional />
                             <Select label="Orientação do sol" value={sunOrientation} onChange={(e) => setSunOrientation(e.target.value)} optional>
@@ -4092,10 +4109,15 @@ export default function NewPropertyPage() {
                     <div className="space-y-4">
                       <Checkbox
                         label="Imóvel está ocupado"
-                        checked={privateOccupied}
-                        onChange={(e) => setPrivateOccupied(e.target.checked)}
+                        checked={privateOccupied === true}
+                        onChange={(e) => setPrivateOccupied(e.target.checked ? true : null)}
                       />
-                      {privateOccupied && (
+                      <Checkbox
+                        label="Imóvel desocupado"
+                        checked={privateOccupied === false}
+                        onChange={(e) => setPrivateOccupied(e.target.checked ? false : null)}
+                      />
+                      {privateOccupied === true && (
                         <Input
                           label="Quem mora / informações do contrato"
                           value={privateOccupantInfo}
@@ -4461,6 +4483,7 @@ export default function NewPropertyPage() {
                     type="button"
                     onClick={() => {
                       if (isSubmitting) return;
+                      submitIntentRef.current = true;
                       setSubmitIntent(true);
                       void handleSubmit({ preventDefault: () => {} } as any);
                     }}

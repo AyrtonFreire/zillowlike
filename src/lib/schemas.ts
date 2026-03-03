@@ -13,7 +13,7 @@ export const PropertyTypeEnum = z.enum([
 ]);
 
 export const PurposeEnum = z.enum(["SALE", "RENT"]);
-export const FinishFloorEnum = z.enum(["PORCELANATO","MADEIRA","VINILICO","OUTRO"]);
+export const FinishFloorEnum = z.enum(["PORCELANATO","CERAMICA","MADEIRA","VINILICO","OUTRO"]);
 export const SunOrientationEnum = z.enum(["NASCENTE","POENTE","OUTRA"]);
 
 // Free-form condition/features tags (display-only), capped by length and count

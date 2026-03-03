@@ -12,6 +12,7 @@ export const ptBR = {
   purpose: (p?: string) => (p === 'RENT' ? 'Aluguel' : p === 'SALE' ? 'Venda' : ''),
   finishFloor: (v?: string | null) => (
     v === 'PORCELANATO' ? 'Porcelanato' :
+    v === 'CERAMICA' ? 'Cerâmica' :
     v === 'MADEIRA' ? 'Madeira' :
     v === 'VINILICO' ? 'Vinílico' :
     v ? 'Outro' : ''
@@ -45,8 +46,8 @@ export const ptBR = {
     finishCounterQuartz: 'Bancada em quartzo',
     viewSea: 'Vista para o mar',
     viewCity: 'Vista para a cidade',
-    positionFront: 'Frente',
-    positionBack: 'Fundos',
+    positionFront: 'Vista para o rio',
+    positionBack: 'Vista para o lago',
     petsSmall: 'Aceita pets pequenos',
     petsLarge: 'Aceita pets grandes',
   } as Record<string,string>)[key] || key,

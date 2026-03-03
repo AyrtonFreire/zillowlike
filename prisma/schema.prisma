@@ -86,6 +86,7 @@ enum ClientMatchScope {
 // Floor finish types (from form)
 enum FinishFloor {
   PORCELANATO
+  CERAMICA
   MADEIRA
   VINILICO
   OUTRO
