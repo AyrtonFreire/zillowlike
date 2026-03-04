@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Home, Building2, Landmark, Building, Warehouse, House, Camera, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft, Eye, X } from "lucide-react";
+import { Home, Building2, Landmark, Building, Warehouse, House, Camera, MapPin as MapPinIcon, MessageCircle, Phone, Mail, ChevronDown, ArrowLeft, X } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -2790,28 +2790,13 @@ export default function NewPropertyPage() {
 
                 {currentStep === 6 && (
                   <div className="mb-6">
-                    <div className="relative rounded-2xl p-[1px] bg-gradient-to-r from-teal/25 to-teal-dark/25">
-                      <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/40 shadow-sm">
-                        <div className="px-4 pt-4 pb-4">
-                          <div className="flex items-start gap-3">
-                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r from-teal/10 to-teal-dark/10 text-teal ring-1 ring-black/5">
-                              <Eye className="w-5 h-5" />
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="text-sm font-semibold text-gray-900">Prévia em tela cheia</h3>
-                              <p className="text-[11px] text-gray-500 leading-4">Abra para ver o anúncio com mais espaço e em formato de página.</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setFullscreenPreviewOpen(true)}
-                            className="mt-3 w-full px-4 py-2.5 rounded-xl glass-teal text-white font-semibold text-sm hover:opacity-95 transition-opacity"
-                          >
-                            Ver prévia
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFullscreenPreviewOpen(true)}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                    >
+                      Ver Prévia Em Tela Cheia
+                    </button>
                   </div>
                 )}
 
@@ -4242,10 +4227,6 @@ export default function NewPropertyPage() {
                   <p className="text-sm text-gray-600">
                     Esta é uma prévia do seu anúncio antes de publicar. Os botões de contato e ações estão desativados nesta tela.
                   </p>
-
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    <span className="font-semibold">Prévia — rascunho:</span> o anúncio ainda não está público.
-                  </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <div className="lg:col-span-8">
