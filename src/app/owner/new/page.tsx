@@ -23,6 +23,7 @@ import Textarea from "@/components/ui/Textarea";
 import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 
 type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File; width?: number; height?: number };
+type PublishedProperty = { id: string; title: string; url: string; imageUrl?: string | null };
 
 export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -30,7 +31,7 @@ export default function NewPropertyPage() {
   const [toast, setToast] = useState<{ message: string; type?: "success"|"error"|"info" } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitIntent, setSubmitIntent] = useState(false);
-  const [publishedProperty, setPublishedProperty] = useState<{ id: string; title: string; url: string } | null>(null);
+  const [publishedProperty, setPublishedProperty] = useState<PublishedProperty | null>(null);
 
   const [userRole, setUserRole] = useState<string>("USER");
   const [agencyTeamId, setAgencyTeamId] = useState<string | null>(null);
@@ -948,7 +949,7 @@ export default function NewPropertyPage() {
   const SAVE_KEY = "owner_new_draft";
   const LAST_PUBLISHED_KEY = "owner_new_last_published";
 
-  const setLastPublished = (p: { id: string; title: string; url: string } | null) => {
+  const setLastPublished = (p: PublishedProperty | null) => {
     if (typeof window === "undefined") return;
     try {
       if (!p) {
@@ -959,7 +960,7 @@ export default function NewPropertyPage() {
     } catch {}
   };
 
-  const getLastPublished = (): { id: string; title: string; url: string } | null => {
+  const getLastPublished = (): PublishedProperty | null => {
     if (typeof window === "undefined") return null;
     try {
       const raw = window.sessionStorage.getItem(LAST_PUBLISHED_KEY);
@@ -967,7 +968,12 @@ export default function NewPropertyPage() {
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== "object") return null;
       if (typeof parsed.id !== "string" || typeof parsed.title !== "string" || typeof parsed.url !== "string") return null;
-      return { id: parsed.id, title: parsed.title, url: parsed.url };
+      return {
+        id: parsed.id,
+        title: parsed.title,
+        url: parsed.url,
+        imageUrl: typeof parsed.imageUrl === "string" ? parsed.imageUrl : null,
+      };
     } catch {
       return null;
     }
@@ -2265,6 +2271,9 @@ export default function NewPropertyPage() {
       // Mostrar tela de sucesso com compartilhamento
       const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
       const propertyUrl = `${siteUrl}${buildPropertyPath(result.id, finalTitle)}`;
+      const firstImageUrl = Array.isArray(result?.images)
+        ? (result.images.find((img: any) => typeof img?.url === "string" && img.url.trim())?.url as string | undefined)
+        : undefined;
       
       // Limpa rascunho após publicação bem-sucedida
       clearDraft();
@@ -2274,12 +2283,14 @@ export default function NewPropertyPage() {
         id: result.id,
         title: finalTitle,
         url: propertyUrl,
+        imageUrl: firstImageUrl || null,
       });
 
       setLastPublished({
         id: result.id,
         title: finalTitle,
         url: propertyUrl,
+        imageUrl: firstImageUrl || null,
       });
       
       setToast({ message: "Imóvel publicado com sucesso!", type: "success" });
@@ -2588,63 +2599,74 @@ export default function NewPropertyPage() {
                     WhatsApp
                   </a>
 
-                  {/* Status do WhatsApp */}
+                  {/* Status com Foto (mobile) */}
                   <button
                     type="button"
                     onClick={async () => {
-                      const shareUrl = publishedProperty.url;
-                      const shareTitle = publishedProperty.title;
-
-                      const ua =
-                        typeof navigator !== "undefined"
-                          ? String((navigator as any).userAgent || "")
-                          : "";
+                      const ua = typeof navigator !== "undefined" ? String((navigator as any).userAgent || "") : "";
                       const isMobileUa =
                         (navigator as any)?.userAgentData?.mobile === true ||
                         /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
 
-                      if (isMobileUa && typeof navigator !== "undefined" && "share" in navigator) {
-                        try {
-                          await (navigator as any).share({
-                            title: shareTitle,
-                            text: `Confira este imóvel: ${shareTitle}`,
-                            url: shareUrl,
+                      if (!isMobileUa) {
+                        setToast({ message: "Esse botão é para celular (Status do WhatsApp).", type: "info" });
+                        return;
+                      }
+
+                      const nav: any = typeof navigator !== "undefined" ? navigator : null;
+                      if (!nav || typeof nav.share !== "function") {
+                        setToast({ message: "Seu navegador não suporta compartilhamento direto. Use o botão WhatsApp com link.", type: "info" });
+                        return;
+                      }
+
+                      const text = `Confira este imóvel: ${publishedProperty.title}`;
+                      const imageUrl = publishedProperty.imageUrl;
+
+                      if (!imageUrl) {
+                        window.open(
+                          `https://wa.me/?text=${encodeURIComponent(`${text}\n${publishedProperty.url}`)}`,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                        setToast({ message: "Não encontramos foto para compartilhar. Abrimos o WhatsApp com link.", type: "info" });
+                        return;
+                      }
+
+                      try {
+                        const res = await fetch(imageUrl, { mode: "cors" });
+                        if (!res.ok) throw new Error("IMAGE_FETCH_FAILED");
+                        const blob = await res.blob();
+                        const ext = blob.type === "image/png" ? "png" : "jpg";
+                        const file = new File([blob], `imovel-${publishedProperty.id}.${ext}`, {
+                          type: blob.type || "image/jpeg",
+                        });
+
+                        if (typeof nav.canShare === "function" && nav.canShare({ files: [file] })) {
+                          await nav.share({
+                            files: [file],
+                            text: `${text}\n${publishedProperty.url}`,
                           });
-                          setToast({
-                            message: "Compartilhamento iniciado. No WhatsApp, selecione 'Meu status'.",
-                            type: "success",
-                          });
+                          setToast({ message: "Imagem pronta para status! Finalize no WhatsApp.", type: "success" });
                           return;
-                        } catch {
-                          // fallback below
                         }
-                      }
 
-                      let copied = false;
-                      try {
-                        await navigator.clipboard.writeText(shareUrl);
-                        copied = true;
+                        await nav.share({ text: `${text}\n${publishedProperty.url}` });
+                        setToast({ message: "Seu aparelho não permite foto no compartilhamento direto. Enviamos o texto/link.", type: "info" });
                       } catch {
-                        copied = false;
+                        window.open(
+                          `https://wa.me/?text=${encodeURIComponent(`${text}\n${publishedProperty.url}`)}`,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                        setToast({ message: "Não foi possível enviar a foto direto. Abrimos o WhatsApp com link.", type: "info" });
                       }
-
-                      try {
-                        window.open(`https://wa.me/?text=${encodeURIComponent(`Confira este imóvel: ${shareTitle}\n${shareUrl}`)}`, "_blank", "noopener,noreferrer");
-                      } catch {}
-
-                      setToast({
-                        message: copied
-                          ? "Link copiado! O WhatsApp foi aberto — escolha 'Meu status' para publicar."
-                          : "Abrimos o WhatsApp. Se quiser, copie o link abaixo e publique em 'Meu status'.",
-                        type: copied ? "success" : "info",
-                      });
                     }}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
+                    className="sm:hidden flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors"
                   >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h3l2-2h4l2 2h3a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7zm9 3a4 4 0 100 8 4 4 0 000-8z" />
                     </svg>
-                    Status do WhatsApp
+                    Status com Foto
                   </button>
 
                   {/* Instagram */}

@@ -35,14 +35,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const canonicalPath = buildPropertyPath(id, property.title);
   const url = `${base}${canonicalPath}`;
   const image = property.images?.[0]?.url;
+  const fallbackImage = `${base}/opengraph-image`;
 
-  const title = property.metaTitle && String(property.metaTitle).trim()
+  const rawTitle = property.metaTitle && String(property.metaTitle).trim()
     ? String(property.metaTitle).trim()
     : `${property.title} | OggaHub`;
 
-  const description = property.metaDescription && String(property.metaDescription).trim()
+  const title = rawTitle.length > 90 ? `${rawTitle.slice(0, 87)}...` : rawTitle;
+
+  const location = [property.city, property.state].filter(Boolean).join("/");
+
+  const rawDescription = property.metaDescription && String(property.metaDescription).trim()
     ? String(property.metaDescription).trim()
-    : `${String(property.description || "").slice(0, 160)}${String(property.description || "").length > 160 ? "..." : ""}`;
+    : `Veja fotos, preço e detalhes deste imóvel${location ? ` em ${location}` : ""} no OggaHub.`;
+
+  const description = rawDescription
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+
+  const imageUrl = image || fallbackImage;
 
   return {
     title,
@@ -53,13 +65,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       url,
       type: "article",
-      images: image ? [{ url: image }] : undefined,
+      siteName: "OggaHub",
+      locale: "pt_BR",
+      images: [{ url: imageUrl, width: 1200, height: 630, alt: title }],
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title,
       description,
-      images: image ? [image] : undefined,
+      images: [imageUrl],
     },
   };
 }
