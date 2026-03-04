@@ -4470,39 +4470,41 @@ export default function NewPropertyPage() {
               )}
 
               {/* Navegação desktop */}
-              <div className="hidden sm:flex justify-between items-center pt-4 border-t border-gray-100 mt-6">
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  disabled={currentStep === 1}
-                  className="px-5 py-2.5 rounded-lg text-sm font-semibold shadow border border-emerald-500 text-emerald-700 bg-white hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Voltar
-                </button>
+              <div className="hidden sm:flex justify-center items-center pt-4 border-t border-gray-100 mt-6">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={prevStep}
+                    disabled={currentStep === 1}
+                    className="px-5 py-2.5 rounded-lg text-sm font-semibold shadow border border-emerald-500 text-emerald-700 bg-white hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Voltar
+                  </button>
 
-                {currentStep < 6 ? (
-                  <button
-                    type="button"
-                    onClick={nextStep}
-                    className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow"
-                  >
-                    {isGeocoding && currentStep === 1 ? "Validando..." : "Avançar"}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isSubmitting) return;
-                      submitIntentRef.current = true;
-                      setSubmitIntent(true);
-                      void handleSubmit({ preventDefault: () => {} } as any);
-                    }}
-                    disabled={isSubmitting || images.some((i) => i.pending)}
-                    className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow disabled:opacity-70"
-                  >
-                    {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando imagens" : "Publicar anúncio"}
-                  </button>
-                )}
+                  {currentStep < 6 ? (
+                    <button
+                      type="button"
+                      onClick={nextStep}
+                      className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow"
+                    >
+                      {isGeocoding && currentStep === 1 ? "Validando..." : "Avançar"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isSubmitting) return;
+                        submitIntentRef.current = true;
+                        setSubmitIntent(true);
+                        void handleSubmit({ preventDefault: () => {} } as any);
+                      }}
+                      disabled={isSubmitting || images.some((i) => i.pending)}
+                      className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow disabled:opacity-70"
+                    >
+                      {isSubmitting ? "Publicando..." : images.some((i) => i.pending) ? "Aguardando imagens" : "Publicar anúncio"}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </form>
