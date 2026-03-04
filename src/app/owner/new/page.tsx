@@ -2788,18 +2788,6 @@ export default function NewPropertyPage() {
                   </div>
                 </div>
 
-                {currentStep === 6 && (
-                  <div className="mb-6">
-                    <button
-                      type="button"
-                      onClick={() => setFullscreenPreviewOpen(true)}
-                      className="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
-                    >
-                      Ver Prévia Em Tela Cheia
-                    </button>
-                  </div>
-                )}
-
                 <div className="sm:hidden fixed inset-x-0 bottom-0 z-[3000] bg-white/90 backdrop-blur border-t px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
                   <div className="flex gap-2">
                     <button
@@ -4227,6 +4215,13 @@ export default function NewPropertyPage() {
                   <p className="text-sm text-gray-600">
                     Esta é uma prévia do seu anúncio antes de publicar. Os botões de contato e ações estão desativados nesta tela.
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => setFullscreenPreviewOpen(true)}
+                    className="px-4 py-2.5 rounded-xl glass-teal text-white text-sm font-semibold hover:opacity-95 transition-opacity"
+                  >
+                    Ver Prévia Em Tela Cheia
+                  </button>
 
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <div className="lg:col-span-8">
