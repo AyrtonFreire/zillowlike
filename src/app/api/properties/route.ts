@@ -78,6 +78,23 @@ function normalizeSearchParamsForCache(searchParams: URLSearchParams) {
 
 const REMOVED_PROPERTY_TYPES = new Set(["STUDIO", "TOWNHOUSE"]);
 
+async function dbSupportsFinishFloorCeramica(): Promise<boolean> {
+  try {
+    const rows = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_enum e ON e.enumtypid = t.oid
+        WHERE t.typname = 'FinishFloor'
+          AND e.enumlabel = 'CERAMICA'
+      ) AS "exists"
+    `;
+    return !!rows?.[0]?.exists;
+  } catch {
+    return true;
+  }
+}
+
 // GET /api/properties?city=&state=&minPrice=&maxPrice=&type=&q=&page=&pageSize=&sort=&bedroomsMin=&bathroomsMin=&areaMin=
 export async function GET(req: NextRequest) {
   try {
@@ -812,6 +829,15 @@ export async function POST(req: NextRequest) {
     const validTypes = new Set(["HOUSE","APARTMENT","CONDO","TOWNHOUSE","STUDIO","LAND","RURAL","COMMERCIAL"]);
     const safeType = validTypes.has(type as any) ? type : "HOUSE";
 
+    let finishFloorSafe = (details as any)?.finishFloor ?? null;
+    if (finishFloorSafe === "CERAMICA") {
+      const supportsCeramica = await dbSupportsFinishFloorCeramica();
+      if (!supportsCeramica) {
+        finishFloorSafe = "OUTRO";
+        console.warn("api/properties POST: FinishFloor.CERAMICA não existe no banco atual, aplicando fallback para OUTRO");
+      }
+    }
+
     const createData: any = {
       title,
       metaTitle: metaTitle && metaTitle.trim() ? metaTitle.trim() : null,
@@ -870,7 +896,7 @@ export async function POST(req: NextRequest) {
       comfortLED: (details as any)?.comfortLED ?? null,
       comfortWaterReuse: (details as any)?.comfortWaterReuse ?? null,
       // Acabamentos
-      finishFloor: (details as any)?.finishFloor ?? null,
+      finishFloor: finishFloorSafe,
       finishCabinets: (details as any)?.finishCabinets ?? null,
       finishCounterGranite: (details as any)?.finishCounterGranite ?? null,
       finishCounterQuartz: (details as any)?.finishCounterQuartz ?? null,
