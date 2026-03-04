@@ -1268,6 +1268,41 @@ export default function NewPropertyPage() {
     return new File([blob], `imovel-${propertyId}-${index + 1}.${ext}`, { type: blob.type || "image/jpeg" });
   };
 
+  const buildComposedShareFiles = async (args: {
+    imageUrls: string[];
+    title: string;
+    statusLines: string[];
+    host: string;
+    propertyId: string;
+    maxImages?: number;
+  }) => {
+    const { imageUrls, title, statusLines, host, propertyId, maxImages = 12 } = args;
+    const selected = imageUrls.slice(0, maxImages);
+    const files: File[] = [];
+
+    for (let g = 0; g < selected.length; g += 4) {
+      const group = selected.slice(g, g + 4);
+      try {
+        const composed = await composeStatusImageFile({
+          imageUrls: group,
+          title,
+          statusLines,
+          host,
+          propertyId,
+          index: Math.floor(g / 4),
+        });
+        files.push(composed);
+      } catch {
+        for (let i = 0; i < group.length; i += 1) {
+          const rawFile = await fetchImageFileFromUrl(group[i], propertyId, g + i);
+          files.push(rawFile);
+        }
+      }
+    }
+
+    return files;
+  };
+
   // Helper: limpa todos os campos para um novo cadastro
   const resetForm = () => {
     setCurrentStep(1);
@@ -2976,28 +3011,13 @@ export default function NewPropertyPage() {
                       }
 
                       try {
-                        const selected = imageUrls.slice(0, 12);
-                        const files: File[] = [];
-
-                        for (let g = 0; g < selected.length; g += 4) {
-                          const group = selected.slice(g, g + 4);
-                          try {
-                            const composed = await composeStatusImageFile({
-                              imageUrls: group,
-                              title: publishedProperty.title,
-                              statusLines,
-                              host,
-                              propertyId: publishedProperty.id,
-                              index: Math.floor(g / 4),
-                            });
-                            files.push(composed);
-                          } catch {
-                            for (let i = 0; i < group.length; i += 1) {
-                              const rawFile = await fetchImageFileFromUrl(group[i], publishedProperty.id, g + i);
-                              files.push(rawFile);
-                            }
-                          }
-                        }
+                        const files = await buildComposedShareFiles({
+                          imageUrls,
+                          title: publishedProperty.title,
+                          statusLines,
+                          host,
+                          propertyId: publishedProperty.id,
+                        });
 
                         if (files.length && typeof nav.canShare === "function" && nav.canShare({ files })) {
                           await nav.share({
@@ -3042,8 +3062,52 @@ export default function NewPropertyPage() {
                         (navigator as any)?.userAgentData?.mobile === true ||
                         /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
 
+                      const imageUrls =
+                        Array.isArray(publishedProperty.imageUrls) && publishedProperty.imageUrls.length
+                          ? publishedProperty.imageUrls
+                          : publishedProperty.imageUrl
+                            ? [publishedProperty.imageUrl]
+                            : [];
+
+                      const statusLines =
+                        Array.isArray(publishedProperty.statusLines) && publishedProperty.statusLines.length
+                          ? publishedProperty.statusLines
+                          : ["Link na legenda"];
+
+                      const host = (() => {
+                        if (typeof publishedProperty.host === "string" && publishedProperty.host.trim()) return publishedProperty.host.trim();
+                        try {
+                          return new URL(publishedProperty.url).hostname.replace(/^www\./i, "");
+                        } catch {
+                          return "";
+                        }
+                      })();
+
                       if (isMobileUa && typeof navigator !== "undefined" && "share" in navigator) {
                         try {
+                          if (imageUrls.length) {
+                            const files = await buildComposedShareFiles({
+                              imageUrls,
+                              title: publishedProperty.title,
+                              statusLines,
+                              host,
+                              propertyId: publishedProperty.id,
+                            });
+
+                            if (files.length && typeof (navigator as any).canShare === "function" && (navigator as any).canShare({ files })) {
+                              await (navigator as any).share({
+                                files,
+                                text: `Confira este imóvel: ${shareTitle}\n${shareUrl}`,
+                              });
+                              setToast({
+                                message:
+                                  "Compartilhamento iniciado. No Instagram, escolha Story ou Feed.",
+                                type: "success",
+                              });
+                              return;
+                            }
+                          }
+
                           await (navigator as any).share({
                             title: shareTitle,
                             text: `Confira este imóvel: ${shareTitle}`,
@@ -3051,7 +3115,7 @@ export default function NewPropertyPage() {
                           });
                           setToast({
                             message:
-                              "Compartilhamento iniciado. Selecione o Instagram no menu de compartilhamento.",
+                              "Compartilhamento iniciado. Selecione o Instagram e escolha Story ou Feed.",
                             type: "success",
                           });
                           return;
@@ -3083,7 +3147,7 @@ export default function NewPropertyPage() {
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3zm-5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5zM17.75 6.25a1 1 0 1 1-1 1 1 1 0 0 1 1-1z" />
                     </svg>
-                    Instagram (copiar link)
+                    Instagram (Story/Feed)
                   </button>
                   
                   {/* Facebook */}
