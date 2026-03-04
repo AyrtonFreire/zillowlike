@@ -23,7 +23,7 @@ import Textarea from "@/components/ui/Textarea";
 import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 
 type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File; width?: number; height?: number };
-type PublishedProperty = { id: string; title: string; url: string; imageUrl?: string | null; imageUrls?: string[] };
+type PublishedProperty = { id: string; title: string; url: string; imageUrl?: string | null; imageUrls?: string[]; statusLines?: string[]; host?: string };
 
 export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -972,6 +972,10 @@ export default function NewPropertyPage() {
         ? (parsed as any).imageUrls.filter((url: unknown): url is string => typeof url === "string" && url.trim().length > 0)
         : [];
       const legacyImageUrl = typeof parsed.imageUrl === "string" && parsed.imageUrl.trim() ? parsed.imageUrl : null;
+      const parsedStatusLines = Array.isArray((parsed as any).statusLines)
+        ? (parsed as any).statusLines.filter((v: unknown): v is string => typeof v === "string" && v.trim().length > 0)
+        : [];
+      const parsedHost = typeof (parsed as any).host === "string" && (parsed as any).host.trim().length > 0 ? (parsed as any).host.trim() : null;
 
       return {
         id: parsed.id,
@@ -979,6 +983,8 @@ export default function NewPropertyPage() {
         url: parsed.url,
         imageUrl: legacyImageUrl,
         imageUrls: parsedImageUrls.length ? parsedImageUrls : legacyImageUrl ? [legacyImageUrl] : [],
+        statusLines: parsedStatusLines.length ? parsedStatusLines : undefined,
+        host: parsedHost || undefined,
       };
     } catch {
       return null;
@@ -1009,6 +1015,18 @@ export default function NewPropertyPage() {
     return lines;
   };
 
+  const formatBRL = (n: number) => {
+    try {
+      return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        maximumFractionDigits: 0,
+      }).format(n);
+    } catch {
+      return `R$ ${Math.round(n).toString()}`;
+    }
+  };
+
   const drawRoundedRect = (
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -1028,13 +1046,14 @@ export default function NewPropertyPage() {
   };
 
   const composeStatusImageFile = async (args: {
-    imageUrl: string;
+    imageUrls: string[];
     title: string;
-    propertyUrl: string;
+    statusLines: string[];
+    host: string;
     propertyId: string;
     index: number;
   }): Promise<File> => {
-    const { imageUrl, title, propertyUrl, propertyId, index } = args;
+    const { imageUrls, title, statusLines, host, propertyId, index } = args;
     const width = 1080;
     const height = 1920;
     const canvas = document.createElement("canvas");
@@ -1043,20 +1062,49 @@ export default function NewPropertyPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("CANVAS_CONTEXT_UNAVAILABLE");
 
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("IMAGE_LOAD_FAILED"));
-      img.src = imageUrl;
-    });
+    const loadImage = async (url: string) => {
+      return await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("IMAGE_LOAD_FAILED"));
+        img.src = url;
+      });
+    };
 
-    const scale = Math.max(width / image.width, height / image.height);
-    const drawWidth = image.width * scale;
-    const drawHeight = image.height * scale;
-    const drawX = (width - drawWidth) / 2;
-    const drawY = (height - drawHeight) / 2;
-    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+    const drawCoverImage = (img: HTMLImageElement, x: number, y: number, w: number, h: number) => {
+      const scale = Math.max(w / img.width, h / img.height);
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      const dx = x + (w - dw) / 2;
+      const dy = y + (h - dh) / 2;
+      ctx.drawImage(img, dx, dy, dw, dh);
+    };
+
+    const imgs = await Promise.all(imageUrls.filter(Boolean).slice(0, 4).map((u) => loadImage(u)));
+    if (!imgs.length) throw new Error("NO_IMAGES");
+
+    const gap = 12;
+    if (imgs.length === 1) {
+      drawCoverImage(imgs[0], 0, 0, width, height);
+    } else if (imgs.length === 2) {
+      const cellH = (height - gap) / 2;
+      drawCoverImage(imgs[0], 0, 0, width, cellH);
+      drawCoverImage(imgs[1], 0, cellH + gap, width, cellH);
+    } else if (imgs.length === 3) {
+      const cellW = (width - gap) / 2;
+      const cellH = (height - gap) / 2;
+      drawCoverImage(imgs[0], 0, 0, cellW, cellH);
+      drawCoverImage(imgs[1], cellW + gap, 0, cellW, cellH);
+      drawCoverImage(imgs[2], 0, cellH + gap, width, cellH);
+    } else {
+      const cellW = (width - gap) / 2;
+      const cellH = (height - gap) / 2;
+      drawCoverImage(imgs[0], 0, 0, cellW, cellH);
+      drawCoverImage(imgs[1], cellW + gap, 0, cellW, cellH);
+      drawCoverImage(imgs[2], 0, cellH + gap, cellW, cellH);
+      drawCoverImage(imgs[3], cellW + gap, cellH + gap, cellW, cellH);
+    }
 
     const overlay = ctx.createLinearGradient(0, 0, 0, height);
     overlay.addColorStop(0, "rgba(0,0,0,0.15)");
@@ -1065,53 +1113,141 @@ export default function NewPropertyPage() {
     ctx.fillStyle = overlay;
     ctx.fillRect(0, 0, width, height);
 
-    const cardWidth = Math.floor(width * 0.86);
+    const cardWidth = Math.floor(width * 0.9);
     const cardX = Math.floor((width - cardWidth) / 2);
-    const padding = 46;
+    const padding = 52;
     ctx.textBaseline = "top";
 
-    ctx.font = "700 52px system-ui, -apple-system, Segoe UI, sans-serif";
-    const titleLines = wrapTextLines(ctx, title, cardWidth - padding * 2).slice(0, 3);
-    const titleHeight = titleLines.length * 64;
+    ctx.font = "700 48px system-ui, -apple-system, Segoe UI, sans-serif";
+    const titleLines = wrapTextLines(ctx, title, cardWidth - padding * 2).slice(0, 2);
+    const titleHeight = titleLines.length * 58;
 
-    ctx.font = "600 34px system-ui, -apple-system, Segoe UI, sans-serif";
-    const subtitle = "Veja o anúncio completo:";
-    const subtitleLines = wrapTextLines(ctx, subtitle, cardWidth - padding * 2);
-    const subtitleHeight = subtitleLines.length * 44;
+    const cleanLines = (Array.isArray(statusLines) ? statusLines : []).filter(Boolean);
+    const primaryText = typeof cleanLines[0] === "string" ? cleanLines[0] : "";
+    const secondaryTexts = cleanLines.slice(1).filter(Boolean).slice(0, 2);
 
-    ctx.font = "700 34px system-ui, -apple-system, Segoe UI, sans-serif";
-    const urlLines = wrapTextLines(ctx, propertyUrl, cardWidth - padding * 2).slice(0, 3);
-    const urlHeight = urlLines.length * 44;
+    ctx.font = "700 38px system-ui, -apple-system, Segoe UI, sans-serif";
+    const pillLines = primaryText
+      ? wrapTextLines(ctx, primaryText, cardWidth - padding * 2 - 64).slice(0, 2)
+      : [];
+    const pillTextHeight = pillLines.length ? pillLines.length * 46 : 0;
+    const pillHeight = pillLines.length ? pillTextHeight + 30 : 0;
 
-    const cardHeight = padding * 2 + titleHeight + 22 + subtitleHeight + 12 + urlHeight;
+    ctx.font = "600 30px system-ui, -apple-system, Segoe UI, sans-serif";
+    const secondaryLines = secondaryTexts
+      .flatMap((t) => wrapTextLines(ctx, t, cardWidth - padding * 2).slice(0, 2))
+      .slice(0, 3);
+    const secondaryHeight = secondaryLines.length * 40;
+
+    const brandRowHeight = 64;
+    const cardHeight = padding * 2 + brandRowHeight + 20 + titleHeight + (pillHeight ? 22 + pillHeight : 0) + (secondaryHeight ? 18 + secondaryHeight : 0);
     const cardY = Math.floor((height - cardHeight) / 2);
 
-    ctx.fillStyle = "rgba(0, 0, 0, 0.72)";
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = 28;
+    ctx.shadowOffsetY = 12;
+    ctx.fillStyle = "rgba(8, 8, 10, 0.72)";
     drawRoundedRect(ctx, cardX, cardY, cardWidth, cardHeight, 30);
     ctx.fill();
+    ctx.restore();
+
+    const drawGithubMark = (x: number, y: number, size: number) => {
+      try {
+        const path = new Path2D(
+          "M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"
+        );
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(size / 24, size / 24);
+        ctx.strokeStyle = "rgba(255,255,255,0.94)";
+        ctx.lineWidth = 1.9;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke(path);
+        ctx.restore();
+      } catch {}
+    };
 
     let y = cardY + padding;
+
+    const circleSize = 54;
+    const circleX = cardX + padding;
+    const circleY = y + 4;
+    const circleCx = circleX + circleSize / 2;
+    const circleCy = circleY + circleSize / 2;
+
+    const circleGrad = ctx.createLinearGradient(circleX, circleY, circleX + circleSize, circleY + circleSize);
+    circleGrad.addColorStop(0, "rgba(16,185,129,0.95)");
+    circleGrad.addColorStop(1, "rgba(59,130,246,0.95)");
+    ctx.fillStyle = circleGrad;
+    ctx.beginPath();
+    ctx.arc(circleCx, circleCy, circleSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.arc(circleCx, circleCy, circleSize / 2, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    drawGithubMark(circleX + 15, circleY + 15, 24);
+
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.font = "700 34px system-ui, -apple-system, Segoe UI, sans-serif";
+    const brandText = host || "";
+    ctx.fillText(brandText, circleX + circleSize + 18, y + 12);
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.font = "600 26px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.fillText("Link na legenda", circleX + circleSize + 18, y + 48);
+
+    y += brandRowHeight + 18;
     ctx.fillStyle = "#ffffff";
-    ctx.font = "700 52px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.font = "700 48px system-ui, -apple-system, Segoe UI, sans-serif";
     for (const line of titleLines) {
       ctx.fillText(line, cardX + padding, y);
-      y += 64;
+      y += 58;
     }
 
-    y += 22;
-    ctx.fillStyle = "rgba(255,255,255,0.86)";
-    ctx.font = "600 34px system-ui, -apple-system, Segoe UI, sans-serif";
-    for (const line of subtitleLines) {
-      ctx.fillText(line, cardX + padding, y);
-      y += 44;
+    if (pillLines.length) {
+      y += 22;
+
+      const pillX = cardX + padding;
+      const pillY = y;
+      const pillW = cardWidth - padding * 2;
+
+      ctx.save();
+      const pillGrad = ctx.createLinearGradient(pillX, pillY, pillX + pillW, pillY);
+      pillGrad.addColorStop(0, "rgba(16,185,129,0.30)");
+      pillGrad.addColorStop(1, "rgba(59,130,246,0.26)");
+      ctx.fillStyle = pillGrad;
+      drawRoundedRect(ctx, pillX, pillY, pillW, pillHeight, 22);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.16)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.fillStyle = "rgba(255,255,255,0.96)";
+      ctx.font = "700 38px system-ui, -apple-system, Segoe UI, sans-serif";
+      let py = pillY + 15;
+      for (const line of pillLines) {
+        ctx.fillText(line, pillX + 22, py);
+        py += 46;
+      }
+
+      y += pillHeight;
     }
 
-    y += 12;
-    ctx.fillStyle = "#6ee7b7";
-    ctx.font = "700 34px system-ui, -apple-system, Segoe UI, sans-serif";
-    for (const line of urlLines) {
-      ctx.fillText(line, cardX + padding, y);
-      y += 44;
+    if (secondaryLines.length) {
+      y += 18;
+      ctx.fillStyle = "rgba(255,255,255,0.88)";
+      ctx.font = "600 30px system-ui, -apple-system, Segoe UI, sans-serif";
+      for (const line of secondaryLines) {
+        ctx.fillText(line, cardX + padding, y);
+        y += 40;
+      }
     }
 
     const blob = await new Promise<Blob>((resolve, reject) => {
@@ -2418,6 +2554,38 @@ export default function NewPropertyPage() {
       // Mostrar tela de sucesso com compartilhamento
       const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
       const propertyUrl = `${siteUrl}${buildPropertyPath(result.id, finalTitle)}`;
+      const host = (() => {
+        try {
+          const h = new URL(propertyUrl).hostname;
+          return h.replace(/^www\./i, "");
+        } catch {
+          return "";
+        }
+      })();
+
+      const typeLabelMap: Record<string, string> = {
+        HOUSE: "Casa",
+        APARTMENT: "Apartamento",
+        CONDO: "Condomínio",
+        LAND: "Terreno",
+        COMMERCIAL: "Comercial",
+        WAREHOUSE: "Galpão",
+      };
+      const priceNumber = parseBRLToNumber(priceBRL);
+      const purposeLabel = purpose === "RENT" ? "Aluguel" : "Venda";
+      const typeLabel = typeLabelMap[type] || "Imóvel";
+      const priceLabel = priceNumber > 0 ? `${formatBRL(priceNumber)}${purpose === "RENT" ? "/mês" : ""}` : "";
+      const primaryLine = [purposeLabel, priceLabel].filter(Boolean).join(" • ") || [typeLabel, purposeLabel].filter(Boolean).join(" • ");
+      const beds = Number(String(bedrooms || "").replace(/\D+/g, ""));
+      const baths = Number(String(bathrooms || "").replace(/\D+/g, ""));
+      const area = Number(String(areaM2 || "").replace(/[^0-9.]+/g, ""));
+      const detailParts: string[] = [];
+      if (beds > 0) detailParts.push(`${beds} ${beds === 1 ? "quarto" : "quartos"}`);
+      if (baths > 0) detailParts.push(`${baths} ${baths === 1 ? "banheiro" : "banheiros"}`);
+      if (area > 0) detailParts.push(`${Math.round(area)} m²`);
+      const detailsLine = detailParts.join(" • ");
+      const locLine = [neighborhood?.trim(), city && state ? `${city}/${state}` : city || state].filter(Boolean).join(" • ");
+      const statusLines = [primaryLine, detailsLine, locLine].filter((v) => Boolean(v && v.trim()));
       const imageUrls = Array.isArray(result?.images)
         ? result.images
             .map((img: any) => (typeof img?.url === "string" ? img.url.trim() : ""))
@@ -2435,6 +2603,8 @@ export default function NewPropertyPage() {
         url: propertyUrl,
         imageUrl: firstImageUrl,
         imageUrls,
+        statusLines,
+        host,
       });
 
       setLastPublished({
@@ -2443,6 +2613,8 @@ export default function NewPropertyPage() {
         url: propertyUrl,
         imageUrl: firstImageUrl,
         imageUrls,
+        statusLines,
+        host,
       });
       
       setToast({ message: "Imóvel publicado com sucesso!", type: "success" });
@@ -2779,6 +2951,20 @@ export default function NewPropertyPage() {
                             ? [publishedProperty.imageUrl]
                             : [];
 
+                      const statusLines =
+                        Array.isArray(publishedProperty.statusLines) && publishedProperty.statusLines.length
+                          ? publishedProperty.statusLines
+                          : ["Link na legenda"];
+
+                      const host = (() => {
+                        if (typeof publishedProperty.host === "string" && publishedProperty.host.trim()) return publishedProperty.host.trim();
+                        try {
+                          return new URL(publishedProperty.url).hostname.replace(/^www\./i, "");
+                        } catch {
+                          return "";
+                        }
+                      })();
+
                       if (!imageUrls.length) {
                         window.open(
                           `https://wa.me/?text=${encodeURIComponent(`${text}\n${publishedProperty.url}`)}`,
@@ -2790,23 +2976,26 @@ export default function NewPropertyPage() {
                       }
 
                       try {
-                        const selected = imageUrls.slice(0, 6);
+                        const selected = imageUrls.slice(0, 12);
                         const files: File[] = [];
 
-                        for (let i = 0; i < selected.length; i += 1) {
-                          const imageUrl = selected[i];
+                        for (let g = 0; g < selected.length; g += 4) {
+                          const group = selected.slice(g, g + 4);
                           try {
                             const composed = await composeStatusImageFile({
-                              imageUrl,
+                              imageUrls: group,
                               title: publishedProperty.title,
-                              propertyUrl: publishedProperty.url,
+                              statusLines,
+                              host,
                               propertyId: publishedProperty.id,
-                              index: i,
+                              index: Math.floor(g / 4),
                             });
                             files.push(composed);
                           } catch {
-                            const rawFile = await fetchImageFileFromUrl(imageUrl, publishedProperty.id, i);
-                            files.push(rawFile);
+                            for (let i = 0; i < group.length; i += 1) {
+                              const rawFile = await fetchImageFileFromUrl(group[i], publishedProperty.id, g + i);
+                              files.push(rawFile);
+                            }
                           }
                         }
 
@@ -2815,7 +3004,7 @@ export default function NewPropertyPage() {
                             files,
                             text: `${text}\n${publishedProperty.url}`,
                           });
-                          setToast({ message: "Fotos prontas para status! Finalize no WhatsApp.", type: "success" });
+                          setToast({ message: "Status pronto! Finalize no WhatsApp.", type: "success" });
                           return;
                         }
 
