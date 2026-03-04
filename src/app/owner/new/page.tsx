@@ -23,7 +23,7 @@ import Textarea from "@/components/ui/Textarea";
 import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 
 type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File; width?: number; height?: number };
-type PublishedProperty = { id: string; title: string; url: string; imageUrl?: string | null };
+type PublishedProperty = { id: string; title: string; url: string; imageUrl?: string | null; imageUrls?: string[] };
 
 export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -968,11 +968,17 @@ export default function NewPropertyPage() {
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== "object") return null;
       if (typeof parsed.id !== "string" || typeof parsed.title !== "string" || typeof parsed.url !== "string") return null;
+      const parsedImageUrls = Array.isArray((parsed as any).imageUrls)
+        ? (parsed as any).imageUrls.filter((url: unknown): url is string => typeof url === "string" && url.trim().length > 0)
+        : [];
+      const legacyImageUrl = typeof parsed.imageUrl === "string" && parsed.imageUrl.trim() ? parsed.imageUrl : null;
+
       return {
         id: parsed.id,
         title: parsed.title,
         url: parsed.url,
-        imageUrl: typeof parsed.imageUrl === "string" ? parsed.imageUrl : null,
+        imageUrl: legacyImageUrl,
+        imageUrls: parsedImageUrls.length ? parsedImageUrls : legacyImageUrl ? [legacyImageUrl] : [],
       };
     } catch {
       return null;
@@ -984,6 +990,147 @@ export default function NewPropertyPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  const wrapTextLines = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number) => {
+    const words = text.split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let current = "";
+
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (ctx.measureText(candidate).width <= maxWidth) {
+        current = candidate;
+      } else {
+        if (current) lines.push(current);
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  };
+
+  const drawRoundedRect = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number
+  ) => {
+    const r = Math.min(radius, width / 2, height / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + width, y, x + width, y + height, r);
+    ctx.arcTo(x + width, y + height, x, y + height, r);
+    ctx.arcTo(x, y + height, x, y, r);
+    ctx.arcTo(x, y, x + width, y, r);
+    ctx.closePath();
+  };
+
+  const composeStatusImageFile = async (args: {
+    imageUrl: string;
+    title: string;
+    propertyUrl: string;
+    propertyId: string;
+    index: number;
+  }): Promise<File> => {
+    const { imageUrl, title, propertyUrl, propertyId, index } = args;
+    const width = 1080;
+    const height = 1920;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("CANVAS_CONTEXT_UNAVAILABLE");
+
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("IMAGE_LOAD_FAILED"));
+      img.src = imageUrl;
+    });
+
+    const scale = Math.max(width / image.width, height / image.height);
+    const drawWidth = image.width * scale;
+    const drawHeight = image.height * scale;
+    const drawX = (width - drawWidth) / 2;
+    const drawY = (height - drawHeight) / 2;
+    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+
+    const overlay = ctx.createLinearGradient(0, 0, 0, height);
+    overlay.addColorStop(0, "rgba(0,0,0,0.15)");
+    overlay.addColorStop(0.45, "rgba(0,0,0,0.35)");
+    overlay.addColorStop(1, "rgba(0,0,0,0.55)");
+    ctx.fillStyle = overlay;
+    ctx.fillRect(0, 0, width, height);
+
+    const cardWidth = Math.floor(width * 0.86);
+    const cardX = Math.floor((width - cardWidth) / 2);
+    const padding = 46;
+    ctx.textBaseline = "top";
+
+    ctx.font = "700 52px system-ui, -apple-system, Segoe UI, sans-serif";
+    const titleLines = wrapTextLines(ctx, title, cardWidth - padding * 2).slice(0, 3);
+    const titleHeight = titleLines.length * 64;
+
+    ctx.font = "600 34px system-ui, -apple-system, Segoe UI, sans-serif";
+    const subtitle = "Veja o anúncio completo:";
+    const subtitleLines = wrapTextLines(ctx, subtitle, cardWidth - padding * 2);
+    const subtitleHeight = subtitleLines.length * 44;
+
+    ctx.font = "700 34px system-ui, -apple-system, Segoe UI, sans-serif";
+    const urlLines = wrapTextLines(ctx, propertyUrl, cardWidth - padding * 2).slice(0, 3);
+    const urlHeight = urlLines.length * 44;
+
+    const cardHeight = padding * 2 + titleHeight + 22 + subtitleHeight + 12 + urlHeight;
+    const cardY = Math.floor((height - cardHeight) / 2);
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.72)";
+    drawRoundedRect(ctx, cardX, cardY, cardWidth, cardHeight, 30);
+    ctx.fill();
+
+    let y = cardY + padding;
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 52px system-ui, -apple-system, Segoe UI, sans-serif";
+    for (const line of titleLines) {
+      ctx.fillText(line, cardX + padding, y);
+      y += 64;
+    }
+
+    y += 22;
+    ctx.fillStyle = "rgba(255,255,255,0.86)";
+    ctx.font = "600 34px system-ui, -apple-system, Segoe UI, sans-serif";
+    for (const line of subtitleLines) {
+      ctx.fillText(line, cardX + padding, y);
+      y += 44;
+    }
+
+    y += 12;
+    ctx.fillStyle = "#6ee7b7";
+    ctx.font = "700 34px system-ui, -apple-system, Segoe UI, sans-serif";
+    for (const line of urlLines) {
+      ctx.fillText(line, cardX + padding, y);
+      y += 44;
+    }
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((b) => {
+        if (!b) reject(new Error("CANVAS_EXPORT_FAILED"));
+        else resolve(b);
+      }, "image/jpeg", 0.92);
+    });
+
+    return new File([blob], `status-${propertyId}-${index + 1}.jpg`, { type: "image/jpeg" });
+  };
+
+  const fetchImageFileFromUrl = async (imageUrl: string, propertyId: string, index: number): Promise<File> => {
+    const res = await fetch(imageUrl, { mode: "cors" });
+    if (!res.ok) throw new Error("IMAGE_FETCH_FAILED");
+    const blob = await res.blob();
+    const ext = blob.type === "image/png" ? "png" : "jpg";
+    return new File([blob], `imovel-${propertyId}-${index + 1}.${ext}`, { type: blob.type || "image/jpeg" });
+  };
 
   // Helper: limpa todos os campos para um novo cadastro
   const resetForm = () => {
@@ -2271,9 +2418,12 @@ export default function NewPropertyPage() {
       // Mostrar tela de sucesso com compartilhamento
       const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
       const propertyUrl = `${siteUrl}${buildPropertyPath(result.id, finalTitle)}`;
-      const firstImageUrl = Array.isArray(result?.images)
-        ? (result.images.find((img: any) => typeof img?.url === "string" && img.url.trim())?.url as string | undefined)
-        : undefined;
+      const imageUrls = Array.isArray(result?.images)
+        ? result.images
+            .map((img: any) => (typeof img?.url === "string" ? img.url.trim() : ""))
+            .filter((url: string) => Boolean(url))
+        : [];
+      const firstImageUrl = imageUrls[0] || null;
       
       // Limpa rascunho após publicação bem-sucedida
       clearDraft();
@@ -2283,14 +2433,16 @@ export default function NewPropertyPage() {
         id: result.id,
         title: finalTitle,
         url: propertyUrl,
-        imageUrl: firstImageUrl || null,
+        imageUrl: firstImageUrl,
+        imageUrls,
       });
 
       setLastPublished({
         id: result.id,
         title: finalTitle,
         url: propertyUrl,
-        imageUrl: firstImageUrl || null,
+        imageUrl: firstImageUrl,
+        imageUrls,
       });
       
       setToast({ message: "Imóvel publicado com sucesso!", type: "success" });
@@ -2620,9 +2772,14 @@ export default function NewPropertyPage() {
                       }
 
                       const text = `Confira este imóvel: ${publishedProperty.title}`;
-                      const imageUrl = publishedProperty.imageUrl;
+                      const imageUrls =
+                        Array.isArray(publishedProperty.imageUrls) && publishedProperty.imageUrls.length
+                          ? publishedProperty.imageUrls
+                          : publishedProperty.imageUrl
+                            ? [publishedProperty.imageUrl]
+                            : [];
 
-                      if (!imageUrl) {
+                      if (!imageUrls.length) {
                         window.open(
                           `https://wa.me/?text=${encodeURIComponent(`${text}\n${publishedProperty.url}`)}`,
                           "_blank",
@@ -2633,25 +2790,37 @@ export default function NewPropertyPage() {
                       }
 
                       try {
-                        const res = await fetch(imageUrl, { mode: "cors" });
-                        if (!res.ok) throw new Error("IMAGE_FETCH_FAILED");
-                        const blob = await res.blob();
-                        const ext = blob.type === "image/png" ? "png" : "jpg";
-                        const file = new File([blob], `imovel-${publishedProperty.id}.${ext}`, {
-                          type: blob.type || "image/jpeg",
-                        });
+                        const selected = imageUrls.slice(0, 6);
+                        const files: File[] = [];
 
-                        if (typeof nav.canShare === "function" && nav.canShare({ files: [file] })) {
+                        for (let i = 0; i < selected.length; i += 1) {
+                          const imageUrl = selected[i];
+                          try {
+                            const composed = await composeStatusImageFile({
+                              imageUrl,
+                              title: publishedProperty.title,
+                              propertyUrl: publishedProperty.url,
+                              propertyId: publishedProperty.id,
+                              index: i,
+                            });
+                            files.push(composed);
+                          } catch {
+                            const rawFile = await fetchImageFileFromUrl(imageUrl, publishedProperty.id, i);
+                            files.push(rawFile);
+                          }
+                        }
+
+                        if (files.length && typeof nav.canShare === "function" && nav.canShare({ files })) {
                           await nav.share({
-                            files: [file],
+                            files,
                             text: `${text}\n${publishedProperty.url}`,
                           });
-                          setToast({ message: "Imagem pronta para status! Finalize no WhatsApp.", type: "success" });
+                          setToast({ message: "Fotos prontas para status! Finalize no WhatsApp.", type: "success" });
                           return;
                         }
 
                         await nav.share({ text: `${text}\n${publishedProperty.url}` });
-                        setToast({ message: "Seu aparelho não permite foto no compartilhamento direto. Enviamos o texto/link.", type: "info" });
+                        setToast({ message: "Seu aparelho não permite enviar fotos no compartilhamento direto. Enviamos texto/link.", type: "info" });
                       } catch {
                         window.open(
                           `https://wa.me/?text=${encodeURIComponent(`${text}\n${publishedProperty.url}`)}`,
