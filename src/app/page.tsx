@@ -1198,7 +1198,7 @@ export default function Home() {
                 Descartar rascunho
               </button>
               <Link
-                href="/start"
+                href="/owner/new"
                 className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-teal-600 text-white text-xs sm:text-sm font-semibold shadow hover:bg-teal-700"
               >
                 Finalizar anúncio

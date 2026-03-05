@@ -55,12 +55,21 @@ export default function StartPage() {
   const resumeModal = resumeOpen ? (
     <div className="fixed inset-0 z-[60000] flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0"
         onClick={() => {
           setResumeOpen(false);
           router.push("/");
         }}
-      />
+      >
+        <div
+          className="absolute inset-0 bg-cover bg-center scale-105 blur-sm"
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2000&auto=format&fit=crop')",
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950/72 via-slate-900/66 to-black/72 backdrop-blur-[2px]" />
+      </div>
       <div
         className="relative z-[60001] bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
         onClick={(e) => e.stopPropagation()}
