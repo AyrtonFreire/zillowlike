@@ -221,6 +221,24 @@ export default function BrokerChatsPage() {
     }
   };
 
+  const waitingAssistantReply = useMemo(() => {
+    if (!messages.length) return false;
+    const last = messages[messages.length - 1];
+    return last.senderType === "CLIENT";
+  }, [messages]);
+
+  useEffect(() => {
+    if (!selectedChat?.leadId || !waitingAssistantReply) return;
+
+    const interval = window.setInterval(() => {
+      void fetchMessages(selectedChat.leadId, true);
+    }, 2000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [selectedChat?.leadId, waitingAssistantReply]);
+
   useEffect(() => {
     if (!userId) return;
 
@@ -256,7 +274,7 @@ export default function BrokerChatsPage() {
   const fetchMessages = async (leadId: string, silent = false) => {
     try {
       if (!silent) setMessagesLoading(true);
-      const response = await fetch(`/api/leads/${leadId}/client-messages`);
+      const response = await fetch(`/api/leads/${leadId}/client-messages`, { cache: "no-store" });
       const data = await response.json();
 
       if (response.ok && data.messages) {

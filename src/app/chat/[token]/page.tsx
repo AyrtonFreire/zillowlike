@@ -148,6 +148,12 @@ export default function ClientChatPage() {
   const composerRef = useRef<HTMLElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const waitingAssistantReply = useMemo(() => {
+    if (!messages.length) return false;
+    const last = messages[messages.length - 1];
+    return !!last?.fromClient;
+  }, [messages]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -254,8 +260,20 @@ export default function ClientChatPage() {
       if (pollRef.current) window.clearInterval(pollRef.current);
       pollRef.current = null;
       pollStopRef.current = null;
-    }, 12_000);
+    }, 60_000);
   }, [fetchMessagesOnly]);
+
+  useEffect(() => {
+    if (!token || !waitingAssistantReply) return;
+
+    const id = window.setInterval(() => {
+      void fetchMessagesOnly();
+    }, 2000);
+
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [fetchMessagesOnly, token, waitingAssistantReply]);
 
   useEffect(() => {
     return () => {
