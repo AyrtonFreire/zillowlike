@@ -77,6 +77,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
             fromClient: true,
             content: true,
             createdAt: true,
+            source: true,
           },
         },
       },
@@ -232,12 +233,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         leadId: lead.id,
         fromClient,
         content: parsed.data.content.trim(),
-        source: fromClient ? "HUMAN" : "HUMAN",
+        source: "HUMAN",
       },
       select: {
         id: true,
+        fromClient: true,
         content: true,
         createdAt: true,
+        source: true,
       },
     });
 
@@ -292,6 +295,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         fromClient,
         content: message.content,
         createdAt: message.createdAt,
+        source: message.source,
       });
     } catch {
       // ignore

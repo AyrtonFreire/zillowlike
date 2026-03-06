@@ -1195,6 +1195,7 @@ export class LeadAutoReplyService {
             fromClient: false,
             content: assistantMessage.content,
             createdAt: assistantMessage.createdAt,
+            source: "AUTO_REPLY_AI",
           });
         } catch {}
 
@@ -1281,6 +1282,7 @@ export class LeadAutoReplyService {
             fromClient: false,
             content: assistantMessage.content,
             createdAt: assistantMessage.createdAt,
+            source: "AUTO_REPLY_AI",
           });
         } catch {}
 
@@ -1398,6 +1400,7 @@ export class LeadAutoReplyService {
             fromClient: false,
             content: assistantMessage.content,
             createdAt: assistantMessage.createdAt,
+            source: "AUTO_REPLY_AI",
           });
         } catch {}
 
@@ -1451,6 +1454,7 @@ export class LeadAutoReplyService {
             fromClient: false,
             content: assistantMessage.content,
             createdAt: assistantMessage.createdAt,
+            source: "AUTO_REPLY_AI",
           });
         } catch {}
 
@@ -1601,6 +1605,7 @@ export class LeadAutoReplyService {
             fromClient: false,
             content: assistantMessage.content,
             createdAt: assistantMessage.createdAt,
+            source: "AUTO_REPLY_AI",
           });
         } catch {}
 
@@ -1682,6 +1687,7 @@ export class LeadAutoReplyService {
           fromClient: false,
           content: assistantMessage.content,
           createdAt: assistantMessage.createdAt,
+          source: "AUTO_REPLY_AI",
         });
       } catch {}
 

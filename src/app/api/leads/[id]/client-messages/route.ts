@@ -96,7 +96,8 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       id: msg.id,
       content: msg.content,
       senderId: msg.fromClient ? null : userId, // Se não é do cliente, é do corretor/owner atual
-      senderType: msg.fromClient ? "CLIENT" : role || "REALTOR",
+      senderType: msg.fromClient ? "CLIENT" : String(msg?.source) === "AUTO_REPLY_AI" ? "ASSISTANT" : role || "REALTOR",
+      source: msg?.source || null,
       createdAt: msg.createdAt,
       read: true, // Marcamos como lido quando visualizado
     }));
@@ -185,6 +186,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         leadId: id,
         fromClient: false,
         content: parsed.data.content.trim(),
+        source: "HUMAN",
+      },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        source: true,
       },
     });
 
@@ -245,6 +253,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         fromClient: false,
         content: message.content,
         createdAt: message.createdAt,
+        source: message.source,
       });
     } catch (pusherError) {
       console.error("Error triggering pusher for client message:", pusherError);
@@ -307,6 +316,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
               content: message.content,
               senderId: userId,
               senderType: role || "REALTOR",
+              source: message.source,
               createdAt: message.createdAt,
               read: true,
             },
@@ -354,6 +364,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         content: message.content,
         senderId: userId,
         senderType: role || "REALTOR",
+        source: message.source,
         createdAt: message.createdAt,
         read: true,
       },

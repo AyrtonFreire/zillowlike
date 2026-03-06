@@ -25,6 +25,7 @@ interface ChatMessage {
   fromClient: boolean;
   content: string;
   createdAt: string;
+  source?: string | null;
 }
 
 interface ChatLeadInfo {
@@ -328,6 +329,7 @@ export default function ClientChatPage() {
         fromClient: boolean;
         content: string;
         createdAt: string;
+        source?: string | null;
       }) => {
         if (cancelled) return;
         
@@ -362,6 +364,7 @@ export default function ClientChatPage() {
               fromClient: data.fromClient,
               content: data.content,
               createdAt: data.createdAt,
+              source: data.source ?? null,
             },
           ];
         });
@@ -682,7 +685,19 @@ export default function ClientChatPage() {
                           <div className={`flex items-center gap-1 mt-1 text-[10px] ${
                             msg.fromClient ? "text-teal-200 justify-end" : "text-gray-400"
                           }`}>
-                            <span>{msg.fromClient ? "Você" : (lead?.responsible?.name?.split(" ")[0] || "Corretor")}</span>
+                            {msg.fromClient ? (
+                              <span>Você</span>
+                            ) : (
+                              <span
+                                className={`px-1.5 py-0.5 rounded-md font-medium ${
+                                  String(msg.source) === "AUTO_REPLY_AI"
+                                    ? "bg-violet-100 text-violet-700"
+                                    : "bg-gray-200 text-gray-700"
+                                }`}
+                              >
+                                {String(msg.source) === "AUTO_REPLY_AI" ? "Assistente" : "Corretor"}
+                              </span>
+                            )}
                             <span>·</span>
                             <span>{formatTime(msg.createdAt)}</span>
                             {msg.fromClient && !msg.id.startsWith("temp-") && (

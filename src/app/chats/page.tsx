@@ -33,6 +33,7 @@ type ChatMessage = {
   fromClient: boolean;
   content: string;
   createdAt: string;
+  source?: string | null;
 };
 
 type ChatLeadInfo = {
@@ -313,7 +314,14 @@ export default function UserChatsPage() {
       const channelName = `chat-${leadInfo.id}`;
       const channel = pusher.subscribe(channelName);
 
-      const handler = (data: { id: string; leadId: string; fromClient: boolean; content: string; createdAt: string }) => {
+      const handler = (data: {
+        id: string;
+        leadId: string;
+        fromClient: boolean;
+        content: string;
+        createdAt: string;
+        source?: string | null;
+      }) => {
         if (cancelled) return;
         setMessages((prev) => {
           if (prev.some((m) => m.id === data.id)) return prev;
@@ -327,7 +335,16 @@ export default function UserChatsPage() {
             }
           }
 
-          return [...prev, { id: data.id, fromClient: data.fromClient, content: data.content, createdAt: data.createdAt }];
+          return [
+            ...prev,
+            {
+              id: data.id,
+              fromClient: data.fromClient,
+              content: data.content,
+              createdAt: data.createdAt,
+              source: (data as any)?.source ?? null,
+            },
+          ];
         });
       };
 
@@ -589,8 +606,26 @@ export default function UserChatsPage() {
                             }`}
                           >
                             <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                            <div className={`mt-1 text-[10px] ${msg.fromClient ? "text-teal-200 text-right" : "text-gray-400"}`}>
-                              {formatTime(msg.createdAt)}
+                            <div
+                              className={`flex items-center gap-1 mt-1 text-[10px] ${
+                                msg.fromClient ? "text-teal-200 justify-end" : "text-gray-400"
+                              }`}
+                            >
+                              {msg.fromClient ? (
+                                <span>Você</span>
+                              ) : (
+                                <span
+                                  className={`px-1.5 py-0.5 rounded-md font-medium ${
+                                    String((msg as any).source) === "AUTO_REPLY_AI"
+                                      ? "bg-violet-100 text-violet-700"
+                                      : "bg-gray-200 text-gray-700"
+                                  }`}
+                                >
+                                  {String((msg as any).source) === "AUTO_REPLY_AI" ? "Assistente" : "Corretor(a)"}
+                                </span>
+                              )}
+                              <span>·</span>
+                              <span>{formatTime(msg.createdAt)}</span>
                             </div>
                           </div>
                         </div>

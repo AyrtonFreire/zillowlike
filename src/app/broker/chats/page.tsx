@@ -51,7 +51,8 @@ interface Message {
   id: string;
   content: string;
   senderId: string;
-  senderType: "CLIENT" | "REALTOR" | "OWNER";
+  senderType: "CLIENT" | "REALTOR" | "OWNER" | "ASSISTANT";
+  source?: string | null;
   createdAt: string;
   read: boolean;
 }
@@ -595,6 +596,7 @@ export default function BrokerChatsPage() {
                       {/* Mensagens do grupo */}
                       {group.messages.map((msg) => {
                         const isMe = msg.senderType !== "CLIENT";
+                        const isAssistant = msg.senderType === "ASSISTANT" || String(msg.source) === "AUTO_REPLY_AI";
                         return (
                           <motion.div
                             key={msg.id}
@@ -617,6 +619,17 @@ export default function BrokerChatsPage() {
                                   isMe ? "text-teal-200" : "text-gray-400"
                                 }`}
                               >
+                                {msg.senderType !== "CLIENT" && (
+                                  <span
+                                    className={`mr-auto px-1.5 py-0.5 rounded-md font-medium text-[10px] ${
+                                      isAssistant
+                                        ? "bg-violet-100 text-violet-700"
+                                        : "bg-gray-200 text-gray-700"
+                                    }`}
+                                  >
+                                    {isAssistant ? "Assistente" : "Corretor(a)"}
+                                  </span>
+                                )}
                                 <span className="text-[10px]">
                                   {new Date(msg.createdAt).toLocaleTimeString("pt-BR", {
                                     hour: "2-digit",
