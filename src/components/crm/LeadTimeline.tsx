@@ -30,7 +30,10 @@ type LeadEventApiType =
   | "VISIT_REQUESTED"
   | "VISIT_CONFIRMED"
   | "VISIT_REJECTED"
-  | "OWNER_APPROVAL_REQUESTED";
+  | "OWNER_APPROVAL_REQUESTED"
+  | "AUTO_REPLY_SENT"
+  | "AUTO_REPLY_SKIPPED"
+  | "AUTO_REPLY_FAILED";
 
 interface LeadEventApi {
   id: string;
@@ -93,8 +96,9 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
   const date = event.createdAt;
   const type = event.type;
 
+  const meta: any = event.metadata || null;
+
   const actorLabel = (() => {
-    const meta: any = event.metadata || null;
     const name = meta?.actorName ? String(meta.actorName) : "";
     const email = meta?.actorEmail ? String(meta.actorEmail) : "";
     const label = name || email;
@@ -238,15 +242,69 @@ function mapLeadEventToTimeline(event: LeadEventApi): TimelineEvent | null {
         metadata: event.metadata || undefined,
       });
     case "VISIT_REQUESTED":
+      {
+        const prefs = meta?.preferences || null;
+        const period = prefs?.period ? String(prefs.period) : "";
+        const days = Array.isArray(prefs?.days) ? (prefs.days as any[]).map((x: any) => String(x)).filter(Boolean) : [];
+        const time = prefs?.time ? String(prefs.time) : "";
+        const parts = [period || null, days.length ? days.join("/") : null, time || null].filter(Boolean);
+        const prefText = parts.length ? `Preferências: ${parts.join(" · ")}` : "";
+        const description = event.description || prefText || undefined;
+        return withActor({
+          id: event.id,
+          type: "status_change",
+          title: event.title || "Visita solicitada",
+          description,
+          date,
+          icon: "calendar",
+          metadata: event.metadata || undefined,
+        });
+      }
+    case "AUTO_REPLY_SENT": {
+      const reason = meta?.reason ? String(meta.reason) : "";
+      const toolName = meta?.tool?.name ? String(meta.tool.name) : "";
+      const nextQuestion = meta?.aiJson?.nextQuestion ? String(meta.aiJson.nextQuestion) : meta?.offlineAssistantState?.lastQuestion ? String(meta.offlineAssistantState.lastQuestion) : "";
+      const factualWithoutFacts = Boolean(meta?.aiJson?.factualWithoutFacts);
+      const parts = [
+        reason ? `Motivo: ${reason}` : null,
+        toolName ? `Tool: ${toolName}` : null,
+        nextQuestion ? `Pergunta: ${nextQuestion}` : null,
+        factualWithoutFacts ? "Fallback: resposta factual sem fonte" : null,
+      ].filter(Boolean);
+      return withActor({
+        id: event.id,
+        type: "message",
+        title: event.title || "Assistente offline respondeu",
+        description: parts.length ? parts.join("\n") : event.description || undefined,
+        date,
+        icon: "message",
+        metadata: event.metadata || undefined,
+      });
+    }
+    case "AUTO_REPLY_SKIPPED": {
+      const reason = meta?.reason ? String(meta.reason) : "";
       return withActor({
         id: event.id,
         type: "status_change",
-        title: event.title || "Visita solicitada",
-        description: event.description || undefined,
+        title: event.title || "Assistente offline pulou",
+        description: event.description || (reason ? `Motivo: ${reason}` : undefined),
         date,
-        icon: "calendar",
+        icon: "clock",
         metadata: event.metadata || undefined,
       });
+    }
+    case "AUTO_REPLY_FAILED": {
+      const reason = meta?.reason ? String(meta.reason) : "";
+      return withActor({
+        id: event.id,
+        type: "status_change",
+        title: event.title || "Assistente offline falhou",
+        description: event.description || (reason ? `Motivo: ${reason}` : undefined),
+        date,
+        icon: "x",
+        metadata: event.metadata || undefined,
+      });
+    }
     case "VISIT_CONFIRMED":
       return withActor({
         id: event.id,

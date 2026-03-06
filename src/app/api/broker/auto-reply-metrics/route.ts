@@ -58,6 +58,62 @@ export async function GET(req: NextRequest) {
     const skippedCount = Number(counts.find((c: any) => c.decision === "SKIPPED")?._count?._all || 0);
     const failedCount = Number(counts.find((c: any) => c.decision === "FAILED")?._count?._all || 0);
 
+    let sentByReasonRaw: any[] = [];
+    try {
+      sentByReasonRaw = await (prisma as any).leadAutoReplyLog.groupBy({
+        by: ["reason"],
+        where: {
+          realtorId: user.id,
+          createdAt: { gte: since },
+          decision: "SENT",
+        },
+        _count: { _all: true },
+      });
+    } catch (error: any) {
+      if (error?.code !== "P2021") {
+        throw error;
+      }
+      sentByReasonRaw = [];
+    }
+
+    const sentByReason = (Array.isArray(sentByReasonRaw) ? sentByReasonRaw : []).map((row: any) => ({
+      reason: row.reason ? String(row.reason) : "(sem motivo)",
+      count: Number(row?._count?._all || 0),
+    }));
+
+    let promptVersionsRaw: any[] = [];
+    try {
+      promptVersionsRaw = await (prisma as any).leadAutoReplyLog.groupBy({
+        by: ["promptVersion"],
+        where: {
+          realtorId: user.id,
+          createdAt: { gte: since },
+          decision: "SENT",
+        },
+        _count: { _all: true },
+      });
+    } catch (error: any) {
+      if (error?.code !== "P2021") {
+        throw error;
+      }
+      promptVersionsRaw = [];
+    }
+
+    const promptVersions = (Array.isArray(promptVersionsRaw) ? promptVersionsRaw : [])
+      .map((row: any) => ({
+        promptVersion: row.promptVersion ? String(row.promptVersion) : "(sem versão)",
+        count: Number(row?._count?._all || 0),
+      }))
+      .sort((a: any, b: any) => b.count - a.count)
+      .slice(0, 8);
+
+    const quality = {
+      aiJsonParseFailed: Number(sentByReason.find((x: any) => x.reason === "AI_JSON_PARSE_FAILED")?.count || 0),
+      factualWithoutFacts: Number(sentByReason.find((x: any) => x.reason === "FACTUAL_WITHOUT_FACTS")?.count || 0),
+      placesNearby: Number(sentByReason.find((x: any) => x.reason === "PLACES_NEARBY")?.count || 0),
+      openAiKeyMissing: Number(sentByReason.find((x: any) => x.reason === "OPENAI_API_KEY_MISSING")?.count || 0),
+    };
+
     let skippedByReasonRaw: any[] = [];
     try {
       skippedByReasonRaw = await (prisma as any).leadAutoReplyLog.groupBy({
@@ -122,6 +178,9 @@ export async function GET(req: NextRequest) {
         skipped: skippedCount,
         failed: failedCount,
       },
+      sentByReason,
+      promptVersions,
+      quality,
       skippedByReason,
       recent: (Array.isArray(recent) ? recent : []).map((row: any) => ({
         id: String(row.id),

@@ -38,6 +38,14 @@ type AutoReplyMetrics = {
     skipped: number;
     failed: number;
   };
+  sentByReason?: Array<{ reason: string; count: number }>;
+  promptVersions?: Array<{ promptVersion: string; count: number }>;
+  quality?: {
+    aiJsonParseFailed?: number;
+    factualWithoutFacts?: number;
+    placesNearby?: number;
+    openAiKeyMissing?: number;
+  };
   skippedByReason: Array<{ reason: string; count: number }>;
   recent: Array<{
     id: string;
@@ -404,8 +412,46 @@ export default function BrokerAssistantOfflinePage() {
                   value={metrics?.counts?.failed || 0}
                   icon={Activity}
                   subtitle="Erros/saídas vazias"
+                  iconBgColor="bg-rose-50"
+                  className="p-4"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <MetricCard
+                  title="JSON inválido"
+                  value={metrics?.quality?.aiJsonParseFailed || 0}
+                  icon={Activity}
+                  subtitle="Parse/validação falhou"
                   iconColor="text-rose-700"
                   iconBgColor="bg-rose-50"
+                  className="p-4"
+                />
+                <MetricCard
+                  title="Fato sem fonte"
+                  value={metrics?.quality?.factualWithoutFacts || 0}
+                  icon={Activity}
+                  subtitle="Resposta factual sem facts_used"
+                  iconColor="text-amber-700"
+                  iconBgColor="bg-amber-50"
+                  className="p-4"
+                />
+                <MetricCard
+                  title="Tool proximidade"
+                  value={metrics?.quality?.placesNearby || 0}
+                  icon={Activity}
+                  subtitle="Respostas via places-nearby"
+                  iconColor="text-emerald-700"
+                  iconBgColor="bg-emerald-50"
+                  className="p-4"
+                />
+                <MetricCard
+                  title="Sem OpenAI key"
+                  value={metrics?.quality?.openAiKeyMissing || 0}
+                  icon={Activity}
+                  subtitle="Fallback por chave ausente"
+                  iconColor="text-gray-700"
+                  iconBgColor="bg-gray-50"
                   className="p-4"
                 />
               </div>
@@ -474,6 +520,46 @@ export default function BrokerAssistantOfflinePage() {
                           </Link>
                         );
                       })
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-900">Versões do prompt (SENT)</p>
+                    <p className="text-xs text-gray-500">{range}</p>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {(metrics?.promptVersions || []).length === 0 ? (
+                      <p className="text-sm text-gray-600">Sem dados no período.</p>
+                    ) : (
+                      (metrics?.promptVersions || []).map((row) => (
+                        <div key={row.promptVersion} className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-medium text-gray-700 truncate">{row.promptVersion}</span>
+                          <span className="text-xs font-semibold text-gray-900 tabular-nums">{row.count}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-900">SENT por motivo</p>
+                    <p className="text-xs text-gray-500">{range}</p>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {(metrics?.sentByReason || []).length === 0 ? (
+                      <p className="text-sm text-gray-600">Sem dados no período.</p>
+                    ) : (
+                      (metrics?.sentByReason || []).slice(0, 8).map((row) => (
+                        <div key={row.reason} className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-medium text-gray-700 truncate">{row.reason}</span>
+                          <span className="text-xs font-semibold text-gray-900 tabular-nums">{row.count}</span>
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>

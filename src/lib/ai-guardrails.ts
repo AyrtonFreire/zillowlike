@@ -91,15 +91,32 @@ export function applyOfflineAutoReplyGuardrails(input: { draft: string; clientNa
   const draft = sanitizeDraft(input.draft, { maxLen: 800 });
   if (!draft) return "";
 
-  const forbidden = /(agend|agenda|hor[aá]rio|visita|marcar|confirm|disponibil|amanh|hoje|sábado|domingo)/i;
-  if (!forbidden.test(draft)) return draft;
+  const hardForbidden = /(\b(vou|vamos)\s+(agendar|marcar|confirmar)\b|\b(agendado|confirmado)\b|\bvisita\s+(agendada|confirmada)\b)/i;
+  if (hardForbidden.test(draft)) {
+    const greet = input.clientName ? `Olá ${input.clientName}, tudo bem?` : "Olá, tudo bem?";
+    const about = input.propertyTitle ? `Sobre o imóvel ${input.propertyTitle}, ` : "Sobre o imóvel, ";
+    const fallback =
+      `${greet}\n\n` +
+      `${about}posso registrar seu interesse para o corretor. ` +
+      `Qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n` +
+      `O corretor retorna no próximo horário comercial.`;
+
+    return sanitizeDraft(fallback, { maxLen: 800 });
+  }
+
+  const schedulingMention = /(agend|agenda|hor[aá]rio|visita|marcar|confirm|disponibil)/i;
+  if (!schedulingMention.test(draft)) return draft;
+
+  const timeOrDay =
+    /(\b\d{1,2}:\d{2}\b|\b\d{1,2}h\b|\bamanh[ãa]\b|\bhoje\b|\bs[áa]bado\b|\bdomingo\b|\bsegunda\b|\bter[cç]a\b|\bquarta\b|\bquinta\b|\bsexta\b)/i;
+  if (!timeOrDay.test(draft)) return draft;
 
   const greet = input.clientName ? `Olá ${input.clientName}, tudo bem?` : "Olá, tudo bem?";
   const about = input.propertyTitle ? `Sobre o imóvel ${input.propertyTitle}, ` : "Sobre o imóvel, ";
   const fallback =
     `${greet}\n\n` +
-    `${about}posso te ajudar com informações básicas por aqui. ` +
-    `Você busca compra ou locação e qual faixa de valor/região?\n\n` +
+    `${about}posso registrar seu interesse para o corretor. ` +
+    `Qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n` +
     `O corretor retorna no próximo horário comercial.`;
 
   return sanitizeDraft(fallback, { maxLen: 800 });

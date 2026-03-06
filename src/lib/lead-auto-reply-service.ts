@@ -61,6 +61,425 @@ function includesAny(text: string, patterns: Array<string | RegExp>) {
   return false;
 }
 
+type OfflineAssistantAiJson = {
+  answer: string;
+  facts_used: string[];
+  missing_info?: string[];
+  next_question?: string;
+  handoff_needed?: boolean;
+};
+
+const OFFLINE_ASSISTANT_FACT_KEYS = [
+  "clientName",
+  "propertyTitle",
+  "city",
+  "state",
+  "neighborhood",
+  "type",
+  "purpose",
+  "price",
+  "condoFee",
+  "iptuYearly",
+  "bedrooms",
+  "suites",
+  "bathrooms",
+  "parkingSpots",
+  "floor",
+  "furnished",
+  "petFriendly",
+  "areaM2",
+] as const;
+
+const OFFLINE_AUTO_REPLY_PROMPT_VERSION = "v4";
+
+function clampText(input: string, maxLen: number) {
+  const s = String(input || "").trim();
+  if (!s) return "";
+  if (s.length <= maxLen) return s;
+  return s.slice(0, maxLen).trim();
+}
+
+function buildAmenitiesFromProperty(p: any) {
+  const out: string[] = [];
+  if (!p || typeof p !== "object") return out;
+
+  const add = (cond: any, label: string) => {
+    if (cond === true) out.push(label);
+  };
+
+  add(p.hasBalcony, "Varanda");
+  add(p.hasElevator, "Elevador");
+  add(p.hasPool, "Piscina");
+  add(p.hasGym, "Academia");
+  add(p.hasPlayground, "Playground");
+  add(p.hasPartyRoom, "Salão de festas");
+  add(p.hasGourmet, "Espaço gourmet");
+  add(p.hasConcierge24h, "Portaria 24h");
+
+  add(p.accRamps, "Acessibilidade: rampas");
+  add(p.accWideDoors, "Acessibilidade: portas largas");
+  add(p.accAccessibleElevator, "Acessibilidade: elevador acessível");
+  add(p.accTactile, "Acessibilidade: piso tátil");
+
+  add(p.comfortAC, "Ar-condicionado");
+  add(p.comfortHeating, "Aquecimento");
+  add(p.comfortSolar, "Energia solar");
+  add(p.comfortNoiseWindows, "Janelas anti-ruído");
+  add(p.comfortLED, "Iluminação LED");
+  add(p.comfortWaterReuse, "Reuso de água");
+
+  add(p.viewSea, "Vista mar");
+  add(p.viewCity, "Vista cidade");
+  add(p.viewRiver, "Vista rio");
+  add(p.viewLake, "Vista lago");
+
+  if (Array.isArray(p.conditionTags)) {
+    for (const t of p.conditionTags) {
+      const s = safeString(t);
+      if (s) out.push(s);
+    }
+  }
+
+  return Array.from(new Set(out));
+}
+
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function formatDistancePtBR(meters: number) {
+  if (!Number.isFinite(meters) || meters <= 0) return "";
+  if (meters < 950) return `${Math.round(meters / 10) * 10} m`;
+  const km = meters / 1000;
+  return `${km.toFixed(1).replace(".", ",")} km`;
+}
+
+function safePublicBaseUrl() {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "";
+  const trimmed = String(base).trim().replace(/\/+$/, "");
+  if (trimmed) return trimmed;
+  if (process.env.NODE_ENV !== "production") return "http://localhost:3000";
+  return "";
+}
+
+function detectPlacesCategory(message: string): { key: string; label: string } | null {
+  const t = normalizeTextForMatch(message);
+  if (!t) return null;
+  const proximity = includesAny(t, ["perto", "proximo", "próximo", "proxima", "próxima", "nas redonde", "na regiao", "na região"]);
+  if (!proximity) return null;
+
+  if (includesAny(t, ["mercado", "supermercado", "padaria"])) return { key: "markets", label: "mercados" };
+  if (includesAny(t, ["escola", "colegio", "colégio", "creche"])) return { key: "schools", label: "escolas" };
+  if (includesAny(t, ["farmacia", "farmácia", "drogaria"])) return { key: "pharmacies", label: "farmácias" };
+  if (includesAny(t, ["restaurante", "lanchonete", "bar"])) return { key: "restaurants", label: "restaurantes" };
+  if (includesAny(t, ["hospital", "upa", "pronto socorro", "pronto-socorro"])) return { key: "hospitals", label: "hospitais" };
+  if (includesAny(t, ["shopping", "mall"])) return { key: "malls", label: "shoppings" };
+  if (includesAny(t, ["parque", "praca", "praça"])) return { key: "parks", label: "parques/praças" };
+  if (includesAny(t, ["academia", "gym"])) return { key: "gyms", label: "academias" };
+  if (includesAny(t, ["posto", "gasolina", "combustivel", "combustível"])) return { key: "fuel", label: "postos" };
+  if (includesAny(t, ["banco", "atm", "caixa"])) return { key: "banks", label: "bancos/caixas" };
+  return null;
+}
+
+async function fetchPlacesNearby(params: { lat: number; lng: number; radiusM: number; perCat: number }) {
+  const base = safePublicBaseUrl();
+  if (!base) return null;
+  const url =
+    `${base}/api/places-nearby` +
+    `?lat=${encodeURIComponent(String(params.lat))}` +
+    `&lng=${encodeURIComponent(String(params.lng))}` +
+    `&radius=${encodeURIComponent(String(params.radiusM))}` +
+    `&perCat=${encodeURIComponent(String(params.perCat))}`;
+  const res = await fetch(url, { method: "GET" }).catch(() => null);
+  if (!res?.ok) return null;
+  const json = (await res.json().catch(() => null)) as any;
+  if (!json || json.ok !== true) return null;
+  return json;
+}
+
+type IntentClassifierResult = {
+  intent: OfflineAssistantIntent;
+  confidence: number;
+};
+
+async function callOpenAiIntentClassifier(params: { apiKey: string; message: string }) {
+  const model = process.env.OPENAI_TEXT_MODEL || process.env.OPENAI_VISION_MODEL || "gpt-4o-mini";
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12_000);
+
+  try {
+    const systemPrompt = [
+      "Você é um classificador de intenção para um chat imobiliário (pt-BR).",
+      "Retorne SOMENTE JSON válido no formato: {\"intent\": \"PROPERTY\", \"confidence\": 0.9}.",
+      "Intents permitidos: PROPERTY, SCHEDULING, FINANCING, OFF_TOPIC, UNCLEAR.",
+      "Use SCHEDULING quando o cliente pedir visita, horário, dia, marcar, agendar ou disponibilidade.",
+      "Use FINANCING quando falar de financiamento, parcelas, FGTS, banco, crédito.",
+      "Use OFF_TOPIC quando não tiver relação com o imóvel/anúncio.",
+      "Use UNCLEAR quando a mensagem for vazia/ambígua demais.",
+      "Caso contrário, PROPERTY.",
+    ].join("\n");
+
+    const userPrompt =
+      "Classifique a intenção da mensagem do cliente.\n\n" +
+      `Mensagem: ${safeString(params.message)}`;
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${params.apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.0,
+        max_tokens: 120,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) return null;
+    const json = (await res.json().catch(() => null)) as any;
+    const content = safeString(json?.choices?.[0]?.message?.content);
+    if (!content) return null;
+
+    const parsed = extractFirstJsonObject(content);
+    if (!parsed) return null;
+    const obj = JSON.parse(parsed);
+    const intentRaw = safeString(obj?.intent).toUpperCase();
+    const confidenceRaw = Number(obj?.confidence);
+    const confidence = Number.isFinite(confidenceRaw) ? Math.max(0, Math.min(1, confidenceRaw)) : 0;
+    const allowed: OfflineAssistantIntent[] = ["PROPERTY", "SCHEDULING", "FINANCING", "OFF_TOPIC", "UNCLEAR"];
+    const intent = (allowed.includes(intentRaw as any) ? (intentRaw as OfflineAssistantIntent) : null) || null;
+    if (!intent) return null;
+    return { model, intent, confidence };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function extractFirstJsonObject(raw: string): string {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  if (s.startsWith("{")) return s;
+
+  const withoutFences = s
+    .replace(/^```(json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+  if (withoutFences.startsWith("{")) return withoutFences;
+
+  const first = withoutFences.indexOf("{");
+  const last = withoutFences.lastIndexOf("}");
+  if (first >= 0 && last > first) return withoutFences.slice(first, last + 1);
+  return "";
+}
+
+function parseOfflineAssistantAiJson(raw: string): { ok: true; value: OfflineAssistantAiJson } | { ok: false; error: string } {
+  const jsonText = extractFirstJsonObject(raw);
+  if (!jsonText) return { ok: false, error: "NO_JSON_OBJECT" };
+
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    return { ok: false, error: "INVALID_JSON" };
+  }
+
+  if (!parsed || typeof parsed !== "object") return { ok: false, error: "NOT_OBJECT" };
+
+  const answer = safeString(parsed.answer);
+  const factsUsedRaw = Array.isArray(parsed.facts_used) ? parsed.facts_used : [];
+  const factsUsed = factsUsedRaw
+    .map((x: any) => safeString(x))
+    .filter(Boolean)
+    .filter((k: string) => (OFFLINE_ASSISTANT_FACT_KEYS as readonly string[]).includes(k));
+  const missingInfoRaw = Array.isArray(parsed.missing_info) ? parsed.missing_info : [];
+  const missingInfo = missingInfoRaw.map((x: any) => safeString(x)).filter(Boolean);
+  const nextQuestion = safeString(parsed.next_question);
+  const handoffNeeded = typeof parsed.handoff_needed === "boolean" ? parsed.handoff_needed : false;
+
+  if (!answer) return { ok: false, error: "EMPTY_ANSWER" };
+
+  return {
+    ok: true,
+    value: {
+      answer,
+      facts_used: factsUsed,
+      missing_info: missingInfo.length ? missingInfo : undefined,
+      next_question: nextQuestion || undefined,
+      handoff_needed: handoffNeeded,
+    },
+  };
+}
+
+function isLikelyFactualAnswer(answer: string) {
+  const raw = String(answer || "");
+  const t = normalizeTextForMatch(raw);
+  if (!t) return false;
+
+  const signals: Array<string | RegExp> = [
+    /\br\$\b/i,
+    /\bm2\b/i,
+    /\bm²\b/i,
+    "condominio",
+    "iptu",
+    "quarto",
+    "banheiro",
+    "suite",
+    "vaga",
+    "andar",
+    "mobili",
+    "pets",
+    "aceita",
+    "finalidade",
+    "compra",
+    "locacao",
+    "consulte",
+  ];
+
+  return includesAny(t, signals) || /\d/.test(raw);
+}
+
+type OfflineAssistantState = {
+  asked?: {
+    purpose?: boolean;
+    pets?: boolean;
+    parking?: boolean;
+    moveTime?: boolean;
+  };
+  lastQuestion?: string;
+  visitRequested?: boolean;
+};
+
+function readOfflineAssistantState(metadata: any): OfflineAssistantState {
+  const s = (metadata as any)?.offlineAssistantState;
+  if (!s || typeof s !== "object") return {};
+
+  const askedRaw = (s as any).asked;
+  const asked = askedRaw && typeof askedRaw === "object" ? askedRaw : {};
+  const toBool = (v: any) => (typeof v === "boolean" ? v : false);
+
+  return {
+    asked: {
+      purpose: toBool((asked as any).purpose),
+      pets: toBool((asked as any).pets),
+      parking: toBool((asked as any).parking),
+      moveTime: toBool((asked as any).moveTime),
+    },
+    lastQuestion: safeString((s as any).lastQuestion) || "",
+    visitRequested: toBool((s as any).visitRequested),
+  };
+}
+
+function updateStateWithQuestion(prev: OfflineAssistantState, question: string): OfflineAssistantState {
+  const q = safeString(question);
+  if (!q) return prev;
+  const t = normalizeTextForMatch(q);
+
+  const askedPrev = prev.asked || {};
+  const asked = { ...askedPrev } as any;
+
+  if (includesAny(t, ["compra ou locacao", "compra ou locação", /\bcompra\b.*\blocacao\b/])) asked.purpose = true;
+  if (includesAny(t, ["pets", "pet", "aceita pets", "tem pets"])) asked.pets = true;
+  if (includesAny(t, ["vaga", "vagas", "estacion"])) asked.parking = true;
+  if (includesAny(t, ["quando pretende", "prazo", "se mudar", "mudanca", "mudança"])) asked.moveTime = true;
+
+  return {
+    ...prev,
+    asked,
+    lastQuestion: q,
+  };
+}
+
+function updateStateVisitRequested(prev: OfflineAssistantState): OfflineAssistantState {
+  return {
+    ...prev,
+    visitRequested: true,
+  };
+}
+
+function extractLastQuestion(text: string) {
+  const s = safeString(text);
+  if (!s) return "";
+  const lines = s.split("\n").map((x) => x.trim()).filter(Boolean);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (line.includes("?")) return line;
+  }
+  return "";
+}
+
+function extractVisitPreferences(message: string) {
+  const raw = safeString(message);
+  const t = normalizeTextForMatch(raw);
+  if (!t) return {};
+
+  const period = includesAny(t, ["manha", "manhã"]) ? "MANHA" : includesAny(t, ["tarde"]) ? "TARDE" : includesAny(t, ["noite"]) ? "NOITE" : "";
+
+  const days: string[] = [];
+  const add = (cond: boolean, label: string) => {
+    if (cond) days.push(label);
+  };
+  add(includesAny(t, ["segunda"]), "SEG");
+  add(includesAny(t, ["terca", "terça"]), "TER");
+  add(includesAny(t, ["quarta"]), "QUA");
+  add(includesAny(t, ["quinta"]), "QUI");
+  add(includesAny(t, ["sexta"]), "SEX");
+  add(includesAny(t, ["sabado", "sábado"]), "SAB");
+  add(includesAny(t, ["domingo"]), "DOM");
+
+  const timeMatch = raw.match(/\b\d{1,2}:\d{2}\b/) || raw.match(/\b\d{1,2}h\b/i);
+  const time = timeMatch ? safeString(timeMatch[0]) : "";
+
+  return {
+    period: period || null,
+    days: days.length ? Array.from(new Set(days)) : null,
+    time: time || null,
+  };
+}
+
+function chooseNextQuestion(params: {
+  purpose: string;
+  petFriendly: string;
+  parkingSpots: string;
+  history: string;
+  state?: OfflineAssistantState;
+}) {
+  const h = normalizeTextForMatch(params.history || "");
+
+  const askedState = params.state?.asked || {};
+
+  const askedPurpose = Boolean(askedState.purpose) || includesAny(h, ["compra ou locacao", "compra ou locação", /\bcompra\b.*\blocacao\b/]);
+  const askedPets = Boolean(askedState.pets) || includesAny(h, ["pets", "pet", "aceita pets", "tem pets"]);
+  const askedParking = Boolean(askedState.parking) || includesAny(h, ["vaga", "vagas", "estacion"]);
+  const askedMove = Boolean(askedState.moveTime) || includesAny(h, ["quando pretende", "quando voce pretende", "prazo", "se mudar", "mudar", "mudanca", "mudança"]);
+
+  if (!params.purpose && !askedPurpose) return "Você busca compra ou locação?";
+  if (!params.petFriendly && !askedPets) return "Você tem pets?";
+  if (!params.parkingSpots && !askedParking) return "Você precisa de vaga de garagem? Se sim, quantas?";
+  if (!askedMove) return "Quando você pretende se mudar?";
+  return "";
+}
+
 type OfflineAssistantIntent = "PROPERTY" | "SCHEDULING" | "FINANCING" | "OFF_TOPIC" | "UNCLEAR";
 
 function classifyIntent(message: string): OfflineAssistantIntent {
@@ -148,10 +567,10 @@ function buildRefusalReply(params: {
   if (params.reason === "SCHEDULING") {
     return (
       intro +
-      "Eu não consigo combinar esse tipo de detalhe por aqui.\n\n" +
-      `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
-      "O corretor vai te responder assim que possível.\n\n" +
-      "O que você gostaria de saber sobre o imóvel?"
+      "Eu não consigo confirmar/agendar visita por aqui.\n\n" +
+      `${about}posso registrar seu interesse para o corretor.\n\n` +
+      "Qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n" +
+      "O corretor vai te responder assim que possível."
     );
   }
 
@@ -289,6 +708,7 @@ async function callOpenAiText(params: { apiKey: string; systemPrompt: string; us
         model,
         temperature: 0.4,
         max_tokens: 260,
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: params.systemPrompt },
           { role: "user", content: params.userPrompt },
@@ -489,9 +909,12 @@ export class LeadAutoReplyService {
           property: {
             select: {
               title: true,
+              description: true,
               city: true,
               state: true,
               neighborhood: true,
+              latitude: true,
+              longitude: true,
               price: true,
               hidePrice: true,
               condoFee: true,
@@ -508,6 +931,30 @@ export class LeadAutoReplyService {
               floor: true,
               furnished: true,
               petFriendly: true,
+              conditionTags: true,
+              condoRules: true,
+              hasBalcony: true,
+              hasElevator: true,
+              hasPool: true,
+              hasGym: true,
+              hasPlayground: true,
+              hasPartyRoom: true,
+              hasGourmet: true,
+              hasConcierge24h: true,
+              accRamps: true,
+              accWideDoors: true,
+              accAccessibleElevator: true,
+              accTactile: true,
+              comfortAC: true,
+              comfortHeating: true,
+              comfortSolar: true,
+              comfortNoiseWindows: true,
+              comfortLED: true,
+              comfortWaterReuse: true,
+              viewSea: true,
+              viewCity: true,
+              viewRiver: true,
+              viewLake: true,
             },
           },
         },
@@ -640,7 +1087,20 @@ export class LeadAutoReplyService {
 
       const shouldIntroduce = !lastAi?.createdAt;
 
-      const intent = classifyIntent(msg.content);
+      const apiKey = process.env.OPENAI_API_KEY;
+
+      const lastAutoReplyEvent2 = await (prisma as any).leadEvent
+        .findFirst({
+          where: { leadId: lead.id, type: "AUTO_REPLY_SENT" as any },
+          orderBy: { createdAt: "desc" },
+          select: { metadata: true },
+        })
+        .catch(() => null);
+      const prevState2 = readOfflineAssistantState((lastAutoReplyEvent2 as any)?.metadata);
+
+      const heuristicIntent = classifyIntent(msg.content);
+      const classifier = apiKey ? await callOpenAiIntentClassifier({ apiKey, message: msg.content }) : null;
+      const intent = classifier && classifier.confidence >= 0.6 ? classifier.intent : heuristicIntent;
       if (intent !== "PROPERTY") {
         const refusal = buildRefusalReply({
           clientName,
@@ -681,9 +1141,12 @@ export class LeadAutoReplyService {
             decision: "SENT",
             reason: intent,
             model: null,
-            promptVersion: "v2",
+            promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
           },
         });
+
+        const stateAfterRefusalBase = updateStateWithQuestion(prevState2, extractLastQuestion(finalText));
+        const stateAfterRefusal = intent === "SCHEDULING" ? updateStateVisitRequested(stateAfterRefusalBase) : stateAfterRefusalBase;
 
         await this.safeEvent(lead.id, "AUTO_REPLY_SENT", {
           clientMessageId,
@@ -691,7 +1154,38 @@ export class LeadAutoReplyService {
           model: null,
           refusal: true,
           intent,
+          intentMeta: {
+            source: classifier && classifier.confidence >= 0.6 ? "llm" : "heuristic",
+            heuristicIntent,
+            llmIntent: classifier?.intent || null,
+            llmConfidence: classifier?.confidence ?? null,
+            llmModel: classifier?.model || null,
+          },
+          promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
+          offlineAssistantState: stateAfterRefusal,
         });
+
+        if (intent === "SCHEDULING") {
+          try {
+            const prefs = extractVisitPreferences(msg.content);
+            if (!prevState2.visitRequested) {
+              await LeadEventService.record({
+                leadId: lead.id,
+                type: "VISIT_REQUESTED" as any,
+                title: "VISIT_REQUESTED",
+                metadata: {
+                  clientMessageId,
+                  source: classifier && classifier.confidence >= 0.6 ? "llm" : "heuristic",
+                  heuristicIntent,
+                  llmIntent: classifier?.intent || null,
+                  llmConfidence: classifier?.confidence ?? null,
+                  promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
+                  preferences: prefs,
+                },
+              });
+            }
+          } catch {}
+        }
 
         try {
           const pusher = getPusherServer();
@@ -706,6 +1200,34 @@ export class LeadAutoReplyService {
 
         return { ok: true as const, status: "SENT" as const };
       }
+
+      const recent = await prisma.leadClientMessage.findMany({
+        where: { leadId: lead.id },
+        orderBy: { createdAt: "desc" },
+        take: 8,
+        select: { fromClient: true, content: true, createdAt: true, source: true },
+      });
+
+      const historyBase = recent
+        .slice()
+        .reverse()
+        .map((m: any) => {
+          const who = m.fromClient ? "Cliente" : String(m?.source) === "AUTO_REPLY_AI" ? "Assistente" : "Corretor";
+          return `${who}: ${safeString(m.content)}`;
+        })
+        .filter(Boolean)
+        .join("\n");
+
+      const lastAutoReplyEvent = await (prisma as any).leadEvent
+        .findFirst({
+          where: { leadId: lead.id, type: "AUTO_REPLY_SENT" as any },
+          orderBy: { createdAt: "desc" },
+          select: { metadata: true },
+        })
+        .catch(() => null);
+      const prevState = readOfflineAssistantState((lastAutoReplyEvent as any)?.metadata);
+      const lastNextQuestion = safeString((lastAutoReplyEvent as any)?.metadata?.aiJson?.nextQuestion) || safeString(prevState.lastQuestion);
+      const history = [historyBase, lastNextQuestion ? `Assistente(pergunta anterior): ${lastNextQuestion}` : ""].filter(Boolean).join("\n");
 
       const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       const aiCount = await (prisma as any).leadClientMessage.count({
@@ -738,7 +1260,7 @@ export class LeadAutoReplyService {
             decision: "SENT",
             reason: "RATE_LIMIT",
             model: null,
-            promptVersion: "v2",
+            promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
           },
         });
 
@@ -748,6 +1270,7 @@ export class LeadAutoReplyService {
           model: null,
           fallback: true,
           reason: "RATE_LIMIT",
+          promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
         });
 
         try {
@@ -764,7 +1287,123 @@ export class LeadAutoReplyService {
         return { ok: true as const, status: "SENT" as const };
       }
 
-      const apiKey = process.env.OPENAI_API_KEY;
+      const city = safeString(lead.property?.city) || "";
+      const state = safeString(lead.property?.state) || "";
+      const neighborhood = safeString(lead.property?.neighborhood) || "";
+      const type = safeString(lead.property?.type) || "";
+      const purpose = safeString(lead.property?.purpose) || "";
+      const bedrooms = typeof lead.property?.bedrooms === "number" ? String(lead.property.bedrooms) : "";
+      const bathrooms = typeof lead.property?.bathrooms === "number" ? String(lead.property.bathrooms) : "";
+      const areaM2 = typeof lead.property?.areaM2 === "number" ? String(lead.property.areaM2) : "";
+
+      const suites = typeof (lead.property as any)?.suites === "number" ? String((lead.property as any).suites) : "";
+      const parkingSpots = typeof (lead.property as any)?.parkingSpots === "number" ? String((lead.property as any).parkingSpots) : "";
+      const floor = typeof (lead.property as any)?.floor === "number" ? String((lead.property as any).floor) : "";
+      const furnished =
+        typeof (lead.property as any)?.furnished === "boolean" ? ((lead.property as any).furnished ? "Sim" : "Não") : "";
+      const petFriendly =
+        typeof (lead.property as any)?.petFriendly === "boolean" ? ((lead.property as any).petFriendly ? "Sim" : "Não") : "";
+
+      const price = (lead.property as any)?.hidePrice ? "Consulte" : formatBRLFromCents((lead.property as any)?.price) || "Consulte";
+      const condoFee =
+        (lead.property as any)?.hideCondoFee ? "Consulte" : formatBRLFromCents((lead.property as any)?.condoFee) || "";
+      const iptuYearly = (lead.property as any)?.hideIPTU ? "Consulte" : formatBRLFromCents((lead.property as any)?.iptuYearly) || "";
+
+      const latitude = typeof (lead.property as any)?.latitude === "number" ? (lead.property as any).latitude : null;
+      const longitude = typeof (lead.property as any)?.longitude === "number" ? (lead.property as any).longitude : null;
+
+      const placesCat = detectPlacesCategory(msg.content);
+      if (placesCat && latitude != null && longitude != null) {
+        const places = await fetchPlacesNearby({ lat: latitude, lng: longitude, radiusM: 2500, perCat: 8 }).catch(() => null);
+        const itemsRaw = places ? (places as any)?.[placesCat.key] : null;
+        const items = Array.isArray(itemsRaw) ? itemsRaw : [];
+        const scored = items
+          .map((it: any) => {
+            const name = safeString(it?.name);
+            const lat = typeof it?.lat === "number" ? it.lat : null;
+            const lng = typeof it?.lng === "number" ? it.lng : null;
+            if (!name || lat == null || lng == null) return null;
+            const distM = haversineMeters(latitude, longitude, lat, lng);
+            return { name, distM };
+          })
+          .filter(Boolean)
+          .sort((a: any, b: any) => a.distM - b.distM)
+          .slice(0, 3);
+
+        const intro = shouldIntroduce ? buildAssistantIntro(clientName) : "";
+        const about = propertyTitle ? `Sobre o imóvel ${propertyTitle}, ` : "Sobre o imóvel, ";
+        const list = scored
+          .map((x: any) => {
+            const d = formatDistancePtBR(x.distM);
+            return d ? `- ${x.name} (${d})` : `- ${x.name}`;
+          })
+          .join("\n");
+
+        const nextQuestion = chooseNextQuestion({ purpose, petFriendly, parkingSpots, history, state: prevState });
+        const answer =
+          intro +
+          `${about}encontrei ${placesCat.label} próximos (distâncias aproximadas):\n` +
+          (list || "(sem resultados no momento)") +
+          (nextQuestion ? `\n\n${nextQuestion}` : "");
+
+        const draft = applyOfflineAutoReplyGuardrails({ draft: answer, clientName, propertyTitle });
+        const finalText = draft || buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: shouldIntroduce });
+
+        const assistantMessage = await (prisma as any).leadClientMessage.create({
+          data: {
+            leadId: lead.id,
+            fromClient: false,
+            content: finalText,
+            source: "AUTO_REPLY_AI" as any,
+          },
+          select: { id: true, content: true, createdAt: true },
+        });
+
+        await (prisma as any).leadAutoReplyJob.update({
+          where: { clientMessageId },
+          data: { status: "SENT", processedAt: now },
+        });
+
+        await (prisma as any).leadAutoReplyLog.create({
+          data: {
+            leadId: lead.id,
+            realtorId: lead.realtorId,
+            clientMessageId,
+            assistantMessageId: assistantMessage.id,
+            decision: "SENT",
+            reason: "PLACES_NEARBY",
+            model: null,
+            promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
+          },
+        });
+
+        await this.safeEvent(lead.id, "AUTO_REPLY_SENT", {
+          clientMessageId,
+          assistantMessageId: assistantMessage.id,
+          model: null,
+          promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
+          offlineAssistantState: updateStateWithQuestion(prevState, nextQuestion),
+          tool: {
+            name: "places-nearby",
+            category: placesCat.key,
+            results: scored.map((x: any) => ({ name: x.name, distM: x.distM })),
+          },
+        });
+
+        try {
+          const pusher = getPusherServer();
+          await pusher.trigger(PUSHER_CHANNELS.CHAT(lead.id), PUSHER_EVENTS.NEW_CHAT_MESSAGE, {
+            id: assistantMessage.id,
+            leadId: lead.id,
+            fromClient: false,
+            content: assistantMessage.content,
+            createdAt: assistantMessage.createdAt,
+          });
+        } catch {}
+
+        return { ok: true as const, status: "SENT" as const };
+      }
+
       if (!apiKey) {
         const fallback = buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: shouldIntroduce });
         const assistantMessage = await (prisma as any).leadClientMessage.create({
@@ -790,6 +1429,8 @@ export class LeadAutoReplyService {
             assistantMessageId: assistantMessage.id,
             decision: "SENT",
             reason: "OPENAI_API_KEY_MISSING",
+            model: null,
+            promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
           },
         });
 
@@ -799,6 +1440,7 @@ export class LeadAutoReplyService {
           model: null,
           fallback: true,
           reason: "OPENAI_API_KEY_MISSING",
+          promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
         });
 
         try {
@@ -815,51 +1457,15 @@ export class LeadAutoReplyService {
         return { ok: true as const, status: "SENT" as const };
       }
 
-      const recent = await prisma.leadClientMessage.findMany({
-        where: { leadId: lead.id },
-        orderBy: { createdAt: "desc" },
-        take: 8,
-        select: { fromClient: true, content: true, createdAt: true, source: true },
-      });
-
-      const history = recent
-        .slice()
-        .reverse()
-        .map((m: any) => {
-          const who = m.fromClient ? "Cliente" : String(m?.source) === "AUTO_REPLY_AI" ? "Assistente" : "Corretor";
-          return `${who}: ${safeString(m.content)}`;
-        })
-        .filter(Boolean)
-        .join("\n");
-
-      const city = safeString(lead.property?.city) || "";
-      const state = safeString(lead.property?.state) || "";
-      const neighborhood = safeString(lead.property?.neighborhood) || "";
-      const type = safeString(lead.property?.type) || "";
-      const purpose = safeString(lead.property?.purpose) || "";
-      const bedrooms = typeof lead.property?.bedrooms === "number" ? String(lead.property.bedrooms) : "";
-      const bathrooms = typeof lead.property?.bathrooms === "number" ? String(lead.property.bathrooms) : "";
-      const areaM2 = typeof lead.property?.areaM2 === "number" ? String(lead.property.areaM2) : "";
-
-      const suites = typeof (lead.property as any)?.suites === "number" ? String((lead.property as any).suites) : "";
-      const parkingSpots = typeof (lead.property as any)?.parkingSpots === "number" ? String((lead.property as any).parkingSpots) : "";
-      const floor = typeof (lead.property as any)?.floor === "number" ? String((lead.property as any).floor) : "";
-      const furnished =
-        typeof (lead.property as any)?.furnished === "boolean" ? ((lead.property as any).furnished ? "Sim" : "Não") : "";
-      const petFriendly =
-        typeof (lead.property as any)?.petFriendly === "boolean" ? ((lead.property as any).petFriendly ? "Sim" : "Não") : "";
-
-      const price = (lead.property as any)?.hidePrice ? "Consulte" : formatBRLFromCents((lead.property as any)?.price) || "Consulte";
-      const condoFee =
-        (lead.property as any)?.hideCondoFee ? "Consulte" : formatBRLFromCents((lead.property as any)?.condoFee) || "";
-      const iptuYearly = (lead.property as any)?.hideIPTU ? "Consulte" : formatBRLFromCents((lead.property as any)?.iptuYearly) || "";
-
       const systemPrompt =
         "Você é um assistente de atendimento do chat do site (pt-BR) para corretores de imóveis no Brasil.\n" +
         "Você está respondendo enquanto o corretor está offline (fora do horário comercial configurado).\n" +
         "Objetivo: manter o cliente engajado, esclarecer dúvidas básicas do imóvel usando SOMENTE os dados fornecidos e fazer 1 pergunta curta para qualificar.\n" +
-        "Regras: responda apenas sobre o anúncio; não invente informações; não use links/telefone; não agende visitas; não sugira horários; não prometa retorno em X minutos.\n" +
-        "Responda de forma curta, humana e direta (máximo ~5 linhas).";
+        "Política anti-chute: se a informação não estiver nos dados fornecidos, diga claramente que não consta no anúncio, liste o que faltou em missing_info e NÃO invente.\n" +
+        "Regras: responda apenas sobre o anúncio; não invente informações; não use links/telefone; não agende/CONFIRME visitas; não sugira horários/dias; não prometa retorno em X minutos.\n" +
+        "Saída: responda SOMENTE com um objeto JSON válido (sem markdown, sem texto fora do JSON) com as chaves: answer, facts_used, missing_info, next_question, handoff_needed.\n" +
+        "facts_used deve ser uma lista com as chaves dos dados realmente usados na resposta.\n" +
+        "answer deve ser curta, humana e direta (máximo ~5 linhas).";
 
       const lines: string[] = [];
       if (clientName) lines.push(`Nome do cliente: ${clientName}`);
@@ -879,26 +1485,71 @@ export class LeadAutoReplyService {
       if (petFriendly) lines.push(`Aceita pets: ${petFriendly}`);
       if (areaM2) lines.push(`Área: ${areaM2} m²`);
 
+      const description = clampText(safeString((lead.property as any)?.description), 700);
+      const condoRules = clampText(safeString((lead.property as any)?.condoRules), 500);
+      const amenities = buildAmenitiesFromProperty(lead.property);
+      if (description) lines.push(`Descrição do anúncio: ${description}`);
+      if (amenities.length) lines.push(`Itens/condomínio: ${amenities.join(", ")}`);
+      if (condoRules) lines.push(`Regras do condomínio: ${condoRules}`);
+
       const userPrompt =
         lines.join("\n") +
+        "\n\nChaves permitidas para facts_used: " +
+        OFFLINE_ASSISTANT_FACT_KEYS.join(", ") +
         "\n\nHistórico recente do chat:\n" +
         (history || "(sem histórico)") +
         `\n\nEsta é sua primeira resposta nesta conversa? ${shouldIntroduce ? "Sim" : "Não"}.` +
-        "\n\nAgora escreva a resposta para o cliente.";
+        "\n\nAgora responda no formato JSON pedido.";
 
       const ai = await callOpenAiText({ apiKey, systemPrompt, userPrompt });
       const rawDraft = ai?.content ? String(ai.content) : "";
-      const normalized = normalizeTextForMatch(rawDraft);
+
+      const parsed = rawDraft ? parseOfflineAssistantAiJson(rawDraft) : ({ ok: false, error: "EMPTY_AI_OUTPUT" } as const);
+
+      const serverNextQuestion = chooseNextQuestion({ purpose, petFriendly, parkingSpots, history, state: prevState });
+      const modelNextQuestion = parsed.ok ? safeString(parsed.value.next_question) : "";
+      const nextQuestion = modelNextQuestion || serverNextQuestion;
+
+      const nextState = updateStateWithQuestion(prevState, nextQuestion);
+      const nextStateWithVisit = parsed.ok && parsed.value.handoff_needed ? updateStateVisitRequested(nextState) : nextState;
+
+      const rawAnswer = parsed.ok ? safeString(parsed.value.answer) : "";
+      const factsUsed = parsed.ok ? parsed.value.facts_used : [];
+      const likelyFactual = isLikelyFactualAnswer(rawAnswer);
+      const factualWithoutFacts = Boolean(likelyFactual && factsUsed.length === 0);
+
+      const sendReason =
+        !parsed.ok
+          ? parsed.error === "EMPTY_AI_OUTPUT"
+            ? "EMPTY_AI_OUTPUT"
+            : "AI_JSON_PARSE_FAILED"
+          : factualWithoutFacts
+            ? "FACTUAL_WITHOUT_FACTS"
+            : null;
+
+      let answerText = rawAnswer;
+      if (!answerText || !parsed.ok) {
+        answerText = buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: shouldIntroduce });
+      } else if (factualWithoutFacts) {
+        const intro = shouldIntroduce ? buildAssistantIntro(clientName) : "";
+        const about = propertyTitle ? `Sobre o imóvel ${propertyTitle}, ` : "Sobre o imóvel, ";
+        answerText = intro + `${about}essa informação não consta no anúncio.\n\nO corretor confirma assim que possível.`;
+      }
+
+      const normalizedAnswer = normalizeTextForMatch(answerText);
       const alreadyIntroduced =
-        normalized.includes("sou a assistente") ||
-        normalized.includes("assistente virtual") ||
-        normalized.includes("sou o assistente") ||
-        normalized.includes("sou a assistente virtual do corretor") ||
-        normalized.includes("sou o assistente virtual do corretor");
-      const draftWithIntro = shouldIntroduce && !alreadyIntroduced ? buildAssistantIntro(clientName) + rawDraft : rawDraft;
-      const draft = rawDraft
+        normalizedAnswer.includes("sou a assistente") ||
+        normalizedAnswer.includes("assistente virtual") ||
+        normalizedAnswer.includes("sou o assistente") ||
+        normalizedAnswer.includes("sou a assistente virtual do corretor") ||
+        normalizedAnswer.includes("sou o assistente virtual do corretor");
+
+      const answerWithIntro = shouldIntroduce && !alreadyIntroduced ? buildAssistantIntro(clientName) + answerText : answerText;
+      const messageWithQuestion = nextQuestion ? `${answerWithIntro}\n\n${nextQuestion}` : answerWithIntro;
+
+      const draft = messageWithQuestion
         ? applyOfflineAutoReplyGuardrails({
-            draft: draftWithIntro,
+            draft: messageWithQuestion,
             clientName,
             propertyTitle,
           })
@@ -930,7 +1581,7 @@ export class LeadAutoReplyService {
             decision: "SENT",
             reason: "EMPTY_AI_OUTPUT",
             model: ai?.model || null,
-            promptVersion: "v2",
+            promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
           },
         });
 
@@ -978,9 +1629,9 @@ export class LeadAutoReplyService {
           clientMessageId,
           assistantMessageId: assistantMessage.id,
           decision: "SENT",
-          reason: null,
+          reason: sendReason,
           model: ai?.model || null,
-          promptVersion: "v2",
+          promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
         },
       });
 
@@ -988,7 +1639,40 @@ export class LeadAutoReplyService {
         clientMessageId,
         assistantMessageId: assistantMessage.id,
         model: ai?.model || null,
+        promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
+        offlineAssistantState: nextStateWithVisit,
+        aiJson: {
+          ok: parsed.ok,
+          error: parsed.ok ? null : (parsed as any).error,
+          factsUsed,
+          likelyFactual,
+          factualWithoutFacts,
+          nextQuestion: nextQuestion || null,
+          modelNextQuestion: modelNextQuestion || null,
+          serverNextQuestion: serverNextQuestion || null,
+          missingInfo: parsed.ok ? parsed.value.missing_info || null : null,
+          handoffNeeded: parsed.ok ? Boolean(parsed.value.handoff_needed) : null,
+        },
       });
+
+      if (parsed.ok && parsed.value.handoff_needed) {
+        try {
+          const prefs = extractVisitPreferences(msg.content);
+          if (!prevState.visitRequested) {
+            await LeadEventService.record({
+              leadId: lead.id,
+              type: "VISIT_REQUESTED" as any,
+              title: "VISIT_REQUESTED",
+              metadata: {
+                clientMessageId,
+                source: "ai_json",
+                promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
+                preferences: prefs,
+              },
+            });
+          }
+        } catch {}
+      }
 
       try {
         const pusher = getPusherServer();
@@ -1025,7 +1709,7 @@ export class LeadAutoReplyService {
               decision: "FAILED",
               reason: "ERROR",
               model: null,
-              promptVersion: "v2",
+              promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
             },
           });
         }
