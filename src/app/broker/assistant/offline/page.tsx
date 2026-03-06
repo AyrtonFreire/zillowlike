@@ -4,11 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Activity, Clock, MessageSquare, Settings } from "lucide-react";
+import { AlertCircle, Calendar, Clock, Settings } from "lucide-react";
 import Toast from "@/components/Toast";
 import Input from "@/components/ui/Input";
 import Accordion from "@/components/ui/Accordion";
-import MetricCard from "@/components/dashboard/MetricCard";
 import StatCard from "@/components/dashboard/StatCard";
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
@@ -33,28 +32,19 @@ type AutoReplyMetrics = {
   range: "24h" | "7d";
   since: string;
   enabled: boolean;
-  counts: {
-    sent: number;
-    skipped: number;
-    failed: number;
-  };
-  sentByReason?: Array<{ reason: string; count: number }>;
-  promptVersions?: Array<{ promptVersion: string; count: number }>;
-  quality?: {
-    aiJsonParseFailed?: number;
-    factualWithoutFacts?: number;
-    placesNearby?: number;
-    openAiKeyMissing?: number;
-  };
-  skippedByReason: Array<{ reason: string; count: number }>;
-  recent: Array<{
-    id: string;
+  items: Array<{
     leadId: string;
-    decision: string;
-    reason: string | null;
-    createdAt: string;
-    propertyTitle: string | null;
     contactName: string | null;
+    propertyTitle: string | null;
+    lastActivityAt: string | null;
+    counts: { sent: number; skipped: number; failed: number };
+    lastClientMessagePreview: string | null;
+    lastAssistantMessagePreview: string | null;
+    handoffNeeded: boolean;
+    nextQuestion: string | null;
+    visitRequested: boolean;
+    visitPreferences: { period: string | null; days: string[] | null; time: string | null } | null;
+    clientSlots: Record<string, any> | null;
   }>;
 };
 
@@ -140,7 +130,7 @@ export default function BrokerAssistantOfflinePage() {
     try {
       setMetricsError(null);
       setMetricsLoading(true);
-      const res = await fetch(`/api/broker/auto-reply-metrics?range=${range}`);
+      const res = await fetch(`/api/broker/auto-reply-lead-summaries?range=${range}`);
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || `API error: ${res.status}`);
       setMetrics(data || null);
@@ -150,6 +140,51 @@ export default function BrokerAssistantOfflinePage() {
     } finally {
       setMetricsLoading(false);
     }
+  };
+
+  const formatRelativeTime = (iso: string | null) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffMins < 60) return `${Math.max(diffMins, 1)}min atrás`;
+    if (diffHours < 24) return `${diffHours}h atrás`;
+    if (diffDays < 7) return `${diffDays}d atrás`;
+    return d.toLocaleString("pt-BR");
+  };
+
+  const renderSlotsChips = (clientSlots: Record<string, any> | null) => {
+    if (!clientSlots || typeof clientSlots !== "object") return null;
+    const chips: string[] = [];
+
+    const purpose = String(clientSlots.purpose || "").toUpperCase();
+    if (purpose === "COMPRA") chips.push("Compra");
+    if (purpose === "LOCACAO") chips.push("Locação");
+
+    if (typeof clientSlots.hasPets === "boolean") chips.push(clientSlots.hasPets ? "Com pets" : "Sem pets");
+    if (typeof clientSlots.bedroomsNeeded === "number") chips.push(`${clientSlots.bedroomsNeeded} quartos`);
+    if (typeof clientSlots.parkingSpotsNeeded === "number") {
+      chips.push(clientSlots.parkingSpotsNeeded === 0 ? "Sem vaga" : `${clientSlots.parkingSpotsNeeded} vagas`);
+    }
+    if (clientSlots.budget) chips.push(`Orçamento: ${String(clientSlots.budget)}`);
+    if (clientSlots.moveTime) chips.push(`Mudança: ${String(clientSlots.moveTime)}`);
+
+    const unique = Array.from(new Set(chips.map((x) => String(x).trim()).filter(Boolean)));
+    if (!unique.length) return null;
+
+    return (
+      <div className="flex flex-wrap gap-2 mt-3">
+        {unique.slice(0, 6).map((c) => (
+          <span key={c} className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-medium text-gray-700">
+            {c}
+          </span>
+        ))}
+      </div>
+    );
   };
 
   const fetchAll = async () => {
@@ -351,7 +386,7 @@ export default function BrokerAssistantOfflinePage() {
         </div>
 
         <StatCard
-          title="Logs (assistente offline)"
+          title="Resumo por lead"
           action={
             <div className="flex items-center gap-2">
               <select
@@ -388,182 +423,103 @@ export default function BrokerAssistantOfflinePage() {
                 </div>
               ) : null}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <MetricCard
-                  title="Respostas enviadas"
-                  value={metrics?.counts?.sent || 0}
-                  icon={MessageSquare}
-                  subtitle="IA respondeu por você"
-                  iconColor="text-emerald-700"
-                  iconBgColor="bg-emerald-50"
-                  className="p-4"
-                />
-                <MetricCard
-                  title="Puladas"
-                  value={metrics?.counts?.skipped || 0}
-                  icon={Clock}
-                  subtitle="Decisões de skip"
-                  iconColor="text-amber-700"
-                  iconBgColor="bg-amber-50"
-                  className="p-4"
-                />
-                <MetricCard
-                  title="Falhas"
-                  value={metrics?.counts?.failed || 0}
-                  icon={Activity}
-                  subtitle="Erros/saídas vazias"
-                  iconBgColor="bg-rose-50"
-                  className="p-4"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <MetricCard
-                  title="JSON inválido"
-                  value={metrics?.quality?.aiJsonParseFailed || 0}
-                  icon={Activity}
-                  subtitle="Parse/validação falhou"
-                  iconColor="text-rose-700"
-                  iconBgColor="bg-rose-50"
-                  className="p-4"
-                />
-                <MetricCard
-                  title="Fato sem fonte"
-                  value={metrics?.quality?.factualWithoutFacts || 0}
-                  icon={Activity}
-                  subtitle="Resposta factual sem facts_used"
-                  iconColor="text-amber-700"
-                  iconBgColor="bg-amber-50"
-                  className="p-4"
-                />
-                <MetricCard
-                  title="Tool proximidade"
-                  value={metrics?.quality?.placesNearby || 0}
-                  icon={Activity}
-                  subtitle="Respostas via places-nearby"
-                  iconColor="text-emerald-700"
-                  iconBgColor="bg-emerald-50"
-                  className="p-4"
-                />
-                <MetricCard
-                  title="Sem OpenAI key"
-                  value={metrics?.quality?.openAiKeyMissing || 0}
-                  icon={Activity}
-                  subtitle="Fallback por chave ausente"
-                  iconColor="text-gray-700"
-                  iconBgColor="bg-gray-50"
-                  className="p-4"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900">Principais motivos de skip</p>
-                    <p className="text-xs text-gray-500">{range}</p>
+              {(metrics?.items || []).length === 0 ? (
+                <div className="rounded-2xl border border-gray-100 bg-white p-6">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                    <AlertCircle className="w-4 h-4 text-gray-500" />
+                    Nenhum lead com atividade do assistente no período.
                   </div>
-                  <div className="mt-3 space-y-2">
-                    {(metrics?.skippedByReason || []).length === 0 ? (
-                      <p className="text-sm text-gray-600">Nenhum skip registrado no período.</p>
-                    ) : (
-                      (metrics?.skippedByReason || []).map((row) => (
-                        <div key={row.reason} className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-medium text-gray-700 truncate">{row.reason}</span>
-                          <span className="text-xs font-semibold text-gray-900 tabular-nums">{row.count}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  <p className="mt-1 text-sm text-gray-600">Se houver novos leads enquanto você estiver offline, eles aparecerão aqui.</p>
                 </div>
+              ) : (
+                <div className="space-y-3">
+                  {(metrics?.items || []).map((row) => {
+                    const title = row.propertyTitle || "Lead";
+                    const contact = row.contactName || "Cliente";
+                    const when = formatRelativeTime(row.lastActivityAt);
+                    const subtitleParts = [contact, title].filter(Boolean);
 
-                <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900">Últimos eventos</p>
-                    <p className="text-xs text-gray-500">{range}</p>
-                  </div>
-                  <div className="mt-3 space-y-3">
-                    {(metrics?.recent || []).length === 0 ? (
-                      <p className="text-sm text-gray-600">Nenhum evento registrado no período.</p>
-                    ) : (
-                      (metrics?.recent || []).map((row) => {
-                        const decision = String(row.decision || "");
-                        const badge =
-                          decision === "SENT"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : decision === "FAILED"
-                            ? "bg-rose-50 text-rose-700 border-rose-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200";
-                        const title = row.propertyTitle || "Lead";
-                        const subtitle = [row.contactName || null, row.reason || null].filter(Boolean).join(" · ");
-                        return (
-                          <Link
-                            key={row.id}
-                            href={`/broker/leads/${row.leadId}`}
-                            className="block rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors p-3"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 line-clamp-1">{title}</p>
-                                {subtitle ? (
-                                  <p className="mt-0.5 text-xs text-gray-600 line-clamp-1">{subtitle}</p>
-                                ) : (
-                                  <p className="mt-0.5 text-xs text-gray-500">&nbsp;</p>
-                                )}
-                                <p className="mt-1 text-[10px] text-gray-400">
-                                  {row.createdAt ? new Date(row.createdAt).toLocaleString("pt-BR") : ""}
-                                </p>
-                              </div>
-                              <span className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badge}`}>
-                                {decision || "—"}
-                              </span>
+                    const showVisit = Boolean(row.visitRequested);
+                    const showHandoff = Boolean(row.handoffNeeded);
+                    const showFailed = (row.counts?.failed || 0) > 0;
+                    const showSkippedOnly = (row.counts?.sent || 0) === 0 && (row.counts?.failed || 0) === 0 && (row.counts?.skipped || 0) > 0;
+
+                    const vp = row.visitPreferences;
+                    const vpText = vp
+                      ? [
+                          vp.period ? String(vp.period) : null,
+                          Array.isArray(vp.days) && vp.days.length ? String(vp.days.join("/")) : null,
+                          vp.time ? String(vp.time) : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : "";
+
+                    return (
+                      <Link
+                        key={row.leadId}
+                        href={`/broker/leads/${row.leadId}`}
+                        className="block rounded-2xl border border-gray-100 bg-white p-4 hover:border-gray-200 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 line-clamp-1">{subtitleParts.join(" · ")}</p>
+                            <p className="mt-0.5 text-xs text-gray-500">{when}</p>
+
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {showVisit ? (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-700">
+                                  <Calendar className="w-3.5 h-3.5" />
+                                  Visita solicitada{vpText ? `: ${vpText}` : ""}
+                                </span>
+                              ) : null}
+                              {showHandoff ? (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
+                                  <Clock className="w-3.5 h-3.5" />
+                                  Precisa de retorno
+                                </span>
+                              ) : null}
+                              {showSkippedOnly ? (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-semibold text-gray-700">
+                                  Assistente pulou
+                                </span>
+                              ) : null}
+                              {showFailed ? (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
+                                  Falhou
+                                </span>
+                              ) : null}
                             </div>
-                          </Link>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900">Versões do prompt (SENT)</p>
-                    <p className="text-xs text-gray-500">{range}</p>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {(metrics?.promptVersions || []).length === 0 ? (
-                      <p className="text-sm text-gray-600">Sem dados no período.</p>
-                    ) : (
-                      (metrics?.promptVersions || []).map((row) => (
-                        <div key={row.promptVersion} className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-medium text-gray-700 truncate">{row.promptVersion}</span>
-                          <span className="text-xs font-semibold text-gray-900 tabular-nums">{row.count}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
+                            {row.lastClientMessagePreview ? (
+                              <p className="mt-3 text-xs text-gray-700 line-clamp-2">
+                                <span className="font-semibold text-gray-900">Cliente:</span> {row.lastClientMessagePreview}
+                              </p>
+                            ) : null}
+                            {row.lastAssistantMessagePreview ? (
+                              <p className="mt-1 text-xs text-gray-700 line-clamp-2">
+                                <span className="font-semibold text-gray-900">Assistente:</span> {row.lastAssistantMessagePreview}
+                              </p>
+                            ) : row.nextQuestion ? (
+                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
+                                <span className="font-semibold text-gray-900">Próximo passo:</span> {row.nextQuestion}
+                              </p>
+                            ) : null}
 
-                <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900">SENT por motivo</p>
-                    <p className="text-xs text-gray-500">{range}</p>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {(metrics?.sentByReason || []).length === 0 ? (
-                      <p className="text-sm text-gray-600">Sem dados no período.</p>
-                    ) : (
-                      (metrics?.sentByReason || []).slice(0, 8).map((row) => (
-                        <div key={row.reason} className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-medium text-gray-700 truncate">{row.reason}</span>
-                          <span className="text-xs font-semibold text-gray-900 tabular-nums">{row.count}</span>
+                            {renderSlotsChips(row.clientSlots)}
+                          </div>
+
+                          <div className="flex-shrink-0">
+                            <span className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700">
+                              Abrir lead
+                            </span>
+                          </div>
                         </div>
-                      ))
-                    )}
-                  </div>
+                      </Link>
+                    );
+                  })}
                 </div>
-              </div>
+              )}
             </div>
           )}
         </StatCard>
