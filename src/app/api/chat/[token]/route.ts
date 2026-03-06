@@ -11,6 +11,9 @@ import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const jsonSafe = <T>(value: T): T | number => (typeof value === "bigint" ? Number(value) : value);
 
 const messageSchema = z.object({
@@ -105,6 +108,12 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
         } : null,
       },
       messages: lead.clientMessages,
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
     });
   } catch (error) {
     console.error("Error fetching client chat:", error);

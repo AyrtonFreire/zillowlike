@@ -199,7 +199,7 @@ export default function ClientChatPage() {
 
     const fetchChat = async () => {
       try {
-        const response = await fetch(`/api/chat/${token}`);
+        const response = await fetch(`/api/chat/${token}`, { cache: "no-store" });
         const data = await response.json();
 
         if (!response.ok || !data?.success) {
@@ -230,7 +230,7 @@ export default function ClientChatPage() {
   const fetchMessagesOnly = useCallback(async () => {
     if (!token) return;
     try {
-      const response = await fetch(`/api/chat/${token}`);
+      const response = await fetch(`/api/chat/${token}?t=${Date.now()}`, { cache: "no-store" });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.success) return;
       const next = Array.isArray(data.messages) ? data.messages : [];
