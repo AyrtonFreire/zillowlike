@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
 import { MessageCircle, Send, ChevronLeft, Home } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
+import { getPusherClient } from "@/lib/pusher-client";
 
 type ChatPreview = {
   leadId: string;
@@ -87,6 +88,9 @@ export default function UserChatsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
+
+  const pollRef = useRef<number | null>(null);
+  const pollStopRef = useRef<number | null>(null);
 
   const markChatAsRead = useCallback((leadId: string) => {
     if (!leadId) return;
@@ -172,7 +176,7 @@ export default function UserChatsPage() {
   const fetchChatByToken = useCallback(async (token: string) => {
     setMessagesLoading(true);
     try {
-      const response = await fetch(`/api/chat/${token}`);
+      const response = await fetch(`/api/chat/${token}?t=${Date.now()}`, { cache: "no-store" });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.success) {
         throw new Error(data?.error || "Não conseguimos abrir esta conversa agora.");
@@ -226,6 +230,130 @@ export default function UserChatsPage() {
     return selectedChat?.token || tokenFromUrl || "";
   }, [selectedChat?.token, tokenFromUrl]);
 
+  const waitingAssistantReply = useMemo(() => {
+    if (!messages.length) return false;
+    const last = messages[messages.length - 1];
+    return !!last?.fromClient;
+  }, [messages]);
+
+  const fetchMessagesOnly = useCallback(async () => {
+    if (!selectedToken) return;
+    try {
+      const response = await fetch(`/api/chat/${selectedToken}?t=${Date.now()}`, { cache: "no-store" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) return;
+
+      const next = Array.isArray(data.messages) ? data.messages : [];
+      setMessages((prev) => {
+        if (!prev.length) return next;
+        if (!next.length) return prev;
+        if (prev.length !== next.length) return next;
+        const prevIds = new Set(prev.map((m) => m.id));
+        for (const m of next) {
+          if (!prevIds.has(m.id)) return next;
+        }
+        return prev;
+      });
+
+      if (data.lead) {
+        setLeadInfo((prev) => prev || data.lead);
+      }
+    } catch {
+      // ignore
+    }
+  }, [selectedToken]);
+
+  const startShortPolling = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (pollRef.current) window.clearInterval(pollRef.current);
+    if (pollStopRef.current) window.clearTimeout(pollStopRef.current);
+
+    void fetchMessagesOnly();
+    pollRef.current = window.setInterval(() => {
+      void fetchMessagesOnly();
+    }, 1200);
+
+    pollStopRef.current = window.setTimeout(() => {
+      if (pollRef.current) window.clearInterval(pollRef.current);
+      pollRef.current = null;
+      pollStopRef.current = null;
+    }, 60_000);
+  }, [fetchMessagesOnly]);
+
+  useEffect(() => {
+    if (!selectedToken) return;
+
+    const id = window.setInterval(() => {
+      void fetchMessagesOnly();
+    }, 15_000);
+
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [fetchMessagesOnly, selectedToken]);
+
+  useEffect(() => {
+    if (!selectedToken || !waitingAssistantReply) return;
+
+    const id = window.setInterval(() => {
+      void fetchMessagesOnly();
+    }, 2000);
+
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [fetchMessagesOnly, selectedToken, waitingAssistantReply]);
+
+  useEffect(() => {
+    if (!leadInfo?.id) return;
+
+    let cancelled = false;
+    try {
+      const pusher = getPusherClient();
+      const channelName = `chat-${leadInfo.id}`;
+      const channel = pusher.subscribe(channelName);
+
+      const handler = (data: { id: string; leadId: string; fromClient: boolean; content: string; createdAt: string }) => {
+        if (cancelled) return;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === data.id)) return prev;
+
+          if (data.fromClient) {
+            const tempIndex = prev.findIndex((m) => m.id.startsWith("temp-") && m.content === data.content);
+            if (tempIndex !== -1) {
+              const clone = [...prev];
+              clone[tempIndex] = { ...clone[tempIndex], id: data.id, createdAt: data.createdAt };
+              return clone;
+            }
+          }
+
+          return [...prev, { id: data.id, fromClient: data.fromClient, content: data.content, createdAt: data.createdAt }];
+        });
+      };
+
+      channel.bind("new-chat-message", handler as any);
+
+      return () => {
+        cancelled = true;
+        try {
+          channel.unbind("new-chat-message", handler as any);
+          pusher.unsubscribe(channelName);
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      return;
+    }
+  }, [leadInfo?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) window.clearInterval(pollRef.current);
+      if (pollStopRef.current) window.clearTimeout(pollStopRef.current);
+    };
+  }, []);
+
   const handleSend = async () => {
     if (!draft.trim() || !selectedToken || sending) return;
 
@@ -252,6 +380,8 @@ export default function UserChatsPage() {
       setMessages((prev) =>
         prev.map((m) => (m.id === tempId ? { ...m, id: data.message.id, createdAt: data.message.createdAt } : m))
       );
+
+      startShortPolling();
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
     } finally {

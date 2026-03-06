@@ -237,10 +237,12 @@ export default function ClientChatPage() {
       setMessages((prev) => {
         if (!prev.length) return next;
         if (!next.length) return prev;
-        const prevLast = prev[prev.length - 1]?.id;
-        const nextLast = next[next.length - 1]?.id;
-        if (prevLast && nextLast && prevLast === nextLast) return prev;
-        return next;
+        if (prev.length !== next.length) return next;
+        const prevIds = new Set(prev.map((m) => m.id));
+        for (const m of next) {
+          if (!prevIds.has(m.id)) return next;
+        }
+        return prev;
       });
     } catch {
       // ignore
@@ -262,6 +264,18 @@ export default function ClientChatPage() {
       pollStopRef.current = null;
     }, 60_000);
   }, [fetchMessagesOnly]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const id = window.setInterval(() => {
+      void fetchMessagesOnly();
+    }, 15_000);
+
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [fetchMessagesOnly, token]);
 
   useEffect(() => {
     if (!token || !waitingAssistantReply) return;
