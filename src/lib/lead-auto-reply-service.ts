@@ -368,6 +368,11 @@ type OfflineAssistantState = {
   };
   lastQuestion?: string;
   visitRequested?: boolean;
+  visitPreferences?: {
+    period?: string | null;
+    days?: string[] | null;
+    time?: string | null;
+  };
 };
 
 function readOfflineAssistantState(metadata: any): OfflineAssistantState {
@@ -378,6 +383,11 @@ function readOfflineAssistantState(metadata: any): OfflineAssistantState {
   const asked = askedRaw && typeof askedRaw === "object" ? askedRaw : {};
   const toBool = (v: any) => (typeof v === "boolean" ? v : false);
 
+  const vpRaw = (s as any).visitPreferences;
+  const vp = vpRaw && typeof vpRaw === "object" ? vpRaw : null;
+  const daysRaw = vp && Array.isArray((vp as any).days) ? (vp as any).days : null;
+  const days = Array.isArray(daysRaw) ? daysRaw.map((x: any) => safeString(x)).filter(Boolean) : null;
+
   return {
     asked: {
       purpose: toBool((asked as any).purpose),
@@ -387,6 +397,13 @@ function readOfflineAssistantState(metadata: any): OfflineAssistantState {
     },
     lastQuestion: safeString((s as any).lastQuestion) || "",
     visitRequested: toBool((s as any).visitRequested),
+    visitPreferences: vp
+      ? {
+          period: safeString((vp as any).period) || null,
+          days: days && days.length ? Array.from(new Set(days)) : null,
+          time: safeString((vp as any).time) || null,
+        }
+      : undefined,
   };
 }
 
@@ -417,6 +434,28 @@ function updateStateVisitRequested(prev: OfflineAssistantState): OfflineAssistan
   };
 }
 
+function updateStateVisitPreferences(prev: OfflineAssistantState, prefs: any): OfflineAssistantState {
+  const p = prefs && typeof prefs === "object" ? prefs : null;
+  const period = p ? safeString((p as any).period) : "";
+  const time = p ? safeString((p as any).time) : "";
+  const daysRaw = p && Array.isArray((p as any).days) ? (p as any).days : null;
+  const days = Array.isArray(daysRaw) ? daysRaw.map((x: any) => safeString(x)).filter(Boolean) : [];
+
+  const hasAny = Boolean(period || time || days.length);
+  if (!hasAny) return prev;
+
+  const prevVp = prev.visitPreferences && typeof prev.visitPreferences === "object" ? prev.visitPreferences : {};
+
+  return {
+    ...prev,
+    visitPreferences: {
+      period: period || (prevVp as any).period || null,
+      time: time || (prevVp as any).time || null,
+      days: days.length ? Array.from(new Set(days)) : (prevVp as any).days || null,
+    },
+  };
+}
+
 function extractLastQuestion(text: string) {
   const s = safeString(text);
   if (!s) return "";
@@ -428,12 +467,16 @@ function extractLastQuestion(text: string) {
   return "";
 }
 
-function extractVisitPreferences(message: string) {
+function extractVisitPreferences(message: string, opts?: { now?: Date; timeZone?: string }) {
   const raw = safeString(message);
   const t = normalizeTextForMatch(raw);
   if (!t) return {};
 
-  const period = includesAny(t, ["manha", "manhã"]) ? "MANHA" : includesAny(t, ["tarde"]) ? "TARDE" : includesAny(t, ["noite"]) ? "NOITE" : "";
+  const period =
+    includesAny(t, ["manha", "manhã", "de manha", "de manhã"]) ? "MANHA" :
+    includesAny(t, ["tarde", "de tarde"]) ? "TARDE" :
+    includesAny(t, ["noite", "a noite", "à noite", "de noite"]) ? "NOITE" :
+    "";
 
   const days: string[] = [];
   const add = (cond: boolean, label: string) => {
@@ -447,14 +490,156 @@ function extractVisitPreferences(message: string) {
   add(includesAny(t, ["sabado", "sábado"]), "SAB");
   add(includesAny(t, ["domingo"]), "DOM");
 
-  const timeMatch = raw.match(/\b\d{1,2}:\d{2}\b/) || raw.match(/\b\d{1,2}h\b/i);
-  const time = timeMatch ? safeString(timeMatch[0]) : "";
+  if (includesAny(t, ["fim de semana", "fds"])) {
+    days.push("SAB");
+    days.push("DOM");
+  }
+
+  const resolveRelativeDay = (deltaDays: number) => {
+    const now = opts?.now;
+    const tz = safeString(opts?.timeZone);
+    if (!now || !tz) return null;
+    const local = getLocalParts(now, tz);
+    if (!local?.dayKey) return null;
+    const order: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+    const idx = order.indexOf(local.dayKey);
+    if (idx < 0) return null;
+    const next = order[(idx + deltaDays + order.length) % order.length];
+    const map: Record<DayKey, string> = {
+      mon: "SEG",
+      tue: "TER",
+      wed: "QUA",
+      thu: "QUI",
+      fri: "SEX",
+      sat: "SAB",
+      sun: "DOM",
+    };
+    return map[next] || null;
+  };
+
+  if (includesAny(t, ["hoje"])) {
+    const d = resolveRelativeDay(0);
+    if (d) days.push(d);
+  }
+  if (includesAny(t, ["amanha", "amanhã"])) {
+    const d = resolveRelativeDay(1);
+    if (d) days.push(d);
+  }
+
+  const normalizeTime = (h: string, m?: string) => {
+    const hh = parseInt(h, 10);
+    const mm = m ? parseInt(m, 10) : NaN;
+    if (!Number.isFinite(hh) || hh < 0 || hh > 23) return "";
+    if (!m) return `${hh}h`;
+    if (!Number.isFinite(mm) || mm < 0 || mm > 59) return `${hh}h`;
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  };
+
+  let time = "";
+  const m1 = raw.match(/\b(\d{1,2})\s*:\s*(\d{2})\b/);
+  const m2 = raw.match(/\b(\d{1,2})h(\d{2})\b/i);
+  const m3 = raw.match(/\b(\d{1,2})\s*h\b/i);
+  const mAfter = raw.match(/\b(depois|apos|após)\s+das?\s+(\d{1,2})(?:\s*[:h]\s*(\d{2}))?\b/i);
+  const mBefore = raw.match(/\b(antes)\s+das?\s+(\d{1,2})(?:\s*[:h]\s*(\d{2}))?\b/i);
+  if (m1) time = safeString(m1[0]);
+  else if (m2) time = normalizeTime(m2[1], m2[2]);
+  else if (m3) time = normalizeTime(m3[1]);
+  else if (mAfter) {
+    const base = normalizeTime(mAfter[2], mAfter[3]);
+    time = base ? `depois das ${base}` : safeString(mAfter[0]);
+  } else if (mBefore) {
+    const base = normalizeTime(mBefore[2], mBefore[3]);
+    time = base ? `antes das ${base}` : safeString(mBefore[0]);
+  }
+
+  const inferPeriodFromTime = (timeStr: string) => {
+    const tm = safeString(timeStr);
+    const hMatch = tm.match(/\b(\d{1,2})(?::\d{2})?\b/) || tm.match(/\b(\d{1,2})h\b/i);
+    const h = hMatch ? parseInt(String(hMatch[1] || hMatch[0]).replace(/\D/g, ""), 10) : NaN;
+    if (!Number.isFinite(h)) return "";
+    if (h >= 18 || h <= 4) return "NOITE";
+    if (h >= 12) return "TARDE";
+    if (h >= 5) return "MANHA";
+    return "";
+  };
+
+  const period2 = period || (time ? inferPeriodFromTime(time) : "");
 
   return {
-    period: period || null,
+    period: period2 || null,
     days: days.length ? Array.from(new Set(days)) : null,
     time: time || null,
   };
+}
+
+function formatVisitPreferences(prefs: any) {
+  const p = prefs && typeof prefs === "object" ? prefs : null;
+  if (!p) return "";
+  const period = safeString((p as any).period);
+  const time = safeString((p as any).time);
+  const daysRaw = Array.isArray((p as any).days) ? (p as any).days : [];
+  const days = daysRaw.map((x: any) => safeString(x)).filter(Boolean);
+  const parts = [period || null, days.length ? days.join("/") : null, time || null].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "";
+}
+
+function buildSchedulingAutoReply(params: {
+  clientName: string;
+  propertyTitle: string;
+  includeIntro?: boolean;
+  preferences?: any;
+}) {
+  const intro = params.includeIntro ? buildAssistantIntro(params.clientName) : "";
+  const about = params.propertyTitle ? `Sobre o imóvel ${params.propertyTitle}, ` : "Sobre o imóvel, ";
+  const prefText = formatVisitPreferences(params.preferences);
+
+  const p = params.preferences && typeof params.preferences === "object" ? params.preferences : null;
+  const hasPeriod = Boolean(p && safeString((p as any).period));
+  const hasTime = Boolean(p && safeString((p as any).time));
+  const hasDays = Boolean(p && Array.isArray((p as any).days) && (p as any).days.length);
+
+  const missingPeriod = !hasPeriod;
+  const missingDays = !hasDays;
+  const missingAll = missingPeriod && missingDays && !hasTime;
+
+  if (!missingAll) {
+    if (missingPeriod && !missingDays) {
+      return (
+        intro +
+        "Eu não consigo confirmar/agendar visita por aqui.\n\n" +
+        `${about}posso registrar seu interesse para o corretor.\n\n` +
+        (prefText ? `Preferências recebidas: ${prefText}.\n\n` : "") +
+        "Qual período do dia você prefere (manhã/tarde/noite)?\n\n" +
+        "O corretor vai te responder assim que possível."
+      );
+    }
+
+    if (!missingPeriod && missingDays) {
+      return (
+        intro +
+        "Eu não consigo confirmar/agendar visita por aqui.\n\n" +
+        `${about}posso registrar seu interesse para o corretor.\n\n` +
+        (prefText ? `Preferências recebidas: ${prefText}.\n\n` : "") +
+        "Quais dias da semana costumam ser melhores para você?\n\n" +
+        "O corretor vai te responder assim que possível."
+      );
+    }
+
+    return (
+      intro +
+      "Eu não consigo confirmar/agendar visita por aqui.\n\n" +
+      `${about}já registrei sua preferência de visita${prefText ? ` (${prefText})` : ""} para o corretor.\n\n` +
+      "O corretor vai te responder assim que possível."
+    );
+  }
+
+  return (
+    intro +
+    "Eu não consigo confirmar/agendar visita por aqui.\n\n" +
+    `${about}posso registrar seu interesse para o corretor.\n\n` +
+    "Qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n" +
+    "O corretor vai te responder assim que possível."
+  );
 }
 
 function chooseNextQuestion(params: {
@@ -492,6 +677,10 @@ function classifyIntent(message: string): OfflineAssistantIntent {
     "marcar",
     "visita",
     "horario",
+    "depois",
+    "apos",
+    "após",
+    "antes",
     "amanha",
     "hoje",
     "sabado",
@@ -505,6 +694,8 @@ function classifyIntent(message: string): OfflineAssistantIntent {
     "posso ver",
     "quando posso",
     /\b\d{1,2}:\d{2}\b/,
+    /\b\d{1,2}h\b/i,
+    /\b\d{1,2}h\d{2}\b/i,
   ];
 
   const financing: Array<string | RegExp> = ["financi", "fgts", "entrada", "parcela", "parcel", "juros", "simul", "credito", "banco"];
@@ -1102,12 +1293,29 @@ export class LeadAutoReplyService {
       const classifier = apiKey ? await callOpenAiIntentClassifier({ apiKey, message: msg.content }) : null;
       const intent = classifier && classifier.confidence >= 0.6 ? classifier.intent : heuristicIntent;
       if (intent !== "PROPERTY") {
-        const refusal = buildRefusalReply({
-          clientName,
-          propertyTitle,
-          includeIntro: shouldIntroduce,
-          reason: intent === "FINANCING" ? "FINANCING" : intent === "SCHEDULING" ? "SCHEDULING" : intent === "OFF_TOPIC" ? "OFF_TOPIC" : "UNCLEAR",
-        });
+        const isScheduling = intent === "SCHEDULING";
+        const tz = safeTimezone(settings.timezone);
+        const extractedPrefs = isScheduling ? extractVisitPreferences(msg.content, { now, timeZone: tz }) : null;
+        const mergedPrefs = isScheduling
+          ? {
+              period: safeString((extractedPrefs as any)?.period) || safeString(prevState2?.visitPreferences?.period) || null,
+              days:
+                (Array.isArray((extractedPrefs as any)?.days) && (extractedPrefs as any).days.length
+                  ? (extractedPrefs as any).days
+                  : prevState2?.visitPreferences?.days) ||
+                null,
+              time: safeString((extractedPrefs as any)?.time) || safeString(prevState2?.visitPreferences?.time) || null,
+            }
+          : null;
+
+        const refusal = isScheduling
+          ? buildSchedulingAutoReply({ clientName, propertyTitle, includeIntro: shouldIntroduce, preferences: mergedPrefs })
+          : buildRefusalReply({
+              clientName,
+              propertyTitle,
+              includeIntro: shouldIntroduce,
+              reason: intent === "FINANCING" ? "FINANCING" : intent === "OFF_TOPIC" ? "OFF_TOPIC" : "UNCLEAR",
+            });
 
         const draft = applyOfflineAutoReplyGuardrails({
           draft: refusal,
@@ -1146,7 +1354,8 @@ export class LeadAutoReplyService {
         });
 
         const stateAfterRefusalBase = updateStateWithQuestion(prevState2, extractLastQuestion(finalText));
-        const stateAfterRefusal = intent === "SCHEDULING" ? updateStateVisitRequested(stateAfterRefusalBase) : stateAfterRefusalBase;
+        const stateAfterRefusal1 = isScheduling ? updateStateVisitRequested(stateAfterRefusalBase) : stateAfterRefusalBase;
+        const stateAfterRefusal = isScheduling && mergedPrefs ? updateStateVisitPreferences(stateAfterRefusal1, mergedPrefs) : stateAfterRefusal1;
 
         await this.safeEvent(lead.id, "AUTO_REPLY_SENT", {
           clientMessageId,
@@ -1167,8 +1376,12 @@ export class LeadAutoReplyService {
 
         if (intent === "SCHEDULING") {
           try {
-            const prefs = extractVisitPreferences(msg.content);
-            if (!prevState2.visitRequested) {
+            const tz = safeTimezone(settings.timezone);
+            const prefs = extractVisitPreferences(msg.content, { now, timeZone: tz });
+            const hasAnyPrefs = Boolean(
+              safeString((prefs as any)?.period) || safeString((prefs as any)?.time) || (Array.isArray((prefs as any)?.days) && (prefs as any).days.length)
+            );
+            if (!prevState2.visitRequested || hasAnyPrefs) {
               await LeadEventService.record({
                 leadId: lead.id,
                 type: "VISIT_REQUESTED" as any,
@@ -1510,12 +1723,29 @@ export class LeadAutoReplyService {
 
       const parsed = rawDraft ? parseOfflineAssistantAiJson(rawDraft) : ({ ok: false, error: "EMPTY_AI_OUTPUT" } as const);
 
+      const llmHandoffNeeded = parsed.ok ? Boolean(parsed.value.handoff_needed) : false;
+      const tz = safeTimezone(settings.timezone);
+      const extractedVisitPrefs = llmHandoffNeeded ? extractVisitPreferences(msg.content, { now, timeZone: tz }) : null;
+      const mergedVisitPrefs = llmHandoffNeeded
+        ? {
+            period: safeString((extractedVisitPrefs as any)?.period) || safeString(prevState?.visitPreferences?.period) || null,
+            days:
+              (Array.isArray((extractedVisitPrefs as any)?.days) && (extractedVisitPrefs as any).days.length
+                ? (extractedVisitPrefs as any).days
+                : prevState?.visitPreferences?.days) ||
+              null,
+            time: safeString((extractedVisitPrefs as any)?.time) || safeString(prevState?.visitPreferences?.time) || null,
+          }
+        : null;
+
       const serverNextQuestion = chooseNextQuestion({ purpose, petFriendly, parkingSpots, history, state: prevState });
       const modelNextQuestion = parsed.ok ? safeString(parsed.value.next_question) : "";
-      const nextQuestion = modelNextQuestion || serverNextQuestion;
+      const nextQuestion = llmHandoffNeeded ? "" : modelNextQuestion || serverNextQuestion;
 
       const nextState = updateStateWithQuestion(prevState, nextQuestion);
-      const nextStateWithVisit = parsed.ok && parsed.value.handoff_needed ? updateStateVisitRequested(nextState) : nextState;
+      const nextStateWithVisit = llmHandoffNeeded
+        ? updateStateVisitPreferences(updateStateVisitRequested(nextState), mergedVisitPrefs || extractedVisitPrefs)
+        : nextState;
 
       const rawAnswer = parsed.ok ? safeString(parsed.value.answer) : "";
       const factsUsed = parsed.ok ? parsed.value.facts_used : [];
@@ -1531,7 +1761,9 @@ export class LeadAutoReplyService {
             ? "FACTUAL_WITHOUT_FACTS"
             : null;
 
-      let answerText = rawAnswer;
+      let answerText = llmHandoffNeeded
+        ? buildSchedulingAutoReply({ clientName, propertyTitle, includeIntro: shouldIntroduce, preferences: mergedVisitPrefs || extractedVisitPrefs })
+        : rawAnswer;
       if (!answerText || !parsed.ok) {
         answerText = buildGenericFallbackReply({ clientName, propertyTitle, includeIntro: shouldIntroduce });
       } else if (factualWithoutFacts) {
@@ -1662,8 +1894,11 @@ export class LeadAutoReplyService {
 
       if (parsed.ok && parsed.value.handoff_needed) {
         try {
-          const prefs = extractVisitPreferences(msg.content);
-          if (!prevState.visitRequested) {
+          const prefs = extractVisitPreferences(msg.content, { now, timeZone: tz });
+          const hasAnyPrefs = Boolean(
+            safeString((prefs as any)?.period) || safeString((prefs as any)?.time) || (Array.isArray((prefs as any)?.days) && (prefs as any).days.length)
+          );
+          if (!prevState.visitRequested || hasAnyPrefs) {
             await LeadEventService.record({
               leadId: lead.id,
               type: "VISIT_REQUESTED" as any,
