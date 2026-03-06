@@ -87,6 +87,16 @@ export function sanitizeReason(raw: string, maxLen = 140) {
   return fallback.length >= 3 ? fallback : clampText(base.trim(), maxLen);
 }
 
+export function enforcePositiveOpening(raw: string) {
+  const s = normalizeWhitespace(String(raw || ""));
+  if (!s) return "";
+  const trimmed = s.trimStart();
+  const head = trimmed.slice(0, 60).toLowerCase();
+  const negativeStart = /^(eu\s+)?(nao|não)\s+(consigo|posso|tenho|vou)|^infelizmente\b|^no\s+momento\s+(nao|não)\b/;
+  if (!negativeStart.test(head)) return s;
+  return `Entendi. ${trimmed}`;
+}
+
 export function applyOfflineAutoReplyGuardrails(input: { draft: string; clientName: string; propertyTitle: string }) {
   const draft = sanitizeDraft(input.draft, { maxLen: 800 });
   if (!draft) return "";
@@ -95,29 +105,32 @@ export function applyOfflineAutoReplyGuardrails(input: { draft: string; clientNa
   if (hardForbidden.test(draft)) {
     const greet = input.clientName ? `Olá ${input.clientName}, tudo bem?` : "Olá, tudo bem?";
     const about = input.propertyTitle ? `Sobre o imóvel ${input.propertyTitle}, ` : "Sobre o imóvel, ";
-    const fallback =
-      `${greet}\n\n` +
-      `${about}posso registrar seu interesse para o corretor. ` +
-      `Qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n` +
-      `O corretor retorna no próximo horário comercial.`;
+    const looksLikeScheduling = /(agend|agenda|hor[aá]rio|visita|marcar|disponibil|\b\d{1,2}:\d{2}\b|\b\d{1,2}h\b)/i.test(draft);
+    const fallback = looksLikeScheduling
+      ? `${greet}\n\n` +
+        `${about}perfeito — posso registrar seu pedido de visita e enviar ao corretor.\n\n` +
+        `Pra eu enviar já com as informações certinhas: qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n` +
+        `O corretor vai confirmar o agendamento com você assim que possível.`
+      : `${greet}\n\n` +
+        `${about}perfeito — eu posso registrar sua solicitação para o corretor, que confirma com você assim que possível.`;
 
-    return sanitizeDraft(fallback, { maxLen: 800 });
+    return enforcePositiveOpening(sanitizeDraft(fallback, { maxLen: 800 }));
   }
 
   const schedulingMention = /(agend|agenda|hor[aá]rio|visita|marcar|confirm|disponibil)/i;
-  if (!schedulingMention.test(draft)) return draft;
+  if (!schedulingMention.test(draft)) return enforcePositiveOpening(draft);
 
   const timeOrDay =
     /(\b\d{1,2}:\d{2}\b|\b\d{1,2}h\b|\bamanh[ãa]\b|\bhoje\b|\bs[áa]bado\b|\bdomingo\b|\bsegunda\b|\bter[cç]a\b|\bquarta\b|\bquinta\b|\bsexta\b)/i;
-  if (!timeOrDay.test(draft)) return draft;
+  if (!timeOrDay.test(draft)) return enforcePositiveOpening(draft);
 
   const greet = input.clientName ? `Olá ${input.clientName}, tudo bem?` : "Olá, tudo bem?";
   const about = input.propertyTitle ? `Sobre o imóvel ${input.propertyTitle}, ` : "Sobre o imóvel, ";
   const fallback =
     `${greet}\n\n` +
-    `${about}posso registrar seu interesse para o corretor. ` +
-    `Qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n` +
-    `O corretor retorna no próximo horário comercial.`;
+    `${about}perfeito — posso registrar seu pedido de visita e enviar ao corretor.\n\n` +
+    `Pra eu enviar já com as informações certinhas: qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n` +
+    `O corretor vai confirmar o agendamento com você assim que possível.`;
 
-  return sanitizeDraft(fallback, { maxLen: 800 });
+  return enforcePositiveOpening(sanitizeDraft(fallback, { maxLen: 800 }));
 }

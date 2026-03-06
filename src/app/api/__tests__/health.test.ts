@@ -1,8 +1,22 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("@/lib/prisma", () => {
+  return {
+    prisma: {
+      $queryRaw: vi.fn(async () => [{ ok: 1 }]),
+    },
+  };
+});
+
+import { GET, HEAD } from "../health/route";
 
 describe("GET /api/health", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should return health status", async () => {
-    const response = await fetch("http://localhost:3001/api/health");
+    const response = await GET();
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -13,15 +27,13 @@ describe("GET /api/health", () => {
   });
 
   it("should respond to HEAD requests (readiness probe)", async () => {
-    const response = await fetch("http://localhost:3001/api/health", {
-      method: "HEAD",
-    });
+    const response = await HEAD();
 
     expect(response.status).toBe(200);
   });
 
   it("should include uptime", async () => {
-    const response = await fetch("http://localhost:3001/api/health");
+    const response = await GET();
     const data = await response.json();
 
     expect(data.uptime).toBeDefined();
@@ -30,7 +42,7 @@ describe("GET /api/health", () => {
   });
 
   it("should include timestamp", async () => {
-    const response = await fetch("http://localhost:3001/api/health");
+    const response = await GET();
     const data = await response.json();
 
     expect(data.timestamp).toBeDefined();

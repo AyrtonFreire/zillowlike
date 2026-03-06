@@ -1,8 +1,17 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { prisma } from "@/lib/prisma";
-import { createPublicCode } from "@/lib/public-code";
 
-describe("GET /api/properties", () => {
+const runIntegration = process.env.RUN_INTEGRATION_TESTS === "true";
+const baseUrl = process.env.TEST_BASE_URL || "http://localhost:3001";
+
+(runIntegration ? describe : describe.skip)("GET /api/properties (integration)", () => {
+  let prisma: any;
+  let createPublicCode: any;
+
+  beforeAll(async () => {
+    prisma = (await import("@/lib/prisma")).prisma as any;
+    createPublicCode = (await import("@/lib/public-code")).createPublicCode as any;
+  });
+
   beforeAll(async () => {
     // Setup: Create test data
     await (prisma as any).property.create({
@@ -30,7 +39,7 @@ describe("GET /api/properties", () => {
   });
 
   it("should return properties list", async () => {
-    const response = await fetch("http://localhost:3001/api/properties");
+    const response = await fetch(`${baseUrl}/api/properties`);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -40,7 +49,7 @@ describe("GET /api/properties", () => {
   });
 
   it("should filter by city", async () => {
-    const response = await fetch("http://localhost:3001/api/properties?city=Petrolina");
+    const response = await fetch(`${baseUrl}/api/properties?city=Petrolina`);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -49,7 +58,7 @@ describe("GET /api/properties", () => {
   });
 
   it("should filter by type", async () => {
-    const response = await fetch("http://localhost:3001/api/properties?type=HOUSE");
+    const response = await fetch(`${baseUrl}/api/properties?type=HOUSE`);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -59,7 +68,7 @@ describe("GET /api/properties", () => {
 
   it("should filter by price range", async () => {
     const response = await fetch(
-      "http://localhost:3001/api/properties?minPrice=50000&maxPrice=200000"
+      `${baseUrl}/api/properties?minPrice=50000&maxPrice=200000`
     );
     const data = await response.json();
 
@@ -71,7 +80,7 @@ describe("GET /api/properties", () => {
   });
 
   it("should paginate results", async () => {
-    const response = await fetch("http://localhost:3001/api/properties?page=1&pageSize=5");
+    const response = await fetch(`${baseUrl}/api/properties?page=1&pageSize=5`);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -83,7 +92,7 @@ describe("GET /api/properties", () => {
 
   it("should return property by id", async () => {
     // First get a property
-    const listResponse = await fetch("http://localhost:3001/api/properties?pageSize=1");
+    const listResponse = await fetch(`${baseUrl}/api/properties?pageSize=1`);
     const listData = await listResponse.json();
     const propertyId = listData.properties[0]?.id;
 
@@ -92,7 +101,7 @@ describe("GET /api/properties", () => {
       return;
     }
 
-    const response = await fetch(`http://localhost:3001/api/public/properties/${propertyId}`);
+    const response = await fetch(`${baseUrl}/api/public/properties/${propertyId}`);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -101,13 +110,13 @@ describe("GET /api/properties", () => {
   });
 
   it("should return 404 for non-existent property", async () => {
-    const response = await fetch("http://localhost:3001/api/public/properties/non-existent-id");
+    const response = await fetch(`${baseUrl}/api/public/properties/non-existent-id`);
     
     expect(response.status).toBe(404);
   });
 
   it("should validate query parameters", async () => {
-    const response = await fetch("http://localhost:3001/api/properties?type=INVALID_TYPE");
+    const response = await fetch(`${baseUrl}/api/properties?type=INVALID_TYPE`);
     
     // Should either filter out invalid or return validation error
     expect([200, 400]).toContain(response.status);

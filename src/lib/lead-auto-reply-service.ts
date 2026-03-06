@@ -3,6 +3,12 @@ import { leadAutoReplyQueue } from "@/lib/queue/queues";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
 import { applyOfflineAutoReplyGuardrails } from "@/lib/ai-guardrails";
+import {
+  extractOfflineAssistantClientSlots,
+  formatOfflineAssistantClientSlots,
+  mergeOfflineAssistantClientSlots,
+  type OfflineAssistantClientSlots,
+} from "@/lib/offline-assistant-slots";
 
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -29,6 +35,12 @@ const REALTOR_ONLINE_THRESHOLD_MS = 2 * 60_000;
 function safeString(x: any) {
   const s = String(x ?? "").trim();
   return s;
+}
+
+function updateStateClientSlots(prev: OfflineAssistantState, extracted: OfflineAssistantClientSlots | undefined) {
+  const merged = mergeOfflineAssistantClientSlots(prev.clientSlots, extracted);
+  if (!merged) return prev;
+  return { ...prev, clientSlots: merged };
 }
 
 async function isRealtorOnline(realtorId: string, now: Date) {
@@ -59,6 +71,41 @@ function includesAny(text: string, patterns: Array<string | RegExp>) {
     if (p.test(text)) return true;
   }
   return false;
+}
+
+function detectGeneralHandoffHeuristic(message: string) {
+  const t = normalizeTextForMatch(message);
+  if (!t) return false;
+  const needsHandoff: Array<string | RegExp> = [
+    "endereco",
+    "endereço",
+    "rua",
+    "numero",
+    "número",
+    "complemento",
+    "whatsapp",
+    "telefone",
+    "liga",
+    "ligar",
+    "proposta",
+    "oferta",
+    "desconto",
+    "negoci",
+    "abaixa",
+    /\baceita\s+(proposta|oferta|negoci|desconto|permuta)\b/,
+    "permuta",
+    "document",
+    "escritura",
+    "cartorio",
+    "cartório",
+    "contrato",
+    "fiador",
+    "caucao",
+    "caução",
+    "garantia",
+    /\bcondic[aã]o\s+(de\s+)?(loca|locac|pagamento|garantia)\b/,
+  ];
+  return includesAny(t, needsHandoff);
 }
 
 type OfflineAssistantAiJson = {
@@ -365,6 +412,8 @@ type OfflineAssistantState = {
     pets?: boolean;
     parking?: boolean;
     moveTime?: boolean;
+    bedrooms?: boolean;
+    budget?: boolean;
   };
   lastQuestion?: string;
   visitRequested?: boolean;
@@ -373,6 +422,7 @@ type OfflineAssistantState = {
     days?: string[] | null;
     time?: string | null;
   };
+  clientSlots?: OfflineAssistantClientSlots;
 };
 
 function readOfflineAssistantState(metadata: any): OfflineAssistantState {
@@ -388,12 +438,39 @@ function readOfflineAssistantState(metadata: any): OfflineAssistantState {
   const daysRaw = vp && Array.isArray((vp as any).days) ? (vp as any).days : null;
   const days = Array.isArray(daysRaw) ? daysRaw.map((x: any) => safeString(x)).filter(Boolean) : null;
 
+  const csRaw = (s as any).clientSlots;
+  const cs = csRaw && typeof csRaw === "object" ? (csRaw as any) : null;
+  const toNumOrNull = (v: any) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const purposeRaw = cs ? safeString(cs.purpose).toUpperCase() : "";
+  const purpose = purposeRaw === "COMPRA" || purposeRaw === "LOCACAO" ? purposeRaw : "";
+  const hasPets = cs && typeof cs.hasPets === "boolean" ? cs.hasPets : null;
+  const parkingSpotsNeeded = cs ? toNumOrNull(cs.parkingSpotsNeeded) : null;
+  const bedroomsNeeded = cs ? toNumOrNull(cs.bedroomsNeeded) : null;
+  const moveTime = cs ? safeString(cs.moveTime) : "";
+  const budget = cs ? safeString(cs.budget) : "";
+  const clientSlots: OfflineAssistantClientSlots | undefined =
+    purpose || typeof hasPets === "boolean" || typeof parkingSpotsNeeded === "number" || typeof bedroomsNeeded === "number" || moveTime || budget
+      ? {
+          purpose: (purpose as any) || null,
+          hasPets: typeof hasPets === "boolean" ? hasPets : null,
+          parkingSpotsNeeded: typeof parkingSpotsNeeded === "number" ? parkingSpotsNeeded : null,
+          bedroomsNeeded: typeof bedroomsNeeded === "number" ? bedroomsNeeded : null,
+          moveTime: moveTime || null,
+          budget: budget || null,
+        }
+      : undefined;
+
   return {
     asked: {
       purpose: toBool((asked as any).purpose),
       pets: toBool((asked as any).pets),
       parking: toBool((asked as any).parking),
       moveTime: toBool((asked as any).moveTime),
+      bedrooms: toBool((asked as any).bedrooms),
+      budget: toBool((asked as any).budget),
     },
     lastQuestion: safeString((s as any).lastQuestion) || "",
     visitRequested: toBool((s as any).visitRequested),
@@ -404,6 +481,7 @@ function readOfflineAssistantState(metadata: any): OfflineAssistantState {
           time: safeString((vp as any).time) || null,
         }
       : undefined,
+    clientSlots,
   };
 }
 
@@ -419,6 +497,8 @@ function updateStateWithQuestion(prev: OfflineAssistantState, question: string):
   if (includesAny(t, ["pets", "pet", "aceita pets", "tem pets"])) asked.pets = true;
   if (includesAny(t, ["vaga", "vagas", "estacion"])) asked.parking = true;
   if (includesAny(t, ["quando pretende", "prazo", "se mudar", "mudanca", "mudança"])) asked.moveTime = true;
+  if (includesAny(t, ["quartos", "quantos quartos", /\bquarto\b/])) asked.bedrooms = true;
+  if (includesAny(t, ["orçamento", "orcamento", "faixa de preco", "faixa de preço", "até quanto", "ate quanto", "valor maximo", "valor máximo"])) asked.budget = true;
 
   return {
     ...prev,
@@ -606,46 +686,39 @@ function buildSchedulingAutoReply(params: {
     if (missingPeriod && !missingDays) {
       return (
         intro +
-        "Eu não consigo confirmar/agendar visita por aqui.\n\n" +
-        `${about}posso registrar seu interesse para o corretor.\n\n` +
+        `${about}perfeito — vou encaminhar seu pedido de visita para o corretor.\n\n` +
         (prefText ? `Preferências recebidas: ${prefText}.\n\n` : "") +
-        "Qual período do dia você prefere (manhã/tarde/noite)?\n\n" +
-        "O corretor vai te responder assim que possível."
+        "Só pra eu registrar direitinho: qual período do dia você prefere (manhã/tarde/noite)?\n\n" +
+        "O corretor vai confirmar o agendamento com você assim que possível."
       );
     }
 
     if (!missingPeriod && missingDays) {
       return (
         intro +
-        "Eu não consigo confirmar/agendar visita por aqui.\n\n" +
-        `${about}posso registrar seu interesse para o corretor.\n\n` +
+        `${about}perfeito — vou encaminhar seu pedido de visita para o corretor.\n\n` +
         (prefText ? `Preferências recebidas: ${prefText}.\n\n` : "") +
-        "Quais dias da semana costumam ser melhores para você?\n\n" +
-        "O corretor vai te responder assim que possível."
+        "Só pra eu registrar direitinho: quais dias da semana costumam ser melhores para você?\n\n" +
+        "O corretor vai confirmar o agendamento com você assim que possível."
       );
     }
 
     return (
       intro +
-      "Eu não consigo confirmar/agendar visita por aqui.\n\n" +
-      `${about}já registrei sua preferência de visita${prefText ? ` (${prefText})` : ""} para o corretor.\n\n` +
-      "O corretor vai te responder assim que possível."
+      `${about}perfeito — já registrei sua preferência de visita${prefText ? ` (${prefText})` : ""} e vou enviar ao corretor agora.\n\n` +
+      "O corretor vai confirmar o agendamento com você assim que possível."
     );
   }
 
   return (
     intro +
-    "Eu não consigo confirmar/agendar visita por aqui.\n\n" +
-    `${about}posso registrar seu interesse para o corretor.\n\n` +
-    "Qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n" +
-    "O corretor vai te responder assim que possível."
+    `${about}perfeito — posso registrar seu pedido de visita e enviar ao corretor.\n\n` +
+    "Pra eu enviar já com as informações certinhas: qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n" +
+    "O corretor vai confirmar o agendamento com você assim que possível."
   );
 }
 
 function chooseNextQuestion(params: {
-  purpose: string;
-  petFriendly: string;
-  parkingSpots: string;
   history: string;
   state?: OfflineAssistantState;
 }) {
@@ -653,15 +726,27 @@ function chooseNextQuestion(params: {
 
   const askedState = params.state?.asked || {};
 
+  const slots = params.state?.clientSlots;
+  const hasPurpose = Boolean(slots && safeString((slots as any).purpose));
+  const hasPets = slots && typeof (slots as any).hasPets === "boolean";
+  const hasParking = slots && typeof (slots as any).parkingSpotsNeeded === "number";
+  const hasMoveTime = Boolean(slots && safeString((slots as any).moveTime));
+  const hasBedrooms = slots && typeof (slots as any).bedroomsNeeded === "number";
+  const hasBudget = Boolean(slots && safeString((slots as any).budget));
+
   const askedPurpose = Boolean(askedState.purpose) || includesAny(h, ["compra ou locacao", "compra ou locação", /\bcompra\b.*\blocacao\b/]);
   const askedPets = Boolean(askedState.pets) || includesAny(h, ["pets", "pet", "aceita pets", "tem pets"]);
   const askedParking = Boolean(askedState.parking) || includesAny(h, ["vaga", "vagas", "estacion"]);
   const askedMove = Boolean(askedState.moveTime) || includesAny(h, ["quando pretende", "quando voce pretende", "prazo", "se mudar", "mudar", "mudanca", "mudança"]);
+  const askedBedrooms = Boolean(askedState.bedrooms) || includesAny(h, ["quartos", "quantos quartos", /\bquarto\b/]);
+  const askedBudget = Boolean(askedState.budget) || includesAny(h, ["orçamento", "orcamento", "faixa de preco", "faixa de preço", "até quanto", "ate quanto", "valor maximo", "valor máximo"]);
 
-  if (!params.purpose && !askedPurpose) return "Você busca compra ou locação?";
-  if (!params.petFriendly && !askedPets) return "Você tem pets?";
-  if (!params.parkingSpots && !askedParking) return "Você precisa de vaga de garagem? Se sim, quantas?";
-  if (!askedMove) return "Quando você pretende se mudar?";
+  if (!hasPurpose && !askedPurpose) return "Você busca compra ou locação?";
+  if (!hasPets && !askedPets) return "Você tem pets?";
+  if (!hasParking && !askedParking) return "Você precisa de vaga de garagem? Se sim, quantas?";
+  if (!hasMoveTime && !askedMove) return "Quando você pretende se mudar?";
+  if (!hasBedrooms && !askedBedrooms) return "Você precisa de quantos quartos?";
+  if (!hasBudget && !askedBudget) return "Você tem alguma faixa de orçamento?";
   return "";
 }
 
@@ -741,8 +826,8 @@ function buildGenericFallbackReply(params: { clientName: string; propertyTitle: 
   const about = params.propertyTitle ? `Sobre o imóvel ${params.propertyTitle}, ` : "Sobre o imóvel, ";
   return (
     intro +
-    `${about}no momento eu não consigo responder essa pergunta por aqui.\n\n` +
-    "O corretor vai te responder assim que possível."
+    `Entendi sua mensagem. ${about}essa informação não está disponível no anúncio.\n\n` +
+    "Se você quiser, eu posso registrar sua dúvida para o corretor, que confirma com você assim que possível."
   );
 }
 
@@ -758,19 +843,17 @@ function buildRefusalReply(params: {
   if (params.reason === "SCHEDULING") {
     return (
       intro +
-      "Eu não consigo confirmar/agendar visita por aqui.\n\n" +
-      `${about}posso registrar seu interesse para o corretor.\n\n` +
-      "Qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n" +
-      "O corretor vai te responder assim que possível."
+      `${about}perfeito — posso registrar seu pedido de visita e enviar ao corretor.\n\n` +
+      "Pra eu enviar já com as informações certinhas: qual período do dia você prefere (manhã/tarde/noite) e quais dias da semana costuma ser melhor?\n\n" +
+      "O corretor vai confirmar o agendamento com você assim que possível."
     );
   }
 
   if (params.reason === "FINANCING") {
     return (
       intro +
-      "Eu não consigo orientar sobre financiamento por aqui.\n\n" +
-      `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
-      "O corretor vai te responder assim que possível.\n\n" +
+      `Entendi sua dúvida sobre financiamento. ${about}eu posso registrar essa solicitação para o corretor, que consegue orientar as condições e possibilidades.\n\n` +
+      "Enquanto isso, se preferir, posso ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n" +
       "O que você gostaria de confirmar sobre o imóvel?"
     );
   }
@@ -778,18 +861,15 @@ function buildRefusalReply(params: {
   if (params.reason === "OFF_TOPIC") {
     return (
       intro +
-      "Eu só consigo ajudar com dúvidas relacionadas a este anúncio.\n\n" +
-      `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
-      "O corretor vai te responder assim que possível.\n\n" +
+      `Entendi. ${about}eu consigo ajudar com dúvidas relacionadas a este anúncio (preço, localização, quartos, área e itens).\n\n` +
       "O que você gostaria de saber sobre o imóvel?"
     );
   }
 
   return (
     intro +
-    `${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
-    "O corretor vai te responder assim que possível.\n\n" +
-    "O que você gostaria de saber?"
+    `Entendi. ${about}posso te ajudar com informações do anúncio (preço, localização, quartos, área e itens).\n\n` +
+    "O que você gostaria de confirmar sobre o imóvel?"
   );
 }
 
@@ -1293,18 +1373,20 @@ export class LeadAutoReplyService {
       const classifier = apiKey ? await callOpenAiIntentClassifier({ apiKey, message: msg.content }) : null;
       const intent = classifier && classifier.confidence >= 0.6 ? classifier.intent : heuristicIntent;
       if (intent !== "PROPERTY") {
+        const extractedSlots = extractOfflineAssistantClientSlots(msg.content);
+        const prevState2WithSlots = updateStateClientSlots(prevState2, extractedSlots);
         const isScheduling = intent === "SCHEDULING";
         const tz = safeTimezone(settings.timezone);
         const extractedPrefs = isScheduling ? extractVisitPreferences(msg.content, { now, timeZone: tz }) : null;
         const mergedPrefs = isScheduling
           ? {
-              period: safeString((extractedPrefs as any)?.period) || safeString(prevState2?.visitPreferences?.period) || null,
+              period: safeString((extractedPrefs as any)?.period) || safeString(prevState2WithSlots?.visitPreferences?.period) || null,
               days:
                 (Array.isArray((extractedPrefs as any)?.days) && (extractedPrefs as any).days.length
                   ? (extractedPrefs as any).days
-                  : prevState2?.visitPreferences?.days) ||
+                  : prevState2WithSlots?.visitPreferences?.days) ||
                 null,
-              time: safeString((extractedPrefs as any)?.time) || safeString(prevState2?.visitPreferences?.time) || null,
+              time: safeString((extractedPrefs as any)?.time) || safeString(prevState2WithSlots?.visitPreferences?.time) || null,
             }
           : null;
 
@@ -1353,7 +1435,7 @@ export class LeadAutoReplyService {
           },
         });
 
-        const stateAfterRefusalBase = updateStateWithQuestion(prevState2, extractLastQuestion(finalText));
+        const stateAfterRefusalBase = updateStateWithQuestion(prevState2WithSlots, extractLastQuestion(finalText));
         const stateAfterRefusal1 = isScheduling ? updateStateVisitRequested(stateAfterRefusalBase) : stateAfterRefusalBase;
         const stateAfterRefusal = isScheduling && mergedPrefs ? updateStateVisitPreferences(stateAfterRefusal1, mergedPrefs) : stateAfterRefusal1;
 
@@ -1381,7 +1463,7 @@ export class LeadAutoReplyService {
             const hasAnyPrefs = Boolean(
               safeString((prefs as any)?.period) || safeString((prefs as any)?.time) || (Array.isArray((prefs as any)?.days) && (prefs as any).days.length)
             );
-            if (!prevState2.visitRequested || hasAnyPrefs) {
+            if (!prevState2WithSlots.visitRequested || hasAnyPrefs) {
               await LeadEventService.record({
                 leadId: lead.id,
                 type: "VISIT_REQUESTED" as any,
@@ -1442,6 +1524,9 @@ export class LeadAutoReplyService {
       const prevState = readOfflineAssistantState((lastAutoReplyEvent as any)?.metadata);
       const lastNextQuestion = safeString((lastAutoReplyEvent as any)?.metadata?.aiJson?.nextQuestion) || safeString(prevState.lastQuestion);
       const history = [historyBase, lastNextQuestion ? `Assistente(pergunta anterior): ${lastNextQuestion}` : ""].filter(Boolean).join("\n");
+
+      const extractedSlots = extractOfflineAssistantClientSlots(msg.content);
+      const prevStateWithSlots = updateStateClientSlots(prevState, extractedSlots);
 
       const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       const aiCount = await (prisma as any).leadClientMessage.count({
@@ -1554,7 +1639,9 @@ export class LeadAutoReplyService {
           })
           .join("\n");
 
-        const nextQuestion = chooseNextQuestion({ purpose, petFriendly, parkingSpots, history, state: prevState });
+        const extractedSlots = extractOfflineAssistantClientSlots(msg.content);
+        const stateWithSlots = updateStateClientSlots(prevState, extractedSlots);
+        const nextQuestion = chooseNextQuestion({ history, state: stateWithSlots });
         const answer =
           intro +
           `${about}encontrei ${placesCat.label} próximos (distâncias aproximadas):\n` +
@@ -1597,7 +1684,7 @@ export class LeadAutoReplyService {
           assistantMessageId: assistantMessage.id,
           model: null,
           promptVersion: OFFLINE_AUTO_REPLY_PROMPT_VERSION,
-          offlineAssistantState: updateStateWithQuestion(prevState, nextQuestion),
+          offlineAssistantState: updateStateWithQuestion(stateWithSlots, nextQuestion),
           tool: {
             name: "places-nearby",
             category: placesCat.key,
@@ -1679,6 +1766,9 @@ export class LeadAutoReplyService {
         "Você está respondendo enquanto o corretor está offline (fora do horário comercial configurado).\n" +
         "Objetivo: manter o cliente engajado, esclarecer dúvidas básicas do imóvel usando SOMENTE os dados fornecidos e fazer 1 pergunta curta para qualificar.\n" +
         "Política anti-chute: se a informação não estiver nos dados fornecidos, diga claramente que não consta no anúncio, liste o que faltou em missing_info e NÃO invente.\n" +
+        "Estilo: seja formal, humano e direto; comece a resposta reconhecendo a mensagem do cliente (ex.: 'Entendi.' / 'Perfeito.'); evite iniciar com negação; não seja excessivamente robótico.\n" +
+        "Se a pergunta do cliente for sobre algo que não consta no anúncio, responda de forma direta e não faça pergunta adicional (next_question vazio), encaminhando para o corretor confirmar.\n" +
+        "Use handoff_needed=true quando o assunto depender do corretor (ex.: proposta/negociação, endereço exato, documentação/contrato, condições específicas de locação/garantias, disponibilidade/visita, ou qualquer confirmação fora do anúncio).\n" +
         "Regras: responda apenas sobre o anúncio; não invente informações; não use links/telefone; não agende/CONFIRME visitas; não sugira horários/dias; não prometa retorno em X minutos.\n" +
         "Saída: responda SOMENTE com um objeto JSON válido (sem markdown, sem texto fora do JSON) com as chaves: answer, facts_used, missing_info, next_question, handoff_needed.\n" +
         "facts_used deve ser uma lista com as chaves dos dados realmente usados na resposta.\n" +
@@ -1716,6 +1806,7 @@ export class LeadAutoReplyService {
         "\n\nHistórico recente do chat:\n" +
         (history || "(sem histórico)") +
         `\n\nEsta é sua primeira resposta nesta conversa? ${shouldIntroduce ? "Sim" : "Não"}.` +
+        (prevStateWithSlots.clientSlots ? `\n\nPreferências já informadas pelo cliente (resumo): ${formatOfflineAssistantClientSlots(prevStateWithSlots.clientSlots)}` : "") +
         "\n\nAgora responda no formato JSON pedido.";
 
       const ai = await callOpenAiText({ apiKey, systemPrompt, userPrompt });
@@ -1723,27 +1814,45 @@ export class LeadAutoReplyService {
 
       const parsed = rawDraft ? parseOfflineAssistantAiJson(rawDraft) : ({ ok: false, error: "EMPTY_AI_OUTPUT" } as const);
 
-      const llmHandoffNeeded = parsed.ok ? Boolean(parsed.value.handoff_needed) : false;
+      const handoffNeeded = parsed.ok ? Boolean(parsed.value.handoff_needed) : false;
+      const heuristicHandoffNeeded = detectGeneralHandoffHeuristic(msg.content);
+      const finalHandoffNeeded = handoffNeeded || heuristicHandoffNeeded;
+      const msgNorm = normalizeTextForMatch(msg.content);
+      const visitHandoffNeeded =
+        finalHandoffNeeded &&
+        includesAny(msgNorm, [
+          "agend",
+          "agenda",
+          "marcar",
+          "visita",
+          "horario",
+          "disponibil",
+          /\b\d{1,2}:\d{2}\b/,
+          /\b\d{1,2}h\b/i,
+          /\b\d{1,2}h\d{2}\b/i,
+        ]);
       const tz = safeTimezone(settings.timezone);
-      const extractedVisitPrefs = llmHandoffNeeded ? extractVisitPreferences(msg.content, { now, timeZone: tz }) : null;
-      const mergedVisitPrefs = llmHandoffNeeded
+      const extractedVisitPrefs = visitHandoffNeeded ? extractVisitPreferences(msg.content, { now, timeZone: tz }) : null;
+      const mergedVisitPrefs = visitHandoffNeeded
         ? {
-            period: safeString((extractedVisitPrefs as any)?.period) || safeString(prevState?.visitPreferences?.period) || null,
+            period: safeString((extractedVisitPrefs as any)?.period) || safeString(prevStateWithSlots?.visitPreferences?.period) || null,
             days:
               (Array.isArray((extractedVisitPrefs as any)?.days) && (extractedVisitPrefs as any).days.length
                 ? (extractedVisitPrefs as any).days
-                : prevState?.visitPreferences?.days) ||
+                : prevStateWithSlots?.visitPreferences?.days) ||
               null,
-            time: safeString((extractedVisitPrefs as any)?.time) || safeString(prevState?.visitPreferences?.time) || null,
+            time: safeString((extractedVisitPrefs as any)?.time) || safeString(prevStateWithSlots?.visitPreferences?.time) || null,
           }
         : null;
 
-      const serverNextQuestion = chooseNextQuestion({ purpose, petFriendly, parkingSpots, history, state: prevState });
+      const serverNextQuestion = chooseNextQuestion({ history, state: prevStateWithSlots });
       const modelNextQuestion = parsed.ok ? safeString(parsed.value.next_question) : "";
-      const nextQuestion = llmHandoffNeeded ? "" : modelNextQuestion || serverNextQuestion;
+      const missingInfo = parsed.ok && Array.isArray(parsed.value.missing_info) ? parsed.value.missing_info : [];
+      const shouldAskFollowUp = !finalHandoffNeeded && missingInfo.length === 0;
+      const nextQuestion = shouldAskFollowUp ? modelNextQuestion || serverNextQuestion : "";
 
-      const nextState = updateStateWithQuestion(prevState, nextQuestion);
-      const nextStateWithVisit = llmHandoffNeeded
+      const nextState = updateStateWithQuestion(prevStateWithSlots, nextQuestion);
+      const nextStateWithVisit = visitHandoffNeeded
         ? updateStateVisitPreferences(updateStateVisitRequested(nextState), mergedVisitPrefs || extractedVisitPrefs)
         : nextState;
 
@@ -1761,7 +1870,7 @@ export class LeadAutoReplyService {
             ? "FACTUAL_WITHOUT_FACTS"
             : null;
 
-      let answerText = llmHandoffNeeded
+      let answerText = visitHandoffNeeded
         ? buildSchedulingAutoReply({ clientName, propertyTitle, includeIntro: shouldIntroduce, preferences: mergedVisitPrefs || extractedVisitPrefs })
         : rawAnswer;
       if (!answerText || !parsed.ok) {
@@ -1769,7 +1878,14 @@ export class LeadAutoReplyService {
       } else if (factualWithoutFacts) {
         const intro = shouldIntroduce ? buildAssistantIntro(clientName) : "";
         const about = propertyTitle ? `Sobre o imóvel ${propertyTitle}, ` : "Sobre o imóvel, ";
-        answerText = intro + `${about}essa informação não consta no anúncio.\n\nO corretor confirma assim que possível.`;
+        answerText =
+          intro +
+          `${about}essa informação não consta no anúncio.\n\n` +
+          "Se você quiser, eu posso registrar essa dúvida para o corretor, que confirma com você assim que possível.";
+      } else if (finalHandoffNeeded && !visitHandoffNeeded) {
+        answerText =
+          `${safeString(answerText)}\n\n` +
+          "Se você quiser, eu posso registrar sua solicitação para o corretor, que confirma com você assim que possível.";
       }
 
       const normalizedAnswer = normalizeTextForMatch(answerText);
