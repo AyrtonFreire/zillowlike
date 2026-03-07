@@ -22,7 +22,7 @@ import Checkbox from "@/components/ui/Checkbox";
 import Textarea from "@/components/ui/Textarea";
 import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 
-type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File; width?: number; height?: number };
+type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File; width?: number; height?: number; uploadKey?: string };
 type PublishedProperty = { id: string; title: string; url: string; imageUrl?: string | null; imageUrls?: string[]; statusLines?: string[]; host?: string };
 
 export default function NewPropertyPage() {
@@ -354,11 +354,56 @@ export default function NewPropertyPage() {
   const lastFocusRef = useRef<HTMLElement | null>(null);
   const confirmCancelRef = useRef<HTMLButtonElement | null>(null);
   const [images, setImages] = useState<ImageInput[]>([{ url: "", useUrl: false }]);
+  const uploadXhrsRef = useRef<Record<string, XMLHttpRequest>>({});
+  const cancelledUploadKeysRef = useRef<Record<string, true>>({});
   const dragIndex = useRef<number | null>(null);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
   const dropInputRef = useRef<HTMLInputElement | null>(null);
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+
+  const createUploadKey = () => {
+    try {
+      const c: any = typeof crypto !== "undefined" ? (crypto as any) : null;
+      if (c && typeof c.randomUUID === "function") return c.randomUUID() as string;
+    } catch {}
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  };
+
+  const removeImageAtIndex = (idx: number) => {
+    setImages((prev) => {
+      const item = prev[idx];
+      const key = item?.uploadKey ? String(item.uploadKey) : "";
+      if (key) cancelledUploadKeysRef.current[key] = true;
+      if (key && uploadXhrsRef.current[key]) {
+        try {
+          uploadXhrsRef.current[key].abort();
+        } catch {}
+        delete uploadXhrsRef.current[key];
+      }
+      const url = item?.url ? String(item.url) : "";
+      if (url.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {}
+      }
+      return prev.filter((_, i) => i !== idx);
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      try {
+        for (const xhr of Object.values(uploadXhrsRef.current)) {
+          try {
+            xhr.abort();
+          } catch {}
+        }
+      } finally {
+        uploadXhrsRef.current = {};
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -795,19 +840,23 @@ export default function NewPropertyPage() {
       setToast({ message: `Limitamos a ${MAX_IMAGES} fotos por anúncio.`, type: "info" });
     }
 
-    // 1) Determinar índices-alvo: sempre APPEND para evitar colisões/off-by-one
-    const startIndex = (!images.length || (images.length === 1 && !images[0].url)) ? 0 : images.length;
-    const targetIndices: number[] = Array.from({ length: cappedFiles.length }, (_, k) => startIndex + k);
+    const uploadKeys = cappedFiles.map(() => createUploadKey());
+
     // Se havia apenas 1 slot vazio inicial, substituí-lo por placeholders
     if (images.length === 1 && !images[0].url) {
-      setImages(() => cappedFiles.map(() => ({ url: "", reserved: true })) as ImageInput[]);
+      setImages(() => cappedFiles.map((_, k) => ({ url: "", reserved: true, uploadKey: uploadKeys[k] })) as ImageInput[]);
     } else {
-      setImages((prev) => [...prev, ...cappedFiles.map(() => ({ url: "", reserved: true }))]);
+      setImages((prev) => [...prev, ...cappedFiles.map((_, k) => ({ url: "", reserved: true, uploadKey: uploadKeys[k] }))]);
     }
     // 2) Upload sequencial preenchendo cada índice
     for (let k = 0; k < cappedFiles.length; k++) {
       const file = cappedFiles[k];
-      const targetIndex = targetIndices[k];
+      const uploadKey = uploadKeys[k];
+
+      if (cancelledUploadKeysRef.current[uploadKey]) {
+        delete cancelledUploadKeysRef.current[uploadKey];
+        continue;
+      }
 
       let processedFile: File;
       try {
@@ -817,7 +866,7 @@ export default function NewPropertyPage() {
         setToast({ message: err?.message || 'Imagem inválida', type: 'error' });
         setImages((prev) =>
           prev.map((it, i) =>
-            i === targetIndex
+            it.uploadKey === uploadKey
               ? { ...it, url: localUrl, pending: false, error: err?.message || 'Imagem inválida', progress: undefined, reserved: false, file: undefined }
               : it
           )
@@ -826,8 +875,22 @@ export default function NewPropertyPage() {
       }
 
       const localUrl = URL.createObjectURL(processedFile as File);
-      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1, reserved: true, file: processedFile as File } : it)));
+      setImages((prev) =>
+        prev.map((it, i) =>
+          it.uploadKey === uploadKey
+            ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1, reserved: true, file: processedFile as File, uploadKey }
+            : it
+        )
+      );
       try {
+        if (cancelledUploadKeysRef.current[uploadKey]) {
+          try {
+            URL.revokeObjectURL(localUrl);
+          } catch {}
+          delete cancelledUploadKeysRef.current[uploadKey];
+          continue;
+        }
+
         const sigRes = await fetch('/api/upload/cloudinary-sign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: 'zillowlike' }) });
         if (!sigRes.ok) throw new Error('Falha ao assinar upload.');
         const sig = await sigRes.json();
@@ -850,17 +913,35 @@ export default function NewPropertyPage() {
         fd.append('signature', sig.signature);
         fd.append('folder', sig.folder);
         // XHR para acompanhar progresso
-        const uploadedUrl: string = await new Promise((resolve, reject) => {
+        const uploadedUrl: string = await new Promise<string>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
+          let settled = false;
+          const finish = (fn: () => void) => {
+            if (settled) return;
+            settled = true;
+            fn();
+          };
+
+          uploadXhrsRef.current[uploadKey] = xhr;
+
+          if (cancelledUploadKeysRef.current[uploadKey]) {
+            delete uploadXhrsRef.current[uploadKey];
+            finish(() => reject(new Error('UPLOAD_ABORTED')));
+            return;
+          }
+
           xhr.open('POST', `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`);
           xhr.upload.onprogress = (ev) => {
             if (ev.lengthComputable) {
               const pct = Math.min(99, Math.round((ev.loaded / ev.total) * 100));
-              setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, progress: pct } : it)));
+              setImages((prev) => prev.map((it) => (it.uploadKey === uploadKey ? { ...it, progress: pct } : it)));
             }
           };
+          xhr.onabort = () => finish(() => reject(new Error('UPLOAD_ABORTED')));
+          xhr.onerror = () => finish(() => reject(new Error('Falha de rede no upload.')));
           xhr.onreadystatechange = () => {
-            if (xhr.readyState === 4) {
+            if (xhr.readyState !== 4) return;
+            finish(() => {
               try {
                 const data = JSON.parse(xhr.responseText || '{}');
                 if (xhr.status >= 200 && xhr.status < 300 && data.secure_url) {
@@ -871,17 +952,30 @@ export default function NewPropertyPage() {
               } catch (e) {
                 reject(new Error('Upload falhou.'));
               }
-            }
+            });
           };
-          xhr.onerror = () => reject(new Error('Falha de rede no upload.'));
           xhr.send(fd);
+        }).finally(() => {
+          delete uploadXhrsRef.current[uploadKey];
         });
-        URL.revokeObjectURL(localUrl);
-        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: uploadedUrl, pending: false, error: undefined, progress: 100, reserved: false, file: undefined } : it)));
+        try {
+          URL.revokeObjectURL(localUrl);
+        } catch {}
+        setImages((prev) =>
+          prev.map((it) =>
+            it.uploadKey === uploadKey ? { ...it, url: uploadedUrl, pending: false, error: undefined, progress: 100, reserved: false, file: undefined } : it
+          )
+        );
       } catch (err) {
-        // mantém preview local, mas sinaliza erro
+        const msg = (err as any)?.message;
+        if (msg === 'UPLOAD_ABORTED') {
+          delete cancelledUploadKeysRef.current[uploadKey];
+          continue;
+        }
         setToast({ message: 'Erro ao enviar imagem', type: 'error' });
-        setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, pending: false, error: 'Falha no upload', progress: undefined, reserved: false } : it)));
+        setImages((prev) =>
+          prev.map((it) => (it.uploadKey === uploadKey ? { ...it, pending: false, error: 'Falha no upload', progress: undefined, reserved: false } : it))
+        );
       }
     }
   }
@@ -890,9 +984,10 @@ export default function NewPropertyPage() {
     const item = images[targetIndex];
     const file = item?.file;
     if (!file) return;
+    const uploadKey = createUploadKey();
     try {
       const localUrl = URL.createObjectURL(file);
-      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1 } : it)));
+      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: localUrl, pending: true, error: undefined, progress: 1, uploadKey } : it)));
       const sigRes = await fetch('/api/upload/cloudinary-sign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: 'zillowlike' }) });
       if (!sigRes.ok) throw new Error('Falha ao assinar upload.');
       const sig = await sigRes.json();
@@ -902,17 +997,35 @@ export default function NewPropertyPage() {
       fd.append('timestamp', String(sig.timestamp));
       fd.append('signature', sig.signature);
       fd.append('folder', sig.folder);
-      const uploadedUrl: string = await new Promise((resolve, reject) => {
+      const uploadedUrl: string = await new Promise<string>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        let settled = false;
+        const finish = (fn: () => void) => {
+          if (settled) return;
+          settled = true;
+          fn();
+        };
+
+        uploadXhrsRef.current[uploadKey] = xhr;
+
+        if (cancelledUploadKeysRef.current[uploadKey]) {
+          delete uploadXhrsRef.current[uploadKey];
+          finish(() => reject(new Error('UPLOAD_ABORTED')));
+          return;
+        }
+
         xhr.open('POST', `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`);
         xhr.upload.onprogress = (ev) => {
           if (ev.lengthComputable) {
             const pct = Math.min(99, Math.round((ev.loaded / ev.total) * 100));
-            setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, progress: pct } : it)));
+            setImages((prev) => prev.map((it) => (it.uploadKey === uploadKey ? { ...it, progress: pct } : it)));
           }
         };
+        xhr.onabort = () => finish(() => reject(new Error('UPLOAD_ABORTED')));
+        xhr.onerror = () => finish(() => reject(new Error('Falha de rede no upload.')));
         xhr.onreadystatechange = () => {
-          if (xhr.readyState === 4) {
+          if (xhr.readyState !== 4) return;
+          finish(() => {
             try {
               const data = JSON.parse(xhr.responseText || '{}');
               if (xhr.status >= 200 && xhr.status < 300 && data.secure_url) {
@@ -923,16 +1036,26 @@ export default function NewPropertyPage() {
             } catch (e) {
               reject(new Error('Upload falhou.'));
             }
-          }
+          });
         };
-        xhr.onerror = () => reject(new Error('Falha de rede no upload.'));
         xhr.send(fd);
+      }).finally(() => {
+        delete uploadXhrsRef.current[uploadKey];
       });
-      URL.revokeObjectURL(localUrl);
-      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, url: uploadedUrl, pending: false, error: undefined, progress: 100, file: undefined } : it)));
+      try {
+        URL.revokeObjectURL(localUrl);
+      } catch {}
+      setImages((prev) => prev.map((it) => (it.uploadKey === uploadKey ? { ...it, url: uploadedUrl, pending: false, error: undefined, progress: 100, file: undefined } : it)));
     } catch (e) {
-      setToast({ message: 'Erro ao enviar imagem', type: 'error' });
-      setImages((prev) => prev.map((it, i) => (i === targetIndex ? { ...it, pending: false, error: 'Falha no upload', progress: undefined } : it)));
+      const msg = (e as any)?.message;
+      if (msg === 'UPLOAD_ABORTED') {
+        delete cancelledUploadKeysRef.current[uploadKey];
+        return;
+      }
+      if (msg !== 'UPLOAD_ABORTED') {
+        setToast({ message: 'Erro ao enviar imagem', type: 'error' });
+      }
+      setImages((prev) => prev.map((it) => (it.uploadKey === uploadKey ? { ...it, pending: false, error: 'Falha no upload', progress: undefined } : it)));
     }
   }
 
@@ -1399,12 +1522,12 @@ export default function NewPropertyPage() {
     };
   }, []);
 
-  function SortableItem({ id, children }: { id: string; children: ReactNode }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  function SortableItem({ id, children, disabled }: { id: string; children: ReactNode; disabled?: boolean }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: Boolean(disabled) });
     const style: React.CSSProperties = {
       transform: CSS.Transform.toString(transform),
-      transition: transition || 'transform 200ms ease, opacity 200ms ease, box-shadow 200ms ease',
-      opacity: isDragging ? 0.95 : 1,
+      transition,
+      opacity: isDragging ? 0.7 : 1,
       boxShadow: isDragging ? '0 12px 30px rgba(0,0,0,0.2)' : undefined,
       borderRadius: '0.75rem',
       cursor: isDragging ? 'grabbing' : 'grab',
@@ -2136,7 +2259,8 @@ export default function NewPropertyPage() {
     }
 
     if (stepId === 3) {
-      return images.some((it) => it.url && String(it.url).trim().length > 0);
+      if (images.some((it) => it.pending)) return false;
+      return images.some((it) => typeof it.url === "string" && /^https?:\/\//.test(it.url));
     }
 
     if (stepId === 4) {
@@ -2785,7 +2909,11 @@ export default function NewPropertyPage() {
     }
     // Step 4: ao menos 1 imagem
     if (currentStep === 3) {
-      const hasImage = images.some((it) => it.url && it.url.trim().length > 0);
+      if (images.some((it) => it.pending)) {
+        applyErrorsAndFocus(3, { images: "Aguarde terminar o envio das imagens antes de avançar." });
+        return;
+      }
+      const hasImage = images.some((it) => typeof it.url === "string" && /^https?:\/\//.test(it.url));
       if (!hasImage) {
         applyErrorsAndFocus(3, { images: "Adicione ao menos uma foto do imóvel." });
         return;
@@ -3147,7 +3275,7 @@ export default function NewPropertyPage() {
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3zm-5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5zM17.75 6.25a1 1 0 1 1-1 1 1 1 0 0 1 1-1z" />
                     </svg>
-                    Instagram (Story/Feed)
+                    Instagram
                   </button>
                   
                   {/* Facebook */}
@@ -3305,6 +3433,7 @@ export default function NewPropertyPage() {
                       <button
                         type="button"
                         onClick={nextStep}
+                        disabled={currentStep === 3 && images.some((i) => i.pending)}
                         className="flex-1 px-3 py-2 glass-teal text-sm font-semibold text-white rounded-lg shadow"
                       >
                         {isGeocoding && currentStep === 1 ? "Validando..." : "Próximo"}
@@ -4354,10 +4483,10 @@ export default function NewPropertyPage() {
                       </div>
 
                       {/* Contador e dicas */}
-                      {images.filter(img => img.url).length > 0 && (
+                      {images.filter((img) => typeof img.url === "string" && /^https?:\/\//.test(img.url)).length > 0 && (
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">
-                            <span className="font-semibold text-gray-900">{images.filter(img => img.url).length}</span> foto(s) adicionada(s)
+                            <span className="font-semibold text-gray-900">{images.filter((img) => typeof img.url === "string" && /^https?:\/\//.test(img.url)).length}</span> foto(s) adicionada(s)
                           </span>
                           <span className="text-gray-500 text-xs">Arraste para reordenar</span>
                         </div>
@@ -4385,8 +4514,25 @@ export default function NewPropertyPage() {
                                 if (!img.url && !img.pending) return null;
                                 const isFirst = idx === 0;
                                 return (
-                                  <SortableItem key={`img-${idx}`} id={`img-${idx}`}>
+                                  <SortableItem key={`img-${idx}`} id={`img-${idx}`} disabled={img.pending}>
                                     <div className="relative group aspect-square rounded-xl overflow-hidden border-2 border-gray-200 bg-gray-100 hover:border-teal-400 transition-colors">
+                                      {img.pending ? (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeImageAtIndex(idx);
+                                          }}
+                                          onPointerDown={(e) => e.stopPropagation()}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          onTouchStart={(e) => e.stopPropagation()}
+                                          className="absolute top-2 right-2 z-20 inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/90 hover:bg-white text-gray-900 shadow"
+                                          aria-label="Cancelar upload"
+                                        >
+                                          <X className="w-4 h-4" />
+                                        </button>
+                                      ) : null}
+
                                       {/* Badge CAPA */}
                                       {isFirst && img.url && (
                                         <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-gradient-to-r from-teal-600 to-teal-500 text-white text-xs font-bold rounded-md shadow-lg">
@@ -4434,6 +4580,18 @@ export default function NewPropertyPage() {
                                           <div className="text-center text-white p-2">
                                             <span className="text-2xl">⚠️</span>
                                             <p className="text-xs mt-1">{img.error}</p>
+                                            {img.file ? (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  void retryUpload(idx);
+                                                }}
+                                                className="mt-2 px-3 py-1.5 rounded-lg bg-white/90 hover:bg-white text-gray-900 text-xs font-semibold"
+                                              >
+                                                Tentar novamente
+                                              </button>
+                                            ) : null}
                                           </div>
                                         </div>
                                       )}
@@ -4482,13 +4640,15 @@ export default function NewPropertyPage() {
                                       )}
 
                                       {/* Indicador de drag */}
-                                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="w-6 h-6 bg-white/90 rounded-md flex items-center justify-center shadow">
-                                          <svg className="w-3.5 h-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                                          </svg>
+                                      {!img.pending && (
+                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <div className="w-6 h-6 bg-white/90 rounded-md flex items-center justify-center shadow">
+                                            <svg className="w-3.5 h-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                                            </svg>
+                                          </div>
                                         </div>
-                                      </div>
+                                      )}
                                     </div>
                                   </SortableItem>
                                 );
@@ -4501,7 +4661,8 @@ export default function NewPropertyPage() {
 
                     <div className="lg:col-span-4 space-y-4">
                       {/* Dica de qualidade */}
-                      {images.filter(img => img.url).length > 0 && images.filter(img => img.url).length < 5 && (
+                      {images.filter((img) => typeof img.url === "string" && /^https?:\/\//.test(img.url)).length > 0 &&
+                        images.filter((img) => typeof img.url === "string" && /^https?:\/\//.test(img.url)).length < 5 && (
                         <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                           <span className="text-lg">💡</span>
                           <div className="text-sm text-amber-800">
@@ -4988,6 +5149,7 @@ export default function NewPropertyPage() {
                     <button
                       type="button"
                       onClick={nextStep}
+                      disabled={currentStep === 3 && images.some((i) => i.pending)}
                       className="px-5 py-2.5 rounded-lg glass-teal text-sm font-semibold text-white shadow"
                     >
                       {isGeocoding && currentStep === 1 ? "Validando..." : "Avançar"}
@@ -5067,7 +5229,7 @@ export default function NewPropertyPage() {
                 className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
                 onClick={() => {
                   if (confirmDelete.index !== null) {
-                    setImages((prev) => prev.filter((_, idx) => idx !== confirmDelete.index));
+                    removeImageAtIndex(confirmDelete.index);
                   }
                   setConfirmDelete({ open: false, index: null });
                 }}

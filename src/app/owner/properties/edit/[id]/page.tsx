@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, Upload, X, GripVertical } from "lucide-react";
@@ -15,7 +15,20 @@ interface ImageInput {
   url: string;
   alt?: string;
   sortOrder?: number;
+  pending?: boolean;
+  error?: string;
+  progress?: number;
+  file?: File;
+  uploadKey?: string;
 }
+
+const createUploadKey = () => {
+  try {
+    const c: any = typeof crypto !== "undefined" ? (crypto as any) : null;
+    if (c && typeof c.randomUUID === "function") return c.randomUUID() as string;
+  } catch {}
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
 
 const CONDITION_TAG_OPTIONS = [
   "Novo / recém-entregue",
@@ -191,6 +204,45 @@ export default function EditPropertyPage() {
   const [hideCondoFee, setHideCondoFee] = useState(false);
   const [hideIPTU, setHideIPTU] = useState(false);
   const [images, setImages] = useState<ImageInput[]>([]);
+  const uploadXhrsRef = useRef<Record<string, XMLHttpRequest>>({});
+  const cancelledUploadKeysRef = useRef<Record<string, true>>({});
+
+  const removeImageAtIndex = (idx: number) => {
+    setImages((prev) => {
+      const item = prev[idx];
+      const key = item?.uploadKey ? String(item.uploadKey) : "";
+      if (key) cancelledUploadKeysRef.current[key] = true;
+      if (key && uploadXhrsRef.current[key]) {
+        try {
+          uploadXhrsRef.current[key].abort();
+        } catch {}
+        delete uploadXhrsRef.current[key];
+      }
+
+      const url = item?.url ? String(item.url) : "";
+      if (url.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {}
+      }
+
+      return prev.filter((_, i) => i !== idx);
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      try {
+        for (const xhr of Object.values(uploadXhrsRef.current)) {
+          try {
+            xhr.abort();
+          } catch {}
+        }
+      } finally {
+        uploadXhrsRef.current = {};
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (params?.id) {
@@ -374,6 +426,11 @@ export default function EditPropertyPage() {
     } catch {
     }
 
+    if (images.some((i) => i.pending)) {
+      alert("Aguarde terminar o envio das imagens antes de salvar.");
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -463,7 +520,9 @@ export default function EditPropertyPage() {
           hideOwnerContact,
           hideCondoFee,
           hideIPTU,
-          images,
+          images: (images || [])
+            .filter((img) => typeof img?.url === "string" && /^https?:\/\//.test(img.url))
+            .map((img, i) => ({ url: img.url, alt: img.alt, sortOrder: typeof img.sortOrder === "number" ? img.sortOrder : i })),
         }),
       });
 
@@ -482,8 +541,25 @@ export default function EditPropertyPage() {
   };
 
   const handleImageUpload = async (file: File) => {
+    const uploadKey = createUploadKey();
     try {
       const processedFile = await preprocessImageForUpload(file);
+
+      const localUrl = URL.createObjectURL(processedFile);
+      setImages((prev) => [
+        ...prev,
+        {
+          url: localUrl,
+          alt: "",
+          sortOrder: prev.length,
+          pending: true,
+          error: undefined,
+          progress: 1,
+          file: processedFile,
+          uploadKey,
+        },
+      ]);
+
       // Get signature
       const sigRes = await fetch("/api/upload/cloudinary-sign", {
         method: "POST",
@@ -501,23 +577,85 @@ export default function EditPropertyPage() {
       fd.append("signature", sig.signature);
       fd.append("folder", sig.folder);
 
-      const uploadRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`,
-        { method: "POST", body: fd }
-      );
-      const data = await uploadRes.json();
+      const uploadedUrl: string = await new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        let settled = false;
+        const finish = (fn: () => void) => {
+          if (settled) return;
+          settled = true;
+          fn();
+        };
 
-      if (data.secure_url) {
-        setImages(prev => [...prev, { url: data.secure_url, sortOrder: prev.length }]);
-      }
+        uploadXhrsRef.current[uploadKey] = xhr;
+
+        if (cancelledUploadKeysRef.current[uploadKey]) {
+          delete uploadXhrsRef.current[uploadKey];
+          finish(() => reject(new Error("UPLOAD_ABORTED")));
+          return;
+        }
+
+        xhr.open("POST", `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`);
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) {
+            const pct = Math.min(99, Math.round((ev.loaded / ev.total) * 100));
+            setImages((prev) => prev.map((it) => (it.uploadKey === uploadKey ? { ...it, progress: pct } : it)));
+          }
+        };
+        xhr.onabort = () => finish(() => reject(new Error("UPLOAD_ABORTED")));
+        xhr.onerror = () => finish(() => reject(new Error("Falha de rede no upload.")));
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState !== 4) return;
+          finish(() => {
+            try {
+              const data = JSON.parse(xhr.responseText || "{}");
+              if (xhr.status >= 200 && xhr.status < 300 && data.secure_url) {
+                resolve(data.secure_url as string);
+              } else {
+                reject(new Error(data?.error?.message || "Upload falhou."));
+              }
+            } catch {
+              reject(new Error("Upload falhou."));
+            }
+          });
+        };
+        xhr.send(fd);
+      }).finally(() => {
+        delete uploadXhrsRef.current[uploadKey];
+      });
+
+      setImages((prev) =>
+        prev.map((it) =>
+          it.uploadKey === uploadKey
+            ? {
+                ...it,
+                url: uploadedUrl,
+                pending: false,
+                error: undefined,
+                progress: 100,
+                file: undefined,
+              }
+            : it
+        )
+      );
+
+      try {
+        URL.revokeObjectURL(localUrl);
+      } catch {}
     } catch (error) {
       console.error("Upload error:", error);
-      alert((error as any)?.message || "Erro no upload");
+      const msg = (error as any)?.message;
+      if (msg === "UPLOAD_ABORTED") {
+        delete cancelledUploadKeysRef.current[uploadKey];
+        setImages((prev) => prev.filter((it) => it.uploadKey !== uploadKey));
+        return;
+      }
+      setImages((prev) => prev.map((it) => (it.uploadKey === uploadKey ? { ...it, pending: false, error: "Falha no upload", progress: undefined } : it)));
+      alert(msg || "Erro no upload");
     }
   };
 
   const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    removeImageAtIndex(index);
   };
 
   const handleGenerateWithAi = async () => {
@@ -644,11 +782,11 @@ export default function EditPropertyPage() {
           </Link>
           <button
             onClick={handleSubmit}
-            disabled={saving}
+            disabled={saving || images.some((i) => i.pending)}
             className="flex items-center gap-2 px-6 py-2.5 glass-teal hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
           >
-            <Save className="w-5 h-5" />
-            {saving ? "Salvando..." : "Salvar Alterações"}
+            <Save className="w-4 h-4" />
+            {saving ? "Salvando..." : images.some((i) => i.pending) ? "Aguardando imagens" : "Salvar"}
           </button>
         </div>
       </div>
@@ -1763,16 +1901,38 @@ export default function EditPropertyPage() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Fotos</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 {images.map((img, idx) => (
-                  <div key={idx} className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                  <div key={img.uploadKey || String(idx)} className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden">
                     <img
                       src={img.url}
                       alt={img.alt || ""}
                       className="w-full h-full object-cover"
                     />
+
+                    {img.pending && typeof img.progress === "number" && (
+                      <div className="absolute inset-x-0 bottom-0 bg-black/60 p-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-teal-400 to-teal-500" style={{ width: `${img.progress}%` }} />
+                          </div>
+                          <span className="text-xs text-white font-medium">{img.progress}%</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {img.error && (
+                      <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center">
+                        <div className="text-center text-white p-2">
+                          <span className="text-2xl">⚠️</span>
+                          <p className="text-xs mt-1">{img.error}</p>
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => removeImage(idx)}
                       className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label={img.pending ? "Cancelar upload" : "Remover imagem"}
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -1789,6 +1949,9 @@ export default function EditPropertyPage() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) handleImageUpload(file);
+                      try {
+                        (e.target as HTMLInputElement).value = "";
+                      } catch {}
                     }}
                   />
                 </label>
