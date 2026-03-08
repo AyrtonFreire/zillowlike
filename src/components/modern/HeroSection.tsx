@@ -36,10 +36,30 @@ export default function HeroSection() {
 
   // Background slideshow (Petrolina & Juazeiro)
   const slides = [
-    { city: "Petrolina, PE", url: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2000&auto=format&fit=crop" },
-    { city: "Petrolina, PE", url: "https://images.unsplash.com/photo-1523217582562-09d0def993a6?q=80&w=2000&auto=format&fit=crop" },
-    { city: "Juazeiro, BA", url: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=2000&auto=format&fit=crop" },
-    { city: "Juazeiro, BA", url: "https://images.unsplash.com/photo-1502003148287-a82ef80a6abc?q=80&w=2000&auto=format&fit=crop" },
+    {
+      city: "Petrolina, PE",
+      url: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Orla_II_-_Petrolina-Pernambuco.jpg/2560px-Orla_II_-_Petrolina-Pernambuco.jpg",
+      credit: "Foto: A. Júnior (CC BY 2.0)",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Orla_II_-_Petrolina-Pernambuco.jpg",
+    },
+    {
+      city: "Petrolina, PE",
+      url: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Ilha_do_Rodeadouro_em_Petrolina_-_Pernambuco_%28Rio_S%C3%A3o_Francisco%29.jpg/2560px-Ilha_do_Rodeadouro_em_Petrolina_-_Pernambuco_%28Rio_S%C3%A3o_Francisco%29.jpg",
+      credit: "Foto: Sued Sheila Sarmento (CC BY 2.0)",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Ilha_do_Rodeadouro_em_Petrolina_-_Pernambuco_(Rio_S%C3%A3o_Francisco).jpg",
+    },
+    {
+      city: "Juazeiro, BA",
+      url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Centro%2C_Juazeiro_-_BA%2C_Brazil_-_panoramio_%284%29.jpg/2560px-Centro%2C_Juazeiro_-_BA%2C_Brazil_-_panoramio_%284%29.jpg",
+      credit: "Foto: ricardobc (CC BY 3.0)",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Centro,_Juazeiro_-_BA,_Brazil_-_panoramio_(4).jpg",
+    },
+    {
+      city: "Petrolina–Juazeiro",
+      url: "https://upload.wikimedia.org/wikipedia/commons/4/42/Ponte_Presidente_Dutra_Juzeiro_e_Petrolina.jpg",
+      credit: "Foto: Sued Sheila Sarmento (CC BY 2.0)",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Ponte_Presidente_Dutra_Juzeiro_e_Petrolina.jpg",
+    },
   ];
   const [slideIndex, setSlideIndex] = useState(0);
   useEffect(() => {
@@ -294,6 +314,17 @@ export default function HeroSection() {
         ))}
         {/* Dark overlay for better text readability - sempre visível */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
+        {slides[slideIndex]?.credit && (
+          <div className="absolute bottom-3 right-4 z-20 text-[10px] text-white/75 bg-black/35 backdrop-blur px-2 py-1 rounded-md">
+            {slides[slideIndex]?.creditUrl ? (
+              <a href={slides[slideIndex].creditUrl} target="_blank" rel="noreferrer" className="hover:text-white">
+                {slides[slideIndex].credit}
+              </a>
+            ) : (
+              slides[slideIndex].credit
+            )}
+          </div>
+        )}
       </div>
 
       {/* Subtle animated elements */}

@@ -22,8 +22,30 @@ import Checkbox from "@/components/ui/Checkbox";
 import Textarea from "@/components/ui/Textarea";
 import PhoneVerificationModal from "@/components/PhoneVerificationModal";
 
-type ImageInput = { url: string; alt?: string; useUrl?: boolean; pending?: boolean; error?: string; editing?: boolean; progress?: number; reserved?: boolean; file?: File; width?: number; height?: number; uploadKey?: string };
-type PublishedProperty = { id: string; title: string; url: string; imageUrl?: string | null; imageUrls?: string[]; statusLines?: string[]; host?: string };
+type ImageInput = {
+  url: string;
+  alt?: string;
+  useUrl?: boolean;
+  pending?: boolean;
+  error?: string;
+  editing?: boolean;
+  progress?: number;
+  reserved?: boolean;
+  file?: File;
+  width?: number;
+  height?: number;
+  uploadKey?: string;
+};
+
+type PublishedProperty = {
+  id: string;
+  title: string;
+  url: string;
+  imageUrl?: string | null;
+  imageUrls?: string[];
+  statusLines?: string[];
+  host?: string;
+};
 
 export default function NewPropertyPage() {
   const [currentStep, setCurrentStep] = useState<number>(1);
