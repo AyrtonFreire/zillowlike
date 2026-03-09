@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MapPin, Bed, Bath, Maximize, TrendingUp, ChevronLeft, ChevronRight, Share2, Mail, Link as LinkIcon, X, Sparkles, Zap, Percent, ArrowUpRight, Video } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { track } from "@/lib/analytics";
 import { buildPropertyPath } from "@/lib/slug";
@@ -54,9 +55,48 @@ interface PropertyCardPremiumProps {
   };
   onOpenOverlay?: (id: string) => void;
   watermark?: boolean;
+  variant?: "classic" | "glass";
 }
 
-export default function PropertyCardPremium({ property, onOpenOverlay, watermark }: PropertyCardPremiumProps) {
+export default function PropertyCardPremium({ property, onOpenOverlay, watermark, variant }: PropertyCardPremiumProps) {
+  const searchParams = useSearchParams();
+  const variantFromUrl = searchParams?.get("card");
+  const readStoredVariant = (): "classic" | "glass" | null => {
+    try {
+      if (typeof window === "undefined") return null;
+      const raw = String(window.localStorage.getItem("ogga_card_variant") || "").toLowerCase();
+      if (raw === "glass" || raw === "classic") return raw;
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const [storedVariant, setStoredVariant] = useState<"classic" | "glass" | null>(() => readStoredVariant());
+
+  useEffect(() => {
+    setStoredVariant(readStoredVariant());
+  }, []);
+
+  useEffect(() => {
+    const raw = String(variantFromUrl || "").toLowerCase();
+    if (raw !== "glass" && raw !== "classic") return;
+    setStoredVariant(raw);
+    try {
+      window.localStorage.setItem("ogga_card_variant", raw);
+    } catch {}
+  }, [variantFromUrl]);
+
+  const resolvedVariant: "classic" | "glass" =
+    variant ??
+    (String(variantFromUrl || "").toLowerCase() === "glass"
+      ? "glass"
+      : String(variantFromUrl || "").toLowerCase() === "classic"
+        ? "classic"
+        : storedVariant ?? "classic");
+
+  const isGlass = resolvedVariant === "glass";
+
   const [isFavorite, setIsFavorite] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -431,7 +471,11 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         whileHover={{ y: -8 }}
-        className="group relative bg-white rounded-2xl shadow-card hover:shadow-cardHover transition-shadow duration-300 cursor-pointer h-full flex flex-col"
+        className={
+          isGlass
+            ? "group relative bg-transparent rounded-2xl shadow-card hover:shadow-cardHover transition-shadow duration-300 cursor-pointer h-full flex flex-col"
+            : "group relative bg-white rounded-2xl shadow-card hover:shadow-cardHover transition-shadow duration-300 cursor-pointer h-full flex flex-col"
+        }
         style={{ overflow: showShareModal ? 'visible' : 'hidden' }}
       >
         {/* Badges and Tags - Top Left */}
@@ -626,30 +670,63 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           )}
 
           {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div
+            className={
+              isGlass
+                ? "absolute inset-0 bg-gradient-to-t from-black/65 via-black/25 to-transparent opacity-100"
+                : "absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"
+            }
+          />
         </div>
 
         {/* Content */}
-        <div className="px-3 pt-2 pb-2 flex flex-col flex-1 relative bg-gradient-to-b from-white via-white to-gray-50">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handleShare}
-            className="absolute right-2 top-2 p-1.5 rounded-md transition-colors hover:bg-gray-100"
-            aria-label="Abrir opções de compartilhamento"
+        <div
+          className={
+            isGlass
+              ? "px-0 pt-0 pb-3 flex flex-col flex-1 relative"
+              : "px-3 pt-2 pb-2 flex flex-col flex-1 relative bg-gradient-to-b from-white via-white to-gray-50"
+          }
+        >
+          <div
+            className={
+              isGlass
+                ? "flex flex-col flex-1 mx-3 -mt-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-xl px-4 pt-4 pb-3 text-white relative"
+                : "flex flex-col flex-1"
+            }
           >
-            <Share2 className="w-4.5 h-4.5 text-teal hover:text-teal-dark transition-colors" />
-          </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleShare}
+              className={
+                isGlass
+                  ? "absolute right-2 top-2 p-2 rounded-xl transition-colors hover:bg-white/10"
+                  : "absolute right-2 top-2 p-1.5 rounded-md transition-colors hover:bg-gray-100"
+              }
+              aria-label="Abrir opções de compartilhamento"
+            >
+              <Share2
+                className={
+                  isGlass
+                    ? "w-4.5 h-4.5 text-white/90 hover:text-white transition-colors"
+                    : "w-4.5 h-4.5 text-teal hover:text-teal-dark transition-colors"
+                }
+              />
+            </motion.button>
 
           {/* Title + Price */}
           <div className="mb-1 pr-9">
             <div
-              className="text-[13px] sm:text-[14px] font-semibold text-gray-900 leading-snug"
+              className={
+                isGlass
+                  ? "text-[13px] sm:text-[14px] font-semibold text-white leading-snug"
+                  : "text-[13px] sm:text-[14px] font-semibold text-gray-900 leading-snug"
+              }
               style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
             >
               {property.title}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <div className="text-[16px] font-extrabold text-gray-900">
+              <div className={isGlass ? "text-[16px] font-extrabold text-white" : "text-[16px] font-extrabold text-gray-900"}>
                 {typeof property.price === 'number' && property.price > 0
                   ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
                   : 'Price on Request'}
@@ -716,36 +793,36 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </AnimatePresence>
 
           {/* Features row: quartos, banheiros, área (readable) */}
-          <div className="flex items-center text-gray-700 text-[12px] mb-0.5">
+          <div className={isGlass ? "flex items-center text-white/90 text-[12px] mb-0.5" : "flex items-center text-gray-700 text-[12px] mb-0.5"}>
             {property.bedrooms != null && (
               <div className="flex items-center gap-1" title="Quartos">
-                <Bed className="w-3.5 h-3.5 text-gray-600" />
+                <Bed className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-3.5 h-3.5 text-gray-600"} />
                 <span className="font-semibold">{property.bedrooms}</span>
               </div>
             )}
             {property.bedrooms != null && (property.bathrooms != null || property.areaM2 != null) && (
-              <span className="mx-2 text-gray-400">•</span>
+              <span className={isGlass ? "mx-2 text-white/40" : "mx-2 text-gray-400"}>•</span>
             )}
             {property.bathrooms != null && (
               <div className="flex items-center gap-1" title="Banheiros">
-                <Bath className="w-3.5 h-3.5 text-gray-600" />
+                <Bath className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-3.5 h-3.5 text-gray-600"} />
                 <span className="font-semibold">{property.bathrooms}</span>
               </div>
             )}
             {property.bathrooms != null && property.areaM2 != null && (
-              <span className="mx-2 text-gray-400">•</span>
+              <span className={isGlass ? "mx-2 text-white/40" : "mx-2 text-gray-400"}>•</span>
             )}
             {property.areaM2 != null && (
               <div className="flex items-center gap-1" title="Área">
-                <Maximize className="w-3.5 h-3.5 text-gray-600" />
+                <Maximize className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-3.5 h-3.5 text-gray-600"} />
                 <span className="font-semibold">{property.areaM2}m²</span>
               </div>
             )}
           </div>
 
           {/* Location (clean, readable) */}
-          <div className="flex items-center gap-1.5 text-gray-700 text-[12px]">
-            <MapPin className="w-3.5 h-3.5 text-gray-600" />
+          <div className={isGlass ? "flex items-center gap-1.5 text-white/90 text-[12px]" : "flex items-center gap-1.5 text-gray-700 text-[12px]"}>
+            <MapPin className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-3.5 h-3.5 text-gray-600"} />
             <span className="truncate">
               {property.neighborhood && `${property.neighborhood}, `}
               {property.city}/{property.state}
@@ -753,7 +830,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           </div>
 
           {/* Footer area (reserved height to keep all cards equal) */}
-          <div className="mt-auto pt-2 border-t border-gray-200/60 min-h-[36px] flex items-center">
+          <div className={isGlass ? "mt-auto pt-2 border-t border-white/20 min-h-[36px] flex items-center" : "mt-auto pt-2 border-t border-gray-200/60 min-h-[36px] flex items-center"}>
             {property.owner?.name ? (
               <div className="flex items-center justify-between gap-3 w-full">
                 {property.owner?.publicSlug ? (
@@ -780,7 +857,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     </span>
                     <span className="min-w-0 max-w-[200px] sm:max-w-[240px]">
                       <span className="flex items-center gap-1 min-w-0">
-                        <span className="block text-[12.5px] font-normal text-gray-700 leading-tight tracking-tight truncate transition-colors group-hover/realtor:text-teal-700">
+                        <span className={isGlass ? "block text-[12.5px] font-normal text-white/90 leading-tight tracking-tight truncate" : "block text-[12.5px] font-normal text-gray-700 leading-tight tracking-tight truncate transition-colors group-hover/realtor:text-teal-700"}>
                           {property.owner.name}
                         </span>
                       </span>
@@ -804,7 +881,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                       )}
                     </span>
                     <span className="min-w-0 max-w-[200px] sm:max-w-[240px]">
-                      <span className="block text-[12.5px] font-normal text-gray-700 leading-tight tracking-tight truncate">
+                      <span className={isGlass ? "block text-[12.5px] font-normal text-white/90 leading-tight tracking-tight truncate" : "block text-[12.5px] font-normal text-gray-700 leading-tight tracking-tight truncate"}>
                         {property.owner.name}
                       </span>
                     </span>
@@ -816,6 +893,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
             )}
           </div>
           {/* No description: keep info concise up to the address */}
+          </div>
         </div>
       </motion.div>
     </div>

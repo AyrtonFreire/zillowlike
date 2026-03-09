@@ -54,6 +54,66 @@ export default function Home() {
   const { data: session } = useSession();
   const user = (session as any)?.user || null;
 
+  const readStoredCardPicker = (): boolean => {
+    try {
+      if (typeof window === "undefined") return false;
+      return window.localStorage.getItem("ogga_card_picker") === "1";
+    } catch {
+      return false;
+    }
+  };
+
+  const [cardPickerEnabled, setCardPickerEnabled] = useState<boolean>(() => readStoredCardPicker());
+  const showCardVariantPicker = cardPickerEnabled || Boolean(searchParams.get("cardPicker"));
+  const [cardVariant, setCardVariant] = useState<"classic" | "glass">("classic");
+
+  useEffect(() => {
+    const pickerRaw = String(searchParams.get("cardPicker") || "");
+    if (pickerRaw === "1") {
+      setCardPickerEnabled(true);
+      try {
+        window.localStorage.setItem("ogga_card_picker", "1");
+      } catch {}
+    } else if (pickerRaw === "0") {
+      setCardPickerEnabled(false);
+      try {
+        window.localStorage.removeItem("ogga_card_picker");
+      } catch {}
+    } else {
+      setCardPickerEnabled(readStoredCardPicker());
+    }
+
+    const raw = String(searchParams.get("card") || "").toLowerCase();
+    if (raw === "glass" || raw === "classic") {
+      setCardVariant(raw);
+      try {
+        window.localStorage.setItem("ogga_card_variant", raw);
+      } catch {}
+      return;
+    }
+    try {
+      const stored = String(window.localStorage.getItem("ogga_card_variant") || "").toLowerCase();
+      if (stored === "glass" || stored === "classic") {
+        setCardVariant(stored as "classic" | "glass");
+      }
+    } catch {}
+  }, [searchParams]);
+
+  const setCardVariantUrl = useCallback(
+    (v: "classic" | "glass") => {
+      setCardVariant(v);
+      try {
+        window.localStorage.setItem("ogga_card_variant", v);
+        window.localStorage.setItem("ogga_card_picker", "1");
+      } catch {}
+      const sp = new URLSearchParams(searchParams.toString());
+      sp.set("card", v);
+      sp.set("cardPicker", "1");
+      router.push(`/?${sp.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
+
   // Estados principais
   const [properties, setProperties] = useState<Property[]>([]);
   const [total, setTotal] = useState(0);
@@ -2635,6 +2695,35 @@ export default function Home() {
                 </h2>
                 {total > 0 && (
                   <div className="flex items-center gap-2">
+                    {showCardVariantPicker && (
+                      <div className="hidden sm:flex items-center gap-2 mr-2">
+                        <span className="text-xs text-gray-500">Card</span>
+                        <div className="inline-flex items-center p-1 rounded-full border border-gray-200 bg-white">
+                          <button
+                            type="button"
+                            onClick={() => setCardVariantUrl("classic")}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                              cardVariant === "classic"
+                                ? "bg-gray-900 text-white"
+                                : "bg-transparent text-gray-700 hover:bg-gray-100"
+                            }`}
+                          >
+                            Clássico
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCardVariantUrl("glass")}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                              cardVariant === "glass"
+                                ? "bg-gray-900 text-white"
+                                : "bg-transparent text-gray-700 hover:bg-gray-100"
+                            }`}
+                          >
+                            Glass
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <span className="text-xs text-gray-500">Ordenar por</span>
                     <select
                       value={sort}
