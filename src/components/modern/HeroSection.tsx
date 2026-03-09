@@ -50,9 +50,9 @@ export default function HeroSection() {
     },
     {
       city: "Juazeiro, BA",
-      url: "https://upload.wikimedia.org/wikipedia/commons/1/1a/Centro%2C_Juazeiro_-_BA%2C_Brazil_-_panoramio_%284%29.jpg",
-      credit: "Foto: ricardobc (CC BY 3.0)",
-      creditUrl: "https://commons.wikimedia.org/wiki/File:Centro,_Juazeiro_-_BA,_Brazil_-_panoramio_(4).jpg",
+      url: "https://upload.wikimedia.org/wikipedia/commons/0/0c/Porto_fluvial_de_Juazeiro_-_Bahia_%28Rio_S%C3%A3o_Francisco%29.jpg",
+      credit: "Foto: Sued Sheila Sarmento (CC BY 2.0)",
+      creditUrl: "https://commons.wikimedia.org/wiki/File:Porto_fluvial_de_Juazeiro_-_Bahia_(Rio_S%C3%A3o_Francisco).jpg",
     },
     {
       city: "Petrolina–Juazeiro",
@@ -315,17 +315,6 @@ export default function HeroSection() {
         ))}
         {/* Dark overlay for better text readability - sempre visível */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
-        {slides[slideIndex]?.credit && (
-          <div className="absolute bottom-3 right-4 z-20 text-[10px] text-white/75 bg-black/35 backdrop-blur px-2 py-1 rounded-md">
-            {slides[slideIndex]?.creditUrl ? (
-              <a href={slides[slideIndex].creditUrl} target="_blank" rel="noreferrer" className="hover:text-white">
-                {slides[slideIndex].credit}
-              </a>
-            ) : (
-              slides[slideIndex].credit
-            )}
-          </div>
-        )}
       </div>
 
       {/* Subtle animated elements */}
