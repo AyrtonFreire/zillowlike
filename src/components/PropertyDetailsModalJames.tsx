@@ -284,62 +284,10 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
   useEffect(() => {
     if (!isOpen) return;
-    if (isPreview) return;
-    if (shouldLoadRelated) return;
-
-    const root = variant === "overlay" ? (scrollContainerRef.current ?? null) : null;
-    const relatedEl = relatedSectionRef.current;
-
-    if (!relatedEl || shouldLoadRelated) return;
-
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          if (relatedEl && entry.target === relatedEl && !shouldLoadRelated) {
-            setShouldLoadRelated(true);
-            try { obs.unobserve(relatedEl); } catch {}
-          }
-        });
-      },
-      { root, rootMargin: "200px 0px" }
-    );
-
-    if (relatedEl && !shouldLoadRelated) obs.observe(relatedEl);
-
-    return () => {
-      try { obs.disconnect(); } catch {}
-    };
-  }, [isOpen, shouldLoadRelated, property, variant, isPreview]);
-
-  useEffect(() => {
-    if (!isOpen) return;
     if (mode !== "public") return;
     if (shouldLoadArea) return;
-
-    const root = variant === "overlay" ? (scrollContainerRef.current ?? null) : null;
-    const areaEl = areaSectionRef.current;
-    if (!areaEl) return;
-
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          if (areaEl && entry.target === areaEl && !shouldLoadArea) {
-            setShouldLoadArea(true);
-            try { obs.unobserve(areaEl); } catch {}
-          }
-        });
-      },
-      { root, rootMargin: "200px 0px" }
-    );
-
-    try { obs.observe(areaEl); } catch {}
-
-    return () => {
-      try { obs.disconnect(); } catch {}
-    };
-  }, [isOpen, mode, shouldLoadArea, variant]);
+    setShouldLoadArea(true);
+  }, [isOpen, mode, shouldLoadArea]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1693,19 +1641,6 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                           </div>
                         )}
 
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                            property.hideExactAddress
-                              ? `${property.neighborhood || property.city}, ${property.city}, ${property.state}`
-                              : `${property.street}${property.streetNumber ? `, ${property.streetNumber}` : ''}, ${property.city}, ${property.state}`
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium mt-4"
-                        >
-                          Explorar no Google Maps →
-                        </a>
-
                         {poiOpen && (
                           <>
                             {poiLoading && (
@@ -1799,18 +1734,6 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                               </div>
                             ) : null}
 
-                            <a
-                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                property.hideExactAddress
-                                  ? `${property.neighborhood || property.city}, ${property.city}, ${property.state}`
-                                  : `${property.street}${property.streetNumber ? `, ${property.streetNumber}` : ''}, ${property.city}, ${property.state}`
-                              )}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 text-teal hover:text-teal-dark font-medium mb-8"
-                            >
-                              Explorar no Google Maps →
-                            </a>
                           </>
                         )}
                       </>
@@ -1820,38 +1743,41 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               )}
               {mode === "public" && (
                 <div ref={relatedSectionRef}>
-                  {/* Imóveis Próximos */}
-                  {shouldLoadRelated ? (
-                    nearbyProperties.length > 0 ? (
-                      <div className="border-t border-teal/10 pt-8 mt-8">
-                        <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" onOpenOverlay={handleOpenRelated} />
-                      </div>
-                    ) : (
-                      <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
-                        <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
-                      </div>
-                    )
-                  ) : (
-                    <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
-                      <p className="text-sm text-gray-500">Carregando sugestões de imóveis...</p>
+                  {!shouldLoadRelated ? (
+                    <div className="border-t border-teal/10 pt-8 mt-8">
+                      <button
+                        type="button"
+                        onClick={() => setShouldLoadRelated(true)}
+                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-semibold text-gray-800"
+                      >
+                        Ver imóveis próximos e similares
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
                     </div>
-                  )}
+                  ) : (
+                    <>
+                      {/* Imóveis Próximos */}
+                      {nearbyProperties.length > 0 ? (
+                        <div className="border-t border-teal/10 pt-8 mt-8">
+                          <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" onOpenOverlay={handleOpenRelated} />
+                        </div>
+                      ) : (
+                        <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
+                          <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
+                        </div>
+                      )}
 
-                  {/* Imóveis similares */}
-                  {shouldLoadRelated ? (
-                    similarProperties.length > 0 ? (
-                      <div className="border-t border-teal/10 pt-8 mt-8">
-                        <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" onOpenOverlay={handleOpenRelated} />
-                      </div>
-                    ) : (
-                      <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
-                        <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
-                      </div>
-                    )
-                  ) : (
-                    <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
-                      <p className="text-sm text-gray-500">Carregando sugestões de imóveis...</p>
-                    </div>
+                      {/* Imóveis similares */}
+                      {similarProperties.length > 0 ? (
+                        <div className="border-t border-teal/10 pt-8 mt-8">
+                          <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" onOpenOverlay={handleOpenRelated} />
+                        </div>
+                      ) : (
+                        <div className="border-t border-teal/10 pt-8 mt-8 text-center py-4">
+                          <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
