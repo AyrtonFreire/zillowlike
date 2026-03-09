@@ -129,6 +129,24 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     return "Profissional";
   }, [property]);
 
+  const purposeLabel = useMemo(() => {
+    const p = String(property.purpose || "").toUpperCase();
+    if (p === "RENT") return "ALUGUEL";
+    if (p === "SALE") return "VENDA";
+    return null;
+  }, [property.purpose]);
+
+  const typeLabel = useMemo(() => {
+    const raw = String(property.type || "").trim();
+    if (!raw) return null;
+    const upper = raw.toUpperCase();
+    if (upper.includes("APTO") || upper.includes("APART")) return "APTO";
+    if (upper.includes("CASA") || upper.includes("HOUSE")) return "CASA";
+    if (upper.includes("TERRENO") || upper.includes("LOT")) return "TERRENO";
+    if (upper.includes("SALA")) return "SALA";
+    return raw;
+  }, [property.type]);
+
   const intelligentBadges = useMemo(() => {
     const badges: Array<{
       key: string;
@@ -470,16 +488,26 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        whileHover={{ y: -8 }}
+        whileHover={isGlass ? { y: -8 } : { y: -2 }}
         className={
           isGlass
             ? "group relative bg-transparent rounded-2xl shadow-card hover:shadow-cardHover transition-shadow duration-300 cursor-pointer h-full flex flex-col"
-            : "group relative bg-white rounded-2xl shadow-card hover:shadow-cardHover transition-shadow duration-300 cursor-pointer h-full flex flex-col"
+            : "group relative bg-white rounded-2xl shadow-sm ring-1 ring-black/5 hover:shadow-xl transition-all duration-200 ease-out cursor-pointer h-full flex flex-col"
         }
         style={{ overflow: showShareModal ? 'visible' : 'hidden' }}
       >
         {/* Badges and Tags - Top Left */}
         <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
+          {purposeLabel && (
+            <div className="bg-white/90 backdrop-blur-sm text-slate-900 px-2.5 py-1 rounded-full text-[10px] font-semibold shadow-sm ring-1 ring-black/5">
+              {purposeLabel}
+            </div>
+          )}
+          {typeLabel && (
+            <div className="bg-white/90 backdrop-blur-sm text-slate-900 px-2.5 py-1 rounded-full text-[10px] font-semibold shadow-sm ring-1 ring-black/5">
+              {typeLabel}
+            </div>
+          )}
           {/* Featured Badge */}
           {property.isFeatured && (
             <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-lg">
@@ -488,7 +516,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
             </div>
           )}
           {/* Video Tag */}
-          {Array.isArray(property.media) && property.media.some(m=>m.type==='video') && (
+          {hasVideo && (
             <div className="bg-black/70 text-white px-2 py-0.5 rounded-full text-[10px] font-semibold shadow">
               Video
             </div>
@@ -509,26 +537,85 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={handleFavorite}
-            className="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-teal/5 transition-colors"
+            className={
+              isGlass
+                ? "bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-teal/5 transition-colors"
+                : "w-10 h-10 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-md ring-1 ring-black/5 shadow-sm hover:bg-white/90 transition-colors duration-200 ease-out"
+            }
             aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
           >
             <Heart
-              className={`w-5 h-5 transition-colors ${
-                isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"
+              className={`w-4 h-4 transition-colors ${
+                isFavorite ? "fill-red-500 text-red-500" : isGlass ? "text-gray-600" : "text-slate-700"
               }`}
             />
           </motion.button>
 
-          {hasVideo && (
-            <div
-              className="flex items-center justify-center w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm text-gray-700 shadow-lg"
-              aria-label="Este imóvel possui vídeo"
-              title="Este imóvel possui vídeo"
+          {!isGlass && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={handleShare}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-md ring-1 ring-black/5 shadow-sm hover:bg-white/90 transition-colors duration-200 ease-out"
+              aria-label="Abrir opções de compartilhamento"
             >
-              <Video className="w-4 h-4" />
-            </div>
+              <Share2 className="w-4 h-4 text-slate-700" />
+            </motion.button>
           )}
         </div>
+
+        <AnimatePresence>
+          {showShareModal && (
+            <motion.div
+              ref={shareModalRef}
+              initial={{ opacity: 0, scale: 0.8, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: -10 }}
+              className="absolute top-14 right-3 z-50 bg-white rounded-xl shadow-2xl p-4 min-w-[200px] max-h-[300px] overflow-y-auto"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-gray-900">Compartilhar</h3>
+                <button
+                  onClick={handleShare}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  onClick={handleCopyLink}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-teal/5 transition-colors text-left"
+                >
+                  <LinkIcon className="w-4 h-4 text-teal" />
+                  <span className="text-sm font-medium text-gray-700">
+                    {copySuccess ? "✓ Link copiado!" : "Copiar link"}
+                  </span>
+                </button>
+
+                <button
+                  onClick={handleGmailShare}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors text-left"
+                >
+                  <Mail className="w-4 h-4 text-red-600" />
+                  <span className="text-sm font-medium text-gray-700">Gmail</span>
+                </button>
+
+                <button
+                  onClick={handleOutlookShare}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors text-left"
+                >
+                  <Mail className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-gray-700">Outlook</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Image Carousel */}
         <div
@@ -652,10 +739,10 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                         e.stopPropagation();
                         setCurrentImage(i);
                       }}
-                      className={`h-2 rounded-full transition-all ${
+                      className={`h-1.5 w-1.5 rounded-full transition-all ${
                         i === currentImage
-                          ? "bg-white w-6"
-                          : "bg-white/50 hover:bg-white/75 w-2"
+                          ? "bg-white/90 scale-110"
+                          : "bg-white/40 hover:bg-white/60"
                       }`}
                     />
                   ))}
@@ -673,8 +760,8 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           <div
             className={
               isGlass
-                ? "absolute inset-0 bg-gradient-to-t from-black/65 via-black/25 to-transparent opacity-100"
-                : "absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"
+                ? "absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent opacity-100"
+                : "pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-black/0 to-transparent opacity-100"
             }
           />
         </div>
@@ -684,119 +771,58 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
           className={
             isGlass
               ? "px-0 pt-0 pb-3 flex flex-col flex-1 relative"
-              : "px-3 pt-2 pb-2 flex flex-col flex-1 relative bg-gradient-to-b from-white via-white to-gray-50"
+              : "px-4 pt-3 pb-3 flex flex-col flex-1 relative"
           }
         >
           <div
             className={
               isGlass
-                ? "flex flex-col flex-1 mx-3 -mt-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-xl px-4 pt-4 pb-3 text-white relative"
+                ? "flex flex-col flex-1 mx-3 -mt-10 rounded-2xl bg-black/40 backdrop-blur-md border border-white/15 shadow-xl px-4 pt-4 pb-3 text-white relative"
                 : "flex flex-col flex-1"
             }
           >
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={handleShare}
-              className={
-                isGlass
-                  ? "absolute right-2 top-2 p-2 rounded-xl transition-colors hover:bg-white/10"
-                  : "absolute right-2 top-2 p-1.5 rounded-md transition-colors hover:bg-gray-100"
-              }
-              aria-label="Abrir opções de compartilhamento"
-            >
-              <Share2
-                className={
-                  isGlass
-                    ? "w-4.5 h-4.5 text-white/90 hover:text-white transition-colors"
-                    : "w-4.5 h-4.5 text-teal hover:text-teal-dark transition-colors"
-                }
-              />
-            </motion.button>
+            {isGlass && (
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleShare}
+                className="absolute right-2 top-2 p-2 rounded-xl transition-colors hover:bg-white/10"
+                aria-label="Abrir opções de compartilhamento"
+              >
+                <Share2 className="w-4.5 h-4.5 text-white/90 hover:text-white transition-colors" />
+              </motion.button>
+            )}
 
           {/* Title + Price */}
-          <div className="mb-1 pr-9">
+          <div className={isGlass ? "mb-2 pr-9" : "mb-2"}>
+            <div className="flex flex-wrap items-baseline gap-1">
+              <div className={isGlass ? "text-[18px] font-extrabold text-white tracking-tight drop-shadow-sm" : "text-[18px] font-extrabold text-slate-900 tracking-tight"}>
+                {typeof property.price === 'number' && property.price > 0
+                  ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
+                  : 'Price on Request'}
+              </div>
+              {property.purpose === "RENT" && (
+                <span className={isGlass ? "text-[12px] font-semibold text-white/70" : "text-[12px] font-semibold text-slate-600"}>
+                  /mês
+                </span>
+              )}
+            </div>
             <div
               className={
                 isGlass
-                  ? "text-[13px] sm:text-[14px] font-semibold text-white leading-snug"
-                  : "text-[13px] sm:text-[14px] font-semibold text-gray-900 leading-snug"
+                  ? "mt-1 text-[13px] sm:text-[14px] font-semibold text-white leading-tight drop-shadow-sm"
+                  : "mt-1 text-[13px] sm:text-[14px] font-semibold text-slate-900 leading-tight"
               }
               style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
             >
               {property.title}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <div className={isGlass ? "text-[16px] font-extrabold text-white" : "text-[16px] font-extrabold text-gray-900"}>
-                {typeof property.price === 'number' && property.price > 0
-                  ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(property.price / 100)
-                  : 'Price on Request'}
-              </div>
-            </div>
           </div>
 
-          {/* Share Modal */}
-          <AnimatePresence>
-            {showShareModal && (
-              <motion.div
-                ref={shareModalRef}
-                initial={{ opacity: 0, scale: 0.8, y: -10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: -10 }}
-                className="absolute top-12 right-3 z-50 bg-white rounded-xl shadow-2xl p-4 min-w-[200px] max-h-[300px] overflow-y-auto"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-gray-900">Compartilhar</h3>
-                  <button
-                    onClick={handleShare}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="space-y-2">
-                  {/* Copy Link */}
-                  <button
-                    onClick={handleCopyLink}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-teal/5 transition-colors text-left"
-                  >
-                    <LinkIcon className="w-4 h-4 text-teal" />
-                    <span className="text-sm font-medium text-gray-700">
-                      {copySuccess ? "✓ Link copiado!" : "Copiar link"}
-                    </span>
-                  </button>
-
-                  {/* Gmail */}
-                  <button
-                    onClick={handleGmailShare}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors text-left"
-                  >
-                    <Mail className="w-4 h-4 text-red-600" />
-                    <span className="text-sm font-medium text-gray-700">Gmail</span>
-                  </button>
-
-                  {/* Outlook/Hotmail */}
-                  <button
-                    onClick={handleOutlookShare}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors text-left"
-                  >
-                    <Mail className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-gray-700">Outlook</span>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* Features row: quartos, banheiros, área (readable) */}
-          <div className={isGlass ? "flex items-center text-white/90 text-[12px] mb-0.5" : "flex items-center text-gray-700 text-[12px] mb-0.5"}>
+          <div className={isGlass ? "flex items-center text-white/90 text-[12px] mb-0.5" : "flex items-center text-slate-700 text-[12px] mb-0.5"}>
             {property.bedrooms != null && (
               <div className="flex items-center gap-1" title="Quartos">
-                <Bed className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-3.5 h-3.5 text-gray-600"} />
+                <Bed className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-4 h-4 text-slate-600"} />
                 <span className="font-semibold">{property.bedrooms}</span>
               </div>
             )}
@@ -805,7 +831,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
             )}
             {property.bathrooms != null && (
               <div className="flex items-center gap-1" title="Banheiros">
-                <Bath className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-3.5 h-3.5 text-gray-600"} />
+                <Bath className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-4 h-4 text-slate-600"} />
                 <span className="font-semibold">{property.bathrooms}</span>
               </div>
             )}
@@ -814,15 +840,15 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
             )}
             {property.areaM2 != null && (
               <div className="flex items-center gap-1" title="Área">
-                <Maximize className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-3.5 h-3.5 text-gray-600"} />
+                <Maximize className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-4 h-4 text-slate-600"} />
                 <span className="font-semibold">{property.areaM2}m²</span>
               </div>
             )}
           </div>
 
           {/* Location (clean, readable) */}
-          <div className={isGlass ? "flex items-center gap-1.5 text-white/90 text-[12px]" : "flex items-center gap-1.5 text-gray-700 text-[12px]"}>
-            <MapPin className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-3.5 h-3.5 text-gray-600"} />
+          <div className={isGlass ? "flex items-center gap-1.5 text-white/90 text-[12px]" : "flex items-center gap-1.5 text-slate-500 text-[12px]"}>
+            <MapPin className={isGlass ? "w-3.5 h-3.5 text-white/80" : "w-4 h-4 text-slate-400"} />
             <span className="truncate">
               {property.neighborhood && `${property.neighborhood}, `}
               {property.city}/{property.state}
@@ -858,7 +884,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     <span className="min-w-0 max-w-[200px] sm:max-w-[240px]">
                       <span className="flex items-center gap-1 min-w-0">
                         <span className={isGlass ? "block text-[12.5px] font-normal text-white/90 leading-tight tracking-tight truncate" : "block text-[12.5px] font-normal text-gray-700 leading-tight tracking-tight truncate transition-colors group-hover/realtor:text-teal-700"}>
-                          {property.owner.name}
+                          {isGlass ? property.owner.name : `Por: ${property.owner.name}`}
                         </span>
                       </span>
                     </span>
@@ -882,7 +908,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     </span>
                     <span className="min-w-0 max-w-[200px] sm:max-w-[240px]">
                       <span className={isGlass ? "block text-[12.5px] font-normal text-white/90 leading-tight tracking-tight truncate" : "block text-[12.5px] font-normal text-gray-700 leading-tight tracking-tight truncate"}>
-                        {property.owner.name}
+                        {isGlass ? property.owner.name : `Por: ${property.owner.name}`}
                       </span>
                     </span>
                   </div>
