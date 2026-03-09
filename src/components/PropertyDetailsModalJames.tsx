@@ -291,6 +291,14 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
 
   useEffect(() => {
     if (!isOpen) return;
+    if (mode !== "public") return;
+    if (isPreview) return;
+    if (shouldLoadRelated) return;
+    setShouldLoadRelated(true);
+  }, [isOpen, mode, isPreview, shouldLoadRelated]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     if (!isPreview) return;
     setLoading(false);
     setError(null);
@@ -1621,6 +1629,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                                 price: property.price,
                                 latitude: (property as any).latitude,
                                 longitude: (property as any).longitude,
+                                title: property.title,
                               }]}
                               pois={{ mode: 'list' as const, items: mapPoiList as any }}
                               hideRefitButton
@@ -1773,41 +1782,38 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               )}
               {mode === "public" && (
                 <div ref={relatedSectionRef}>
-                  {!shouldLoadRelated ? (
-                    <div className="border-t border-teal/10 pt-4 mt-4">
-                      <button
-                        type="button"
-                        onClick={() => setShouldLoadRelated(true)}
-                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 font-semibold text-gray-800"
-                      >
-                        Ver imóveis próximos e similares
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
-                    </div>
+                  {/* Imóveis Próximos */}
+                  {shouldLoadRelated ? (
+                    nearbyProperties.length > 0 ? (
+                      <div className="border-t border-teal/10 pt-4 mt-4">
+                        <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" onOpenOverlay={handleOpenRelated} />
+                      </div>
+                    ) : (
+                      <div className="border-t border-teal/10 pt-4 mt-4 text-center py-4">
+                        <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
+                      </div>
+                    )
                   ) : (
-                    <>
-                      {/* Imóveis Próximos */}
-                      {nearbyProperties.length > 0 ? (
-                        <div className="border-t border-teal/10 pt-4 mt-4">
-                          <SimilarCarousel properties={nearbyProperties} showHeader title="Imóveis próximos" onOpenOverlay={handleOpenRelated} />
-                        </div>
-                      ) : (
-                        <div className="border-t border-teal/10 pt-4 mt-4 text-center py-4">
-                          <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
-                        </div>
-                      )}
+                    <div className="border-t border-teal/10 pt-4 mt-4 text-center py-4">
+                      <p className="text-sm text-gray-500">Buscando imóveis próximos...</p>
+                    </div>
+                  )}
 
-                      {/* Imóveis similares */}
-                      {similarProperties.length > 0 ? (
-                        <div className="border-t border-teal/10 pt-4 mt-4">
-                          <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" onOpenOverlay={handleOpenRelated} />
-                        </div>
-                      ) : (
-                        <div className="border-t border-teal/10 pt-4 mt-4 text-center py-4">
-                          <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
-                        </div>
-                      )}
-                    </>
+                  {/* Imóveis similares */}
+                  {shouldLoadRelated ? (
+                    similarProperties.length > 0 ? (
+                      <div className="border-t border-teal/10 pt-4 mt-4">
+                        <SimilarCarousel properties={similarProperties} showHeader title="Imóveis similares" onOpenOverlay={handleOpenRelated} />
+                      </div>
+                    ) : (
+                      <div className="border-t border-teal/10 pt-4 mt-4 text-center py-4">
+                        <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
+                      </div>
+                    )
+                  ) : (
+                    <div className="border-t border-teal/10 pt-4 mt-4 text-center py-4">
+                      <p className="text-sm text-gray-500">Buscando imóveis similares...</p>
+                    </div>
                   )}
                 </div>
               )}

@@ -307,7 +307,7 @@ export default function GoogleMap(props: Props) {
       class HtmlOverlay extends google.maps.OverlayView {
         onAdd() {
           const panes = this.getPanes();
-          const target = panes?.overlayMouseTarget || panes?.overlayLayer;
+          const target = panes?.floatPane || panes?.overlayMouseTarget || panes?.overlayLayer;
           if (target) target.appendChild(el);
         }
         draw() {
@@ -386,19 +386,42 @@ export default function GoogleMap(props: Props) {
     const buildPinEl = (item: Item) => {
       const outer = document.createElement("div");
       outer.style.position = "absolute";
-      outer.style.transform = "translate(-50%,-50%)";
+      outer.style.transform = "translate(-50%,-100%)";
       outer.style.cursor = "pointer";
       outer.style.userSelect = "none";
-      outer.style.zIndex = "1200";
+      outer.style.zIndex = "2000";
+
+      const wrap = document.createElement("div");
+      wrap.style.position = "relative";
+      wrap.style.width = "18px";
+      wrap.style.height = "26px";
+
+      const tail = document.createElement("div");
+      tail.style.position = "absolute";
+      tail.style.left = "50%";
+      tail.style.top = "13px";
+      tail.style.width = "10px";
+      tail.style.height = "10px";
+      tail.style.background = "#2563eb";
+      tail.style.transform = "translateX(-50%) rotate(45deg)";
+      tail.style.borderRadius = "2px";
+      tail.style.boxShadow = "0 6px 16px rgba(0,0,0,.20)";
+      wrap.appendChild(tail);
 
       const dot = document.createElement("div");
-      dot.style.width = "14px";
-      dot.style.height = "14px";
+      dot.style.position = "absolute";
+      dot.style.left = "50%";
+      dot.style.top = "0px";
+      dot.style.transform = "translateX(-50%)";
+      dot.style.width = "18px";
+      dot.style.height = "18px";
       dot.style.borderRadius = "9999px";
       dot.style.background = "#2563eb";
-      dot.style.border = "2px solid #ffffff";
-      dot.style.boxShadow = "0 4px 10px rgba(0,0,0,.25)";
-      outer.appendChild(dot);
+      dot.style.border = "3px solid #ffffff";
+      dot.style.boxShadow = "0 8px 20px rgba(0,0,0,.22)";
+      wrap.appendChild(dot);
+
+      outer.appendChild(wrap);
 
       outer.addEventListener("mouseenter", () => onHoverChange?.(item.id));
       outer.addEventListener("mouseleave", () => onHoverChange?.(null));
