@@ -1632,20 +1632,20 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                             <button
                               type="button"
                               onClick={toggle}
-                              className="absolute bottom-3 left-3 z-[5] inline-flex items-center gap-2 pl-2 pr-3 py-2 rounded-full bg-gradient-to-r from-teal-600 to-emerald-500 text-white shadow-lg ring-1 ring-white/20 hover:from-teal-700 hover:to-emerald-600 transition-colors"
+                              className="absolute bottom-3 left-3 z-[5] inline-flex items-center gap-2 pl-2 pr-3 py-2 rounded-full bg-white/90 backdrop-blur-md text-gray-900 shadow-sm border border-gray-200 hover:bg-white transition-colors max-w-[calc(100%-24px)] overflow-hidden"
                             >
-                              <span className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shadow-inner -rotate-6">
+                              <span className="w-7 h-7 rounded-full bg-teal-50 flex items-center justify-center shadow-sm ring-1 ring-teal-100 -rotate-6">
                                 🧭
                               </span>
-                              <span className="text-xs font-extrabold tracking-tight">
+                              <span className="min-w-0 truncate text-xs font-semibold tracking-tight">
                                 Pesquisar Estabelecimentos Próximos
                               </span>
                               {totalPois > 0 ? (
-                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20">
+                                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
                                   {totalPois}
                                 </span>
                               ) : null}
-                              <ChevronDown className={`w-4 h-4 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
+                              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
                             </button>
                           </div>
                         ) : (
@@ -1653,20 +1653,20 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                             <button
                               type="button"
                               onClick={toggle}
-                              className="inline-flex items-center gap-2 pl-2 pr-3 py-2 rounded-full bg-gradient-to-r from-teal-600 to-emerald-500 text-white shadow-lg ring-1 ring-white/20 hover:from-teal-700 hover:to-emerald-600 transition-colors"
+                              className="inline-flex items-center gap-2 pl-2 pr-3 py-2 rounded-full bg-white/90 backdrop-blur-md text-gray-900 shadow-sm border border-gray-200 hover:bg-white transition-colors max-w-full overflow-hidden"
                             >
-                              <span className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shadow-inner -rotate-6">
+                              <span className="w-7 h-7 rounded-full bg-teal-50 flex items-center justify-center shadow-sm ring-1 ring-teal-100 -rotate-6">
                                 🧭
                               </span>
-                              <span className="text-xs font-extrabold tracking-tight">
+                              <span className="min-w-0 truncate text-xs font-semibold tracking-tight">
                                 Pesquisar Estabelecimentos Próximos
                               </span>
                               {totalPois > 0 ? (
-                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20">
+                                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
                                   {totalPois}
                                 </span>
                               ) : null}
-                              <ChevronDown className={`w-4 h-4 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
+                              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${poiOpen ? 'rotate-180' : ''}`} />
                             </button>
                           </div>
                         )}
