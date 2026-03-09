@@ -38,19 +38,19 @@ export default function HeroSection() {
   const slides = [
     {
       city: "Petrolina, PE",
-      url: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Orla_II_-_Petrolina-Pernambuco.jpg/2560px-Orla_II_-_Petrolina-Pernambuco.jpg",
+      url: "https://upload.wikimedia.org/wikipedia/commons/7/77/Orla_II_-_Petrolina-Pernambuco.jpg",
       credit: "Foto: A. Júnior (CC BY 2.0)",
       creditUrl: "https://commons.wikimedia.org/wiki/File:Orla_II_-_Petrolina-Pernambuco.jpg",
     },
     {
       city: "Petrolina, PE",
-      url: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Ilha_do_Rodeadouro_em_Petrolina_-_Pernambuco_%28Rio_S%C3%A3o_Francisco%29.jpg/2560px-Ilha_do_Rodeadouro_em_Petrolina_-_Pernambuco_%28Rio_S%C3%A3o_Francisco%29.jpg",
+      url: "https://upload.wikimedia.org/wikipedia/commons/e/e0/Ilha_do_Rodeadouro_em_Petrolina_-_Pernambuco_%28Rio_S%C3%A3o_Francisco%29.jpg",
       credit: "Foto: Sued Sheila Sarmento (CC BY 2.0)",
       creditUrl: "https://commons.wikimedia.org/wiki/File:Ilha_do_Rodeadouro_em_Petrolina_-_Pernambuco_(Rio_S%C3%A3o_Francisco).jpg",
     },
     {
       city: "Juazeiro, BA",
-      url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Centro%2C_Juazeiro_-_BA%2C_Brazil_-_panoramio_%284%29.jpg/2560px-Centro%2C_Juazeiro_-_BA%2C_Brazil_-_panoramio_%284%29.jpg",
+      url: "https://upload.wikimedia.org/wikipedia/commons/1/1a/Centro%2C_Juazeiro_-_BA%2C_Brazil_-_panoramio_%284%29.jpg",
       credit: "Foto: ricardobc (CC BY 3.0)",
       creditUrl: "https://commons.wikimedia.org/wiki/File:Centro,_Juazeiro_-_BA,_Brazil_-_panoramio_(4).jpg",
     },
@@ -307,6 +307,7 @@ export default function HeroSection() {
               src={s.url}
               alt={s.city}
               fill
+              sizes="100vw"
               className="object-cover"
               priority={i === 0}
             />

@@ -79,6 +79,8 @@ export function AgencyAssistantFeed(props: {
 }) {
   const router = useRouter();
 
+  const aiEnabled = false;
+
   const [items, setItems] = useState<AssistantItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -360,7 +362,7 @@ export function AgencyAssistantFeed(props: {
             const isBusy = actingId === item.id;
             const isReminder =
               item.type === "REMINDER_TODAY" || item.type === "REMINDER_OVERDUE" || item.type === "WEEKLY_SUMMARY";
-            const showAiBox = aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id));
+            const showAiBox = aiEnabled && aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id));
             return (
               <div
                 key={item.id}
@@ -394,15 +396,17 @@ export function AgencyAssistantFeed(props: {
                     Resolver
                   </button>
 
-                  <button
-                    type="button"
-                    disabled={isBusy || aiLoadingId === item.id}
-                    onClick={() => generateAi(item.id)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    {aiLoadingId === item.id ? "Gerando..." : "Gerar com IA"}
-                  </button>
+                  {aiEnabled && (
+                    <button
+                      type="button"
+                      disabled={isBusy || aiLoadingId === item.id}
+                      onClick={() => generateAi(item.id)}
+                      className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      {aiLoadingId === item.id ? "Gerando..." : "Gerar com IA"}
+                    </button>
+                  )}
 
                   <button
                     type="button"

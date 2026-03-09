@@ -297,6 +297,9 @@ export default function RealtorAssistantFeed(props: {
   onToggleSelected?: (itemId: string, selected: boolean) => void;
 }) {
   const router = useRouter();
+
+  const aiEnabled = false;
+
   const realtorId = props.realtorId;
   const leadId = props.leadId;
   const activeTab = "TASKS" as const;
@@ -1315,7 +1318,8 @@ export default function RealtorAssistantFeed(props: {
 
       {visibleItems.length > 0 && (
         <div className={props.embedded ? "space-y-3" : "mt-4 space-y-3"}>
-          {!aiVisibleItem &&
+          {aiEnabled &&
+            !aiVisibleItem &&
             aiForId &&
             (aiError || (aiResult && aiResult.itemId === aiForId)) &&
             !isInternalChecklistType(aiItemSnapshot?.type) && (
@@ -2276,7 +2280,7 @@ export default function RealtorAssistantFeed(props: {
                                   </button>
                                 )}
 
-                                {!isAgencyNotice && (
+                                {!isAgencyNotice && aiEnabled && (
                                   <button
                                     type="button"
                                     disabled={aiLoadingId === item.id || isTransientPreview || item.status !== "ACTIVE"}
@@ -2348,7 +2352,7 @@ export default function RealtorAssistantFeed(props: {
                           </div>
                         </div>
 
-                        {!isReminder && aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id)) && (
+                        {aiEnabled && !isReminder && aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id)) && (
                           <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
