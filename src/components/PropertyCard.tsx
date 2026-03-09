@@ -6,6 +6,7 @@ import type { ApiProperty } from "@/types/api";
 import { Heart, MapPin, Bed, Bath, Maximize2, ChevronLeft, ChevronRight, Video } from "lucide-react";
 import { buildPropertyPath } from "@/lib/slug";
 import { ptBR } from "@/lib/i18n/property";
+import { cloudinaryUrl, cloudinarySrcSet } from "@/lib/cloudinary";
 
 interface PropertyCardProps {
   property: ApiProperty;
@@ -26,28 +27,6 @@ export default function PropertyCard({
   isHovered = false,
   className = "",
 }: PropertyCardProps) {
-  const transformCloudinary = (url: string, transformation: string) => {
-    try {
-      const marker = "/image/upload/";
-      const idx = url.indexOf(marker);
-      if (idx === -1) return url; // not a cloudinary url
-      const head = url.substring(0, idx + marker.length);
-      const tail = url.substring(idx + marker.length);
-      // avoid double-applying if already has params
-      if (tail.startsWith("f_")) return url;
-      return `${head}${transformation}/${tail}`;
-    } catch {
-      return url;
-    }
-  };
-
-  const cloudinaryUrl = (url: string, transformation: string) => {
-    return transformCloudinary(url, transformation);
-  };
-
-  const cloudinarySrcSet = (url: string, oneXTransformation: string, twoXTransformation: string) => {
-    return `${cloudinaryUrl(url, oneXTransformation)} 1x, ${cloudinaryUrl(url, twoXTransformation)} 2x`;
-  };
   const [imageError, setImageError] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);

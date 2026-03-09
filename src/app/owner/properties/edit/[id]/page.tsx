@@ -527,6 +527,14 @@ export default function EditPropertyPage() {
       });
 
       if (response.ok) {
+        try {
+          fetch("/api/images/prewarm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ propertyId: String(params.id) }),
+            keepalive: true,
+          }).catch(() => {});
+        } catch {}
         alert("Imóvel atualizado com sucesso!");
         router.push("/owner/properties");
       } else {

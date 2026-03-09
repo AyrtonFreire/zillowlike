@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 import BrandLogo from "@/components/BrandLogo";
 import { getLowestFinancing } from "@/lib/financing";
 import { normalizePOIs } from "@/lib/overpass";
+import { cloudinaryUrl, cloudinarySrcSet } from "@/lib/cloudinary";
 import { buildPropertyPath } from "@/lib/slug";
 import { ptBR } from "@/lib/i18n/property";
 import { parseVideoUrl } from "@/lib/video";
@@ -378,30 +379,6 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     return R * c;
   };
   const formatDistance = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`);
-
-  
-
-  const transformCloudinary = (url: string, transformation: string) => {
-    try {
-      const marker = "/image/upload/";
-      const idx = url.indexOf(marker);
-      if (idx === -1) return url;
-      const head = url.substring(0, idx + marker.length);
-      const tail = url.substring(idx + marker.length);
-      if (tail.startsWith("f_")) return url;
-      return `${head}${transformation}/${tail}`;
-    } catch {
-      return url;
-    }
-  };
-
-  const cloudinaryUrl = (url: string | null | undefined, transformation: string) => {
-    return transformCloudinary(url || "/placeholder.jpg", transformation);
-  };
-
-  const cloudinarySrcSet = (url: string | null | undefined, oneXTransformation: string, twoXTransformation: string) => {
-    return `${cloudinaryUrl(url, oneXTransformation)} 1x, ${cloudinaryUrl(url, twoXTransformation)} 2x`;
-  };
 
   const formatDraftBRLFromCents = (cents?: number | null) => {
     if (typeof cents !== "number" || !Number.isFinite(cents)) return "";
@@ -838,6 +815,14 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
     });
   }, [photoViewMode, property, currentImageIndex, isOpen]);
 
+  const isMobSlideNear = (i: number) => {
+    const total = property?.images?.length || 0;
+    if (total <= 1) return true;
+    const prev = (currentImageIndex - 1 + total) % total;
+    const next = (currentImageIndex + 1) % total;
+    return i === currentImageIndex || i === prev || i === next;
+  };
+
   useEffect(() => {
     if (photoViewMode !== "fullscreen" || !isOpen) return;
     const update = () => {
@@ -1210,39 +1195,24 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
             >
               {property.images.map((img: { url: string; alt?: string | null }, i: number) => (
                 <div key={i} className="relative h-full" style={{ width: `${100 / property.images.length}%` }}>
-                  <img
-                    src={
-                      cloudinaryUrl(
-                        img.url,
-                        i === 0
-                          ? "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_1.0"
-                          : "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_1.0"
-                      )
-                    }
-                    srcSet={
-                      i === 0
-                        ? cloudinarySrcSet(
-                            img.url,
-                            "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_1.0",
-                            "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_2.0"
-                          )
-                        : cloudinarySrcSet(
-                            img.url,
-                            "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_1.0",
-                            "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_2.0"
-                          )
-                    }
-                    alt={`${property.title} ${i + 1}`}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    loading={i === 0 ? "eager" : "lazy"}
-                    fetchPriority={i === 0 ? "high" : undefined}
-                    onError={(e) => {
-                      const el = e.currentTarget;
-                      if (el.dataset.fallback === "1") return;
-                      el.dataset.fallback = "1";
-                      el.src = img.url || "/placeholder.jpg";
-                    }}
-                  />
+                  {isMobSlideNear(i) ? (
+                    <img
+                      src={cloudinaryUrl(img.url, i === currentImageIndex ? "f_auto,q_auto:good,w_1200,c_fill,g_auto,ar_4:3" : "f_auto,q_auto:good,w_960,c_fill,g_auto,ar_4:3", "/placeholder.jpg")}
+                      srcSet={i === currentImageIndex ? cloudinarySrcSet(img.url, "f_auto,q_auto:good,w_1200,c_fill,g_auto,ar_4:3", "f_auto,q_auto:good,w_1600,c_fill,g_auto,ar_4:3", "/placeholder.jpg") : cloudinarySrcSet(img.url, "f_auto,q_auto:good,w_960,c_fill,g_auto,ar_4:3", "f_auto,q_auto:good,w_1440,c_fill,g_auto,ar_4:3", "/placeholder.jpg")}
+                      sizes="100vw"
+                      alt={`${property.title} ${i + 1}`}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      loading={i === currentImageIndex ? "eager" : "lazy"}
+                      fetchPriority={i === currentImageIndex ? "high" : undefined}
+                      decoding="async"
+                      onError={(e) => {
+                        const el = e.currentTarget;
+                        if (el.dataset.fallback === "1") return;
+                        el.dataset.fallback = "1";
+                        el.src = img.url || "/placeholder.jpg";
+                      }}
+                    />
+                  ) : null}
                 </div>
               ))}
             </motion.div>
@@ -1318,22 +1288,24 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
               <img
                 src={
                   displayImages[0]?.url
-                    ? cloudinaryUrl(displayImages[0].url, "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_1.0")
+                    ? cloudinaryUrl(displayImages[0].url, "f_auto,q_auto:good,w_1200,h_675,c_fill,g_auto")
                     : "/placeholder.jpg"
                 }
                 srcSet={
                   displayImages[0]?.url
                     ? cloudinarySrcSet(
                         displayImages[0].url,
-                        "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_1.0",
-                        "f_webp,q_auto:best,w_1800,h_1013,c_fill,g_auto,dpr_2.0"
+                        "f_auto,q_auto:good,w_1200,h_675,c_fill,g_auto",
+                        "f_auto,q_auto:good,w_1800,h_1013,c_fill,g_auto"
                       )
                     : undefined
                 }
+                sizes="(min-width: 768px) 50vw, 100vw"
                 alt={property.title}
                 className="absolute inset-0 w-full h-full object-cover"
                 loading="eager"
                 fetchPriority="high"
+                decoding="async"
                 onError={(e) => {
                   const el = e.currentTarget;
                   if (el.dataset.fallback === "1") return;
@@ -1397,6 +1369,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                           "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0",
                           "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_2.0"
                         )}
+                        sizes="(min-width: 768px) 25vw, 50vw"
                         alt={`${property.title} ${tile.imageNumber}`}
                         className="absolute inset-0 w-full h-full object-cover"
                         loading="lazy"
@@ -1796,7 +1769,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                     );
                   })()}
 
-                  <div className="md:hidden mb-8">
+                  <div className="md:hidden mt-4 mb-8">
                     <PropertyContactCard
                       propertyId={property.id}
                       propertyTitle={property.title}
@@ -2005,6 +1978,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                             "f_auto,q_auto:good,w_1400,h_1050,c_fill,g_auto,dpr_1.0",
                             "f_auto,q_auto:good,w_1400,h_1050,c_fill,g_auto,dpr_2.0"
                           )}
+                          sizes="100vw"
                           alt={`${property.title} ${i + 1}`}
                           className="absolute inset-0 w-full h-full object-cover"
                           loading={i === 0 ? "eager" : "lazy"}
@@ -2081,6 +2055,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                                 "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_1.0",
                                 "f_auto,q_auto:good,w_1600,h_900,c_fill,g_auto,dpr_2.0"
                               )}
+                              sizes="(min-width: 768px) 60vw, 100vw"
                               alt={`${property.title} ${it.idx + 1}`}
                               className="absolute inset-0 w-full h-full object-cover"
                               loading={it.idx === 0 ? "eager" : "lazy"}
@@ -2141,6 +2116,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                                 "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_1.0",
                                 "f_auto,q_auto:eco,w_720,h_540,c_fill,g_auto,dpr_2.0"
                               )}
+                              sizes="(min-width: 768px) 30vw, 50vw"
                               alt={`${property.title} ${it.idx + 1}`}
                               className="absolute inset-0 w-full h-full object-cover"
                               loading="lazy"
@@ -2460,6 +2436,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                           "f_auto,q_auto:good,w_1400,c_limit,dpr_1.0",
                           "f_auto,q_auto:good,w_1400,c_limit,dpr_2.0"
                         )}
+                        sizes="100vw"
                         alt={`${property.title} - foto ${i + 1}`}
                         className="absolute inset-0 w-full h-full object-contain"
                         loading={i === currentImageIndex ? "eager" : "lazy"}
@@ -2544,6 +2521,7 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                         "f_auto,q_auto:eco,w_720,h_480,c_fill,g_auto,dpr_1.0",
                         "f_auto,q_auto:eco,w_720,h_480,c_fill,g_auto,dpr_2.0"
                       )}
+                      sizes="(min-width: 768px) 25vw, 33vw"
                       alt={`grid ${i + 1}`}
                       className="absolute inset-0 w-full h-full object-cover"
                       loading="lazy"

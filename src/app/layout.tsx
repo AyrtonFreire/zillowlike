@@ -70,6 +70,8 @@ export default async function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
       </head>
       <body className={`${fontSans.variable} ${fontDisplay.variable} ${fontLogo.variable} font-sans antialiased`}>
         {/* Skip link for keyboard users */}

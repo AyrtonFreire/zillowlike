@@ -3048,7 +3048,7 @@ export default function Home() {
                     />
                   </div>
                 ) : (
-                  properties.map((property) => (
+                  properties.map((property, idx) => (
                     <div
                       key={property.id}
                       className={`rounded-xl transition-all duration-200 ${hoverId === property.id ? 'ring-2 ring-teal-500 ring-offset-2 ring-offset-white' : ''}`}
@@ -3056,6 +3056,7 @@ export default function Home() {
                       <PropertyCardPremium
                         property={property}
                         onOpenOverlay={openOverlay}
+                        priority={idx < 2}
                       />
                     </div>
                   ))

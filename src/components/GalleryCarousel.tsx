@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { cloudinaryUrl, cloudinarySrcSet } from "@/lib/cloudinary";
 
 type Img = { url: string; alt?: string; blurDataURL?: string };
 export default function GalleryCarousel({ images, title }: { images: Img[]; title: string }) {
@@ -20,28 +21,6 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
   const fsLastX = useRef<number | null>(null);
   const fsLastT = useRef<number | null>(null);
   const fsLock = useRef<null | "h" | "v">(null);
-
-  const transformCloudinary = (url: string, transformation: string) => {
-    try {
-      const marker = "/image/upload/";
-      const idx = url.indexOf(marker);
-      if (idx === -1) return url;
-      const head = url.substring(0, idx + marker.length);
-      const tail = url.substring(idx + marker.length);
-      if (tail.startsWith("f_")) return url;
-      return `${head}${transformation}/${tail}`;
-    } catch {
-      return url;
-    }
-  };
-
-  const cloudinaryUrl = (url: string, transformation: string) => {
-    return transformCloudinary(url, transformation);
-  };
-
-  const cloudinarySrcSet = (url: string, oneXTransformation: string, twoXTransformation: string) => {
-    return `${cloudinaryUrl(url, oneXTransformation)} 1x, ${cloudinaryUrl(url, twoXTransformation)} 2x`;
-  };
 
   const hasImages = images && images.length > 0;
   const current = images?.[index] || null;
@@ -115,33 +94,27 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                 cloudinaryUrl(
                   img.url,
                   i === 0
-                    ? "f_webp,q_auto:best,w_1800,h_1350,c_fill,g_auto,dpr_1.0"
-                    : "f_auto,q_auto:good,w_1600,h_1200,c_fill,g_auto,dpr_1.0"
+                    ? "f_auto,q_auto:good,w_1200,h_900,c_fill,g_auto"
+                    : "f_auto,q_auto:good,w_960,h_720,c_fill,g_auto"
                 )
               }
               srcSet={
                 i === 0
-                  ? cloudinarySrcSet(
-                      img.url,
-                      "f_webp,q_auto:best,w_1800,h_1350,c_fill,g_auto,dpr_1.0",
-                      "f_webp,q_auto:best,w_1800,h_1350,c_fill,g_auto,dpr_2.0"
-                    )
-                  : cloudinarySrcSet(
-                      img.url,
-                      "f_auto,q_auto:good,w_1600,h_1200,c_fill,g_auto,dpr_1.0",
-                      "f_auto,q_auto:good,w_1600,h_1200,c_fill,g_auto,dpr_2.0"
-                    )
+                  ? cloudinarySrcSet(img.url, "f_auto,q_auto:good,w_1200,h_900,c_fill,g_auto", "f_auto,q_auto:good,w_1800,h_1350,c_fill,g_auto")
+                  : cloudinarySrcSet(img.url, "f_auto,q_auto:good,w_960,h_720,c_fill,g_auto", "f_auto,q_auto:good,w_1440,h_1080,c_fill,g_auto")
               }
+              sizes="100vw"
               alt={img.alt || title}
+              className="w-full h-full object-cover"
               loading={i === 0 ? "eager" : "lazy"}
               fetchPriority={i === 0 ? "high" : undefined}
+              decoding="async"
               onError={(e) => {
                 const el = e.currentTarget;
                 if (el.dataset.fallback === "1") return;
                 el.dataset.fallback = "1";
                 el.src = img.url;
               }}
-              className="w-full h-full object-cover"
             />
           </button>
         ))}
@@ -339,10 +312,12 @@ export default function GalleryCarousel({ images, title }: { images: Img[]; titl
                         "f_auto,q_auto:good,w_1400,c_limit,dpr_1.0",
                         "f_auto,q_auto:good,w_1400,c_limit,dpr_2.0"
                       )}
+                      sizes="100vw"
                       alt={img.alt || title}
                       className="max-w-full max-h-full object-contain"
                       loading={i === index ? "eager" : "lazy"}
                       fetchPriority={i === index ? "high" : undefined}
+                      decoding="async"
                       onError={(e) => {
                         const el = e.currentTarget;
                         if (el.dataset.fallback === "1") return;

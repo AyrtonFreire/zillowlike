@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { track } from "@/lib/analytics";
+import { cloudinaryUrl, cloudinarySrcSetW } from "@/lib/cloudinary";
 import { buildPropertyPath } from "@/lib/slug";
 
 interface PropertyCardPremiumProps {
@@ -54,9 +55,10 @@ interface PropertyCardPremiumProps {
   };
   onOpenOverlay?: (id: string) => void;
   watermark?: boolean;
+  priority?: boolean;
 }
 
-export default function PropertyCardPremium({ property, onOpenOverlay, watermark }: PropertyCardPremiumProps) {
+export default function PropertyCardPremium({ property, onOpenOverlay, watermark, priority = false }: PropertyCardPremiumProps) {
 
   const [isFavorite, setIsFavorite] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
@@ -146,30 +148,15 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
     return badges;
   }, [createdAtDate, property.areaM2, property.benchmarkConversionRate, property.benchmarkLeadsTop20Threshold, property.benchmarkPricePerM2, property.leadsCount, property.price, property.viewsCount]);
 
-  const transformCloudinary = (url: string, transformation: string) => {
-    try {
-      const marker = "/image/upload/";
-      const idx = url.indexOf(marker);
-      if (idx === -1) return url;
-      const head = url.substring(0, idx + marker.length);
-      const tail = url.substring(idx + marker.length);
-      if (tail.startsWith("f_")) return url;
-      return `${head}${transformation}/${tail}`;
-    } catch {
-      return url;
-    }
-  };
+  const ownerAvatarSrc = useMemo(() => {
+    const src = property.owner?.image;
+    if (!src) return null;
+    return cloudinaryUrl(src, "f_auto,q_auto:good,w_96,h_96,c_fill,g_auto,dpr_2.0");
+  }, [property.owner?.image]);
 
-  const cloudinaryUrl = (url: string, transformation: string) => {
-    return transformCloudinary(url, transformation);
-  };
-
-  const cloudinarySrcSet = (url: string, oneXTransformation: string, twoXTransformation: string) => {
-    return `${cloudinaryUrl(url, oneXTransformation)} 1x, ${cloudinaryUrl(url, twoXTransformation)} 2x`;
-  };
-
-  const cardImageTransform1x = "f_auto,q_auto:good,w_1200,h_720,c_fill,g_auto,dpr_1.0";
-  const cardImageTransform2x = "f_auto,q_auto:good,w_1200,h_720,c_fill,g_auto,dpr_2.0";
+  const cardImageTransform640 = "f_auto,q_auto:good,w_640,h_384,c_fill,g_auto";
+  const cardImageTransform960 = "f_auto,q_auto:good,w_960,h_576,c_fill,g_auto";
+  const cardImageSizes = "(min-width: 1024px) 320px, (min-width: 640px) 50vw, 100vw";
 
   const MAX_CARD_IMAGES = 5;
   const cardImages = useMemo(() => {
@@ -182,6 +169,13 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
   }, [property.media, property.videoId, property.videoUrl]);
   const hasMoreImages = (Array.isArray(property.images) ? property.images.length : 0) > MAX_CARD_IMAGES;
   const totalSlides = cardImages.length + (hasMoreImages ? 1 : 0);
+
+  const isSlideNear = (i: number) => {
+    if (totalSlides <= 1) return true;
+    const prev = currentImage - 1;
+    const next = currentImage + 1;
+    return i === currentImage || i === prev || i === next;
+  };
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -474,45 +468,58 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
               >
                 {cardImages.map((image, i) => (
                   <div key={i} className="min-w-full h-full relative">
-                    <img
-                      src={cloudinaryUrl(image.url, cardImageTransform1x)}
-                      srcSet={cloudinarySrcSet(image.url, cardImageTransform1x, cardImageTransform2x)}
-                      alt={property.title}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      loading={i === 0 ? "eager" : "lazy"}
-                      fetchPriority={i === 0 ? "high" : undefined}
-                      onError={(e) => {
-                        const el = e.currentTarget;
-                        if (el.dataset.fallback === "1") return;
-                        el.dataset.fallback = "1";
-                        el.src = image.url;
-                      }}
-                    />
+                    {isSlideNear(i) ? (
+                      <img
+                        src={cloudinaryUrl(image.url, cardImageTransform640)}
+                        srcSet={cloudinarySrcSetW(image.url, [
+                          { transformation: cardImageTransform640, width: 640 },
+                          { transformation: cardImageTransform960, width: 960 },
+                        ])}
+                        sizes={cardImageSizes}
+                        alt={property.title}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        loading={priority && i === currentImage ? "eager" : "lazy"}
+                        fetchPriority={priority && i === currentImage ? "high" : undefined}
+                        decoding="async"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (el.dataset.fallback === "1") return;
+                          el.dataset.fallback = "1";
+                          el.src = image.url;
+                        }}
+                      />
+                    ) : null}
                   </div>
                 ))}
 
                 {hasMoreImages && (
                   <div className="min-w-full h-full relative">
-                    <img
-                      src={cloudinaryUrl(
-                        (cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string,
-                        cardImageTransform1x
-                      )}
-                      srcSet={cloudinarySrcSet(
-                        (cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string,
-                        cardImageTransform1x,
-                        cardImageTransform2x
-                      )}
-                      alt={property.title}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        const el = e.currentTarget;
-                        if (el.dataset.fallback === "1") return;
-                        el.dataset.fallback = "1";
-                        el.src = (cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string;
-                      }}
-                    />
+                    {isSlideNear(cardImages.length) ? (
+                      <img
+                        src={cloudinaryUrl(
+                          (cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string,
+                          cardImageTransform640
+                        )}
+                        srcSet={cloudinarySrcSetW(
+                          (cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string,
+                          [
+                            { transformation: cardImageTransform640, width: 640 },
+                            { transformation: cardImageTransform960, width: 960 },
+                          ]
+                        )}
+                        sizes={cardImageSizes}
+                        alt={property.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (el.dataset.fallback === "1") return;
+                          el.dataset.fallback = "1";
+                          el.src = (cardImages[cardImages.length - 1]?.url || cardImages[0]?.url) as string;
+                        }}
+                      />
+                    ) : null}
                     <div className="absolute inset-0 bg-black/45" />
                     <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
                       <div className="text-white text-sm font-semibold mb-2">
@@ -757,9 +764,9 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     aria-label={`Ver perfil de ${property.owner.name}`}
                   >
                     <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 ring-1 ring-gray-200">
-                      {property.owner?.image ? (
+                      {ownerAvatarSrc ? (
                         <Image
-                          src={property.owner.image}
+                          src={ownerAvatarSrc}
                           alt={property.owner.name || "Profissional"}
                           fill
                           className="object-cover"
@@ -774,7 +781,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     <span className="min-w-0 max-w-[200px] sm:max-w-[240px]">
                       <span className="flex items-center gap-1 min-w-0">
                         <span className="block text-[12.5px] font-normal text-gray-700 leading-tight tracking-tight truncate transition-colors group-hover/realtor:text-teal-700">
-                          {`Por: ${property.owner.name}`}
+                          {property.owner.name}
                         </span>
                       </span>
                     </span>
@@ -782,9 +789,9 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                 ) : (
                   <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-3 min-w-0 flex-1">
                     <span className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 ring-1 ring-gray-200">
-                      {property.owner?.image ? (
+                      {ownerAvatarSrc ? (
                         <Image
-                          src={property.owner.image}
+                          src={ownerAvatarSrc}
                           alt={property.owner.name || "Profissional"}
                           fill
                           className="object-cover"
@@ -798,7 +805,7 @@ export default function PropertyCardPremium({ property, onOpenOverlay, watermark
                     </span>
                     <span className="min-w-0 max-w-[200px] sm:max-w-[240px]">
                       <span className="block text-[12.5px] font-normal text-gray-700 leading-tight tracking-tight truncate">
-                        {`Por: ${property.owner.name}`}
+                        {property.owner.name}
                       </span>
                     </span>
                   </div>

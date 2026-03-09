@@ -2797,6 +2797,15 @@ export default function NewPropertyPage() {
         statusLines,
         host,
       });
+
+      try {
+        fetch("/api/images/prewarm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ propertyId: result.id }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch {}
       
       setToast({ message: "Imóvel publicado com sucesso!", type: "success" });
     } catch (err: any) {

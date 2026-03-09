@@ -135,6 +135,16 @@ export default function EditPropertyPage() {
         const d = await res.json().catch(() => ({}));
         throw new Error(d?.error || 'Falha ao salvar alterações');
       }
+
+      try {
+        fetch("/api/images/prewarm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ propertyId: String(id) }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch {}
+
       window.location.href = `/property/${id}`;
     } catch (e: any) {
       setError(e.message || 'Erro ao salvar');
