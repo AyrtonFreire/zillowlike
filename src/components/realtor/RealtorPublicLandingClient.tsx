@@ -17,9 +17,11 @@ import {
   MessageCircle,
   PawPrint,
   QrCode,
+  Search,
   Sparkles,
   Star,
   TrendingUp,
+  X,
 } from "lucide-react";
 
 type PublicProperty = {
@@ -120,6 +122,9 @@ export default function RealtorPublicLandingClient({
 }: RealtorPublicLandingClientProps) {
   const [highlight, setHighlight] = useState<string>("featured");
   const [visibleCount, setVisibleCount] = useState(DEFAULT_PAGE_SIZE);
+
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
@@ -239,11 +244,24 @@ export default function RealtorPublicLandingClient({
     return featuredList;
   }, [featuredList, highlight, newList, popularList]);
 
-  const visibleList = useMemo(() => {
-    return highlightList.slice(0, visibleCount);
-  }, [highlightList, visibleCount]);
+  const searchedList = useMemo(() => {
+    const q = String(searchTerm || "").trim().toLowerCase();
+    if (!q) return highlightList;
 
-  const canLoadMore = visibleCount < highlightList.length;
+    return highlightList.filter((p) => {
+      const title = String(p.title || "").toLowerCase();
+      const neighborhood = String(p.neighborhood || "").toLowerCase();
+      const city = String(p.city || "").toLowerCase();
+      const state = String(p.state || "").toLowerCase();
+      return title.includes(q) || neighborhood.includes(q) || city.includes(q) || state.includes(q);
+    });
+  }, [highlightList, searchTerm]);
+
+  const visibleList = useMemo(() => {
+    return searchedList.slice(0, visibleCount);
+  }, [searchedList, visibleCount]);
+
+  const canLoadMore = visibleCount < searchedList.length;
 
   const handleWhatsApp = (message: string, action: string, payload?: Record<string, any>) => {
     if (!whatsappDigits) return;
@@ -281,8 +299,8 @@ export default function RealtorPublicLandingClient({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white text-slate-900">
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-slate-100 shadow-sm">
+    <div className="min-h-screen bg-neutral-50 text-neutral-900">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-neutral-200 shadow-sm">
         <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between">
           <BrandLogo href="/" size={26} className="gap-2" wordmarkClassName="text-base font-semibold" />
           {whatsappDigits ? (
@@ -301,39 +319,39 @@ export default function RealtorPublicLandingClient({
       <main className="mx-auto max-w-screen-2xl pb-24 md:pb-12">
         <div className="lg:flex lg:items-start lg:gap-6">
           <aside className="hidden lg:flex lg:flex-col lg:sticky lg:top-20 lg:w-60 lg:shrink-0 lg:mt-4">
-            <div className="rounded-3xl border border-slate-200 bg-white/70 backdrop-blur p-2 shadow-sm">
+            <div className="rounded-3xl border border-neutral-200 bg-white/90 backdrop-blur p-2 shadow-sm">
               <a
                 href="#grid"
-                className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-slate-800 hover:bg-slate-50 transition-colors"
+                className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
               >
-                <span className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 group-hover:bg-gradient-to-tr group-hover:from-fuchsia-500 group-hover:via-orange-400 group-hover:to-yellow-300 group-hover:text-white group-hover:border-transparent transition-colors">
+                <span className="h-10 w-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-700 group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-colors">
                   <Grid3X3 className="h-5 w-5" />
                 </span>
                 <span className="text-sm font-semibold">Imóveis</span>
               </a>
               <a
                 href="#avaliacoes"
-                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-slate-800 hover:bg-slate-50 transition-colors"
+                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
               >
-                <span className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 group-hover:bg-gradient-to-tr group-hover:from-yellow-400 group-hover:to-orange-500 group-hover:text-white group-hover:border-transparent transition-colors">
+                <span className="h-10 w-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-700 group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-colors">
                   <Star className="h-5 w-5" />
                 </span>
                 <span className="text-sm font-semibold">Avaliações</span>
               </a>
               <a
                 href="#sobre"
-                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-slate-800 hover:bg-slate-50 transition-colors"
+                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
               >
-                <span className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 group-hover:bg-gradient-to-tr group-hover:from-sky-500 group-hover:to-indigo-600 group-hover:text-white group-hover:border-transparent transition-colors">
+                <span className="h-10 w-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-700 group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-colors">
                   <Info className="h-5 w-5" />
                 </span>
                 <span className="text-sm font-semibold">Sobre</span>
               </a>
               <a
                 href="#compartilhar"
-                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-slate-800 hover:bg-slate-50 transition-colors"
+                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
               >
-                <span className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 group-hover:bg-gradient-to-tr group-hover:from-emerald-500 group-hover:to-teal-600 group-hover:text-white group-hover:border-transparent transition-colors">
+                <span className="h-10 w-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-700 group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-colors">
                   <Copy className="h-5 w-5" />
                 </span>
                 <span className="text-sm font-semibold">Compartilhar</span>
@@ -345,7 +363,7 @@ export default function RealtorPublicLandingClient({
             <section className="px-4 sm:px-6 lg:px-10 pt-4">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0">
-                  <div className="rounded-full p-[2px] bg-gradient-to-tr from-fuchsia-500 via-orange-400 to-yellow-300">
+                  <div className="rounded-full p-[2px] bg-accent">
                     <div className="rounded-full bg-white p-[2px]">
                       {realtor.image ? (
                         <Image
@@ -381,15 +399,15 @@ export default function RealtorPublicLandingClient({
                   </div>
 
                   <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
+                    <div className="rounded-2xl border border-neutral-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
                       <div className="text-sm font-semibold text-gray-900">{properties.length}</div>
                       <div className="text-[11px] text-gray-500">imóveis</div>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
+                    <div className="rounded-2xl border border-neutral-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
                       <div className="text-sm font-semibold text-gray-900">{realtor.totalRatings}</div>
                       <div className="text-[11px] text-gray-500">avaliações</div>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
+                    <div className="rounded-2xl border border-neutral-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
                       <div className="text-sm font-semibold text-gray-900">
                         {realtor.avgRating > 0 ? realtor.avgRating.toFixed(1) : "—"}
                       </div>
@@ -419,14 +437,14 @@ export default function RealtorPublicLandingClient({
                     Enviar mensagem
                   </button>
                 ) : (
-                  <div className="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm font-semibold text-slate-700">
+                  <div className="rounded-2xl border border-neutral-200 bg-white/70 px-4 py-3 text-sm font-semibold text-neutral-700">
                     WhatsApp não configurado
                   </div>
                 )}
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/80 hover:bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition-colors shadow-sm hover:shadow"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
                 >
                   <Copy className="h-4 w-4" />
                   {copiedLink ? "Copiado" : "Copiar link"}
@@ -451,23 +469,23 @@ export default function RealtorPublicLandingClient({
                       }}
                       className="flex flex-col items-center gap-1 flex-shrink-0"
                     >
-                      <div className={`h-16 w-16 rounded-full p-[2px] ${active ? "bg-gradient-to-tr from-fuchsia-500 via-orange-400 to-yellow-300" : "bg-slate-200"}`}>
+                      <div className={`h-16 w-16 rounded-full p-[2px] ${active ? "bg-accent" : "bg-neutral-200"}`}>
                         <div
                           className={`h-full w-full rounded-full flex items-center justify-center transition-colors ${
-                            active ? "bg-white text-slate-900" : "bg-white/80 text-slate-700"
+                            active ? "bg-white text-neutral-900" : "bg-white text-neutral-700"
                           }`}
                         >
                           {h.icon}
                         </div>
                       </div>
-                      <div className={`text-[11px] font-semibold ${active ? "text-slate-900" : "text-slate-600"}`}>{h.label}</div>
+                      <div className={`text-[11px] font-semibold ${active ? "text-neutral-900" : "text-neutral-600"}`}>{h.label}</div>
                     </button>
                   );
                 })}
               </div>
             </section>
 
-            <nav className="lg:hidden sticky top-14 z-40 bg-white/80 backdrop-blur border-y border-slate-100">
+            <nav className="lg:hidden sticky top-14 z-40 bg-white/90 backdrop-blur border-y border-neutral-200">
               <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10 h-12 flex items-center justify-around">
                 <a href="#grid" className="p-2 text-gray-900">
                   <Grid3X3 className="h-5 w-5" />
@@ -482,19 +500,72 @@ export default function RealtorPublicLandingClient({
             </nav>
 
             <section id="grid" className="mt-0 scroll-mt-24">
+              <div className="px-4 sm:px-6 lg:px-10 pt-4 pb-3">
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div className="text-sm font-semibold text-neutral-900">Imóveis</div>
+                  <div className="w-full md:max-w-md">
+                    <div className="flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg bg-white hover:border-neutral-400 transition-colors focus-within:ring-2 focus-within:ring-accent">
+                      <Search className="w-4 h-4 text-neutral-400" />
+                      <input
+                        type="text"
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const next = searchInput.trim();
+                            setSearchTerm(next);
+                            setVisibleCount(DEFAULT_PAGE_SIZE);
+                          }
+                        }}
+                        placeholder="Buscar por bairro, cidade, título..."
+                        className="flex-1 outline-none text-sm bg-transparent"
+                      />
+                      {searchInput.trim() ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchInput("");
+                            setSearchTerm("");
+                            setVisibleCount(DEFAULT_PAGE_SIZE);
+                          }}
+                          className="p-1 hover:bg-neutral-100 rounded transition-colors"
+                          aria-label="Limpar"
+                        >
+                          <X className="w-4 h-4 text-neutral-500" />
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = searchInput.trim();
+                          setSearchTerm(next);
+                          setVisibleCount(DEFAULT_PAGE_SIZE);
+                        }}
+                        className="p-1 hover:bg-neutral-100 rounded transition-colors"
+                        aria-label="Buscar"
+                      >
+                        <Search className="w-4 h-4 text-neutral-700" />
+                      </button>
+                    </div>
+                    {searchTerm ? (
+                      <div className="mt-1 text-xs text-neutral-600">{searchedList.length} resultado(s)</div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
               {properties.length === 0 ? (
                 <div className="px-4 py-10 text-center">
                   <div className="text-sm font-semibold text-gray-900">Ainda não há imóveis disponíveis aqui.</div>
                   <div className="text-sm text-gray-600 mt-1">Volte em breve para ver as novidades.</div>
                 </div>
-              ) : highlightList.length === 0 ? (
+              ) : searchedList.length === 0 ? (
                 <div className="px-4 py-10 text-center">
-                  <div className="text-sm font-semibold text-gray-900">Nenhum imóvel encontrado nesse destaque.</div>
-                  <div className="text-sm text-gray-600 mt-1">Tente outro highlight para ver mais opções.</div>
+                  <div className="text-sm font-semibold text-gray-900">Nenhum imóvel encontrado.</div>
+                  <div className="text-sm text-gray-600 mt-1">Tente remover a busca ou mudar o highlight.</div>
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-[2px] md:gap-3 bg-slate-200 md:bg-transparent md:px-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-[2px] md:gap-5 bg-neutral-200 md:bg-transparent md:px-4">
                     {visibleList.map((p, idx) => (
                       <PropertyTile
                         key={p.id}
@@ -509,12 +580,12 @@ export default function RealtorPublicLandingClient({
                       <button
                         type="button"
                         onClick={() => {
-                          setVisibleCount((v) => Math.min(v + DEFAULT_PAGE_SIZE, highlightList.length));
+                          setVisibleCount((v) => Math.min(v + DEFAULT_PAGE_SIZE, searchedList.length));
                           try {
                             track({ name: "public_profile_load_more", value: String(highlight) } as any);
                           } catch {}
                         }}
-                        className="w-full rounded-2xl border border-slate-200 bg-white/80 hover:bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition-colors shadow-sm hover:shadow"
+                        className="w-full rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
                       >
                         Carregar mais
                       </button>
@@ -534,7 +605,7 @@ export default function RealtorPublicLandingClient({
                   <button
                     type="button"
                     onClick={() => setShowAllReviews((v) => !v)}
-                    className="px-4 py-2 rounded-full border border-slate-200 bg-white/80 text-sm font-semibold text-slate-700 hover:bg-white shadow-sm hover:shadow transition-shadow"
+                    className="px-4 py-2 rounded-full border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
                   >
                     {showAllReviews ? "Fechar" : "Ver todas"}
                   </button>
@@ -547,10 +618,10 @@ export default function RealtorPublicLandingClient({
                 <>
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
                     {initialRatingsPreview.slice(0, 3).map((r) => (
-                      <div key={r.id} className="rounded-3xl border border-slate-200 p-4 bg-white/80 backdrop-blur shadow-sm">
+                      <div key={r.id} className="rounded-3xl border border-neutral-200 p-4 bg-white/80 backdrop-blur shadow-sm">
                         <div className="text-sm font-semibold text-gray-900 truncate">{r.authorName || "Cliente"}</div>
                         <div className="text-xs text-gray-500 mt-1">{toDateLabel(r.createdAt)}</div>
-                        <div className="mt-2 text-xs font-semibold text-yellow-700">{`${r.rating}★`}</div>
+                        <div className="mt-2 text-xs font-semibold text-warning">{`${r.rating}★`}</div>
                         {r.comment ? <div className="mt-2 text-sm text-gray-700 line-clamp-4">{r.comment}</div> : null}
                       </div>
                     ))}
@@ -567,7 +638,7 @@ export default function RealtorPublicLandingClient({
 
             <section id="sobre" className="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24">
           <div className="text-base font-semibold text-gray-900">Sobre</div>
-          <div className="mt-3 rounded-3xl border border-slate-200 bg-white/80 backdrop-blur p-5 shadow-sm">
+          <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-5 shadow-sm">
             <div className="flex items-start gap-3">
               {realtor.image ? (
                 <Image
@@ -644,14 +715,14 @@ export default function RealtorPublicLandingClient({
 
             <section id="compartilhar" className="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24">
           <div className="text-base font-semibold text-gray-900">Compartilhar</div>
-          <div className="mt-3 rounded-3xl border border-slate-200 bg-white/80 backdrop-blur p-5 shadow-sm">
+          <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-5 shadow-sm">
             <div className="text-sm text-gray-600">Use esse link nas redes sociais e no WhatsApp.</div>
 
             <div className="mt-4 flex flex-col gap-2">
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-white shadow-sm hover:shadow transition-shadow"
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
               >
                 <span className="inline-flex items-center gap-2">
                   <Copy className="h-4 w-4" />
@@ -663,7 +734,7 @@ export default function RealtorPublicLandingClient({
               <button
                 type="button"
                 onClick={handleCopyText}
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-white shadow-sm hover:shadow transition-shadow"
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
               >
                 <span className="inline-flex items-center gap-2">
                   <Copy className="h-4 w-4" />
@@ -675,7 +746,7 @@ export default function RealtorPublicLandingClient({
               <button
                 type="button"
                 onClick={handleDownloadQr}
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-white shadow-sm hover:shadow transition-shadow"
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
               >
                 <span className="inline-flex items-center gap-2">
                   <QrCode className="h-4 w-4" />
@@ -720,7 +791,7 @@ function PropertyTile({
   return (
     <Link
       href={href}
-      className="group relative aspect-square bg-white overflow-hidden md:rounded-2xl md:ring-1 md:ring-slate-200 md:shadow-sm md:hover:shadow md:hover:ring-fuchsia-300 transition"
+      className="group relative aspect-square bg-white overflow-hidden md:rounded-2xl md:ring-1 md:ring-neutral-200 md:shadow-sm md:hover:shadow md:hover:ring-accent transition"
       onClick={() => {
         try {
           track({ name: "listing_click", payload: { propertyId: property.id } } as any);
@@ -743,15 +814,15 @@ function PropertyTile({
       )}
 
       {badge ? (
-        <div className="absolute left-1 top-1 rounded-full bg-gradient-to-r from-fuchsia-600 to-orange-500 text-white text-[10px] font-semibold px-2 py-1 shadow-sm">
+        <div className="absolute left-1 top-1 rounded-full bg-accent text-white text-[10px] font-semibold px-2 py-1 shadow-sm">
           {badge}
         </div>
       ) : null}
 
-      <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/70 via-black/10 to-transparent">
-        <div className="text-[11px] font-semibold text-white truncate">{formatBRL(property.price)}</div>
+      <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+        <div className="text-sm font-semibold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)] truncate">{formatBRL(property.price)}</div>
         {property.neighborhood ? (
-          <div className="text-[10px] text-white/90 truncate">{property.neighborhood}</div>
+          <div className="text-xs text-white/95 drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)] truncate">{property.neighborhood}</div>
         ) : null}
       </div>
     </Link>
