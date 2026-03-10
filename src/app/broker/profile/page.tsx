@@ -77,56 +77,63 @@ export default function BrokerProfilePage() {
     }
   };
 
+  const mapApiProfileToState = (data: any): ProfileData => {
+    return {
+      publicSlug: data?.publicSlug || "",
+      publicHeadline: data?.publicHeadline || "",
+      publicBio: data?.publicBio || "",
+      publicCity: data?.publicCity || "",
+      publicState: data?.publicState || "",
+      publicPhoneOptIn: Boolean(data?.publicPhoneOptIn),
+      publicInstagram: data?.publicInstagram || "",
+      publicLinkedIn: data?.publicLinkedIn || "",
+      publicWhatsApp: data?.publicWhatsApp || "",
+      publicFacebook: data?.publicFacebook || "",
+      publicServiceAreas: Array.isArray(data?.publicServiceAreas) ? data.publicServiceAreas : [],
+    };
+  };
+
   const fetchProfile = async () => {
     try {
       const res = await fetch("/api/broker/profile");
       if (res.ok) {
         const data = await res.json();
-        setProfile({
-          publicSlug: data.publicSlug || "",
-          publicHeadline: data.publicHeadline || "",
-          publicBio: data.publicBio || "",
-          publicCity: data.publicCity || "",
-          publicState: data.publicState || "",
-          publicPhoneOptIn: data.publicPhoneOptIn || false,
-          publicInstagram: data.publicInstagram || "",
-          publicLinkedIn: data.publicLinkedIn || "",
-          publicWhatsApp: data.publicWhatsApp || "",
-          publicFacebook: data.publicFacebook || "",
-          publicServiceAreas: data.publicServiceAreas || [],
-        });
+        setProfile(mapApiProfileToState(data));
       }
     } catch (err) {
       console.error("Erro ao carregar perfil:", err);
     }
   };
 
-  const handleSave = async () => {
+  const persistProfile = async (nextProfile?: ProfileData) => {
+    if (saving) return;
     setSaving(true);
     try {
+      const payload = nextProfile ?? profile;
       const profileRes = await fetch("/api/broker/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
+        body: JSON.stringify(payload),
       });
 
-      let profileError: string | null = null;
+      const data = await profileRes.json().catch(() => null);
 
       if (!profileRes.ok) {
-        const data = await profileRes.json().catch(() => null);
-        profileError = data?.error || "Erro ao salvar perfil";
+        setToast({ message: data?.error || "Erro ao salvar perfil", type: "error" });
+        return;
       }
 
-      if (!profileError) {
-        setToast({ message: "Alterações salvas com sucesso!", type: "success" });
-      } else {
-        setToast({ message: profileError || "Erro ao salvar alterações", type: "error" });
-      }
+      setProfile(mapApiProfileToState(data));
+      setToast({ message: "Alterações salvas com sucesso!", type: "success" });
     } catch (err) {
       setToast({ message: "Erro ao salvar alterações", type: "error" });
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSave = async () => {
+    await persistProfile();
   };
 
   const addServiceArea = () => {
@@ -146,7 +153,8 @@ export default function BrokerProfilePage() {
     }));
   };
 
-  const generateSlug = () => {
+  const generateSlug = async () => {
+    if (saving) return;
     const name = session?.user?.name || "";
     const slug = name
       .toLowerCase()
@@ -154,7 +162,14 @@ export default function BrokerProfilePage() {
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
-    setProfile((p) => ({ ...p, publicSlug: slug || `corretor-${Date.now()}` }));
+
+    const nextProfile = {
+      ...profile,
+      publicSlug: slug || `corretor-${Date.now()}`,
+    };
+
+    setProfile(nextProfile);
+    await persistProfile(nextProfile);
   };
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
@@ -249,6 +264,7 @@ export default function BrokerProfilePage() {
             </div>
             <button
               onClick={generateSlug}
+              disabled={saving}
               className="px-4 py-2 text-sm font-medium text-teal-600 bg-teal-50 rounded-lg hover:bg-teal-100"
             >
               Gerar automático
