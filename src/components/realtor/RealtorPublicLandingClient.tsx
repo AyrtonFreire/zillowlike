@@ -281,15 +281,15 @@ export default function RealtorPublicLandingClient({
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
-        <div className="mx-auto max-w-5xl px-4 h-14 flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white text-slate-900">
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-slate-100 shadow-sm">
+        <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between">
           <BrandLogo href="/" size={26} className="gap-2" wordmarkClassName="text-base font-semibold" />
           {whatsappDigits ? (
             <button
               type="button"
               onClick={() => handleWhatsApp(baseIntroMessage, "topbar")}
-              className="inline-flex items-center gap-2 rounded-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-semibold transition-colors"
+              className="inline-flex items-center gap-2 rounded-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-semibold transition-colors shadow-sm hover:shadow"
             >
               <MessageCircle className="h-4 w-4" />
               Enviar mensagem
@@ -298,231 +298,276 @@ export default function RealtorPublicLandingClient({
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl pb-24 md:pb-12">
-        <section className="px-4 pt-4">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0">
-              <div className="rounded-full p-[2px] bg-gradient-to-tr from-fuchsia-500 via-orange-400 to-yellow-300">
-                <div className="rounded-full bg-white p-[2px]">
-                  {realtor.image ? (
-                    <Image
-                      src={realtor.image}
-                      alt={realtor.name}
-                      width={88}
-                      height={88}
-                      className="h-[88px] w-[88px] rounded-full object-cover"
-                      priority
-                    />
-                  ) : (
-                    <div className="h-[88px] w-[88px] rounded-full bg-gray-100 flex items-center justify-center text-3xl font-semibold text-gray-700">
-                      {(realtor.name || "?").charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">{realtor.name}</h1>
-                {realtor.creci && realtor.creciState ? (
-                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
-                    {realtor.creci}/{realtor.creciState}
-                  </span>
-                ) : null}
-                {teamLabel ? (
-                  <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
-                    Time {teamLabel}
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl border border-gray-200 bg-white py-2">
-                  <div className="text-sm font-semibold text-gray-900">{properties.length}</div>
-                  <div className="text-[11px] text-gray-500">imóveis</div>
-                </div>
-                <div className="rounded-xl border border-gray-200 bg-white py-2">
-                  <div className="text-sm font-semibold text-gray-900">{realtor.totalRatings}</div>
-                  <div className="text-[11px] text-gray-500">avaliações</div>
-                </div>
-                <div className="rounded-xl border border-gray-200 bg-white py-2">
-                  <div className="text-sm font-semibold text-gray-900">
-                    {realtor.avgRating > 0 ? realtor.avgRating.toFixed(1) : "—"}
-                  </div>
-                  <div className="text-[11px] text-gray-500">nota</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 text-sm text-gray-900 whitespace-pre-line">
-            {realtor.publicHeadline ? <div className="font-semibold">{realtor.publicHeadline}</div> : null}
-            {realtor.publicBio ? <div className="text-gray-700">{realtor.publicBio}</div> : null}
-            {locationLabel ? <div className="text-gray-500">{locationLabel}</div> : null}
-            {serviceAreaChips.length > 0 ? (
-              <div className="text-gray-500">Atendo: {serviceAreaChips.slice(0, 4).join(" • ")}</div>
-            ) : null}
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {whatsappDigits ? (
-              <button
-                type="button"
-                onClick={() => handleWhatsApp(baseIntroMessage, "profile_primary")}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors"
+      <main className="mx-auto max-w-screen-2xl pb-24 md:pb-12">
+        <div className="lg:flex lg:items-start lg:gap-6">
+          <aside className="hidden lg:flex lg:flex-col lg:sticky lg:top-20 lg:w-60 lg:shrink-0 lg:mt-4">
+            <div className="rounded-3xl border border-slate-200 bg-white/70 backdrop-blur p-2 shadow-sm">
+              <a
+                href="#grid"
+                className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-slate-800 hover:bg-slate-50 transition-colors"
               >
-                <MessageCircle className="h-4 w-4" />
-                Enviar mensagem
-              </button>
-            ) : (
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-600">
-                WhatsApp não configurado
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 transition-colors"
-            >
-              <Copy className="h-4 w-4" />
-              {copiedLink ? "Copiado" : "Copiar link"}
-            </button>
-          </div>
-        </section>
+                <span className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 group-hover:bg-gradient-to-tr group-hover:from-fuchsia-500 group-hover:via-orange-400 group-hover:to-yellow-300 group-hover:text-white group-hover:border-transparent transition-colors">
+                  <Grid3X3 className="h-5 w-5" />
+                </span>
+                <span className="text-sm font-semibold">Imóveis</span>
+              </a>
+              <a
+                href="#avaliacoes"
+                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-slate-800 hover:bg-slate-50 transition-colors"
+              >
+                <span className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 group-hover:bg-gradient-to-tr group-hover:from-yellow-400 group-hover:to-orange-500 group-hover:text-white group-hover:border-transparent transition-colors">
+                  <Star className="h-5 w-5" />
+                </span>
+                <span className="text-sm font-semibold">Avaliações</span>
+              </a>
+              <a
+                href="#sobre"
+                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-slate-800 hover:bg-slate-50 transition-colors"
+              >
+                <span className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 group-hover:bg-gradient-to-tr group-hover:from-sky-500 group-hover:to-indigo-600 group-hover:text-white group-hover:border-transparent transition-colors">
+                  <Info className="h-5 w-5" />
+                </span>
+                <span className="text-sm font-semibold">Sobre</span>
+              </a>
+              <a
+                href="#compartilhar"
+                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-slate-800 hover:bg-slate-50 transition-colors"
+              >
+                <span className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 group-hover:bg-gradient-to-tr group-hover:from-emerald-500 group-hover:to-teal-600 group-hover:text-white group-hover:border-transparent transition-colors">
+                  <Copy className="h-5 w-5" />
+                </span>
+                <span className="text-sm font-semibold">Compartilhar</span>
+              </a>
+            </div>
+          </aside>
 
-        <section className="mt-5 px-4">
-          <div className="flex items-start gap-4 overflow-x-auto pb-2">
-            {highlights.map((h) => {
-              const active = h.key === highlight;
-              return (
-                <button
-                  key={h.key}
-                  type="button"
-                  onClick={() => {
-                    setHighlight(h.key);
-                    setVisibleCount(DEFAULT_PAGE_SIZE);
-                    try {
-                      track({ name: "public_profile_highlight", value: h.key } as any);
-                    } catch {}
-                  }}
-                  className="flex flex-col items-center gap-1 flex-shrink-0"
-                >
-                  <div
-                    className={`h-16 w-16 rounded-full border bg-white flex items-center justify-center text-gray-700 transition-colors ${
-                      active ? "border-gray-900" : "border-gray-200"
-                    }`}
-                  >
-                    {h.icon}
+          <div className="min-w-0 flex-1">
+            <section className="px-4 sm:px-6 lg:px-10 pt-4">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <div className="rounded-full p-[2px] bg-gradient-to-tr from-fuchsia-500 via-orange-400 to-yellow-300">
+                    <div className="rounded-full bg-white p-[2px]">
+                      {realtor.image ? (
+                        <Image
+                          src={realtor.image}
+                          alt={realtor.name}
+                          width={88}
+                          height={88}
+                          className="h-[88px] w-[88px] rounded-full object-cover"
+                          priority
+                        />
+                      ) : (
+                        <div className="h-[88px] w-[88px] rounded-full bg-gray-100 flex items-center justify-center text-3xl font-semibold text-gray-700">
+                          {(realtor.name || "?").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className={`text-[11px] font-semibold ${active ? "text-gray-900" : "text-gray-600"}`}>{h.label}</div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+                </div>
 
-        <nav className="sticky top-14 z-40 bg-white border-y border-gray-100">
-          <div className="mx-auto max-w-5xl px-4 h-12 flex items-center justify-around">
-            <a href="#grid" className="p-2 text-gray-900">
-              <Grid3X3 className="h-5 w-5" />
-            </a>
-            <a href="#avaliacoes" className="p-2 text-gray-700">
-              <Star className="h-5 w-5" />
-            </a>
-            <a href="#sobre" className="p-2 text-gray-700">
-              <Info className="h-5 w-5" />
-            </a>
-          </div>
-        </nav>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">{realtor.name}</h1>
+                    {realtor.creci && realtor.creciState ? (
+                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
+                        {realtor.creci}/{realtor.creciState}
+                      </span>
+                    ) : null}
+                    {teamLabel ? (
+                      <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
+                        Time {teamLabel}
+                      </span>
+                    ) : null}
+                  </div>
 
-        <section id="grid" className="mt-0">
-          {properties.length === 0 ? (
-            <div className="px-4 py-10 text-center">
-              <div className="text-sm font-semibold text-gray-900">Ainda não há imóveis disponíveis aqui.</div>
-              <div className="text-sm text-gray-600 mt-1">Volte em breve para ver as novidades.</div>
-            </div>
-          ) : highlightList.length === 0 ? (
-            <div className="px-4 py-10 text-center">
-              <div className="text-sm font-semibold text-gray-900">Nenhum imóvel encontrado nesse destaque.</div>
-              <div className="text-sm text-gray-600 mt-1">Tente outro highlight para ver mais opções.</div>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-3 gap-[2px] bg-gray-200">
-                {visibleList.map((p, idx) => (
-                  <PropertyTile
-                    key={p.id}
-                    property={p}
-                    priority={idx < 9}
-                    badge={isFeatured(p) ? "Destaque" : isNew(p) ? "Novo" : null}
-                  />
-                ))}
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
+                      <div className="text-sm font-semibold text-gray-900">{properties.length}</div>
+                      <div className="text-[11px] text-gray-500">imóveis</div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
+                      <div className="text-sm font-semibold text-gray-900">{realtor.totalRatings}</div>
+                      <div className="text-[11px] text-gray-500">avaliações</div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
+                      <div className="text-sm font-semibold text-gray-900">
+                        {realtor.avgRating > 0 ? realtor.avgRating.toFixed(1) : "—"}
+                      </div>
+                      <div className="text-[11px] text-gray-500">nota</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              {canLoadMore ? (
-                <div className="px-4 py-6">
+
+              <div className="mt-3 text-sm text-gray-900 whitespace-pre-line">
+                {realtor.publicHeadline ? <div className="font-semibold">{realtor.publicHeadline}</div> : null}
+                {realtor.publicBio ? <div className="text-gray-700">{realtor.publicBio}</div> : null}
+                {locationLabel ? <div className="text-gray-500">{locationLabel}</div> : null}
+                {serviceAreaChips.length > 0 ? (
+                  <div className="text-gray-500">Atendo: {serviceAreaChips.slice(0, 4).join(" • ")}</div>
+                ) : null}
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {whatsappDigits ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      setVisibleCount((v) => Math.min(v + DEFAULT_PAGE_SIZE, highlightList.length));
-                      try {
-                        track({ name: "public_profile_load_more", value: String(highlight) } as any);
-                      } catch {}
-                    }}
-                    className="w-full rounded-xl border border-gray-200 bg-white hover:bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 transition-colors"
+                    onClick={() => handleWhatsApp(baseIntroMessage, "profile_primary")}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
                   >
-                    Carregar mais
+                    <MessageCircle className="h-4 w-4" />
+                    Enviar mensagem
                   </button>
-                </div>
-              ) : null}
-            </>
-          )}
-        </section>
-
-        <section id="avaliacoes" className="px-4 pt-10">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-base font-semibold text-gray-900">Avaliações</div>
-              <div className="text-sm text-gray-500">O que clientes dizem</div>
-            </div>
-            {initialRatingsPreview.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setShowAllReviews((v) => !v)}
-                className="px-4 py-2 rounded-full border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                {showAllReviews ? "Fechar" : "Ver todas"}
-              </button>
-            ) : null}
-          </div>
-
-          {initialRatingsPreview.length === 0 ? (
-            <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">Ainda não há avaliações publicadas.</div>
-          ) : (
-            <>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                {initialRatingsPreview.slice(0, 3).map((r) => (
-                  <div key={r.id} className="rounded-2xl border border-gray-200 p-4 bg-white">
-                    <div className="text-sm font-semibold text-gray-900 truncate">{r.authorName || "Cliente"}</div>
-                    <div className="text-xs text-gray-500 mt-1">{toDateLabel(r.createdAt)}</div>
-                    <div className="mt-2 text-xs font-semibold text-yellow-700">{`${r.rating}★`}</div>
-                    {r.comment ? <div className="mt-2 text-sm text-gray-700 line-clamp-4">{r.comment}</div> : null}
+                ) : (
+                  <div className="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm font-semibold text-slate-700">
+                    WhatsApp não configurado
                   </div>
-                ))}
+                )}
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/80 hover:bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition-colors shadow-sm hover:shadow"
+                >
+                  <Copy className="h-4 w-4" />
+                  {copiedLink ? "Copiado" : "Copiar link"}
+                </button>
+              </div>
+            </section>
+
+            <section className="mt-6 px-4 sm:px-6 lg:px-10">
+              <div className="flex items-start gap-4 overflow-x-auto pb-2">
+                {highlights.map((h) => {
+                  const active = h.key === highlight;
+                  return (
+                    <button
+                      key={h.key}
+                      type="button"
+                      onClick={() => {
+                        setHighlight(h.key);
+                        setVisibleCount(DEFAULT_PAGE_SIZE);
+                        try {
+                          track({ name: "public_profile_highlight", value: h.key } as any);
+                        } catch {}
+                      }}
+                      className="flex flex-col items-center gap-1 flex-shrink-0"
+                    >
+                      <div className={`h-16 w-16 rounded-full p-[2px] ${active ? "bg-gradient-to-tr from-fuchsia-500 via-orange-400 to-yellow-300" : "bg-slate-200"}`}>
+                        <div
+                          className={`h-full w-full rounded-full flex items-center justify-center transition-colors ${
+                            active ? "bg-white text-slate-900" : "bg-white/80 text-slate-700"
+                          }`}
+                        >
+                          {h.icon}
+                        </div>
+                      </div>
+                      <div className={`text-[11px] font-semibold ${active ? "text-slate-900" : "text-slate-600"}`}>{h.label}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <nav className="lg:hidden sticky top-14 z-40 bg-white/80 backdrop-blur border-y border-slate-100">
+              <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10 h-12 flex items-center justify-around">
+                <a href="#grid" className="p-2 text-gray-900">
+                  <Grid3X3 className="h-5 w-5" />
+                </a>
+                <a href="#avaliacoes" className="p-2 text-gray-700">
+                  <Star className="h-5 w-5" />
+                </a>
+                <a href="#sobre" className="p-2 text-gray-700">
+                  <Info className="h-5 w-5" />
+                </a>
+              </div>
+            </nav>
+
+            <section id="grid" className="mt-0 scroll-mt-24">
+              {properties.length === 0 ? (
+                <div className="px-4 py-10 text-center">
+                  <div className="text-sm font-semibold text-gray-900">Ainda não há imóveis disponíveis aqui.</div>
+                  <div className="text-sm text-gray-600 mt-1">Volte em breve para ver as novidades.</div>
+                </div>
+              ) : highlightList.length === 0 ? (
+                <div className="px-4 py-10 text-center">
+                  <div className="text-sm font-semibold text-gray-900">Nenhum imóvel encontrado nesse destaque.</div>
+                  <div className="text-sm text-gray-600 mt-1">Tente outro highlight para ver mais opções.</div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-[2px] md:gap-3 bg-slate-200 md:bg-transparent md:px-4">
+                    {visibleList.map((p, idx) => (
+                      <PropertyTile
+                        key={p.id}
+                        property={p}
+                        priority={idx < 9}
+                        badge={isFeatured(p) ? "Destaque" : isNew(p) ? "Novo" : null}
+                      />
+                    ))}
+                  </div>
+                  {canLoadMore ? (
+                    <div className="px-4 sm:px-6 lg:px-10 py-6">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVisibleCount((v) => Math.min(v + DEFAULT_PAGE_SIZE, highlightList.length));
+                          try {
+                            track({ name: "public_profile_load_more", value: String(highlight) } as any);
+                          } catch {}
+                        }}
+                        className="w-full rounded-2xl border border-slate-200 bg-white/80 hover:bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition-colors shadow-sm hover:shadow"
+                      >
+                        Carregar mais
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </section>
+
+            <section id="avaliacoes" className="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-base font-semibold text-gray-900">Avaliações</div>
+                  <div className="text-sm text-gray-500">O que clientes dizem</div>
+                </div>
+                {initialRatingsPreview.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllReviews((v) => !v)}
+                    className="px-4 py-2 rounded-full border border-slate-200 bg-white/80 text-sm font-semibold text-slate-700 hover:bg-white shadow-sm hover:shadow transition-shadow"
+                  >
+                    {showAllReviews ? "Fechar" : "Ver todas"}
+                  </button>
+                ) : null}
               </div>
 
-              {showAllReviews ? (
-                <div className="mt-6">
-                  <RealtorReviewsSection realtorId={realtor.id} initialAvgRating={realtor.avgRating} initialTotalRatings={realtor.totalRatings} />
-                </div>
-              ) : null}
-            </>
-          )}
-        </section>
+              {initialRatingsPreview.length === 0 ? (
+                <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">Ainda não há avaliações publicadas.</div>
+              ) : (
+                <>
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {initialRatingsPreview.slice(0, 3).map((r) => (
+                      <div key={r.id} className="rounded-3xl border border-slate-200 p-4 bg-white/80 backdrop-blur shadow-sm">
+                        <div className="text-sm font-semibold text-gray-900 truncate">{r.authorName || "Cliente"}</div>
+                        <div className="text-xs text-gray-500 mt-1">{toDateLabel(r.createdAt)}</div>
+                        <div className="mt-2 text-xs font-semibold text-yellow-700">{`${r.rating}★`}</div>
+                        {r.comment ? <div className="mt-2 text-sm text-gray-700 line-clamp-4">{r.comment}</div> : null}
+                      </div>
+                    ))}
+                  </div>
 
-        <section id="sobre" className="px-4 pt-10">
+                  {showAllReviews ? (
+                    <div className="mt-6">
+                      <RealtorReviewsSection realtorId={realtor.id} initialAvgRating={realtor.avgRating} initialTotalRatings={realtor.totalRatings} />
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </section>
+
+            <section id="sobre" className="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24">
           <div className="text-base font-semibold text-gray-900">Sobre</div>
-          <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-5">
+          <div className="mt-3 rounded-3xl border border-slate-200 bg-white/80 backdrop-blur p-5 shadow-sm">
             <div className="flex items-start gap-3">
               {realtor.image ? (
                 <Image
@@ -588,25 +633,25 @@ export default function RealtorPublicLandingClient({
               <button
                 type="button"
                 onClick={() => handleWhatsApp(baseIntroMessage, "about_whatsapp")}
-                className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors"
+                className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
               >
                 <MessageCircle className="h-5 w-5" />
                 Enviar mensagem
               </button>
             ) : null}
           </div>
-        </section>
+            </section>
 
-        <section id="compartilhar" className="px-4 pt-10">
+            <section id="compartilhar" className="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24">
           <div className="text-base font-semibold text-gray-900">Compartilhar</div>
-          <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-5">
+          <div className="mt-3 rounded-3xl border border-slate-200 bg-white/80 backdrop-blur p-5 shadow-sm">
             <div className="text-sm text-gray-600">Use esse link nas redes sociais e no WhatsApp.</div>
 
             <div className="mt-4 flex flex-col gap-2">
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="inline-flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-white shadow-sm hover:shadow transition-shadow"
               >
                 <span className="inline-flex items-center gap-2">
                   <Copy className="h-4 w-4" />
@@ -618,7 +663,7 @@ export default function RealtorPublicLandingClient({
               <button
                 type="button"
                 onClick={handleCopyText}
-                className="inline-flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-white shadow-sm hover:shadow transition-shadow"
               >
                 <span className="inline-flex items-center gap-2">
                   <Copy className="h-4 w-4" />
@@ -630,7 +675,7 @@ export default function RealtorPublicLandingClient({
               <button
                 type="button"
                 onClick={handleDownloadQr}
-                className="inline-flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-white shadow-sm hover:shadow transition-shadow"
               >
                 <span className="inline-flex items-center gap-2">
                   <QrCode className="h-4 w-4" />
@@ -639,7 +684,9 @@ export default function RealtorPublicLandingClient({
               </button>
             </div>
           </div>
-        </section>
+            </section>
+          </div>
+        </div>
       </main>
 
       {whatsappDigits ? (
@@ -647,7 +694,7 @@ export default function RealtorPublicLandingClient({
           <button
             type="button"
             onClick={() => handleWhatsApp(baseIntroMessage, "sticky_mobile")}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
           >
             <MessageCircle className="h-5 w-5" />
             Enviar mensagem
@@ -673,7 +720,7 @@ function PropertyTile({
   return (
     <Link
       href={href}
-      className="relative aspect-square bg-white overflow-hidden"
+      className="group relative aspect-square bg-white overflow-hidden md:rounded-2xl md:ring-1 md:ring-slate-200 md:shadow-sm md:hover:shadow md:hover:ring-fuchsia-300 transition"
       onClick={() => {
         try {
           track({ name: "listing_click", payload: { propertyId: property.id } } as any);
@@ -686,7 +733,7 @@ function PropertyTile({
           alt={property.title}
           fill
           sizes="(max-width: 768px) 33vw, 33vw"
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           priority={priority}
         />
       ) : (
@@ -696,7 +743,7 @@ function PropertyTile({
       )}
 
       {badge ? (
-        <div className="absolute left-1 top-1 rounded-full bg-black/70 text-white text-[10px] font-semibold px-2 py-1">
+        <div className="absolute left-1 top-1 rounded-full bg-gradient-to-r from-fuchsia-600 to-orange-500 text-white text-[10px] font-semibold px-2 py-1 shadow-sm">
           {badge}
         </div>
       ) : null}
