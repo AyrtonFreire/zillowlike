@@ -33,13 +33,13 @@ type BrokerNavMetrics = {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/broker/dashboard", label: "Painel", icon: LayoutDashboard },
+  { href: "/broker/properties", label: "Imóveis", icon: Home },
   { href: "/broker/leads", label: "Leads", icon: ClipboardList },
-  { href: "/broker/crm", label: "Funil", icon: Kanban },
   { href: "/broker/chats", label: "Chats", icon: MessageSquare, badgeKey: "unreadChats" },
+  { href: "/broker/crm", label: "Funil", icon: Kanban },
   { href: "/broker/assistant", label: "Assistente", icon: Sparkles, badgeKey: "assistantOpen" },
   { href: "/broker/assistant/offline", label: "Assistente offline", icon: Clock },
   { href: "/broker/teams", label: "Chat do time", icon: MessageCircle },
-  { href: "/broker/properties", label: "Imóveis", icon: Home },
   { href: "/broker/profile", label: "Perfil", icon: UserRound },
 ];
 
