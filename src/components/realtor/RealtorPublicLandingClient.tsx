@@ -7,15 +7,20 @@ import BrandLogo from "@/components/BrandLogo";
 import { buildPropertyPath } from "@/lib/slug";
 import { track } from "@/lib/analytics";
 import RealtorReviewsSection from "@/components/realtor/RealtorReviewsSection";
+import SeloAtividade from "@/components/realtor/SeloAtividade";
+import RatingStars from "@/components/queue/RatingStars";
+import ListingsMap from "@/components/Map";
 import Drawer from "@/components/ui/Drawer";
 import {
   BadgeDollarSign,
   BedDouble,
+  Clock,
   Copy,
   Grid3X3,
   Info,
   MapPin,
   MessageCircle,
+  Phone,
   PawPrint,
   QrCode,
   Search,
@@ -32,6 +37,8 @@ type PublicProperty = {
   city: string;
   state: string;
   neighborhood: string | null;
+  latitude: number | null;
+  longitude: number | null;
   bedrooms: number | null;
   bathrooms: number | null;
   areaM2: number | null;
@@ -41,6 +48,7 @@ type PublicProperty = {
   petsLarge: boolean | null;
   conditionTags: string[];
   createdAt: string;
+  updatedAt: string;
   leadsCount: number;
   viewsCount: number;
   images: { url: string }[];
@@ -66,6 +74,11 @@ type RealtorPublicLandingClientProps = {
     linkedin: string | null;
     avgRating: number;
     totalRatings: number;
+    avgResponseTime: number | null;
+    experience: number | null;
+    soldCount: number;
+    rentedCount: number;
+    lastActivity: string | null;
     team: { id: string; name: string } | null;
     creci: string | null;
     creciState: string | null;
@@ -106,6 +119,11 @@ function buildWhatsAppUrl(phoneDigits: string, message: string) {
   const base = `https://wa.me/${phoneDigits}`;
   const text = encodeURIComponent(message);
   return `${base}?text=${text}`;
+}
+
+function formatPhoneForTel(value: string | null) {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits ? `+${digits}` : null;
 }
 
 function toDateLabel(value: string) {
@@ -160,7 +178,38 @@ export default function RealtorPublicLandingClient({
     return `Oi, vim do seu perfil no OggaHub. Quero receber opções de imóveis em ${defaultRegionLabel}. Pode me ajudar?`;
   }, [defaultRegionLabel]);
 
+  const visitMessage = useMemo(() => {
+    return `Oi, vim do seu perfil no OggaHub. Quero agendar uma visita em um imóvel. Podemos conversar?`;
+  }, []);
+
   const teamLabel = realtor.team?.name ? realtor.team.name : null;
+
+  const telHref = useMemo(() => {
+    if (!realtor.publicPhoneOptIn) return null;
+    return formatPhoneForTel(realtor.phone);
+  }, [realtor.phone, realtor.publicPhoneOptIn]);
+
+  const ratingValueLabel = useMemo(() => {
+    return realtor.avgRating > 0 ? realtor.avgRating.toFixed(1) : "—";
+  }, [realtor.avgRating]);
+
+  const testimonialsPreview = useMemo(() => {
+    return (initialRatingsPreview || [])
+      .filter((r) => Boolean(r.comment && String(r.comment).trim()))
+      .slice(0, 2);
+  }, [initialRatingsPreview]);
+
+  const mapItems = useMemo(() => {
+    return (properties || [])
+      .filter((p) => p.latitude != null && p.longitude != null)
+      .slice(0, 250)
+      .map((p) => ({
+        id: p.id,
+        price: Number(p.price || 0),
+        latitude: Number(p.latitude),
+        longitude: Number(p.longitude),
+      }));
+  }, [properties]);
 
   const isFeatured = (p: PublicProperty) => Array.isArray(p.conditionTags) && p.conditionTags.includes("Destaque");
   const isPetsOk = (p: PublicProperty) => Boolean(p.petFriendly) || Boolean(p.petsSmall) || Boolean(p.petsLarge);
@@ -503,105 +552,198 @@ export default function RealtorPublicLandingClient({
           </aside>
 
           <div className="min-w-0 flex-1">
-            <section className="px-4 sm:px-6 lg:px-10 pt-4">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0">
-                  <div className="rounded-full p-[2px] bg-accent">
-                    <div className="rounded-full bg-white p-[2px]">
-                      {realtor.image ? (
-                        <Image
-                          src={realtor.image}
-                          alt={realtor.name}
-                          width={88}
-                          height={88}
-                          className="h-[88px] w-[88px] rounded-full object-cover"
-                          priority
-                        />
-                      ) : (
-                        <div className="h-[88px] w-[88px] rounded-full bg-gray-100 flex items-center justify-center text-3xl font-semibold text-gray-700">
-                          {(realtor.name || "?").charAt(0).toUpperCase()}
+            <section className="px-4 sm:px-6 lg:px-10 pt-6">
+              <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-white to-teal-50" />
+                <div className="relative p-5 sm:p-7">
+                  <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+                    <div className="flex items-start gap-4 sm:gap-5">
+                      <div className="flex-shrink-0">
+                        <div className="rounded-3xl p-[2px] bg-accent shadow-sm">
+                          <div className="rounded-3xl bg-white p-[2px]">
+                            {realtor.image ? (
+                              <Image
+                                src={realtor.image}
+                                alt={realtor.name}
+                                width={128}
+                                height={128}
+                                className="h-[104px] w-[104px] sm:h-[120px] sm:w-[120px] rounded-3xl object-cover"
+                                priority
+                              />
+                            ) : (
+                              <div className="h-[104px] w-[104px] sm:h-[120px] sm:w-[120px] rounded-3xl bg-gray-100 flex items-center justify-center text-4xl font-semibold text-gray-700">
+                                {(realtor.name || "?").charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">{realtor.name}</h1>
-                    {realtor.creci && realtor.creciState ? (
-                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
-                        {realtor.creci}/{realtor.creciState}
-                      </span>
-                    ) : null}
-                    {teamLabel ? (
-                      <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
-                        Time {teamLabel}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-2xl border border-neutral-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
-                      <div className="text-sm font-semibold text-gray-900">{properties.length}</div>
-                      <div className="text-[11px] text-gray-500">imóveis</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => openReviews("stats_total")}
-                      className="rounded-2xl border border-neutral-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow"
-                    >
-                      <div className="text-sm font-semibold text-gray-900">{realtor.totalRatings}</div>
-                      <div className="text-[11px] text-gray-500">avaliações</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openReviews("stats_avg")}
-                      className="rounded-2xl border border-neutral-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow"
-                    >
-                      <div className="text-sm font-semibold text-gray-900">
-                        {realtor.avgRating > 0 ? realtor.avgRating.toFixed(1) : "—"}
                       </div>
-                      <div className="text-[11px] text-gray-500">nota</div>
-                    </button>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight truncate">{realtor.name}</h1>
+                          {realtor.creci && realtor.creciState ? (
+                            <span className="inline-flex items-center rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700 border border-neutral-200">
+                              CRECI {realtor.creci}/{realtor.creciState}
+                            </span>
+                          ) : null}
+                          {teamLabel ? (
+                            <span className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-neutral-700 border border-neutral-200">
+                              Time {teamLabel}
+                            </span>
+                          ) : null}
+                          {realtor.lastActivity ? <SeloAtividade lastActivity={realtor.lastActivity} /> : null}
+                        </div>
+
+                        <div className="mt-3 text-sm sm:text-base text-neutral-900 whitespace-pre-line">
+                          {realtor.publicHeadline ? <div className="font-semibold">{realtor.publicHeadline}</div> : null}
+                          {realtor.publicBio ? <div className="mt-1 text-neutral-700">{realtor.publicBio}</div> : null}
+                          {locationLabel ? <div className="mt-1 text-neutral-600">{locationLabel}</div> : null}
+                          {serviceAreaChips.length > 0 ? (
+                            <div className="mt-1 text-neutral-600">Atendo: {serviceAreaChips.slice(0, 5).join(" • ")}</div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="lg:w-[380px]">
+                      <div className="rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-4 sm:p-5 shadow-sm">
+                        <div className="flex items-end justify-between gap-4">
+                          <button type="button" onClick={() => openReviews("hero_rating")} className="text-left">
+                            <div className="text-4xl sm:text-5xl font-bold text-neutral-900 leading-none">{ratingValueLabel}</div>
+                            <div className="mt-2">
+                              <RatingStars readonly rating={Math.round(realtor.avgRating)} size="sm" />
+                            </div>
+                            <div className="mt-1 text-xs font-semibold text-neutral-600">
+                              {realtor.totalRatings} avaliação{realtor.totalRatings === 1 ? "" : "s"}
+                            </div>
+                          </button>
+
+                          <div className="text-right">
+                            {realtor.avgResponseTime != null ? (
+                              <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700">
+                                <Clock className="h-4 w-4" />
+                                {realtor.avgResponseTime} min
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-2">
+                            <div className="text-[11px] font-semibold text-neutral-500">Imóveis ativos</div>
+                            <div className="mt-0.5 text-lg font-semibold text-neutral-900">{properties.length}</div>
+                          </div>
+                          <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-2">
+                            <div className="text-[11px] font-semibold text-neutral-500">Imóveis vendidos</div>
+                            <div className="mt-0.5 text-lg font-semibold text-neutral-900">{realtor.soldCount}</div>
+                          </div>
+                          <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-2">
+                            <div className="text-[11px] font-semibold text-neutral-500">Imóveis alugados</div>
+                            <div className="mt-0.5 text-lg font-semibold text-neutral-900">{realtor.rentedCount}</div>
+                          </div>
+                          <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-2">
+                            <div className="text-[11px] font-semibold text-neutral-500">Experiência</div>
+                            <div className="mt-0.5 text-lg font-semibold text-neutral-900">
+                              {realtor.experience != null ? `${realtor.experience} ano${realtor.experience === 1 ? "" : "s"}` : "—"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {whatsappDigits ? (
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsApp(baseIntroMessage, "hero_primary")}
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                              Falar no WhatsApp
+                            </button>
+                          ) : (
+                            <div className="rounded-2xl border border-neutral-200 bg-white/70 px-4 py-3 text-sm font-semibold text-neutral-700">
+                              WhatsApp não configurado
+                            </div>
+                          )}
+
+                          {whatsappDigits ? (
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsApp(visitMessage, "hero_visit")}
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
+                            >
+                              Pedir visita
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleCopyLink}
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
+                            >
+                              <Copy className="h-4 w-4" />
+                              {copiedLink ? "Copiado" : "Copiar link"}
+                            </button>
+                          )}
+
+                          {telHref ? (
+                            <a
+                              href={`tel:${telHref}`}
+                              className="sm:col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
+                              onClick={() => {
+                                try {
+                                  track({ name: "public_profile_call", payload: { source: "hero" } } as any);
+                                } catch {}
+                              }}
+                            >
+                              <Phone className="h-4 w-4" />
+                              Ligar
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
                   </div>
+
+                  {testimonialsPreview.length > 0 ? (
+                    <div className="mt-5 grid gap-3 md:grid-cols-2">
+                      {testimonialsPreview.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => openReviews("hero_testimonial")}
+                          className="text-left rounded-3xl border border-neutral-200 bg-white/80 hover:bg-white p-4 shadow-sm hover:shadow transition-shadow"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-neutral-900 truncate">{t.authorName || "Cliente"}</div>
+                              <div className="text-xs text-neutral-500">{toDateLabel(t.createdAt)}</div>
+                            </div>
+                            <div className="flex-shrink-0">
+                              <RatingStars readonly rating={t.rating} size="sm" />
+                            </div>
+                          </div>
+                          <div className="mt-3 text-sm text-neutral-700 max-h-[4.5rem] overflow-hidden">“{t.comment}”</div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-              </div>
-
-              <div className="mt-3 text-sm text-gray-900 whitespace-pre-line">
-                {realtor.publicHeadline ? <div className="font-semibold">{realtor.publicHeadline}</div> : null}
-                {realtor.publicBio ? <div className="text-gray-700">{realtor.publicBio}</div> : null}
-                {locationLabel ? <div className="text-gray-500">{locationLabel}</div> : null}
-                {serviceAreaChips.length > 0 ? (
-                  <div className="text-gray-500">Atendo: {serviceAreaChips.slice(0, 4).join(" • ")}</div>
-                ) : null}
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                {whatsappDigits ? (
-                  <button
-                    type="button"
-                    onClick={() => handleWhatsApp(baseIntroMessage, "profile_primary")}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    Enviar mensagem
-                  </button>
-                ) : (
-                  <div className="rounded-2xl border border-neutral-200 bg-white/70 px-4 py-3 text-sm font-semibold text-neutral-700">
-                    WhatsApp não configurado
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
-                >
-                  <Copy className="h-4 w-4" />
-                  {copiedLink ? "Copiado" : "Copiar link"}
-                </button>
               </div>
             </section>
+
+            {mapItems.length > 0 ? (
+              <section className="mt-6 px-4 sm:px-6 lg:px-10">
+                <div className="rounded-3xl border border-neutral-200 bg-white p-4 sm:p-6 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-base font-semibold text-neutral-900">Mapa de atuação</div>
+                    <div className="text-xs font-semibold text-neutral-500">Baseado nos imóveis ativos</div>
+                  </div>
+                  <div className="mt-4 h-[320px] sm:h-[380px]">
+                    <ListingsMap items={mapItems} autoFit simplePin />
+                  </div>
+                </div>
+              </section>
+            ) : null}
 
             <section className="mt-6 px-4 sm:px-6 lg:px-10">
               <div className="flex items-start gap-4 overflow-x-auto pb-2">

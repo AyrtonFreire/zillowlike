@@ -116,9 +116,36 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
   const resolvedTeam = teamFromAgency || teamFromMembership || teamFromOwned;
   const resolvedTeamId = resolvedTeam?.id ? String(resolvedTeam.id) : null;
 
-  const inventoryWhere = resolvedTeamId
-    ? { status: "ACTIVE" as any, teamId: resolvedTeamId }
-    : { status: "ACTIVE" as any, ownerId: realtor.id };
+  const basePropertyWhere = resolvedTeamId ? ({ teamId: resolvedTeamId } as const) : ({ ownerId: realtor.id } as const);
+  const inventoryWhere = { ...(basePropertyWhere as any), status: "ACTIVE" as any };
+
+  const [soldCount, rentedCount] = await Promise.all([
+    prisma.property.count({ where: { ...(basePropertyWhere as any), status: "SOLD" as any } }),
+    prisma.property.count({ where: { ...(basePropertyWhere as any), status: "RENTED" as any } }),
+  ]);
+
+  const [lastRespondedLead, lastUpdatedProperty] = await Promise.all([
+    prisma.lead.findFirst({
+      where: {
+        realtorId: realtor.id,
+        respondedAt: { not: null },
+      },
+      orderBy: { respondedAt: "desc" },
+      select: { respondedAt: true },
+    }),
+    prisma.property.findFirst({
+      where: basePropertyWhere as any,
+      orderBy: { updatedAt: "desc" },
+      select: { updatedAt: true },
+    }),
+  ]);
+
+  const lastActivityDate = (() => {
+    const a = (lastRespondedLead as any)?.respondedAt ? new Date((lastRespondedLead as any).respondedAt) : null;
+    const b = (lastUpdatedProperty as any)?.updatedAt ? new Date((lastUpdatedProperty as any).updatedAt) : null;
+    if (a && b) return a.getTime() >= b.getTime() ? a : b;
+    return a || b;
+  })();
 
   const inventory = await prisma.property.findMany({
     where: inventoryWhere as any,
@@ -131,6 +158,8 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
       city: true,
       state: true,
       neighborhood: true,
+      latitude: true,
+      longitude: true,
       bedrooms: true,
       bathrooms: true,
       areaM2: true,
@@ -140,6 +169,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
       petsLarge: true,
       conditionTags: true,
       createdAt: true,
+      updatedAt: true,
       _count: {
         select: {
           views: true,
@@ -164,6 +194,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
   const stats = realtor.stats;
   const avgRating = stats?.avgRating || 0;
   const totalRatings = stats?.totalRatings || 0;
+  const avgResponseTime = (stats as any)?.avgResponseTime != null ? Number((stats as any).avgResponseTime) : null;
 
   const app = (realtor as any).realtorApplication as
     | {
@@ -187,6 +218,8 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
     city: String(p.city),
     state: String(p.state),
     neighborhood: p.neighborhood != null ? String(p.neighborhood) : null,
+    latitude: p.latitude != null ? Number(p.latitude) : null,
+    longitude: p.longitude != null ? Number(p.longitude) : null,
     bedrooms: p.bedrooms != null ? Number(p.bedrooms) : null,
     bathrooms: p.bathrooms != null ? Number(p.bathrooms) : null,
     areaM2: p.areaM2 != null ? Number(p.areaM2) : null,
@@ -196,6 +229,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
     petsLarge: p.petsLarge != null ? Boolean(p.petsLarge) : null,
     conditionTags: Array.isArray(p.conditionTags) ? p.conditionTags.map((x: any) => String(x)) : [],
     createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
     leadsCount: Number(p?._count?.leads || 0),
     viewsCount: Number(p?._count?.views || 0),
     images: Array.isArray(p.images) ? p.images.map((img: any) => ({ url: String(img.url) })) : [],
@@ -282,6 +316,11 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
           linkedin: realtor.publicLinkedIn || null,
           avgRating: Number(avgRating || 0),
           totalRatings: Number(totalRatings || 0),
+          avgResponseTime,
+          experience: app?.experience != null ? Number(app.experience) : null,
+          soldCount: Number(soldCount || 0),
+          rentedCount: Number(rentedCount || 0),
+          lastActivity: lastActivityDate ? lastActivityDate.toISOString() : null,
           team: resolvedTeam?.id && resolvedTeam?.name
             ? { id: String(resolvedTeam.id), name: String(resolvedTeam.name) }
             : null,
