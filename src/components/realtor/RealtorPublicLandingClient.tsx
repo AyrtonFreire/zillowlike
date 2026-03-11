@@ -7,6 +7,7 @@ import BrandLogo from "@/components/BrandLogo";
 import { buildPropertyPath } from "@/lib/slug";
 import { track } from "@/lib/analytics";
 import RealtorReviewsSection from "@/components/realtor/RealtorReviewsSection";
+import Drawer from "@/components/ui/Drawer";
 import {
   BadgeDollarSign,
   BedDouble,
@@ -129,7 +130,7 @@ export default function RealtorPublicLandingClient({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
 
-  const [showAllReviews, setShowAllReviews] = useState(false);
+  const [reviewsOpen, setReviewsOpen] = useState(false);
 
   const whatsappDigits = useMemo(() => {
     const wa = normalizePhone(realtor.publicWhatsApp);
@@ -213,18 +214,18 @@ export default function RealtorPublicLandingClient({
 
   const highlights = useMemo(() => {
     const base: Array<{ key: string; label: string; icon: ReactNode }> = [
-      { key: "featured", label: "Destaques", icon: <Sparkles className="h-5 w-5" /> },
-      { key: "new", label: "Novos", icon: <Info className="h-5 w-5" /> },
-      { key: "popular", label: "Procurados", icon: <TrendingUp className="h-5 w-5" /> },
-      { key: "pets", label: "Pet", icon: <PawPrint className="h-5 w-5" /> },
-      { key: "beds2", label: "2+ quartos", icon: <BedDouble className="h-5 w-5" /> },
-      { key: "upto600k", label: "Até 600k", icon: <BadgeDollarSign className="h-5 w-5" /> },
+      { key: "featured", label: "Destaques", icon: <Sparkles className="h-5 w-5 text-accent" /> },
+      { key: "new", label: "Novos", icon: <Info className="h-5 w-5 text-emerald-600" /> },
+      { key: "popular", label: "Procurados", icon: <TrendingUp className="h-5 w-5 text-indigo-600" /> },
+      { key: "pets", label: "Pet", icon: <PawPrint className="h-5 w-5 text-rose-600" /> },
+      { key: "beds2", label: "2+ quartos", icon: <BedDouble className="h-5 w-5 text-sky-600" /> },
+      { key: "upto600k", label: "Até 600k", icon: <BadgeDollarSign className="h-5 w-5 text-warning" /> },
     ];
 
     const neighborhoods = neighborhoodHighlights.map((h) => ({
       key: h.key,
       label: h.label,
-      icon: <MapPin className="h-5 w-5" />,
+      icon: <MapPin className="h-5 w-5 text-accent" />,
     }));
 
     return [...base, ...neighborhoods];
@@ -298,6 +299,142 @@ export default function RealtorPublicLandingClient({
     a.remove();
   };
 
+  const openReviews = (source: string) => {
+    setReviewsOpen(true);
+    try {
+      track({ name: "public_profile_reviews_open", payload: { source } } as any);
+    } catch {}
+  };
+
+  const AboutSection = ({ id, wrapperClassName }: { id: string; wrapperClassName: string }) => {
+    return (
+      <section id={id} className={wrapperClassName}>
+        <div className="text-base font-semibold text-gray-900">Sobre</div>
+        <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            {realtor.image ? (
+              <Image
+                src={realtor.image}
+                alt={realtor.name}
+                width={44}
+                height={44}
+                className="h-11 w-11 rounded-full object-cover border border-gray-200"
+              />
+            ) : (
+              <div className="h-11 w-11 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center font-semibold text-gray-700">
+                {(realtor.name || "?").charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-gray-900 truncate">{realtor.name}</div>
+              {teamLabel ? <div className="text-xs text-gray-500 truncate">Time {teamLabel}</div> : null}
+              {locationLabel ? <div className="text-xs text-gray-500 truncate">{locationLabel}</div> : null}
+            </div>
+          </div>
+
+          <div className="mt-4 text-sm text-gray-700 whitespace-pre-line">
+            {realtor.publicBio ? realtor.publicBio : "Este profissional ainda não preencheu uma bio pública."}
+          </div>
+
+          {serviceAreaChips.length > 0 ? (
+            <div className="mt-4">
+              <div className="text-xs font-semibold text-gray-500">Áreas atendidas</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {serviceAreaChips.slice(0, 12).map((a) => (
+                  <span key={a} className="px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-700">
+                    {a}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {realtor.instagram ? (
+              <a
+                href={`https://instagram.com/${realtor.instagram.replace("@", "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Instagram
+              </a>
+            ) : null}
+            {realtor.linkedin ? (
+              <a
+                href={realtor.linkedin.startsWith("http") ? realtor.linkedin : `https://linkedin.com/in/${realtor.linkedin}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                LinkedIn
+              </a>
+            ) : null}
+          </div>
+
+          {whatsappDigits ? (
+            <button
+              type="button"
+              onClick={() => handleWhatsApp(baseIntroMessage, "about_whatsapp")}
+              className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+            >
+              <MessageCircle className="h-5 w-5" />
+              Enviar mensagem
+            </button>
+          ) : null}
+        </div>
+      </section>
+    );
+  };
+
+  const ShareSection = ({ id, wrapperClassName }: { id: string; wrapperClassName: string }) => {
+    return (
+      <section id={id} className={wrapperClassName}>
+        <div className="text-base font-semibold text-gray-900">Compartilhar</div>
+        <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-5 shadow-sm">
+          <div className="text-sm text-gray-600">Use esse link nas redes sociais e no WhatsApp.</div>
+
+          <div className="mt-4 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
+            >
+              <span className="inline-flex items-center gap-2">
+                <Copy className="h-4 w-4" />
+                Copiar link
+              </span>
+              {copiedLink ? <span className="text-gray-900">Copiado</span> : null}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyText}
+              className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
+            >
+              <span className="inline-flex items-center gap-2">
+                <Copy className="h-4 w-4" />
+                Copiar texto pronto
+              </span>
+              {copiedText ? <span className="text-gray-900">Copiado</span> : null}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadQr}
+              className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
+            >
+              <span className="inline-flex items-center gap-2">
+                <QrCode className="h-4 w-4" />
+                Baixar QR Code
+              </span>
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-neutral-200 shadow-sm">
@@ -318,7 +455,7 @@ export default function RealtorPublicLandingClient({
 
       <main className="mx-auto max-w-screen-2xl pb-24 md:pb-12">
         <div className="lg:flex lg:items-start lg:gap-6">
-          <aside className="hidden lg:flex lg:flex-col lg:sticky lg:top-20 lg:w-60 lg:shrink-0 lg:mt-4">
+          <aside className="hidden lg:flex lg:flex-col lg:sticky lg:top-20 lg:w-72 lg:shrink-0 lg:mt-4">
             <div className="rounded-3xl border border-neutral-200 bg-white/90 backdrop-blur p-2 shadow-sm">
               <a
                 href="#grid"
@@ -329,15 +466,16 @@ export default function RealtorPublicLandingClient({
                 </span>
                 <span className="text-sm font-semibold">Imóveis</span>
               </a>
-              <a
-                href="#avaliacoes"
-                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
+              <button
+                type="button"
+                onClick={() => openReviews("sidebar")}
+                className="mt-1 w-full text-left group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
               >
                 <span className="h-10 w-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-700 group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-colors">
                   <Star className="h-5 w-5" />
                 </span>
                 <span className="text-sm font-semibold">Avaliações</span>
-              </a>
+              </button>
               <a
                 href="#sobre"
                 className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
@@ -356,6 +494,11 @@ export default function RealtorPublicLandingClient({
                 </span>
                 <span className="text-sm font-semibold">Compartilhar</span>
               </a>
+            </div>
+
+            <div className="mt-4 space-y-6">
+              <AboutSection id="sobre" wrapperClassName="px-2" />
+              <ShareSection id="compartilhar" wrapperClassName="px-2" />
             </div>
           </aside>
 
@@ -403,16 +546,24 @@ export default function RealtorPublicLandingClient({
                       <div className="text-sm font-semibold text-gray-900">{properties.length}</div>
                       <div className="text-[11px] text-gray-500">imóveis</div>
                     </div>
-                    <div className="rounded-2xl border border-neutral-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
+                    <button
+                      type="button"
+                      onClick={() => openReviews("stats_total")}
+                      className="rounded-2xl border border-neutral-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow"
+                    >
                       <div className="text-sm font-semibold text-gray-900">{realtor.totalRatings}</div>
                       <div className="text-[11px] text-gray-500">avaliações</div>
-                    </div>
-                    <div className="rounded-2xl border border-neutral-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow">
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openReviews("stats_avg")}
+                      className="rounded-2xl border border-neutral-200 bg-white/80 backdrop-blur py-2 shadow-sm hover:shadow transition-shadow"
+                    >
                       <div className="text-sm font-semibold text-gray-900">
                         {realtor.avgRating > 0 ? realtor.avgRating.toFixed(1) : "—"}
                       </div>
                       <div className="text-[11px] text-gray-500">nota</div>
-                    </div>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -490,10 +641,10 @@ export default function RealtorPublicLandingClient({
                 <a href="#grid" className="p-2 text-gray-900">
                   <Grid3X3 className="h-5 w-5" />
                 </a>
-                <a href="#avaliacoes" className="p-2 text-gray-700">
+                <button type="button" onClick={() => openReviews("mobile_nav")} className="p-2 text-gray-700">
                   <Star className="h-5 w-5" />
-                </a>
-                <a href="#sobre" className="p-2 text-gray-700">
+                </button>
+                <a href="#sobre-mobile" className="p-2 text-gray-700">
                   <Info className="h-5 w-5" />
                 </a>
               </div>
@@ -595,170 +746,23 @@ export default function RealtorPublicLandingClient({
               )}
             </section>
 
-            <section id="avaliacoes" className="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-base font-semibold text-gray-900">Avaliações</div>
-                  <div className="text-sm text-gray-500">O que clientes dizem</div>
-                </div>
-                {initialRatingsPreview.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllReviews((v) => !v)}
-                    className="px-4 py-2 rounded-full border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
-                  >
-                    {showAllReviews ? "Fechar" : "Ver todas"}
-                  </button>
-                ) : null}
-              </div>
-
-              {initialRatingsPreview.length === 0 ? (
-                <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">Ainda não há avaliações publicadas.</div>
-              ) : (
-                <>
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {initialRatingsPreview.slice(0, 3).map((r) => (
-                      <div key={r.id} className="rounded-3xl border border-neutral-200 p-4 bg-white/80 backdrop-blur shadow-sm">
-                        <div className="text-sm font-semibold text-gray-900 truncate">{r.authorName || "Cliente"}</div>
-                        <div className="text-xs text-gray-500 mt-1">{toDateLabel(r.createdAt)}</div>
-                        <div className="mt-2 text-xs font-semibold text-warning">{`${r.rating}★`}</div>
-                        {r.comment ? <div className="mt-2 text-sm text-gray-700 line-clamp-4">{r.comment}</div> : null}
-                      </div>
-                    ))}
-                  </div>
-
-                  {showAllReviews ? (
-                    <div className="mt-6">
-                      <RealtorReviewsSection realtorId={realtor.id} initialAvgRating={realtor.avgRating} initialTotalRatings={realtor.totalRatings} />
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </section>
-
-            <section id="sobre" className="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24">
-          <div className="text-base font-semibold text-gray-900">Sobre</div>
-          <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-5 shadow-sm">
-            <div className="flex items-start gap-3">
-              {realtor.image ? (
-                <Image
-                  src={realtor.image}
-                  alt={realtor.name}
-                  width={44}
-                  height={44}
-                  className="h-11 w-11 rounded-full object-cover border border-gray-200"
-                />
-              ) : (
-                <div className="h-11 w-11 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center font-semibold text-gray-700">
-                  {(realtor.name || "?").charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-gray-900 truncate">{realtor.name}</div>
-                {teamLabel ? <div className="text-xs text-gray-500 truncate">Time {teamLabel}</div> : null}
-                {locationLabel ? <div className="text-xs text-gray-500 truncate">{locationLabel}</div> : null}
-              </div>
+            <div className="lg:hidden">
+              <AboutSection id="sobre-mobile" wrapperClassName="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24" />
+              <ShareSection id="compartilhar-mobile" wrapperClassName="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24" />
             </div>
-
-            <div className="mt-4 text-sm text-gray-700 whitespace-pre-line">
-              {realtor.publicBio ? realtor.publicBio : "Este profissional ainda não preencheu uma bio pública."}
-            </div>
-
-            {serviceAreaChips.length > 0 ? (
-              <div className="mt-4">
-                <div className="text-xs font-semibold text-gray-500">Áreas atendidas</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {serviceAreaChips.slice(0, 12).map((a) => (
-                    <span key={a} className="px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-700">
-                      {a}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              {realtor.instagram ? (
-                <a
-                  href={`https://instagram.com/${realtor.instagram.replace("@", "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                >
-                  Instagram
-                </a>
-              ) : null}
-              {realtor.linkedin ? (
-                <a
-                  href={realtor.linkedin.startsWith("http") ? realtor.linkedin : `https://linkedin.com/in/${realtor.linkedin}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                >
-                  LinkedIn
-                </a>
-              ) : null}
-            </div>
-
-            {whatsappDigits ? (
-              <button
-                type="button"
-                onClick={() => handleWhatsApp(baseIntroMessage, "about_whatsapp")}
-                className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
-              >
-                <MessageCircle className="h-5 w-5" />
-                Enviar mensagem
-              </button>
-            ) : null}
-          </div>
-            </section>
-
-            <section id="compartilhar" className="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24">
-          <div className="text-base font-semibold text-gray-900">Compartilhar</div>
-          <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-5 shadow-sm">
-            <div className="text-sm text-gray-600">Use esse link nas redes sociais e no WhatsApp.</div>
-
-            <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Copy className="h-4 w-4" />
-                  Copiar link
-                </span>
-                {copiedLink ? <span className="text-gray-900">Copiado</span> : null}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCopyText}
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Copy className="h-4 w-4" />
-                  Copiar texto pronto
-                </span>
-                {copiedText ? <span className="text-gray-900">Copiado</span> : null}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDownloadQr}
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <QrCode className="h-4 w-4" />
-                  Baixar QR Code
-                </span>
-              </button>
-            </div>
-          </div>
-            </section>
           </div>
         </div>
       </main>
+
+      <Drawer
+        open={reviewsOpen}
+        onClose={() => setReviewsOpen(false)}
+        title="Avaliações"
+        side="right"
+        contentClassName="p-4 overflow-y-auto flex-1 min-h-0 bg-neutral-50"
+      >
+        <RealtorReviewsSection realtorId={realtor.id} initialAvgRating={realtor.avgRating} initialTotalRatings={realtor.totalRatings} />
+      </Drawer>
 
       {whatsappDigits ? (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60] p-3 bg-white/90 backdrop-blur border-t border-gray-200">
