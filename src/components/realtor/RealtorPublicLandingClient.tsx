@@ -199,6 +199,23 @@ export default function RealtorPublicLandingClient({
       .slice(0, 2);
   }, [initialRatingsPreview]);
 
+  const heroStats = useMemo(() => {
+    const items: Array<{ label: string; value: string }> = [
+      { label: "Imóveis ativos", value: String(properties.length) },
+    ];
+
+    if (realtor.soldCount > 0) items.push({ label: "Imóveis vendidos", value: String(realtor.soldCount) });
+    if (realtor.rentedCount > 0) items.push({ label: "Imóveis alugados", value: String(realtor.rentedCount) });
+    if (realtor.experience != null && realtor.experience > 0) {
+      items.push({
+        label: "Experiência",
+        value: `${realtor.experience} ano${realtor.experience === 1 ? "" : "s"}`,
+      });
+    }
+
+    return items;
+  }, [properties.length, realtor.experience, realtor.rentedCount, realtor.soldCount]);
+
   const mapItems = useMemo(() => {
     return (properties || [])
       .filter((p) => p.latitude != null && p.longitude != null)
@@ -629,25 +646,17 @@ export default function RealtorPublicLandingClient({
                           </div>
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-2">
-                            <div className="text-[11px] font-semibold text-neutral-500">Imóveis ativos</div>
-                            <div className="mt-0.5 text-lg font-semibold text-neutral-900">{properties.length}</div>
-                          </div>
-                          <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-2">
-                            <div className="text-[11px] font-semibold text-neutral-500">Imóveis vendidos</div>
-                            <div className="mt-0.5 text-lg font-semibold text-neutral-900">{realtor.soldCount}</div>
-                          </div>
-                          <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-2">
-                            <div className="text-[11px] font-semibold text-neutral-500">Imóveis alugados</div>
-                            <div className="mt-0.5 text-lg font-semibold text-neutral-900">{realtor.rentedCount}</div>
-                          </div>
-                          <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-2">
-                            <div className="text-[11px] font-semibold text-neutral-500">Experiência</div>
-                            <div className="mt-0.5 text-lg font-semibold text-neutral-900">
-                              {realtor.experience != null ? `${realtor.experience} ano${realtor.experience === 1 ? "" : "s"}` : "—"}
+                        <div
+                          className={`mt-4 grid gap-2 ${
+                            heroStats.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                          }`}
+                        >
+                          {heroStats.map((s) => (
+                            <div key={s.label} className="rounded-2xl border border-neutral-200 bg-white px-3 py-2">
+                              <div className="text-[11px] font-semibold text-neutral-500">{s.label}</div>
+                              <div className="mt-0.5 text-lg font-semibold text-neutral-900">{s.value}</div>
                             </div>
-                          </div>
+                          ))}
                         </div>
 
                         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -705,7 +714,7 @@ export default function RealtorPublicLandingClient({
                   </div>
 
                   {testimonialsPreview.length > 0 ? (
-                    <div className="mt-5 grid gap-3 md:grid-cols-2">
+                    <div className={`mt-5 grid gap-3 ${testimonialsPreview.length === 1 ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
                       {testimonialsPreview.map((t) => (
                         <button
                           key={t.id}
