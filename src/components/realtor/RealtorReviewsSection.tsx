@@ -42,12 +42,19 @@ type EligibilityResponse = {
   requiresLogin?: boolean;
   reason?: string | null;
   nextEligibleAt?: string | null;
+  existingRating?: {
+    id: string;
+    rating: number;
+    comment: string | null;
+    createdAt: string;
+  } | null;
 };
 
 type Props = {
   realtorId: string;
   initialAvgRating?: number;
   initialTotalRatings?: number;
+  embedded?: boolean;
 };
 
 function formatMonthYear(value: string) {
@@ -56,7 +63,7 @@ function formatMonthYear(value: string) {
   return d.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
 }
 
-export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0, initialTotalRatings = 0 }: Props) {
+export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0, initialTotalRatings = 0, embedded = false }: Props) {
   const toast = useToast();
   const { data: session } = useSession();
   const sessionUserId = (session as any)?.user?.id || (session as any)?.userId || (session as any)?.user?.sub || null;
@@ -81,8 +88,10 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
   const [eligibleLeadId, setEligibleLeadId] = useState<string | null>(null);
   const [eligibilityReason, setEligibilityReason] = useState<string | null>(null);
   const [nextEligibleAt, setNextEligibleAt] = useState<string | null>(null);
+  const [existingRating, setExistingRating] = useState<EligibilityResponse["existingRating"]>(null);
 
   const [writeOpen, setWriteOpen] = useState(false);
+  const [editingRatingId, setEditingRatingId] = useState<string | null>(null);
   const [draftStars, setDraftStars] = useState(0);
   const [draftComment, setDraftComment] = useState("");
 
@@ -126,12 +135,14 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
       setRequiresLogin(Boolean(data.requiresLogin));
       setEligibilityReason(data.reason || null);
       setNextEligibleAt(data.nextEligibleAt || null);
+      setExistingRating(data.existingRating || null);
     } catch {
       setEligible(false);
       setEligibleLeadId(null);
       setRequiresLogin(false);
       setEligibilityReason(null);
       setNextEligibleAt(null);
+      setExistingRating(null);
     }
   }, [realtorId]);
 
@@ -216,16 +227,21 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
   }, [filterStars, filterHasComment, fetchRatings]);
 
   const openWrite = () => {
+    setEditingRatingId(null);
     setDraftStars(0);
     setDraftComment("");
     setWriteOpen(true);
   };
 
+  const openEdit = () => {
+    if (!existingRating?.id) return;
+    setEditingRatingId(existingRating.id);
+    setDraftStars(Number(existingRating.rating || 0));
+    setDraftComment(existingRating.comment || "");
+    setWriteOpen(true);
+  };
+
   const submitReview = async () => {
-    if (!eligibleLeadId) {
-      toast.error("Não foi possível avaliar", "Você não possui um lead elegível para avaliação.");
-      return;
-    }
     if (!draftStars || draftStars < 1 || draftStars > 5) {
       toast.error("Selecione as estrelas", "Escolha uma nota de 1 a 5.");
       return;
@@ -233,15 +249,29 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
 
     setSubmitting(true);
     try {
+      const isEdit = Boolean(editingRatingId);
+      if (!isEdit && !eligibleLeadId) {
+        toast.error("Não foi possível avaliar", "Você não possui um lead elegível para avaliação.");
+        return;
+      }
+
       const res = await fetch("/api/ratings", {
-        method: "POST",
+        method: isEdit ? "PATCH" : "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          leadId: eligibleLeadId,
-          realtorId,
-          rating: draftStars,
-          comment: draftComment.trim() ? draftComment.trim() : undefined,
-        }),
+        body: JSON.stringify(
+          isEdit
+            ? {
+                ratingId: editingRatingId,
+                rating: draftStars,
+                comment: draftComment.trim() ? draftComment.trim() : undefined,
+              }
+            : {
+                leadId: eligibleLeadId,
+                realtorId,
+                rating: draftStars,
+                comment: draftComment.trim() ? draftComment.trim() : undefined,
+              }
+        ),
       });
 
       const data = await res.json().catch(() => null);
@@ -250,7 +280,7 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
         return;
       }
 
-      toast.success("Avaliação enviada", "Obrigado por compartilhar sua experiência.");
+      toast.success(isEdit ? "Avaliação atualizada" : "Avaliação enviada", "Obrigado por compartilhar sua experiência.");
       setWriteOpen(false);
       await fetchRatings();
       await fetchEligibility();
@@ -326,12 +356,15 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
   }, [histogram, histogramTotal, totalRatings]);
 
   return (
-    <section id="avaliacoes" className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
+    <section id="avaliacoes" className={embedded ? "rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm" : "rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"}>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Avaliações</h2>
-          <p className="text-sm text-gray-500 mt-1">Somente avaliações de clientes que viraram lead.</p>
+          {!embedded && <h2 className="text-lg font-semibold text-gray-900">Avaliações</h2>}
+          <p className={embedded ? "text-sm text-gray-600" : "text-sm text-gray-500 mt-1"}>Somente avaliações de clientes que viraram lead.</p>
           {eligibilityHint && <p className="text-sm text-gray-600 mt-2">{eligibilityHint}</p>}
+          {existingRating?.id && !canSeeAll && (
+            <p className="text-sm text-gray-600 mt-2">Você já avaliou este profissional. Você pode editar sua avaliação.</p>
+          )}
         </div>
 
         {requiresLogin ? (
@@ -341,6 +374,10 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
             onClick={() => signIn(undefined, { callbackUrl: typeof window !== "undefined" ? window.location.href : undefined })}
           >
             Entrar para avaliar
+          </Button>
+        ) : existingRating?.id && !canSeeAll ? (
+          <Button variant="secondary" size="sm" onClick={openEdit}>
+            Editar minha avaliação
           </Button>
         ) : eligible ? (
           <Button variant="primary" size="sm" onClick={openWrite}>
@@ -539,7 +576,7 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
             <div className="p-6">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Escrever avaliação</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{editingRatingId ? "Editar avaliação" : "Escrever avaliação"}</h3>
                   <p className="text-sm text-gray-500 mt-1">Sua avaliação ficará pública no perfil.</p>
                 </div>
                 <button
@@ -576,7 +613,7 @@ export default function RealtorReviewsSection({ realtorId, initialAvgRating = 0,
                 Cancelar
               </Button>
               <Button variant="primary" size="md" onClick={submitReview} loading={submitting}>
-                Enviar avaliação
+                {editingRatingId ? "Salvar" : "Enviar avaliação"}
               </Button>
             </div>
           </div>

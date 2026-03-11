@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { QueueService } from "@/lib/queue-service";
-import { createRatingSchema } from "@/lib/validations/rating";
+import { createRatingSchema, updateRatingSchema } from "@/lib/validations/rating";
 import { withErrorHandling, successResponse, errorResponse } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { withRateLimit } from "@/lib/rate-limiter";
@@ -28,6 +28,27 @@ export const POST = withRateLimit(
   }
 
   logger.info("Creating rating", { leadId, realtorId, rating });
+
+  const existingByUser = await (prisma as any).realtorRating.findFirst({
+    where: {
+      realtorId,
+      OR: [{ authorId: userId }, { lead: { userId } }],
+    },
+    select: {
+      id: true,
+      leadId: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (existingByUser?.id) {
+    return errorResponse(
+      "Você já avaliou este corretor. Edite sua avaliação existente.",
+      400,
+      { ratingId: existingByUser.id },
+      "ALREADY_RATED"
+    );
+  }
 
   const lead = await prisma.lead.findFirst({
     where: {
@@ -123,6 +144,91 @@ export const POST = withRateLimit(
   }),
   "ratings"
 );
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { ratingId, rating, comment } = updateRatingSchema.parse(body);
+
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return errorResponse("Unauthorized", 401, null, "UNAUTHORIZED");
+    }
+    const userId = getSessionUserId(session);
+    if (!userId) {
+      return errorResponse("Unauthorized", 401, null, "UNAUTHORIZED");
+    }
+
+    const sessionRole = (session as any)?.user?.role || (session as any)?.role || null;
+    const isAdmin = sessionRole === "ADMIN";
+
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await (tx as any).realtorRating.findUnique({
+        where: { id: ratingId },
+        select: { id: true, realtorId: true, rating: true, authorId: true },
+      });
+
+      if (!existing) {
+        return { ok: false as const, status: 404 as const, payload: errorResponse("Rating not found", 404, null, "NOT_FOUND") };
+      }
+
+      if (!isAdmin && existing.authorId !== userId) {
+        return { ok: false as const, status: 403 as const, payload: errorResponse("Forbidden", 403, null, "FORBIDDEN") };
+      }
+
+      const previousRating = Number(existing.rating);
+      const nextRating = Number(rating);
+
+      const updated = await (tx as any).realtorRating.update({
+        where: { id: ratingId },
+        data: {
+          rating: nextRating,
+          comment: comment ?? null,
+        },
+      });
+
+      const agg = await (tx as any).realtorRating.aggregate({
+        where: { realtorId: existing.realtorId },
+        _avg: { rating: true },
+        _count: { _all: true },
+      });
+
+      const avgRating = Number(agg?._avg?.rating || 0);
+      const totalRatings = Number(agg?._count?._all || 0);
+
+      await (tx as any).realtorStats.upsert({
+        where: { realtorId: existing.realtorId },
+        create: { realtorId: existing.realtorId, avgRating, totalRatings },
+        update: { avgRating, totalRatings },
+      });
+
+      const pointsMap: Record<number, number> = {
+        5: 15,
+        4: 10,
+        3: 5,
+        2: 0,
+        1: -5,
+      };
+      const prevPoints = pointsMap[previousRating] ?? 0;
+      const nextPoints = pointsMap[nextRating] ?? 0;
+      const diff = nextPoints - prevPoints;
+      if (diff !== 0) {
+        await QueueService.updateScore(existing.realtorId, diff, "RATING_EDIT", "Avaliação editada");
+      }
+
+      return { ok: true as const, updated };
+    });
+
+    if (!(result as any).ok) {
+      return (result as any).payload;
+    }
+
+    return successResponse((result as any).updated, "Avaliação atualizada com sucesso!");
+  } catch (error) {
+    logger.error("Error updating rating", { error });
+    return NextResponse.json({ error: "Failed to update rating" }, { status: 500 });
+  }
+}
 
 // Listar avaliações de um corretor
 export async function GET(request: NextRequest) {

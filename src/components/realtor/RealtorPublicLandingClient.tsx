@@ -761,7 +761,7 @@ export default function RealtorPublicLandingClient({
         side="right"
         contentClassName="p-4 overflow-y-auto flex-1 min-h-0 bg-neutral-50"
       >
-        <RealtorReviewsSection realtorId={realtor.id} initialAvgRating={realtor.avgRating} initialTotalRatings={realtor.totalRatings} />
+        <RealtorReviewsSection realtorId={realtor.id} initialAvgRating={realtor.avgRating} initialTotalRatings={realtor.totalRatings} embedded />
       </Drawer>
 
       {whatsappDigits ? (

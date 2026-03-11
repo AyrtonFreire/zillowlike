@@ -8,3 +8,11 @@ export const createRatingSchema = z.object({
 });
 
 export type CreateRatingInput = z.infer<typeof createRatingSchema>;
+
+export const updateRatingSchema = z.object({
+  ratingId: z.string().min(1, "ratingId é obrigatório"),
+  rating: z.number().int().min(1, "Rating deve ser entre 1 e 5").max(5, "Rating deve ser entre 1 e 5"),
+  comment: z.string().optional(),
+});
+
+export type UpdateRatingInput = z.infer<typeof updateRatingSchema>;

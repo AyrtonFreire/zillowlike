@@ -20,6 +20,39 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ eligible: false, error: "realtorId is required" }, { status: 400 });
   }
 
+  const existingRating = await prisma.realtorRating.findFirst({
+    where: {
+      realtorId,
+      OR: [
+        { authorId: userId },
+        { lead: { userId } },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      rating: true,
+      comment: true,
+      createdAt: true,
+    },
+  });
+
+  if (existingRating?.id) {
+    return NextResponse.json({
+      eligible: false,
+      leadId: null,
+      requiresLogin: false,
+      reason: "ALREADY_RATED",
+      nextEligibleAt: null,
+      existingRating: {
+        id: existingRating.id,
+        rating: existingRating.rating,
+        comment: existingRating.comment,
+        createdAt: existingRating.createdAt,
+      },
+    });
+  }
+
   const now = new Date();
   const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -27,7 +60,7 @@ export async function GET(req: NextRequest) {
     where: {
       userId,
       realtorId,
-      rating: null,
+      rating: { is: null },
       respondedAt: { not: null, lte: cutoff },
     },
     orderBy: { respondedAt: "desc" },
@@ -42,7 +75,7 @@ export async function GET(req: NextRequest) {
     where: {
       userId,
       realtorId,
-      rating: null,
+      rating: { is: null },
     },
     orderBy: { createdAt: "desc" },
     select: { id: true },
@@ -56,7 +89,7 @@ export async function GET(req: NextRequest) {
     where: {
       userId,
       realtorId,
-      rating: null,
+      rating: { is: null },
       respondedAt: { not: null },
     },
     orderBy: { respondedAt: "desc" },
