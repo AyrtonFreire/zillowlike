@@ -3,6 +3,7 @@
 import { type ReactNode, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSession } from "next-auth/react";
 import BrandLogo from "@/components/BrandLogo";
 import { buildPropertyPath } from "@/lib/slug";
 import { track } from "@/lib/analytics";
@@ -10,6 +11,7 @@ import RealtorReviewsSection from "@/components/realtor/RealtorReviewsSection";
 import SeloAtividade from "@/components/realtor/SeloAtividade";
 import RatingStars from "@/components/queue/RatingStars";
 import ListingsMap from "@/components/Map";
+import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
 import Drawer from "@/components/ui/Drawer";
 import {
   BadgeDollarSign,
@@ -139,6 +141,8 @@ export default function RealtorPublicLandingClient({
   properties,
   initialRatingsPreview,
 }: RealtorPublicLandingClientProps) {
+  const { data: session } = useSession();
+
   const [highlight, setHighlight] = useState<string>("featured");
   const [visibleCount, setVisibleCount] = useState(DEFAULT_PAGE_SIZE);
 
@@ -149,6 +153,14 @@ export default function RealtorPublicLandingClient({
   const [copiedText, setCopiedText] = useState(false);
 
   const [reviewsOpen, setReviewsOpen] = useState(false);
+
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [overlayPropertyId, setOverlayPropertyId] = useState<string | null>(null);
+
+  const isOwner = useMemo(() => {
+    const sid = (session as any)?.user?.id || (session as any)?.userId;
+    return sid && String(sid) === String(realtor.id);
+  }, [realtor.id, session]);
 
   const whatsappDigits = useMemo(() => {
     const wa = normalizePhone(realtor.publicWhatsApp);
@@ -372,6 +384,19 @@ export default function RealtorPublicLandingClient({
     } catch {}
   };
 
+  const openOverlay = (propertyId: string, source: string) => {
+    setOverlayPropertyId(propertyId);
+    setOverlayOpen(true);
+    try {
+      track({ name: "property_quickview_open", payload: { propertyId, source } } as any);
+    } catch {}
+  };
+
+  const closeOverlay = () => {
+    setOverlayOpen(false);
+    setOverlayPropertyId(null);
+  };
+
   const AboutSection = ({ id, wrapperClassName }: { id: string; wrapperClassName: string }) => {
     return (
       <section id={id} className={wrapperClassName}>
@@ -551,20 +576,22 @@ export default function RealtorPublicLandingClient({
                 </span>
                 <span className="text-sm font-semibold">Sobre</span>
               </a>
-              <a
-                href="#compartilhar"
-                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
-              >
-                <span className="h-10 w-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-700 group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-colors">
-                  <Copy className="h-5 w-5" />
-                </span>
-                <span className="text-sm font-semibold">Compartilhar</span>
-              </a>
+              {isOwner ? (
+                <a
+                  href="#compartilhar"
+                  className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
+                >
+                  <span className="h-10 w-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-700 group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-colors">
+                    <Copy className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-semibold">Compartilhar</span>
+                </a>
+              ) : null}
             </div>
 
             <div className="mt-4 space-y-6">
               <AboutSection id="sobre" wrapperClassName="px-2" />
-              <ShareSection id="compartilhar" wrapperClassName="px-2" />
+              {isOwner ? <ShareSection id="compartilhar" wrapperClassName="px-2" /> : null}
             </div>
           </aside>
 
@@ -683,7 +710,7 @@ export default function RealtorPublicLandingClient({
                             >
                               Pedir visita
                             </button>
-                          ) : (
+                          ) : isOwner ? (
                             <button
                               type="button"
                               onClick={handleCopyLink}
@@ -691,6 +718,15 @@ export default function RealtorPublicLandingClient({
                             >
                               <Copy className="h-4 w-4" />
                               {copiedLink ? "Copiado" : "Copiar link"}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openReviews("hero_secondary")}
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
+                            >
+                              <Star className="h-4 w-4" />
+                              Ver avaliações
                             </button>
                           )}
 
@@ -874,6 +910,7 @@ export default function RealtorPublicLandingClient({
                         property={p}
                         priority={idx < 9}
                         badge={isFeatured(p) ? "Destaque" : isNew(p) ? "Novo" : null}
+                        onOpenOverlay={(id) => openOverlay(id, "profile_grid")}
                       />
                     ))}
                   </div>
@@ -899,7 +936,9 @@ export default function RealtorPublicLandingClient({
 
             <div className="lg:hidden">
               <AboutSection id="sobre-mobile" wrapperClassName="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24" />
-              <ShareSection id="compartilhar-mobile" wrapperClassName="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24" />
+              {isOwner ? (
+                <ShareSection id="compartilhar-mobile" wrapperClassName="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24" />
+              ) : null}
             </div>
           </div>
         </div>
@@ -914,6 +953,8 @@ export default function RealtorPublicLandingClient({
       >
         <RealtorReviewsSection realtorId={realtor.id} initialAvgRating={realtor.avgRating} initialTotalRatings={realtor.totalRatings} embedded />
       </Drawer>
+
+      <PropertyDetailsModalJames propertyId={overlayPropertyId} open={overlayOpen} onClose={closeOverlay} />
 
       {whatsappDigits ? (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60] p-3 bg-white/90 backdrop-blur border-t border-gray-200">
@@ -935,10 +976,12 @@ function PropertyTile({
   property,
   priority,
   badge,
+  onOpenOverlay,
 }: {
   property: PublicProperty;
   priority: boolean;
   badge: string | null;
+  onOpenOverlay: (id: string) => void;
 }) {
   const href = buildPropertyPath(property.id, property.title);
   const imageUrl = property.images?.[0]?.url || null;
@@ -947,10 +990,13 @@ function PropertyTile({
     <Link
       href={href}
       className="group relative aspect-square bg-white overflow-hidden md:rounded-2xl md:ring-1 md:ring-neutral-200 md:shadow-sm md:hover:shadow md:hover:ring-accent transition"
-      onClick={() => {
+      onClick={(e) => {
         try {
           track({ name: "listing_click", payload: { propertyId: property.id } } as any);
         } catch {}
+
+        e.preventDefault();
+        onOpenOverlay(property.id);
       }}
     >
       {imageUrl ? (
