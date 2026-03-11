@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
@@ -12,7 +12,6 @@ import SeloAtividade from "@/components/realtor/SeloAtividade";
 import RatingStars from "@/components/queue/RatingStars";
 import ListingsMap from "@/components/Map";
 import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
-import Drawer from "@/components/ui/Drawer";
 import {
   BadgeDollarSign,
   BedDouble,
@@ -153,6 +152,8 @@ export default function RealtorPublicLandingClient({
   const [copiedText, setCopiedText] = useState(false);
 
   const [reviewsOpen, setReviewsOpen] = useState(false);
+  const reviewsHistoryPushedRef = useRef(false);
+  const closingFromPopstateRef = useRef(false);
 
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [overlayPropertyId, setOverlayPropertyId] = useState<string | null>(null);
@@ -382,6 +383,63 @@ export default function RealtorPublicLandingClient({
     try {
       track({ name: "public_profile_reviews_open", payload: { source } } as any);
     } catch {}
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!reviewsOpen) {
+      reviewsHistoryPushedRef.current = false;
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+
+    if (!reviewsHistoryPushedRef.current) {
+      try {
+        const nextState = { ...(window.history.state || {}), __reviewsOverlay: true };
+        window.history.pushState(nextState, "", window.location.href);
+        reviewsHistoryPushedRef.current = true;
+      } catch {
+      }
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setReviewsOpen(false);
+      }
+    };
+
+    const onPopState = () => {
+      if (!reviewsHistoryPushedRef.current) return;
+      reviewsHistoryPushedRef.current = false;
+      closingFromPopstateRef.current = true;
+      setReviewsOpen(false);
+      closingFromPopstateRef.current = false;
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, [reviewsOpen]);
+
+  const closeReviewsOverlay = () => {
+    if (typeof window !== "undefined") {
+      document.body.style.overflow = "";
+      if (reviewsHistoryPushedRef.current && !closingFromPopstateRef.current) {
+        try {
+          window.history.back();
+          return;
+        } catch {
+        }
+      }
+    }
+    reviewsHistoryPushedRef.current = false;
+    setReviewsOpen(false);
   };
 
   const openOverlay = (propertyId: string, source: string) => {
@@ -944,15 +1002,35 @@ export default function RealtorPublicLandingClient({
         </div>
       </main>
 
-      <Drawer
-        open={reviewsOpen}
-        onClose={() => setReviewsOpen(false)}
-        title="Avaliações"
-        side="right"
-        contentClassName="p-4 overflow-y-auto flex-1 min-h-0 bg-neutral-50"
-      >
-        <RealtorReviewsSection realtorId={realtor.id} initialAvgRating={realtor.avgRating} initialTotalRatings={realtor.totalRatings} embedded />
-      </Drawer>
+      {reviewsOpen ? (
+        <div className="fixed inset-0 z-[60000]">
+          <div className="absolute inset-0 bg-black/50" onClick={closeReviewsOverlay} />
+          <div className="relative h-full w-full flex items-center justify-center p-0 sm:p-6">
+            <div className="relative h-full w-full sm:h-[min(920px,calc(100vh-3rem))] sm:max-w-6xl rounded-none sm:rounded-3xl bg-white shadow-2xl border border-neutral-200 overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-neutral-200">
+                <div className="text-base font-semibold text-neutral-900">Avaliações</div>
+                <button
+                  type="button"
+                  onClick={closeReviewsOverlay}
+                  className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+
+              <div className="h-[calc(100%-53px)] overflow-y-auto bg-neutral-50 p-4 sm:p-6">
+                <RealtorReviewsSection
+                  realtorId={realtor.id}
+                  initialAvgRating={realtor.avgRating}
+                  initialTotalRatings={realtor.totalRatings}
+                  embedded
+                  variant="google"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <PropertyDetailsModalJames propertyId={overlayPropertyId} open={overlayOpen} onClose={closeOverlay} />
 

@@ -237,6 +237,7 @@ export async function GET(request: NextRequest) {
     const realtorId = searchParams.get("realtorId");
     const stars = searchParams.get("stars");
     const hasComment = searchParams.get("hasComment");
+    const sort = searchParams.get("sort");
     const takeRaw = searchParams.get("take");
     const cursor = searchParams.get("cursor");
     const includeAll = searchParams.get("includeAll");
@@ -262,6 +263,14 @@ export async function GET(request: NextRequest) {
     if (hasComment === "1" || hasComment === "true") {
       where.comment = { not: null };
     }
+
+    const sortKey = (sort || "relevant").toLowerCase();
+    const orderBy: any =
+      sortKey === "highest"
+        ? [{ rating: "desc" }, { createdAt: "desc" }, { id: "desc" }]
+        : sortKey === "lowest"
+          ? [{ rating: "asc" }, { createdAt: "desc" }, { id: "desc" }]
+          : [{ createdAt: "desc" }, { id: "desc" }];
 
     // Histogram across ALL ratings (unfiltered) to build Google-like distribution
     const histogramRows = await (prisma as any).realtorRating.groupBy({
@@ -295,9 +304,7 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy,
       take: take + 1,
       ...(cursor
         ? {
