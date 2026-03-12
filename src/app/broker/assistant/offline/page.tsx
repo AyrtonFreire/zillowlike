@@ -112,6 +112,16 @@ export default function BrokerAssistantOfflinePage() {
     fetchMetrics();
   }, [range, canAccess, status]);
 
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      const last = (metrics?.items || [])[0]?.lastActivityAt || null;
+      if (!last) return;
+      window.localStorage.setItem("zlw_offline_assistant_seen_at", String(last));
+    } catch {
+    }
+  }, [metrics]);
+
   const fetchSettings = async () => {
     const res = await fetch("/api/broker/auto-reply-settings");
     if (!res.ok) return;

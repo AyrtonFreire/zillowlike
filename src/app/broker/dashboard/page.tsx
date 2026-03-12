@@ -127,6 +127,37 @@ interface Lead {
   createdAt: string;
 }
 
+type OfflineAssistantDashboardSummary = {
+  success: boolean;
+  enabled: boolean;
+  range: "24h" | "7d";
+  windowSince: string;
+  seenAt: string | null;
+  windowTotals: {
+    leads: number;
+    sent: number;
+    failed: number;
+    lastActivityAt: string | null;
+    handoffLeads: number;
+    visitRequestedLeads: number;
+  };
+  newTotals: {
+    leads: number;
+    sent: number;
+    failed: number;
+    lastActivityAt: string | null;
+  };
+  items: Array<{
+    leadId: string;
+    contactName: string | null;
+    propertyTitle: string | null;
+    lastActivityAt: string | null;
+    counts: { sent: number; failed: number };
+    handoffNeeded: boolean;
+    visitRequested: boolean;
+  }>;
+};
+
 interface MyLead {
   id: string;
   status: string;
@@ -162,6 +193,9 @@ export default function BrokerDashboard() {
   const [myLeadsError, setMyLeadsError] = useState<string | null>(null);
   const [leadFilter, setLeadFilter] = useState<"ALL" | "NEW" | "IN_SERVICE">("ALL");
 
+  const [offlineSummary, setOfflineSummary] = useState<OfflineAssistantDashboardSummary | null>(null);
+  const [offlineSummaryLoading, setOfflineSummaryLoading] = useState(false);
+
   const searchParams = useSearchParams();
   const previewUserId = searchParams.get("previewUserId");
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -173,6 +207,12 @@ export default function BrokerDashboard() {
   useEffect(() => {
     if (userId) {
       fetchDashboardData();
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchOfflineAssistantSummary();
     }
   }, [userId]);
 
@@ -215,6 +255,29 @@ export default function BrokerDashboard() {
       }
     } catch (err) {
       console.error("Error fetching unread messages:", err);
+    }
+  };
+
+  const fetchOfflineAssistantSummary = async () => {
+    try {
+      if (typeof window === "undefined") return;
+      const key = "zlw_offline_assistant_seen_at";
+      const seenAt = window.localStorage.getItem(key);
+      const qs = new URLSearchParams({ range: "24h" });
+      if (seenAt) qs.set("seenAt", String(seenAt));
+
+      setOfflineSummaryLoading(true);
+      const res = await fetch(`/api/broker/auto-reply-dashboard-summary?${qs.toString()}`);
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        setOfflineSummary(null);
+        return;
+      }
+      setOfflineSummary(data as OfflineAssistantDashboardSummary);
+    } catch {
+      setOfflineSummary(null);
+    } finally {
+      setOfflineSummaryLoading(false);
     }
   };
 
@@ -371,6 +434,121 @@ export default function BrokerDashboard() {
         <div className="mb-6" data-onboarding="leads-section">
           <LeadSearchBar className="max-w-md" />
         </div>
+
+        {(() => {
+          const totals = offlineSummary?.windowTotals || null;
+          const shouldShow = !!totals && totals.leads > 0;
+          if (!shouldShow) return null;
+
+          const newLeads = offlineSummary?.newTotals?.leads || 0;
+          const lastActivityAt = totals?.lastActivityAt || null;
+
+          return (
+            <div className="mb-8">
+              <StatCard
+                title="Assistente offline"
+                action={
+                  <Link
+                    href="/broker/assistant/offline"
+                    onClick={() => {
+                      try {
+                        if (typeof window !== "undefined" && lastActivityAt) {
+                          window.localStorage.setItem("zlw_offline_assistant_seen_at", String(lastActivityAt));
+                        }
+                      } catch {
+                      }
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Ver detalhes
+                  </Link>
+                }
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      if (typeof window !== "undefined" && lastActivityAt) {
+                        window.localStorage.setItem("zlw_offline_assistant_seen_at", String(lastActivityAt));
+                      }
+                    } catch {
+                    }
+                    router.push("/broker/assistant/offline");
+                  }}
+                  className="w-full text-left rounded-xl border border-gray-100 bg-white p-4 hover:border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-900">
+                          Atividade em {totals.leads} lead{totals.leads > 1 ? "s" : ""} (últimas 24h)
+                        </p>
+                        {newLeads > 0 ? (
+                          <span className="inline-flex items-center rounded-full bg-red-50 text-red-700 border border-red-100 px-2 py-0.5 text-[11px] font-bold">
+                            {newLeads} novo{newLeads > 1 ? "s" : ""}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {totals.sent} enviada{totals.sent > 1 ? "s" : ""}
+                        {totals.failed > 0 ? ` · ${totals.failed} falha${totals.failed > 1 ? "s" : ""}` : ""}
+                        {totals.handoffLeads > 0 ? ` · ${totals.handoffLeads} precisam retorno` : ""}
+                        {totals.visitRequestedLeads > 0 ? ` · ${totals.visitRequestedLeads} pediram visita` : ""}
+                      </p>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {totals.handoffLeads > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
+                            <Clock className="w-3.5 h-3.5" />
+                            Precisa retorno
+                          </span>
+                        ) : null}
+                        {totals.visitRequestedLeads > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-700">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            Visita solicitada
+                          </span>
+                        ) : null}
+                        {totals.failed > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
+                            Falhas
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="flex-shrink-0">
+                      <span className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700">
+                        Abrir
+                      </span>
+                    </div>
+                  </div>
+
+                  {(offlineSummary?.items || []).length > 0 ? (
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {(offlineSummary?.items || []).slice(0, 3).map((row) => {
+                        const t = row.propertyTitle || "Lead";
+                        const c = row.contactName || "Cliente";
+                        return (
+                          <div key={row.leadId} className="rounded-lg border border-gray-100 bg-white px-3 py-2">
+                            <p className="text-[11px] font-semibold text-gray-900 line-clamp-1">
+                              {c} · {t}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-gray-600">
+                              {row.handoffNeeded ? "Precisa retorno" : ""}
+                              {row.handoffNeeded && row.visitRequested ? " · " : ""}
+                              {row.visitRequested ? "Visita" : ""}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </button>
+              </StatCard>
+            </div>
+          );
+        })()}
 
         {/* Metrics Grid - 2 cols on mobile */}
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8">
