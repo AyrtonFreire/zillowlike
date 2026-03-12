@@ -4,6 +4,23 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireRecoveryFactor } from "@/lib/recovery-factor";
 
+function jsonSafeBigInt(value: any) {
+  if (typeof value === "bigint") {
+    const n = Number(value);
+    if (Number.isSafeInteger(n)) return n;
+    return value.toString();
+  }
+  return value;
+}
+
+function makeJsonSafe<T>(data: T): any {
+  return JSON.parse(
+    JSON.stringify(data, (_k, v) => {
+      return jsonSafeBigInt(v);
+    })
+  );
+}
+
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session: any = await getServerSession(authOptions);
@@ -156,11 +173,18 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      property,
-      leads: formattedLeads,
-    });
+    const safeProperty = {
+      ...property,
+      price: jsonSafeBigInt((property as any).price),
+    };
+
+    return NextResponse.json(
+      makeJsonSafe({
+        success: true,
+        property: safeProperty,
+        leads: formattedLeads,
+      })
+    );
   } catch (error) {
     console.error("Error fetching property leads for broker:", error);
     return NextResponse.json(

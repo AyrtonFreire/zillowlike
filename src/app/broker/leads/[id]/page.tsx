@@ -102,12 +102,6 @@ export default function LeadDetailPage() {
   const leadId = (params?.id as string) || "";
   const toast = useToast();
 
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
-  const getClientChatUrl = (token: string) => {
-    const path = `/chat/${token}`;
-    return siteUrl ? `${siteUrl}${path}` : path;
-  };
-
   const getWhatsAppUrl = (phone: string | null | undefined) => {
     const raw = String(phone || "").replace(/\D/g, "");
     if (!raw) return null;
@@ -139,6 +133,7 @@ export default function LeadDetailPage() {
 
   const getLeadOriginLabel = (l: Lead) => {
     if (l.visitDate || l.visitTime) return "Pedido de visita";
+    if (l.clientChatToken) return "Chat do site";
     if (l.isDirect) return "Contato direto";
     return "Formulário";
   };
@@ -614,24 +609,16 @@ export default function LeadDetailPage() {
               />
             </div>
 
-            {lead.clientChatToken ? (
-              <div className="mt-3 text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                <div className="font-semibold text-gray-800">Link do chat do cliente</div>
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={getClientChatUrl(lead.clientChatToken)}
-                    className="flex-1 px-2 py-1 rounded border border-gray-200 bg-white text-[11px] text-gray-700"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard("Chat", getClientChatUrl(lead.clientChatToken as string))}
-                    className="px-2 py-1 rounded bg-gray-900 text-white text-[11px] font-semibold"
-                  >
-                    Copiar
-                  </button>
-                </div>
+            {lead.clientChatToken && lead.property?.id ? (
+              <div className="mt-3 flex justify-end">
+                <Link
+                  href={buildPropertyPath(lead.property.id, lead.property.title || "imovel")}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800"
+                >
+                  Ver anúncio
+                </Link>
               </div>
             ) : null}
           </div>
