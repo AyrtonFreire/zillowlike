@@ -164,16 +164,19 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
   const fetchMetrics = useCallback(async () => {
     try {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      const response = await fetch("/api/broker/nav-metrics");
-      const data = await response.json();
+      const response = await fetch("/api/broker/nav-metrics", { cache: "no-store" });
+      const data = await response.json().catch(() => null);
       if (response.ok && data?.success && data.metrics) {
         setMetrics({
           unreadChats: Number(data.metrics.unreadChats || 0),
           assistantOpen: Number(data.metrics.assistantOpen || 0),
         });
+        return;
       }
+      setMetrics(null);
     } catch (error) {
       console.error("Error fetching broker nav metrics:", error);
+      setMetrics(null);
     }
   }, []);
 

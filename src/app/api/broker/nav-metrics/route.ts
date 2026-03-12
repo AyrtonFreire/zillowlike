@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
           select: {
             id: true,
             leadId: true,
+            type: true,
           },
         });
 
@@ -47,7 +48,9 @@ export async function GET(req: NextRequest) {
           const id = String((row as any)?.id || "");
           const leadIdValue = (row as any)?.leadId;
           const leadId = leadIdValue ? String(leadIdValue) : "";
+          const t = String((row as any)?.type || "").trim();
           if (!id) continue;
+          if (!t) continue;
           keys.add(leadId ? `lead:${leadId}` : `item:${id}`);
         }
         return keys.size;

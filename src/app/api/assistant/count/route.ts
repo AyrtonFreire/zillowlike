@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     const [activeItems, agg] = await Promise.all([
       (prisma as any).assistantItem.findMany({
         where: activeWhere,
-        select: { id: true, leadId: true },
+        select: { id: true, leadId: true, type: true },
       }),
       (prisma as any).assistantItem.aggregate({
         where: baseWhere,
@@ -71,7 +71,9 @@ export async function GET(req: NextRequest) {
       const id = String((row as any)?.id || "");
       const leadIdValue = (row as any)?.leadId;
       const leadId = leadIdValue ? String(leadIdValue) : "";
+      const t = String((row as any)?.type || "").trim();
       if (!id) continue;
+      if (!t) continue;
       keys.add(leadId ? `lead:${leadId}` : `item:${id}`);
     }
 
