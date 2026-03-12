@@ -1,8 +1,9 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import BrandLogo from "@/components/BrandLogo";
 import { buildPropertyPath } from "@/lib/slug";
@@ -10,8 +11,9 @@ import { track } from "@/lib/analytics";
 import RealtorReviewsSection from "@/components/realtor/RealtorReviewsSection";
 import SeloAtividade from "@/components/realtor/SeloAtividade";
 import RatingStars from "@/components/queue/RatingStars";
-import ListingsMap from "@/components/Map";
 import PropertyDetailsModalJames from "@/components/PropertyDetailsModalJames";
+import Drawer from "@/components/ui/Drawer";
+import SearchFiltersBarZillow, { type FilterValues } from "@/components/SearchFiltersBarZillow";
 import {
   BadgeDollarSign,
   BedDouble,
@@ -31,10 +33,14 @@ import {
   X,
 } from "lucide-react";
 
+const MapWithPriceBubbles = dynamic(() => import("@/components/GoogleMapWithPriceBubbles"), { ssr: false });
+
 type PublicProperty = {
   id: string;
   title: string;
   price: number | null;
+  type: string;
+  purpose: string | null;
   city: string;
   state: string;
   neighborhood: string | null;
@@ -44,9 +50,38 @@ type PublicProperty = {
   bathrooms: number | null;
   areaM2: number | null;
   parkingSpots: number | null;
+  yearBuilt: number | null;
+  condoFee: number | null;
+  iptuYearly: number | null;
+  furnished: boolean | null;
   petFriendly: boolean | null;
   petsSmall: boolean | null;
   petsLarge: boolean | null;
+  hasPool: boolean | null;
+  hasGym: boolean | null;
+  hasElevator: boolean | null;
+  hasBalcony: boolean | null;
+  hasPlayground: boolean | null;
+  hasPartyRoom: boolean | null;
+  hasGourmet: boolean | null;
+  hasConcierge24h: boolean | null;
+  comfortAC: boolean | null;
+  comfortHeating: boolean | null;
+  comfortSolar: boolean | null;
+  comfortNoiseWindows: boolean | null;
+  comfortLED: boolean | null;
+  comfortWaterReuse: boolean | null;
+  accRamps: boolean | null;
+  accWideDoors: boolean | null;
+  accAccessibleElevator: boolean | null;
+  accTactile: boolean | null;
+  finishCabinets: boolean | null;
+  finishCounterGranite: boolean | null;
+  finishCounterQuartz: boolean | null;
+  viewSea: boolean | null;
+  viewCity: boolean | null;
+  viewRiver: boolean | null;
+  viewLake: boolean | null;
   conditionTags: string[];
   createdAt: string;
   updatedAt: string;
@@ -96,6 +131,53 @@ type RealtorPublicLandingClientProps = {
 };
 
 const DEFAULT_PAGE_SIZE = 36;
+
+const EMPTY_FILTERS: FilterValues = {
+  minPrice: "",
+  maxPrice: "",
+  bedrooms: "",
+  bathrooms: "",
+  type: "",
+  areaMin: "",
+  parkingSpots: "",
+  yearBuiltMin: "",
+  yearBuiltMax: "",
+  purpose: "",
+  petFriendly: false,
+  furnished: false,
+  hasPool: false,
+  hasGym: false,
+  hasElevator: false,
+  hasBalcony: false,
+  hasPlayground: false,
+  hasPartyRoom: false,
+  hasGourmet: false,
+  hasConcierge24h: false,
+  comfortAC: false,
+  comfortHeating: false,
+  comfortSolar: false,
+  comfortNoiseWindows: false,
+  comfortLED: false,
+  comfortWaterReuse: false,
+  accRamps: false,
+  accWideDoors: false,
+  accAccessibleElevator: false,
+  accTactile: false,
+  finishCabinets: false,
+  finishCounterGranite: false,
+  finishCounterQuartz: false,
+  viewSea: false,
+  viewCity: false,
+  viewRiver: false,
+  viewLake: false,
+  petsSmall: false,
+  petsLarge: false,
+  condoFeeMin: "",
+  condoFeeMax: "",
+  iptuMin: "",
+  iptuMax: "",
+  keywords: "",
+};
 
 function formatBRL(valueCents: number | null) {
   if (!valueCents || valueCents <= 0) return "Consulte";
@@ -150,6 +232,13 @@ export default function RealtorPublicLandingClient({
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
+
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterValues>(EMPTY_FILTERS);
+
+  const [desktopViewMode, setDesktopViewMode] = useState<"list" | "map">("list");
+  const [mobileMapOpen, setMobileMapOpen] = useState(false);
+  const [mapBounds, setMapBounds] = useState<{ minLat: number; maxLat: number; minLng: number; maxLng: number } | null>(null);
 
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const reviewsHistoryPushedRef = useRef(false);
@@ -229,18 +318,6 @@ export default function RealtorPublicLandingClient({
     return items;
   }, [properties.length, realtor.experience, realtor.rentedCount, realtor.soldCount]);
 
-  const mapItems = useMemo(() => {
-    return (properties || [])
-      .filter((p) => p.latitude != null && p.longitude != null)
-      .slice(0, 250)
-      .map((p) => ({
-        id: p.id,
-        price: Number(p.price || 0),
-        latitude: Number(p.latitude),
-        longitude: Number(p.longitude),
-      }));
-  }, [properties]);
-
   const isFeatured = (p: PublicProperty) => Array.isArray(p.conditionTags) && p.conditionTags.includes("Destaque");
   const isPetsOk = (p: PublicProperty) => Boolean(p.petFriendly) || Boolean(p.petsSmall) || Boolean(p.petsLarge);
   const isNew = (p: PublicProperty) => {
@@ -250,10 +327,107 @@ export default function RealtorPublicLandingClient({
     return days <= 14;
   };
 
+  const filteredInventory = useMemo(() => {
+    const f = filters;
+    const minPriceCents = f.minPrice ? Math.max(0, Number(f.minPrice) * 100) : null;
+    const maxPriceCents = f.maxPrice ? Math.max(0, Number(f.maxPrice) * 100) : null;
+    const minBeds = f.bedrooms ? Math.max(0, Number(f.bedrooms)) : null;
+    const minBaths = f.bathrooms ? Math.max(0, Number(f.bathrooms)) : null;
+    const minArea = f.areaMin ? Math.max(0, Number(f.areaMin)) : null;
+    const minParking = f.parkingSpots ? Math.max(0, Number(f.parkingSpots)) : null;
+    const minYear = f.yearBuiltMin ? Math.max(0, Number(f.yearBuiltMin)) : null;
+    const maxYear = f.yearBuiltMax ? Math.max(0, Number(f.yearBuiltMax)) : null;
+    const minCondoCents = f.condoFeeMin ? Math.max(0, Number(f.condoFeeMin) * 100) : null;
+    const maxCondoCents = f.condoFeeMax ? Math.max(0, Number(f.condoFeeMax) * 100) : null;
+    const minIptuCents = f.iptuMin ? Math.max(0, Number(f.iptuMin) * 100) : null;
+    const maxIptuCents = f.iptuMax ? Math.max(0, Number(f.iptuMax) * 100) : null;
+    const kw = String(f.keywords || "").trim().toLowerCase();
+
+    const requireBool = (enabled: boolean, value: any) => {
+      if (!enabled) return true;
+      return Boolean(value);
+    };
+
+    return (properties || []).filter((p) => {
+      if (f.type && String(p.type || "") !== String(f.type)) return false;
+      if (f.purpose && String(p.purpose || "") !== String(f.purpose)) return false;
+
+      const price = Number(p.price || 0);
+      if (minPriceCents != null && price < minPriceCents) return false;
+      if (maxPriceCents != null && price > maxPriceCents) return false;
+
+      const beds = p.bedrooms != null ? Number(p.bedrooms) : 0;
+      const baths = p.bathrooms != null ? Number(p.bathrooms) : 0;
+      const area = p.areaM2 != null ? Number(p.areaM2) : 0;
+      const parking = p.parkingSpots != null ? Number(p.parkingSpots) : 0;
+      const yearBuilt = p.yearBuilt != null ? Number(p.yearBuilt) : 0;
+
+      if (minBeds != null && beds < minBeds) return false;
+      if (minBaths != null && baths < minBaths) return false;
+      if (minArea != null && area < minArea) return false;
+      if (minParking != null && parking < minParking) return false;
+      if (minYear != null && yearBuilt < minYear) return false;
+      if (maxYear != null && yearBuilt > maxYear) return false;
+
+      const condoFee = Number(p.condoFee || 0);
+      const iptuYearly = Number(p.iptuYearly || 0);
+      if (minCondoCents != null && condoFee < minCondoCents) return false;
+      if (maxCondoCents != null && condoFee > maxCondoCents) return false;
+      if (minIptuCents != null && iptuYearly < minIptuCents) return false;
+      if (maxIptuCents != null && iptuYearly > maxIptuCents) return false;
+
+      if (!requireBool(f.petFriendly, p.petFriendly || p.petsSmall || p.petsLarge)) return false;
+      if (!requireBool(f.furnished, p.furnished)) return false;
+
+      if (!requireBool(f.hasPool, p.hasPool)) return false;
+      if (!requireBool(f.hasGym, p.hasGym)) return false;
+      if (!requireBool(f.hasElevator, p.hasElevator)) return false;
+      if (!requireBool(f.hasBalcony, p.hasBalcony)) return false;
+      if (!requireBool(f.hasPlayground, p.hasPlayground)) return false;
+      if (!requireBool(f.hasPartyRoom, p.hasPartyRoom)) return false;
+      if (!requireBool(f.hasGourmet, p.hasGourmet)) return false;
+      if (!requireBool(f.hasConcierge24h, p.hasConcierge24h)) return false;
+
+      if (!requireBool(f.comfortAC, p.comfortAC)) return false;
+      if (!requireBool(f.comfortHeating, p.comfortHeating)) return false;
+      if (!requireBool(f.comfortSolar, p.comfortSolar)) return false;
+      if (!requireBool(f.comfortNoiseWindows, p.comfortNoiseWindows)) return false;
+      if (!requireBool(f.comfortLED, p.comfortLED)) return false;
+      if (!requireBool(f.comfortWaterReuse, p.comfortWaterReuse)) return false;
+
+      if (!requireBool(f.accRamps, p.accRamps)) return false;
+      if (!requireBool(f.accWideDoors, p.accWideDoors)) return false;
+      if (!requireBool(f.accAccessibleElevator, p.accAccessibleElevator)) return false;
+      if (!requireBool(f.accTactile, p.accTactile)) return false;
+
+      if (!requireBool(f.finishCabinets, p.finishCabinets)) return false;
+      if (!requireBool(f.finishCounterGranite, p.finishCounterGranite)) return false;
+      if (!requireBool(f.finishCounterQuartz, p.finishCounterQuartz)) return false;
+
+      if (!requireBool(f.viewSea, p.viewSea)) return false;
+      if (!requireBool(f.viewCity, p.viewCity)) return false;
+      if (!requireBool(f.viewRiver, p.viewRiver)) return false;
+      if (!requireBool(f.viewLake, p.viewLake)) return false;
+
+      if (!requireBool(f.petsSmall, p.petsSmall)) return false;
+      if (!requireBool(f.petsLarge, p.petsLarge)) return false;
+
+      if (kw) {
+        const title = String(p.title || "").toLowerCase();
+        const neighborhood = String(p.neighborhood || "").toLowerCase();
+        const city = String(p.city || "").toLowerCase();
+        const state = String(p.state || "").toLowerCase();
+        if (!title.includes(kw) && !neighborhood.includes(kw) && !city.includes(kw) && !state.includes(kw)) return false;
+      }
+
+      return true;
+    });
+  }, [filters, properties]);
+
   const featuredList = useMemo(() => {
-    const tagged = properties.filter((p) => Array.isArray(p.conditionTags) && p.conditionTags.includes("Destaque"));
+    const tagged = filteredInventory.filter((p) => Array.isArray(p.conditionTags) && p.conditionTags.includes("Destaque"));
     if (tagged.length > 0) return tagged;
-    const sorted = [...properties].sort((a, b) => {
+    const sorted = [...filteredInventory].sort((a, b) => {
       const dl = (b.leadsCount || 0) - (a.leadsCount || 0);
       if (dl !== 0) return dl;
       const dv = (b.viewsCount || 0) - (a.viewsCount || 0);
@@ -261,25 +435,25 @@ export default function RealtorPublicLandingClient({
       return b.createdAt.localeCompare(a.createdAt);
     });
     return sorted.slice(0, 24);
-  }, [properties]);
+  }, [filteredInventory]);
 
   const newList = useMemo(() => {
-    return [...properties].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [properties]);
+    return [...filteredInventory].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [filteredInventory]);
 
   const popularList = useMemo(() => {
-    return [...properties].sort((a, b) => {
+    return [...filteredInventory].sort((a, b) => {
       const dl = (b.leadsCount || 0) - (a.leadsCount || 0);
       if (dl !== 0) return dl;
       const dv = (b.viewsCount || 0) - (a.viewsCount || 0);
       if (dv !== 0) return dv;
       return b.createdAt.localeCompare(a.createdAt);
     });
-  }, [properties]);
+  }, [filteredInventory]);
 
   const neighborhoodHighlights = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const p of properties) {
+    for (const p of filteredInventory) {
       const nb = String(p.neighborhood || "").trim();
       if (!nb) continue;
       counts.set(nb, (counts.get(nb) || 0) + 1);
@@ -289,7 +463,7 @@ export default function RealtorPublicLandingClient({
       .slice(0, 6)
       .map(([nb, c]) => ({ key: `nb:${nb}`, label: nb, count: c }));
     return list;
-  }, [properties]);
+  }, [filteredInventory]);
 
   const highlights = useMemo(() => {
     const base: Array<{ key: string; label: string; icon: ReactNode }> = [
@@ -442,18 +616,30 @@ export default function RealtorPublicLandingClient({
     setReviewsOpen(false);
   };
 
-  const openOverlay = (propertyId: string, source: string) => {
+  const openOverlay = useCallback((propertyId: string, source: string) => {
     setOverlayPropertyId(propertyId);
     setOverlayOpen(true);
     try {
       track({ name: "property_quickview_open", payload: { propertyId, source } } as any);
     } catch {}
-  };
+  }, []);
 
-  const closeOverlay = () => {
+  const closeOverlay = useCallback(() => {
     setOverlayOpen(false);
     setOverlayPropertyId(null);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleOpenOverlay = (e: Event) => {
+      const ce = e as CustomEvent;
+      if (ce?.detail?.id) {
+        openOverlay(String(ce.detail.id), "profile_map");
+      }
+    };
+    window.addEventListener("open-overlay", handleOpenOverlay as EventListener);
+    return () => window.removeEventListener("open-overlay", handleOpenOverlay as EventListener);
+  }, [openOverlay]);
 
   const AboutSection = ({ id, wrapperClassName }: { id: string; wrapperClassName: string }) => {
     return (
@@ -649,6 +835,27 @@ export default function RealtorPublicLandingClient({
 
             <div className="mt-4 space-y-6">
               <AboutSection id="sobre" wrapperClassName="px-2" />
+
+              <div className="px-2">
+                <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden max-h-[calc(100vh-260px)] flex flex-col">
+                  <SearchFiltersBarZillow
+                    variant="panel"
+                    disablePreview
+                    filters={filters}
+                    totalResults={filteredInventory.length}
+                    onFiltersChange={(newFilters) => setFilters(newFilters)}
+                    onClearFilters={() => {
+                      setFilters(EMPTY_FILTERS);
+                      setVisibleCount(DEFAULT_PAGE_SIZE);
+                    }}
+                    onApply={(applied) => {
+                      setFilters(applied);
+                      setVisibleCount(DEFAULT_PAGE_SIZE);
+                    }}
+                  />
+                </div>
+              </div>
+
               {isOwner ? <ShareSection id="compartilhar" wrapperClassName="px-2" /> : null}
             </div>
           </aside>
@@ -834,20 +1041,6 @@ export default function RealtorPublicLandingClient({
               </div>
             </section>
 
-            {mapItems.length > 0 ? (
-              <section className="mt-6 px-4 sm:px-6 lg:px-10">
-                <div className="rounded-3xl border border-neutral-200 bg-white p-4 sm:p-6 shadow-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-base font-semibold text-neutral-900">Mapa de atuação</div>
-                    <div className="text-xs font-semibold text-neutral-500">Baseado nos imóveis ativos</div>
-                  </div>
-                  <div className="mt-4 h-[320px] sm:h-[380px]">
-                    <ListingsMap items={mapItems} autoFit simplePin />
-                  </div>
-                </div>
-              </section>
-            ) : null}
-
             <section className="mt-6 px-4 sm:px-6 lg:px-10">
               <div className="flex items-start gap-4 overflow-x-auto pb-2">
                 {highlights.map((h) => {
@@ -898,7 +1091,74 @@ export default function RealtorPublicLandingClient({
             <section id="grid" className="mt-0 scroll-mt-24">
               <div className="px-4 sm:px-6 lg:px-10 pt-4 pb-3">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <div className="text-sm font-semibold text-neutral-900">Imóveis</div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold text-neutral-900">Imóveis</div>
+                    <div className="md:hidden flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFiltersOpen(true);
+                        }}
+                        className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-800"
+                      >
+                        <Search className="h-4 w-4" />
+                        Filtros
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileMapOpen(true);
+                          setMapBounds(null);
+                        }}
+                        className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-800"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        Ver mapa
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="hidden md:flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDesktopViewMode("list");
+                        setMapBounds(null);
+                      }}
+                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${
+                        desktopViewMode === "list"
+                          ? "border-accent bg-accent text-white"
+                          : "border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50"
+                      }`}
+                    >
+                      <Grid3X3 className="h-4 w-4" />
+                      Lista
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDesktopViewMode("map");
+                        setMapBounds(null);
+                      }}
+                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${
+                        desktopViewMode === "map"
+                          ? "border-accent bg-accent text-white"
+                          : "border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50"
+                      }`}
+                    >
+                      <MapPin className="h-4 w-4" />
+                      Mapa
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFiltersOpen(true)}
+                      className="lg:hidden inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50"
+                    >
+                      <Search className="h-4 w-4" />
+                      Filtros
+                    </button>
+                  </div>
                   <div className="w-full md:max-w-md">
                     <div className="flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg bg-white hover:border-neutral-400 transition-colors focus-within:ring-2 focus-within:ring-accent">
                       <Search className="w-4 h-4 text-neutral-400" />
@@ -961,17 +1221,63 @@ export default function RealtorPublicLandingClient({
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-[2px] md:gap-5 bg-neutral-200 md:bg-transparent md:px-4">
-                    {visibleList.map((p, idx) => (
-                      <PropertyTile
-                        key={p.id}
-                        property={p}
-                        priority={idx < 9}
-                        badge={isFeatured(p) ? "Destaque" : isNew(p) ? "Novo" : null}
-                        onOpenOverlay={(id) => openOverlay(id, "profile_grid")}
-                      />
-                    ))}
-                  </div>
+                  {desktopViewMode === "map" ? (
+                    <div className="md:px-4">
+                      <div className="rounded-3xl border border-neutral-200 bg-white overflow-hidden h-[70vh]">
+                        <MapWithPriceBubbles
+                          items={
+                            searchedList
+                              .filter((p) => p.latitude != null && p.longitude != null)
+                              .filter((p) => {
+                                if (!mapBounds) return true;
+                                const lat = Number(p.latitude);
+                                const lng = Number(p.longitude);
+                                return lat >= mapBounds.minLat && lat <= mapBounds.maxLat && lng >= mapBounds.minLng && lng <= mapBounds.maxLng;
+                              })
+                              .slice(0, 1500)
+                              .map((p) => ({
+                                id: p.id,
+                                price: Number(p.price || 0),
+                                latitude: Number(p.latitude),
+                                longitude: Number(p.longitude),
+                                title: p.title,
+                              }))
+                          }
+                          isLoading={false}
+                          autoLoad={true}
+                          onBoundsChange={(b) => setMapBounds(b)}
+                        />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <div className="text-xs font-semibold text-neutral-600">
+                          {mapBounds ? "Filtrando nesta área" : "Mova o mapa para filtrar"}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDesktopViewMode("list");
+                            setMapBounds(null);
+                          }}
+                          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50"
+                        >
+                          <Grid3X3 className="h-4 w-4" />
+                          Ver lista
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-[2px] md:gap-5 bg-neutral-200 md:bg-transparent md:px-4">
+                      {visibleList.map((p, idx) => (
+                        <PropertyTile
+                          key={p.id}
+                          property={p}
+                          priority={idx < 9}
+                          badge={isFeatured(p) ? "Destaque" : isNew(p) ? "Novo" : null}
+                          onOpenOverlay={(id) => openOverlay(id, "profile_grid")}
+                        />
+                      ))}
+                    </div>
+                  )}
                   {canLoadMore ? (
                     <div className="px-4 sm:px-6 lg:px-10 py-6">
                       <button
@@ -1033,6 +1339,75 @@ export default function RealtorPublicLandingClient({
       ) : null}
 
       <PropertyDetailsModalJames propertyId={overlayPropertyId} open={overlayOpen} onClose={closeOverlay} />
+
+      <Drawer
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="Filtros"
+        contentClassName="p-0 overflow-hidden flex-1 min-h-0"
+      >
+        <SearchFiltersBarZillow
+          variant="drawer"
+          disablePreview
+          filters={filters}
+          totalResults={filteredInventory.length}
+          onFiltersChange={(newFilters) => setFilters(newFilters)}
+          onClearFilters={() => {
+            setFilters(EMPTY_FILTERS);
+            setVisibleCount(DEFAULT_PAGE_SIZE);
+          }}
+          onApply={(applied) => {
+            setFilters(applied);
+            setVisibleCount(DEFAULT_PAGE_SIZE);
+            setFiltersOpen(false);
+          }}
+        />
+      </Drawer>
+
+      {mobileMapOpen ? (
+        <div className="md:hidden fixed inset-0 z-[59990] bg-white">
+          <div className="h-14 px-3 flex items-center justify-center border-b bg-white/95 backdrop-blur relative">
+            <div className="text-sm text-gray-600 font-medium">{searchedList.length} imóveis</div>
+          </div>
+          <button
+            aria-label="Voltar para lista"
+            type="button"
+            onClick={() => {
+              setMobileMapOpen(false);
+              setMapBounds(null);
+            }}
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[59999] px-5 py-3 rounded-full bg-white border-2 border-gray-200 shadow-lg hover:shadow-xl flex items-center gap-2 transition-all"
+          >
+            <Grid3X3 className="w-5 h-5 text-teal-600" />
+            <span className="font-semibold text-gray-800">Ver Lista</span>
+          </button>
+          <div className="absolute inset-x-0 top-14 bottom-0">
+            <MapWithPriceBubbles
+              items={
+                searchedList
+                  .filter((p) => p.latitude != null && p.longitude != null)
+                  .filter((p) => {
+                    if (!mapBounds) return true;
+                    const lat = Number(p.latitude);
+                    const lng = Number(p.longitude);
+                    return lat >= mapBounds.minLat && lat <= mapBounds.maxLat && lng >= mapBounds.minLng && lng <= mapBounds.maxLng;
+                  })
+                  .slice(0, 1500)
+                  .map((p) => ({
+                    id: p.id,
+                    price: Number(p.price || 0),
+                    latitude: Number(p.latitude),
+                    longitude: Number(p.longitude),
+                    title: p.title,
+                  }))
+              }
+              isLoading={false}
+              autoLoad={true}
+              onBoundsChange={(b) => setMapBounds(b)}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {whatsappDigits ? (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60] p-3 bg-white/90 backdrop-blur border-t border-gray-200">

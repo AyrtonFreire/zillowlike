@@ -5,7 +5,7 @@ import { X, Home, DollarSign, Bed, Bath, Maximize2, Car, PawPrint, Sofa, Waves, 
 import { buildSearchParams } from "@/lib/url";
 import PriceRangeSlider from "@/components/PriceRangeSlider";
 
-type FilterValues = {
+export type FilterValues = {
   minPrice: string;
   maxPrice: string;
   bedrooms: string;
@@ -64,6 +64,8 @@ type SearchFiltersBarZillowProps = {
   onClearFilters: () => void;
   onApply: (filters: FilterValues) => void;
   totalResults?: number;
+  disablePreview?: boolean;
+  variant?: "drawer" | "panel";
   // Parâmetros de localização para incluir no preview
   city?: string;
   state?: string;
@@ -77,6 +79,8 @@ export default function SearchFiltersBarZillow({
   onClearFilters,
   onApply,
   totalResults,
+  disablePreview,
+  variant = "drawer",
   city,
   state,
   search,
@@ -86,6 +90,12 @@ export default function SearchFiltersBarZillow({
   const [previewTotal, setPreviewTotal] = useState<number | undefined>(totalResults);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isPriceSliding, setIsPriceSliding] = useState(false);
+
+  const mobileOnlyClass = variant === "drawer" ? "md:hidden" : "";
+
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
 
   const updateFilter = (key: keyof FilterValues, value: any) => {
     setLocalFilters(prev => ({ ...prev, [key]: value }));
@@ -124,6 +134,7 @@ export default function SearchFiltersBarZillow({
 
   // Buscar preview do total conforme usuário altera filtros localmente
   useEffect(() => {
+    if (disablePreview) return;
     if (isPriceSliding) return;
     const fetchPreviewTotal = async () => {
       setIsLoadingPreview(true);
@@ -196,7 +207,7 @@ export default function SearchFiltersBarZillow({
 
     const debounce = setTimeout(fetchPreviewTotal, 500);
     return () => clearTimeout(debounce);
-  }, [localFilters, city, state, search, isPriceSliding]);
+  }, [localFilters, city, state, search, isPriceSliding, disablePreview]);
 
   const formatResultsLabel = (count?: number, loading?: boolean) => {
     if (loading) return 'Buscando...';
@@ -276,10 +287,10 @@ export default function SearchFiltersBarZillow({
           </div>
 
           {/* Divider (apenas mobile) */}
-          <div className="border-t border-gray-200 md:hidden" />
+          <div className={`border-t border-gray-200 ${mobileOnlyClass}`} />
 
           {/* Price Range - Customizável (mobile) */}
-          <div className="space-y-3 md:hidden">
+          <div className={`space-y-3 ${mobileOnlyClass}`}>
             <div className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-teal-600" />
               <h3 className="text-sm font-bold text-gray-900">Faixa de Preço</h3>
@@ -339,10 +350,10 @@ export default function SearchFiltersBarZillow({
           </div>
 
           {/* Divider (apenas mobile) */}
-          <div className="border-t border-gray-200 md:hidden" />
+          <div className={`border-t border-gray-200 ${mobileOnlyClass}`} />
 
           {/* Property Type (mobile) */}
-          <div className="space-y-3 md:hidden">
+          <div className={`space-y-3 ${mobileOnlyClass}`}>
             <div className="flex items-center gap-2">
               <Home className="w-5 h-5 text-teal-600" />
               <h3 className="text-sm font-bold text-gray-900">Tipo de Imóvel</h3>
@@ -366,10 +377,10 @@ export default function SearchFiltersBarZillow({
           </div>
 
           {/* Divider (apenas mobile) */}
-          <div className="border-t border-gray-200 md:hidden" />
+          <div className={`border-t border-gray-200 ${mobileOnlyClass}`} />
 
           {/* Rooms (mobile) */}
-          <div className="space-y-4 md:hidden">
+          <div className={`space-y-4 ${mobileOnlyClass}`}>
             {/* Bedrooms */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -418,10 +429,10 @@ export default function SearchFiltersBarZillow({
           </div>
 
           {/* Divider (apenas mobile) */}
-          <div className="border-t border-gray-200 md:hidden" />
+          <div className={`border-t border-gray-200 ${mobileOnlyClass}`} />
 
           {/* More Filters (Área e Vagas - mobile) */}
-          <div className="space-y-3 md:hidden">
+          <div className={`space-y-3 ${mobileOnlyClass}`}>
             <h3 className="text-sm font-bold text-gray-900">Mais Filtros</h3>
             
             {/* Area */}
