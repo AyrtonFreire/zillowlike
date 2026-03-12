@@ -103,6 +103,8 @@ const rateLimiters = {
 
   // Verificações de código/token (permite mais tentativas, mas ainda limitado)
   authVerify: createLimiter({ points: 20, duration: 60, keyPrefix: "rl:authVerify" }),
+
+  searchSuggestions: createLimiter({ points: 240, duration: 60, keyPrefix: "rl:searchSuggestions" }),
 };
 
 /**

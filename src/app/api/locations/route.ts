@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withCache, CacheKey, CacheTTL } from '@/lib/cache';
+import { withCache } from '@/lib/cache';
+import { withRateLimit } from '@/lib/rate-limiter';
 
-export async function GET(request: Request) {
+export const GET = withRateLimit(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const query = (searchParams.get('q') || '').trim();
@@ -16,6 +17,10 @@ export async function GET(request: Request) {
       res.headers.set('Cache-Control', `public, s-maxage=${ttl}, stale-while-revalidate=${swr}`);
       return res;
     };
+
+    if (query.length > 0 && query.length < 2) {
+      return setCaching(NextResponse.json({ success: true, suggestions: [] }));
+    }
 
     // If user typed something, prioritize: City (first) + top neighborhoods in that city
     if (query.length > 0) {
@@ -124,4 +129,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+}, 'searchSuggestions');

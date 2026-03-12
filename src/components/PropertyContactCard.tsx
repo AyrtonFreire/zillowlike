@@ -283,13 +283,6 @@ export default function PropertyContactCard({
                   <p className="text-sm text-gray-600 mt-0.5">
                     {ownerRole === "AGENCY" ? "Imobiliária" : "Corretor"}
                   </p>
-                  {(publicStats?.headline || (publicStats?.city && publicStats?.state)) && (
-                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                      {publicStats?.headline
-                        ? publicStats.headline
-                        : `${publicStats?.city}/${publicStats?.state}`}
-                    </p>
-                  )}
                 </div>
               </Link>
             ) : (

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withCache } from "@/lib/cache";
+import { withRateLimit } from "@/lib/rate-limiter";
 
 type LocationSuggestion = {
   kind: "location";
@@ -27,7 +28,7 @@ type RealtorSuggestion = {
 
 type Suggestion = LocationSuggestion | AgencySuggestion | RealtorSuggestion;
 
-export async function GET(request: Request) {
+export const GET = withRateLimit(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const query = (searchParams.get("q") || "").trim();
@@ -38,6 +39,10 @@ export async function GET(request: Request) {
       res.headers.set("Cache-Control", `public, s-maxage=${ttl}, stale-while-revalidate=${swr}`);
       return res;
     };
+
+    if (query.length > 0 && query.length < 2) {
+      return setCaching(NextResponse.json({ success: true, suggestions: [] as Suggestion[] }));
+    }
 
     if (query.length > 0) {
       const cacheKey = `search-suggestions:q:${query.toLowerCase()}`;
@@ -119,6 +124,8 @@ export async function GET(request: Request) {
           }
         }
 
+        if (query.length < 3) return out;
+
         const agencies = await (prisma as any).agencyProfile.findMany({
           where: {
             name: { contains: query, mode: "insensitive" },
@@ -131,28 +138,13 @@ export async function GET(request: Request) {
         });
 
         if (agencies.length > 0) {
-          const teamIds = agencies.map((a: any) => String(a.teamId));
-          const counts = await prisma.property.groupBy({
-            by: ["teamId"],
-            where: {
-              status: "ACTIVE",
-              teamId: { in: teamIds },
-            },
-            _count: { id: true },
-          });
-
-          const countMap = new Map<string, number>();
-          for (const c of counts as any[]) {
-            if (c.teamId) countMap.set(String(c.teamId), Number(c._count.id || 0));
-          }
-
           for (const a of agencies as any[]) {
             const teamId = String(a.teamId);
             out.push({
               kind: "agency",
               label: String(a.name || "Imobiliária"),
               agencyId: teamId,
-              count: countMap.get(teamId) ?? 0,
+              count: 0,
             });
           }
         }
@@ -170,28 +162,13 @@ export async function GET(request: Request) {
         });
 
         if (realtors.length > 0) {
-          const ids = realtors.map((r) => String(r.id));
-          const counts = await prisma.property.groupBy({
-            by: ["capturerRealtorId"],
-            where: {
-              status: "ACTIVE",
-              capturerRealtorId: { in: ids },
-            },
-            _count: { id: true },
-          });
-
-          const countMap = new Map<string, number>();
-          for (const c of counts as any[]) {
-            if (c.capturerRealtorId) countMap.set(String(c.capturerRealtorId), Number(c._count.id || 0));
-          }
-
           for (const r of realtors) {
             const id = String(r.id);
             out.push({
               kind: "realtor",
               label: String(r.name || "Corretor"),
               realtorId: id,
-              count: countMap.get(id) ?? 0,
+              count: 0,
             });
           }
         }
@@ -230,4 +207,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+}, "searchSuggestions");
