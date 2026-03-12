@@ -169,19 +169,21 @@ function CardOverlay({
       <div
         className={`relative z-10 h-full p-8 sm:p-10 flex flex-col ${
           contentAlign === "bottom" ? "justify-end" : "justify-center"
-        }`}
+        } items-start`}
       >
-        <h3 className="text-2xl lg:text-3xl font-display text-white max-w-[30rem]">
-          {card.title}
-        </h3>
-        <p className="mt-3 text-sm lg:text-base text-white/80 leading-relaxed max-w-[36rem]">
-          {card.desc}
-        </p>
-        <div className="mt-6">
-          <span className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold ${a.cta} ${ctaAnim}`}>
-            {card.cta}
-            <ArrowRight className="w-4 h-4" />
-          </span>
+        <div className="max-w-[40rem] rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 p-6 sm:p-7 shadow-[0_18px_60px_rgba(0,0,0,0.38)]">
+          <h3 className="text-2xl lg:text-3xl font-display text-white">
+            {card.title}
+          </h3>
+          <p className="mt-3 text-sm lg:text-base text-white/90 leading-relaxed">
+            {card.desc}
+          </p>
+          <div className="mt-6">
+            <span className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold ${a.cta} ${ctaAnim}`}>
+              {card.cta}
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          </div>
         </div>
       </div>
     </Link>
@@ -206,16 +208,18 @@ function MobileCard({ card }: { card: Card }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/10" />
       </div>
 
-      <div className="absolute inset-0 p-4 flex flex-col justify-end">
-        <p className="text-base font-semibold text-white leading-snug">
-          {card.title}
-        </p>
-        <p className="mt-1 text-xs text-white/75 line-clamp-2">{card.desc}</p>
-        <div className="mt-3">
-          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${a.cta}`}>
-            {card.cta}
-            <ArrowRight className="w-4 h-4" />
-          </span>
+      <div className="absolute inset-0 p-4 flex flex-col justify-end items-start">
+        <div className="rounded-xl bg-black/60 backdrop-blur-md border border-white/10 p-4 shadow-[0_14px_40px_rgba(0,0,0,0.38)]">
+          <p className="text-base font-semibold text-white leading-snug">
+            {card.title}
+          </p>
+          <p className="mt-1 text-xs text-white/85 line-clamp-2">{card.desc}</p>
+          <div className="mt-3">
+            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${a.cta}`}>
+              {card.cta}
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          </div>
         </div>
       </div>
     </Link>
@@ -311,7 +315,7 @@ export default function HomePremiumCards() {
         {cardsVariant === "A" && (
           <div className="space-y-6">
             <CardOverlay card={DEFAULT_CARDS[0]} minH={360} contentAlign="left" overlay="lr" />
-            <CardOverlay card={DEFAULT_CARDS[1]} minH={360} contentAlign="left" overlay="rl" />
+            <CardOverlay card={DEFAULT_CARDS[1]} minH={360} contentAlign="bottom" overlay="rl" />
             <CardOverlay card={DEFAULT_CARDS[2]} minH={340} contentAlign="left" overlay="lr" />
             <CardOverlay card={DEFAULT_CARDS[3]} minH={340} contentAlign="left" overlay="rl" />
           </div>
@@ -333,7 +337,7 @@ export default function HomePremiumCards() {
               <CardOverlay card={DEFAULT_CARDS[0]} minH={460} contentAlign="left" overlay="lr" anim={cAnim} />
             </div>
             <div className="col-span-12 lg:col-span-7">
-              <CardOverlay card={DEFAULT_CARDS[1]} minH={380} contentAlign="left" overlay="rl" anim={cAnim} />
+              <CardOverlay card={DEFAULT_CARDS[1]} minH={380} contentAlign="bottom" overlay="rl" anim={cAnim} />
             </div>
             <div className="col-span-12 lg:col-span-5 grid gap-6">
               <CardOverlay card={DEFAULT_CARDS[2]} minH={180} contentAlign="bottom" overlay="bottom" anim={cAnim} />

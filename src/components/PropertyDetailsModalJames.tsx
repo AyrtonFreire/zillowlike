@@ -1465,6 +1465,25 @@ i === currentImageIndex ? "bg-white w-6" : "bg-white/50 w-2"}`}
                     </span>
                   )}
                 </div>
+
+                {/* Contact card (mobile) */}
+                {isPublicLike && !isPreview ? (
+                  <div className="md:hidden mt-6">
+                    <PropertyContactCard
+                      propertyId={property.id}
+                      propertyTitle={property.title}
+                      propertyPurpose={property.purpose}
+                      disableActions={isPreview}
+                      ownerRole={property.owner?.role || "USER"}
+                      ownerName={property.owner?.name || undefined}
+                      ownerImage={property.owner?.image || undefined}
+                      ownerPublicProfileEnabled={!!property.owner?.publicProfileEnabled}
+                      ownerPublicSlug={property.owner?.publicSlug || null}
+                      ownerPublicPhoneOptIn={!!(property.owner as any)?.publicPhoneOptIn}
+                      hideOwnerContact={!!(property as any)?.hideOwnerContact}
+                    />
+                  </div>
+                ) : null}
               </div>
 
               {/* About the Property */}
