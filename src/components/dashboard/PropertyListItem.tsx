@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { MoreVertical, Edit, Trash2, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface PropertyListItemProps {
   id: string;
@@ -36,7 +36,9 @@ export default function PropertyListItem({
   onDelete,
   onToggleStatus,
 }: PropertyListItemProps) {
+  const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const statusConfig = {
     ACTIVE: { label: "Ativo", color: "bg-green-100 text-green-700" },
@@ -44,8 +46,51 @@ export default function PropertyListItem({
     DRAFT: { label: "Rascunho", color: "bg-gray-100 text-gray-700" },
   };
 
+  useEffect(() => {
+    if (!showMenu) return;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (menuRef.current && menuRef.current.contains(target)) return;
+      setShowMenu(false);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowMenu(false);
+    };
+
+    const onAnyScroll = () => setShowMenu(false);
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", onAnyScroll, true);
+
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", onAnyScroll, true);
+    };
+  }, [showMenu]);
+
   return (
-    <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-all duration-200">
+    <div
+      className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-all duration-200 cursor-pointer"
+      role="button"
+      tabIndex={0}
+      onClick={() => {
+        setShowMenu(false);
+        router.push(`/broker/properties/${encodeURIComponent(id)}`);
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        setShowMenu(false);
+        router.push(`/broker/properties/${encodeURIComponent(id)}`);
+      }}
+    >
       {/* Thumbnail */}
       <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
         <Image
@@ -101,7 +146,14 @@ export default function PropertyListItem({
       </div>
 
       {/* Actions */}
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={menuRef}
+        className="relative"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -109,20 +161,14 @@ export default function PropertyListItem({
             setShowMenu(!showMenu);
           }}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          aria-expanded={showMenu}
+          aria-label="Abrir menu de ações"
         >
           <MoreVertical className="w-5 h-5 text-gray-600" />
         </button>
 
         {showMenu && (
           <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowMenu(false);
-              }}
-            />
             <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
               <button
                 onClick={(e) => {

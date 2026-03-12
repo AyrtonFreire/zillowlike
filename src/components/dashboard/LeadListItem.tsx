@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface LeadListItemProps {
   id: string;
@@ -23,6 +24,7 @@ export default function LeadListItem({
   onAccept,
   onReject,
 }: LeadListItemProps) {
+  const router = useRouter();
   const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
     PENDING: {
       label: "Pendente",
@@ -76,7 +78,17 @@ export default function LeadListItem({
   };
 
   return (
-    <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-all duration-200">
+    <div
+      className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-all duration-200 cursor-pointer"
+      role="button"
+      tabIndex={0}
+      onClick={() => router.push(`/broker/leads/${encodeURIComponent(id)}`)}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        router.push(`/broker/leads/${encodeURIComponent(id)}`);
+      }}
+    >
       {/* Status Icon */}
       <div className={`p-2 rounded-lg ${config.color.replace("text-", "bg-").replace("100", "50")}`}>
         <StatusIcon className={`w-5 h-5 ${config.color.split(" ")[1]}`} />
@@ -104,13 +116,21 @@ export default function LeadListItem({
       {status === "PENDING" && (
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onAccept?.(id)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onAccept?.(id);
+            }}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
           >
             Aceitar
           </button>
           <button
-            onClick={() => onReject?.(id)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onReject?.(id);
+            }}
             className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition-colors"
           >
             Recusar
