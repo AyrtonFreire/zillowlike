@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { leadAutoReplyQueue } from "@/lib/queue/queues";
 import { LeadEventService } from "@/lib/lead-event-service";
+import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
 import { applyOfflineAutoReplyGuardrails } from "@/lib/ai-guardrails";
 import {
@@ -1494,6 +1495,12 @@ export class LeadAutoReplyService {
           });
         } catch {}
 
+        try {
+          if (lead.realtorId) {
+            await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+          }
+        } catch {}
+
         return { ok: true as const, status: "SENT" as const };
       }
 
@@ -1582,6 +1589,12 @@ export class LeadAutoReplyService {
             createdAt: assistantMessage.createdAt,
             source: "AUTO_REPLY_AI",
           });
+        } catch {}
+
+        try {
+          if (lead.realtorId) {
+            await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+          }
         } catch {}
 
         return { ok: true as const, status: "SENT" as const };
@@ -1704,6 +1717,12 @@ export class LeadAutoReplyService {
           });
         } catch {}
 
+        try {
+          if (lead.realtorId) {
+            await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+          }
+        } catch {}
+
         return { ok: true as const, status: "SENT" as const };
       }
 
@@ -1756,6 +1775,12 @@ export class LeadAutoReplyService {
             createdAt: assistantMessage.createdAt,
             source: "AUTO_REPLY_AI",
           });
+        } catch {}
+
+        try {
+          if (lead.realtorId) {
+            await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+          }
         } catch {}
 
         return { ok: true as const, status: "SENT" as const };
@@ -1957,6 +1982,12 @@ export class LeadAutoReplyService {
           });
         } catch {}
 
+        try {
+          if (lead.realtorId) {
+            await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+          }
+        } catch {}
+
         return { ok: true as const, status: "SENT" as const };
       }
 
@@ -2005,10 +2036,12 @@ export class LeadAutoReplyService {
           serverNextQuestion: serverNextQuestion || null,
           missingInfo: parsed.ok ? parsed.value.missing_info || null : null,
           handoffNeeded: parsed.ok ? Boolean(parsed.value.handoff_needed) : null,
+          finalHandoffNeeded: finalHandoffNeeded,
+          visitHandoffNeeded: visitHandoffNeeded,
         },
       });
 
-      if (parsed.ok && parsed.value.handoff_needed) {
+      if (visitHandoffNeeded) {
         try {
           const prefs = extractVisitPreferences(msg.content, { now, timeZone: tz });
           const hasAnyPrefs = Boolean(
@@ -2040,6 +2073,12 @@ export class LeadAutoReplyService {
           createdAt: assistantMessage.createdAt,
           source: "AUTO_REPLY_AI",
         });
+      } catch {}
+
+      try {
+        if (lead.realtorId) {
+          await RealtorAssistantService.recalculateForRealtor(String(lead.realtorId));
+        }
       } catch {}
 
       return { ok: true as const, status: "SENT" as const };

@@ -38,6 +38,241 @@ function safeDate(value: any): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function safeString(x: any) {
+  return String(x ?? "").trim();
+}
+
+function normalizeTextForMatch(input: string) {
+  const raw = String(input || "").toLowerCase();
+  try {
+    return raw.normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  } catch {
+    return raw;
+  }
+}
+
+function includesAny(text: string, patterns: Array<string | RegExp>) {
+  for (const p of patterns) {
+    if (typeof p === "string") {
+      if (text.includes(p)) return true;
+      continue;
+    }
+    if (p.test(text)) return true;
+  }
+  return false;
+}
+
+function detectOfflineAssistantHandoffType(message: string): {
+  type:
+    | "NEGOTIATION_REQUEST"
+    | "COUNTEROFFER_REQUEST"
+    | "PRICE_CLARIFICATION_NEEDED"
+    | "ADDRESS_REQUEST"
+    | "URGENT_CLIENT_REQUEST"
+    | "RISK_OF_LOSS"
+    | "TOTAL_COST_QUESTION"
+    | "DOCS_AND_CONTRACT_QUESTION"
+    | "FINANCING_QUESTION"
+    | "RULES_AND_PERMISSIONS"
+    | "CALLBACK_REQUEST"
+    | "MORE_MEDIA_REQUEST"
+    | "MATCHING_OPPORTUNITY";
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  slaMinutes: number;
+  title: string;
+} | null {
+  const t = normalizeTextForMatch(message);
+  if (!t) return null;
+
+  const hasMoney =
+    /r\$\s*\d/.test(t) ||
+    /\d+\s*mil/.test(t) ||
+    /\d{3}\.?\d{3}/.test(t) ||
+    /(\d+)\s*(k)\b/.test(t);
+
+  const isCounterOffer =
+    includesAny(t, [
+      "faz por",
+      "fecha por",
+      "fechar por",
+      "consigo por",
+      "aceita por",
+      "proposta de",
+      "eu pago",
+      "pago",
+    ]) && hasMoney;
+
+  const isNegotiation = includesAny(t, [
+    "aceita proposta",
+    "aceita uma proposta",
+    "posso fazer uma proposta",
+    "proposta",
+    "negocia",
+    "negociar",
+    "melhor preco",
+    "melhor valor",
+    "tem desconto",
+    "desconto",
+    "permuta",
+    "troca",
+    "entrada +",
+    "entrada e",
+    "parcel",
+  ]);
+
+  const isAddress = includesAny(t, [
+    "endereco",
+    "localizacao",
+    "manda a localizacao",
+    "rua",
+    "numero",
+    "como chegar",
+    "maps",
+    "google maps",
+  ]);
+
+  const isUrgent = includesAny(t, [
+    "agora",
+    "urgente",
+    "tenho pressa",
+    "com pressa",
+    "so tenho hoje",
+    "só tenho hoje",
+    "quero fechar hoje",
+    "quero fechar",
+    "ainda esta disponivel",
+    "ainda ta disponivel",
+    "ainda está disponivel",
+    "ainda tá disponivel",
+    "disponivel agora",
+  ]);
+
+  const isRiskOfLoss = includesAny(t, [
+    "vou desistir",
+    "desistir",
+    "nao vou",
+    "não vou",
+    "muito caro",
+    "caro demais",
+    "vocês nao respondem",
+    "voces nao respondem",
+    "nao respondem",
+    "não respondem",
+    "reclam",
+    "golpe",
+    "engan",
+  ]);
+
+  const isDocs = includesAny(t, [
+    "document",
+    "escritura",
+    "habite",
+    "contrato",
+    "fgts",
+    "garantia",
+    "fiador",
+    "caucao",
+    "caução",
+  ]);
+
+  const isFinancing = includesAny(t, [
+    "financia",
+    "financiamento",
+    "banco",
+    "credito",
+    "crédito",
+    "score",
+    "entrada minima",
+    "entrada mínima",
+    "renda",
+    "parcela",
+  ]);
+
+  const isTotalCost = includesAny(t, [
+    "condominio",
+    "condomínio",
+    "iptu",
+    "agua",
+    "água",
+    "gas",
+    "gás",
+    "seguro",
+    "taxa",
+    "valor total",
+    "valor final",
+    "por mes",
+    "por mês",
+    "mensal",
+  ]);
+
+  const isPriceClarification = includesAny(t, [
+    "preco",
+    "preço",
+    "valor e esse mesmo",
+    "valor é esse mesmo",
+    "e esse mesmo",
+    "é esse mesmo",
+    "taxa escondida",
+    "com mobilia",
+    "com mobília",
+    "sem mobilia",
+    "sem mobília",
+    "mobiliado",
+  ]);
+
+  const isRules = includesAny(t, [
+    "aceita pet",
+    "pet",
+    "cachorro",
+    "gato",
+    "animais",
+    "pode furar",
+    "pode pintar",
+    "reforma",
+    "armario",
+    "armário",
+  ]);
+
+  const isCallback = includesAny(t, [
+    "me liga",
+    "me ligue",
+    "pode me ligar",
+    "telefone",
+    "whatsapp",
+    "zap",
+    "me chama",
+    "me chame",
+    "retorno",
+    "qual horario",
+    "qual horário",
+  ]);
+
+  const isMedia = includesAny(t, ["mais fotos", "mais foto", "video", "vídeo", "tour", "virtual", "tour virtual"]);
+
+  const isMatching =
+    includesAny(t, ["procuro", "busco", "estou procurando", "estou buscando", "prefiro"]) &&
+    (includesAny(t, ["ate r$", "até r$", "quartos", "dorm", "suite", "suíte", "bairro", "perto"]) || hasMoney);
+
+  if (isUrgent) return { type: "URGENT_CLIENT_REQUEST", priority: "HIGH", slaMinutes: 15, title: "Cliente com urgência" };
+  if (isRiskOfLoss) return { type: "RISK_OF_LOSS", priority: "HIGH", slaMinutes: 15, title: "Risco de perder o lead" };
+  if (isCounterOffer)
+    return { type: "COUNTEROFFER_REQUEST", priority: "HIGH", slaMinutes: 30, title: "Cliente fez proposta de valor" };
+  if (isNegotiation)
+    return { type: "NEGOTIATION_REQUEST", priority: "HIGH", slaMinutes: 30, title: "Cliente quer negociar" };
+  if (isAddress) return { type: "ADDRESS_REQUEST", priority: "HIGH", slaMinutes: 30, title: "Cliente pediu endereço/localização" };
+  if (isTotalCost) return { type: "TOTAL_COST_QUESTION", priority: "MEDIUM", slaMinutes: 60, title: "Cliente perguntou sobre custos/taxas" };
+  if (isDocs) return { type: "DOCS_AND_CONTRACT_QUESTION", priority: "MEDIUM", slaMinutes: 60, title: "Cliente perguntou sobre documentação/contrato" };
+  if (isFinancing) return { type: "FINANCING_QUESTION", priority: "MEDIUM", slaMinutes: 60, title: "Cliente perguntou sobre financiamento" };
+  if (isPriceClarification)
+    return { type: "PRICE_CLARIFICATION_NEEDED", priority: "HIGH", slaMinutes: 30, title: "Cliente pediu confirmação de preço/condições" };
+  if (isRules) return { type: "RULES_AND_PERMISSIONS", priority: "MEDIUM", slaMinutes: 60, title: "Cliente perguntou regras/permissões" };
+  if (isCallback) return { type: "CALLBACK_REQUEST", priority: "MEDIUM", slaMinutes: 60, title: "Cliente pediu retorno/contato" };
+  if (isMedia) return { type: "MORE_MEDIA_REQUEST", priority: "LOW", slaMinutes: 240, title: "Cliente pediu mais fotos/vídeo" };
+  if (isMatching) return { type: "MATCHING_OPPORTUNITY", priority: "LOW", slaMinutes: 480, title: "Preferências do cliente identificadas" };
+
+  return null;
+}
+
 function impactScoreForItem(item: any, now: Date): number {
   const priority = String(item?.priority || "");
   const base = priority === "HIGH" ? 60 : priority === "MEDIUM" ? 30 : 10;
@@ -62,10 +297,24 @@ function impactScoreForItem(item: any, now: Date): number {
   const type = String(item?.type || "");
   let typeWeight = 0;
   if (type === "UNANSWERED_CLIENT_MESSAGE") typeWeight = 30;
+  else if (type === "VISIT_REQUESTED") typeWeight = 28;
   else if (type === "VISIT_TODAY") typeWeight = 25;
   else if (type === "OWNER_APPROVAL_PENDING") typeWeight = 22;
   else if (type === "REMINDER_OVERDUE") typeWeight = 18;
   else if (type === "LEAD_NO_FIRST_CONTACT") typeWeight = 16;
+  else if (type === "NEGOTIATION_REQUEST") typeWeight = 24;
+  else if (type === "COUNTEROFFER_REQUEST") typeWeight = 24;
+  else if (type === "PRICE_CLARIFICATION_NEEDED") typeWeight = 22;
+  else if (type === "ADDRESS_REQUEST") typeWeight = 22;
+  else if (type === "URGENT_CLIENT_REQUEST") typeWeight = 22;
+  else if (type === "RISK_OF_LOSS") typeWeight = 22;
+  else if (type === "TOTAL_COST_QUESTION") typeWeight = 16;
+  else if (type === "DOCS_AND_CONTRACT_QUESTION") typeWeight = 16;
+  else if (type === "FINANCING_QUESTION") typeWeight = 16;
+  else if (type === "RULES_AND_PERMISSIONS") typeWeight = 12;
+  else if (type === "CALLBACK_REQUEST") typeWeight = 12;
+  else if (type === "MORE_MEDIA_REQUEST") typeWeight = 6;
+  else if (type === "MATCHING_OPPORTUNITY") typeWeight = 8;
   else if (type === "STALE_LEAD") typeWeight = 10;
   else if (type === "NEW_LEAD") typeWeight = 12;
   else if (type === "WEEKLY_SUMMARY") typeWeight = 0;
@@ -828,6 +1077,14 @@ export class RealtorAssistantService {
     });
     const lastInternalMsgMap = new Map(lastInternalMessages.map((m) => [m.leadId, m.createdAt]));
 
+    const lastHumanProChat = await prisma.leadClientMessage.findMany({
+      where: { leadId: { in: leadIds }, fromClient: false, source: "HUMAN" as any },
+      orderBy: { createdAt: "desc" },
+      distinct: ["leadId"],
+      select: { leadId: true, createdAt: true },
+    });
+    const lastHumanProChatMap = new Map(lastHumanProChat.map((m) => [m.leadId, m.createdAt]));
+
     const lastProChat = await prisma.leadClientMessage.findMany({
       where: { leadId: { in: leadIds }, fromClient: false },
       orderBy: { createdAt: "desc" },
@@ -851,24 +1108,54 @@ export class RealtorAssistantService {
         .map((r: any) => [String(r.leadId), new Date(r.lastReadAt)])
     );
 
+    const lastAutoReplyEvents = await (prisma as any).leadEvent
+      .findMany({
+        where: { leadId: { in: leadIds }, type: "AUTO_REPLY_SENT" as any },
+        orderBy: { createdAt: "desc" },
+        distinct: ["leadId"],
+        select: { leadId: true, createdAt: true, metadata: true },
+      })
+      .catch(() => []);
+    const lastAutoReplyMap = new Map<string, any>((lastAutoReplyEvents || []).map((e: any) => [String(e.leadId), e]));
+
+    const visitRequestedEvents = await (prisma as any).leadEvent
+      .findMany({
+        where: { leadId: { in: leadIds }, type: "VISIT_REQUESTED" as any },
+        orderBy: { createdAt: "desc" },
+        distinct: ["leadId"],
+        select: { leadId: true, createdAt: true, metadata: true },
+      })
+      .catch(() => []);
+    const visitRequestedMap = new Map<string, any>((visitRequestedEvents || []).map((e: any) => [String(e.leadId), e]));
+
+    const visitConfirmedEvents = await (prisma as any).leadEvent
+      .findMany({
+        where: { leadId: { in: leadIds }, type: "VISIT_CONFIRMED" as any },
+        orderBy: { createdAt: "desc" },
+        distinct: ["leadId"],
+        select: { leadId: true, createdAt: true },
+      })
+      .catch(() => []);
+    const visitConfirmedMap = new Map<string, any>((visitConfirmedEvents || []).map((e: any) => [String(e.leadId), e]));
+
     const firstClientMessages = await prisma.leadClientMessage.findMany({
       where: { leadId: { in: leadIds }, fromClient: true },
       orderBy: { createdAt: "asc" },
       distinct: ["leadId"],
-      select: { leadId: true, createdAt: true, content: true },
+      select: { id: true, leadId: true, createdAt: true, content: true },
     });
     const firstClientMsgMap = new Map(
-      (firstClientMessages || []).map((m: any) => [m.leadId, { createdAt: m.createdAt, content: m.content }])
+      (firstClientMessages || []).map((m: any) => [m.leadId, { id: m.id, createdAt: m.createdAt, content: m.content }])
     );
 
     const lastClientMessages = await prisma.leadClientMessage.findMany({
       where: { leadId: { in: leadIds }, fromClient: true },
       orderBy: { createdAt: "desc" },
       distinct: ["leadId"],
-      select: { leadId: true, createdAt: true, content: true },
+      select: { id: true, leadId: true, createdAt: true, content: true },
     });
     const lastClientMsgMap = new Map(
-      (lastClientMessages || []).map((m: any) => [m.leadId, { createdAt: m.createdAt, content: m.content }])
+      (lastClientMessages || []).map((m: any) => [m.leadId, { id: m.id, createdAt: m.createdAt, content: m.content }])
     );
 
     const recentClientMessages = await prisma.leadClientMessage.findMany({
@@ -878,7 +1165,7 @@ export class RealtorAssistantService {
         createdAt: { gte: addDays(now, -14) },
       },
       orderBy: { createdAt: "asc" },
-      select: { leadId: true, createdAt: true, content: true },
+      select: { id: true, leadId: true, createdAt: true, content: true },
     });
 
     const dedupeKeys = new Set<string>();
@@ -1021,6 +1308,7 @@ export class RealtorAssistantService {
       const lastNoteAt = lastNoteMap.get(lead.id) as Date | undefined;
       const lastInternalMsgAt = lastInternalMsgMap.get(lead.id) as Date | undefined;
       const lastProChatAt = lastProChatMap.get(lead.id) as Date | undefined;
+      const lastHumanProChatAt = lastHumanProChatMap.get(lead.id) as Date | undefined;
 
       const lastContactCandidates: Date[] = [];
       if (lastNoteAt) lastContactCandidates.push(lastNoteAt);
@@ -1111,15 +1399,10 @@ export class RealtorAssistantService {
         const unansweredCount = unansweredMsgs.length;
         const hasUnread = unreadCount > 0;
         const hasUnanswered = unansweredCount > 0;
-        if (!hasUnread && !hasUnanswered) continue;
+        if (!hasUnanswered) continue;
 
-        const firstUnreadAt = hasUnread ? new Date(unreadMsgs[0].createdAt) : null;
         const firstUnansweredAt = hasUnanswered ? new Date(unansweredMsgs[0].createdAt) : null;
-        const firstPendingAt = (() => {
-          const candidates = [firstUnreadAt, firstUnansweredAt].filter(Boolean) as Date[];
-          if (!candidates.length) return lastClientAt;
-          return new Date(Math.min(...candidates.map((d) => d.getTime())));
-        })();
+        const firstPendingAt = firstUnansweredAt || lastClientAt;
 
         const slaMinutes = SLA_MINUTES_BY_CHANNEL[channel] ?? 30;
         const dueAt = addMinutes(firstPendingAt, slaMinutes);
@@ -1130,7 +1413,7 @@ export class RealtorAssistantService {
         const priority: "LOW" | "MEDIUM" | "HIGH" = isOverdue || msToDue <= 5 * 60 * 1000 ? "HIGH" : "MEDIUM";
 
         const lastPreview = String(lastClientInChannel.content || "").trim().slice(0, 140);
-        const countBase = hasUnread ? unreadCount : unansweredCount;
+        const countBase = unansweredCount;
         const countText = countBase === 1 ? "uma mensagem" : `${countBase} mensagens`;
         const title = `Cliente aguardando ação (${channelLabel[channel] || channel})`;
         const statusLabel = hasUnread && hasUnanswered ? "não lida e sem resposta" : hasUnread ? "não lida" : "sem resposta";
@@ -1166,6 +1449,112 @@ export class RealtorAssistantService {
             leadSource,
           },
         });
+      }
+
+      const visitRequested = visitRequestedMap.get(String(lead.id)) as any;
+      if (visitRequested?.createdAt) {
+        const requestedAt = safeDate(visitRequested.createdAt);
+        const confirmedAt = safeDate((visitConfirmedMap.get(String(lead.id)) as any)?.createdAt);
+        const isConfirmedByEvent = !!(requestedAt && confirmedAt && confirmedAt.getTime() > requestedAt.getTime());
+        const isConfirmedByLead = !!lead.visitDate;
+        const visitRequestedClientMessageId = safeString((visitRequested as any)?.metadata?.clientMessageId);
+        const autoForVisit = lastAutoReplyMap.get(String(lead.id)) as any;
+        const autoClientMessageId = safeString(autoForVisit?.metadata?.clientMessageId);
+        const autoVisitHandoffFlag = (autoForVisit as any)?.metadata?.aiJson?.visitHandoffNeeded;
+        const isAutoReplySameMessage = !!(visitRequestedClientMessageId && autoClientMessageId && visitRequestedClientMessageId === autoClientMessageId);
+        const shouldSuppressLegacyFalseVisit = isAutoReplySameMessage && autoVisitHandoffFlag === false;
+
+        if (requestedAt && !isConfirmedByEvent && !isConfirmedByLead && !shouldSuppressLegacyFalseVisit) {
+          const key = `VISIT_REQUESTED:${lead.id}`;
+          dedupeKeys.add(key);
+
+          const dueAt = addMinutes(requestedAt, 60);
+          const msToDue = dueAt.getTime() - now.getTime();
+          const priority: "LOW" | "MEDIUM" | "HIGH" = msToDue <= 0 || now.getTime() - requestedAt.getTime() <= 2 * 60 * 60 * 1000 ? "HIGH" : "MEDIUM";
+
+          const prefs = (visitRequested as any)?.metadata?.preferences || null;
+          const pPeriod = safeString((prefs as any)?.period);
+          const pTime = safeString((prefs as any)?.time);
+          const pDays = Array.isArray((prefs as any)?.days) ? (prefs as any).days.filter(Boolean) : [];
+          const prefsText = [pPeriod, pTime, pDays.length ? pDays.join(", ") : ""].filter(Boolean).join(" | ");
+
+          const lastClientPreview = safeString((lastClient as any)?.content).slice(0, 140);
+          const message = prefsText
+            ? `Solicitação de visita. Preferências: ${prefsText}${lastClientPreview ? `. Última: “${lastClientPreview}”` : "."}`
+            : `Solicitação de visita${lastClientPreview ? `. Última: “${lastClientPreview}”` : "."}`;
+
+          await this.upsertFromRule({
+            context: "REALTOR",
+            ownerId: realtorId,
+            leadId: lead.id,
+            type: "VISIT_REQUESTED",
+            priority,
+            title: "Solicitação de visita",
+            message,
+            dueAt,
+            dedupeKey: key,
+            primaryAction: { type: "OPEN_CHAT", leadId: lead.id },
+            secondaryAction: { type: "OPEN_LEAD", leadId: lead.id },
+            metadata: {
+              requestedAt: requestedAt.toISOString(),
+              prefs: prefs || null,
+              clientMessageId: visitRequestedClientMessageId || null,
+            },
+          });
+        }
+      }
+
+      const lastClientAt2 = safeDate((lastClient as any)?.createdAt);
+      const lastClientId2 = safeString((lastClient as any)?.id);
+      const lastAutoReply = lastAutoReplyMap.get(String(lead.id)) as any;
+      const lastAutoReplyAt = safeDate(lastAutoReply?.createdAt);
+      const lastAutoReplyClientMessageId = safeString(lastAutoReply?.metadata?.clientMessageId);
+      const hasAutoReplyForLatest =
+        (!!lastAutoReplyAt && !!lastClientAt2 && lastAutoReplyAt.getTime() >= lastClientAt2.getTime() && lastAutoReplyAt.getTime() - lastClientAt2.getTime() <= 60 * 60 * 1000) ||
+        (!!lastClientId2 && !!lastAutoReplyClientMessageId && lastAutoReplyClientMessageId === lastClientId2);
+
+      const needsHumanFollowUp = !!(lastClientAt2 && (!lastHumanProChatAt || lastHumanProChatAt.getTime() < lastClientAt2.getTime()));
+
+      if (hasAutoReplyForLatest && needsHumanFollowUp) {
+        const handoff = detectOfflineAssistantHandoffType(safeString((lastClient as any)?.content));
+        const autoJson = (lastAutoReply as any)?.metadata?.aiJson || null;
+        const finalHandoffNeeded = Boolean(
+          (autoJson as any)?.finalHandoffNeeded ?? (autoJson as any)?.handoffNeeded ?? false
+        );
+        if (handoff && finalHandoffNeeded) {
+          const key = `HANDOFF:${lead.id}:${handoff.type}`;
+          dedupeKeys.add(key);
+
+          const dueAt = lastClientAt2 ? addMinutes(lastClientAt2, handoff.slaMinutes) : null;
+          const lastPreview = safeString((lastClient as any)?.content).slice(0, 140);
+          const message = lastPreview
+            ? `${clientName}: “${lastPreview}”`
+            : `${clientName} pediu ajuda do corretor.`;
+
+          await this.upsertFromRule({
+            context: "REALTOR",
+            ownerId: realtorId,
+            leadId: lead.id,
+            type: handoff.type,
+            priority: handoff.priority,
+            title: handoff.title,
+            message,
+            dueAt,
+            dedupeKey: key,
+            primaryAction: { type: "OPEN_CHAT", leadId: lead.id },
+            secondaryAction: { type: "OPEN_LEAD", leadId: lead.id },
+            metadata: {
+              lastClientMessageId: lastClientId2 || null,
+              lastClientAt: lastClientAt2 ? lastClientAt2.toISOString() : null,
+              lastHumanAt: lastHumanProChatAt ? new Date(lastHumanProChatAt).toISOString() : null,
+              lastAutoReplyAt: lastAutoReplyAt ? lastAutoReplyAt.toISOString() : null,
+              autoReplyClientMessageId: lastAutoReplyClientMessageId || null,
+              autoReplyHandoffNeeded: Boolean((autoJson as any)?.handoffNeeded),
+              autoReplyFinalHandoffNeeded: finalHandoffNeeded,
+              offlineAssistant: true,
+            },
+          });
+        }
       }
 
       const firstContactThreshold = new Date(lead.createdAt);

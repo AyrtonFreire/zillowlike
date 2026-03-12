@@ -1,6 +1,7 @@
 export type RealtorAssistantItemType =
   | "NEW_LEAD"
   | "UNANSWERED_CLIENT_MESSAGE"
+  | "VISIT_REQUESTED"
   | "LEAD_NO_FIRST_CONTACT"
   | "STALE_LEAD"
   | "REMINDER_TODAY"
@@ -9,6 +10,19 @@ export type RealtorAssistantItemType =
   | "VISIT_TOMORROW"
   | "OWNER_APPROVAL_PENDING"
   | "WEEKLY_SUMMARY"
+  | "NEGOTIATION_REQUEST"
+  | "COUNTEROFFER_REQUEST"
+  | "PRICE_CLARIFICATION_NEEDED"
+  | "ADDRESS_REQUEST"
+  | "URGENT_CLIENT_REQUEST"
+  | "RISK_OF_LOSS"
+  | "TOTAL_COST_QUESTION"
+  | "DOCS_AND_CONTRACT_QUESTION"
+  | "FINANCING_QUESTION"
+  | "RULES_AND_PERMISSIONS"
+  | "CALLBACK_REQUEST"
+  | "MORE_MEDIA_REQUEST"
+  | "MATCHING_OPPORTUNITY"
   | (string & {});
 
 export type RealtorAssistantCategory = "Leads" | "Visitas" | "Lembretes" | "Outros";
@@ -50,6 +64,134 @@ const SPECS: Partial<Record<RealtorAssistantItemType, RealtorAssistantAiSpec>> =
       "- Faça 1 a 3 perguntas de qualificação se necessário\n" +
       "- Sugira um próximo passo claro (ex.: agendar visita, enviar mais fotos, confirmar disponibilidade)\n" +
       "- Evite texto longo e evite parecer robótico",
+  },
+  VISIT_REQUESTED: {
+    category: "Visitas",
+    taskLabel: "Responder sobre visita",
+    typeInstructions:
+      "O cliente pediu visita, mas ainda precisa de confirmação/combinação do corretor.\n" +
+      "- Confirme que você viu a solicitação\n" +
+      "- Pergunte 1 a 2 opções objetivas de dia/horário\n" +
+      "- Combine como será o encontro (sem expor dados sensíveis)\n" +
+      "- Seja prático e evite prometer disponibilidade sem checar",
+  },
+  NEGOTIATION_REQUEST: {
+    category: "Leads",
+    taskLabel: "Responder negociação",
+    typeInstructions:
+      "O cliente quer negociar preço/condições.\n" +
+      "- Responda com educação, sem prometer desconto\n" +
+      "- Peça detalhes da proposta (valor, forma de pagamento, prazo)\n" +
+      "- Sugira próximo passo (ex.: formalizar proposta / agendar conversa)\n" +
+      "- Evite parecer automático",
+  },
+  COUNTEROFFER_REQUEST: {
+    category: "Leads",
+    taskLabel: "Responder proposta",
+    typeInstructions:
+      "O cliente já indicou um valor.\n" +
+      "- Agradeça e confirme o valor entendido\n" +
+      "- Pergunte forma de pagamento e prazo\n" +
+      "- Diga que você vai verificar e retorna com posicionamento\n" +
+      "- Não feche negócio automaticamente",
+  },
+  PRICE_CLARIFICATION_NEEDED: {
+    category: "Leads",
+    taskLabel: "Esclarecer preço/condições",
+    typeInstructions:
+      "O cliente questionou preço/condições do anunciado (taxas, mobília, valores).\n" +
+      "- Responda de forma objetiva\n" +
+      "- Se algo não constar no anúncio, diga que precisa confirmar\n" +
+      "- Faça 1 pergunta de alinhamento se necessário",
+  },
+  ADDRESS_REQUEST: {
+    category: "Leads",
+    taskLabel: "Responder localização",
+    typeInstructions:
+      "O cliente pediu endereço/localização.\n" +
+      "- Não exponha endereço exato se não for política\n" +
+      "- Sugira combinar ponto de encontro ou confirmar a região\n" +
+      "- Ofereça agendar visita/ligação",
+  },
+  URGENT_CLIENT_REQUEST: {
+    category: "Leads",
+    taskLabel: "Responder com urgência",
+    typeInstructions:
+      "O cliente demonstra urgência.\n" +
+      "- Responda curto e com prioridade\n" +
+      "- Confirme disponibilidade do imóvel\n" +
+      "- Sugira o próximo passo imediato (ex.: visita ou envio de documentos)",
+  },
+  RISK_OF_LOSS: {
+    category: "Leads",
+    taskLabel: "Reverter objeção",
+    typeInstructions:
+      "O cliente sinalizou desistência/insatisfação.\n" +
+      "- Seja empático e direto\n" +
+      "- Peça 1 informação para entender a objeção\n" +
+      "- Ofereça alternativa (imóvel similar, visita, condição)\n" +
+      "- Evite discussão",
+  },
+  TOTAL_COST_QUESTION: {
+    category: "Leads",
+    taskLabel: "Esclarecer custos",
+    typeInstructions:
+      "O cliente perguntou sobre custo total/taxas.\n" +
+      "- Explique itens (aluguel, condomínio, IPTU, água/gás, seguro) se houver dados\n" +
+      "- Se não houver, diga que vai confirmar e retornar\n" +
+      "- Mantenha a resposta curta",
+  },
+  DOCS_AND_CONTRACT_QUESTION: {
+    category: "Leads",
+    taskLabel: "Esclarecer documentação",
+    typeInstructions:
+      "O cliente perguntou sobre documentação/contrato/garantias.\n" +
+      "- Responda de forma cuidadosa\n" +
+      "- Se for algo jurídico específico, diga que precisa confirmar\n" +
+      "- Sugira o próximo passo",
+  },
+  FINANCING_QUESTION: {
+    category: "Leads",
+    taskLabel: "Responder financiamento",
+    typeInstructions:
+      "O cliente perguntou sobre financiamento.\n" +
+      "- Confirme se o imóvel aceita financiamento (se souber)\n" +
+      "- Pergunte faixa de entrada/renda\n" +
+      "- Sugira simulação/visita",
+  },
+  RULES_AND_PERMISSIONS: {
+    category: "Leads",
+    taskLabel: "Responder regras",
+    typeInstructions:
+      "O cliente perguntou sobre regras (pet, reforma, mobília).\n" +
+      "- Responda objetivo\n" +
+      "- Se precisar confirmar com proprietário, diga e peça 1 detalhe",
+  },
+  CALLBACK_REQUEST: {
+    category: "Leads",
+    taskLabel: "Combinar retorno",
+    typeInstructions:
+      "O cliente pediu retorno (ligação/WhatsApp/horário).\n" +
+      "- Sugira atender pelo chat e peça 1 janela de horário\n" +
+      "- Seja rápido e prático",
+  },
+  MORE_MEDIA_REQUEST: {
+    category: "Leads",
+    taskLabel: "Enviar mídia",
+    typeInstructions:
+      "O cliente pediu mais fotos/vídeo/tour.\n" +
+      "- Diga que vai enviar material disponível\n" +
+      "- Pergunte o que ele quer ver (2-3 tópicos)\n" +
+      "- Sugira visita se fizer sentido",
+  },
+  MATCHING_OPPORTUNITY: {
+    category: "Leads",
+    taskLabel: "Sugerir opções",
+    typeInstructions:
+      "O cliente deu preferências/budget.\n" +
+      "- Confirme as preferências\n" +
+      "- Ofereça 1-3 alternativas (se tiver) ou peça permissão para buscar\n" +
+      "- Sugira próximo passo",
   },
   NEW_LEAD: {
     category: "Leads",

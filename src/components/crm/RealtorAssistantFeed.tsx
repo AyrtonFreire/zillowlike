@@ -242,25 +242,58 @@ function isInternalChecklistType(itemType: string | null | undefined) {
 
 function shouldAutoResolveOnReply(itemType: string | null | undefined) {
   const t = String(itemType || "").trim();
-  return t === "UNANSWERED_CLIENT_MESSAGE" || t === "NEW_LEAD" || t === "LEAD_NO_FIRST_CONTACT" || t === "STALE_LEAD";
+  return (
+    t === "UNANSWERED_CLIENT_MESSAGE" ||
+    t === "NEW_LEAD" ||
+    t === "LEAD_NO_FIRST_CONTACT" ||
+    t === "STALE_LEAD" ||
+    t === "VISIT_REQUESTED" ||
+    t === "NEGOTIATION_REQUEST" ||
+    t === "COUNTEROFFER_REQUEST" ||
+    t === "PRICE_CLARIFICATION_NEEDED" ||
+    t === "ADDRESS_REQUEST" ||
+    t === "URGENT_CLIENT_REQUEST" ||
+    t === "RISK_OF_LOSS" ||
+    t === "TOTAL_COST_QUESTION" ||
+    t === "DOCS_AND_CONTRACT_QUESTION" ||
+    t === "FINANCING_QUESTION" ||
+    t === "RULES_AND_PERMISSIONS" ||
+    t === "CALLBACK_REQUEST" ||
+    t === "MORE_MEDIA_REQUEST" ||
+    t === "MATCHING_OPPORTUNITY"
+  );
 }
 
 function assistantTypeRank(itemType: string | null | undefined): number {
   const t = String(itemType || "").trim();
-  if (t === "UNANSWERED_CLIENT_MESSAGE") return 1;
-  if (t === "VISIT_TODAY" || t === "VISIT_TOMORROW") return 2;
-  if (t === "OWNER_APPROVAL_PENDING") return 3;
-  if (t === "REMINDER_OVERDUE" || t === "REMINDER_TODAY") return 4;
-  if (t === "NEW_LEAD") return 5;
-  if (t === "LEAD_NO_FIRST_CONTACT") return 6;
-  if (t === "STALE_LEAD") return 7;
+  if (t === "URGENT_CLIENT_REQUEST") return 1;
+  if (t === "RISK_OF_LOSS") return 2;
+  if (t === "COUNTEROFFER_REQUEST") return 3;
+  if (t === "NEGOTIATION_REQUEST") return 4;
+  if (t === "ADDRESS_REQUEST") return 5;
+  if (t === "PRICE_CLARIFICATION_NEEDED") return 6;
+  if (t === "UNANSWERED_CLIENT_MESSAGE") return 7;
+  if (t === "VISIT_REQUESTED") return 8;
+  if (t === "VISIT_TODAY" || t === "VISIT_TOMORROW") return 9;
+  if (t === "OWNER_APPROVAL_PENDING") return 10;
+  if (t === "REMINDER_OVERDUE" || t === "REMINDER_TODAY") return 11;
+  if (t === "NEW_LEAD") return 12;
+  if (t === "LEAD_NO_FIRST_CONTACT") return 13;
+  if (t === "STALE_LEAD") return 14;
+  if (t === "TOTAL_COST_QUESTION") return 20;
+  if (t === "DOCS_AND_CONTRACT_QUESTION") return 21;
+  if (t === "FINANCING_QUESTION") return 22;
+  if (t === "RULES_AND_PERMISSIONS") return 23;
+  if (t === "CALLBACK_REQUEST") return 24;
+  if (t === "MORE_MEDIA_REQUEST") return 30;
+  if (t === "MATCHING_OPPORTUNITY") return 31;
   return 100;
 }
 
 function assistantDedupeKey(item: any): string {
   const t = String(item?.type || "").trim();
   if (!t) return "UNKNOWN";
-  if (t === "UNANSWERED_CLIENT_MESSAGE") return t;
+  // Mantém 1 item por lead+tipo quando o feed agrega por lead
   return t;
 }
 
