@@ -111,13 +111,14 @@ function CardOverlay({
   anim?: CAnim;
 }) {
   const a = ACCENT[card.accent];
+  const isCompact = minH <= 220;
 
   const overlayClass =
     overlay === "bottom"
-      ? "bg-gradient-to-t from-black/80 via-black/35 to-black/10"
+      ? "bg-gradient-to-t from-black/70 via-black/20 to-transparent"
       : overlay === "rl"
-        ? "bg-gradient-to-l from-black/75 via-black/20 to-transparent"
-        : "bg-gradient-to-r from-black/75 via-black/20 to-transparent";
+        ? "bg-gradient-to-l from-black/55 via-black/12 to-transparent"
+        : "bg-gradient-to-r from-black/55 via-black/12 to-transparent";
 
   const cardHover =
     anim === "1"
@@ -171,15 +172,25 @@ function CardOverlay({
           contentAlign === "bottom" ? "justify-end" : "justify-center"
         } items-start`}
       >
-        <div className="max-w-[40rem] rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 p-6 sm:p-7 shadow-[0_18px_60px_rgba(0,0,0,0.38)]">
-          <h3 className="text-2xl lg:text-3xl font-display text-white">
+        <div className={`${isCompact ? "max-w-[28rem]" : "max-w-[44rem]"} drop-shadow-lg`}>
+          <h3
+            className={`${
+              isCompact ? "text-xl lg:text-2xl" : "text-2xl lg:text-3xl"
+            } font-display text-white leading-tight`}
+          >
             {card.title}
           </h3>
-          <p className="mt-3 text-sm lg:text-base text-white/90 leading-relaxed">
-            {card.desc}
-          </p>
-          <div className="mt-6">
-            <span className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold ${a.cta} ${ctaAnim}`}>
+          {!isCompact && (
+            <p className="mt-3 text-sm lg:text-base text-white/90 leading-relaxed">
+              {card.desc}
+            </p>
+          )}
+          <div className={isCompact ? "mt-4" : "mt-6"}>
+            <span
+              className={`inline-flex items-center gap-2 rounded-full ${
+                isCompact ? "px-4 py-2 text-xs" : "px-6 py-3 text-sm"
+              } font-semibold ${a.cta} ${ctaAnim}`}
+            >
               {card.cta}
               <ArrowRight className="w-4 h-4" />
             </span>
@@ -195,7 +206,7 @@ function MobileCard({ card }: { card: Card }) {
   return (
     <Link
       href={card.href}
-      className={`group relative overflow-hidden rounded-2xl ring-1 ${a.ring} bg-slate-950 shadow-[0_16px_40px_rgba(2,6,23,0.30)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_60px_rgba(2,6,23,0.38)]`}
+      className={`group overflow-hidden rounded-2xl ring-1 ${a.ring} bg-white shadow-[0_16px_40px_rgba(2,6,23,0.12)] transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_60px_rgba(2,6,23,0.16)]`}
     >
       <div className="relative h-[178px]">
         <Image
@@ -205,21 +216,16 @@ function MobileCard({ card }: { card: Card }) {
           sizes="(max-width: 768px) 100vw, 50vw"
           className="object-cover scale-[1.02] group-hover:scale-[1.06] transition-transform duration-500"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/10" />
       </div>
 
-      <div className="absolute inset-0 p-4 flex flex-col justify-end items-start">
-        <div className="rounded-xl bg-black/60 backdrop-blur-md border border-white/10 p-4 shadow-[0_14px_40px_rgba(0,0,0,0.38)]">
-          <p className="text-base font-semibold text-white leading-snug">
-            {card.title}
-          </p>
-          <p className="mt-1 text-xs text-white/85 line-clamp-2">{card.desc}</p>
-          <div className="mt-3">
-            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${a.cta}`}>
-              {card.cta}
-              <ArrowRight className="w-4 h-4" />
-            </span>
-          </div>
+      <div className="p-4">
+        <p className="text-base font-semibold text-gray-900 leading-snug">{card.title}</p>
+        <p className="mt-1 text-xs text-gray-600 line-clamp-2">{card.desc}</p>
+        <div className="mt-3">
+          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${a.cta}`}>
+            {card.cta}
+            <ArrowRight className="w-4 h-4" />
+          </span>
         </div>
       </div>
     </Link>
