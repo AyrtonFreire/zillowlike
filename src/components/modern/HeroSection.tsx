@@ -28,6 +28,7 @@ export default function HeroSection() {
   const [professionalSuggestions, setProfessionalSuggestions] = useState<SearchSuggestion[]>([]);
   const [activeSuggestionsTab, setActiveSuggestionsTab] = useState<"locations" | "professionals">("locations");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [hasUserInteractedWithSearch, setHasUserInteractedWithSearch] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const router = useRouter();
@@ -80,6 +81,10 @@ export default function HeroSection() {
       const isAt = raw.startsWith('@');
       const q = (isAt ? raw.slice(1) : raw).trim();
 
+      if (!hasUserInteractedWithSearch) {
+        return;
+      }
+
       if (!raw.length) {
         setIsFetchingSuggestions(true);
         try {
@@ -114,7 +119,6 @@ export default function HeroSection() {
             if (!cancelled) {
               setLocationSuggestions(items);
               setProfessionalSuggestions([]);
-              setShowSuggestions(true);
             }
           }
         } catch (error) {
@@ -177,7 +181,6 @@ export default function HeroSection() {
         }
 
         await Promise.all(tasks);
-        if (!cancelled) setShowSuggestions(true);
       } catch (error) {
         console.error('Error fetching suggestions:', error);
         if (!cancelled) {
@@ -194,7 +197,7 @@ export default function HeroSection() {
       cancelled = true;
       clearTimeout(debounce);
     };
-  }, [searchQuery, activeSuggestionsTab]);
+  }, [searchQuery, activeSuggestionsTab, hasUserInteractedWithSearch]);
 
   // Fechar dropdowns ao clicar fora
   useEffect(() => {
@@ -443,8 +446,15 @@ export default function HeroSection() {
                       type="text"
                       placeholder="Cidade, região, bairro"
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onFocus={() => setShowSuggestions(true)}
+                      onChange={(e) => {
+                        setHasUserInteractedWithSearch(true);
+                        setSearchQuery(e.target.value);
+                        setShowSuggestions(true);
+                      }}
+                      onFocus={() => {
+                        setHasUserInteractedWithSearch(true);
+                        setShowSuggestions(true);
+                      }}
                       className="flex-1 outline-none text-gray-800 placeholder:text-gray-500 text-sm bg-transparent"
                     />
                   </div>
@@ -501,8 +511,15 @@ export default function HeroSection() {
                       type="text"
                       placeholder="Buscar cidade ou bairro..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onFocus={() => setShowSuggestions(true)}
+                      onChange={(e) => {
+                        setHasUserInteractedWithSearch(true);
+                        setSearchQuery(e.target.value);
+                        setShowSuggestions(true);
+                      }}
+                      onFocus={() => {
+                        setHasUserInteractedWithSearch(true);
+                        setShowSuggestions(true);
+                      }}
                       className="flex-1 outline-none text-gray-800 placeholder:text-gray-400 text-sm bg-transparent min-w-0"
                     />
 
