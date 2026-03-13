@@ -178,7 +178,12 @@ export async function GET(req: NextRequest) {
     if (city) where.city = { equals: city, mode: 'insensitive' as Prisma.QueryMode };
     if (state) where.state = { equals: state, mode: 'insensitive' as Prisma.QueryMode };
     if (agencyId) where.teamId = String(agencyId);
-    if (realtorId) where.capturerRealtorId = String(realtorId);
+    if (realtorId) {
+      const rid = String(realtorId);
+      (where.AND ||= [] as any[]).push({
+        OR: [{ capturerRealtorId: rid }, { ownerId: rid }],
+      });
+    }
     if (type) {
       const upperType = String(type).toUpperCase();
       if (REMOVED_PROPERTY_TYPES.has(upperType)) {
@@ -186,7 +191,14 @@ export async function GET(req: NextRequest) {
       }
       where.type = type as any;
     }
-    if (purpose) where.purpose = purpose as any;
+    if (purpose) {
+      const p = String(purpose).toUpperCase();
+      if (p === "SALE") {
+        (where.AND ||= [] as any[]).push({ OR: [{ purpose: "SALE" }, { purpose: null }] });
+      } else {
+        where.purpose = purpose as any;
+      }
+    }
     if (!where.type) {
       where.type = { notIn: Array.from(REMOVED_PROPERTY_TYPES) };
     }
@@ -310,7 +322,7 @@ export async function GET(req: NextRequest) {
         ors.push({ description: { contains: searchTerm, mode: 'insensitive' as Prisma.QueryMode } });
       }
 
-      where.OR = ors;
+      (where.AND ||= [] as any[]).push({ OR: ors });
     }
 
     // Bounds filtering (viewport)
