@@ -250,6 +250,80 @@ summary,
   box-shadow: 0 0 30px rgba(0, 255, 200, 0.25), 0 0 10px rgba(0, 115, 110, 0.4);
 }
 
+.zlw-range-overlay {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.zlw-range-overlay:focus {
+  outline: none;
+}
+
+.zlw-range-overlay::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.zlw-range-overlay::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at center, var(--brand-accent) 0 36%, #ffffff 38% 100%);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow: 0 10px 24px rgba(2, 22, 22, 0.18), 0 2px 6px rgba(2, 22, 22, 0.12);
+  cursor: grab;
+  transition: box-shadow 120ms ease;
+  pointer-events: auto;
+}
+
+.zlw-range-overlay::-webkit-slider-thumb:hover {
+  box-shadow: 0 12px 28px rgba(2, 22, 22, 0.22), 0 3px 8px rgba(2, 22, 22, 0.14);
+}
+
+.zlw-range-overlay:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  box-shadow: 0 8px 18px rgba(2, 22, 22, 0.20), 0 1px 4px rgba(2, 22, 22, 0.10);
+}
+
+.zlw-range-overlay:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 6px rgba(0, 155, 145, 0.22), 0 12px 28px rgba(2, 22, 22, 0.18);
+}
+
+.zlw-range-overlay::-moz-range-track {
+  height: 10px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.zlw-range-overlay::-moz-range-thumb {
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at center, var(--brand-accent) 0 36%, #ffffff 38% 100%);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow: 0 10px 24px rgba(2, 22, 22, 0.18), 0 2px 6px rgba(2, 22, 22, 0.12);
+  cursor: grab;
+  transition: box-shadow 120ms ease;
+  pointer-events: auto;
+}
+
+.zlw-range-overlay::-moz-range-thumb:hover {
+  box-shadow: 0 12px 28px rgba(2, 22, 22, 0.22), 0 3px 8px rgba(2, 22, 22, 0.14);
+}
+
+.zlw-range-overlay:active::-moz-range-thumb {
+  cursor: grabbing;
+  box-shadow: 0 8px 18px rgba(2, 22, 22, 0.20), 0 1px 4px rgba(2, 22, 22, 0.10);
+}
+
+.zlw-range-overlay:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 6px rgba(0, 155, 145, 0.22), 0 12px 28px rgba(2, 22, 22, 0.18);
+}
+
 /* Smooth transitions */
 .transition-smooth {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

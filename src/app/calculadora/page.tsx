@@ -62,6 +62,21 @@ export default function CalculadoraPage() {
   const resultado = calcularFinanciamento();
   const percentualEntrada = ((parseFloat(entrada) / parseFloat(valor)) * 100).toFixed(1);
 
+  const entradaPercent = (() => {
+    const v = Math.max(1, Number(valor) || 0);
+    const e = Math.max(0, Number(entrada) || 0);
+    const p = (e / v) * 100;
+    return Math.max(0, Math.min(100, p));
+  })();
+
+  const jurosPercent = (() => {
+    const minJ = 6;
+    const maxJ = 15;
+    const j = Number(juros) || minJ;
+    const p = ((j - minJ) / (maxJ - minJ)) * 100;
+    return Math.max(0, Math.min(100, p));
+  })();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <ModernNavbar forceLight />
@@ -124,14 +139,21 @@ export default function CalculadoraPage() {
                   placeholder="60000"
                 />
               </div>
-              <input
-                type="range"
-                min="0"
-                max={valor}
-                value={entrada}
-                onChange={(e) => setEntrada(e.target.value)}
-                className="w-full mt-2"
-              />
+              <div className="mt-2 relative w-full py-4">
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2.5 rounded-full bg-neutral-200/90" />
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 h-2.5 rounded-full bg-gradient-to-r from-[#009B91] via-[#00736E] to-[#021616] shadow-[0_0_0_1px_rgba(0,155,145,0.25)]"
+                  style={{ left: "0%", right: `${100 - entradaPercent}%` }}
+                />
+                <input
+                  type="range"
+                  min="0"
+                  max={valor}
+                  value={entrada}
+                  onChange={(e) => setEntrada(e.target.value)}
+                  className="zlw-range-overlay absolute inset-x-0 top-1/2 -translate-y-1/2 w-full"
+                />
+              </div>
               <p className="mt-1 text-sm text-gray-600">
                 R$ {parseFloat(entrada || "0").toLocaleString("pt-BR")}
               </p>
@@ -188,15 +210,22 @@ export default function CalculadoraPage() {
                   placeholder="9.5"
                 />
               </div>
-              <input
-                type="range"
-                min="6"
-                max="15"
-                step="0.1"
-                value={juros}
-                onChange={(e) => setJuros(e.target.value)}
-                className="w-full mt-2"
-              />
+              <div className="mt-2 relative w-full py-4">
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2.5 rounded-full bg-neutral-200/90" />
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 h-2.5 rounded-full bg-gradient-to-r from-[#009B91] via-[#00736E] to-[#021616] shadow-[0_0_0_1px_rgba(0,155,145,0.25)]"
+                  style={{ left: "0%", right: `${100 - jurosPercent}%` }}
+                />
+                <input
+                  type="range"
+                  min="6"
+                  max="15"
+                  step="0.1"
+                  value={juros}
+                  onChange={(e) => setJuros(e.target.value)}
+                  className="zlw-range-overlay absolute inset-x-0 top-1/2 -translate-y-1/2 w-full"
+                />
+              </div>
             </div>
 
             {/* Sistema de Amortização */}

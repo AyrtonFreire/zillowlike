@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
-import BrandLogo from "@/components/BrandLogo";
+import { ModernNavbar } from "@/components/modern";
 import { buildPropertyPath } from "@/lib/slug";
 import { track } from "@/lib/analytics";
 import RealtorReviewsSection from "@/components/realtor/RealtorReviewsSection";
@@ -279,10 +279,6 @@ export default function RealtorPublicLandingClient({
   const baseIntroMessage = useMemo(() => {
     return `Oi, vim do seu perfil no OggaHub. Quero receber opções de imóveis em ${defaultRegionLabel}. Pode me ajudar?`;
   }, [defaultRegionLabel]);
-
-  const visitMessage = useMemo(() => {
-    return `Oi, vim do seu perfil no OggaHub. Quero agendar uma visita em um imóvel. Podemos conversar?`;
-  }, []);
 
   const teamLabel = realtor.team?.name ? realtor.team.name : null;
 
@@ -641,87 +637,6 @@ export default function RealtorPublicLandingClient({
     return () => window.removeEventListener("open-overlay", handleOpenOverlay as EventListener);
   }, [openOverlay]);
 
-  const AboutSection = ({ id, wrapperClassName }: { id: string; wrapperClassName: string }) => {
-    return (
-      <section id={id} className={wrapperClassName}>
-        <div className="text-base font-semibold text-gray-900">Sobre</div>
-        <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-5 shadow-sm">
-          <div className="flex items-start gap-3">
-            {realtor.image ? (
-              <Image
-                src={realtor.image}
-                alt={realtor.name}
-                width={44}
-                height={44}
-                className="h-11 w-11 rounded-full object-cover border border-gray-200"
-              />
-            ) : (
-              <div className="h-11 w-11 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center font-semibold text-gray-700">
-                {(realtor.name || "?").charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-gray-900 truncate">{realtor.name}</div>
-              {teamLabel ? <div className="text-xs text-gray-500 truncate">Time {teamLabel}</div> : null}
-              {locationLabel ? <div className="text-xs text-gray-500 truncate">{locationLabel}</div> : null}
-            </div>
-          </div>
-
-          <div className="mt-4 text-sm text-gray-700 whitespace-pre-line">
-            {realtor.publicBio ? realtor.publicBio : "Este profissional ainda não preencheu uma bio pública."}
-          </div>
-
-          {serviceAreaChips.length > 0 ? (
-            <div className="mt-4">
-              <div className="text-xs font-semibold text-gray-500">Áreas atendidas</div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {serviceAreaChips.slice(0, 12).map((a) => (
-                  <span key={a} className="px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-700">
-                    {a}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {realtor.instagram ? (
-              <a
-                href={`https://instagram.com/${realtor.instagram.replace("@", "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                Instagram
-              </a>
-            ) : null}
-            {realtor.linkedin ? (
-              <a
-                href={realtor.linkedin.startsWith("http") ? realtor.linkedin : `https://linkedin.com/in/${realtor.linkedin}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                LinkedIn
-              </a>
-            ) : null}
-          </div>
-
-          {whatsappDigits ? (
-            <button
-              type="button"
-              onClick={() => handleWhatsApp(baseIntroMessage, "about_whatsapp")}
-              className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
-            >
-              <MessageCircle className="h-5 w-5" />
-              Enviar mensagem
-            </button>
-          ) : null}
-        </div>
-      </section>
-    );
-  };
-
   const ShareSection = ({ id, wrapperClassName }: { id: string; wrapperClassName: string }) => {
     return (
       <section id={id} className={wrapperClassName}>
@@ -772,21 +687,9 @@ export default function RealtorPublicLandingClient({
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-neutral-200 shadow-sm">
-        <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10 h-14 flex items-center justify-between">
-          <BrandLogo href="/" size={26} className="gap-2" wordmarkClassName="text-base font-semibold" />
-          {whatsappDigits ? (
-            <button
-              type="button"
-              onClick={() => handleWhatsApp(baseIntroMessage, "topbar")}
-              className="inline-flex items-center gap-2 rounded-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-semibold transition-colors shadow-sm hover:shadow"
-            >
-              <MessageCircle className="h-4 w-4" />
-              Enviar mensagem
-            </button>
-          ) : null}
-        </div>
-      </header>
+      <div className="sticky top-0 z-[300]">
+        <ModernNavbar forceLight={true} />
+      </div>
 
       <main className="mx-auto max-w-screen-2xl pb-24 md:pb-12">
         <div className="lg:flex lg:items-start lg:gap-6">
@@ -811,15 +714,6 @@ export default function RealtorPublicLandingClient({
                 </span>
                 <span className="text-sm font-semibold">Avaliações</span>
               </button>
-              <a
-                href="#sobre"
-                className="mt-1 group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-neutral-800 hover:bg-neutral-50 transition-colors"
-              >
-                <span className="h-10 w-10 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-700 group-hover:bg-accent group-hover:text-white group-hover:border-accent transition-colors">
-                  <Info className="h-5 w-5" />
-                </span>
-                <span className="text-sm font-semibold">Sobre</span>
-              </a>
               {isOwner ? (
                 <a
                   href="#compartilhar"
@@ -834,8 +728,6 @@ export default function RealtorPublicLandingClient({
             </div>
 
             <div className="mt-4 space-y-6">
-              <AboutSection id="sobre" wrapperClassName="px-2" />
-
               <div className="px-2">
                 <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden max-h-[calc(100vh-260px)] flex flex-col">
                   <SearchFiltersBarZillow
@@ -967,38 +859,10 @@ export default function RealtorPublicLandingClient({
                             </div>
                           )}
 
-                          {whatsappDigits ? (
-                            <button
-                              type="button"
-                              onClick={() => handleWhatsApp(visitMessage, "hero_visit")}
-                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
-                            >
-                              Pedir visita
-                            </button>
-                          ) : isOwner ? (
-                            <button
-                              type="button"
-                              onClick={handleCopyLink}
-                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
-                            >
-                              <Copy className="h-4 w-4" />
-                              {copiedLink ? "Copiado" : "Copiar link"}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => openReviews("hero_secondary")}
-                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
-                            >
-                              <Star className="h-4 w-4" />
-                              Ver avaliações
-                            </button>
-                          )}
-
                           {telHref ? (
                             <a
                               href={`tel:${telHref}`}
-                              className="sm:col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800 transition-colors shadow-sm hover:shadow"
                               onClick={() => {
                                 try {
                                   track({ name: "public_profile_call", payload: { source: "hero" } } as any);
@@ -1008,7 +872,11 @@ export default function RealtorPublicLandingClient({
                               <Phone className="h-4 w-4" />
                               Ligar
                             </a>
-                          ) : null}
+                          ) : (
+                            <div className="rounded-2xl border border-neutral-200 bg-white/70 px-4 py-3 text-sm font-semibold text-neutral-700">
+                              Telefone não disponível
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1074,7 +942,7 @@ export default function RealtorPublicLandingClient({
               </div>
             </section>
 
-            <nav className="lg:hidden sticky top-14 z-40 bg-white/90 backdrop-blur border-y border-neutral-200">
+            <nav className="lg:hidden sticky top-16 z-40 bg-white/90 backdrop-blur border-y border-neutral-200">
               <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10 h-12 flex items-center justify-around">
                 <a href="#grid" className="p-2 text-gray-900">
                   <Grid3X3 className="h-5 w-5" />
@@ -1082,9 +950,6 @@ export default function RealtorPublicLandingClient({
                 <button type="button" onClick={() => openReviews("mobile_nav")} className="p-2 text-gray-700">
                   <Star className="h-5 w-5" />
                 </button>
-                <a href="#sobre-mobile" className="p-2 text-gray-700">
-                  <Info className="h-5 w-5" />
-                </a>
               </div>
             </nav>
 
@@ -1299,7 +1164,6 @@ export default function RealtorPublicLandingClient({
             </section>
 
             <div className="lg:hidden">
-              <AboutSection id="sobre-mobile" wrapperClassName="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24" />
               {isOwner ? (
                 <ShareSection id="compartilhar-mobile" wrapperClassName="px-4 sm:px-6 lg:px-10 pt-10 scroll-mt-24" />
               ) : null}
