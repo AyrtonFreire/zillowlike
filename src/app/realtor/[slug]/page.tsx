@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const realtor = await (prisma as any).user.findFirst({
     where: {
-      publicSlug: slug,
+      OR: [{ publicSlug: slug }, { id: slug }],
       role: { in: ["REALTOR", "AGENCY"] as any },
     },
     select: {
@@ -52,7 +52,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
 
   const realtor = await prisma.user.findFirst({
     where: {
-      publicSlug: slug,
+      OR: [{ publicSlug: slug }, { id: slug }],
       role: { in: ["REALTOR", "AGENCY"] },
     },
     include: {

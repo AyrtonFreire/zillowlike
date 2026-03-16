@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const owner = await (prisma as any).user.findFirst({
     where: {
-      publicSlug: slug,
+      OR: [{ publicSlug: slug }, { id: slug }],
       publicProfileEnabled: true,
       role: { in: ["OWNER", "USER"] as any },
     },
@@ -52,7 +52,7 @@ export default async function OwnerPublicProfilePage({ params }: PageProps) {
 
   const owner = await (prisma as any).user.findFirst({
     where: {
-      publicSlug: slug,
+      OR: [{ publicSlug: slug }, { id: slug }],
       publicProfileEnabled: true,
       role: { in: ["OWNER", "USER"] as any },
     },

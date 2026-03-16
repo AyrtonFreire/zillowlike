@@ -7,15 +7,25 @@ type AgencySuggestion = {
   kind: "agency";
   label: string;
   agencyId: string;
+  publicSlug: string | null;
+  userId: string;
 };
 
 type RealtorSuggestion = {
   kind: "realtor";
   label: string;
   realtorId: string;
+  publicSlug: string | null;
 };
 
-type Suggestion = AgencySuggestion | RealtorSuggestion;
+type OwnerSuggestion = {
+  kind: "owner";
+  label: string;
+  ownerId: string;
+  publicSlug: string | null;
+};
+
+type Suggestion = AgencySuggestion | RealtorSuggestion | OwnerSuggestion;
 
 export const GET = withRateLimit(async (request: NextRequest) => {
   try {
@@ -52,6 +62,12 @@ export const GET = withRateLimit(async (request: NextRequest) => {
         select: {
           name: true,
           teamId: true,
+          userId: true,
+          user: {
+            select: {
+              publicSlug: true,
+            },
+          },
         },
         take: 8,
       });
@@ -61,6 +77,8 @@ export const GET = withRateLimit(async (request: NextRequest) => {
           kind: "agency",
           label: String(a.name || "Imobiliária"),
           agencyId: String(a.teamId),
+          publicSlug: a?.user?.publicSlug ? String(a.user.publicSlug) : null,
+          userId: String(a.userId),
         });
       }
 
@@ -72,6 +90,7 @@ export const GET = withRateLimit(async (request: NextRequest) => {
         select: {
           id: true,
           name: true,
+          publicSlug: true,
         },
         take: 8,
       });
@@ -81,6 +100,30 @@ export const GET = withRateLimit(async (request: NextRequest) => {
           kind: "realtor",
           label: String(r.name || "Corretor"),
           realtorId: String(r.id),
+          publicSlug: (r as any)?.publicSlug ? String((r as any).publicSlug) : null,
+        });
+      }
+
+      const owners = await prisma.user.findMany({
+        where: {
+          role: { in: ["OWNER", "USER"] as any },
+          publicProfileEnabled: true,
+          name: { contains: q, mode: "insensitive" },
+        },
+        select: {
+          id: true,
+          name: true,
+          publicSlug: true,
+        },
+        take: 8,
+      });
+
+      for (const o of owners) {
+        out.push({
+          kind: "owner",
+          label: String(o.name || "Proprietário"),
+          ownerId: String(o.id),
+          publicSlug: (o as any)?.publicSlug ? String((o as any).publicSlug) : null,
         });
       }
 

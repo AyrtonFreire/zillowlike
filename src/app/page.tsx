@@ -33,8 +33,9 @@ const MapWithPriceBubbles = dynamic(() => import("@/components/GoogleMapWithPric
 
 type SearchSuggestion =
   | { kind: "location"; label: string; city: string; state: string; neighborhood: string | null; count: number }
-  | { kind: "agency"; label: string; agencyId: string; count: number }
-  | { kind: "realtor"; label: string; realtorId: string; count: number };
+  | { kind: "agency"; label: string; agencyId: string; count: number; publicSlug?: string | null; userId?: string | null }
+  | { kind: "realtor"; label: string; realtorId: string; count: number; publicSlug?: string | null }
+  | { kind: "owner"; label: string; ownerId: string; count: number; publicSlug?: string | null };
 
 const isLocationSuggestion = (
   s: SearchSuggestion
@@ -586,65 +587,28 @@ export default function Home() {
       router.push(`/?${params}`);
       return;
     }
+    setShowSearchSuggestions(false);
+    setSearchInput(suggestion.label);
 
     if (suggestion.kind === "agency") {
-      setAgencyId(suggestion.agencyId);
-      setAgencyName(suggestion.label);
-      setRealtorId("");
-      setRealtorName("");
-
-      setCity("");
-      setState("");
-      setSearch("");
-      setSearchInput(suggestion.label);
-      setShowSearchSuggestions(false);
-
-      const params = buildSearchParams({
-        agencyId: suggestion.agencyId,
-        agencyName: suggestion.label,
-        type,
-        minPrice,
-        maxPrice,
-        bedroomsMin,
-        bathroomsMin,
-        areaMin,
-        purpose: effectivePurpose,
-        sort,
-        page: 1,
-      });
-
-      rememberRecentSearch({ label: suggestion.label, params, ts: Date.now() });
-      router.push(`/?${params}`);
+      const slug = suggestion.publicSlug || suggestion.userId;
+      if (slug) {
+        router.push(`/realtor/${slug}`);
+      }
       return;
     }
 
-    setAgencyId("");
-    setAgencyName("");
-    setRealtorId(suggestion.realtorId);
-    setRealtorName(suggestion.label);
+    if (suggestion.kind === "realtor") {
+      const slug = suggestion.publicSlug || suggestion.realtorId;
+      router.push(`/realtor/${slug}`);
+      return;
+    }
 
-    setCity("");
-    setState("");
-    setSearch("");
-    setSearchInput(suggestion.label);
-    setShowSearchSuggestions(false);
-
-    const params = buildSearchParams({
-      realtorId: suggestion.realtorId,
-      realtorName: suggestion.label,
-      type,
-      minPrice,
-      maxPrice,
-      bedroomsMin,
-      bathroomsMin,
-      areaMin,
-      purpose: effectivePurpose,
-      sort,
-      page: 1,
-    });
-
-    rememberRecentSearch({ label: suggestion.label, params, ts: Date.now() });
-    router.push(`/?${params}`);
+    if (suggestion.kind === "owner") {
+      const slug = suggestion.publicSlug || suggestion.ownerId;
+      router.push(`/owner/${slug}`);
+      return;
+    }
   }, [type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, purpose, sort, router, rememberRecentSearch]);
 
   // Aplicar busca quando usuário aperta Enter ou clica na lupa
@@ -1950,7 +1914,7 @@ export default function Home() {
                                   </div>
                                 ) : (
                                   <div className="text-xs text-gray-500 mt-0.5">
-                                    {suggestion.kind === "agency" ? "Imobiliária" : "Corretor"}
+                                    {suggestion.kind === "agency" ? "Imobiliária" : suggestion.kind === "owner" ? "Proprietário" : "Corretor"}
                                   </div>
                                 )}
                               </div>
@@ -2409,7 +2373,7 @@ export default function Home() {
                                     </div>
                                   ) : (
                                     <div className="text-xs text-gray-500 mt-0.5">
-                                      {suggestion.kind === "agency" ? "Imobiliária" : "Corretor"}
+                                      {suggestion.kind === "agency" ? "Imobiliária" : suggestion.kind === "owner" ? "Proprietário" : "Corretor"}
                                     </div>
                                   )}
                                 </div>

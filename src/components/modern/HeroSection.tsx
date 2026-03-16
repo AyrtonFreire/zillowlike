@@ -8,8 +8,9 @@ import Image from "next/image";
 
 type SearchSuggestion =
   | { kind: "location"; label: string; city: string; state: string; neighborhood: string | null; count: number }
-  | { kind: "agency"; label: string; agencyId: string }
-  | { kind: "realtor"; label: string; realtorId: string };
+  | { kind: "agency"; label: string; agencyId: string; publicSlug?: string | null; userId?: string | null }
+  | { kind: "realtor"; label: string; realtorId: string; publicSlug?: string | null }
+  | { kind: "owner"; label: string; ownerId: string; publicSlug?: string | null };
 
 const isLocationSuggestion = (
   s: SearchSuggestion
@@ -223,6 +224,10 @@ export default function HeroSection() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      if (activeSuggestionsTab === 'professionals' && professionalSuggestions.length > 0) {
+        handleSuggestionClick(professionalSuggestions[0] as any);
+        return;
+      }
       setIsLoading(true);
       // Parse cidade e estado do query
       const parts = searchQuery.split(',').map(p => p.trim());
@@ -326,37 +331,25 @@ export default function HeroSection() {
       return;
     }
 
-    let params = new URLSearchParams();
-    if (propertyType) {
-      const typeMap: Record<string, string> = {
-        'Casa': 'HOUSE',
-        'Apartamento': 'APARTMENT',
-        'Condomínio': 'CONDO',
-        'Terreno': 'LAND',
-        'Comercial': 'COMMERCIAL',
-        'Rural': 'RURAL',
-        '': ''
-      };
-      const mapped = typeMap[propertyType] || '';
-      if (mapped) params.set('type', mapped);
-    }
-    if (priceRange) {
-      params.set('minPrice', priceRange);
-    }
-    if (bedrooms) {
-      params.set('bedroomsMin', bedrooms);
-    }
-    params.set('purpose', purpose);
-
     if (suggestion.kind === 'agency') {
-      params.set('agencyId', suggestion.agencyId);
-      params.set('agencyName', suggestion.label);
-    } else {
-      params.set('realtorId', suggestion.realtorId);
-      params.set('realtorName', suggestion.label);
+      const slug = suggestion.publicSlug || suggestion.userId;
+      if (slug) {
+        router.push(`/realtor/${slug}`);
+      }
+      return;
     }
 
-    router.push(`/?${params.toString()}`);
+    if (suggestion.kind === 'realtor') {
+      const slug = suggestion.publicSlug || suggestion.realtorId;
+      router.push(`/realtor/${slug}`);
+      return;
+    }
+
+    if (suggestion.kind === 'owner') {
+      const slug = suggestion.publicSlug || suggestion.ownerId;
+      router.push(`/owner/${slug}`);
+      return;
+    }
   };
 
   return (
@@ -633,7 +626,7 @@ export default function HeroSection() {
                               : 'bg-white border-gray-200 text-gray-600 hover:text-gray-900'
                           }`}
                         >
-                          Profissionais
+                          Anunciantes
                         </button>
                       </div>
 
@@ -642,6 +635,7 @@ export default function HeroSection() {
                           (() => {
                             const agencies = professionalSuggestions.filter((s) => s.kind === 'agency') as Extract<SearchSuggestion, { kind: 'agency' }>[];
                             const realtors = professionalSuggestions.filter((s) => s.kind === 'realtor') as Extract<SearchSuggestion, { kind: 'realtor' }>[];
+                            const owners = professionalSuggestions.filter((s) => s.kind === 'owner') as Extract<SearchSuggestion, { kind: 'owner' }>[];
                             return (
                               <div className="space-y-4">
                                 {agencies.length > 0 && (
@@ -674,6 +668,24 @@ export default function HeroSection() {
                                           className="w-full group flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded-lg transition-all text-left"
                                         >
                                           <span className="text-sm text-gray-700 group-hover:text-teal-700 font-medium">{r.label}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {owners.length > 0 && (
+                                  <div>
+                                    <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1">Proprietários</div>
+                                    <div className="space-y-1">
+                                      {owners.slice(0, 6).map((o, i) => (
+                                        <button
+                                          key={`${o.ownerId}-${i}`}
+                                          type="button"
+                                          onClick={() => handleSuggestionClick(o)}
+                                          className="w-full group flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded-lg transition-all text-left"
+                                        >
+                                          <span className="text-sm text-gray-700 group-hover:text-teal-700 font-medium">{o.label}</span>
                                         </button>
                                       ))}
                                     </div>
