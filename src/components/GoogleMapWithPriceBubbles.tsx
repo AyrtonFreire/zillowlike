@@ -22,6 +22,14 @@ type MapProps = {
 
 type BoundsLiteral = { north: number; south: number; east: number; west: number };
 
+type RawItemsBounds = {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+  count: number;
+};
+
 function isFiniteNumber(n: any): n is number {
   return typeof n === "number" && Number.isFinite(n);
 }
@@ -33,6 +41,20 @@ function formatPriceBRL(cents: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(cents / 100);
+}
+
+function computeRawItemsBounds(items: Item[]): RawItemsBounds | null {
+  const valid = (items || []).filter(
+    (p) => isFiniteNumber(p.latitude) && isFiniteNumber(p.longitude) && p.latitude !== 0 && p.longitude !== 0
+  );
+  if (valid.length === 0) return null;
+
+  const minLat = Math.min(...valid.map((p) => p.latitude));
+  const maxLat = Math.max(...valid.map((p) => p.latitude));
+  const minLng = Math.min(...valid.map((p) => p.longitude));
+  const maxLng = Math.max(...valid.map((p) => p.longitude));
+
+  return { minLat, maxLat, minLng, maxLng, count: valid.length };
 }
 
 function computeCityLikeRestriction(items: Item[], fallback: [number, number]): BoundsLiteral {
@@ -87,8 +109,10 @@ export default function GoogleMapWithPriceBubbles({
   const idleListenerRef = useRef<any>(null);
   const debounceRef = useRef<any>(null);
   const userMovedRef = useRef(false);
+  const programmaticMoveRef = useRef(false);
   const lastBoundsKeyRef = useRef<string | null>(null);
   const restrictionRef = useRef<BoundsLiteral | null>(null);
+  const isWideModeRef = useRef(false);
   const userMoveListenersRef = useRef<any[]>([]);
   const renderRef = useRef<(() => void) | null>(null);
 
@@ -104,6 +128,14 @@ export default function GoogleMapWithPriceBubbles({
       if (first) return [first.latitude, first.longitude] as [number, number];
     }
     return [-9.4048, -40.5058] as [number, number];
+  }, [items]);
+
+  const isWideItems = useMemo(() => {
+    const raw = computeRawItemsBounds(items || []);
+    if (!raw || raw.count <= 1) return false;
+    const latSpan = raw.maxLat - raw.minLat;
+    const lngSpan = raw.maxLng - raw.minLng;
+    return latSpan > 1.2 || lngSpan > 1.2;
   }, [items]);
 
   // Activate when visible
@@ -168,24 +200,35 @@ export default function GoogleMapWithPriceBubbles({
 
     let map: any;
     try {
-      const restrictionBounds = computeCityLikeRestriction(items || [], center);
-      restrictionRef.current = restrictionBounds;
-      map = new google.maps.Map(containerRef.current, {
+      isWideModeRef.current = Boolean(isWideItems);
+      if (isWideItems) {
+        restrictionRef.current = null;
+      } else {
+        const restrictionBounds = computeCityLikeRestriction(items || [], center);
+        restrictionRef.current = restrictionBounds;
+      }
+
+      const baseOptions: any = {
         center: { lat: center[0], lng: center[1] },
-        zoom: 13,
-        minZoom: 10,
+        zoom: isWideItems ? 4 : 13,
+        minZoom: isWideItems ? 3 : 10,
         maxZoom: 18,
-        restriction: {
-          latLngBounds: restrictionBounds,
-          strictBounds: true,
-        },
         mapId,
         disableDefaultUI: true,
         zoomControl: true,
         clickableIcons: false,
         keyboardShortcuts: false,
         gestureHandling: "greedy",
-      });
+      };
+
+      if (!isWideItems && restrictionRef.current) {
+        baseOptions.restriction = {
+          latLngBounds: restrictionRef.current,
+          strictBounds: true,
+        };
+      }
+
+      map = new google.maps.Map(containerRef.current, baseOptions);
     } catch (err: any) {
       setLoadError(String(err?.message || err || "Failed to initialize Google Maps"));
       return;
@@ -198,6 +241,7 @@ export default function GoogleMapWithPriceBubbles({
 
     // Mark that the user moved the map (avoid onBoundsChange on initial idle)
     const onUserMoved = () => {
+      if (programmaticMoveRef.current) return;
       userMovedRef.current = true;
     };
     try {
@@ -209,13 +253,79 @@ export default function GoogleMapWithPriceBubbles({
       userMoveListenersRef.current = [];
     }
 
-  }, [ready, isLoading]);
+    if (isWideItems) {
+      try {
+        programmaticMoveRef.current = true;
+        fitToItems(map, items);
+      } catch {}
+      try {
+        setTimeout(() => {
+          programmaticMoveRef.current = false;
+        }, 0);
+      } catch {
+        programmaticMoveRef.current = false;
+      }
+    }
+
+  }, [ready, isLoading, items, center, isWideItems]);
 
   // Update restriction only when it looks like the search "moved" to a different city/region.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     if (!ready || isLoading) return;
+
+    if (isWideItems) {
+      if (!isWideModeRef.current) {
+        isWideModeRef.current = true;
+        restrictionRef.current = null;
+        try {
+          programmaticMoveRef.current = true;
+          map.setOptions({ restriction: null, minZoom: 3 });
+          fitToItems(map, items);
+        } catch {}
+        try {
+          setTimeout(() => {
+            programmaticMoveRef.current = false;
+          }, 0);
+        } catch {
+          programmaticMoveRef.current = false;
+        }
+      } else {
+        try {
+          if (restrictionRef.current) {
+            restrictionRef.current = null;
+            map.setOptions({ restriction: null, minZoom: 3 });
+          }
+        } catch {}
+      }
+      return;
+    }
+
+    if (isWideModeRef.current) {
+      isWideModeRef.current = false;
+      const restrictionBounds = computeCityLikeRestriction(items || [], center);
+      restrictionRef.current = restrictionBounds;
+      try {
+        programmaticMoveRef.current = true;
+        map.setOptions({
+          minZoom: 10,
+          restriction: {
+            latLngBounds: restrictionBounds,
+            strictBounds: true,
+          },
+        });
+        fitToItems(map, items);
+      } catch {}
+      try {
+        setTimeout(() => {
+          programmaticMoveRef.current = false;
+        }, 0);
+      } catch {
+        programmaticMoveRef.current = false;
+      }
+      return;
+    }
 
     const next = computeCityLikeRestriction(items || [], center);
     const prev = restrictionRef.current;
