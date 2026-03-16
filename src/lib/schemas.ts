@@ -37,6 +37,7 @@ export const PropertyCreateSchema = z
   // Flags usadas nos filtros de busca
   furnished: z.boolean().optional(),
   petFriendly: z.boolean().optional(),
+  inCondominium: z.boolean().optional(),
   address: z.object({
     street: z.string().min(1).max(200),
     neighborhood: z.string().max(120).optional().nullable(),
@@ -165,6 +166,7 @@ export const PropertyQuerySchema = z.object({
   city: z.string().max(120).optional(),
   state: z.string().max(10).optional(),
   type: PropertyTypeEnum.optional(),
+  inCondominium: z.string().max(10).optional(),
   purpose: PurposeEnum.optional(),
   q: z.string().max(200).optional(),
   agencyId: z.string().max(80).optional(),

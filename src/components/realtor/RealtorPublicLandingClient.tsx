@@ -40,6 +40,7 @@ type PublicProperty = {
   title: string;
   price: number | null;
   type: string;
+  inCondominium?: boolean | null;
   purpose: string | null;
   city: string;
   state: string;
@@ -138,6 +139,7 @@ const EMPTY_FILTERS: FilterValues = {
   bedrooms: "",
   bathrooms: "",
   type: "",
+  inCondominium: false,
   areaMin: "",
   parkingSpots: "",
   yearBuiltMin: "",
@@ -347,6 +349,9 @@ export default function RealtorPublicLandingClient({
     return (properties || []).filter((p) => {
       if (f.type && String(p.type || "") !== String(f.type)) return false;
       if (f.purpose && String(p.purpose || "") !== String(f.purpose)) return false;
+
+      const isInCondominium = Boolean((p as any)?.inCondominium) || String(p.type || "").toUpperCase() === "CONDO";
+      if (f.inCondominium && !isInCondominium) return false;
 
       const price = Number(p.price || 0);
       if (minPriceCents != null && price < minPriceCents) return false;

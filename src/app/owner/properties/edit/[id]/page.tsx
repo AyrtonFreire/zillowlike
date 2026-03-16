@@ -126,6 +126,7 @@ export default function EditPropertyPage() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [type, setType] = useState("HOUSE");
+  const [inCondominium, setInCondominium] = useState(false);
   const [status, setStatus] = useState("ACTIVE");
   const [street, setStreet] = useState("");
   const [streetNumber, setStreetNumber] = useState("");
@@ -263,6 +264,7 @@ export default function EditPropertyPage() {
         setVideoUrl(p.videoUrl || "");
         setPrice(String(p.price / 100));
         setType(p.type);
+        setInCondominium(Boolean(p.inCondominium) || String(p.type || "").toUpperCase() === "CONDO");
         setStatus(p.status);
         setPurpose(p.purpose || "");
         setStreet(p.street);
@@ -443,6 +445,7 @@ export default function EditPropertyPage() {
           videoUrl: videoUrl || null,
           price: Math.round(parseFloat(price) * 100),
           type,
+          inCondominium,
           status,
           purpose: purpose || null,
           ...(userRole === "AGENCY" ? { capturerRealtorId: capturerRealtorId ? capturerRealtorId : null } : {}),
@@ -895,13 +898,26 @@ export default function EditPropertyPage() {
                           Studio (legado)
                         </option>
                       )}
+                      {type === "CONDO" && (
+                        <option value="CONDO" disabled>
+                          Condomínio (legado)
+                        </option>
+                      )}
                       <option value="HOUSE">Casa</option>
                       <option value="APARTMENT">Apartamento</option>
-                      <option value="CONDO">Condomínio</option>
                       <option value="LAND">Terreno</option>
                       <option value="RURAL">Imóvel rural</option>
                       <option value="COMMERCIAL">Comercial</option>
                     </select>
+                    <label className="mt-2 flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={inCondominium}
+                        onChange={(e) => setInCondominium(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>Em condomínio</span>
+                    </label>
                   </div>
 
                   <div>

@@ -27,7 +27,6 @@ import { formatPublicCode, normalizePublicCodeInput } from "@/lib/public-code";
 const PROPERTY_TYPES: Record<string, string> = {
   HOUSE: "Casa",
   APARTMENT: "Apartamento",
-  CONDO: "Condomínio",
   TOWNHOUSE: "Sobrado",
   STUDIO: "Studio",
   LAND: "Terreno",
@@ -198,6 +197,7 @@ export default function MyLeadsPage() {
   const [nameFilter, setNameFilter] = useState("");
   const [cityFilter, setCityFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [inCondominiumFilter, setInCondominiumFilter] = useState(false);
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "last7">(
     () => normalizeDateFilterFromUrl(dateFromUrl)
   );
@@ -262,6 +262,7 @@ export default function MyLeadsPage() {
       if (nameFilter) params.set("q", String(nameFilter));
       if (cityFilter) params.set("city", String(cityFilter));
       if (typeFilter) params.set("type", String(typeFilter));
+      if (inCondominiumFilter) params.set("inCondominium", "true");
 
       const response = await fetch(`/api/leads/my-leads?${params.toString()}`);
       const data = await response.json();
@@ -329,7 +330,7 @@ export default function MyLeadsPage() {
       }
     }
     },
-    [realtorId, pipelineFilter, dateFilter, nameFilter, cityFilter, typeFilter]
+    [realtorId, pipelineFilter, dateFilter, nameFilter, cityFilter, typeFilter, inCondominiumFilter]
   );
 
   useEffect(() => {
@@ -344,7 +345,7 @@ export default function MyLeadsPage() {
     setLeads([]);
     setNextCursor(null);
     fetchLeads({ preserveTail: false });
-  }, [pipelineFilter, dateFilter, nameFilter, cityFilter, typeFilter, realtorId, fetchLeads]);
+  }, [pipelineFilter, dateFilter, nameFilter, cityFilter, typeFilter, inCondominiumFilter, realtorId, fetchLeads]);
 
   useEffect(() => {
     if (!stagePickerLeadId) return;
@@ -884,6 +885,15 @@ export default function MyLeadsPage() {
       return false;
     }
 
+    const isInCondominium =
+      Boolean((lead as any)?.property?.inCondominium) ||
+      String((lead as any)?.property?.type || "").toUpperCase() === "CONDO";
+
+    // inCondominium filter
+    if (inCondominiumFilter && !isInCondominium) {
+      return false;
+    }
+
     // Date filter (createdAt)
     const created = new Date(lead.createdAt);
     if (dateFilter === "today" && !isSameDay(created, now)) {
@@ -1126,7 +1136,7 @@ export default function MyLeadsPage() {
           >
             <Filter className="w-4 h-4" />
             Filtros
-            {(nameFilter || cityFilter || typeFilter || dateFilter !== "all") && (
+            {(nameFilter || cityFilter || typeFilter || inCondominiumFilter || dateFilter !== "all") && (
               <span className="w-2 h-2 rounded-full bg-teal-500" />
             )}
           </button>
@@ -1178,11 +1188,21 @@ export default function MyLeadsPage() {
                     <option value="">Tipo</option>
                     <option value="HOUSE">Casa</option>
                     <option value="APARTMENT">Apartamento</option>
-                    <option value="CONDO">Condomínio</option>
                     <option value="LAND">Terreno</option>
                     <option value="RURAL">Imóvel rural</option>
                     <option value="COMMERCIAL">Comercial</option>
                   </select>
+                </div>
+                <div className="px-0">
+                  <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={inCondominiumFilter}
+                      onChange={(e) => setInCondominiumFilter(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                    />
+                    <span>Em condomínio</span>
+                  </label>
                 </div>
                 <div className="flex gap-2">
                   {[
@@ -1203,12 +1223,13 @@ export default function MyLeadsPage() {
                     </button>
                   ))}
                 </div>
-                {(nameFilter || cityFilter || typeFilter || dateFilter !== "all") && (
+                {(nameFilter || cityFilter || typeFilter || inCondominiumFilter || dateFilter !== "all") && (
                   <button
                     onClick={() => {
                       setNameFilter("");
                       setCityFilter("");
                       setTypeFilter("");
+                      setInCondominiumFilter(false);
                       setDateFilter("all");
                     }}
                     className="w-full py-2 text-sm text-gray-600 hover:text-gray-800"

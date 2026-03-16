@@ -121,10 +121,15 @@ export async function GET(request: NextRequest) {
     const name = (searchParams.get("name") || "").trim();
     const city = (searchParams.get("city") || "").trim();
     const type = (searchParams.get("type") || "").trim();
+    const inCondominiumRaw = (searchParams.get("inCondominium") || "").trim();
     const dateFilter = (searchParams.get("date") || "").trim();
     const pipelineGroup = (searchParams.get("group") || "").trim();
     const unreadOnly = (searchParams.get("unread") || "").trim() === "1";
     const includeCompleted = (searchParams.get("includeCompleted") || "").trim() === "1";
+
+    const typeNorm = String(type || "").toUpperCase();
+    const inCondominium = inCondominiumRaw === "1" || inCondominiumRaw.toLowerCase() === "true" || typeNorm === "CONDO";
+    const effectiveType = typeNorm && typeNorm !== "CONDO" ? type : "";
 
     const mapStatusToStage = (status: LeadStatus): PipelineStage => {
       if (status === "ACCEPTED") return "CONTACT";
@@ -156,7 +161,8 @@ export async function GET(request: NextRequest) {
           whereSql.push(Prisma.sql`l."pipelineStage" IN (${Prisma.join(stages.map((s) => Prisma.sql`${s}`))})`);
         }
         if (createdAtGte) whereSql.push(Prisma.sql`l."createdAt" >= ${createdAtGte}`);
-        if (type) whereSql.push(Prisma.sql`p.type = ${type}`);
+        if (effectiveType) whereSql.push(Prisma.sql`p.type = ${effectiveType}`);
+        if (inCondominium) whereSql.push(Prisma.sql`p."inCondominium" = true`);
         if (city) whereSql.push(Prisma.sql`p.city ILIKE ${"%" + city + "%"}`);
         if (effectiveQuery && effectiveQuery.length >= 2) {
           const like = "%" + effectiveQuery + "%";
@@ -320,6 +326,7 @@ export async function GET(request: NextRequest) {
                 furnished: true,
                 petFriendly: true,
                 condoFee: true,
+                inCondominium: true,
                 purpose: true,
                 images: {
                   take: 1,
@@ -404,10 +411,11 @@ export async function GET(request: NextRequest) {
       ...(includeCompleted ? {} : { status: { not: "COMPLETED" } }),
       ...(createdAtGte ? { createdAt: { gte: createdAtGte } } : {}),
       ...(stages && stages.length ? { pipelineStage: { in: stages } } : {}),
-      ...(type || city || effectiveQuery
+      ...(effectiveType || inCondominium || city || effectiveQuery
         ? {
             property: {
-              ...(type ? { type } : {}),
+              ...(effectiveType ? { type: effectiveType } : {}),
+              ...(inCondominium ? { inCondominium: true } : {}),
               ...(city ? { city: { contains: city, mode: "insensitive" } } : {}),
               ...(effectiveQuery && effectiveQuery.length >= 2
                 ? {
@@ -587,6 +595,7 @@ export async function GET(request: NextRequest) {
             furnished: true,
             petFriendly: true,
             condoFee: true,
+            inCondominium: true,
             purpose: true,
             images: {
               take: 1,

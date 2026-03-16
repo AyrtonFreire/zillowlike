@@ -11,6 +11,7 @@ const AlertSchema = z.object({
   minPrice: z.number().optional(),
   maxPrice: z.number().optional(),
   propertyType: z.string().optional(),
+  inCondominium: z.boolean().optional(),
   minBedrooms: z.number().optional(),
   minBathrooms: z.number().optional(),
   minArea: z.number().optional(),
@@ -36,7 +37,29 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ success: true, alerts });
+    const mappedAlerts = alerts.map((a) => {
+      let filters: any = {};
+      try {
+        filters = a.params ? JSON.parse(a.params) : {};
+      } catch {
+        filters = {};
+      }
+
+      if (String(filters?.type || "").toUpperCase() === "CONDO" && !filters?.inCondominium) {
+        delete filters.type;
+        filters.inCondominium = "true";
+      }
+
+      return {
+        id: a.id,
+        name: a.label,
+        filters,
+        frequency: filters?.frequency || "DAILY",
+        createdAt: a.createdAt,
+      };
+    });
+
+    return NextResponse.json({ success: true, alerts: mappedAlerts });
   } catch (error) {
     console.error("Error fetching alerts:", error);
     return NextResponse.json(
@@ -69,6 +92,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const normalizedType = String(parsed.data.propertyType || "").toUpperCase();
+    const inCondominium = Boolean(parsed.data.inCondominium) || normalizedType === "CONDO";
+    const type = normalizedType && normalizedType !== "CONDO" ? parsed.data.propertyType : undefined;
+
     const alert = await prisma.savedSearch.create({
       data: {
         userId,
@@ -78,7 +105,8 @@ export async function POST(req: NextRequest) {
           state: parsed.data.state,
           minPrice: parsed.data.minPrice,
           maxPrice: parsed.data.maxPrice,
-          type: parsed.data.propertyType,
+          type,
+          inCondominium: inCondominium ? "true" : undefined,
           minBedrooms: parsed.data.minBedrooms,
           minBathrooms: parsed.data.minBathrooms,
           minArea: parsed.data.minArea,

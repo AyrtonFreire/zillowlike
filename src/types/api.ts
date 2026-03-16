@@ -4,6 +4,7 @@ export type ApiProperty = {
   description: string;
   price: number;
   type: string;
+  inCondominium?: boolean | null;
   owner?: {
     id: string;
     name?: string | null;

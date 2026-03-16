@@ -32,6 +32,7 @@ export default function AlertsPage() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [propertyType, setPropertyType] = useState("");
+  const [inCondominium, setInCondominium] = useState(false);
   const [minBedrooms, setMinBedrooms] = useState("");
   const [frequency, setFrequency] = useState("DAILY");
 
@@ -71,6 +72,7 @@ export default function AlertsPage() {
           minPrice: minPrice ? parseInt(minPrice) * 100 : undefined,
           maxPrice: maxPrice ? parseInt(maxPrice) * 100 : undefined,
           propertyType: propertyType || undefined,
+          inCondominium: inCondominium || undefined,
           minBedrooms: minBedrooms ? parseInt(minBedrooms) : undefined,
           frequency,
         }),
@@ -85,6 +87,7 @@ export default function AlertsPage() {
         setMinPrice("");
         setMaxPrice("");
         setPropertyType("");
+        setInCondominium(false);
         setMinBedrooms("");
       }
     } catch (error) {
@@ -217,6 +220,18 @@ export default function AlertsPage() {
                   </div>
                 </div>
 
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={inCondominium}
+                      onChange={(e) => setInCondominium(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    Em condomínio
+                  </label>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -258,7 +273,6 @@ export default function AlertsPage() {
                       <option value="">Todos</option>
                       <option value="HOUSE">Casa</option>
                       <option value="APARTMENT">Apartamento</option>
-                      <option value="CONDO">Condomínio</option>
                       <option value="TOWNHOUSE">Sobrado</option>
                       <option value="STUDIO">Studio</option>
                       <option value="LAND">Terreno</option>
@@ -381,6 +395,12 @@ export default function AlertsPage() {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Tipo:</span>
                       <span className="font-medium text-gray-900">{ptBR.type(alert.filters.type)}</span>
+                    </div>
+                  )}
+                  {alert.filters.inCondominium && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Em condomínio:</span>
+                      <span className="font-medium text-gray-900">Sim</span>
                     </div>
                   )}
                   {alert.filters.minBedrooms && (

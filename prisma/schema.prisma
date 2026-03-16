@@ -254,6 +254,7 @@ model Property {
   floor         Int?
   furnished     Boolean?
   petFriendly   Boolean?
+  inCondominium Boolean?
   condoFee      BigInt? // in cents
   yearBuilt     Int?
   conditionTags String[] @default([]) // Tags: Mobiliado, Novo, Em construção, etc.

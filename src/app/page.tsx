@@ -22,7 +22,7 @@ import { LayoutList, Map, ChevronDown, KeyRound, Building2, Briefcase, Search, X
 const PropertyDetailsModalJames = dynamic(() => import("@/components/PropertyDetailsModalJames"), { ssr: false });
 import SearchFiltersBarZillow from "@/components/SearchFiltersBarZillow";
 import Image from "next/image";
-import { buildSearchParams, parseFiltersFromSearchParams } from "@/lib/url";
+import { buildSearchParams as buildSearchParamsBase, parseFiltersFromSearchParams } from "@/lib/url";
 import { track } from "@/lib/analytics";
 import PriceRangeSlider from "@/components/PriceRangeSlider";
 import type { ApiProperty } from "@/types/api";
@@ -86,6 +86,9 @@ export default function Home() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
   const [ownerDraft, setOwnerDraft] = useState<{ city?: string; state?: string; priceBRL?: string } | null>(null);
+
+  // Novos estados
+  const [inCondominium, setInCondominium] = useState(false);
 
   // Fecha dropdown ao clicar fora ou pressionar ESC
   useEffect(() => {
@@ -303,6 +306,20 @@ export default function Home() {
     }
   }, []);
 
+  const buildSearchParams = useCallback(
+    (filters: any) => {
+      const next: any = { ...(filters || {}) };
+      const hasExplicit = Object.prototype.hasOwnProperty.call(next, "inCondominium");
+      if (!hasExplicit) {
+        next.inCondominium = inCondominium ? "true" : "";
+      } else if (typeof next.inCondominium === "boolean") {
+        next.inCondominium = next.inCondominium ? "true" : "";
+      }
+      return buildSearchParamsBase(next);
+    },
+    [inCondominium]
+  );
+
   const rememberRecentSearch = useCallback((entry: { label: string; params: string; ts: number }) => {
     try {
       if (typeof window === 'undefined') return;
@@ -335,6 +352,7 @@ export default function Home() {
     setRealtorId(filters.realtorId || "");
     setRealtorName(filters.realtorName || "");
     setType(filters.type || "");
+    setInCondominium(filters.inCondominium === "true");
     setMinPrice(filters.minPrice || "");
     setMaxPrice(filters.maxPrice || "");
     setBedroomsMin(filters.bedroomsMin || "");
@@ -372,13 +390,14 @@ export default function Home() {
       agencyId ||
       realtorId ||
       type ||
+      inCondominium ||
       minPrice ||
       maxPrice ||
       bedroomsMin ||
       bathroomsMin ||
       areaMin
     );
-  }, [search, city, agencyId, realtorId, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin]);
+  }, [search, city, agencyId, realtorId, type, inCondominium, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin]);
 
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
 
@@ -410,6 +429,7 @@ export default function Home() {
   // Contar filtros avançados ativos (para o chip "Mais")
   const advancedFiltersCount = useMemo(() => {
     let count = 0;
+    if (inCondominium) count++;
     if (petFriendly) count++;
     if (furnished) count++;
     if (hasPool) count++;
@@ -448,6 +468,7 @@ export default function Home() {
     if (yearBuiltMax) count++;
     return count;
   }, [
+    inCondominium,
     petFriendly, furnished, hasPool, hasGym, hasElevator, hasBalcony,
     hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h,
     comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse,
@@ -704,7 +725,7 @@ export default function Home() {
       const [furnished, luxury, condos, lands] = await Promise.all([
         fetchCategory({ furnished: 'true' }, { city: preferredCity, state: preferredState }),
         fetchCategory({ minPrice: '1500000' }, { city: preferredCity, state: preferredState }), // Luxo: R$1,5M+
-        fetchCategory({ type: 'CONDO' }, { city: preferredCity, state: preferredState }),
+        fetchCategory({ inCondominium: 'true' }, { city: preferredCity, state: preferredState }),
         fetchCategory({ type: 'LAND' }, { city: preferredCity, state: preferredState }),
       ]);
       if (cancelled) return;
@@ -889,6 +910,7 @@ export default function Home() {
     realtorId,
     realtorName,
     type,
+    inCondominium,
     minPrice,
     maxPrice,
     bedroomsMin,
@@ -2144,7 +2166,6 @@ export default function Home() {
                             { value: '', label: 'Todos' },
                             { value: 'HOUSE', label: 'Casa' },
                             { value: 'APARTMENT', label: 'Apartamento' },
-                            { value: 'CONDO', label: 'Condomínio' },
                             { value: 'LAND', label: 'Terreno' },
                           ].map((option) => (
                             <button
@@ -3261,7 +3282,7 @@ export default function Home() {
                   </>
                 )
               )},
-              { key: 'condos', label: 'Condomínios', content: (
+              { key: 'condos', label: 'Em condomínio', content: (
                 condoLoading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {[...Array(6)].map((_, i) => (<div key={i} className="card animate-pulse"><div className="h-48 bg-gray-200 rounded-t-xl"></div><div className="p-5 space-y-3"><div className="h-5 bg-gray-200 rounded w-3/4"></div><div className="h-4 bg-gray-200 rounded w-1/2"></div><div className="h-10 bg-gray-200 rounded-lg"></div></div></div>))}
@@ -3320,6 +3341,7 @@ export default function Home() {
             bedrooms: bedroomsMin,
             bathrooms: bathroomsMin,
             type,
+            inCondominium,
             areaMin,
             parkingSpots,
             yearBuiltMin,
@@ -3371,6 +3393,7 @@ export default function Home() {
             setBedroomsMin(newFilters.bedrooms);
             setBathroomsMin(newFilters.bathrooms);
             setType(newFilters.type);
+            setInCondominium(newFilters.inCondominium);
             setAreaMin(newFilters.areaMin);
             setParkingSpots(newFilters.parkingSpots);
             setYearBuiltMin(newFilters.yearBuiltMin);
@@ -3417,9 +3440,11 @@ export default function Home() {
               q: search, // Manter a busca de texto se houver
               city,
               state,
+              inCondominium: "",
               sort,
               page: 1
             });
+            setInCondominium(false);
             router.push(`/?${params}`);
             setFiltersOpen(false);
           }}
@@ -3429,6 +3454,7 @@ export default function Home() {
               city,
               state,
               type: appliedFilters.type,
+              inCondominium: appliedFilters.inCondominium ? 'true' : '',
               minPrice: appliedFilters.minPrice,
               maxPrice: appliedFilters.maxPrice,
               bedroomsMin: appliedFilters.bedrooms,

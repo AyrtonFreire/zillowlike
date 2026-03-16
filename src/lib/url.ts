@@ -2,6 +2,7 @@ export type Filters = {
   city?: string;
   state?: string;
   type?: string;
+  inCondominium?: string;
   q?: string;
   agencyId?: string;
   agencyName?: string;
@@ -74,6 +75,11 @@ export function parseFiltersFromSearchParams(sp: URLSearchParams): Filters {
   f.city = get("city");
   f.state = get("state");
   f.type = get("type");
+  f.inCondominium = get("inCondominium");
+  if (String(f.type || "").toUpperCase() === "CONDO" && !f.inCondominium) {
+    f.type = undefined;
+    f.inCondominium = "true";
+  }
   f.q = get("q");
   f.agencyId = get("agencyId");
   f.agencyName = get("agencyName");
@@ -147,7 +153,10 @@ export function buildSearchParams(filters: Filters): string {
   const p = new URLSearchParams();
   if (filters.city) p.set("city", filters.city);
   if (filters.state) p.set("state", filters.state);
-  if (filters.type) p.set("type", filters.type);
+  const normalizedType = String(filters.type || "").toUpperCase();
+  if (normalizedType && normalizedType !== "CONDO") p.set("type", filters.type as any);
+  if (normalizedType === "CONDO" && !filters.inCondominium) p.set("inCondominium", "true");
+  if (filters.inCondominium) p.set("inCondominium", filters.inCondominium);
   if (filters.minPrice) p.set("minPrice", String(Number(filters.minPrice)));
   if (filters.maxPrice) p.set("maxPrice", String(Number(filters.maxPrice)));
   if (filters.q) p.set("q", filters.q);

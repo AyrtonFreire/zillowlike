@@ -77,6 +77,7 @@ export default function NewPropertyPage() {
   const [videoUrl, setVideoUrl] = useState("");
   const [priceBRL, setPriceBRL] = useState("");
   const [type, setType] = useState("HOUSE");
+  const [inCondominium, setInCondominium] = useState(false);
   const [purpose, setPurpose] = useState<"SALE"|"RENT"|"">("");
   const [conditionTags, setConditionTags] = useState<string[]>([]);
   const [petFriendly, setPetFriendly] = useState(false);
@@ -1463,6 +1464,7 @@ export default function NewPropertyPage() {
     setVideoUrl("");
     setPriceBRL("");
     setType("HOUSE");
+    setInCondominium(false);
     setConditionTags([]);
     setPetFriendly(false);
     setStreet("");
@@ -1608,6 +1610,7 @@ export default function NewPropertyPage() {
       if (d.videoUrl) setVideoUrl(d.videoUrl);
       if (d.priceBRL) setPriceBRL(d.priceBRL);
       if (d.type) setType(d.type);
+      if (typeof d.inCondominium === 'boolean') setInCondominium(d.inCondominium);
       if (d.purpose) setPurpose(d.purpose);
       if (d.street) setStreet(d.street);
       if (d.neighborhood) setNeighborhood(d.neighborhood);
@@ -1741,6 +1744,7 @@ export default function NewPropertyPage() {
         if (d.videoUrl) setVideoUrl(d.videoUrl);
         if (d.priceBRL) setPriceBRL(d.priceBRL);
         if (d.type) setType(d.type);
+        if (typeof d.inCondominium === 'boolean') setInCondominium(d.inCondominium);
         if (d.purpose) setPurpose(d.purpose);
         if (d.street) setStreet(d.street);
         if (d.neighborhood) setNeighborhood(d.neighborhood);
@@ -1867,6 +1871,7 @@ export default function NewPropertyPage() {
           videoUrl,
           priceBRL,
           type,
+          inCondominium,
           purpose,
           street,
           neighborhood,
@@ -1958,7 +1963,7 @@ export default function NewPropertyPage() {
       } catch {}
     }, 400);
     return () => clearTimeout(id);
-  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, images, addressNumber, addressComplement, conditionTags, petFriendly, capturerRealtorId, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, viewRiver, viewLake, sunByRoomNote, sunOrientation, petsSmall, petsLarge, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
+  }, [description, aiDescriptionGenerations, customTitle, metaTitle, metaDescription, videoUrl, priceBRL, type, inCondominium, purpose, street, neighborhood, city, state, postalCode, bedrooms, bathrooms, areaM2, builtAreaM2, lotAreaM2, privateAreaM2, usableAreaM2, suites, parkingSpots, floor, yearBuilt, yearRenovated, images, addressNumber, addressComplement, conditionTags, petFriendly, capturerRealtorId, currentStep, iptuYearBRL, condoFeeBRL, privateOwnerName, privateOwnerPhone, privateOwnerEmail, privateOwnerAddress, privateOwnerPriceBRL, privateBrokerFeePercent, privateBrokerFeeFixedBRL, privateExclusive, privateExclusiveUntil, privateOccupied, privateOccupantInfo, privateKeyLocation, privateNotes, hidePrice, hideExactAddress, hideCondoFee, hideIPTU, hasBalcony, hasElevator, hasPool, hasGym, hasPlayground, hasPartyRoom, hasGourmet, hasConcierge24h, accRamps, accWideDoors, accAccessibleElevator, accTactile, comfortAC, comfortHeating, comfortSolar, comfortNoiseWindows, comfortLED, comfortWaterReuse, finishFloor, finishCabinets, finishCounterGranite, finishCounterQuartz, viewSea, viewCity, viewRiver, viewLake, sunByRoomNote, sunOrientation, petsSmall, petsLarge, secCCTV, secSallyPort, secNightGuard, secElectricFence, isSubmitting, publishedProperty]);
 
   // CEP: validação em tempo real com debounce quando atingir 8 dígitos
   useEffect(() => {
@@ -2505,6 +2510,7 @@ export default function NewPropertyPage() {
         priceBRL: parseBRLToNumber(priceBRL),
         condoFee: condoFeeBRL ? Math.round(parseBRLToNumber(condoFeeBRL) * 100) : null,
         type,
+        inCondominium,
         purpose,
         capturerRealtorId: capturerRealtorId ? capturerRealtorId : null,
         address: {
@@ -2747,7 +2753,7 @@ export default function NewPropertyPage() {
       const typeLabelMap: Record<string, string> = {
         HOUSE: "Casa",
         APARTMENT: "Apartamento",
-        CONDO: "Condomínio",
+        CONDO: "Em condomínio",
         LAND: "Terreno",
         COMMERCIAL: "Comercial",
         WAREHOUSE: "Galpão",
@@ -3510,13 +3516,26 @@ export default function NewPropertyPage() {
                             Studio/Kitnet (legado)
                           </option>
                         )}
+                        {type === "CONDO" && (
+                          <option value="CONDO" disabled>
+                            Condomínio (legado)
+                          </option>
+                        )}
                         <option value="HOUSE">Casa</option>
                         <option value="APARTMENT">Apartamento</option>
-                        <option value="CONDO">Condomínio</option>
                         <option value="LAND">Terreno</option>
                         <option value="RURAL">Imóvel rural</option>
                         <option value="COMMERCIAL">Comercial</option>
                       </Select>
+                      <label className="mt-2 flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={inCondominium}
+                          onChange={(e) => setInCondominium(e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span>Em condomínio</span>
+                      </label>
                     </div>
                   </div>
 

@@ -147,7 +147,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
     return a || b;
   })();
 
-  const inventory = await prisma.property.findMany({
+  const inventory = await (prisma as any).property.findMany({
     where: inventoryWhere as any,
     orderBy: { createdAt: "desc" },
     take: 2000,
@@ -156,6 +156,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
       title: true,
       price: true,
       type: true,
+      inCondominium: true,
       purpose: true,
       city: true,
       state: true,
@@ -247,6 +248,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
     title: String(p.title),
     price: p.price != null ? Number(p.price) : null,
     type: p.type != null ? String(p.type) : "",
+    inCondominium: p.inCondominium != null ? Boolean(p.inCondominium) : null,
     purpose: p.purpose != null ? String(p.purpose) : null,
     city: String(p.city),
     state: String(p.state),

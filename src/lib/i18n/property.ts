@@ -2,7 +2,7 @@ export const ptBR = {
   type: (t?: string) => (
     t === 'HOUSE' ? 'Casa' :
     t === 'APARTMENT' ? 'Apartamento' :
-    t === 'CONDO' ? 'Condomínio' :
+    t === 'CONDO' ? 'Em condomínio' :
     t === 'TOWNHOUSE' ? 'Sobrado' :
     t === 'STUDIO' ? 'Studio' :
     t === 'LAND' ? 'Terreno' :

@@ -120,6 +120,7 @@ export async function GET(req: NextRequest) {
       city: searchParams.get("city") ?? undefined,
       state: searchParams.get("state") ?? undefined,
       type: searchParams.get("type") ?? undefined,
+      inCondominium: searchParams.get("inCondominium") ?? undefined,
       purpose: searchParams.get("purpose") ?? undefined,
       q: searchParams.get("q") ?? undefined,
       agencyId: searchParams.get("agencyId") ?? undefined,
@@ -147,7 +148,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { city, state, type, purpose, q, minPrice, maxPrice, agencyId, realtorId } = parsed.data as any;
+    const { city, state, type, inCondominium: inCondominiumRaw, purpose, q, minPrice, maxPrice, agencyId, realtorId } = parsed.data as any;
     const tag = (searchParams.get("tag") || "").toLowerCase();
     const pageRaw = Number(parsed.data.page ?? 1);
     const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
@@ -163,6 +164,9 @@ export async function GET(req: NextRequest) {
     const bedroomsMin = Number(searchParams.get("bedroomsMin") || 0);
     const bathroomsMin = Number(searchParams.get("bathroomsMin") || 0);
     const areaMin = Number(searchParams.get("areaMin") || 0);
+
+    const inCondominiumParam = String(inCondominiumRaw || "").toLowerCase();
+    const wantsInCondominium = inCondominiumParam === "true" || inCondominiumParam === "1";
 
     const where: any = {};
     // Status filtering
@@ -184,12 +188,26 @@ export async function GET(req: NextRequest) {
         OR: [{ capturerRealtorId: rid }, { ownerId: rid }],
       });
     }
-    if (type) {
-      const upperType = String(type).toUpperCase();
+
+    let effectiveType = type as any;
+    const upperType = effectiveType ? String(effectiveType).toUpperCase() : "";
+    const legacyCondoTypeQuery = upperType === "CONDO";
+
+    if (effectiveType) {
       if (REMOVED_PROPERTY_TYPES.has(upperType)) {
         return NextResponse.json({ success: true, total: 0, properties: [], page, pageSize }, { status: 200 });
       }
-      where.type = type as any;
+      if (legacyCondoTypeQuery) {
+        effectiveType = undefined;
+      } else {
+        where.type = effectiveType as any;
+      }
+    }
+
+    if (wantsInCondominium || legacyCondoTypeQuery) {
+      (where.AND ||= [] as any[]).push({
+        OR: [{ inCondominium: true }, { type: "CONDO" }],
+      });
     }
     if (purpose) {
       const p = String(purpose).toUpperCase();
@@ -395,6 +413,7 @@ export async function GET(req: NextRequest) {
               title: true,
               price: true,
               type: true,
+              inCondominium: true,
               purpose: true,
               neighborhood: true,
               city: true,
@@ -423,6 +442,7 @@ export async function GET(req: NextRequest) {
               description: true,
               price: true,
               type: true,
+              inCondominium: true,
               purpose: true,
               status: true,
               ownerId: true,
@@ -744,7 +764,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { title, metaTitle, metaDescription, description, priceBRL, condoFee, type, purpose, capturerRealtorId, address, geo, details, images, conditionTags, furnished, petFriendly, privateData, visibility, videoUrl } = parsed.data;
+    const { title, metaTitle, metaDescription, description, priceBRL, condoFee, type, purpose, capturerRealtorId, address, geo, details, images, conditionTags, furnished, petFriendly, inCondominium, privateData, visibility, videoUrl } = parsed.data;
 
     const parsedVideo = typeof videoUrl === "string" && videoUrl.trim() ? parseVideoUrl(videoUrl) : null;
 
@@ -874,6 +894,7 @@ export async function POST(req: NextRequest) {
       longitude,
       furnished: typeof furnished === 'boolean' ? furnished : null,
       petFriendly: typeof petFriendly === 'boolean' ? petFriendly : null,
+      inCondominium: typeof inCondominium === 'boolean' ? inCondominium : null,
       condoFee: toBigIntOrNull(condoFee),
       bedrooms: details?.bedrooms ?? null,
       bathrooms: details?.bathrooms ?? null,
@@ -1069,7 +1090,7 @@ export async function PATCH(req: NextRequest) {
 
     // allow limited fields update
     const allowed: any = {};
-    const fields = ["title","description","price","type","purpose","conditionTags","street","neighborhood","city","state","postalCode","latitude","longitude","bedrooms","bathrooms","areaM2","videoUrl"];
+    const fields = ["title","description","price","type","purpose","conditionTags","street","neighborhood","city","state","postalCode","latitude","longitude","bedrooms","bathrooms","areaM2","videoUrl","inCondominium"];
     for (const k of fields) if (k in data) allowed[k] = data[k];
 
     if ("videoUrl" in allowed) {

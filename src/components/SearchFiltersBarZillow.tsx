@@ -11,6 +11,7 @@ export type FilterValues = {
   bedrooms: string;
   bathrooms: string;
   type: string;
+  inCondominium: boolean;
   areaMin: string;
   parkingSpots: string;
   yearBuiltMin: string;
@@ -109,6 +110,7 @@ export default function SearchFiltersBarZillow({
   const handleClear = () => {
     const cleared: FilterValues = {
       minPrice: '', maxPrice: '', bedrooms: '', bathrooms: '', type: '', areaMin: '',
+      inCondominium: false,
       parkingSpots: '', yearBuiltMin: '', yearBuiltMax: '', purpose: '',
       petFriendly: false, furnished: false,
       hasPool: false, hasGym: false, hasElevator: false, hasBalcony: false,
@@ -151,6 +153,7 @@ export default function SearchFiltersBarZillow({
           bedroomsMin: localFilters.bedrooms,
           bathroomsMin: localFilters.bathrooms,
           type: localFilters.type,
+          inCondominium: localFilters.inCondominium ? 'true' : '',
           areaMin: localFilters.areaMin,
           parkingSpots: localFilters.parkingSpots,
           yearBuiltMin: localFilters.yearBuiltMin,
@@ -222,7 +225,6 @@ export default function SearchFiltersBarZillow({
   const propertyTypes = [
     { value: "HOUSE", label: "Casa", icon: "🏠" },
     { value: "APARTMENT", label: "Apartamento", icon: "🏢" },
-    { value: "CONDO", label: "Condomínio", icon: "🏘️" },
     { value: "LAND", label: "Terreno", icon: "🌳" },
     { value: "RURAL", label: "Imóvel rural", icon: "🌾" },
     { value: "COMMERCIAL", label: "Comercial", icon: "🏬" },
@@ -491,6 +493,7 @@ export default function SearchFiltersBarZillow({
             <div className="grid grid-cols-2 gap-2">
               <AmenityButton active={localFilters.petFriendly} onClick={() => updateFilter('petFriendly', !localFilters.petFriendly)} icon={<PawPrint className="w-4 h-4" />} label="Aceita Pets" />
               <AmenityButton active={localFilters.furnished} onClick={() => updateFilter('furnished', !localFilters.furnished)} icon={<Sofa className="w-4 h-4" />} label="Mobiliado" />
+              <AmenityButton active={localFilters.inCondominium} onClick={() => updateFilter('inCondominium', !localFilters.inCondominium)} icon={<Building2 className="w-4 h-4" />} label="Em condomínio" />
             </div>
           </div>
 
