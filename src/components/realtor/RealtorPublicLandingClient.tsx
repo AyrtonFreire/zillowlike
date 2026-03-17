@@ -17,7 +17,6 @@ import SearchFiltersBarZillow, { type FilterValues } from "@/components/SearchFi
 import {
   BadgeDollarSign,
   BedDouble,
-  Camera,
   Check,
   Clock,
   Copy,
@@ -553,7 +552,25 @@ export default function RealtorPublicLandingClient({
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(pageUrl);
+      const text = String(pageUrl || "");
+      const nav: any = typeof navigator !== "undefined" ? navigator : null;
+
+      if (nav?.clipboard?.writeText) {
+        await nav.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "true");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        const ok = document.execCommand("copy");
+        ta.remove();
+        if (!ok) throw new Error("copy_failed");
+      }
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 1500);
     } catch {}
@@ -595,44 +612,6 @@ export default function RealtorPublicLandingClient({
     try {
       window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
     } catch {}
-  };
-
-  const handleShareStatusWithPhoto = async () => {
-    const ua = typeof navigator !== "undefined" ? String((navigator as any).userAgent || "") : "";
-    const isMobileUa = (navigator as any)?.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
-    if (!isMobileUa) {
-      window.open(`https://wa.me/?text=${encodeURIComponent(`Confira meu perfil no OggaHub: ${pageUrl}`)}`, "_blank", "noopener,noreferrer");
-      return;
-    }
-
-    const nav: any = typeof navigator !== "undefined" ? navigator : null;
-    if (!nav || typeof nav.share !== "function") {
-      window.open(`https://wa.me/?text=${encodeURIComponent(`Confira meu perfil no OggaHub: ${pageUrl}`)}`, "_blank", "noopener,noreferrer");
-      return;
-    }
-
-    const text = `Confira meu perfil no OggaHub: ${pageUrl}`;
-    try {
-      const imageUrl = realtor.image || null;
-      if (!imageUrl) {
-        await nav.share({ text });
-        return;
-      }
-
-      const res = await fetch(imageUrl);
-      const blob = await res.blob();
-      const file = new File([blob], `perfil-${String(realtor.id)}.jpg`, { type: blob.type || "image/jpeg" });
-      const files = [file];
-
-      if (typeof nav.canShare === "function" && nav.canShare({ files })) {
-        await nav.share({ files, text });
-        return;
-      }
-
-      await nav.share({ text });
-    } catch {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
-    }
   };
 
   const openReviews = (source: string) => {
@@ -726,14 +705,14 @@ export default function RealtorPublicLandingClient({
 
   const ShareSection = ({ id, wrapperClassName }: { id: string; wrapperClassName: string }) => {
     const tileBase =
-      "group h-[68px] w-[68px] sm:h-[76px] sm:w-[76px] rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 flex items-center justify-center shadow-sm hover:shadow transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
+      "group w-full aspect-square max-w-[56px] sm:max-w-[64px] rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 flex items-center justify-center shadow-sm hover:shadow transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
     const srOnly = "sr-only";
 
     return (
       <section id={id} className={wrapperClassName}>
         <div className="text-base font-semibold text-gray-900">Compartilhar</div>
-        <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-5 shadow-sm">
-          <div className="mt-3 flex flex-wrap items-center gap-3">
+        <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-4 sm:p-5 shadow-sm">
+          <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3 justify-items-center">
             <a
               href={`https://wa.me/?text=${encodeURIComponent(shareTemplates.find((t) => t.key === "whatsapp")?.text || pageUrl)}`}
               target="_blank"
@@ -742,8 +721,8 @@ export default function RealtorPublicLandingClient({
               aria-label="Compartilhar no WhatsApp"
               title="WhatsApp"
             >
-              <span className="h-10 w-10 sm:h-11 sm:w-11 rounded-[16px] bg-[#25D366] flex items-center justify-center shadow-sm">
-                <BrandWhatsAppIcon className="h-6 w-6 text-white" />
+              <span className="h-8 w-8 sm:h-9 sm:w-9 rounded-[12px] bg-[#25D366] flex items-center justify-center shadow-sm">
+                <BrandWhatsAppIcon className="h-5 w-5 text-white" />
               </span>
               <span className={srOnly}>WhatsApp</span>
             </a>
@@ -760,8 +739,8 @@ export default function RealtorPublicLandingClient({
                   <Check className="h-3.5 w-3.5 text-white" />
                 </span>
               ) : null}
-              <span className="h-10 w-10 sm:h-11 sm:w-11 rounded-[16px] bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#515bd4] flex items-center justify-center shadow-sm">
-                <BrandInstagramIcon className="h-6 w-6 text-white" />
+              <span className="h-8 w-8 sm:h-9 sm:w-9 rounded-[12px] bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#515bd4] flex items-center justify-center shadow-sm">
+                <BrandInstagramIcon className="h-5 w-5 text-white" />
               </span>
               <span className={srOnly}>Instagram</span>
             </button>
@@ -774,26 +753,11 @@ export default function RealtorPublicLandingClient({
               aria-label="Compartilhar no Facebook"
               title="Facebook"
             >
-              <span className="h-10 w-10 sm:h-11 sm:w-11 rounded-[16px] bg-[#1877F2] flex items-center justify-center shadow-sm">
-                <BrandFacebookIcon className="h-6 w-6 text-white" />
+              <span className="h-8 w-8 sm:h-9 sm:w-9 rounded-[12px] bg-[#1877F2] flex items-center justify-center shadow-sm">
+                <BrandFacebookIcon className="h-5 w-5 text-white" />
               </span>
               <span className={srOnly}>Facebook</span>
             </a>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-3 sm:hidden">
-            <button
-              type="button"
-              onClick={handleShareStatusWithPhoto}
-              className={`${tileBase} relative`}
-              aria-label="Status do WhatsApp com foto"
-              title="Status com Foto"
-            >
-              <span className="h-10 w-10 rounded-[16px] bg-[#128C7E] flex items-center justify-center shadow-sm">
-                <Camera className="h-6 w-6 text-white" />
-              </span>
-              <span className={srOnly}>Status com foto</span>
-            </button>
           </div>
 
           <div className="mt-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
@@ -802,13 +766,15 @@ export default function RealtorPublicLandingClient({
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className={`h-8 w-8 rounded-full border border-neutral-200 bg-white text-neutral-700 flex items-center justify-center transition duration-150 ${
-                  copiedLink ? "bg-emerald-600 text-white border-emerald-600 scale-[1.06] shadow-sm" : "hover:bg-neutral-50"
+                className={`h-8 w-8 rounded-full border border-neutral-200 flex items-center justify-center transition duration-150 ${
+                  copiedLink
+                    ? "bg-emerald-600 border-emerald-600 text-white scale-[1.06] shadow-sm"
+                    : "bg-white text-neutral-700 hover:bg-neutral-50"
                 }`}
                 aria-label="Copiar link do perfil"
                 title={copiedLink ? "Link copiado" : "Copiar link"}
               >
-                {copiedLink ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copiedLink ? <Check className="h-4 w-4 text-white" /> : <Copy className="h-4 w-4 text-neutral-700" />}
                 <span className={srOnly}>Copiar link</span>
               </button>
             </div>
