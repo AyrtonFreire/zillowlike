@@ -23,7 +23,7 @@ import {
   Facebook,
   Grid3X3,
   Info,
-  Linkedin,
+  Instagram,
   MapPin,
   MessageCircle,
   Phone,
@@ -32,7 +32,6 @@ import {
   Search,
   Sparkles,
   Star,
-  Twitter,
   TrendingUp,
   X,
 } from "lucide-react";
@@ -237,8 +236,7 @@ export default function RealtorPublicLandingClient({
   const [searchTerm, setSearchTerm] = useState("");
 
   const [copiedLink, setCopiedLink] = useState(false);
-  const [copiedText, setCopiedText] = useState(false);
-  const [copiedTemplate, setCopiedTemplate] = useState<string | null>(null);
+  const [copiedInstagram, setCopiedInstagram] = useState(false);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<FilterValues>(EMPTY_FILTERS);
@@ -539,15 +537,6 @@ export default function RealtorPublicLandingClient({
     } catch {}
   };
 
-  const handleCopyText = async () => {
-    const text = `Olá! Se você está buscando imóvel para comprar/alugar, me chama aqui: ${pageUrl}. Eu te mando opções do nosso estoque no WhatsApp.`;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedText(true);
-      setTimeout(() => setCopiedText(false), 1500);
-    } catch {}
-  };
-
   const shareTemplates = useMemo(() => {
     const name = String(realtor.name || "Corretor").trim();
     const loc = locationLabel ? `\n📍 ${locationLabel}` : "";
@@ -570,26 +559,19 @@ export default function RealtorPublicLandingClient({
         label: "Post Facebook",
         text: `🚀 Quer ajuda para comprar/alugar? Fala comigo!\n\n${name}${loc}\n${base}`,
       },
-      {
-        key: "linkedin",
-        label: "Post LinkedIn",
-        text: `Estou disponível para ajudar em compra e locação de imóveis.${loc}\n\nPerfil: ${pageUrl}`,
-      },
-      {
-        key: "x",
-        label: "Post X",
-        text: `Quer comprar/alugar imóvel? Fala comigo. ${pageUrl}`,
-      },
     ];
   }, [locationLabel, pageUrl, realtor.name, realtor.publicHeadline]);
 
-  const handleCopyTemplate = async (key: string) => {
-    const tpl = shareTemplates.find((t) => t.key === key);
-    if (!tpl) return;
+  const handleInstagramShare = async () => {
+    const caption = shareTemplates.find((t) => t.key === "instagram")?.text || pageUrl;
     try {
-      await navigator.clipboard.writeText(tpl.text);
-      setCopiedTemplate(key);
-      setTimeout(() => setCopiedTemplate(null), 1500);
+      await navigator.clipboard.writeText(caption);
+      setCopiedInstagram(true);
+      setTimeout(() => setCopiedInstagram(false), 1500);
+    } catch {}
+
+    try {
+      window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
     } catch {}
   };
 
@@ -750,6 +732,16 @@ export default function RealtorPublicLandingClient({
 
             <button
               type="button"
+              onClick={handleInstagramShare}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-fuchsia-600 hover:bg-fuchsia-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+            >
+              <Instagram className="h-4 w-4" />
+              Instagram
+              {copiedInstagram ? <span className="ml-1">(Copiado)</span> : null}
+            </button>
+
+            <button
+              type="button"
               onClick={handleShareStatusWithPhoto}
               className="sm:hidden inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
             >
@@ -758,33 +750,13 @@ export default function RealtorPublicLandingClient({
             </button>
 
             <a
-              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`}
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}&quote=${encodeURIComponent(shareTemplates.find((t) => t.key === "facebook")?.text || pageUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
             >
               <Facebook className="h-4 w-4" />
               Facebook
-            </a>
-
-            <a
-              href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(pageUrl)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-sky-700 hover:bg-sky-800 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
-            >
-              <Linkedin className="h-4 w-4" />
-              LinkedIn
-            </a>
-
-            <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareTemplates.find((t) => t.key === "x")?.text || pageUrl)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 hover:bg-neutral-800 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
-            >
-              <Twitter className="h-4 w-4" />
-              X
             </a>
 
             <button
@@ -796,38 +768,6 @@ export default function RealtorPublicLandingClient({
               Copiar link
               {copiedLink ? <span className="ml-1 text-neutral-900">(Copiado)</span> : null}
             </button>
-          </div>
-
-          <div className="mt-4">
-            <div className="text-xs font-semibold text-neutral-700">Textos prontos</div>
-            <div className="mt-2 grid grid-cols-1 gap-2">
-              {shareTemplates.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => handleCopyTemplate(t.key)}
-                  className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <Copy className="h-4 w-4" />
-                    {t.label}
-                  </span>
-                  {copiedTemplate === t.key ? <span className="text-neutral-900">Copiado</span> : null}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={handleCopyText}
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Copy className="h-4 w-4" />
-                  Copiar texto genérico
-                </span>
-                {copiedText ? <span className="text-neutral-900">Copiado</span> : null}
-              </button>
-            </div>
           </div>
 
           <button
