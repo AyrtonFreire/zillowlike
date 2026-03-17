@@ -17,10 +17,13 @@ import SearchFiltersBarZillow, { type FilterValues } from "@/components/SearchFi
 import {
   BadgeDollarSign,
   BedDouble,
+  Camera,
   Clock,
   Copy,
+  Facebook,
   Grid3X3,
   Info,
+  Linkedin,
   MapPin,
   MessageCircle,
   Phone,
@@ -29,6 +32,7 @@ import {
   Search,
   Sparkles,
   Star,
+  Twitter,
   TrendingUp,
   X,
 } from "lucide-react";
@@ -234,6 +238,7 @@ export default function RealtorPublicLandingClient({
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
+  const [copiedTemplate, setCopiedTemplate] = useState<string | null>(null);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<FilterValues>(EMPTY_FILTERS);
@@ -543,6 +548,89 @@ export default function RealtorPublicLandingClient({
     } catch {}
   };
 
+  const shareTemplates = useMemo(() => {
+    const name = String(realtor.name || "Corretor").trim();
+    const loc = locationLabel ? `\n📍 ${locationLabel}` : "";
+    const headline = realtor.publicHeadline ? `\n${String(realtor.publicHeadline).trim()}` : "";
+    const base = `Confira meu perfil no OggaHub: ${pageUrl}`;
+
+    return [
+      {
+        key: "whatsapp",
+        label: "Texto WhatsApp",
+        text: `Oi! Sou ${name}.${headline}${loc}\n\n${base}`,
+      },
+      {
+        key: "instagram",
+        label: "Legenda Instagram",
+        text: `${name}${headline}${loc}\n\nQuer comprar ou alugar? Me chama no direct/WhatsApp e eu te envio opções.\n\n${base}`,
+      },
+      {
+        key: "facebook",
+        label: "Post Facebook",
+        text: `🚀 Quer ajuda para comprar/alugar? Fala comigo!\n\n${name}${loc}\n${base}`,
+      },
+      {
+        key: "linkedin",
+        label: "Post LinkedIn",
+        text: `Estou disponível para ajudar em compra e locação de imóveis.${loc}\n\nPerfil: ${pageUrl}`,
+      },
+      {
+        key: "x",
+        label: "Post X",
+        text: `Quer comprar/alugar imóvel? Fala comigo. ${pageUrl}`,
+      },
+    ];
+  }, [locationLabel, pageUrl, realtor.name, realtor.publicHeadline]);
+
+  const handleCopyTemplate = async (key: string) => {
+    const tpl = shareTemplates.find((t) => t.key === key);
+    if (!tpl) return;
+    try {
+      await navigator.clipboard.writeText(tpl.text);
+      setCopiedTemplate(key);
+      setTimeout(() => setCopiedTemplate(null), 1500);
+    } catch {}
+  };
+
+  const handleShareStatusWithPhoto = async () => {
+    const ua = typeof navigator !== "undefined" ? String((navigator as any).userAgent || "") : "";
+    const isMobileUa = (navigator as any)?.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+    if (!isMobileUa) {
+      window.open(`https://wa.me/?text=${encodeURIComponent(`Confira meu perfil no OggaHub: ${pageUrl}`)}`, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    const nav: any = typeof navigator !== "undefined" ? navigator : null;
+    if (!nav || typeof nav.share !== "function") {
+      window.open(`https://wa.me/?text=${encodeURIComponent(`Confira meu perfil no OggaHub: ${pageUrl}`)}`, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    const text = `Confira meu perfil no OggaHub: ${pageUrl}`;
+    try {
+      const imageUrl = realtor.image || null;
+      if (!imageUrl) {
+        await nav.share({ text });
+        return;
+      }
+
+      const res = await fetch(imageUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `perfil-${String(realtor.id)}.jpg`, { type: blob.type || "image/jpeg" });
+      const files = [file];
+
+      if (typeof nav.canShare === "function" && nav.canShare({ files })) {
+        await nav.share({ files, text });
+        return;
+      }
+
+      await nav.share({ text });
+    } catch {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    }
+  };
+
   const handleDownloadQr = () => {
     const url = `https://chart.googleapis.com/chart?chs=512x512&cht=qr&chl=${encodeURIComponent(pageUrl)}`;
     const a = document.createElement("a");
@@ -647,43 +735,113 @@ export default function RealtorPublicLandingClient({
       <section id={id} className={wrapperClassName}>
         <div className="text-base font-semibold text-gray-900">Compartilhar</div>
         <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-5 shadow-sm">
-          <div className="text-sm text-gray-600">Use esse link nas redes sociais e no WhatsApp.</div>
+          <div className="text-sm text-gray-600">Links e textos prontos para divulgar seu perfil.</div>
 
-          <div className="mt-4 flex flex-col gap-2">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(shareTemplates.find((t) => t.key === "whatsapp")?.text || pageUrl)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+            </a>
+
+            <button
+              type="button"
+              onClick={handleShareStatusWithPhoto}
+              className="sm:hidden inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+            >
+              <Camera className="h-4 w-4" />
+              Status com Foto
+            </button>
+
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+            >
+              <Facebook className="h-4 w-4" />
+              Facebook
+            </a>
+
+            <a
+              href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(pageUrl)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-sky-700 hover:bg-sky-800 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+            >
+              <Linkedin className="h-4 w-4" />
+              LinkedIn
+            </a>
+
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareTemplates.find((t) => t.key === "x")?.text || pageUrl)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 hover:bg-neutral-800 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+            >
+              <Twitter className="h-4 w-4" />
+              X
+            </a>
+
             <button
               type="button"
               onClick={handleCopyLink}
-              className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
             >
-              <span className="inline-flex items-center gap-2">
-                <Copy className="h-4 w-4" />
-                Copiar link
-              </span>
-              {copiedLink ? <span className="text-gray-900">Copiado</span> : null}
+              <Copy className="h-4 w-4" />
+              Copiar link
+              {copiedLink ? <span className="ml-1 text-neutral-900">(Copiado)</span> : null}
             </button>
+          </div>
 
-            <button
-              type="button"
-              onClick={handleCopyText}
-              className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
-            >
-              <span className="inline-flex items-center gap-2">
-                <Copy className="h-4 w-4" />
-                Copiar texto pronto
-              </span>
-              {copiedText ? <span className="text-gray-900">Copiado</span> : null}
-            </button>
+          <div className="mt-4">
+            <div className="text-xs font-semibold text-neutral-700">Textos prontos</div>
+            <div className="mt-2 grid grid-cols-1 gap-2">
+              {shareTemplates.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => handleCopyTemplate(t.key)}
+                  className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Copy className="h-4 w-4" />
+                    {t.label}
+                  </span>
+                  {copiedTemplate === t.key ? <span className="text-neutral-900">Copiado</span> : null}
+                </button>
+              ))}
 
-            <button
-              type="button"
-              onClick={handleDownloadQr}
-              className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
-            >
-              <span className="inline-flex items-center gap-2">
-                <QrCode className="h-4 w-4" />
-                Baixar QR Code
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={handleCopyText}
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Copy className="h-4 w-4" />
+                  Copiar texto genérico
+                </span>
+                {copiedText ? <span className="text-neutral-900">Copiado</span> : null}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleDownloadQr}
+            className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
+          >
+            <QrCode className="h-4 w-4" />
+            Baixar QR Code
+          </button>
+
+          <div className="mt-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
+            <div className="text-[11px] font-semibold text-neutral-500">Link do perfil</div>
+            <div className="mt-1 text-xs font-mono text-neutral-700 break-all">{pageUrl}</div>
           </div>
         </div>
       </section>
