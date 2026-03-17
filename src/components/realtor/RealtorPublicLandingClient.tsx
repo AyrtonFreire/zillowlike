@@ -27,7 +27,6 @@ import {
   MessageCircle,
   Phone,
   PawPrint,
-  QrCode,
   Search,
   Sparkles,
   Star,
@@ -636,16 +635,6 @@ export default function RealtorPublicLandingClient({
     }
   };
 
-  const handleDownloadQr = () => {
-    const url = `https://chart.googleapis.com/chart?chs=512x512&cht=qr&chl=${encodeURIComponent(pageUrl)}`;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `qrcode-${realtor.name || "perfil"}.png`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  };
-
   const openReviews = (source: string) => {
     setReviewsOpen(true);
     try {
@@ -737,14 +726,14 @@ export default function RealtorPublicLandingClient({
 
   const ShareSection = ({ id, wrapperClassName }: { id: string; wrapperClassName: string }) => {
     const tileBase =
-      "group w-full aspect-square rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 flex flex-col items-center justify-center shadow-sm hover:shadow transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
+      "group h-[68px] w-[68px] sm:h-[76px] sm:w-[76px] rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 flex items-center justify-center shadow-sm hover:shadow transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
     const srOnly = "sr-only";
 
     return (
       <section id={id} className={wrapperClassName}>
         <div className="text-base font-semibold text-gray-900">Compartilhar</div>
         <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-5 shadow-sm">
-          <div className="mt-3 grid grid-cols-3 gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             <a
               href={`https://wa.me/?text=${encodeURIComponent(shareTemplates.find((t) => t.key === "whatsapp")?.text || pageUrl)}`}
               target="_blank"
@@ -753,8 +742,8 @@ export default function RealtorPublicLandingClient({
               aria-label="Compartilhar no WhatsApp"
               title="WhatsApp"
             >
-              <span className="h-14 w-14 rounded-[18px] bg-[#25D366] flex items-center justify-center shadow-sm">
-                <BrandWhatsAppIcon className="h-8 w-8 text-white" />
+              <span className="h-10 w-10 sm:h-11 sm:w-11 rounded-[16px] bg-[#25D366] flex items-center justify-center shadow-sm">
+                <BrandWhatsAppIcon className="h-6 w-6 text-white" />
               </span>
               <span className={srOnly}>WhatsApp</span>
             </a>
@@ -767,12 +756,12 @@ export default function RealtorPublicLandingClient({
               title={copiedInstagram ? "Legenda copiada" : "Instagram"}
             >
               {copiedInstagram ? (
-                <span className="absolute -top-1.5 -right-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/30 backdrop-blur">
-                  <Check className="h-4 w-4 text-white" />
+                <span className="absolute -top-1.5 -right-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/30 backdrop-blur">
+                  <Check className="h-3.5 w-3.5 text-white" />
                 </span>
               ) : null}
-              <span className="h-14 w-14 rounded-[18px] bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#515bd4] flex items-center justify-center shadow-sm">
-                <BrandInstagramIcon className="h-8 w-8 text-white" />
+              <span className="h-10 w-10 sm:h-11 sm:w-11 rounded-[16px] bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#515bd4] flex items-center justify-center shadow-sm">
+                <BrandInstagramIcon className="h-6 w-6 text-white" />
               </span>
               <span className={srOnly}>Instagram</span>
             </button>
@@ -785,62 +774,46 @@ export default function RealtorPublicLandingClient({
               aria-label="Compartilhar no Facebook"
               title="Facebook"
             >
-              <span className="h-14 w-14 rounded-[18px] bg-[#1877F2] flex items-center justify-center shadow-sm">
-                <BrandFacebookIcon className="h-8 w-8 text-white" />
+              <span className="h-10 w-10 sm:h-11 sm:w-11 rounded-[16px] bg-[#1877F2] flex items-center justify-center shadow-sm">
+                <BrandFacebookIcon className="h-6 w-6 text-white" />
               </span>
               <span className={srOnly}>Facebook</span>
             </a>
           </div>
 
-          <div className="mt-4 grid grid-cols-3 sm:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className={`${tileBase} relative`}
-              aria-label="Copiar link do perfil"
-              title={copiedLink ? "Link copiado" : "Copiar link"}
-            >
-              {copiedLink ? (
-                <span className="absolute -top-1.5 -right-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600">
-                  <Check className="h-4 w-4 text-white" />
-                </span>
-              ) : null}
-              <span className="h-14 w-14 rounded-[18px] bg-neutral-100 flex items-center justify-center">
-                <Copy className="h-8 w-8 text-neutral-700" />
-              </span>
-              <span className={srOnly}>Copiar link</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDownloadQr}
-              className={`${tileBase}`}
-              aria-label="Baixar QR Code"
-              title="Baixar QR Code"
-            >
-              <span className="h-14 w-14 rounded-[18px] bg-neutral-100 flex items-center justify-center">
-                <QrCode className="h-8 w-8 text-neutral-700" />
-              </span>
-              <span className={srOnly}>QR Code</span>
-            </button>
-
+          <div className="mt-4 flex flex-wrap items-center gap-3 sm:hidden">
             <button
               type="button"
               onClick={handleShareStatusWithPhoto}
-              className={`${tileBase} sm:hidden`}
+              className={`${tileBase} relative`}
               aria-label="Status do WhatsApp com foto"
               title="Status com Foto"
             >
-              <span className="h-14 w-14 rounded-[18px] bg-[#128C7E] flex items-center justify-center shadow-sm">
-                <Camera className="h-8 w-8 text-white" />
+              <span className="h-10 w-10 rounded-[16px] bg-[#128C7E] flex items-center justify-center shadow-sm">
+                <Camera className="h-6 w-6 text-white" />
               </span>
               <span className={srOnly}>Status com foto</span>
             </button>
           </div>
 
           <div className="mt-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
-            <div className="text-[11px] font-semibold text-neutral-500">Link do perfil</div>
-            <div className="mt-1 text-xs font-mono text-neutral-700 break-all">{pageUrl}</div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[11px] font-semibold text-neutral-500">Link do perfil</div>
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className={`h-8 w-8 rounded-full border border-neutral-200 bg-white text-neutral-700 flex items-center justify-center transition duration-150 ${
+                  copiedLink ? "bg-emerald-600 text-white border-emerald-600 scale-[1.06] shadow-sm" : "hover:bg-neutral-50"
+                }`}
+                aria-label="Copiar link do perfil"
+                title={copiedLink ? "Link copiado" : "Copiar link"}
+              >
+                {copiedLink ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                <span className={srOnly}>Copiar link</span>
+              </button>
+            </div>
+
+            <div className="mt-2 text-xs font-mono text-neutral-700 break-all">{pageUrl}</div>
           </div>
         </div>
       </section>
