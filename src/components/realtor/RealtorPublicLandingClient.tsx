@@ -762,54 +762,80 @@ export default function RealtorPublicLandingClient({
               <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
                 <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-white to-teal-50" />
                 <div className="relative p-5 sm:p-7">
-                  <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-                    <div className="flex items-start gap-4 sm:gap-5">
-                      <div className="flex-shrink-0">
-                        <div className="rounded-3xl p-[2px] bg-accent shadow-sm">
-                          <div className="rounded-3xl bg-white p-[2px]">
-                            {realtor.image ? (
-                              <Image
-                                src={realtor.image}
-                                alt={realtor.name}
-                                width={128}
-                                height={128}
-                                className="h-[104px] w-[104px] sm:h-[120px] sm:w-[120px] rounded-3xl object-cover"
-                                priority
-                              />
-                            ) : (
-                              <div className="h-[104px] w-[104px] sm:h-[120px] sm:w-[120px] rounded-3xl bg-gray-100 flex items-center justify-center text-4xl font-semibold text-gray-700">
-                                {(realtor.name || "?").charAt(0).toUpperCase()}
-                              </div>
-                            )}
+                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start gap-6">
+                    <div className="min-w-0">
+                      <div className="flex items-start gap-4 sm:gap-5">
+                        <div className="flex-shrink-0">
+                          <div className="rounded-3xl p-[2px] bg-accent shadow-sm">
+                            <div className="rounded-3xl bg-white p-[2px]">
+                              {realtor.image ? (
+                                <Image
+                                  src={realtor.image}
+                                  alt={realtor.name}
+                                  width={128}
+                                  height={128}
+                                  className="h-[104px] w-[104px] sm:h-[120px] sm:w-[120px] rounded-3xl object-cover"
+                                  priority
+                                />
+                              ) : (
+                                <div className="h-[104px] w-[104px] sm:h-[120px] sm:w-[120px] rounded-3xl bg-gray-100 flex items-center justify-center text-4xl font-semibold text-gray-700">
+                                  {(realtor.name || "?").charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight truncate">{realtor.name}</h1>
+                            {realtor.creci && realtor.creciState ? (
+                              <span className="inline-flex items-center rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700 border border-neutral-200">
+                                CRECI {realtor.creci}/{realtor.creciState}
+                              </span>
+                            ) : null}
+                            {teamLabel ? (
+                              <span className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-neutral-700 border border-neutral-200">
+                                Time {teamLabel}
+                              </span>
+                            ) : null}
+                            {realtor.lastActivity ? <SeloAtividade lastActivity={realtor.lastActivity} /> : null}
+                          </div>
+
+                          <div className="mt-3 text-sm sm:text-base text-neutral-900 whitespace-pre-line">
+                            {realtor.publicHeadline ? <div className="font-semibold">{realtor.publicHeadline}</div> : null}
+                            {realtor.publicBio ? <div className="mt-1 text-neutral-700">{realtor.publicBio}</div> : null}
+                            {locationLabel ? <div className="mt-1 text-neutral-600">{locationLabel}</div> : null}
+                            {serviceAreaChips.length > 0 ? (
+                              <div className="mt-1 text-neutral-600">Atendo: {serviceAreaChips.slice(0, 5).join(" • ")}</div>
+                            ) : null}
                           </div>
                         </div>
                       </div>
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight truncate">{realtor.name}</h1>
-                          {realtor.creci && realtor.creciState ? (
-                            <span className="inline-flex items-center rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700 border border-neutral-200">
-                              CRECI {realtor.creci}/{realtor.creciState}
-                            </span>
-                          ) : null}
-                          {teamLabel ? (
-                            <span className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-neutral-700 border border-neutral-200">
-                              Time {teamLabel}
-                            </span>
-                          ) : null}
-                          {realtor.lastActivity ? <SeloAtividade lastActivity={realtor.lastActivity} /> : null}
+                      {testimonialsPreview.length > 0 ? (
+                        <div className={`mt-5 grid gap-3 ${testimonialsPreview.length === 1 ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
+                          {testimonialsPreview.map((t) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => openReviews("hero_testimonial")}
+                              className="text-left rounded-3xl border border-neutral-200 bg-white/80 hover:bg-white p-4 shadow-sm hover:shadow transition-shadow"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="text-sm font-semibold text-neutral-900 truncate">{t.authorName || "Cliente"}</div>
+                                  <div className="text-xs text-neutral-500">{toDateLabel(t.createdAt)}</div>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  <RatingStars readonly rating={t.rating} size="sm" />
+                                </div>
+                              </div>
+                              <div className="mt-3 text-sm text-neutral-700 max-h-[4.5rem] overflow-hidden">“{t.comment}”</div>
+                            </button>
+                          ))}
                         </div>
-
-                        <div className="mt-3 text-sm sm:text-base text-neutral-900 whitespace-pre-line">
-                          {realtor.publicHeadline ? <div className="font-semibold">{realtor.publicHeadline}</div> : null}
-                          {realtor.publicBio ? <div className="mt-1 text-neutral-700">{realtor.publicBio}</div> : null}
-                          {locationLabel ? <div className="mt-1 text-neutral-600">{locationLabel}</div> : null}
-                          {serviceAreaChips.length > 0 ? (
-                            <div className="mt-1 text-neutral-600">Atendo: {serviceAreaChips.slice(0, 5).join(" • ")}</div>
-                          ) : null}
-                        </div>
-                      </div>
+                      ) : null}
                     </div>
 
                     <div className="lg:w-[380px]">
@@ -886,30 +912,6 @@ export default function RealtorPublicLandingClient({
                       </div>
                     </div>
                   </div>
-
-                  {testimonialsPreview.length > 0 ? (
-                    <div className={`mt-5 grid gap-3 ${testimonialsPreview.length === 1 ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
-                      {testimonialsPreview.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => openReviews("hero_testimonial")}
-                          className="text-left rounded-3xl border border-neutral-200 bg-white/80 hover:bg-white p-4 shadow-sm hover:shadow transition-shadow"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-neutral-900 truncate">{t.authorName || "Cliente"}</div>
-                              <div className="text-xs text-neutral-500">{toDateLabel(t.createdAt)}</div>
-                            </div>
-                            <div className="flex-shrink-0">
-                              <RatingStars readonly rating={t.rating} size="sm" />
-                            </div>
-                          </div>
-                          <div className="mt-3 text-sm text-neutral-700 max-h-[4.5rem] overflow-hidden">“{t.comment}”</div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
               </div>
             </section>
