@@ -18,12 +18,11 @@ import {
   BadgeDollarSign,
   BedDouble,
   Camera,
+  Check,
   Clock,
   Copy,
-  Facebook,
   Grid3X3,
   Info,
-  Instagram,
   MapPin,
   MessageCircle,
   Phone,
@@ -135,6 +134,30 @@ type RealtorPublicLandingClientProps = {
 };
 
 const DEFAULT_PAGE_SIZE = 36;
+
+function BrandWhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M20.52 3.48A11.86 11.86 0 0 0 12.02 0C5.42 0 .05 5.37.05 11.97c0 2.11.55 4.17 1.6 5.98L0 24l6.2-1.63a11.9 11.9 0 0 0 5.82 1.5h.01c6.6 0 11.97-5.37 11.97-11.97 0-3.19-1.24-6.19-3.48-8.42ZM12.02 21.7h-.01a9.7 9.7 0 0 1-4.95-1.36l-.35-.2-3.68.96.98-3.59-.23-.36A9.68 9.68 0 0 1 2.33 12C2.33 6.63 6.65 2.31 12.02 2.31c2.58 0 5.01 1.01 6.83 2.83A9.6 9.6 0 0 1 21.7 12c0 5.36-4.32 9.7-9.68 9.7Zm5.62-7.25c-.31-.15-1.83-.9-2.12-1-.29-.1-.5-.15-.71.15-.21.31-.82 1-.99 1.2-.18.2-.35.23-.66.08-.31-.15-1.28-.47-2.44-1.5-.9-.8-1.5-1.8-1.68-2.1-.18-.31-.02-.48.13-.63.14-.14.31-.35.46-.53.15-.18.2-.31.31-.52.1-.2.05-.39-.03-.54-.08-.15-.71-1.7-.98-2.33-.26-.62-.52-.54-.71-.55-.18-.01-.39-.01-.6-.01-.21 0-.54.08-.82.39-.28.31-1.08 1.05-1.08 2.56 0 1.51 1.11 2.97 1.25 3.17.15.21 2.18 3.33 5.28 4.67.74.32 1.32.51 1.77.66.74.24 1.42.2 1.96.12.6-.09 1.83-.75 2.09-1.47.26-.72.26-1.35.18-1.47-.08-.12-.28-.2-.59-.35Z" />
+    </svg>
+  );
+}
+
+function BrandInstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M7.5 2h9A5.5 5.5 0 0 1 22 7.5v9A5.5 5.5 0 0 1 16.5 22h-9A5.5 5.5 0 0 1 2 16.5v-9A5.5 5.5 0 0 1 7.5 2Zm0 2A3.5 3.5 0 0 0 4 7.5v9A3.5 3.5 0 0 0 7.5 20h9a3.5 3.5 0 0 0 3.5-3.5v-9A3.5 3.5 0 0 0 16.5 4h-9ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm5.75-.9a1.15 1.15 0 1 1 0 2.3 1.15 1.15 0 0 1 0-2.3Z" />
+    </svg>
+  );
+}
+
+function BrandFacebookIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.08 10.13 24v-8.43H7.08v-3.5h3.05V9.43c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.69.24 2.69.24v2.96h-1.52c-1.49 0-1.96.93-1.96 1.88v2.25h3.33l-.53 3.5h-2.8V24C19.61 23.08 24 18.1 24 12.07Z" />
+    </svg>
+  );
+}
 
 const EMPTY_FILTERS: FilterValues = {
   minPrice: "",
@@ -713,71 +736,107 @@ export default function RealtorPublicLandingClient({
   }, [openOverlay]);
 
   const ShareSection = ({ id, wrapperClassName }: { id: string; wrapperClassName: string }) => {
+    const tileBase =
+      "group w-full aspect-square rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 flex flex-col items-center justify-center shadow-sm hover:shadow transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
+    const srOnly = "sr-only";
+
     return (
       <section id={id} className={wrapperClassName}>
         <div className="text-base font-semibold text-gray-900">Compartilhar</div>
         <div className="mt-3 rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur p-5 shadow-sm">
-          <div className="text-sm text-gray-600">Links e textos prontos para divulgar seu perfil.</div>
-
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-3 gap-3">
             <a
               href={`https://wa.me/?text=${encodeURIComponent(shareTemplates.find((t) => t.key === "whatsapp")?.text || pageUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 hover:bg-green-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+              className={`${tileBase} relative`}
+              aria-label="Compartilhar no WhatsApp"
+              title="WhatsApp"
             >
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp
+              <span className="h-14 w-14 rounded-[18px] bg-[#25D366] flex items-center justify-center shadow-sm">
+                <BrandWhatsAppIcon className="h-8 w-8 text-white" />
+              </span>
+              <span className={srOnly}>WhatsApp</span>
             </a>
 
             <button
               type="button"
               onClick={handleInstagramShare}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-fuchsia-600 hover:bg-fuchsia-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+              className={`${tileBase} relative`}
+              aria-label="Compartilhar no Instagram"
+              title={copiedInstagram ? "Legenda copiada" : "Instagram"}
             >
-              <Instagram className="h-4 w-4" />
-              Instagram
-              {copiedInstagram ? <span className="ml-1">(Copiado)</span> : null}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleShareStatusWithPhoto}
-              className="sm:hidden inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
-            >
-              <Camera className="h-4 w-4" />
-              Status com Foto
+              {copiedInstagram ? (
+                <span className="absolute -top-1.5 -right-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/30 backdrop-blur">
+                  <Check className="h-4 w-4 text-white" />
+                </span>
+              ) : null}
+              <span className="h-14 w-14 rounded-[18px] bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#515bd4] flex items-center justify-center shadow-sm">
+                <BrandInstagramIcon className="h-8 w-8 text-white" />
+              </span>
+              <span className={srOnly}>Instagram</span>
             </button>
 
             <a
               href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}&quote=${encodeURIComponent(shareTemplates.find((t) => t.key === "facebook")?.text || pageUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-sm font-semibold text-white transition-colors shadow-sm hover:shadow"
+              className={`${tileBase} relative`}
+              aria-label="Compartilhar no Facebook"
+              title="Facebook"
             >
-              <Facebook className="h-4 w-4" />
-              Facebook
+              <span className="h-14 w-14 rounded-[18px] bg-[#1877F2] flex items-center justify-center shadow-sm">
+                <BrandFacebookIcon className="h-8 w-8 text-white" />
+              </span>
+              <span className={srOnly}>Facebook</span>
             </a>
+          </div>
 
+          <div className="mt-4 grid grid-cols-3 sm:grid-cols-2 gap-3">
             <button
               type="button"
               onClick={handleCopyLink}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
+              className={`${tileBase} relative`}
+              aria-label="Copiar link do perfil"
+              title={copiedLink ? "Link copiado" : "Copiar link"}
             >
-              <Copy className="h-4 w-4" />
-              Copiar link
-              {copiedLink ? <span className="ml-1 text-neutral-900">(Copiado)</span> : null}
+              {copiedLink ? (
+                <span className="absolute -top-1.5 -right-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600">
+                  <Check className="h-4 w-4 text-white" />
+                </span>
+              ) : null}
+              <span className="h-14 w-14 rounded-[18px] bg-neutral-100 flex items-center justify-center">
+                <Copy className="h-8 w-8 text-neutral-700" />
+              </span>
+              <span className={srOnly}>Copiar link</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadQr}
+              className={`${tileBase}`}
+              aria-label="Baixar QR Code"
+              title="Baixar QR Code"
+            >
+              <span className="h-14 w-14 rounded-[18px] bg-neutral-100 flex items-center justify-center">
+                <QrCode className="h-8 w-8 text-neutral-700" />
+              </span>
+              <span className={srOnly}>QR Code</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleShareStatusWithPhoto}
+              className={`${tileBase} sm:hidden`}
+              aria-label="Status do WhatsApp com foto"
+              title="Status com Foto"
+            >
+              <span className="h-14 w-14 rounded-[18px] bg-[#128C7E] flex items-center justify-center shadow-sm">
+                <Camera className="h-8 w-8 text-white" />
+              </span>
+              <span className={srOnly}>Status com foto</span>
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={handleDownloadQr}
-            className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 shadow-sm hover:shadow transition-shadow"
-          >
-            <QrCode className="h-4 w-4" />
-            Baixar QR Code
-          </button>
 
           <div className="mt-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
             <div className="text-[11px] font-semibold text-neutral-500">Link do perfil</div>
