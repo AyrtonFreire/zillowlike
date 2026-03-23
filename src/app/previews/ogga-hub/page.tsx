@@ -28,7 +28,7 @@ const profiles = [
     key: "realtor",
     title: "Sou corretor(a)",
     description:
-      "Centralize seus leads, acompanhe o funil e responda mais rápido com nosso CRM. Se optar, receba interessados vindos de anúncios de proprietários.",
+      "Centralize seus leads, acompanhe o funil e responda mais rápido pelo painel do corretor. Se optar, receba interessados vindos de anúncios de proprietários.",
     cta: "Cadastrar como corretor(a)",
     href: "/realtor/register",
     accent: "indigo",
@@ -39,8 +39,8 @@ const profiles = [
     key: "agency",
     title: "Sou uma imobiliária",
     description:
-      "Tenha um CRM do time: pipeline, distribuição de leads, gestão de corretores e visão de desempenho em um só lugar.",
-    cta: "Conhecer CRM",
+      "Tenha um painel do time: pipeline, distribuição de leads, gestão de corretores e visão de desempenho em um só lugar.",
+    cta: "Conhecer painel",
     href: "/agency/register",
     accent: "slate",
     image:

@@ -417,7 +417,7 @@ export default function RealtorAssistantChat(props: { leadId?: string }) {
   const quickPrompts = useMemo(() => {
     if (leadId) return [] as Array<{ label: string; message: string }>;
     return [
-      { label: "Prioridades de hoje", message: "Quais são minhas prioridades de hoje? Considere métricas do CRM e sugira próximos passos." },
+      { label: "Prioridades de hoje", message: "Quais são minhas prioridades de hoje? Considere minhas métricas e sugira próximos passos." },
       { label: "Leads aguardando resposta", message: "Quais leads/conversas estão aguardando uma resposta minha agora?" },
       { label: "Leads em atendimento", message: "Quantos leads estão em atendimento e o que devo fazer primeiro?" },
       { label: "Imóveis com baixa conversão", message: "Quais imóveis têm baixa conversão e o que eu devo melhorar primeiro?" },

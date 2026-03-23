@@ -21,7 +21,7 @@ export default function AgencyCrmOnboarding({
     () => [
       {
         id: "welcome",
-        title: "Bem-vindo ao CRM da imobiliária",
+        title: "Bem-vindo ao painel da imobiliária",
         description:
           "Aqui você acompanha todos os leads do time, encontra gargalos e redistribui responsáveis quando necessário. Vamos fazer um tour rápido.",
         icon: <Sparkles className="w-5 h-5 text-blue-500" />,

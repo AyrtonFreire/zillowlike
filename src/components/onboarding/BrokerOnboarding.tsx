@@ -48,7 +48,7 @@ const BROKER_ONBOARDING_STEPS: OnboardingStep[] = [
     id: "tips",
     title: "Dicas importantes",
     description:
-      "• Acesse o Funil CRM pelo menu para ver e arrastar leads entre etapas\n• Use notas para registrar conversas e combinados\n• Configure lembretes para não esquecer follow-ups\n\nBoa sorte nas vendas! 🚀",
+      "• Acesse o Funil pelo menu para ver e arrastar leads entre etapas\n• Use notas para registrar conversas e combinados\n• Configure lembretes para não esquecer follow-ups\n\nBoa sorte nas vendas! 🚀",
     icon: <Lightbulb className="w-5 h-5 text-yellow-500" />,
   },
 ];

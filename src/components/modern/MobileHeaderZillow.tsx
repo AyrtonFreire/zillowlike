@@ -609,7 +609,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                     {role === 'OWNER' && (
                       <>
                         <Link href="/owner/dashboard" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
-                          Dashboard
+                          Painel do proprietário
                         </Link>
                         <Link href="/owner/properties" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                           Meus anúncios
@@ -623,7 +623,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                     {role === 'REALTOR' && (
                       <>
                         <Link href="/broker/dashboard" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
-                          CRM
+                          Painel do corretor
                         </Link>
                       </>
                     )}
@@ -631,7 +631,7 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                     {role === 'AGENCY' && (
                       <>
                         <Link href="/agency" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
-                          CRM
+                          Painel da imobiliária
                         </Link>
                         <Link href="/start" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                           Cadastrar imóvel

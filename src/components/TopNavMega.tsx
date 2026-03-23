@@ -436,7 +436,7 @@ function quickLinksByRole(role: string): QuickItem[] {
   }
   if (role === "AGENCY") {
     return [
-      { href: "/agency", label: "CRM", icon: ico("M3 3h18v4H3zM3 9h18v12H3z") },
+      { href: "/agency", label: "Painel da imobiliária", icon: ico("M3 3h18v4H3zM3 9h18v12H3z") },
       { href: "/start", label: "Cadastrar imóvel", icon: ico("M12 4v16m8-8H4") },
     ];
   }

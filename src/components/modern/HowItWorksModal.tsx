@@ -70,7 +70,7 @@ export default function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProp
         ],
       },
       {
-        title: 'CRM e organização',
+        title: 'Painel e organização',
         bullets: [
           'Organize seus leads e visitas em um pipeline simples',
           'Acompanhe conversas, próximas ações e lembretes',
@@ -82,7 +82,7 @@ export default function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProp
         bullets: [
           'Veja rapidamente quantos leads você tem reservados e confirmados',
           'Enxergue quais imóveis estão gerando mais interesse',
-          'No nosso roadmap: exportar leads e integrar com outras ferramentas de CRM',
+          'No nosso roadmap: exportar leads e integrar com outras ferramentas',
         ],
       },
     ],

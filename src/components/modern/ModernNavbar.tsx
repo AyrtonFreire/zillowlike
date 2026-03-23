@@ -948,7 +948,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                       <ul className="py-1 text-sm text-gray-800">
                         {role === 'OWNER' && (
                           <>
-                            <li><Link href="/owner/dashboard" className="block px-4 py-2 hover:bg-gray-50">Dashboard</Link></li>
+                            <li><Link href="/owner/dashboard" className="block px-4 py-2 hover:bg-gray-50">Painel do proprietário</Link></li>
                             <li><Link href="/owner/properties" className="block px-4 py-2 hover:bg-gray-50">Meus anúncios</Link></li>
                             <li><Link href="/owner/leads" className="block px-4 py-2 hover:bg-gray-50">Meus leads</Link></li>
                             <li><hr className="my-1" /></li>
@@ -957,14 +957,14 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
                         {role === 'REALTOR' && (
                           <>
-                            <li><Link href="/broker/dashboard" className="block px-4 py-2 hover:bg-gray-50">CRM</Link></li>
+                            <li><Link href="/broker/dashboard" className="block px-4 py-2 hover:bg-gray-50">Painel do corretor</Link></li>
                             <li><hr className="my-1" /></li>
                           </>
                         )}
 
                         {role === 'AGENCY' && (
                           <>
-                            <li><Link href="/agency" className="block px-4 py-2 hover:bg-gray-50">CRM</Link></li>
+                            <li><Link href="/agency" className="block px-4 py-2 hover:bg-gray-50">Painel da imobiliária</Link></li>
                             <li><Link href="/start" className="block px-4 py-2 hover:bg-gray-50">Cadastrar imóvel</Link></li>
                             <li><hr className="my-1" /></li>
                           </>

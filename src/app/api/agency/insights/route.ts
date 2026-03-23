@@ -348,7 +348,7 @@ export async function GET(req: NextRequest) {
         detail: `${pendingReplyTotal} lead${pendingReplyTotal === 1 ? "" : "s"} com última mensagem do cliente sem retorno.`,
         severity: pendingReplyTotal >= 10 ? "critical" : "warning",
         href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm`,
-        hrefLabel: "Abrir CRM do time",
+        hrefLabel: "Abrir painel do time",
       });
 
       const stuck48h = pendingReplyRowsAll.filter((r) => {
@@ -373,7 +373,7 @@ export async function GET(req: NextRequest) {
         detail: `${unassigned} lead${unassigned === 1 ? "" : "s"} ativo${unassigned === 1 ? "" : "s"} sem corretor atribuído.`,
         severity: unassigned >= 5 ? "warning" : "info",
         href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?realtorId=unassigned`,
-        hrefLabel: "Ver no CRM",
+        hrefLabel: "Ver no painel",
       });
 
       const unassignedAging = (leads as any[]).filter((l: any) => {
@@ -427,7 +427,7 @@ export async function GET(req: NextRequest) {
         detail: `${stalledTotal} lead${stalledTotal === 1 ? "" : "s"} sem atualização há mais de 3 dias.`,
         severity: stalledTotal >= 10 ? "warning" : "info",
         href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm`,
-        hrefLabel: "Abrir CRM",
+        hrefLabel: "Abrir painel",
       });
     }
 
@@ -441,7 +441,7 @@ export async function GET(req: NextRequest) {
         title: "Maior acúmulo no funil",
         detail: `Etapa ${topStage}: ${Number(activeByStage[0]?.[1] || 0)} lead${Number(activeByStage[0]?.[1] || 0) === 1 ? "" : "s"}.`,
         severity: "info",
-        href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?stage=${encodeURIComponent(topStage)}`,
+        href: `/agency/teams/${encodeURIComponent(String(teamId))}/crm?stage=${encodeURIComponent(String(topStage))}`,
         hrefLabel: "Abrir etapa",
       });
     }

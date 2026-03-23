@@ -1221,7 +1221,7 @@ export default function Home() {
                       </h2>
                       <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-xl text-left">
                         Um lugar único para quem busca um lar, para quem quer anunciar com agilidade, para corretores e
-                        para imobiliárias que querem um CRM completo.
+                        para imobiliárias que querem um painel completo.
                       </p>
                     </>
                   ) : isBroker ? (
@@ -1245,7 +1245,7 @@ export default function Home() {
                         Painel da agência
                       </h2>
                       <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-2xl text-left">
-                        CRM do time, corretores e desempenho em um só lugar.
+                        Painel do time, corretores e desempenho em um só lugar.
                       </p>
                     </>
                   ) : (
@@ -1337,7 +1337,7 @@ export default function Home() {
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-gray-900">Sou corretor(a)</p>
                             <p className="mt-1 text-xs text-gray-600 leading-snug">
-                              CRM simples para leads.
+                              Painel simples para leads.
                             </p>
                             <p className="mt-3 text-sm font-semibold text-indigo-700 group-hover:text-indigo-800">
                               Cadastrar
@@ -1363,7 +1363,7 @@ export default function Home() {
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-gray-900">Sou uma imobiliária</p>
                             <p className="mt-1 text-xs text-gray-600 leading-snug">
-                              CRM do time e funil.
+                              Painel do time e funil.
                             </p>
                             <p className="mt-3 text-sm font-semibold text-slate-700 group-hover:text-slate-800">
                               Conhecer
@@ -1450,7 +1450,7 @@ export default function Home() {
                           <div className="md:col-span-7 p-8">
                             <h3 className="text-xl font-semibold text-gray-900">Sou corretor(a)</h3>
                             <p className="mt-2 text-base text-gray-600 leading-relaxed">
-                              Centralize seus leads, acompanhe o funil e responda mais rápido com nosso CRM. Se optar, você também pode receber interessados vindos de anúncios de proprietários.
+                              Centralize seus leads, acompanhe o funil e responda mais rápido pelo painel do corretor. Se optar, você também pode receber interessados vindos de anúncios de proprietários.
                             </p>
                             <div className="mt-5">
                               <Link
@@ -1480,14 +1480,14 @@ export default function Home() {
                           <div className="md:col-span-7 p-8">
                             <h3 className="text-xl font-semibold text-gray-900">Sou uma imobiliária</h3>
                             <p className="mt-2 text-base text-gray-600 leading-relaxed">
-                              Tenha um CRM do time: pipeline, distribuição de leads, gestão de corretores e visão de desempenho em um só lugar.
+                              Tenha um painel do time: pipeline, distribuição de leads, gestão de corretores e visão de desempenho em um só lugar.
                             </p>
                             <div className="mt-5">
                               <Link
                                 href="/agency/register"
                                 className="inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all"
                               >
-                                Conhecer CRM para imobiliárias
+                                Conhecer painel da imobiliária
                               </Link>
                             </div>
                           </div>
@@ -1512,7 +1512,7 @@ export default function Home() {
                       <div className="relative z-10 h-full p-8 sm:p-10 flex flex-col justify-between">
                         <div>
                           <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-teal-200">
-                            CRM da agência
+                            Painel da imobiliária
                           </p>
                           <h3 className="mt-3 text-2xl sm:text-3xl font-display text-white">
                             Acompanhe o funil do time
@@ -1547,7 +1547,7 @@ export default function Home() {
                           <div className="w-12 h-12 rounded-2xl bg-teal-600 flex items-center justify-center shadow-lg">
                             <Kanban className="w-6 h-6 text-white" />
                           </div>
-                          <h4 className="mt-5 text-lg font-semibold text-gray-900">CRM do time</h4>
+                          <h4 className="mt-5 text-lg font-semibold text-gray-900">Funil do time</h4>
                           <p className="mt-2 text-sm text-gray-600 leading-relaxed">
                             Acesse o funil e organize os leads da equipe.
                           </p>
@@ -1556,7 +1556,7 @@ export default function Home() {
                               href="/agency"
                               className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-800"
                             >
-                              Abrir CRM
+                              Abrir painel
                               <ArrowRight className="w-4 h-4" />
                             </Link>
                           </div>

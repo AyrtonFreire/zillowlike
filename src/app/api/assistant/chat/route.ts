@@ -361,8 +361,8 @@ function tryAnswerDeterministic(input: {
     if (top.length === 0) {
       return {
         answer:
-          "No momento, não encontrei lembretes/pendências com data marcada para vencer. Quer que eu abra o CRM para você ver todas as pendências?",
-        suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver pendências e próximos passos")],
+          "No momento, não encontrei lembretes/pendências com data marcada para vencer. Quer que eu abra o funil para você ver todas as pendências?",
+        suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir funil", "Ver pendências e próximos passos")],
       };
     }
 
@@ -378,7 +378,7 @@ function tryAnswerDeterministic(input: {
     return {
       answer: `Próximas pendências (${highlights.length}):`,
       highlights,
-      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver pendências e próximos passos")],
+      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir funil", "Ver pendências e próximos passos")],
     };
   }
 
@@ -404,18 +404,18 @@ function tryAnswerDeterministic(input: {
   if (leadMetrics && asksHowMany && asksInAttendance) {
     const count = Number(leadMetrics.inAttendanceTotal || 0);
     return {
-      answer: `Você tem ${count} leads em atendimento (CONTACT/VISIT/PROPOSAL/DOCUMENTS). Quer que eu abra o CRM?`,
+      answer: `Você tem ${count} leads em atendimento (CONTACT/VISIT/PROPOSAL/DOCUMENTS). Quer que eu abra o funil?`,
       highlights: undefined,
-      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver os leads em atendimento e definir o próximo passo")],
+      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir funil", "Ver os leads em atendimento e definir o próximo passo")],
     };
   }
 
   if (leadMetrics && asksHowMany && asksActive) {
     const count = Number(leadMetrics.activeTotal || 0);
     return {
-      answer: `Você tem ${count} leads ativos (exclui WON/LOST e status fechados). Quer que eu abra o CRM?`,
+      answer: `Você tem ${count} leads ativos (exclui WON/LOST e status fechados). Quer que eu abra o funil?`,
       highlights: undefined,
-      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver e priorizar seus leads ativos")],
+      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir funil", "Ver e priorizar seus leads ativos")],
     };
   }
 
@@ -427,9 +427,9 @@ function tryAnswerDeterministic(input: {
     const highlights = entries.slice(0, 12).map(([k, v]) => `${k}: ${v}`);
     const total = Number(leadMetrics.activeTotal || 0);
     return {
-      answer: `Distribuição de leads ativos por etapa (total ${total}). Quer que eu abra o CRM?`,
+      answer: `Distribuição de leads ativos por etapa (total ${total}). Quer que eu abra o funil?`,
       highlights: highlights.length ? highlights : undefined,
-      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir CRM", "Filtrar por etapa e agir nos maiores gargalos")],
+      suggestedActions: [makeOpenPageAction("/broker/crm", "Abrir funil", "Filtrar por etapa e agir nos maiores gargalos")],
     };
   }
 
@@ -534,13 +534,13 @@ function buildFallbackSuggestedActions(params: { message: string; leadId: string
     return [makeOpenPageAction("/broker/properties", "Abrir imóveis", "Ver e agir no seu estoque")];
   }
   if (/\blead\b|\bleads\b|\bfunil\b|\bpipeline\b|\batendimento\b/.test(q)) {
-    return [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver, filtrar e priorizar leads")];
+    return [makeOpenPageAction("/broker/crm", "Abrir funil", "Ver, filtrar e priorizar leads")];
   }
   if (/\bchat\b|\bchats\b|\bmensagem\b|\bresponder\b/.test(q)) {
     return [makeOpenPageAction("/broker/chats", "Abrir chats", "Ver conversas e responder clientes")];
   }
 
-  return [makeOpenPageAction("/broker/crm", "Abrir CRM", "Ver visão geral e próximos passos")];
+  return [makeOpenPageAction("/broker/crm", "Abrir funil", "Ver visão geral e próximos passos")];
 }
 
 function clampText(value: string, max: number) {
@@ -704,7 +704,7 @@ function buildUserPrompt(input: {
 
   if (!input.lead && input.leadMetrics) {
     const m = input.leadMetrics;
-    out.push("\nMétricas do CRM (fonte de verdade; não conte WON/LOST como ativo):");
+    out.push("\nMétricas (fonte de verdade; não conte WON/LOST como ativo):");
     out.push(`- Leads ativos (exclui WON/LOST e status fechados): ${m.activeTotal}`);
     out.push(`- Leads em atendimento (CONTACT/VISIT/PROPOSAL/DOCUMENTS): ${m.inAttendanceTotal}`);
     out.push(`- Conversas aguardando sua resposta (última msg do cliente): ${m.pendingReplyTotal}`);
