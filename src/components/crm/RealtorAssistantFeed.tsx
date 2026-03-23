@@ -240,28 +240,19 @@ function isInternalChecklistType(itemType: string | null | undefined) {
   return isReminderType(t) || t === "WEEKLY_SUMMARY";
 }
 
-function shouldAutoResolveOnReply(itemType: string | null | undefined) {
-  const t = String(itemType || "").trim();
-  return (
-    t === "UNANSWERED_CLIENT_MESSAGE" ||
-    t === "NEW_LEAD" ||
-    t === "LEAD_NO_FIRST_CONTACT" ||
-    t === "STALE_LEAD" ||
-    t === "VISIT_REQUESTED" ||
-    t === "NEGOTIATION_REQUEST" ||
-    t === "COUNTEROFFER_REQUEST" ||
-    t === "PRICE_CLARIFICATION_NEEDED" ||
-    t === "ADDRESS_REQUEST" ||
-    t === "URGENT_CLIENT_REQUEST" ||
-    t === "RISK_OF_LOSS" ||
-    t === "TOTAL_COST_QUESTION" ||
-    t === "DOCS_AND_CONTRACT_QUESTION" ||
-    t === "FINANCING_QUESTION" ||
-    t === "RULES_AND_PERMISSIONS" ||
-    t === "CALLBACK_REQUEST" ||
-    t === "MORE_MEDIA_REQUEST" ||
-    t === "MATCHING_OPPORTUNITY"
-  );
+function shouldAutoResolveOnReply(ownerItemType: string | null | undefined, candidateItemType: string | null | undefined) {
+  const owner = String(ownerItemType || "").trim();
+  const t = String(candidateItemType || "").trim();
+  if (!t) return false;
+
+  if (t === "UNANSWERED_CLIENT_MESSAGE") return true;
+  if (t === "NEW_LEAD") return true;
+  if (t === "LEAD_NO_FIRST_CONTACT") return true;
+  if (t === "STALE_LEAD") return true;
+
+  if (owner && owner === t) return true;
+
+  return false;
 }
 
 function assistantTypeRank(itemType: string | null | undefined): number {
@@ -894,15 +885,20 @@ export default function RealtorAssistantFeed(props: {
         } catch {
         }
 
+        const ownerItem = items.find((it) => String(it.id) === String(params.ownerId)) || null;
+        const ownerType = ownerItem?.type ? String(ownerItem.type) : null;
+
         const idsToResolve = items
           .filter(
             (it) =>
               String(it.leadId || "") === String(params.leadId) &&
               it.status === "ACTIVE" &&
-              shouldAutoResolveOnReply(it.type)
+              shouldAutoResolveOnReply(ownerType, it.type)
           )
           .map((it) => String(it.id));
-        resolveItemsOptimistically([String(params.ownerId), ...idsToResolve]);
+
+        const uniqueIdsToResolve = Array.from(new Set([String(params.ownerId), ...idsToResolve]));
+        resolveItemsOptimistically(uniqueIdsToResolve);
 
         showSuccess(String(params.ownerId), "Mensagem enviada");
 

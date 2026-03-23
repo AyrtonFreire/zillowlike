@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { getPusherClient } from "@/lib/pusher-client";
 import {
   Home,
   Users,
@@ -204,6 +205,9 @@ export default function BrokerDashboard() {
 
   const userId = (session?.user as any)?.id as string | undefined;
 
+  const myPipelineEtagRef = useRef<string | null>(null);
+  const brokerChatsEtagRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (userId) {
       fetchDashboardData();
@@ -244,9 +248,18 @@ export default function BrokerDashboard() {
 
   const fetchUnreadMessages = async () => {
     try {
-      const response = await fetch("/api/broker/chats");
+      const headers: Record<string, string> = {};
+      if (brokerChatsEtagRef.current) headers["If-None-Match"] = brokerChatsEtagRef.current;
+
+      const response = await fetch("/api/broker/chats", { headers });
+      if (response.status === 304) {
+        return;
+      }
       const data = await response.json();
       if (response.ok && data.chats) {
+        const nextEtag = response.headers.get("etag");
+        if (nextEtag) brokerChatsEtagRef.current = nextEtag;
+
         const total = (data.chats as any[]).reduce(
           (acc: number, chat: any) => acc + (chat.unreadCount || 0),
           0
@@ -317,12 +330,22 @@ export default function BrokerDashboard() {
     try {
       setMyLeadsError(null);
       setMyLeadsLoading(true);
-      const response = await fetch("/api/leads/my-pipeline");
+
+      const headers: Record<string, string> = {};
+      if (myPipelineEtagRef.current) headers["If-None-Match"] = myPipelineEtagRef.current;
+
+      const response = await fetch("/api/leads/my-pipeline", { headers });
+      if (response.status === 304) {
+        return;
+      }
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || `API error: ${response.status}`);
+        throw new Error(data?.error || "Não conseguimos carregar seus leads ativos agora.");
       }
+
+      const nextEtag = response.headers.get("etag");
+      if (nextEtag) myPipelineEtagRef.current = nextEtag;
 
       setMyLeads(Array.isArray(data) ? (data as MyLead[]) : []);
     } catch (error) {
@@ -333,6 +356,62 @@ export default function BrokerDashboard() {
       setMyLeadsLoading(false);
     }
   };
+
+  const fetchMyLeadsSilent = async () => {
+    try {
+      const headers: Record<string, string> = {};
+      if (myPipelineEtagRef.current) headers["If-None-Match"] = myPipelineEtagRef.current;
+
+      const response = await fetch("/api/leads/my-pipeline", { headers });
+      if (response.status === 304) {
+        return;
+      }
+      const data = await response.json();
+      if (!response.ok) return;
+
+      const nextEtag = response.headers.get("etag");
+      if (nextEtag) myPipelineEtagRef.current = nextEtag;
+
+      setMyLeads(Array.isArray(data) ? (data as MyLead[]) : []);
+    } catch {
+    }
+  };
+
+  useEffect(() => {
+    if (!userId) return;
+
+    let cancelled = false;
+    try {
+      const pusher = getPusherClient();
+      const channelName = `private-realtor-${String(userId)}`;
+      const channel = pusher.subscribe(channelName);
+
+      const handler = () => {
+        if (cancelled) return;
+        fetchUnreadMessages();
+        void fetchMyLeadsSilent();
+      };
+
+      channel.bind("assistant:item_updated", handler as any);
+      channel.bind("assistant:items_recalculated", handler as any);
+      channel.bind("new-chat-message", handler as any);
+      channel.bind("lead-chat-read-receipt", handler as any);
+
+      return () => {
+        cancelled = true;
+        try {
+          channel.unbind("assistant:item_updated", handler as any);
+          channel.unbind("assistant:items_recalculated", handler as any);
+          channel.unbind("new-chat-message", handler as any);
+          channel.unbind("lead-chat-read-receipt", handler as any);
+          pusher.unsubscribe(channelName);
+        } catch {
+        }
+      };
+    } catch {
+      return;
+    }
+  }, [userId]);
 
 
   const getGreeting = () => {

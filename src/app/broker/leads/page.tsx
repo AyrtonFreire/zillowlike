@@ -491,12 +491,16 @@ export default function MyLeadsPage() {
 
       channel.bind("assistant:item_updated", handler as any);
       channel.bind("assistant:items_recalculated", handler as any);
+      channel.bind("new-chat-message", handler as any);
+      channel.bind("lead-chat-read-receipt", handler as any);
 
       return () => {
         cancelled = true;
         try {
           channel.unbind("assistant:item_updated", handler as any);
           channel.unbind("assistant:items_recalculated", handler as any);
+          channel.unbind("new-chat-message", handler as any);
+          channel.unbind("lead-chat-read-receipt", handler as any);
           pusher.unsubscribe(channelName);
         } catch {
           // ignore

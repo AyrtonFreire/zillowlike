@@ -196,6 +196,30 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       },
     });
 
+    try {
+      await (prisma as any).leadChatReadReceipt.upsert({
+        where: {
+          leadId_userId: {
+            leadId: String(id),
+            userId: String(userId),
+          },
+        },
+        create: {
+          leadId: String(id),
+          userId: String(userId),
+          lastReadAt: new Date(),
+        },
+        update: {
+          lastReadAt: new Date(),
+        },
+        select: { leadId: true, lastReadAt: true },
+      });
+    } catch (err: any) {
+      if (err?.code !== "P2021") {
+        console.error("Error upserting chat read receipt on professional reply:", err);
+      }
+    }
+
     const nowMs = Date.now();
     const wasRecentlyNotified = async (title: string, windowMs: number) => {
       const rec = await (prisma as any).leadEvent.findFirst({
@@ -257,6 +281,39 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       });
     } catch (pusherError) {
       console.error("Error triggering pusher for client message:", pusherError);
+    }
+
+    try {
+      const pusher = getPusherServer();
+      const recipients = new Set<string>();
+      if ((lead as any)?.realtorId) recipients.add(String((lead as any).realtorId));
+      if ((lead as any)?.property?.ownerId) recipients.add(String((lead as any).property.ownerId));
+      if ((lead as any)?.team?.ownerId) recipients.add(String((lead as any).team.ownerId));
+
+      for (const rid of recipients) {
+        try {
+          await pusher.trigger(PUSHER_CHANNELS.REALTOR(String(rid)), PUSHER_EVENTS.NEW_CHAT_MESSAGE, {
+            leadId: String(id),
+            messageId: String(message.id),
+            fromClient: false,
+            ts: new Date().toISOString(),
+          });
+        } catch {
+          // ignore
+        }
+      }
+
+      try {
+        await pusher.trigger(PUSHER_CHANNELS.REALTOR(String(userId)), PUSHER_EVENTS.LEAD_CHAT_READ_RECEIPT, {
+          leadId: String(id),
+          lastReadAt: new Date().toISOString(),
+          ts: new Date().toISOString(),
+        });
+      } catch {
+        // ignore
+      }
+    } catch {
+      // ignore
     }
 
     // Atualizar CRM da agência em tempo real

@@ -302,6 +302,65 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
     }
 
     try {
+      const pusher = getPusherServer();
+      const recipients = new Set<string>();
+      if ((lead as any)?.realtorId) recipients.add(String((lead as any).realtorId));
+      if ((lead as any)?.property?.ownerId) recipients.add(String((lead as any).property.ownerId));
+      if ((lead as any)?.team?.ownerId) recipients.add(String((lead as any).team.ownerId));
+
+      for (const rid of recipients) {
+        try {
+          await pusher.trigger(PUSHER_CHANNELS.REALTOR(String(rid)), PUSHER_EVENTS.NEW_CHAT_MESSAGE, {
+            leadId: String(lead.id),
+            messageId: String(message.id),
+            fromClient,
+            ts: new Date().toISOString(),
+          });
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!fromClient && actorId) {
+        try {
+          let receiptLastReadAt: Date | null = null;
+          try {
+            const receipt = await (prisma as any).leadChatReadReceipt.upsert({
+              where: {
+                leadId_userId: {
+                  leadId: String(lead.id),
+                  userId: String(actorId),
+                },
+              },
+              create: {
+                leadId: String(lead.id),
+                userId: String(actorId),
+                lastReadAt: new Date(),
+              },
+              update: {
+                lastReadAt: new Date(),
+              },
+              select: { lastReadAt: true },
+            });
+            receiptLastReadAt = receipt?.lastReadAt ? new Date(receipt.lastReadAt) : null;
+          } catch (err: any) {
+            if (err?.code !== "P2021") throw err;
+          }
+
+          await pusher.trigger(PUSHER_CHANNELS.REALTOR(String(actorId)), PUSHER_EVENTS.LEAD_CHAT_READ_RECEIPT, {
+            leadId: String(lead.id),
+            lastReadAt: receiptLastReadAt || new Date(),
+            ts: new Date().toISOString(),
+          });
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
       const teamId = (lead as any)?.teamId ? String((lead as any).teamId) : null;
       if (teamId) {
         const pusher = getPusherServer();

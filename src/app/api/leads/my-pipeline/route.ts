@@ -34,6 +34,68 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: "Você não tem permissão para ver este funil." }, { status: 403 });
     }
 
+    const ETAG_VERSION = 1;
+    const leadScope: any = {
+      realtorId: String(userId),
+    };
+
+    let receiptAgg: any = { _max: { updatedAt: null } };
+    try {
+      receiptAgg = await (prisma as any).leadChatReadReceipt.aggregate({
+        where: { userId: String(userId), lead: leadScope },
+        _max: { updatedAt: true },
+      });
+    } catch (err: any) {
+      if (err?.code !== "P2021") throw err;
+    }
+
+    const [leadAgg, clientAgg, internalAgg, propertyAgg] = await Promise.all([
+      (prisma as any).lead.aggregate({
+        where: leadScope,
+        _count: { _all: true },
+        _max: { updatedAt: true },
+      }),
+      (prisma as any).leadClientMessage.aggregate({
+        where: { lead: leadScope },
+        _count: { _all: true },
+        _max: { createdAt: true },
+      }),
+      (prisma as any).leadMessage.aggregate({
+        where: { lead: leadScope },
+        _count: { _all: true },
+        _max: { createdAt: true },
+      }),
+      (prisma as any).property.aggregate({
+        where: { leads: { some: leadScope } },
+        _max: { updatedAt: true },
+      }),
+    ]);
+
+    const leadCount = Number(leadAgg?._count?._all || 0);
+    const maxLeadUpdatedAtMs = leadAgg?._max?.updatedAt ? new Date(leadAgg._max.updatedAt).getTime() : 0;
+    const clientCount = Number(clientAgg?._count?._all || 0);
+    const maxClientCreatedAtMs = clientAgg?._max?.createdAt ? new Date(clientAgg._max.createdAt).getTime() : 0;
+    const internalCount = Number(internalAgg?._count?._all || 0);
+    const maxInternalCreatedAtMs = internalAgg?._max?.createdAt ? new Date(internalAgg._max.createdAt).getTime() : 0;
+    const maxReceiptUpdatedAtMs = receiptAgg?._max?.updatedAt ? new Date(receiptAgg._max.updatedAt).getTime() : 0;
+    const maxPropertyUpdatedAtMs = propertyAgg?._max?.updatedAt ? new Date(propertyAgg._max.updatedAt).getTime() : 0;
+
+    const etag =
+      `W/\"my-pipeline:${ETAG_VERSION}:${String(userId)}:${String(role || "")}` +
+      `:${leadCount}:${maxLeadUpdatedAtMs}:${clientCount}:${maxClientCreatedAtMs}` +
+      `:${internalCount}:${maxInternalCreatedAtMs}:${maxReceiptUpdatedAtMs}:${maxPropertyUpdatedAtMs}\"`;
+
+    const ifNoneMatch = _request.headers.get("if-none-match");
+    if (ifNoneMatch && ifNoneMatch === etag) {
+      return new NextResponse(null, {
+        status: 304,
+        headers: {
+          ETag: etag,
+          "Cache-Control": "private, max-age=0, must-revalidate",
+        },
+      });
+    }
+
     const leads = await (prisma as any).lead.findMany({
       where: {
         realtorId: userId,
@@ -81,12 +143,12 @@ export async function GET(_request: NextRequest) {
 
     const leadIds = (leads as any[]).map((l) => String(l.id));
 
-    const [lastClientMsgs, lastInternalMsgs] = await Promise.all([
+    const [lastClientMsgs, lastInternalMsgs, lastClientFromClientAgg] = await Promise.all([
       leadIds.length
         ? (prisma as any).leadClientMessage.findMany({
             where: { leadId: { in: leadIds } },
             orderBy: { createdAt: "desc" },
-            take: 5000,
+            distinct: ["leadId"],
             select: { leadId: true, createdAt: true, content: true, fromClient: true },
           })
         : Promise.resolve([] as any[]),
@@ -94,8 +156,15 @@ export async function GET(_request: NextRequest) {
         ? (prisma as any).leadMessage.findMany({
             where: { leadId: { in: leadIds } },
             orderBy: { createdAt: "desc" },
-            take: 5000,
+            distinct: ["leadId"],
             select: { leadId: true, createdAt: true, content: true },
+          })
+        : Promise.resolve([] as any[]),
+      leadIds.length
+        ? (prisma as any).leadClientMessage.groupBy({
+            by: ["leadId"],
+            where: { leadId: { in: leadIds }, fromClient: true },
+            _max: { createdAt: true },
           })
         : Promise.resolve([] as any[]),
     ]);
@@ -110,6 +179,15 @@ export async function GET(_request: NextRequest) {
     for (const m of lastInternalMsgs as any[]) {
       const k = String(m.leadId);
       if (!lastInternalByLead.has(k)) lastInternalByLead.set(k, m);
+    }
+
+    const lastClientFromClientAtByLeadId = new Map<string, Date>();
+    for (const g of lastClientFromClientAgg as any[]) {
+      const leadId = String((g as any)?.leadId || "");
+      const ts = (g as any)?._max?.createdAt ? new Date((g as any)._max.createdAt) : null;
+      if (!leadId || !ts) continue;
+      if (Number.isNaN(ts.getTime())) continue;
+      lastClientFromClientAtByLeadId.set(leadId, ts);
     }
 
     let readReceipts: any[] = [];
@@ -173,16 +251,11 @@ export async function GET(_request: NextRequest) {
       }
 
       let hasUnreadMessages = false;
-      if (lastMessageFromClient && lastMessageAt) {
+      const lastClientFromClientAt = lastClientFromClientAtByLeadId.get(leadId) || null;
+      if (lastClientFromClientAt) {
         const lastReadAt = readMap.get(leadId) || null;
-        if (!lastReadAt) {
+        if (!lastReadAt || lastClientFromClientAt.getTime() > lastReadAt.getTime()) {
           hasUnreadMessages = true;
-        } else {
-          const a = lastReadAt.getTime();
-          const b = lastMessageAt.getTime();
-          if (!Number.isNaN(a) && !Number.isNaN(b) && b > a) {
-            hasUnreadMessages = true;
-          }
         }
       }
 
@@ -207,7 +280,10 @@ export async function GET(_request: NextRequest) {
       };
     });
 
-    return NextResponse.json(normalized);
+    const res = NextResponse.json(normalized);
+    res.headers.set("ETag", etag);
+    res.headers.set("Cache-Control", "private, max-age=0, must-revalidate");
+    return res;
   } catch (error) {
     console.error("Error getting pipeline leads:", error);
     return NextResponse.json(

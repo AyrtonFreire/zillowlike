@@ -31,6 +31,7 @@ import DraggableLeadCard from "@/components/crm/DraggableLeadCard";
 import DroppableStageColumn from "@/components/crm/DroppableStageColumn";
 import LeadSidePanel from "@/components/leads/LeadSidePanel";
 import { ptBR } from "@/lib/i18n/property";
+import { getPusherClient } from "@/lib/pusher-client";
 
 interface PipelineLead {
   id: string;
@@ -205,6 +206,8 @@ export default function BrokerCrmPage() {
   // Estado para visualização móvel
   const [mobileActiveStage, setMobileActiveStage] = useState<PipelineLead["pipelineStage"]>("NEW");
 
+  const pipelineEtagRef = useRef<string | null>(null);
+
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
@@ -223,12 +226,22 @@ export default function BrokerCrmPage() {
       if (!realtorId) return;
       setError(null);
       setLoading(true);
-      const response = await fetch("/api/leads/my-pipeline");
+
+      const headers: Record<string, string> = {};
+      if (pipelineEtagRef.current) headers["If-None-Match"] = pipelineEtagRef.current;
+
+      const response = await fetch("/api/leads/my-pipeline", { headers });
+      if (response.status === 304) {
+        return;
+      }
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data?.error || "Não conseguimos carregar seus leads agora.");
       }
+
+      const nextEtag = response.headers.get("etag");
+      if (nextEtag) pipelineEtagRef.current = nextEtag;
 
       setLeads(data || []);
     } catch (err: any) {
@@ -242,6 +255,42 @@ export default function BrokerCrmPage() {
   useEffect(() => {
     if (!realtorId) return;
     fetchLeads();
+  }, [realtorId, fetchLeads]);
+
+  useEffect(() => {
+    if (!realtorId) return;
+
+    let cancelled = false;
+    try {
+      const pusher = getPusherClient();
+      const channelName = `private-realtor-${realtorId}`;
+      const channel = pusher.subscribe(channelName);
+
+      const handler = () => {
+        if (cancelled) return;
+        fetchLeads();
+      };
+
+      channel.bind("assistant:item_updated", handler as any);
+      channel.bind("assistant:items_recalculated", handler as any);
+      channel.bind("new-chat-message", handler as any);
+      channel.bind("lead-chat-read-receipt", handler as any);
+
+      return () => {
+        cancelled = true;
+        try {
+          channel.unbind("assistant:item_updated", handler as any);
+          channel.unbind("assistant:items_recalculated", handler as any);
+          channel.unbind("new-chat-message", handler as any);
+          channel.unbind("lead-chat-read-receipt", handler as any);
+          pusher.unsubscribe(channelName);
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      return;
+    }
   }, [realtorId, fetchLeads]);
 
   const handleDismissCrmHelp = () => {

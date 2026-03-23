@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
 
 const schema = z.object({
   leadId: z.string().min(1),
@@ -79,10 +80,31 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      try {
+        const pusher = getPusherServer();
+        await pusher.trigger(PUSHER_CHANNELS.REALTOR(String(userId)), PUSHER_EVENTS.LEAD_CHAT_READ_RECEIPT, {
+          leadId: String(leadId),
+          lastReadAt: receipt.lastReadAt,
+          ts: new Date().toISOString(),
+        });
+      } catch {
+        // ignore
+      }
+
       return NextResponse.json({ success: true, receipt: { leadId: receipt.leadId, lastReadAt: receipt.lastReadAt } });
     } catch (error: any) {
       // If the table doesn't exist yet (pending migrations), do not break UX.
       if (error?.code === "P2021") {
+        try {
+          const pusher = getPusherServer();
+          await pusher.trigger(PUSHER_CHANNELS.REALTOR(String(userId)), PUSHER_EVENTS.LEAD_CHAT_READ_RECEIPT, {
+            leadId: String(leadId),
+            skipped: true,
+            ts: new Date().toISOString(),
+          });
+        } catch {
+          // ignore
+        }
         return NextResponse.json({ success: true, skipped: true });
       }
       console.error("Error marking chat as read:", error);

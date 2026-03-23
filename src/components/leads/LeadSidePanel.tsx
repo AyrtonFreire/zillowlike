@@ -133,6 +133,18 @@ export default function LeadSidePanel({
     }
   }, [leadId]);
 
+  const markChatAsRead = useCallback(async (id: string) => {
+    try {
+      await fetch("/api/broker/chats/mark-read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: String(id) }),
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const loadNotes = useCallback(async () => {
     if (!leadId) return;
     setNotesError(null);
@@ -165,7 +177,8 @@ export default function LeadSidePanel({
     setNotesError(null);
     setNotesLoadedLeadId(null);
     void loadLead();
-  }, [open, leadId, loadLead]);
+    void markChatAsRead(leadId);
+  }, [open, leadId, loadLead, markChatAsRead]);
 
   useEffect(() => {
     if (!open) return;

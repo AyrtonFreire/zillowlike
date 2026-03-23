@@ -79,6 +79,8 @@ export default function BrokerChatsPage() {
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const chatsEtagRef = useRef<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const didApplyDraftRef = useRef<string | null>(null);
@@ -206,12 +208,22 @@ export default function BrokerChatsPage() {
         setError(null);
         setLoading(true);
       }
-      const response = await fetch("/api/broker/chats");
+
+      const headers: Record<string, string> = {};
+      if (chatsEtagRef.current) headers["If-None-Match"] = chatsEtagRef.current;
+
+      const response = await fetch("/api/broker/chats", { headers });
+      if (response.status === 304) {
+        return;
+      }
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data?.error || "Não foi possível carregar as conversas.");
       }
+
+      const nextEtag = response.headers.get("etag");
+      if (nextEtag) chatsEtagRef.current = nextEtag;
 
       setChats(Array.isArray(data.chats) ? data.chats : []);
     } catch (err: any) {
@@ -256,12 +268,16 @@ export default function BrokerChatsPage() {
 
       channel.bind("assistant:item_updated", handler as any);
       channel.bind("assistant:items_recalculated", handler as any);
+      channel.bind("new-chat-message", handler as any);
+      channel.bind("lead-chat-read-receipt", handler as any);
 
       return () => {
         cancelled = true;
         try {
           channel.unbind("assistant:item_updated", handler as any);
           channel.unbind("assistant:items_recalculated", handler as any);
+          channel.unbind("new-chat-message", handler as any);
+          channel.unbind("lead-chat-read-receipt", handler as any);
           pusher.unsubscribe(channelName);
         } catch {
           // ignore

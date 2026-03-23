@@ -102,6 +102,18 @@ export default function LeadDetailPage() {
   const leadId = (params?.id as string) || "";
   const toast = useToast();
 
+  const markChatAsRead = useCallback(async (id: string) => {
+    try {
+      await fetch("/api/broker/chats/mark-read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: String(id) }),
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const getWhatsAppUrl = (phone: string | null | undefined) => {
     const raw = String(phone || "").replace(/\D/g, "");
     if (!raw) return null;
@@ -242,7 +254,8 @@ export default function LeadDetailPage() {
     if (!leadId) return;
     fetchLead();
     fetchSimilar();
-  }, [leadId, fetchLead, fetchSimilar]);
+    void markChatAsRead(leadId);
+  }, [leadId, fetchLead, fetchSimilar, markChatAsRead]);
 
   const handleGenerateSimilarLink = async () => {
     if (!leadId) return;

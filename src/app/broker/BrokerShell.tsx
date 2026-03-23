@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   Kanban,
   LayoutDashboard,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { ModernNavbar } from "@/components/modern";
 import RealtorAssistantWidget from "@/components/crm/RealtorAssistantWidget";
+import { getPusherClient } from "@/lib/pusher-client";
 
 type NavItem = {
   href: string;
@@ -160,6 +162,8 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
   const section = useMemo(() => sectionFromPath(pathname), [pathname]);
   const [metrics, setMetrics] = useState<BrokerNavMetrics | null>(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const { data: session } = useSession();
+  const realtorId = (session as any)?.user?.id || (session as any)?.userId || "";
 
   const fetchMetrics = useCallback(async () => {
     try {
@@ -195,6 +199,42 @@ export default function BrokerShell({ children }: { children: ReactNode }) {
       window.clearInterval(interval);
     };
   }, [fetchMetrics]);
+
+  useEffect(() => {
+    if (!realtorId) return;
+
+    let cancelled = false;
+    try {
+      const pusher = getPusherClient();
+      const channelName = `private-realtor-${String(realtorId)}`;
+      const channel = pusher.subscribe(channelName);
+
+      const handler = () => {
+        if (cancelled) return;
+        fetchMetrics();
+      };
+
+      channel.bind("assistant:item_updated", handler as any);
+      channel.bind("assistant:items_recalculated", handler as any);
+      channel.bind("new-chat-message", handler as any);
+      channel.bind("lead-chat-read-receipt", handler as any);
+
+      return () => {
+        cancelled = true;
+        try {
+          channel.unbind("assistant:item_updated", handler as any);
+          channel.unbind("assistant:items_recalculated", handler as any);
+          channel.unbind("new-chat-message", handler as any);
+          channel.unbind("lead-chat-read-receipt", handler as any);
+          pusher.unsubscribe(channelName);
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      return;
+    }
+  }, [fetchMetrics, realtorId]);
 
   useEffect(() => {
     const key = "zlw_realtor_assistant_widget_open";
