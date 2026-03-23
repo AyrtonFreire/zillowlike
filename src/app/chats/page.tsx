@@ -13,6 +13,10 @@ type ChatPreview = {
   leadId: string;
   token: string;
   createdAt: string;
+  conversationState?: "ACTIVE" | "ARCHIVED" | "CLOSED" | string;
+  conversationArchivedAt?: string | null;
+  conversationClosedAt?: string | null;
+  conversationLastActivityAt?: string | null;
   contactName: string;
   contactEmail: string;
   lastMessage?: string;
@@ -39,6 +43,12 @@ type ChatMessage = {
 type ChatLeadInfo = {
   id: string;
   createdAt?: string;
+  conversation?: {
+    state?: "ACTIVE" | "ARCHIVED" | "CLOSED" | string;
+    archivedAt?: string | null;
+    closedAt?: string | null;
+    lastActivityAt?: string | null;
+  } | null;
   property?: {
     id: string;
     title: string;
@@ -124,6 +134,21 @@ export default function UserChatsPage() {
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
+  const applyConversationState = useCallback((leadId: string, conversation?: ChatLeadInfo["conversation"] | null) => {
+    if (!leadId || !conversation) return;
+
+    const patch = {
+      conversationState: String(conversation.state || "ACTIVE"),
+      conversationArchivedAt: conversation.archivedAt || null,
+      conversationClosedAt: conversation.closedAt || null,
+      conversationLastActivityAt: conversation.lastActivityAt || null,
+    };
+
+    setChats((prev) => prev.map((chat) => (chat.leadId === leadId ? { ...chat, ...patch } : chat)));
+    setSelectedChat((prev) => (prev?.leadId === leadId ? { ...prev, ...patch } : prev));
+    setLeadInfo((prev) => (prev?.id === leadId ? { ...prev, conversation } : prev));
+  }, []);
+
   const fetchChats = useCallback(async () => {
     try {
       setError(null);
@@ -133,7 +158,12 @@ export default function UserChatsPage() {
       if (!response.ok || !data?.success) {
         throw new Error(data?.error || "Não foi possível carregar suas conversas.");
       }
-      setChats(Array.isArray(data.chats) ? data.chats : []);
+      const nextChats = Array.isArray(data.chats) ? data.chats : [];
+      setChats(nextChats);
+      setSelectedChat((current) => {
+        if (!current?.leadId) return current;
+        return nextChats.find((chat: ChatPreview) => chat.leadId === current.leadId) || current;
+      });
     } catch (err: any) {
       setError(err?.message || "Não foi possível carregar suas conversas.");
     } finally {
@@ -184,6 +214,7 @@ export default function UserChatsPage() {
       }
       setLeadInfo(data.lead || null);
       setMessages(Array.isArray(data.messages) ? data.messages : []);
+      applyConversationState(String(data?.lead?.id || ""), data?.lead?.conversation || null);
       setShowSuggestions(true);
 
       const leadId = String(data?.lead?.id || "");
@@ -191,7 +222,7 @@ export default function UserChatsPage() {
     } finally {
       setMessagesLoading(false);
     }
-  }, [markChatAsRead]);
+  }, [applyConversationState, markChatAsRead]);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -257,12 +288,13 @@ export default function UserChatsPage() {
       });
 
       if (data.lead) {
-        setLeadInfo((prev) => prev || data.lead);
+        setLeadInfo((prev) => ({ ...(prev || data.lead), ...data.lead }));
+        applyConversationState(String(data?.lead?.id || ""), data?.lead?.conversation || null);
       }
     } catch {
       // ignore
     }
-  }, [selectedToken]);
+  }, [applyConversationState, selectedToken]);
 
   const startShortPolling = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -349,11 +381,26 @@ export default function UserChatsPage() {
       };
 
       channel.bind("new-chat-message", handler as any);
+      channel.bind("lead-chat-state-changed", (data: {
+        state?: string;
+        archivedAt?: string | null;
+        closedAt?: string | null;
+        lastActivityAt?: string | null;
+      }) => {
+        if (cancelled) return;
+        applyConversationState(String(leadInfo.id), {
+          state: String(data?.state || "ACTIVE"),
+          archivedAt: data?.archivedAt ?? null,
+          closedAt: data?.closedAt ?? null,
+          lastActivityAt: data?.lastActivityAt ?? null,
+        });
+      });
 
       return () => {
         cancelled = true;
         try {
           channel.unbind("new-chat-message", handler as any);
+          channel.unbind("lead-chat-state-changed");
           pusher.unsubscribe(channelName);
         } catch {
           // ignore
@@ -362,7 +409,7 @@ export default function UserChatsPage() {
     } catch {
       return;
     }
-  }, [leadInfo?.id]);
+  }, [applyConversationState, leadInfo?.id]);
 
   useEffect(() => {
     return () => {
@@ -373,6 +420,7 @@ export default function UserChatsPage() {
 
   const handleSend = async () => {
     if (!draft.trim() || !selectedToken || sending) return;
+    if (String(leadInfo?.conversation?.state || selectedChat?.conversationState || "ACTIVE") === "CLOSED") return;
 
     const content = draft.trim();
     setDraft("");
@@ -398,13 +446,22 @@ export default function UserChatsPage() {
         prev.map((m) => (m.id === tempId ? { ...m, id: data.message.id, createdAt: data.message.createdAt } : m))
       );
 
+      if (data?.conversation) {
+        applyConversationState(String(leadInfo?.id || selectedChat?.leadId || ""), data.conversation);
+      }
+
       startShortPolling();
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setDraft(content);
     } finally {
       setSending(false);
     }
   };
+
+  const selectedConversationState = String(leadInfo?.conversation?.state || selectedChat?.conversationState || "ACTIVE");
+  const selectedChatIsArchived = selectedConversationState === "ARCHIVED";
+  const selectedChatIsClosed = selectedConversationState === "CLOSED";
 
   if (status === "loading") {
     return (
@@ -516,6 +573,12 @@ export default function UserChatsPage() {
                         <span className="font-semibold text-gray-900 text-sm truncate">{chat.property.title}</span>
                         <span className="text-[10px] text-gray-400 flex-shrink-0">{formatTime(chat.lastMessageAt)}</span>
                       </div>
+                      {chat.conversationState === "ARCHIVED" && (
+                        <p className="text-[10px] text-amber-700">Arquivada</p>
+                      )}
+                      {chat.conversationState === "CLOSED" && (
+                        <p className="text-[10px] text-rose-700">Encerrada</p>
+                      )}
                       <p className="text-xs text-gray-600 truncate">
                         {chat.property.city}/{chat.property.state}
                       </p>
@@ -550,6 +613,12 @@ export default function UserChatsPage() {
                       {(leadInfo?.property?.state || selectedChat?.property.state) ? `/${leadInfo?.property?.state || selectedChat?.property.state}` : ""}
                       {leadInfo?.property?.price || selectedChat?.property.price ? ` • ${formatPrice((leadInfo?.property?.price as any) || selectedChat?.property.price)}` : ""}
                     </div>
+                    {selectedChatIsArchived && (
+                      <p className="text-[10px] text-amber-700 mt-0.5">Conversa arquivada</p>
+                    )}
+                    {selectedChatIsClosed && (
+                      <p className="text-[10px] text-rose-700 mt-0.5">Conversa encerrada</p>
+                    )}
                   </div>
 
                   {leadInfo?.property?.id && (
@@ -563,6 +632,16 @@ export default function UserChatsPage() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+                  {selectedChatIsArchived && (
+                    <div className="mb-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-900">
+                      Esta conversa foi arquivada por inatividade. Se você enviar uma nova mensagem, ela será reativada automaticamente.
+                    </div>
+                  )}
+                  {selectedChatIsClosed && (
+                    <div className="mb-4 p-3 rounded-xl border border-rose-200 bg-rose-50 text-sm text-rose-900">
+                      Esta conversa foi encerrada. O histórico continua disponível, mas novas mensagens estão desativadas.
+                    </div>
+                  )}
                   {messagesLoading ? (
                     <div className="flex items-center justify-center h-full">
                       <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
@@ -646,13 +725,13 @@ export default function UserChatsPage() {
                     <input
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
-                      placeholder="Digite sua mensagem..."
+                      placeholder={selectedChatIsClosed ? "Conversa encerrada" : "Digite sua mensagem..."}
                       className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-full focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-gray-50"
-                      disabled={sending || !selectedToken}
+                      disabled={sending || !selectedToken || selectedChatIsClosed}
                     />
                     <button
                       type="submit"
-                      disabled={!draft.trim() || sending || !selectedToken}
+                      disabled={!draft.trim() || sending || !selectedToken || selectedChatIsClosed}
                       className="p-3 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 text-white rounded-full transition-colors flex-shrink-0"
                     >
                       <Send className="w-5 h-5" />

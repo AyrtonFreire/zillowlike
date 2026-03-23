@@ -10,6 +10,7 @@ import { logger } from "@/lib/logger";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
 import { LeadAutoReplyService } from "@/lib/lead-auto-reply-service";
+import { LeadConversationLifecycleService } from "@/lib/lead-conversation-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -32,6 +33,10 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
       select: {
         id: true,
         createdAt: true,
+        conversationState: true,
+        conversationArchivedAt: true,
+        conversationClosedAt: true,
+        conversationLastActivityAt: true,
         property: {
           select: {
             id: true,
@@ -95,6 +100,12 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ token:
       lead: {
         id: lead.id,
         createdAt: lead.createdAt,
+        conversation: {
+          state: String(lead.conversationState || "ACTIVE"),
+          archivedAt: lead.conversationArchivedAt ? new Date(lead.conversationArchivedAt).toISOString() : null,
+          closedAt: lead.conversationClosedAt ? new Date(lead.conversationClosedAt).toISOString() : null,
+          lastActivityAt: lead.conversationLastActivityAt ? new Date(lead.conversationLastActivityAt).toISOString() : null,
+        },
         property: {
           ...lead.property,
           price: lead.property?.price ? jsonSafe(lead.property.price) : lead.property?.price,
@@ -145,6 +156,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
         realtorId: true,
         pipelineStage: true,
         respondedAt: true,
+        conversationState: true,
+        conversationArchivedAt: true,
+        conversationClosedAt: true,
+        conversationLastActivityAt: true,
         property: {
           select: {
             ownerId: true,
@@ -258,23 +273,24 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       return !!rec?.id;
     };
 
-    try {
-      // Se um profissional respondeu, marcar respondedAt e, se estiver em NEW, avançar para CONTACT
-      if (!fromClient) {
-        const stage = String(previousStage || "");
-        const shouldAdvance = !stage || stage === "NEW";
-        await (prisma as any).lead.update({
-          where: { id: lead.id },
-          data: {
-            pipelineStage: shouldAdvance ? "CONTACT" : undefined,
-            respondedAt: (lead as any)?.respondedAt ? undefined : new Date(),
-          },
-          select: { id: true },
+    const lifecycleResult = fromClient
+      ? {
+          lead: await LeadConversationLifecycleService.touchActivity(String(lead.id), {
+            actorId: actorId || null,
+            actorRole: actorRole || null,
+            reason: "CLIENT_MESSAGE",
+            at: new Date(),
+          }),
+          fromStage: previousStage || null,
+          toStage: previousStage || null,
+        }
+      : await LeadConversationLifecycleService.syncProfessionalReplyState(String(lead.id), {
+          actorId: actorId || null,
+          actorRole: actorRole || null,
+          reason: "PROFESSIONAL_REPLY",
+          previousStage,
+          respondedAt: (lead as any)?.respondedAt || null,
         });
-      }
-    } catch {
-      // ignore
-    }
 
     await LeadEventService.record({
       leadId: lead.id,
@@ -283,8 +299,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       actorRole,
       title: fromClient ? "Mensagem do cliente" : "Mensagem enviada ao cliente",
       description: parsed.data.content.trim().slice(0, 200),
-      fromStage: previousStage || null,
-      toStage: !fromClient && (!previousStage || previousStage === "NEW") ? "CONTACT" : previousStage || null,
+      fromStage: lifecycleResult.fromStage,
+      toStage: lifecycleResult.toStage,
     });
 
     try {
@@ -590,8 +606,26 @@ export async function POST(req: NextRequest, context: { params: Promise<{ token:
       }
     }
 
-    return NextResponse.json({ success: true, message });
+    return NextResponse.json({
+      success: true,
+      message,
+      conversation: {
+        state: String(lifecycleResult.lead.conversationState || "ACTIVE"),
+        archivedAt: lifecycleResult.lead.conversationArchivedAt ? new Date(lifecycleResult.lead.conversationArchivedAt).toISOString() : null,
+        closedAt: lifecycleResult.lead.conversationClosedAt ? new Date(lifecycleResult.lead.conversationClosedAt).toISOString() : null,
+        lastActivityAt: lifecycleResult.lead.conversationLastActivityAt
+          ? new Date(lifecycleResult.lead.conversationLastActivityAt).toISOString()
+          : null,
+      },
+    });
   } catch (error) {
+    if ((error as any)?.message === "CONVERSATION_CLOSED") {
+      return NextResponse.json(
+        { error: "Esta conversa foi encerrada e não aceita novas mensagens." },
+        { status: 409 }
+      );
+    }
+
     console.error("Error posting client chat message:", error);
     return NextResponse.json(
       { error: "Não conseguimos enviar esta mensagem agora. Tente novamente em alguns instantes." },

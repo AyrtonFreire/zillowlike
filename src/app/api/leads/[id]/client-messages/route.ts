@@ -7,6 +7,7 @@ import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-se
 import { sendEmail, getRealtorReplyNotificationEmail } from "@/lib/email";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { LeadConversationLifecycleService } from "@/lib/lead-conversation-lifecycle";
 import { createAuditLog } from "@/lib/audit-log";
 import { captureException } from "@/lib/sentry";
 import { logger } from "@/lib/logger";
@@ -63,6 +64,10 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
         userId: true,
         pipelineStage: true,
         respondedAt: true,
+        conversationState: true,
+        conversationArchivedAt: true,
+        conversationClosedAt: true,
+        conversationLastActivityAt: true,
         property: {
           select: { ownerId: true },
         },
@@ -114,7 +119,15 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       },
     });
 
-    return NextResponse.json({ messages: formattedMessages });
+    return NextResponse.json({
+      messages: formattedMessages,
+      conversation: {
+        state: String(lead.conversationState || "ACTIVE"),
+        archivedAt: lead.conversationArchivedAt ? new Date(lead.conversationArchivedAt).toISOString() : null,
+        closedAt: lead.conversationClosedAt ? new Date(lead.conversationClosedAt).toISOString() : null,
+        lastActivityAt: lead.conversationLastActivityAt ? new Date(lead.conversationLastActivityAt).toISOString() : null,
+      },
+    });
   } catch (error) {
     captureException(error, { route: "/api/leads/[id]/client-messages" });
     logger.error("Error fetching client messages", { error });
@@ -149,6 +162,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         teamId: true,
         realtorId: true,
         userId: true,
+        pipelineStage: true,
+        respondedAt: true,
+        conversationState: true,
         property: {
           select: { ownerId: true },
         },
@@ -168,6 +184,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json(
         { error: "Você só pode enviar mensagens em leads dos quais participa." },
         { status: 403 }
+      );
+    }
+
+    if (String(lead.conversationState || "") === "CLOSED") {
+      return NextResponse.json(
+        { error: "Esta conversa foi encerrada e não aceita novas mensagens." },
+        { status: 409 }
       );
     }
 
@@ -234,28 +257,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return !!rec?.id;
     };
 
-    try {
-      const isProfessional = role === "REALTOR" || role === "ADMIN" || role === "OWNER";
-      const currentStage = previousStage;
-      if (isProfessional && (!currentStage || currentStage === "NEW")) {
-        await (prisma as any).lead.update({
-          where: { id },
-          data: {
-            pipelineStage: "CONTACT",
-            respondedAt: (lead as any)?.respondedAt ? undefined : new Date(),
-          },
-          select: { id: true },
-        });
-      } else if (isProfessional && !(lead as any)?.respondedAt) {
-        await (prisma as any).lead.update({
-          where: { id },
-          data: { respondedAt: new Date() },
-          select: { id: true },
-        });
-      }
-    } catch (updateError) {
-      console.error("Error auto-updating lead pipelineStage on client message:", updateError);
-    }
+    const lifecycleResult = await LeadConversationLifecycleService.syncProfessionalReplyState(String(id), {
+      actorId: String(userId),
+      actorRole: String(role || ""),
+      reason: "PROFESSIONAL_REPLY",
+      previousStage,
+      respondedAt: (lead as any)?.respondedAt || null,
+    });
 
     await LeadEventService.record({
       leadId: id,
@@ -264,8 +272,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       actorRole: role,
       title: "Mensagem enviada ao cliente",
       description: parsed.data.content.trim().slice(0, 200),
-      fromStage: previousStage || null,
-      toStage: !previousStage || previousStage === "NEW" ? "CONTACT" : previousStage || null,
+      fromStage: lifecycleResult.fromStage,
+      toStage: lifecycleResult.toStage,
     });
 
     // Enviar notificação via Pusher para o chat do cliente
@@ -425,8 +433,23 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         createdAt: message.createdAt,
         read: true,
       },
+      conversation: {
+        state: String(lifecycleResult.lead.conversationState || "ACTIVE"),
+        archivedAt: lifecycleResult.lead.conversationArchivedAt ? new Date(lifecycleResult.lead.conversationArchivedAt).toISOString() : null,
+        closedAt: lifecycleResult.lead.conversationClosedAt ? new Date(lifecycleResult.lead.conversationClosedAt).toISOString() : null,
+        lastActivityAt: lifecycleResult.lead.conversationLastActivityAt
+          ? new Date(lifecycleResult.lead.conversationLastActivityAt).toISOString()
+          : null,
+      },
     });
   } catch (error) {
+    if ((error as any)?.message === "CONVERSATION_CLOSED") {
+      return NextResponse.json(
+        { error: "Esta conversa foi encerrada e não aceita novas mensagens." },
+        { status: 409 }
+      );
+    }
+
     console.error("Error creating client message:", error);
     return NextResponse.json(
       { error: "Não conseguimos enviar esta mensagem agora. Tente novamente em alguns instantes." },

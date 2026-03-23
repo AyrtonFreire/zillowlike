@@ -997,7 +997,7 @@ export class RealtorAssistantService {
     const today = startOfDay(now);
     const recentClientThreshold = addDays(now, -14);
 
-    const leads = await prisma.lead.findMany({
+    const leads = await (prisma as any).lead.findMany({
       where: {
         realtorId,
         OR: [
@@ -1027,6 +1027,7 @@ export class RealtorAssistantService {
         status: true,
         createdAt: true,
         pipelineStage: true,
+        conversationState: true,
         nextActionDate: true,
         nextActionNote: true,
         visitDate: true,
@@ -1046,7 +1047,7 @@ export class RealtorAssistantService {
       },
     });
 
-    const leadIds = leads.map((l) => l.id);
+    const leadIds = (leads as any[]).map((lead: any) => lead.id);
 
     const leadCreatedEvents = await (prisma as any).leadEvent.findMany({
       where: {
@@ -1185,8 +1186,9 @@ export class RealtorAssistantService {
     for (const lead of leads) {
       const propertyTitle = lead.property?.title || "Imóvel";
       const clientName = lead.contact?.name || "Cliente";
+      const conversationActive = String((lead as any)?.conversationState || "ACTIVE") === "ACTIVE";
 
-      if (lead.status === "RESERVED") {
+      if (conversationActive && lead.status === "RESERVED") {
         const key = `NEW_LEAD:${lead.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
@@ -1340,6 +1342,8 @@ export class RealtorAssistantService {
       channelsToCheck.push("CHAT");
 
       for (const channel of channelsToCheck) {
+        if (!conversationActive) continue;
+
         // Se ainda não houve qualquer contato do corretor/owner e já existe mensagem do cliente,
         // queremos garantir que o aviso de "não respondida" apareça imediatamente.
 
@@ -1464,7 +1468,7 @@ export class RealtorAssistantService {
         const isAutoReplySameMessage = !!(visitRequestedClientMessageId && autoClientMessageId && visitRequestedClientMessageId === autoClientMessageId);
         const shouldSuppressLegacyFalseVisit = isAutoReplySameMessage && autoVisitHandoffFlag === false;
 
-        if (requestedAt && !isConfirmedByEvent && !isConfirmedByLead && !shouldSuppressLegacyFalseVisit) {
+        if (conversationActive && requestedAt && !isConfirmedByEvent && !isConfirmedByLead && !shouldSuppressLegacyFalseVisit) {
           const key = `VISIT_REQUESTED:${lead.id}`;
           dedupeKeys.add(key);
 
@@ -1515,7 +1519,7 @@ export class RealtorAssistantService {
 
       const needsHumanFollowUp = !!(lastClientAt2 && (!lastHumanProChatAt || lastHumanProChatAt.getTime() < lastClientAt2.getTime()));
 
-      if (hasAutoReplyForLatest && needsHumanFollowUp) {
+      if (conversationActive && hasAutoReplyForLatest && needsHumanFollowUp) {
         const handoff = detectOfflineAssistantHandoffType(safeString((lastClient as any)?.content));
         const autoJson = (lastAutoReply as any)?.metadata?.aiJson || null;
         const finalHandoffNeeded = Boolean(
@@ -1560,7 +1564,7 @@ export class RealtorAssistantService {
       const firstContactThreshold = new Date(lead.createdAt);
       firstContactThreshold.setHours(firstContactThreshold.getHours() + 2);
       const hasAnyContact = !!lastContactAt;
-      if (!hasAnyContact && now > firstContactThreshold && lead.status === "ACCEPTED") {
+      if (conversationActive && !hasAnyContact && now > firstContactThreshold && lead.status === "ACCEPTED") {
         const key = `LEAD_NO_FIRST_CONTACT:${lead.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
@@ -1579,7 +1583,7 @@ export class RealtorAssistantService {
       }
 
       const staleThreshold = addDays(now, -3);
-      if (lead.status === "ACCEPTED" && lastContactAt && lastContactAt < staleThreshold) {
+      if (conversationActive && lead.status === "ACCEPTED" && lastContactAt && lastContactAt < staleThreshold) {
         const key = `STALE_LEAD:${lead.id}:${startOfDay(lastContactAt).toISOString().slice(0, 10)}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
@@ -1653,7 +1657,7 @@ export class RealtorAssistantService {
     const now = new Date();
     const today = startOfDay(now);
 
-    const leads = await prisma.lead.findMany({
+    const leads = await (prisma as any).lead.findMany({
       where: {
         teamId,
         OR: [
@@ -1685,6 +1689,7 @@ export class RealtorAssistantService {
         realtorId: true,
         status: true,
         createdAt: true,
+        conversationState: true,
         nextActionDate: true,
         nextActionNote: true,
         visitDate: true,
@@ -1703,7 +1708,7 @@ export class RealtorAssistantService {
       },
     });
 
-    const leadIds = (leads || []).map((l) => String(l.id)).filter(Boolean);
+    const leadIds = ((leads || []) as Array<{ id: string }>).map((l) => String(l.id)).filter(Boolean);
 
     const leadCreatedEvents = leadIds.length
       ? await (prisma as any).leadEvent.findMany({
@@ -1929,8 +1934,9 @@ export class RealtorAssistantService {
     for (const lead of leads) {
       const propertyTitle = lead.property?.title || "Imóvel";
       const clientName = lead.contact?.name || "Cliente";
+      const conversationActive = String((lead as any)?.conversationState || "ACTIVE") === "ACTIVE";
 
-      if (!lead.realtorId && lead.status !== "RESERVED") {
+      if (conversationActive && !lead.realtorId && lead.status !== "RESERVED") {
         const key = `LEAD_UNASSIGNED:${lead.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
@@ -1969,6 +1975,8 @@ export class RealtorAssistantService {
       channelsToCheck.push("CHAT");
 
       for (const channel of channelsToCheck) {
+        if (!conversationActive) continue;
+
         const lastReplyAt = lastProChatAt || null;
 
         const clientMessagesForLead = (recentClientMessages || []).filter((m: any) => String(m.leadId) === String(lead.id));
@@ -2059,7 +2067,7 @@ export class RealtorAssistantService {
       const firstContactThreshold = new Date(lead.createdAt);
       firstContactThreshold.setHours(firstContactThreshold.getHours() + 2);
       const hasAnyProContact = !!lastProChatAt;
-      if (!hasAnyProContact && now > firstContactThreshold && lead.status === "ACCEPTED") {
+      if (conversationActive && !hasAnyProContact && now > firstContactThreshold && lead.status === "ACCEPTED") {
         const key = `LEAD_NO_FIRST_CONTACT:${lead.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({
@@ -2083,7 +2091,7 @@ export class RealtorAssistantService {
         lastClient?.createdAt ? new Date(lastClient.createdAt).getTime() : 0,
         lastProChatAt ? new Date(lastProChatAt).getTime() : 0
       );
-      if (lead.status === "ACCEPTED" && lastInteractionMs > 0 && lastInteractionMs < staleThreshold.getTime()) {
+      if (conversationActive && lead.status === "ACCEPTED" && lastInteractionMs > 0 && lastInteractionMs < staleThreshold.getTime()) {
         const lastInteractionAt = new Date(lastInteractionMs);
         const key = `STALE_LEAD:${lead.id}:${startOfDay(lastInteractionAt).toISOString().slice(0, 10)}`;
         dedupeKeys.add(key);
@@ -2103,7 +2111,7 @@ export class RealtorAssistantService {
         });
       }
 
-      if (lead.status === "RESERVED") {
+      if (conversationActive && lead.status === "RESERVED") {
         const key = `NEW_LEAD:${lead.id}`;
         dedupeKeys.add(key);
         await this.upsertFromRule({

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { updatePipelineStageSchema } from "@/lib/validations/lead";
 import { LeadEventService } from "@/lib/lead-event-service";
 import { RealtorAssistantService } from "@/lib/realtor-assistant-service";
+import { LeadConversationLifecycleService } from "@/lib/lead-conversation-lifecycle";
 import { getPusherServer, PUSHER_CHANNELS, PUSHER_EVENTS } from "@/lib/pusher-server";
 import { captureException } from "@/lib/sentry";
 import { logger } from "@/lib/logger";
@@ -118,6 +119,18 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       fromStatus: lead.status,
       toStatus: updated.status,
     });
+
+    if (nextStage === "WON" || nextStage === "LOST") {
+      try {
+        await LeadConversationLifecycleService.closeConversation(String(id), {
+          actorId: String(userId),
+          actorRole: String(role || ""),
+          reason: `PIPELINE_${nextStage}`,
+        });
+      } catch {
+        // ignore
+      }
+    }
 
     if (lead.realtorId) {
       try {

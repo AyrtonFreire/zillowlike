@@ -29,6 +29,10 @@ export async function GET(_req: NextRequest) {
         id: true,
         clientChatToken: true,
         createdAt: true,
+        conversationState: true,
+        conversationArchivedAt: true,
+        conversationClosedAt: true,
+        conversationLastActivityAt: true,
         property: {
           select: {
             id: true,
@@ -64,13 +68,17 @@ export async function GET(_req: NextRequest) {
     });
 
     const chats = leads
-      .filter((l) => !!l?.clientChatToken)
-      .map((lead) => {
+      .filter((l: any) => !!l?.clientChatToken)
+      .map((lead: any) => {
         const last = Array.isArray(lead.clientMessages) ? lead.clientMessages[0] : null;
         return {
           leadId: String(lead.id),
           token: String(lead.clientChatToken),
           createdAt: lead.createdAt,
+          conversationState: String((lead as any).conversationState || "ACTIVE"),
+          conversationArchivedAt: (lead as any).conversationArchivedAt ? new Date((lead as any).conversationArchivedAt).toISOString() : null,
+          conversationClosedAt: (lead as any).conversationClosedAt ? new Date((lead as any).conversationClosedAt).toISOString() : null,
+          conversationLastActivityAt: (lead as any).conversationLastActivityAt ? new Date((lead as any).conversationLastActivityAt).toISOString() : null,
           contactName: lead.contact?.name || "Você",
           contactEmail: lead.contact?.email || "",
           lastMessage: last?.content || undefined,

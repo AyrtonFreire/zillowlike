@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { LeadConversationLifecycleService } from "@/lib/lead-conversation-lifecycle";
 
 // Número de dias sem atividade antes de arquivar
 const ARCHIVE_AFTER_DAYS = 10;
@@ -27,26 +28,21 @@ async function archiveStaleChats() {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - ARCHIVE_AFTER_DAYS);
 
-  const leadsToArchive = await prisma.lead.findMany({
+  const leadsToArchive = await (prisma as any).lead.findMany({
     where: {
-      clientChatToken: { not: null },
+      conversationState: "ACTIVE" as any,
       clientMessages: {
         some: {},
       },
     },
-    include: {
-      clientMessages: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { createdAt: true },
-      },
+    select: {
+      id: true,
+      conversationLastActivityAt: true,
     },
   });
 
-  const staleLeads = leadsToArchive.filter((lead) => {
-    const lastMessage = lead.clientMessages[0];
-    if (!lastMessage) return false;
-    return new Date(lastMessage.createdAt) < cutoffDate;
+  const staleLeads = leadsToArchive.filter((lead: any) => {
+    return new Date(lead.conversationLastActivityAt) < cutoffDate;
   });
 
   if (staleLeads.length === 0) {
@@ -57,34 +53,23 @@ async function archiveStaleChats() {
     };
   }
 
-  const staleLeadIds = staleLeads.map((l) => l.id);
-
-  const result = await prisma.$transaction(async (tx) => {
-    const deletedMessages = await tx.leadClientMessage.deleteMany({
-      where: {
-        leadId: { in: staleLeadIds },
-      },
-    });
-
-    const updatedLeads = await tx.lead.updateMany({
-      where: {
-        id: { in: staleLeadIds },
-      },
-      data: {
-        clientChatToken: null,
-      },
-    });
-
-    return {
-      deletedMessages: deletedMessages.count,
-      archivedLeads: updatedLeads.count,
-    };
-  });
+  let archivedCount = 0;
+  for (const lead of staleLeads) {
+    try {
+      await LeadConversationLifecycleService.archiveConversation(String(lead.id), {
+        reason: "INACTIVITY_CRON",
+        at: cutoffDate,
+      });
+      archivedCount += 1;
+    } catch {
+      // ignore
+    }
+  }
 
   return {
     cutoffDate,
-    archivedLeads: result.archivedLeads,
-    deletedMessages: result.deletedMessages,
+    archivedLeads: archivedCount,
+    deletedMessages: 0,
   };
 }
 
@@ -142,26 +127,21 @@ export async function GET(req: NextRequest) {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - ARCHIVE_AFTER_DAYS);
 
-      const leadsWithChats = await prisma.lead.findMany({
+      const leadsWithChats = await (prisma as any).lead.findMany({
         where: {
-          clientChatToken: { not: null },
+          conversationState: "ACTIVE" as any,
           clientMessages: {
             some: {},
           },
         },
-        include: {
-          clientMessages: {
-            orderBy: { createdAt: "desc" },
-            take: 1,
-            select: { createdAt: true },
-          },
+        select: {
+          id: true,
+          conversationLastActivityAt: true,
         },
       });
 
-      const staleCount = leadsWithChats.filter((lead) => {
-        const lastMessage = lead.clientMessages[0];
-        if (!lastMessage) return false;
-        return new Date(lastMessage.createdAt) < cutoffDate;
+      const staleCount = leadsWithChats.filter((lead: any) => {
+        return new Date(lead.conversationLastActivityAt) < cutoffDate;
       }).length;
 
       return NextResponse.json({

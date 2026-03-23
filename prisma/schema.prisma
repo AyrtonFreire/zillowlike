@@ -127,6 +127,12 @@ enum LeadPipelineStage {
   LOST
 }
 
+enum LeadConversationState {
+  ACTIVE
+  ARCHIVED
+  CLOSED
+}
+
 // Motivos simples de perda de lead
 enum LeadLostReason {
   CLIENT_DESISTIU
@@ -142,6 +148,9 @@ enum LeadEventType {
   LEAD_REJECTED
   LEAD_COMPLETED
   LEAD_LOST
+  CHAT_ARCHIVED
+  CHAT_REOPENED
+  CHAT_CLOSED
   STAGE_CHANGED
   NOTE_ADDED
   INTERNAL_MESSAGE
@@ -650,6 +659,10 @@ model Lead {
   nextActionNote String?
 
   clientChatToken String? @unique
+  conversationState LeadConversationState @default(ACTIVE)
+  conversationLastActivityAt DateTime @default(now())
+  conversationArchivedAt DateTime?
+  conversationClosedAt DateTime?
 
   candidatures LeadCandidature[]
   rating       RealtorRating?
@@ -687,6 +700,8 @@ model Lead {
   @@index([status, reservedUntil]) // Para worker de reservas expiradas
   @@index([status, visitDate]) // Para dashboard de visitas
   @@index([teamId])
+  @@index([conversationState])
+  @@index([conversationState, conversationLastActivityAt])
   @@map("leads")
 }
 

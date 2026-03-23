@@ -240,21 +240,6 @@ function isInternalChecklistType(itemType: string | null | undefined) {
   return isReminderType(t) || t === "WEEKLY_SUMMARY";
 }
 
-function shouldAutoResolveOnReply(ownerItemType: string | null | undefined, candidateItemType: string | null | undefined) {
-  const owner = String(ownerItemType || "").trim();
-  const t = String(candidateItemType || "").trim();
-  if (!t) return false;
-
-  if (t === "UNANSWERED_CLIENT_MESSAGE") return true;
-  if (t === "NEW_LEAD") return true;
-  if (t === "LEAD_NO_FIRST_CONTACT") return true;
-  if (t === "STALE_LEAD") return true;
-
-  if (owner && owner === t) return true;
-
-  return false;
-}
-
 function assistantTypeRank(itemType: string | null | undefined): number {
   const t = String(itemType || "").trim();
   if (t === "URGENT_CLIENT_REQUEST") return 1;
@@ -885,21 +870,6 @@ export default function RealtorAssistantFeed(props: {
         } catch {
         }
 
-        const ownerItem = items.find((it) => String(it.id) === String(params.ownerId)) || null;
-        const ownerType = ownerItem?.type ? String(ownerItem.type) : null;
-
-        const idsToResolve = items
-          .filter(
-            (it) =>
-              String(it.leadId || "") === String(params.leadId) &&
-              it.status === "ACTIVE" &&
-              shouldAutoResolveOnReply(ownerType, it.type)
-          )
-          .map((it) => String(it.id));
-
-        const uniqueIdsToResolve = Array.from(new Set([String(params.ownerId), ...idsToResolve]));
-        resolveItemsOptimistically(uniqueIdsToResolve);
-
         showSuccess(String(params.ownerId), "Mensagem enviada");
 
         setRepliedForId(params.ownerId);
@@ -921,7 +891,7 @@ export default function RealtorAssistantFeed(props: {
         setReplyingForId(null);
       }
     },
-    [fetchItems, items, props, recordAssistantEvent, resolveItemsOptimistically, showSuccess]
+    [fetchItems, items, props, recordAssistantEvent, showSuccess]
   );
 
   const sortAssistantItems = useCallback((list: AssistantItem[]) => {
@@ -1195,33 +1165,6 @@ export default function RealtorAssistantFeed(props: {
 
   const handleOpenAction = (action: AssistantAction, item: AssistantItem) => {
     const targetLeadId = action.leadId || item.leadId || undefined;
-
-    const itemType = String(item.type || "").trim();
-    const shouldResolveOnOpen =
-      itemType !== "UNANSWERED_CLIENT_MESSAGE" && itemType !== "AGENCY_NOTICE" && !isReminderType(itemType);
-    if (shouldResolveOnOpen) {
-      resolveItemsOptimistically([String(item.id)]);
-      if (action.type === "OPEN_CHAT") {
-        if (targetLeadId) {
-          router.push(`/broker/chats?lead=${targetLeadId}`);
-        } else {
-          router.push("/broker/chats");
-        }
-        return;
-      }
-      if (action.type === "OPEN_LEAD") {
-        if (targetLeadId) {
-          router.push(`/broker/leads/${targetLeadId}`);
-        } else {
-          router.push("/broker/leads");
-        }
-        return;
-      }
-      if (targetLeadId) {
-        router.push(`/broker/leads/${targetLeadId}`);
-        return;
-      }
-    }
 
     if (action.type === "OPEN_CHAT") {
       if (targetLeadId) {

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import crypto from "crypto";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { LeadConversationLifecycleService } from "@/lib/lead-conversation-lifecycle";
 
 export async function POST(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -27,6 +27,7 @@ export async function POST(_req: NextRequest, context: { params: Promise<{ id: s
         id: true,
         realtorId: true,
         clientChatToken: true,
+        conversationState: true,
         property: {
           select: {
             ownerId: true,
@@ -55,23 +56,21 @@ export async function POST(_req: NextRequest, context: { params: Promise<{ id: s
       );
     }
 
-    let token: string | null = lead.clientChatToken || null;
-
-    if (!token) {
-      token = crypto.randomBytes(32).toString("hex");
-
-      const updated = await (prisma as any).lead.update({
-        where: { id },
-        data: {
-          clientChatToken: token,
-        },
-        select: {
-          clientChatToken: true,
-        },
-      });
-
-      token = updated.clientChatToken || null;
+    if (String(lead.conversationState || "") === "CLOSED") {
+      return NextResponse.json(
+        { error: "Esta conversa foi encerrada e não pode ser reaberta por link público." },
+        { status: 409 }
+      );
     }
+
+    const touched = await LeadConversationLifecycleService.touchActivity(String(id), {
+      actorId: String(userId),
+      actorRole: String(role || ""),
+      reason: "CLIENT_CHAT_LINK_REQUESTED",
+      ensureToken: true,
+    });
+
+    const token = touched.clientChatToken ? String(touched.clientChatToken) : null;
 
     if (!token) {
       return NextResponse.json(

@@ -28,6 +28,7 @@ export const PUSHER_EVENTS = {
   AGENCY_LEADS_UPDATED: "agency:leads_updated",
   // Chat events
   NEW_CHAT_MESSAGE: "new-chat-message",
+  LEAD_CHAT_STATE_CHANGED: "lead-chat-state-changed",
   LEAD_CHAT_READ_RECEIPT: "lead-chat-read-receipt",
   TEAM_CHAT_MESSAGE: "team-chat-message",
   TEAM_CHAT_RECEIPT: "team-chat-receipt",

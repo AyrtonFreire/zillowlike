@@ -7,12 +7,8 @@ import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { 
   Send, 
-  Wifi, 
-  WifiOff, 
   Home, 
   MapPin, 
-  ExternalLink,
-  User,
   Clock,
   CheckCheck,
   MessageCircle
@@ -31,6 +27,12 @@ interface ChatMessage {
 interface ChatLeadInfo {
   id: string;
   createdAt?: string;
+  conversation?: {
+    state?: "ACTIVE" | "ARCHIVED" | "CLOSED" | string;
+    archivedAt?: string | null;
+    closedAt?: string | null;
+    lastActivityAt?: string | null;
+  } | null;
   property?: {
     id: string;
     title: string;
@@ -149,6 +151,10 @@ export default function ClientChatPage() {
   const composerRef = useRef<HTMLElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const conversationState = String(lead?.conversation?.state || "ACTIVE");
+  const chatIsArchived = conversationState === "ARCHIVED";
+  const chatIsClosed = conversationState === "CLOSED";
+
   const waitingAssistantReply = useMemo(() => {
     if (!messages.length) return false;
     const last = messages[messages.length - 1];
@@ -235,6 +241,14 @@ export default function ClientChatPage() {
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.success) return;
       const next = Array.isArray(data.messages) ? data.messages : [];
+      setLead((prev) => {
+        if (!prev && !data?.lead) return prev;
+        if (!data?.lead?.conversation) return prev;
+        return {
+          ...(prev || data.lead || {}),
+          conversation: data.lead?.conversation || prev?.conversation || null,
+        };
+      });
       setMessages((prev) => {
         if (!prev.length) return next;
         if (!next.length) return prev;
@@ -370,6 +384,27 @@ export default function ClientChatPage() {
         });
       });
 
+      channel.bind("lead-chat-state-changed", (data: {
+        state?: string;
+        archivedAt?: string | null;
+        closedAt?: string | null;
+        lastActivityAt?: string | null;
+      }) => {
+        if (cancelled) return;
+        setLead((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            conversation: {
+              state: String(data?.state || prev?.conversation?.state || "ACTIVE"),
+              archivedAt: data?.archivedAt ?? prev?.conversation?.archivedAt ?? null,
+              closedAt: data?.closedAt ?? prev?.conversation?.closedAt ?? null,
+              lastActivityAt: data?.lastActivityAt ?? prev?.conversation?.lastActivityAt ?? null,
+            },
+          };
+        });
+      });
+
       // Ouvir indicador de digitando do corretor
       channel.bind("typing", (data: { fromClient: boolean }) => {
         if (!cancelled && !data.fromClient) {
@@ -404,7 +439,7 @@ export default function ClientChatPage() {
   }, [messages.length]);
 
   const handleSend = async () => {
-    if (!draft.trim() || !token) return;
+    if (!draft.trim() || !token || chatIsClosed) return;
 
     const content = draft.trim();
     setDraft("");
@@ -442,11 +477,23 @@ export default function ClientChatPage() {
         )
       );
 
+      if (data?.conversation) {
+        setLead((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            conversation: data.conversation,
+          };
+        });
+      }
+
       // Fallback: puxa novas mensagens por alguns segundos (caso o Pusher não entregue)
       startShortPolling();
     } catch (err: any) {
       console.error("Error sending message:", err);
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setError(err?.message || "Não conseguimos enviar esta mensagem agora.");
+      setDraft(content);
     } finally {
       setSending(false);
     }
@@ -546,6 +593,12 @@ export default function ClientChatPage() {
                 )}
               </div>
               <p className="text-xs text-gray-500 truncate">{title}</p>
+              {chatIsArchived && (
+                <p className="text-[11px] text-amber-700 mt-0.5">Conversa arquivada</p>
+              )}
+              {chatIsClosed && (
+                <p className="text-[11px] text-rose-700 mt-0.5">Conversa encerrada</p>
+              )}
               {/* Indicador de digitando */}
               {isTyping && (
                 <span className="flex items-center gap-1 text-[11px] text-teal-600 mt-0.5">
@@ -623,6 +676,16 @@ export default function ClientChatPage() {
             className="flex-1 overflow-y-auto rounded-2xl bg-white border border-gray-200 p-4 flex flex-col"
             style={{ paddingBottom: Math.max(0, composerHeight + keyboardOffset + 12) }}
           >
+            {chatIsArchived && (
+              <div className="mb-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-900">
+                Esta conversa foi arquivada por inatividade. Se você enviar uma nova mensagem, ela será reativada automaticamente.
+              </div>
+            )}
+            {chatIsClosed && (
+              <div className="mb-4 p-3 rounded-xl border border-rose-200 bg-rose-50 text-sm text-rose-900">
+                Esta conversa foi encerrada. O histórico continua disponível, mas novas mensagens não podem ser enviadas.
+              </div>
+            )}
             {messages.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center text-sm text-gray-500 px-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-teal-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -742,9 +805,10 @@ export default function ClientChatPage() {
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            placeholder="Escreva sua mensagem..."
+            placeholder={chatIsClosed ? "Conversa encerrada" : "Escreva sua mensagem..."}
             className="flex-1 resize-none text-sm px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-teal-500 focus:border-transparent min-h-[48px] max-h-32 bg-gray-50"
             style={{ height: "auto" }}
+            disabled={sending || chatIsClosed}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
               target.style.height = "auto";
@@ -754,7 +818,7 @@ export default function ClientChatPage() {
           <button
             type="button"
             onClick={handleSend}
-            disabled={sending || !draft.trim()}
+            disabled={sending || !draft.trim() || chatIsClosed}
             className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-teal-600 text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:bg-teal-700 active:scale-95 transition-all"
           >
             {sending ? (

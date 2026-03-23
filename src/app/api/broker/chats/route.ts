@@ -130,6 +130,10 @@ export async function GET(_req: NextRequest) {
           select: {
             id: true,
             clientChatToken: true,
+            conversationState: true,
+            conversationArchivedAt: true,
+            conversationClosedAt: true,
+            conversationLastActivityAt: true,
             contact: {
               select: {
                 name: true,
@@ -213,6 +217,7 @@ export async function GET(_req: NextRequest) {
     const chatsWithMessages = (lastClientByLead || []).map((row: any) => {
       const lead = row.lead;
       const leadId = String(lead.id);
+      const conversationState = String((lead as any)?.conversationState || "ACTIVE");
 
       const lastClientAt = row?.createdAt ? new Date(row.createdAt) : null;
       const lastInternal = lastInternalByLeadId.get(leadId) || null;
@@ -254,8 +259,13 @@ export async function GET(_req: NextRequest) {
       // Calcular dias até arquivamento (10 dias sem atividade)
       const ARCHIVE_DAYS = 10;
       let daysUntilArchive: number | null = null;
-      if (lastMessageAt) {
-        const lastActivity = new Date(lastMessageAt);
+      const lastConversationActivity = (lead as any)?.conversationLastActivityAt
+        ? new Date((lead as any).conversationLastActivityAt)
+        : lastMessageAt
+          ? new Date(lastMessageAt)
+          : null;
+      if (conversationState === "ACTIVE" && lastConversationActivity) {
+        const lastActivity = lastConversationActivity;
         const archiveDate = new Date(lastActivity.getTime() + ARCHIVE_DAYS * 24 * 60 * 60 * 1000);
         const now = new Date();
         const daysRemaining = Math.ceil((archiveDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
@@ -277,6 +287,14 @@ export async function GET(_req: NextRequest) {
         lastMessageFromClient,
         unreadCount,
         daysUntilArchive,
+        conversationState,
+        conversationArchivedAt: (lead as any)?.conversationArchivedAt
+          ? new Date((lead as any).conversationArchivedAt).toISOString()
+          : null,
+        conversationClosedAt: (lead as any)?.conversationClosedAt
+          ? new Date((lead as any).conversationClosedAt).toISOString()
+          : null,
+        conversationLastActivityAt: lastConversationActivity ? lastConversationActivity.toISOString() : null,
         property: {
           id: lead.property.id,
           title: lead.property.title,
