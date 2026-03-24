@@ -22,8 +22,7 @@ export default function SiteFooter() {
   function toggleInterest(interest: EmailInterest, checked: boolean) {
     setInterests((current) => {
       const next = checked ? [...current, interest] : current.filter((item) => item !== interest);
-      const unique = Array.from(new Set(next));
-      return unique.length ? unique : ["BUY"];
+      return Array.from(new Set(next));
     });
   }
 
@@ -31,6 +30,11 @@ export default function SiteFooter() {
     event.preventDefault();
     setMessage(null);
     setError(null);
+
+    if (!interests.length) {
+      setError("Selecione pelo menos uma opção de aviso para continuar.");
+      return;
+    }
 
     if (!consent) {
       setError("Você precisa autorizar o envio para concluir a assinatura.");
@@ -101,13 +105,16 @@ export default function SiteFooter() {
                 <div className="text-sm font-medium text-white mb-2">Quais avisos você quer receber?</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
                   {FOOTER_INTERESTS.map((interest) => (
-                    <Checkbox
-                      key={interest}
-                      checked={interests.includes(interest)}
-                      onChange={(event) => toggleInterest(interest, event.target.checked)}
-                      label={EMAIL_INTEREST_LABELS[interest]}
-                      className="text-neutral-300 [&_span]:text-neutral-300"
-                    />
+                    <div key={interest} className="flex items-center gap-3 min-h-[44px] py-2 text-neutral-300">
+                      <input
+                        type="checkbox"
+                        checked={interests.includes(interest)}
+                        onChange={(event) => toggleInterest(interest, event.target.checked)}
+                        aria-label={EMAIL_INTEREST_LABELS[interest]}
+                        className="h-5 w-5 shrink-0 rounded border-neutral-300 text-accent focus:ring-2 focus:ring-accent cursor-pointer"
+                      />
+                      <span className="text-sm leading-relaxed text-neutral-300">{EMAIL_INTEREST_LABELS[interest]}</span>
+                    </div>
                   ))}
                 </div>
               </div>
