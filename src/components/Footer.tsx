@@ -5,16 +5,33 @@ import { useState } from "react";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Checkbox from "@/components/ui/Checkbox";
+import { EMAIL_INTEREST_LABELS, type EmailInterest } from "@/lib/communication-preferences";
+
+const FOOTER_INTERESTS: EmailInterest[] = ["BUY", "RENT", "ANNOUNCE", "INVEST"];
 
 export default function SiteFooter() {
   const [email, setEmail] = useState("");
   const [city, setCity] = useState("");
-  const [interest, setInterest] = useState("BUY");
+  const [interests, setInterests] = useState<EmailInterest[]>(["BUY"]);
   const [frequency, setFrequency] = useState("WEEKLY");
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const allInterestsSelected = FOOTER_INTERESTS.every((item) => interests.includes(item));
+
+  function toggleAllInterests(checked: boolean) {
+    setInterests(checked ? [...FOOTER_INTERESTS] : ["BUY"]);
+  }
+
+  function toggleInterest(interest: EmailInterest, checked: boolean) {
+    setInterests((current) => {
+      const next = checked ? [...current, interest] : current.filter((item) => item !== interest);
+      const unique = Array.from(new Set(next));
+      return unique.length ? unique : ["BUY"];
+    });
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,6 +45,7 @@ export default function SiteFooter() {
 
     try {
       setLoading(true);
+      const wantsPropertyAlerts = interests.some((interest) => interest === "BUY" || interest === "RENT" || interest === "INVEST");
       const response = await fetch("/api/email-subscriptions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -35,11 +53,11 @@ export default function SiteFooter() {
           email,
           city: city || undefined,
           frequency,
-          interests: [interest],
-          subscribedToAlerts: interest === "BUY" || interest === "RENT" || interest === "INVEST",
+          interests,
+          subscribedToAlerts: wantsPropertyAlerts,
           subscribedToDigest: true,
           subscribedToGuides: true,
-          subscribedToPriceDrops: interest === "BUY" || interest === "RENT" || interest === "INVEST",
+          subscribedToPriceDrops: wantsPropertyAlerts,
           source: "FOOTER",
         }),
       });
@@ -52,7 +70,7 @@ export default function SiteFooter() {
 
       setEmail("");
       setCity("");
-      setInterest("BUY");
+      setInterests(["BUY"]);
       setFrequency("WEEKLY");
       setConsent(false);
       setMessage("Assinatura confirmada. Você já pode receber alertas e resumos do OggaHub.");
@@ -69,10 +87,10 @@ export default function SiteFooter() {
             <h3 className="text-white font-display text-2xl font-bold mb-3">OggaHub</h3>
             <p className="text-sm text-neutral-400 mb-4">Seu hub imobiliário para comprar, alugar e anunciar.</p>
             <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-5 mb-4">
-              <h4 className="text-white font-semibold text-lg mb-2">Receba só o que faz sentido para você</h4>
+              <h4 className="text-white font-semibold text-lg mb-2">Receba só o que faz sentido para você!</h4>
               <div className="space-y-2 text-sm text-neutral-400">
                 <p>Alertas de novos imóveis para quem está buscando agora.</p>
-                <p>Resumos inteligentes para acompanhar o mercado sem ruído.</p>
+                <p>Resumos inteligentes para acompanhar o mercado.</p>
                 <p>Conteúdos práticos para comprar, alugar ou anunciar melhor.</p>
               </div>
             </div>
@@ -80,18 +98,34 @@ export default function SiteFooter() {
               <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="Seu melhor e-mail" required className="bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input value={city} onChange={(event) => setCity(event.target.value)} type="text" placeholder="Cidade de interesse" className="bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500" />
-                <Select value={interest} onChange={(event) => setInterest(event.target.value)} className="bg-neutral-800 border-neutral-700 text-white">
-                  <option value="BUY">Quero comprar</option>
-                  <option value="RENT">Quero alugar</option>
-                  <option value="ANNOUNCE">Quero anunciar</option>
-                  <option value="INVEST">Quero investir</option>
+                <Select value={frequency} onChange={(event) => setFrequency(event.target.value)} className="bg-white text-neutral-900 border-neutral-700">
+                  <option value="INSTANT">Alertas imediatos</option>
+                  <option value="DAILY">Resumo diário</option>
+                  <option value="WEEKLY">Resumo semanal</option>
                 </Select>
               </div>
-              <Select value={frequency} onChange={(event) => setFrequency(event.target.value)} className="bg-neutral-800 border-neutral-700 text-white">
-                <option value="INSTANT">Alertas imediatos</option>
-                <option value="DAILY">Resumo diário</option>
-                <option value="WEEKLY">Resumo semanal</option>
-              </Select>
+              <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
+                <div className="text-sm font-medium text-white mb-2">Quais avisos você quer receber?</div>
+                <div className="space-y-1">
+                  <Checkbox
+                    checked={allInterestsSelected}
+                    onChange={(event) => toggleAllInterests(event.target.checked)}
+                    label="Receber todos os avisos"
+                    className="text-neutral-300 [&_span]:text-white"
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                    {FOOTER_INTERESTS.map((interest) => (
+                      <Checkbox
+                        key={interest}
+                        checked={interests.includes(interest)}
+                        onChange={(event) => toggleInterest(interest, event.target.checked)}
+                        label={EMAIL_INTEREST_LABELS[interest]}
+                        className="text-neutral-300 [&_span]:text-neutral-300"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
               <Checkbox checked={consent} onChange={(event) => setConsent(event.target.checked)} label="Autorizo o OggaHub a enviar alertas, resumos e conteúdos por e-mail. Posso sair quando quiser." className="text-neutral-300 [&_span]:text-neutral-300" />
               {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>}
               {message && <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{message}</div>}
