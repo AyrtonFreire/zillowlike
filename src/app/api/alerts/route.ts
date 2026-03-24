@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { buildSearchParams } from "@/lib/url";
+import { getSavedSearchFrequency, normalizeSavedSearchParams } from "@/lib/communication-preferences";
 
 const AlertSchema = z.object({
   name: z.string().min(1).max(100),
@@ -32,29 +34,22 @@ export async function GET(req: NextRequest) {
 
     const userId = (session as any)?.userId || (session as any)?.user?.id;
 
-    const alerts = await prisma.savedSearch.findMany({
+    const alerts = await (prisma as any).savedSearch.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
     });
 
-    const mappedAlerts = alerts.map((a) => {
-      let filters: any = {};
-      try {
-        filters = a.params ? JSON.parse(a.params) : {};
-      } catch {
-        filters = {};
-      }
-
-      if (String(filters?.type || "").toUpperCase() === "CONDO" && !filters?.inCondominium) {
-        delete filters.type;
-        filters.inCondominium = "true";
-      }
+    const mappedAlerts = (alerts as any[]).map((a: any) => {
+      const { filters, queryString } = normalizeSavedSearchParams(a.params);
 
       return {
         id: a.id,
         name: a.label,
         filters,
-        frequency: filters?.frequency || "DAILY",
+        params: queryString,
+        frequency: getSavedSearchFrequency(a.frequency, a.params),
+        alertsEnabled: a.alertsEnabled,
+        lastAlertSentAt: a.lastAlertSentAt,
         createdAt: a.createdAt,
       };
     });
@@ -95,23 +90,25 @@ export async function POST(req: NextRequest) {
     const normalizedType = String(parsed.data.propertyType || "").toUpperCase();
     const inCondominium = Boolean(parsed.data.inCondominium) || normalizedType === "CONDO";
     const type = normalizedType && normalizedType !== "CONDO" ? parsed.data.propertyType : undefined;
+    const params = buildSearchParams({
+      city: parsed.data.city,
+      state: parsed.data.state,
+      minPrice: typeof parsed.data.minPrice === "number" ? String(Math.round(parsed.data.minPrice)) : undefined,
+      maxPrice: typeof parsed.data.maxPrice === "number" ? String(Math.round(parsed.data.maxPrice)) : undefined,
+      type,
+      inCondominium: inCondominium ? "true" : undefined,
+      bedroomsMin: typeof parsed.data.minBedrooms === "number" ? String(parsed.data.minBedrooms) : undefined,
+      bathroomsMin: typeof parsed.data.minBathrooms === "number" ? String(parsed.data.minBathrooms) : undefined,
+      areaMin: typeof parsed.data.minArea === "number" ? String(parsed.data.minArea) : undefined,
+    });
 
-    const alert = await prisma.savedSearch.create({
+    const alert = await (prisma as any).savedSearch.create({
       data: {
         userId,
         label: parsed.data.name,
-        params: JSON.stringify({
-          city: parsed.data.city,
-          state: parsed.data.state,
-          minPrice: parsed.data.minPrice,
-          maxPrice: parsed.data.maxPrice,
-          type,
-          inCondominium: inCondominium ? "true" : undefined,
-          minBedrooms: parsed.data.minBedrooms,
-          minBathrooms: parsed.data.minBathrooms,
-          minArea: parsed.data.minArea,
-          frequency: parsed.data.frequency,
-        }),
+        params,
+        frequency: parsed.data.frequency,
+        alertsEnabled: true,
       },
     });
 

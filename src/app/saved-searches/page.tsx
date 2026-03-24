@@ -7,7 +7,15 @@ import SiteFooter from "@/components/Footer";
 import Button from "@/components/ui/Button";
 import { Bookmark, Trash2 } from "lucide-react";
 
-type Saved = { label: string; params: string; ts: number };
+type Saved = {
+  id?: string;
+  label: string;
+  params: string;
+  ts: number;
+  frequency?: string;
+  alertsEnabled?: boolean;
+  lastAlertSentAt?: string | null;
+};
 
 export default function SavedSearchesPage() {
   const [items, setItems] = useState<Saved[]>([]);
@@ -26,10 +34,16 @@ export default function SavedSearchesPage() {
 
   useEffect(() => { load(); }, []);
 
-  async function remove(ts: number) {
-    const url = `/api/saved-searches?ts=${ts}`;
+  async function remove(id?: string, ts?: number) {
+    const url = id ? `/api/saved-searches?id=${id}` : `/api/saved-searches?ts=${ts}`;
     const r = await fetch(url, { method: 'DELETE' });
-    if (r.ok) setItems((arr)=> arr.filter((s)=> s.ts !== ts));
+    if (r.ok) setItems((arr)=> arr.filter((s)=> (id ? s.id !== id : s.ts !== ts)));
+  }
+
+  function getFrequencyLabel(freq?: string) {
+    if (freq === "INSTANT") return "Instantâneo";
+    if (freq === "WEEKLY") return "Semanal";
+    return "Diário";
   }
 
   return (
@@ -62,9 +76,13 @@ export default function SavedSearchesPage() {
                     <h3 className="font-semibold text-gray-900 mb-1">{s.label || 'Busca sem título'}</h3>
                     <p className="text-xs text-gray-500">{new Date(s.ts).toLocaleString('pt-BR')}</p>
                   </div>
-                  <button onClick={()=>remove(s.ts)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Remover">
+                  <button onClick={()=>remove(s.id, s.ts)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Remover">
                     <Trash2 className="w-4 h-4" />
                   </button>
+                </div>
+                <div className="space-y-1 mb-4 text-sm text-gray-600">
+                  <p>{getFrequencyLabel(s.frequency)} · {s.alertsEnabled === false ? "alerta pausado" : "alerta ativo"}</p>
+                  {s.lastAlertSentAt && <p>Último envio em {new Date(s.lastAlertSentAt).toLocaleDateString("pt-BR")}</p>}
                 </div>
                 <Link href={`/?${s.params}`}>
                   <Button variant="secondary" className="w-full">Aplicar Busca</Button>

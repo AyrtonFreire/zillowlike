@@ -3,6 +3,8 @@
  * Configure with your preferred email service (SendGrid, Resend, etc.)
  */
 
+import { getEmailFrequencyLabel, getEmailInterestLabel } from "@/lib/communication-preferences";
+
 interface EmailOptions {
   to: string;
   subject: string;
@@ -135,6 +137,150 @@ export function getLeadNotificationEmail(data: {
             <div class="footer">
               <p>© 2025 OggaHub. Todos os direitos reservados.</p>
               <p>Você está recebendo este email porque um usuário demonstrou interesse em seu imóvel.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+}
+
+export function getEmailSubscriptionWelcomeEmail(data: {
+  email: string;
+  name?: string | null;
+  interests: string[];
+  frequency: string;
+  city?: string | null;
+  state?: string | null;
+  preferencesUrl: string;
+}) {
+  const greetingName = data.name?.trim() ? `, ${data.name.trim()}` : "";
+  const interests = data.interests.map((item) => getEmailInterestLabel(item)).join(" • ");
+  const region = [data.city, data.state].filter(Boolean).join("/");
+  const frequencyLabel = getEmailFrequencyLabel(data.frequency);
+
+  return {
+    subject: "Sua assinatura de e-mails do OggaHub foi ativada",
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #020617; color: #e5e7eb; }
+            .wrapper { padding: 24px 12px; }
+            .container { max-width: 640px; margin: 0 auto; background: radial-gradient(circle at top, rgba(0,255,200,0.06), transparent 55%), #020617; border-radius: 24px; border: 1px solid rgba(15,118,110,0.45); box-shadow: 0 32px 80px rgba(15,23,42,0.9); overflow: hidden; }
+            .header { padding: 24px 28px 20px; background: linear-gradient(135deg, #00736E 0%, #021616 100%); border-bottom: 1px solid rgba(15,118,110,0.6); }
+            .logo { display: inline-flex; align-items: center; gap: 10px; }
+            .logo-badge { width: 32px; height: 32px; border-radius: 999px; background: radial-gradient(circle at 30% 0%, #5ef2d6 0%, #00736E 45%, #021616 100%); display:flex; align-items:center; justify-content:center; box-shadow: 0 0 0 1px rgba(34,211,238,0.35), 0 16px 40px rgba(15,23,42,0.9); color: #fff; font-weight: 600; }
+            .logo-text { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(226,232,240,0.85); font-weight: 600; }
+            .title { margin: 20px 0 4px; font-size: 20px; font-weight: 600; color: #f9fafb; }
+            .subtitle { margin: 0; font-size: 13px; color: rgba(226,232,240,0.85); }
+            .content { padding: 22px 24px 24px; background: radial-gradient(circle at top, rgba(15,118,110,0.21), transparent 60%); }
+            .card { background: rgba(15,23,42,0.88); border-radius: 18px; padding: 18px 18px 20px; border: 1px solid rgba(15,118,110,0.45); box-shadow: 0 18px 38px rgba(15,23,42,0.9); }
+            .paragraph { font-size: 13px; line-height: 1.6; color: #e5e7eb; margin: 0 0 12px; }
+            .pill { display: inline-block; margin: 0 8px 8px 0; padding: 8px 12px; border-radius: 999px; background: rgba(13,148,136,0.18); border: 1px solid rgba(45,212,191,0.35); font-size: 12px; color: #ccfbf1; }
+            .cta { display: inline-block; margin-top: 12px; padding: 12px 18px; border-radius: 12px; background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white !important; text-decoration: none; font-weight: 600; }
+            .footer { padding: 18px 24px 22px; border-top: 1px solid rgba(30,64,175,0.15); font-size: 11px; color: #6b7280; }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <div class="logo">
+                  <div class="logo-badge">O</div>
+                  <div class="logo-text">OggaHub</div>
+                </div>
+                <h1 class="title">Assinatura ativada</h1>
+                <p class="subtitle">Você vai receber conteúdos e oportunidades mais alinhados ao seu momento.</p>
+              </div>
+              <div class="content">
+                <div class="card">
+                  <p class="paragraph">Olá${greetingName}.</p>
+                  <p class="paragraph">Seu e-mail <strong>${data.email}</strong> foi confirmado para receber comunicações do OggaHub.</p>
+                  <p class="paragraph"><strong>Frequência:</strong> ${frequencyLabel}${region ? ` · <strong>Região:</strong> ${region}` : ""}</p>
+                  <div>
+                    ${data.interests.map((item) => `<span class="pill">${getEmailInterestLabel(item)}</span>`).join("")}
+                  </div>
+                  <p class="paragraph" style="margin-top: 16px;">Você poderá receber alertas de imóveis, resumos inteligentes e conteúdos práticos conforme suas preferências.</p>
+                  <a href="${data.preferencesUrl}" class="cta">Gerenciar preferências</a>
+                </div>
+              </div>
+              <div class="footer">
+                <p>Interesses atuais: ${interests || "Comprar"}.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+}
+
+export function getPropertyAlertEmail(data: {
+  name?: string | null;
+  searchLabel: string;
+  frequency: string;
+  searchUrl: string;
+  preferencesUrl: string;
+  matches: Array<{
+    title: string;
+    location: string;
+    priceLabel: string;
+    propertyUrl: string;
+  }>;
+}) {
+  const greetingName = data.name?.trim() ? `, ${data.name.trim()}` : "";
+  const frequencyLabel = getEmailFrequencyLabel(data.frequency);
+  const items = data.matches
+    .map(
+      (item) => `
+        <div style="padding: 14px 0; border-bottom: 1px solid rgba(148,163,184,0.16);">
+          <div style="font-size: 15px; font-weight: 600; color: #f8fafc; margin-bottom: 4px;">${item.title}</div>
+          <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px;">${item.location}</div>
+          <div style="font-size: 14px; color: #5eead4; font-weight: 600; margin-bottom: 8px;">${item.priceLabel}</div>
+          <a href="${item.propertyUrl}" style="color: #67e8f9; text-decoration: none; font-size: 13px; font-weight: 600;">Ver imóvel</a>
+        </div>
+      `
+    )
+    .join("");
+
+  return {
+    subject: `${data.matches.length} novo(s) imóvel(is) para o alerta \"${data.searchLabel}\"`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #020617; color: #e5e7eb; }
+            .wrapper { padding: 24px 12px; }
+            .container { max-width: 640px; margin: 0 auto; background: radial-gradient(circle at top, rgba(0,255,200,0.06), transparent 55%), #020617; border-radius: 24px; border: 1px solid rgba(15,118,110,0.45); box-shadow: 0 32px 80px rgba(15,23,42,0.9); overflow: hidden; }
+            .header { padding: 24px 28px 20px; background: linear-gradient(135deg, #00736E 0%, #021616 100%); border-bottom: 1px solid rgba(15,118,110,0.6); }
+            .content { padding: 22px 24px 24px; background: radial-gradient(circle at top, rgba(15,118,110,0.21), transparent 60%); }
+            .card { background: rgba(15,23,42,0.88); border-radius: 18px; padding: 18px 18px 20px; border: 1px solid rgba(15,118,110,0.45); box-shadow: 0 18px 38px rgba(15,23,42,0.9); }
+            .paragraph { font-size: 13px; line-height: 1.6; color: #e5e7eb; margin: 0 0 12px; }
+            .cta { display: inline-block; margin-top: 14px; margin-right: 10px; padding: 12px 18px; border-radius: 12px; background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%); color: white !important; text-decoration: none; font-weight: 600; }
+            .cta.secondary { background: transparent; border: 1px solid rgba(148,163,184,0.28); }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <h1 style="margin: 0; font-size: 21px; color: #f8fafc;">Novos imóveis no seu alerta</h1>
+                <p style="margin: 8px 0 0; font-size: 13px; color: rgba(226,232,240,0.85);">${data.searchLabel} · ${frequencyLabel}</p>
+              </div>
+              <div class="content">
+                <div class="card">
+                  <p class="paragraph">Olá${greetingName}.</p>
+                  <p class="paragraph">Encontramos <strong>${data.matches.length} novo(s) imóvel(is)</strong> que combinam com o alerta <strong>${data.searchLabel}</strong>.</p>
+                  ${items}
+                  <a href="${data.searchUrl}" class="cta">Ver busca completa</a>
+                  <a href="${data.preferencesUrl}" class="cta secondary">Ajustar preferências</a>
+                </div>
+              </div>
             </div>
           </div>
         </body>

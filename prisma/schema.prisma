@@ -429,29 +429,16 @@ enum DocumentCategory {
   OTHER       // Outros
 }
 
-/// Saved searches per user
-model SavedSearch {
-  id        String   @id @default(cuid())
-  userId    String
-  label     String
-  params    String // serialized querystring
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@map("saved_searches")
+enum EmailSubscriptionStatus {
+  ACTIVE
+  PAUSED
+  UNSUBSCRIBED
 }
 
-model PropertyDraft {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  data        Json
-  currentStep Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([userId])
-  @@map("property_drafts")
+enum EmailDigestFrequency {
+  INSTANT
+  DAILY
+  WEEKLY
 }
 
 // NextAuth models (Prisma Adapter)
@@ -574,6 +561,9 @@ model User {
 
   realtorAssistantChatThreads RealtorAssistantChatThread[]
 
+  savedSearches      SavedSearch[]
+  emailSubscriptions EmailSubscription[]
+
   olxAccount     OlxAccount?
   olxOAuthStates OlxOAuthState[]
 }
@@ -598,6 +588,64 @@ model BackupRecoveryCode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model PropertyDraft {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data        Json
+  currentStep Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("property_drafts")
+}
+
+model SavedSearch {
+  id                String               @id @default(cuid())
+  userId            String
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label             String
+  params            String
+  frequency         EmailDigestFrequency @default(DAILY)
+  alertsEnabled     Boolean              @default(true)
+  lastAlertSentAt   DateTime?
+  lastAlertCursorAt DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([userId])
+  @@index([userId, alertsEnabled])
+  @@map("saved_searches")
+}
+
+model EmailSubscription {
+  id                     String                  @id @default(cuid())
+  email                  String
+  normalizedEmail        String                  @unique
+  userId                 String?
+  user                   User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  source                 String                  @default("FOOTER")
+  status                 EmailSubscriptionStatus @default(ACTIVE)
+  frequency              EmailDigestFrequency    @default(WEEKLY)
+  city                   String?
+  state                  String?
+  interests              String[]                @default([])
+  subscribedToAlerts     Boolean                 @default(true)
+  subscribedToDigest     Boolean                 @default(true)
+  subscribedToGuides     Boolean                 @default(true)
+  subscribedToPriceDrops Boolean                 @default(false)
+  consentedAt            DateTime                @default(now())
+  lastEmailSentAt        DateTime?
+  unsubscribedAt         DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("email_subscriptions")
 }
 
 // Leads submitted from property detail pages

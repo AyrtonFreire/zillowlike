@@ -21,6 +21,7 @@ import {
   LogOut,
   Settings,
   Building2,
+  Bell,
 } from "lucide-react";
 
 type UserProfile = {
@@ -313,6 +314,13 @@ export default function AccountPage() {
                     Buscas
                   </div>
                   <div className="mt-2 text-xs text-gray-600">Acompanhe buscas salvas</div>
+                </Link>
+                <Link href="/account/communication" className="rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors col-span-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                    <Bell className="w-4 h-4 text-teal-600" />
+                    Comunicação por e-mail
+                  </div>
+                  <div className="mt-2 text-xs text-gray-600">Ajuste alertas, resumos e conteúdos enviados para você</div>
                 </Link>
               </div>
 

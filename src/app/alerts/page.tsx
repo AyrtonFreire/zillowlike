@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Bell, Plus, Trash2, Edit2, AlertCircle } from "lucide-react";
+import { Bell, Plus, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { ptBR } from "@/lib/i18n/property";
 
@@ -11,15 +11,15 @@ interface Alert {
   id: string;
   name: string;
   filters: any;
+  params?: string;
   frequency: string;
+  alertsEnabled?: boolean;
+  lastAlertSentAt?: string | null;
   createdAt: string;
-  _count?: {
-    notifications: number;
-  };
 }
 
 export default function AlertsPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,8 +69,8 @@ export default function AlertsPage() {
           name,
           city: city || undefined,
           state: state || undefined,
-          minPrice: minPrice ? parseInt(minPrice) * 100 : undefined,
-          maxPrice: maxPrice ? parseInt(maxPrice) * 100 : undefined,
+          minPrice: minPrice ? parseInt(minPrice) : undefined,
+          maxPrice: maxPrice ? parseInt(maxPrice) : undefined,
           propertyType: propertyType || undefined,
           inCondominium: inCondominium || undefined,
           minBedrooms: minBedrooms ? parseInt(minBedrooms) : undefined,
@@ -111,11 +111,12 @@ export default function AlertsPage() {
     }
   };
 
-  const formatPrice = (cents: number) => {
+  const formatPrice = (reais: number | string) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
-    }).format(cents / 100);
+      maximumFractionDigits: 0,
+    }).format(Number(reais || 0));
   };
 
   const getFrequencyLabel = (freq: string) => {
@@ -403,15 +404,23 @@ export default function AlertsPage() {
                       <span className="font-medium text-gray-900">Sim</span>
                     </div>
                   )}
-                  {alert.filters.minBedrooms && (
+                  {(alert.filters.bedroomsMin || alert.filters.minBedrooms) && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Quartos:</span>
-                      <span className="font-medium text-gray-900">{alert.filters.minBedrooms}+</span>
+                      <span className="font-medium text-gray-900">{alert.filters.bedroomsMin || alert.filters.minBedrooms}+</span>
                     </div>
                   )}
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500 mb-1">
+                    Status: {alert.alertsEnabled === false ? "pausado" : "ativo"}
+                  </p>
+                  {alert.lastAlertSentAt && (
+                    <p className="text-xs text-gray-500 mb-1">
+                      Último envio em {new Date(alert.lastAlertSentAt).toLocaleDateString("pt-BR")}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500">
                     Criado em {new Date(alert.createdAt).toLocaleDateString("pt-BR")}
                   </p>
