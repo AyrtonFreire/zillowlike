@@ -7,7 +7,7 @@ import Select from "@/components/ui/Select";
 import Checkbox from "@/components/ui/Checkbox";
 import { EMAIL_INTEREST_LABELS, type EmailInterest } from "@/lib/communication-preferences";
 
-const FOOTER_INTERESTS: EmailInterest[] = ["BUY", "RENT", "ANNOUNCE", "INVEST"];
+const FOOTER_INTERESTS: EmailInterest[] = ["BUY", "RENT"];
 
 export default function SiteFooter() {
   const [email, setEmail] = useState("");
@@ -18,12 +18,6 @@ export default function SiteFooter() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const allInterestsSelected = FOOTER_INTERESTS.every((item) => interests.includes(item));
-
-  function toggleAllInterests(checked: boolean) {
-    setInterests(checked ? [...FOOTER_INTERESTS] : ["BUY"]);
-  }
 
   function toggleInterest(interest: EmailInterest, checked: boolean) {
     setInterests((current) => {
@@ -45,7 +39,7 @@ export default function SiteFooter() {
 
     try {
       setLoading(true);
-      const wantsPropertyAlerts = interests.some((interest) => interest === "BUY" || interest === "RENT" || interest === "INVEST");
+      const wantsPropertyAlerts = interests.length > 0;
       const response = await fetch("/api/email-subscriptions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,31 +93,22 @@ export default function SiteFooter() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input value={city} onChange={(event) => setCity(event.target.value)} type="text" placeholder="Cidade de interesse" className="bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500" />
                 <Select value={frequency} onChange={(event) => setFrequency(event.target.value)} className="bg-white text-neutral-900 border-neutral-700">
-                  <option value="INSTANT">Alertas imediatos</option>
                   <option value="DAILY">Resumo diário</option>
                   <option value="WEEKLY">Resumo semanal</option>
                 </Select>
               </div>
               <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
                 <div className="text-sm font-medium text-white mb-2">Quais avisos você quer receber?</div>
-                <div className="space-y-1">
-                  <Checkbox
-                    checked={allInterestsSelected}
-                    onChange={(event) => toggleAllInterests(event.target.checked)}
-                    label="Receber todos os avisos"
-                    className="text-neutral-300 [&_span]:text-white"
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-                    {FOOTER_INTERESTS.map((interest) => (
-                      <Checkbox
-                        key={interest}
-                        checked={interests.includes(interest)}
-                        onChange={(event) => toggleInterest(interest, event.target.checked)}
-                        label={EMAIL_INTEREST_LABELS[interest]}
-                        className="text-neutral-300 [&_span]:text-neutral-300"
-                      />
-                    ))}
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                  {FOOTER_INTERESTS.map((interest) => (
+                    <Checkbox
+                      key={interest}
+                      checked={interests.includes(interest)}
+                      onChange={(event) => toggleInterest(interest, event.target.checked)}
+                      label={EMAIL_INTEREST_LABELS[interest]}
+                      className="text-neutral-300 [&_span]:text-neutral-300"
+                    />
+                  ))}
                 </div>
               </div>
               <Checkbox checked={consent} onChange={(event) => setConsent(event.target.checked)} label="Autorizo o OggaHub a enviar alertas, resumos e conteúdos por e-mail. Posso sair quando quiser." className="text-neutral-300 [&_span]:text-neutral-300" />
