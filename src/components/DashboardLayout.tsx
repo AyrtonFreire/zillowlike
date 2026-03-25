@@ -66,12 +66,12 @@ export default function DashboardLayout({
       <ModernNavbar />
 
       {/* Modern Context Bar with same brand gradient as header */}
-      <div className="bg-brand-gradient shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="bg-brand-gradient shadow-[0_18px_45px_rgba(2,22,22,0.16)]">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between"
+            className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"
           >
             <div className="flex-1 min-w-0">
               {/* Breadcrumbs */}
@@ -115,18 +115,18 @@ export default function DashboardLayout({
 
               {/* Title and Description */}
               <div>
-                <h1 className="text-3xl font-bold text-white truncate">
+                <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl truncate">
                   {title}
                 </h1>
                 {description && (
-                  <p className="text-white/90 mt-2">{description}</p>
+                  <p className="mt-2 max-w-3xl text-sm text-white/85 sm:text-base">{description}</p>
                 )}
               </div>
             </div>
 
             {/* Actions */}
             {actions && (
-              <div className="ml-4 flex-shrink-0 flex items-center gap-3">
+              <div className="flex w-full flex-wrap items-center gap-3 lg:ml-4 lg:w-auto lg:flex-shrink-0 lg:justify-end">
                 {actions}
               </div>
             )}

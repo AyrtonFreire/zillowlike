@@ -893,13 +893,13 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
   if (error && !property) {
     return variant === "overlay" ? (
       <div className="fixed inset-0 bg-black/50 z-[12000] flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl border border-gray-200 p-6">
+        <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-6 shadow-[0_28px_70px_rgba(15,23,42,0.22)]">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Não foi possível abrir este imóvel</h2>
           <p className="text-sm text-gray-600 mb-4">{error}</p>
           <div className="flex justify-end">
             <button
               onClick={handleClose}
-              className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold"
+              className="inline-flex items-center justify-center rounded-2xl glass-teal px-4 py-2.5 text-sm font-semibold text-white"
             >
               Fechar
             </button>
@@ -908,7 +908,7 @@ export default function PropertyDetailsModalJames({ propertyId, open, onClose }:
       </div>
     ) : (
       <div className="max-w-3xl mx-auto px-4 py-10">
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6">
+        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-[0_24px_55px_rgba(15,23,42,0.12)]">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Não foi possível abrir este imóvel</h2>
           <p className="text-sm text-gray-600">{error}</p>
         </div>

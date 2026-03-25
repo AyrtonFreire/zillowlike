@@ -1840,64 +1840,80 @@ export default function Home() {
                   {/* Filter Buttons - Right Side (Desktop) */}
                   <div className="flex-1 flex items-center gap-2 flex-wrap">
                   {/* Finalidade: Para venda / Para alugar */}
-                  <select
-                    value={purpose || "SALE"}
-                    onChange={(e) => {
-                      const newPurpose = e.target.value as "SALE" | "RENT";
-                      setPurpose(newPurpose);
-                      const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, purpose: newPurpose, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
-                      router.push(`/?${params}`);
-                    }}
-                    className={`px-3 py-2 rounded-full text-sm font-semibold cursor-pointer border transition-colors ${
-                      (purpose || "SALE") === "SALE" || (purpose || "SALE") === "RENT"
-                        ? "bg-teal-50 border-teal-200 text-teal-900 hover:border-teal-300"
-                        : "bg-white border-gray-300 text-gray-700 hover:border-gray-400"
-                    }`}
-                  >
-                    <option value="SALE">Comprar</option>
-                    <option value="RENT">Alugar</option>
-                  </select>
+                  <div className="inline-flex items-center rounded-full border border-gray-200 bg-white p-1 shadow-sm">
+                    {[
+                      { value: "SALE", label: "Comprar" },
+                      { value: "RENT", label: "Alugar" },
+                    ].map((option) => {
+                      const isActive = (purpose || "SALE") === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            const newPurpose = option.value as "SALE" | "RENT";
+                            setPurpose(newPurpose);
+                            const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, purpose: newPurpose, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, sort, page: 1 });
+                            router.push(`/?${params}`);
+                          }}
+                          className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+                            isActive
+                              ? "bg-[#0b5f5a] text-white shadow-sm"
+                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
 
                   {/* Price */}
                   <div className="relative" data-filter-root="price">
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'price' ? null : 'price')}
                       data-dropdown="price"
-                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm ${
+                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-all flex items-center gap-2 shadow-sm ${
                         (minPrice || maxPrice)
                           ? 'bg-teal-50 border-teal-200 text-teal-900 hover:border-teal-300'
                           : activeFilterDropdown === 'price'
-                          ? 'border-teal-500 bg-teal-50 text-teal-900'
-                          : 'bg-white border-gray-300 hover:border-gray-400'
+                          ? 'border-gray-900 bg-gray-900 text-white'
+                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                     >
                       <span>{getPriceSummary()}</span>
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className={`w-4 h-4 transition-transform ${activeFilterDropdown === 'price' ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Price Dropdown */}
                     {activeFilterDropdown === 'price' && (
-                      <div className="absolute top-full left-0 mt-3 w-80 rounded-[28px] border border-gray-200 bg-white p-5 shadow-[0_22px_60px_rgba(15,23,42,0.18)] z-50">
+                      <div className="absolute top-full left-0 z-50 mt-3 w-[22rem] rounded-[30px] border border-gray-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
                         <div className="space-y-4">
+                          <div className="border-b border-gray-100 pb-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Filtro</p>
+                            <h3 className="mt-1 text-base font-semibold text-gray-900">Preço</h3>
+                            <p className="mt-1 text-sm text-gray-500">Defina um intervalo para refinar os resultados.</p>
+                          </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Faixa de Preço</label>
                             <div className="grid grid-cols-2 gap-3">
                               <div>
+                                <label className="mb-1.5 block text-xs font-medium text-gray-500">Mínimo</label>
                                 <input
                                   type="number"
                                   placeholder="Mín"
                                   value={minPrice}
                                   onChange={(e) => setMinPrice(e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                  className="w-full rounded-2xl border border-gray-300 px-3 py-2.5 text-sm transition-colors focus:border-teal-400 focus:outline-none"
                                 />
                               </div>
                               <div>
+                                <label className="mb-1.5 block text-xs font-medium text-gray-500">Máximo</label>
                                 <input
                                   type="number"
                                   placeholder="Máx"
                                   value={maxPrice}
                                   onChange={(e) => setMaxPrice(e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                  className="w-full rounded-2xl border border-gray-300 px-3 py-2.5 text-sm transition-colors focus:border-teal-400 focus:outline-none"
                                 />
                               </div>
                             </div>
@@ -1924,7 +1940,7 @@ export default function Home() {
                                 setMaxPrice('');
                                 setActiveFilterDropdown(null);
                               }}
-                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50"
+                              className="flex-1 rounded-full border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                             >
                               Limpar
                             </button>
@@ -1934,7 +1950,7 @@ export default function Home() {
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
-                              className="flex-1 px-4 py-2 glass-teal text-white rounded-lg text-sm font-medium hover:opacity-95"
+                              className="flex-1 rounded-full bg-[#0b5f5a] px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-95"
                             >
                               Aplicar
                             </button>
@@ -1949,33 +1965,38 @@ export default function Home() {
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'beds' ? null : 'beds')}
                       data-dropdown="beds"
-                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm ${
+                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-all flex items-center gap-2 shadow-sm ${
                         (bedroomsMin || bathroomsMin)
                           ? 'bg-teal-50 border-teal-200 text-teal-900 hover:border-teal-300'
                           : activeFilterDropdown === 'beds'
-                          ? 'border-teal-500 bg-teal-50 text-teal-900'
-                          : 'bg-white border-gray-300 hover:border-gray-400'
+                          ? 'border-gray-900 bg-gray-900 text-white'
+                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                     >
                       <span>{getBedsBathsSummary()}</span>
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className={`w-4 h-4 transition-transform ${activeFilterDropdown === 'beds' ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Beds & Baths Dropdown */}
                     {activeFilterDropdown === 'beds' && (
-                      <div className="absolute top-full left-0 mt-3 w-80 rounded-[28px] border border-gray-200 bg-white p-5 shadow-[0_22px_60px_rgba(15,23,42,0.18)] z-50">
+                      <div className="absolute top-full left-0 z-50 mt-3 w-[22rem] rounded-[30px] border border-gray-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
                         <div className="space-y-4">
+                          <div className="border-b border-gray-100 pb-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Filtro</p>
+                            <h3 className="mt-1 text-base font-semibold text-gray-900">Quartos e banheiros</h3>
+                            <p className="mt-1 text-sm text-gray-500">Selecione os mínimos desejados.</p>
+                          </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Quartos (mínimo)</label>
-                            <div className="grid grid-cols-6 gap-2">
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Quartos</label>
+                            <div className="grid grid-cols-3 gap-2">
                               {['', '1', '2', '3', '4', '5+'].map((num) => (
                                 <button
                                   key={num}
                                   onClick={() => setBedroomsMin(num)}
-                                  className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                                  className={`rounded-full border px-3 py-2.5 text-sm font-medium transition-colors ${
                                     bedroomsMin === num
-                                      ? 'glass-teal text-white'
-                                      : 'border border-gray-300 hover:border-teal-600'
+                                      ? 'border-[#0b5f5a] bg-[#0b5f5a] text-white'
+                                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-white'
                                   }`}
                                 >
                                   {num || 'Qualquer'}
@@ -1984,16 +2005,16 @@ export default function Home() {
                             </div>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Banheiros (mínimo)</label>
-                            <div className="grid grid-cols-6 gap-2">
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Banheiros</label>
+                            <div className="grid grid-cols-3 gap-2">
                               {['', '1', '2', '3', '4', '5+'].map((num) => (
                                 <button
                                   key={num}
                                   onClick={() => setBathroomsMin(num)}
-                                  className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                                  className={`rounded-full border px-3 py-2.5 text-sm font-medium transition-colors ${
                                     bathroomsMin === num
-                                      ? 'glass-teal text-white'
-                                      : 'border border-gray-300 hover:border-teal-600'
+                                      ? 'border-[#0b5f5a] bg-[#0b5f5a] text-white'
+                                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-white'
                                   }`}
                                 >
                                   {num || 'Qualquer'}
@@ -2008,7 +2029,7 @@ export default function Home() {
                                 setBathroomsMin('');
                                 setActiveFilterDropdown(null);
                               }}
-                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50"
+                              className="flex-1 rounded-full border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                             >
                               Limpar
                             </button>
@@ -2018,7 +2039,7 @@ export default function Home() {
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
-                              className="flex-1 px-4 py-2 glass-teal text-white rounded-lg text-sm font-medium hover:opacity-95"
+                              className="flex-1 rounded-full bg-[#0b5f5a] px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-95"
                             >
                               Aplicar
                             </button>
@@ -2033,22 +2054,26 @@ export default function Home() {
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'type' ? null : 'type')}
                       data-dropdown="type"
-                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm ${
+                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-all flex items-center gap-2 shadow-sm ${
                         type
                           ? 'bg-teal-50 border-teal-200 text-teal-900 hover:border-teal-300'
                           : activeFilterDropdown === 'type'
-                          ? 'border-teal-500 bg-teal-50 text-teal-900'
-                          : 'bg-white border-gray-300 hover:border-gray-400'
+                          ? 'border-gray-900 bg-gray-900 text-white'
+                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                     >
                       <span>{getTypeSummary()}</span>
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className={`w-4 h-4 transition-transform ${activeFilterDropdown === 'type' ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Type Dropdown */}
                     {activeFilterDropdown === 'type' && (
-                      <div className="absolute top-full left-0 mt-3 w-72 rounded-[28px] border border-gray-200 bg-white p-4 shadow-[0_22px_60px_rgba(15,23,42,0.18)] z-50">
-                        <div className="space-y-2">
+                      <div className="absolute top-full left-0 z-50 mt-3 w-[21rem] rounded-[30px] border border-gray-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+                        <div className="space-y-3">
+                          <div className="border-b border-gray-100 px-1 pb-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Filtro</p>
+                            <h3 className="mt-1 text-base font-semibold text-gray-900">Tipo de imóvel</h3>
+                          </div>
                           {[
                             { value: '', label: 'Todos' },
                             { value: 'HOUSE', label: 'Casa' },
@@ -2063,10 +2088,10 @@ export default function Home() {
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
-                              className={`w-full px-4 py-3 rounded-2xl text-left text-base font-medium transition-colors ${
+                              className={`w-full rounded-[22px] border px-4 py-3 text-left text-sm font-semibold transition-colors ${
                                 type === option.value
-                                  ? 'bg-[#0b5f5a] text-white shadow-sm'
-                                  : 'text-gray-900 hover:bg-gray-50'
+                                  ? 'border-[#0b5f5a] bg-[#0b5f5a] text-white shadow-sm'
+                                  : 'border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 hover:bg-white'
                               }`}
                             >
                               {option.label}
@@ -2082,30 +2107,54 @@ export default function Home() {
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'area' ? null : 'area')}
                       data-dropdown="area"
-                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm ${
+                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-all flex items-center gap-2 shadow-sm ${
                         areaMin
                           ? 'bg-teal-50 border-teal-200 text-teal-900 hover:border-teal-300'
                           : activeFilterDropdown === 'area'
-                          ? 'border-teal-500 bg-teal-50 text-teal-900'
-                          : 'bg-white border-gray-300 hover:border-gray-400'
+                          ? 'border-gray-900 bg-gray-900 text-white'
+                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                     >
                       <span>{getAreaSummary()}</span>
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className={`w-4 h-4 transition-transform ${activeFilterDropdown === 'area' ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Area Dropdown */}
                     {activeFilterDropdown === 'area' && (
-                      <div className="absolute top-full left-0 mt-3 w-72 rounded-[28px] border border-gray-200 bg-white p-5 shadow-[0_22px_60px_rgba(15,23,42,0.18)] z-50">
+                      <div className="absolute top-full left-0 z-50 mt-3 w-[21rem] rounded-[30px] border border-gray-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
                         <div className="space-y-4">
+                          <div className="border-b border-gray-100 pb-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Filtro</p>
+                            <h3 className="mt-1 text-base font-semibold text-gray-900">Área</h3>
+                            <p className="mt-1 text-sm text-gray-500">Defina a metragem mínima ideal.</p>
+                          </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Área Mínima (m²)</label>
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Sugestões rápidas</label>
+                            <div className="grid grid-cols-4 gap-2">
+                              {[50, 80, 120, 200].map((value) => (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  onClick={() => setAreaMin(String(value))}
+                                  className={`rounded-full border px-2 py-2 text-sm font-medium transition-colors ${
+                                    areaMin === String(value)
+                                      ? 'border-[#0b5f5a] bg-[#0b5f5a] text-white'
+                                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-white'
+                                  }`}
+                                >
+                                  {value}m²
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Área mínima (m²)</label>
                             <input
                               type="number"
                               placeholder="Ex: 50"
                               value={areaMin}
                               onChange={(e) => setAreaMin(e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              className="w-full rounded-2xl border border-gray-300 px-3 py-2.5 text-sm transition-colors focus:border-teal-400 focus:outline-none"
                             />
                           </div>
                           <div className="flex gap-2 pt-2">
@@ -2114,7 +2163,7 @@ export default function Home() {
                                 setAreaMin('');
                                 setActiveFilterDropdown(null);
                               }}
-                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50"
+                              className="flex-1 rounded-full border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                             >
                               Limpar
                             </button>
@@ -2124,7 +2173,7 @@ export default function Home() {
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
-                              className="flex-1 px-4 py-2 glass-teal text-white rounded-lg text-sm font-medium hover:opacity-95"
+                              className="flex-1 rounded-full bg-[#0b5f5a] px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-95"
                             >
                               Aplicar
                             </button>
@@ -2139,40 +2188,64 @@ export default function Home() {
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'parking' ? null : 'parking')}
                       data-dropdown="parking"
-                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-all flex items-center gap-2 shadow-sm ${
                         parkingSpots
                           ? 'bg-teal-50 border-teal-200 text-teal-900 hover:border-teal-300'
                           : activeFilterDropdown === 'parking'
-                          ? 'border-teal-600 bg-teal-50'
-                          : 'bg-white border-gray-300 hover:border-gray-400'
+                          ? 'border-gray-900 bg-gray-900 text-white'
+                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                     >
                       <span>{getParkingSummary()}</span>
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className={`w-4 h-4 transition-transform ${activeFilterDropdown === 'parking' ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Parking Dropdown */}
                     {activeFilterDropdown === 'parking' && (
-                      <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
-                        <div className="space-y-2">
+                      <div className="absolute top-full left-0 z-50 mt-3 w-[20rem] rounded-[30px] border border-gray-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+                        <div className="space-y-3">
+                          <div className="border-b border-gray-100 px-1 pb-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Filtro</p>
+                            <h3 className="mt-1 text-base font-semibold text-gray-900">Vagas</h3>
+                          </div>
                           {['1+', '2+', '3+', '4+'].map((spots) => (
                             <button
                               key={spots}
                               onClick={() => {
                                 setParkingSpots(spots);
-                                const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, parkingSpots: spots, purpose, sort, page: 1 });
-                                router.push(`/?${params}`);
-                                setActiveFilterDropdown(null);
                               }}
-                              className={`w-full px-4 py-2 rounded-lg text-left text-sm font-medium ${
+                              className={`w-full rounded-full border px-4 py-3 text-left text-sm font-medium transition-colors ${
                                 parkingSpots === spots
-                                  ? 'glass-teal text-white'
-                                  : 'hover:bg-gray-100'
+                                  ? 'border-[#0b5f5a] bg-[#0b5f5a] text-white'
+                                  : 'border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 hover:bg-white'
                               }`}
                             >
                               {spots} vagas
                             </button>
                           ))}
+                          <div className="flex gap-2 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setParkingSpots('');
+                                setActiveFilterDropdown(null);
+                              }}
+                              className="flex-1 rounded-full border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                            >
+                              Limpar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const params = buildSearchParams({ q: search, city, state, agencyId, agencyName, realtorId, realtorName, type, minPrice, maxPrice, bedroomsMin, bathroomsMin, areaMin, parkingSpots, purpose, sort, page: 1 });
+                                router.push(`/?${params}`);
+                                setActiveFilterDropdown(null);
+                              }}
+                              className="flex-1 rounded-full bg-[#0b5f5a] px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-95"
+                            >
+                              Aplicar
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -2182,10 +2255,10 @@ export default function Home() {
                   <div className="relative">
                     <button
                       onClick={() => setFiltersOpen(true)}
-                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-all flex items-center gap-2 shadow-sm ${
                         advancedFiltersCount > 0
                           ? 'bg-teal-50 border-teal-200 text-teal-900 hover:border-teal-300'
-                          : 'bg-white border-gray-300 hover:border-gray-400'
+                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                     >
                       <span>Mais{advancedFiltersCount > 0 ? ` (${advancedFiltersCount})` : ''}</span>

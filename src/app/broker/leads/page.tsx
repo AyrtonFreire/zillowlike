@@ -1056,19 +1056,19 @@ export default function MyLeadsPage() {
           <div className="w-full px-0 py-2">
             <div className="flex flex-wrap gap-3">
               {smartCounters.awaitingResponse > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg text-xs whitespace-nowrap">
+                <div className="flex items-center gap-2 whitespace-nowrap rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs shadow-sm">
                   <Bell className="w-3.5 h-3.5 text-rose-600" />
                   <span className="text-rose-700 font-medium">{smartCounters.awaitingResponse} cliente(s) aguardando seu retorno</span>
                 </div>
               )}
               {smartCounters.taskToday > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs whitespace-nowrap">
+                <div className="flex items-center gap-2 whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs shadow-sm">
                   <CalendarClock className="w-3.5 h-3.5 text-amber-600" />
                   <span className="text-amber-700 font-medium">{smartCounters.taskToday} tarefa(s) hoje</span>
                 </div>
               )}
               {smartCounters.noContact48h > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-lg text-xs whitespace-nowrap">
+                <div className="flex items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs shadow-sm">
                   <PhoneOff className="w-3.5 h-3.5 text-gray-500" />
                   <span className="text-gray-600 font-medium">{smartCounters.noContact48h} sem contato há 48h</span>
                 </div>
@@ -1079,7 +1079,7 @@ export default function MyLeadsPage() {
       )}
 
       {/* Barra de filtros e toggle de visualização */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm lg:shadow-none lg:rounded-t-2xl lg:border lg:border-gray-200 lg:border-b-0">
+      <div className="sticky top-0 z-20 rounded-t-2xl border border-gray-200 border-b-0 bg-white shadow-sm lg:shadow-none">
         <div className="w-full">
           {/* Toggle mobile + Filtros */}
           <div className="px-0 py-3">
@@ -1098,16 +1098,16 @@ export default function MyLeadsPage() {
                     <button
                       key={item.key}
                       onClick={() => setPipelineFilter(item.key)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                      className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold transition-all ${
                         pipelineFilter === item.key
                           ? "bg-teal-600 text-white shadow-sm"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                     >
                       {item.label}
                       <span
-                        className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                          pipelineFilter === item.key ? "bg-white/20" : "bg-gray-200"
+                        className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                          pipelineFilter === item.key ? "bg-white/20" : "bg-gray-200 text-gray-600"
                         }`}
                       >
                         {item.count}
@@ -1132,10 +1132,10 @@ export default function MyLeadsPage() {
         <div className="px-0 pb-3 flex items-center gap-2">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-semibold transition-colors ${
               showFilters || nameFilter || cityFilter || typeFilter || dateFilter !== "all"
                 ? "bg-teal-50 text-teal-700 border border-teal-200"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             <Filter className="w-4 h-4" />
@@ -1147,14 +1147,14 @@ export default function MyLeadsPage() {
 
           <Link
             href="/broker/crm"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             <Columns3 className="w-4 h-4" />
             Ver funil
           </Link>
 
           {/* Quick stats */}
-          <div className="ml-auto text-sm text-gray-500">
+          <div className="ml-auto text-sm font-medium text-gray-500">
             {filteredLeads.length} {filteredLeads.length === 1 ? "lead" : "leads"}
           </div>
         </div>
@@ -1168,26 +1168,26 @@ export default function MyLeadsPage() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden border-t border-gray-100"
             >
-              <div className="px-0 py-3 bg-gray-50 space-y-3">
+              <div className="space-y-3 bg-gray-50 px-0 py-3">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <input
                     type="text"
-                    placeholder="Nome..."
+                    placeholder="Buscar por nome"
                     value={nameFilter}
                     onChange={(e) => setNameFilter(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    className="w-full rounded-2xl border border-gray-200 px-3.5 py-2.5 text-sm shadow-sm transition placeholder:text-gray-400 hover:border-gray-300 focus:border-transparent focus:ring-2 focus:ring-teal-500/20"
                   />
                   <input
                     type="text"
-                    placeholder="Cidade..."
+                    placeholder="Filtrar por cidade"
                     value={cityFilter}
                     onChange={(e) => setCityFilter(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    className="w-full rounded-2xl border border-gray-200 px-3.5 py-2.5 text-sm shadow-sm transition placeholder:text-gray-400 hover:border-gray-300 focus:border-transparent focus:ring-2 focus:ring-teal-500/20"
                   />
                   <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+                    className="w-full rounded-2xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm shadow-sm transition hover:border-gray-300 focus:border-transparent focus:ring-2 focus:ring-teal-500/20"
                   >
                     <option value="">Tipo</option>
                     <option value="HOUSE">Casa</option>
@@ -1217,7 +1217,7 @@ export default function MyLeadsPage() {
                     <button
                       key={item.value}
                       onClick={() => setDateFilter(item.value)}
-                      className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      className={`flex-1 rounded-2xl px-3 py-2.5 text-xs font-semibold transition-colors ${
                         dateFilter === item.value
                           ? "bg-teal-600 text-white"
                           : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
@@ -1236,7 +1236,7 @@ export default function MyLeadsPage() {
                       setInCondominiumFilter(false);
                       setDateFilter("all");
                     }}
-                    className="w-full py-2 text-sm text-gray-600 hover:text-gray-800"
+                    className="w-full rounded-2xl py-2 text-sm font-medium text-gray-600 transition hover:bg-white hover:text-gray-800"
                   >
                     Limpar filtros
                   </button>

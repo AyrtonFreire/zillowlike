@@ -240,14 +240,21 @@ summary,
 
 /* Glass button effect */
 .glass-teal {
-  background: linear-gradient(135deg, #00736E, #021616);
-  border: 1px solid #009B91;
-  box-shadow: 0 0 20px rgba(0, 255, 200, 0.15);
-  backdrop-filter: blur(2px);
+  background: linear-gradient(135deg, rgba(0, 115, 110, 0.98), rgba(2, 22, 22, 0.98));
+  border: 1px solid rgba(0, 155, 145, 0.6);
+  box-shadow: 0 14px 34px rgba(2, 22, 22, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  backdrop-filter: blur(8px);
+  transition: box-shadow 180ms ease, transform 180ms ease, opacity 180ms ease;
 }
 
 .glass-teal:hover {
-  box-shadow: 0 0 30px rgba(0, 255, 200, 0.25), 0 0 10px rgba(0, 115, 110, 0.4);
+  box-shadow: 0 18px 40px rgba(2, 22, 22, 0.22), 0 0 0 1px rgba(0, 155, 145, 0.26) inset;
+  transform: translateY(-1px);
+}
+
+.glass-teal:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(0, 155, 145, 0.18), 0 18px 40px rgba(2, 22, 22, 0.18);
 }
 
 .zlw-range-overlay {

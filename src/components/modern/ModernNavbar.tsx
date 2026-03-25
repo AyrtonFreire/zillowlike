@@ -1,13 +1,12 @@
 "use client";
 
-import { motion, useScroll, AnimatePresence } from "framer-motion";
-import { Menu, X, User, Heart, Bell, MessageCircle, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Wrench, LineChart, Megaphone, Home, HelpCircle, Building, LandPlot, Trees, Store, ChevronRight, type LucideIcon } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Heart, Bell, MessageCircle, ChevronDown, Building2, ClipboardList, LineChart, Megaphone, Home, HelpCircle, Building, LandPlot, Trees, Store, ChevronRight, type LucideIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import MobileHeaderZillow from "./MobileHeaderZillow";
-import HowItWorksModal from "./HowItWorksModal";
 import { getPusherClient } from "@/lib/pusher-client";
 import BrandLogo from "@/components/BrandLogo";
 
@@ -16,9 +15,6 @@ interface ModernNavbarProps {
 }
 
 export default function ModernNavbar({ forceLight = false }: ModernNavbarProps = {}) {
-  const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
-  const [isRightMenuOpen, setIsRightMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const [primary, setPrimary] = useState<"comprar" | "alugar" | "anunciar" | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const [openMenu, setOpenMenu] = useState<"comprar" | "alugar" | "recursos" | null>(null);
@@ -27,7 +23,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const hoverCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
-  const { scrollY } = useScroll();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
@@ -37,12 +32,9 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const [assistantActiveCount, setAssistantActiveCount] = useState(0);
   const assistantEtagRef = useRef<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const navVariant = searchParams?.get("nav") ?? "3";
   const enableDropdown = navVariant !== "2";
   const useCompactPopover = navVariant === "3";
-  const [menuAnchorLeft, setMenuAnchorLeft] = useState(0);
-  const [menuAnchorCenter, setMenuAnchorCenter] = useState(0);
 
   const clearHoverTimeout = () => {
     if (hoverCloseTimeoutRef.current) {
@@ -57,27 +49,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       setOpenMenu(null);
     }, 140);
   };
-  
-  // Mantém sempre estilo JamesEdition (sem transformação ao rolar)
-
-  useEffect(() => {
-    const onDoc = (e: Event) => {
-      const t = e.target as HTMLElement | null;
-      if (!t) return;
-      if (!t.closest('#user-menu-trigger') && !t.closest('#user-menu-dropdown')) {
-        setUserMenuOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setUserMenuOpen(false); };
-    document.addEventListener('mousedown', onDoc as EventListener, true);
-    document.addEventListener('touchstart', onDoc as EventListener, true);
-    document.addEventListener('keydown', onKey as EventListener, true);
-    return () => {
-      document.removeEventListener('mousedown', onDoc as EventListener, true);
-      document.removeEventListener('touchstart', onDoc as EventListener, true);
-      document.removeEventListener('keydown', onKey as EventListener, true);
-    };
-  }, []);
 
   // Close mega menu when clicking outside
   useEffect(() => {
@@ -90,26 +61,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  useEffect(() => {
-    if (openMenu !== "comprar" && openMenu !== "alugar") return;
-
-    const updateLeft = () => {
-      const navEl = navRef.current;
-      const buttonEl = openMenu === "comprar" ? buyButtonRef.current : rentButtonRef.current;
-      if (!navEl || !buttonEl) return;
-
-      const navRect = navEl.getBoundingClientRect();
-      const buttonRect = buttonEl.getBoundingClientRect();
-      const left = Math.max(0, buttonRect.left - navRect.left);
-      setMenuAnchorLeft(left);
-      setMenuAnchorCenter(Math.max(0, left + buttonRect.width / 2));
-    };
-
-    updateLeft();
-    window.addEventListener("resize", updateLeft);
-    return () => window.removeEventListener("resize", updateLeft);
-  }, [openMenu]);
 
   // Inbox de mensagens internas para corretores - verifica se há conversas não lidas
   useEffect(() => {
@@ -196,7 +147,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     }
 
     let cancelled = false;
-    let interval: any;
     const STORAGE_PREFIX = 'zlw_user_chat_last_read_';
 
     const updateUnread = async () => {
@@ -257,7 +207,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     };
 
     updateUnread();
-    interval = setInterval(updateUnread, 300000);
+    const interval = setInterval(updateUnread, 300000);
 
     const onVisibility = () => {
       if (typeof document === 'undefined') return;
@@ -281,7 +231,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     if (!userId) return;
 
     let cancelled = false;
-    let interval: any;
 
     const updateAssistantCount = async () => {
       try {
@@ -325,7 +274,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     };
 
     updateAssistantCount();
-    interval = setInterval(updateAssistantCount, 600000);
+    const interval = setInterval(updateAssistantCount, 600000);
 
     const onVisibility = () => {
       if (typeof document === 'undefined') return;
@@ -480,9 +429,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   ];
 
   const megaMenuBaseClass =
-    "absolute inset-x-0 top-full z-[300] mt-3 bg-white/95 backdrop-blur-xl border-t border-gray-100/80 shadow-[0_18px_45px_rgba(15,23,42,0.45)]";
-  const compactPopoverClass =
-    "absolute top-full z-[300] mt-3 w-[560px] max-w-[92vw] rounded-[28px] border border-white/30 bg-white/80 backdrop-blur-2xl shadow-[0_40px_120px_rgba(0,0,0,0.35)] ring-1 ring-black/10 overflow-hidden";
+    "absolute top-full left-1/2 z-[300] mt-4 w-[980px] max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-hidden rounded-[30px] border border-gray-200/80 bg-white shadow-[0_40px_120px_rgba(15,23,42,0.24)] ring-1 ring-black/5";
 
   const heroMegaMenuWideClass =
     "absolute top-full left-1/2 z-[300] mt-3 w-[1040px] max-w-[calc(100vw-32px)] rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
@@ -532,6 +479,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                             <div className="text-sm font-semibold leading-tight text-gray-900 transition-colors group-hover:text-teal-900 truncate">
                               {item.label}
                             </div>
+                            {item.description && <div className="mt-0.5 text-xs text-gray-500 truncate">{item.description}</div>}
                           </div>
                         </div>
                         <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300 transition-colors group-hover:text-teal-500" />
@@ -588,6 +536,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-black/5" />
                   <div className="relative p-4">
                     <div className="text-sm font-semibold text-white">{card.title}</div>
+                    <div className="mt-1 text-xs text-white/80">{card.subtitle}</div>
                   </div>
                 </Link>
               ))}
@@ -617,10 +566,10 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         ref={navRef}
         className={`hidden md:block w-full relative z-[200] transition-all duration-300 ${
           isDashboardContext
-            ? "bg-brand-gradient shadow-md"
+            ? "bg-brand-gradient shadow-[0_18px_45px_rgba(2,22,22,0.18)]"
             : forceLight
-            ? "bg-white shadow-md"
-            : "bg-transparent"
+            ? "border-b border-gray-200/80 bg-white/92 shadow-sm backdrop-blur-xl"
+            : "border-b border-white/10 bg-black/15 backdrop-blur-xl"
         }`}
       >
         <AnimatePresence>
@@ -636,7 +585,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             />
           )}
         </AnimatePresence>
-        <div className="mx-auto max-w-7xl px-4">
+        <div className="mx-auto max-w-7xl px-4 lg:px-6">
           <div className="grid grid-cols-3 items-center h-16">
             {/* Left: Primary tabs with dropdowns (Desktop) */}
             <div className="flex items-center justify-start gap-4">
@@ -673,7 +622,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                     setPrimary('comprar');
                     router.push('/explore/buy');
                   }}
-                  className={`flex items-center gap-1 font-semibold text-[15px] transition-colors relative group ${
+                  className={`group relative flex items-center gap-1 rounded-full px-3 py-2 text-[15px] font-semibold transition-colors ${
                     forceLight
                       ? (primary === 'comprar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
                       : (primary === 'comprar' ? 'text-white' : 'text-white/90 hover:text-white')
@@ -742,7 +691,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                     setPrimary('alugar');
                     router.push('/explore/rent');
                   }}
-                  className={`flex items-center gap-1 font-semibold text-[15px] transition-colors relative group ${
+                  className={`group relative flex items-center gap-1 rounded-full px-3 py-2 text-[15px] font-semibold transition-colors ${
                     forceLight
                       ? (primary === 'alugar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
                       : (primary === 'alugar' ? 'text-white' : 'text-white/90 hover:text-white')
@@ -792,7 +741,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
 
               <Link
                 href="/start"
-                className={`whitespace-nowrap font-semibold text-[15px] transition-colors relative group ${
+                className={`group relative whitespace-nowrap rounded-full px-3 py-2 text-[15px] font-semibold transition-colors ${
                   forceLight
                     ? (primary === 'anunciar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
                     : (primary === 'anunciar' ? 'text-white' : 'text-white/90 hover:text-white')
@@ -815,7 +764,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               <button 
                 type="button"
                 onClick={() => setOpenMenu("recursos")} 
-                className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
+                className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors ${
                   forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white/90 hover:bg-white/10'
                 }`}
               >
@@ -827,7 +776,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   className={megaMenuBaseClass}
                   onMouseLeave={() => setOpenMenu(null)}
                 >
-                  <div className="mx-auto max-w-7xl px-8 py-6">
+                  <div className="px-8 py-7">
                     <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
                       Central de recursos
                     </div>
@@ -864,7 +813,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             </div>
             <Link 
               href="/favorites" 
-              className={`p-2 rounded-lg transition-colors ${
+              className={`rounded-xl p-2.5 transition-colors ${
                 forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'
               }`}
             >
@@ -874,7 +823,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             {role === 'USER' && session && (
               <Link
                 href="/chats"
-                className={`relative p-2 rounded-lg transition-colors ${
+                className={`relative rounded-xl p-2.5 transition-colors ${
                   forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'
                 }`}
               >
@@ -887,7 +836,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             {(role === 'REALTOR' || role === 'ADMIN') && (
               <Link
                 href="/broker/dashboard?assistant=1"
-                className={`relative p-2 rounded-lg transition-colors ${
+                className={`relative rounded-xl p-2.5 transition-colors ${
                   forceLight ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'
                 }`}
               >
@@ -919,19 +868,23 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                 <div className="relative" id="user-menu-trigger">
                   <button
                     onClick={() => setUserMenuOpen(!userMenuOpen)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors hover:bg-white/10`}
+                    className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 transition-colors ${forceLight ? 'hover:bg-gray-100' : 'hover:bg-white/10'}`}
                     aria-haspopup="menu"
                     aria-expanded={userMenuOpen}
                   >
-                    <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white font-medium text-sm">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-teal text-sm font-semibold text-white shadow-sm">
                       {session.user?.name?.charAt(0).toUpperCase() || "U"}
                     </div>
                   </button>
                   {userMenuOpen && (
                     <div
                       id="user-menu-dropdown"
-                      className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-16px)] bg-white rounded-xl border border-gray-200 shadow-xl z-[20000]"
+                      className="absolute right-0 z-[20000] mt-2 w-64 max-w-[calc(100vw-16px)] rounded-2xl border border-gray-200 bg-white shadow-[0_24px_55px_rgba(15,23,42,0.18)]"
                     >
+                      <div className="border-b border-gray-100 px-4 py-3">
+                        <div className="text-sm font-semibold text-gray-900 truncate">{session.user?.name || "Sua conta"}</div>
+                        <div className="mt-1 text-xs text-gray-500 truncate">{session.user?.email || "Acesse suas preferências e atalhos"}</div>
+                      </div>
                       <ul className="py-1 text-sm text-gray-800">
                         {role === 'OWNER' && (
                           <>
@@ -989,7 +942,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               ) : (
                 <button
                   onClick={() => signIn()}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm bg-white/20 backdrop-blur text-white hover:bg-white/30`}
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${forceLight ? 'border border-gray-300 bg-white text-gray-800 hover:bg-gray-50' : 'bg-white/20 text-white backdrop-blur hover:bg-white/30'}`}
                 >
                   Entrar
                 </button>
@@ -1001,9 +954,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         </div>
 
       </motion.nav>
-
-      {/* How It Works Modal */}
-      <HowItWorksModal isOpen={howItWorksOpen} onClose={() => setHowItWorksOpen(false)} />
     </>
   );
 }

@@ -43,7 +43,7 @@ type UserProfile = {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-gray-200/90 bg-white p-5 shadow-sm shadow-black/5">
       <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
       <div className="mt-2 text-2xl font-bold text-gray-900">{value}</div>
     </div>
@@ -64,10 +64,10 @@ function ActionCard({
   return (
     <Link
       href={href}
-      className="group rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
+      className="group rounded-2xl border border-gray-200/90 bg-white p-5 shadow-sm shadow-black/5 transition-all hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 rounded-xl bg-gray-50 p-2 text-gray-700 group-hover:bg-gray-100">{icon}</div>
+        <div className="mt-0.5 rounded-xl bg-teal-50 p-2 text-teal-700 transition-colors group-hover:bg-teal-100">{icon}</div>
         <div className="min-w-0">
           <div className="font-semibold text-gray-900">{title}</div>
           <div className="mt-1 text-sm text-gray-600">{description}</div>
@@ -115,7 +115,7 @@ export default function AccountPage() {
       <main className="min-h-screen bg-gray-50">
         <ModernNavbar forceLight />
         <div className="flex items-center justify-center h-[60vh]">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="h-16 w-16 animate-spin rounded-full border-4 border-teal-600 border-t-transparent" />
         </div>
       </main>
     );
@@ -131,11 +131,8 @@ export default function AccountPage() {
           <p className="text-gray-600 mb-8">
             Entre para acessar seus favoritos, buscas salvas e gerenciar seus anúncios.
           </p>
-          <Link
-            href="/api/auth/signin"
-            className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Fazer Login
+          <Link href="/auth/signin" className="inline-flex">
+            <Button>Fazer login</Button>
           </Link>
         </div>
       </main>
@@ -250,31 +247,31 @@ export default function AccountPage() {
       <ModernNavbar forceLight />
 
       <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-6">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 font-display">Minha conta</h1>
             <p className="text-gray-600 mt-1">Gerencie seu perfil, favoritos e acessos.</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Link href="/profile">
               <Button variant="secondary">Editar perfil</Button>
             </Link>
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              leftIcon={<LogOut className="w-4 h-4" />}
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
             >
-              <LogOut className="w-4 h-4" />
               Sair
-            </button>
+            </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-gray-200/90 bg-white p-6 shadow-sm shadow-black/5">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-red-500 flex items-center justify-center text-white font-semibold text-lg">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-teal text-lg font-semibold text-white shadow-sm">
                   {(name || "U").charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
@@ -301,21 +298,21 @@ export default function AccountPage() {
               </div>
 
               <div className="mt-6 grid grid-cols-2 gap-3">
-                <Link href="/favorites" className="rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
+                <Link href="/favorites" className="rounded-2xl border border-gray-200 p-4 transition-colors hover:border-gray-300 hover:bg-gray-50">
                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                     <Heart className="w-4 h-4 text-red-500" />
                     Favoritos
                   </div>
                   <div className="mt-2 text-xs text-gray-600">Veja seus imóveis salvos</div>
                 </Link>
-                <Link href="/saved-searches" className="rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
+                <Link href="/saved-searches" className="rounded-2xl border border-gray-200 p-4 transition-colors hover:border-gray-300 hover:bg-gray-50">
                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <Bookmark className="w-4 h-4 text-blue-600" />
+                    <Bookmark className="w-4 h-4 text-teal-600" />
                     Buscas
                   </div>
                   <div className="mt-2 text-xs text-gray-600">Acompanhe buscas salvas</div>
                 </Link>
-                <Link href="/account/communication" className="rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors col-span-2">
+                <Link href="/account/communication" className="col-span-2 rounded-2xl border border-gray-200 p-4 transition-colors hover:border-gray-300 hover:bg-gray-50">
                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                     <Bell className="w-4 h-4 text-teal-600" />
                     Comunicação por e-mail
@@ -325,14 +322,14 @@ export default function AccountPage() {
               </div>
 
               <div className="mt-6">
-                <button
+                <Button
                   type="button"
+                  className="w-full"
+                  leftIcon={<User className="w-4 h-4" />}
                   onClick={() => router.push("/profile")}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg glass-teal text-white text-sm font-semibold hover:opacity-95"
                 >
-                  <User className="w-4 h-4" />
                   Configurações do perfil
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -345,7 +342,7 @@ export default function AccountPage() {
               <StatCard label="Leads enviados" value={Number(stats.leadsSent || 0)} />
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-gray-200/90 bg-white p-6 shadow-sm shadow-black/5">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <div className="text-lg font-semibold text-gray-900">Atalhos</div>
@@ -355,10 +352,10 @@ export default function AccountPage() {
 
               {loading ? (
                 <div className="flex items-center justify-center py-10">
-                  <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-600 border-t-transparent" />
                 </div>
               ) : roleActions.length === 0 ? (
-                <div className="rounded-xl bg-gray-50 p-5 text-sm text-gray-700">
+                <div className="rounded-2xl bg-gray-50 p-5 text-sm text-gray-700">
                   Seu perfil ainda não tem atalhos específicos. Use os links de favoritos e buscas salvas, ou edite seu perfil.
                 </div>
               ) : (
@@ -370,7 +367,7 @@ export default function AccountPage() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-gray-200/90 bg-white p-6 shadow-sm shadow-black/5">
               <div className="text-lg font-semibold text-gray-900">Privacidade e segurança</div>
               <div className="mt-2 text-sm text-gray-600">
                 Mantenha seus dados atualizados e verifique e-mail/telefone para aumentar a confiança no seu perfil.
@@ -379,14 +376,14 @@ export default function AccountPage() {
                 <Link href="/profile" className="inline-flex">
                   <Button variant="secondary" className="w-full sm:w-auto">Atualizar dados</Button>
                 </Link>
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  leftIcon={<LogOut className="w-4 h-4" />}
                   onClick={() => signOut({ callbackUrl: "/" })}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50"
                 >
-                  <LogOut className="w-4 h-4" />
                   Sair da conta
-                </button>
+                </Button>
               </div>
             </div>
           </div>

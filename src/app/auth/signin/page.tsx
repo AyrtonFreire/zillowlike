@@ -94,9 +94,9 @@ export default function SignInPage() {
             </p>
           </div>
 
-          <div className="space-y-4 bg-white border border-gray-200 rounded-2xl p-6 shadow-lg">
+          <div className="space-y-4 rounded-3xl border border-gray-200/90 bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.08)] sm:p-7">
             {error && (
-              <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                 {error}
               </div>
             )}
@@ -106,7 +106,7 @@ export default function SignInPage() {
               onClick={() =>
                 signIn("google", { callbackUrl, prompt: "select_account" })
               }
-              className="w-full inline-flex items-center justify-center gap-3 border border-gray-300 bg-white hover:bg-gray-50 text-gray-800 rounded-xl py-2.5 text-sm font-semibold transition-colors"
+              className="inline-flex w-full items-center justify-center gap-3 rounded-2xl border border-gray-300 bg-white py-3 text-sm font-semibold text-gray-800 transition-colors hover:border-gray-400 hover:bg-gray-50"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -149,7 +149,7 @@ export default function SignInPage() {
                   autoComplete="username"
                   value={login}
                   onChange={(e) => setLogin(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-500"
+                  className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition placeholder:text-gray-400 hover:border-gray-400 focus:border-transparent focus:ring-2 focus:ring-teal-500/25"
                   placeholder="seu.usuario"
                 />
               </div>
@@ -163,7 +163,7 @@ export default function SignInPage() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-teal-500/70 focus:border-teal-500"
+                  className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition placeholder:text-gray-400 hover:border-gray-400 focus:border-transparent focus:ring-2 focus:ring-teal-500/25"
                   placeholder="Sua senha"
                 />
               </div>
@@ -180,7 +180,7 @@ export default function SignInPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full inline-flex items-center justify-center gap-2 glass-teal text-white rounded-xl py-2.5 text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl glass-teal py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isLoading ? "Entrando..." : "Entrar"}
               </button>
@@ -229,6 +229,14 @@ export default function SignInPage() {
             }`}
           />
         ))}
+        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/30 to-teal-950/55" />
+        <div className="absolute inset-x-0 bottom-0 p-10 text-white">
+          <div className="max-w-lg rounded-3xl border border-white/15 bg-white/10 p-6 backdrop-blur-md">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">OggaHub</p>
+            <h2 className="mt-3 text-3xl font-semibold leading-tight">Sua busca começa com uma experiência mais clara, rápida e confiável.</h2>
+            <p className="mt-3 text-sm leading-relaxed text-white/80">Entre para acompanhar favoritos, centralizar alertas e continuar sua jornada exatamente de onde parou.</p>
+          </div>
+        </div>
       </div>
     </main>
   );

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Bell, Plus, Trash2 } from "lucide-react";
+import { Bell, Plus, Trash2, X } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { ptBR } from "@/lib/i18n/property";
 
@@ -139,7 +139,7 @@ export default function AlertsPage() {
         ]}
       >
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full" />
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-teal-600 border-t-transparent" />
         </div>
       </DashboardLayout>
     );
@@ -156,7 +156,7 @@ export default function AlertsPage() {
       actions={
         <button
           onClick={() => setShowNewAlert(true)}
-          className="flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
+          className="inline-flex items-center gap-2 rounded-2xl glass-teal px-5 py-3 text-sm font-semibold text-white"
         >
           <Plus className="w-5 h-5" />
           Novo Alerta
@@ -167,14 +167,14 @@ export default function AlertsPage() {
         {/* New Alert Form */}
         {showNewAlert && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-gray-200/80 bg-white p-6 shadow-[0_28px_70px_rgba(15,23,42,0.18)]">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Criar Novo Alerta</h2>
                 <button
                   onClick={() => setShowNewAlert(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="rounded-xl p-2 transition-colors hover:bg-gray-100"
                 >
-                  <Trash2 className="w-5 h-5" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
@@ -189,7 +189,7 @@ export default function AlertsPage() {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Ex: Apartamentos em Petrolina"
                     required
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm transition placeholder:text-gray-400 hover:border-gray-400 focus:border-transparent focus:ring-2 focus:ring-teal-500/20"
                   />
                 </div>
 
@@ -203,7 +203,7 @@ export default function AlertsPage() {
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       placeholder="Petrolina"
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm transition placeholder:text-gray-400 hover:border-gray-400 focus:border-transparent focus:ring-2 focus:ring-teal-500/20"
                     />
                   </div>
 
@@ -216,7 +216,7 @@ export default function AlertsPage() {
                       value={state}
                       onChange={(e) => setState(e.target.value)}
                       placeholder="PE"
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm transition placeholder:text-gray-400 hover:border-gray-400 focus:border-transparent focus:ring-2 focus:ring-teal-500/20"
                     />
                   </div>
                 </div>
@@ -227,7 +227,7 @@ export default function AlertsPage() {
                       type="checkbox"
                       checked={inCondominium}
                       onChange={(e) => setInCondominium(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300"
+                      className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                     />
                     Em condomínio
                   </label>
@@ -243,7 +243,7 @@ export default function AlertsPage() {
                       value={minPrice}
                       onChange={(e) => setMinPrice(e.target.value)}
                       placeholder="200000"
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm transition placeholder:text-gray-400 hover:border-gray-400 focus:border-transparent focus:ring-2 focus:ring-teal-500/20"
                     />
                   </div>
 
@@ -256,7 +256,7 @@ export default function AlertsPage() {
                       value={maxPrice}
                       onChange={(e) => setMaxPrice(e.target.value)}
                       placeholder="500000"
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm transition placeholder:text-gray-400 hover:border-gray-400 focus:border-transparent focus:ring-2 focus:ring-teal-500/20"
                     />
                   </div>
                 </div>
@@ -269,7 +269,7 @@ export default function AlertsPage() {
                     <select
                       value={propertyType}
                       onChange={(e) => setPropertyType(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm shadow-sm transition hover:border-gray-400 focus:border-transparent focus:ring-2 focus:ring-teal-500/20"
                     >
                       <option value="">Todos</option>
                       <option value="HOUSE">Casa</option>
@@ -291,7 +291,7 @@ export default function AlertsPage() {
                       value={minBedrooms}
                       onChange={(e) => setMinBedrooms(e.target.value)}
                       placeholder="2"
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm transition placeholder:text-gray-400 hover:border-gray-400 focus:border-transparent focus:ring-2 focus:ring-teal-500/20"
                     />
                   </div>
                 </div>
@@ -303,7 +303,7 @@ export default function AlertsPage() {
                   <select
                     value={frequency}
                     onChange={(e) => setFrequency(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm shadow-sm transition hover:border-gray-400 focus:border-transparent focus:ring-2 focus:ring-teal-500/20"
                   >
                     <option value="INSTANT">Instantâneo (imediato)</option>
                     <option value="DAILY">Diário (resumo diário)</option>
@@ -315,13 +315,13 @@ export default function AlertsPage() {
                   <button
                     type="button"
                     onClick={() => setShowNewAlert(false)}
-                    className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex-1 rounded-2xl border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 glass-teal text-white font-medium rounded-lg transition-colors"
+                    className="flex-1 rounded-2xl glass-teal px-6 py-3 text-sm font-semibold text-white"
                   >
                     Criar Alerta
                   </button>
@@ -333,7 +333,7 @@ export default function AlertsPage() {
 
         {/* Alerts List */}
         {alerts.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+          <div className="rounded-3xl border border-gray-200/90 bg-white p-12 text-center shadow-sm shadow-black/5">
             <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               Nenhum alerta criado
@@ -343,7 +343,7 @@ export default function AlertsPage() {
             </p>
             <button
               onClick={() => setShowNewAlert(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 glass-teal text-white font-medium rounded-xl transition-colors"
+              className="inline-flex items-center gap-2 rounded-2xl glass-teal px-6 py-3 text-sm font-semibold text-white"
             >
               <Plus className="w-5 h-5" />
               Criar Primeiro Alerta
@@ -354,12 +354,12 @@ export default function AlertsPage() {
             {alerts.map((alert) => (
               <div
                 key={alert.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                className="rounded-3xl border border-gray-200/90 bg-white p-6 shadow-sm shadow-black/5 transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Bell className="w-5 h-5 text-blue-600" />
+                    <div className="rounded-2xl bg-teal-50 p-2.5">
+                      <Bell className="w-5 h-5 text-teal-600" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-900">{alert.name}</h3>
@@ -370,7 +370,7 @@ export default function AlertsPage() {
                   </div>
                   <button
                     onClick={() => handleDeleteAlert(alert.id)}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="rounded-xl p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -412,7 +412,7 @@ export default function AlertsPage() {
                   )}
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="mt-4 border-t border-gray-200 pt-4">
                   <p className="text-xs text-gray-500 mb-1">
                     Status: {alert.alertsEnabled === false ? "pausado" : "ativo"}
                   </p>

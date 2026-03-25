@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, MapPin, TrendingUp, Home, Users, X, ChevronDown, DollarSign, Bed } from "lucide-react";
+import { Search, MapPin, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -19,12 +19,6 @@ const isLocationSuggestion = (
 export default function HeroSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [purpose, setPurpose] = useState<'SALE' | 'RENT'>('SALE');
-  const [propertyType, setPropertyType] = useState<string>('');
-  const [priceRange, setPriceRange] = useState<string>('');
-  const [bedrooms, setBedrooms] = useState<string>('');
-  const [showPropertyTypeDropdown, setShowPropertyTypeDropdown] = useState(false);
-  const [showPriceDropdown, setShowPriceDropdown] = useState(false);
-  const [showBedroomsDropdown, setShowBedroomsDropdown] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState<SearchSuggestion[]>([]);
   const [professionalSuggestions, setProfessionalSuggestions] = useState<SearchSuggestion[]>([]);
   const [activeSuggestionsTab, setActiveSuggestionsTab] = useState<"locations" | "professionals">("locations");
@@ -34,9 +28,6 @@ export default function HeroSection() {
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const router = useRouter();
   const searchRef = useRef<HTMLDivElement>(null);
-  const propertyTypeRef = useRef<HTMLDivElement>(null);
-  const priceRef = useRef<HTMLDivElement>(null);
-  const bedroomsRef = useRef<HTMLDivElement>(null);
 
   // Background slideshow (Petrolina & Juazeiro)
   const slides = [
@@ -71,7 +62,7 @@ export default function HeroSection() {
       setSlideIndex((i) => (i + 1) % slides.length);
     }, 6000);
     return () => clearInterval(id);
-  }, []);
+  }, [slides.length]);
 
   // Buscar sugestões da API quando o usuário digita
   useEffect(() => {
@@ -206,15 +197,6 @@ export default function HeroSection() {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
       }
-      if (propertyTypeRef.current && !propertyTypeRef.current.contains(event.target as Node)) {
-        setShowPropertyTypeDropdown(false);
-      }
-      if (priceRef.current && !priceRef.current.contains(event.target as Node)) {
-        setShowPriceDropdown(false);
-      }
-      if (bedroomsRef.current && !bedroomsRef.current.contains(event.target as Node)) {
-        setShowBedroomsDropdown(false);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -231,7 +213,7 @@ export default function HeroSection() {
       setIsLoading(true);
       // Parse cidade e estado do query
       const parts = searchQuery.split(',').map(p => p.trim());
-      let params = new URLSearchParams();
+      const params = new URLSearchParams();
 
       if (parts.length >= 2) {
         // Formato: "Cidade, Estado" ou "Bairro, Cidade, Estado"
@@ -253,89 +235,26 @@ export default function HeroSection() {
         // Busca geral
         params.set('q', searchQuery);
       }
-      
-      // Add property type if selected
-      if (propertyType) {
-        const typeMap: Record<string, string> = {
-          'Casa': 'HOUSE',
-          'Apartamento': 'APARTMENT',
-          'Condomínio': 'CONDO',
-          'Terreno': 'LAND',
-          'Comercial': 'COMMERCIAL',
-          'Rural': 'RURAL',
-          '': ''
-        };
-        const mapped = typeMap[propertyType] || '';
-        if (mapped) params.set('type', mapped);
-      }
-      
-      // Add price range if selected
-      if (priceRange) {
-        params.set('minPrice', priceRange);
-      }
-      
-      // Add bedrooms if selected
-      if (bedrooms) {
-        params.set('bedroomsMin', bedrooms);
-      }
 
       params.set('purpose', purpose);
-      
-      router.push(`/?${params.toString()}`);
+
+      router.push(`/explore?${params.toString()}`);
     }
   };
 
   const handleSuggestionClick = (suggestion: SearchSuggestion) => {
-    setSearchQuery(suggestion.label);
     setShowSuggestions(false);
 
-    if (isLocationSuggestion(suggestion)) {
-      if (typeof window !== 'undefined' && suggestion.city && suggestion.state) {
-        try {
-          localStorage.setItem('lastCity', suggestion.city);
-          localStorage.setItem('lastState', suggestion.state);
-        } catch {}
-      }
-
-      let params = new URLSearchParams();
-      params.set('city', suggestion.city);
-      params.set('state', suggestion.state);
-      if (suggestion.neighborhood) {
-        params.set('q', suggestion.neighborhood);
-      }
-
-      if (propertyType) {
-        const typeMap: Record<string, string> = {
-          'Casa': 'HOUSE',
-          'Apartamento': 'APARTMENT',
-          'Condomínio': 'CONDO',
-          'Terreno': 'LAND',
-          'Comercial': 'COMMERCIAL',
-          'Rural': 'RURAL',
-          '': ''
-        };
-        const mapped = typeMap[propertyType] || '';
-        if (mapped) params.set('type', mapped);
-      }
-
-      if (priceRange) {
-        params.set('minPrice', priceRange);
-      }
-
-      if (bedrooms) {
-        params.set('bedroomsMin', bedrooms);
-      }
-
-      params.set('purpose', purpose);
-      router.push(`/?${params.toString()}`);
-      return;
-    }
-
     if (suggestion.kind === 'agency') {
-      const slug = suggestion.publicSlug || suggestion.userId;
-      if (slug) {
-        router.push(`/realtor/${slug}`);
+      if (suggestion.publicSlug) {
+        router.push(`/imobiliaria/${suggestion.publicSlug}`);
+        return;
       }
+
+      const params = new URLSearchParams();
+      params.set('q', suggestion.label);
+      params.set('purpose', purpose);
+      router.push(`/explore?${params.toString()}`);
       return;
     }
 
@@ -350,6 +269,21 @@ export default function HeroSection() {
       router.push(`/owner/${slug}`);
       return;
     }
+
+    const params = new URLSearchParams();
+    params.set('city', suggestion.city);
+    params.set('state', suggestion.state);
+    if (suggestion.neighborhood) {
+      params.set('q', suggestion.neighborhood);
+    }
+    params.set('purpose', purpose);
+
+    try {
+      localStorage.setItem('lastCity', suggestion.city);
+      localStorage.setItem('lastState', suggestion.state);
+    } catch {}
+
+    router.push(`/explore?${params.toString()}`);
   };
 
   return (
@@ -412,14 +346,30 @@ export default function HeroSection() {
           transition={{ duration: 0.8 }}
           className="text-center text-white max-w-3xl mx-auto"
         >
+          <motion.div
+            className="mb-5 inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/85 backdrop-blur-md"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+          >
+            OggaHub • Busca inteligente para comprar, alugar ou anunciar
+          </motion.div>
           <motion.h1
             className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-normal mb-6 sm:mb-7 px-2 leading-[1.1] tracking-tight"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            Explore os Melhores Imóveis da Região (Em Construção)
+            Encontre o imóvel certo com mais confiança desde a primeira busca
           </motion.h1>
+          <motion.p
+            className="mx-auto mb-6 max-w-2xl px-3 text-sm leading-relaxed text-white/82 sm:text-base md:text-lg"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            Pesquise por cidade, bairro, corretor ou imobiliária e avance com uma experiência mais clara, rápida e confiável.
+          </motion.p>
 
           {/* Search Bar - estilo mais simples/high-end tipo JamesEdition */}
           <motion.div
@@ -597,11 +547,18 @@ export default function HeroSection() {
                   <div className="overflow-y-auto max-h-[50vh] sm:max-h-[280px]">
                   {isFetchingSuggestions ? (
                     <div className="px-4 py-8 text-center text-gray-400">
-                      <div className="w-5 h-5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 ring-1 ring-gray-200">
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-teal-600/20 border-t-teal-600" />
+                      </div>
+                      <div className="text-sm font-medium text-gray-500">Buscando sugestões relevantes...</div>
                     </div>
                   ) : (activeSuggestionsTab === 'locations' ? locationSuggestions : professionalSuggestions).length === 0 && searchQuery.length > 0 ? (
-                    <div className="px-4 py-8 text-center text-gray-400">
-                      Nenhum resultado encontrado
+                    <div className="px-4 py-8 text-center">
+                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-gray-400 ring-1 ring-gray-200">
+                        <Search className="h-5 w-5" />
+                      </div>
+                      <div className="text-sm font-semibold text-gray-700">Nenhum resultado encontrado</div>
+                      <div className="mt-1 text-sm text-gray-500">Tente ajustar a cidade, o bairro ou procurar pelo nome do anunciante.</div>
                     </div>
                   ) : (
                     <div>
@@ -784,7 +741,7 @@ export default function HeroSection() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
           >
-            Explore milhares de casas, mansões e imóveis de luxo em todo o Brasil em uma simples busca
+            Mais clareza para buscar, comparar e seguir adiante sem ruído
           </motion.p>
 
           {/* Remover stats - JamesEdition não tem */}

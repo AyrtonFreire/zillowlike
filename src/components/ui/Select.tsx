@@ -7,21 +7,21 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   optional?: boolean;
 }
 
-export default function Select({ label, error, optional: _optional, className = "", children, ...props }: SelectProps) {
+export default function Select({ label, error, className = "", children, ...props }: SelectProps) {
   const showRequired = !!props.required && !!label && !label.includes("*");
   return (
     <label className="block">
       {label && (
         <span className="block mb-1">
-          <span className="text-sm font-medium text-neutral-700">{label}</span>
+          <span className="text-sm font-semibold text-neutral-700">{label}</span>
           {showRequired && <span className="ml-1 text-sm font-semibold text-danger">*</span>}
         </span>
       )}
       <span className="relative block">
         <select
           {...props}
-          className={`w-full appearance-none px-4 pr-10 py-3 sm:py-2.5 min-h-[48px] sm:min-h-0 text-base sm:text-sm rounded-lg border bg-white [&>option]:bg-white [&>option]:text-neutral-900 focus:ring-2 focus:ring-accent focus:border-transparent transition hover:border-neutral-400 ${
-            error ? "border-danger" : "border-neutral-300"
+          className={`w-full min-h-[48px] appearance-none rounded-xl border bg-white/95 px-4 py-3 pr-10 text-base text-neutral-900 shadow-sm transition hover:border-neutral-400 focus:border-transparent focus:ring-2 focus:ring-teal-500/20 sm:min-h-0 sm:py-2.5 sm:text-sm [&>option]:bg-white [&>option]:text-neutral-900 ${
+            error ? "border-danger focus:ring-red-500/15" : "border-neutral-300"
           } ${className}`}
         >
           {children}
