@@ -5,11 +5,9 @@ import ExploreCityGate from "../_components/ExploreCityGate";
 
 export default function ExploreRentPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-50 via-white to-sky-50">
+    <div className="min-h-screen bg-[#f4f0e8]">
       <ModernNavbar forceLight />
-      <div className="mt-16">
-        <ExploreCityGate mode="rent" />
-      </div>
+      <ExploreCityGate mode="rent" variant="immersive" />
     </div>
   );
 }

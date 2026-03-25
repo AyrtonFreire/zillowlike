@@ -5,11 +5,9 @@ import ExploreCityGate from "../_components/ExploreCityGate";
 
 export default function ExploreBuyPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-50 via-white to-sky-50">
+    <div className="min-h-screen bg-[#f4f0e8]">
       <ModernNavbar forceLight />
-      <div className="mt-16">
-        <ExploreCityGate mode="buy" />
-      </div>
+      <ExploreCityGate mode="buy" variant="immersive" />
     </div>
   );
 }

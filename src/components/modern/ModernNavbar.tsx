@@ -1,11 +1,11 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Bell, MessageCircle, ChevronDown, ChevronRight, Building2, ClipboardList, LineChart, Megaphone, Home, HelpCircle, Building, LandPlot, Trees, Store, MapPin } from "lucide-react";
-import { useState, useEffect, useRef, type ComponentType } from "react";
+import { motion } from "framer-motion";
+import { Heart, Bell, MessageCircle, ChevronDown, ChevronRight, Building2, ClipboardList, LineChart, Megaphone, Home, HelpCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import MobileHeaderZillow from "./MobileHeaderZillow";
 import { getPusherClient } from "@/lib/pusher-client";
 import BrandLogo from "@/components/BrandLogo";
@@ -17,12 +17,10 @@ interface ModernNavbarProps {
 export default function ModernNavbar({ forceLight = false }: ModernNavbarProps = {}) {
   const [primary, setPrimary] = useState<"comprar" | "alugar" | "anunciar" | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
-  const [openMenu, setOpenMenu] = useState<"comprar" | "alugar" | "recursos" | null>(null);
-  const hoverCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [openMenu, setOpenMenu] = useState<"recursos" | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   
   const role = (session as any)?.user?.role || (session as any)?.role || "USER";
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
@@ -30,22 +28,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const [assistantActiveCount, setAssistantActiveCount] = useState(0);
   const assistantEtagRef = useRef<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const navVariant = searchParams?.get("nav") ?? "3";
-  const enableDropdown = navVariant !== "2";
-
-  const clearHoverTimeout = () => {
-    if (hoverCloseTimeoutRef.current) {
-      clearTimeout(hoverCloseTimeoutRef.current);
-      hoverCloseTimeoutRef.current = null;
-    }
-  };
-
-  const scheduleCloseMenu = () => {
-    clearHoverTimeout();
-    hoverCloseTimeoutRef.current = setTimeout(() => {
-      setOpenMenu(null);
-    }, 140);
-  };
 
   // Close mega menu when clicking outside
   useEffect(() => {
@@ -322,37 +304,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       };
     }
   }, [session, role]);
-  const buyMenuEntry = {
-    label: "Escolher cidade",
-    href: "/explore/buy",
-    icon: MapPin,
-    accentClassName: "bg-teal-100 text-teal-700",
-  };
-
-  const buyMenuItems = [
-    { label: "Casas", href: "/?purpose=SALE&type=HOUSE", icon: Home, accentClassName: "bg-sky-100 text-sky-700" },
-    { label: "Apartamentos", href: "/?purpose=SALE&type=APARTMENT", icon: Building, accentClassName: "bg-indigo-100 text-indigo-700" },
-    { label: "Terrenos", href: "/?purpose=SALE&type=LAND", icon: LandPlot, accentClassName: "bg-amber-100 text-amber-700" },
-    { label: "Condomínios", href: "/?purpose=SALE&type=CONDO", icon: Building2, accentClassName: "bg-violet-100 text-violet-700" },
-    { label: "Imóvel rural", href: "/?purpose=SALE&type=RURAL", icon: Trees, accentClassName: "bg-emerald-100 text-emerald-700" },
-    { label: "Comercial", href: "/?purpose=SALE&type=COMMERCIAL", icon: Store, accentClassName: "bg-rose-100 text-rose-700" },
-  ];
-
-  const rentMenuEntry = {
-    label: "Escolher cidade",
-    href: "/explore/rent",
-    icon: MapPin,
-    accentClassName: "bg-teal-100 text-teal-700",
-  };
-
-  const rentMenuItems = [
-    { label: "Casas", href: "/?purpose=RENT&type=HOUSE", icon: Home, accentClassName: "bg-sky-100 text-sky-700" },
-    { label: "Apartamentos", href: "/?purpose=RENT&type=APARTMENT", icon: Building, accentClassName: "bg-indigo-100 text-indigo-700" },
-    { label: "Terrenos", href: "/?purpose=RENT&type=LAND", icon: LandPlot, accentClassName: "bg-amber-100 text-amber-700" },
-    { label: "Condomínios", href: "/?purpose=RENT&type=CONDO", icon: Building2, accentClassName: "bg-violet-100 text-violet-700" },
-    { label: "Imóvel rural", href: "/?purpose=RENT&type=RURAL", icon: Trees, accentClassName: "bg-emerald-100 text-emerald-700" },
-    { label: "Comercial", href: "/?purpose=RENT&type=COMMERCIAL", icon: Store, accentClassName: "bg-rose-100 text-rose-700" },
-  ];
 
   const resourceColumns = [
     {
@@ -378,40 +329,8 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     },
   ];
 
-  const simpleDropdownClass =
-    "absolute top-full left-0 z-[320] mt-3 w-[24rem] max-w-[calc(100vw-32px)] rounded-[28px] border border-gray-200/80 bg-white p-3 shadow-[0_18px_50px_rgba(15,23,42,0.14)] ring-1 ring-black/5";
-
   const simpleDropdownRightClass =
     "absolute top-full right-0 z-[320] mt-3 w-[25rem] max-w-[calc(100vw-32px)] rounded-[28px] border border-gray-200/80 bg-white p-3 shadow-[0_18px_50px_rgba(15,23,42,0.14)] ring-1 ring-black/5";
-
-  const renderMenuList = (
-    title: string,
-    entry: { label: string; href: string; icon: ComponentType<{ className?: string }>; accentClassName: string },
-    items: Array<{ label: string; href: string; icon: ComponentType<{ className?: string }>; accentClassName: string }>,
-    onNavigate: () => void
-  ) => (
-    <div className="space-y-1">
-      <div className="px-3 pb-2 pt-1">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">{title}</div>
-      </div>
-      {[entry, ...items].map((item, index) => (
-        <div key={item.href}>
-          <Link
-            href={item.href}
-            onClick={onNavigate}
-            className="group flex items-center gap-3 rounded-[22px] px-3 py-3 transition-colors hover:bg-gray-50"
-          >
-            <span className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-transform group-hover:scale-105 ${item.accentClassName}`}>
-              <item.icon className="h-[18px] w-[18px]" />
-            </span>
-            <span className="min-w-0 flex-1 text-[15px] font-semibold text-gray-900">{item.label}</span>
-            <ChevronRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-400" />
-          </Link>
-          {index < items.length && <div className="mx-3 h-px bg-gray-100" />}
-        </div>
-      ))}
-    </div>
-  );
 
   const renderResourcesMenu = (onNavigate: () => void) => (
     <div className="space-y-3 px-1 py-1">
@@ -484,127 +403,47 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             
             {/* Desktop menu */}
             <div className="hidden md:flex items-center gap-7">
-              <div
-                className="relative"
-                onMouseEnter={() => {
-                  if (!enableDropdown) return;
-                  clearHoverTimeout();
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null);
                   setPrimary('comprar');
-                  setOpenMenu('comprar');
+                  router.push('/explore/buy');
                 }}
-                onMouseLeave={() => {
-                  if (!enableDropdown) return;
-                  scheduleCloseMenu();
-                }}
+                className={`group relative flex items-center rounded-full px-3 py-2 text-[15px] font-semibold transition-colors ${
+                  forceLight
+                    ? (primary === 'comprar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
+                    : (primary === 'comprar' ? 'text-white' : 'text-white/90 hover:text-white')
+                }`}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMenu(null);
-                    setPrimary('comprar');
-                    router.push('/explore/buy');
-                  }}
-                  className={`group relative flex items-center gap-1 rounded-full px-3 py-2 text-[15px] font-semibold transition-colors ${
-                    forceLight
-                      ? (primary === 'comprar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
-                      : (primary === 'comprar' ? 'text-white' : 'text-white/90 hover:text-white')
-                  }`}
-                >
-                  <span>Comprar</span>
-                  {enableDropdown && (
-                    <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'comprar' ? 'rotate-180' : ''}`} />
-                  )}
-                  <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 ${
-                    forceLight ? 'bg-teal-600' : 'bg-white'
-                  } ${
-                    primary === 'comprar' ? 'w-full' : 'w-0 group-hover:w-full'
-                  }`} />
-                </button>
-                <AnimatePresence>
-                  {enableDropdown && openMenu === "comprar" && (
-                    <motion.div
-                      key="buy-menu"
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.16, ease: "easeOut" }}
-                      className={simpleDropdownClass}
-                      onMouseEnter={() => {
-                        clearHoverTimeout();
-                      }}
-                      onMouseLeave={() => {
-                        scheduleCloseMenu();
-                      }}
-                    >
-                      {renderMenuList("Comprar", buyMenuEntry, buyMenuItems, () => {
-                        setOpenMenu(null);
-                        setPrimary("comprar");
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                <span>Comprar</span>
+                <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 ${
+                  forceLight ? 'bg-teal-600' : 'bg-white'
+                } ${
+                  primary === 'comprar' ? 'w-full' : 'w-0 group-hover:w-full'
+                }`} />
+              </button>
 
-              <div
-                className="relative"
-                onMouseEnter={() => {
-                  if (!enableDropdown) return;
-                  clearHoverTimeout();
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null);
                   setPrimary('alugar');
-                  setOpenMenu('alugar');
+                  router.push('/explore/rent');
                 }}
-                onMouseLeave={() => {
-                  if (!enableDropdown) return;
-                  scheduleCloseMenu();
-                }}
+                className={`group relative flex items-center rounded-full px-3 py-2 text-[15px] font-semibold transition-colors ${
+                  forceLight
+                    ? (primary === 'alugar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
+                    : (primary === 'alugar' ? 'text-white' : 'text-white/90 hover:text-white')
+                }`}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMenu(null);
-                    setPrimary('alugar');
-                    router.push('/explore/rent');
-                  }}
-                  className={`group relative flex items-center gap-1 rounded-full px-3 py-2 text-[15px] font-semibold transition-colors ${
-                    forceLight
-                      ? (primary === 'alugar' ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900')
-                      : (primary === 'alugar' ? 'text-white' : 'text-white/90 hover:text-white')
-                  }`}
-                >
-                  <span>Alugar</span>
-                  {enableDropdown && (
-                    <ChevronDown className={`w-4 h-4 transition-transform ${openMenu === 'alugar' ? 'rotate-180' : ''}`} />
-                  )}
-                  <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 ${
-                    forceLight ? 'bg-teal-600' : 'bg-white'
-                  } ${
-                    primary === 'alugar' ? 'w-full' : 'w-0 group-hover:w-full'
-                  }`} />
-                </button>
-                <AnimatePresence>
-                  {enableDropdown && openMenu === "alugar" && (
-                    <motion.div
-                      key="rent-menu"
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.16, ease: "easeOut" }}
-                      className={simpleDropdownClass}
-                      onMouseEnter={() => {
-                        clearHoverTimeout();
-                      }}
-                      onMouseLeave={() => {
-                        scheduleCloseMenu();
-                      }}
-                    >
-                      {renderMenuList("Alugar", rentMenuEntry, rentMenuItems, () => {
-                        setOpenMenu(null);
-                        setPrimary("alugar");
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                <span>Alugar</span>
+                <span className={`absolute -bottom-1 left-0 h-0.5 transition-all duration-300 ${
+                  forceLight ? 'bg-teal-600' : 'bg-white'
+                } ${
+                  primary === 'alugar' ? 'w-full' : 'w-0 group-hover:w-full'
+                }`} />
+              </button>
 
               <Link
                 href="/start"
