@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
-import { Menu, X, User, Heart, Bell, MessageCircle, ChevronDown, ChevronRight, Home, Building2, Megaphone, LineChart, Users, Bookmark, ClipboardList, LogOut, Settings } from "lucide-react";
+import { Menu, X, User, Bell, MessageCircle, ChevronDown, ChevronRight, Home, Building2, Megaphone, LineChart, ClipboardList } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
@@ -483,59 +483,6 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                             <span className="flex items-center gap-3">
                               <Building2 className="w-4 h-4 text-brand-teal" />
                               <span>Financiamento imobiliário</span>
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-gray-400" />
-                          </Link>
-                          <Link
-                            href="/owner/analytics"
-                            onClick={() => setIsLeftMenuOpen(false)}
-                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
-                          >
-                            <span className="flex items-center gap-3">
-                              <LineChart className="w-4 h-4 text-teal-600" />
-                              <span>Análise de mercado</span>
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-gray-400" />
-                          </Link>
-                          <Link
-                            href="/realtor"
-                            onClick={() => setIsLeftMenuOpen(false)}
-                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
-                          >
-                            <span className="flex items-center gap-3">
-                              <Users className="w-4 h-4 text-brand-teal" />
-                              <span>Encontrar corretor</span>
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-gray-400" />
-                          </Link>
-                        </div>
-                      </div>
-
-                      {/* Minha conta */}
-                      <div>
-                        <div className="px-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                          Minha conta
-                        </div>
-                        <div className="space-y-1">
-                          <Link
-                            href="/saved-searches"
-                            onClick={() => setIsLeftMenuOpen(false)}
-                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
-                          >
-                            <span className="flex items-center gap-3">
-                              <Bookmark className="w-4 h-4 text-brand-teal" />
-                              <span>Buscas salvas</span>
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-gray-400" />
-                          </Link>
-                          <Link
-                            href="/favorites"
-                            onClick={() => setIsLeftMenuOpen(false)}
-                            className="flex items-center justify-between px-5 py-2 text-sm text-gray-800 hover:bg-gray-100"
-                          >
-                            <span className="flex items-center gap-3">
-                              <Heart className="w-4 h-4 text-brand-teal" />
-                              <span>Meus favoritos</span>
                             </span>
                             <ChevronRight className="w-4 h-4 text-gray-400" />
                           </Link>

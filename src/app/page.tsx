@@ -85,7 +85,6 @@ export default function Home() {
   const [nextPage, setNextPage] = useState(2);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
-  const [ownerDraft, setOwnerDraft] = useState<{ city?: string; state?: string; priceBRL?: string } | null>(null);
 
   // Novos estados
   const [inCondominium, setInCondominium] = useState(false);
@@ -141,79 +140,6 @@ export default function Home() {
       document.removeEventListener('keydown', handleKey as EventListener, true);
     };
   }, [activeFilterDropdown]);
-
-  // Detectar rascunho de anúncio salvo no fluxo /owner/new
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!session) {
-      setOwnerDraft(null);
-      return;
-    }
-    try {
-      const raw = window.localStorage.getItem('owner_new_draft');
-      if (!raw) {
-        setOwnerDraft(null);
-        return;
-      }
-      const d = JSON.parse(raw);
-      const hasContent = d && (d.description || d.priceBRL || d.street || d.city || d.state || (Array.isArray(d.images) && d.images.length > 0));
-      if (!hasContent) {
-        setOwnerDraft(null);
-        return;
-      }
-      setOwnerDraft({
-        city: d.city || undefined,
-        state: d.state || undefined,
-        priceBRL: d.priceBRL || undefined,
-      });
-    } catch {
-      setOwnerDraft(null);
-    }
-  }, [session]);
-
-  const clearOwnerDraft = () => {
-    if (typeof window !== 'undefined') {
-      try { window.localStorage.removeItem('owner_new_draft'); } catch {}
-      try {
-        if (session) {
-          fetch('/api/properties/draft', { method: 'DELETE' }).catch(() => {});
-        }
-      } catch {}
-    }
-    setOwnerDraft(null);
-  };
-
-  // Sincronizar rascunho via API para suportar múltiplos dispositivos
-  useEffect(() => {
-    let cancelled = false;
-    const loadDraftFromApi = async () => {
-      if (!session) return;
-      try {
-        const res = await fetch('/api/properties/draft');
-        if (!res.ok) return;
-        const json = await res.json();
-        const draft = json?.draft as any;
-        if (!draft || cancelled) return;
-        const d = (draft.data || {}) as any;
-        const hasContent = d && (d.description || d.priceBRL || d.street || d.city || d.state || (Array.isArray(d.images) && d.images.length > 0));
-        if (!hasContent) return;
-
-        setOwnerDraft({
-          city: d.city || undefined,
-          state: d.state || undefined,
-          priceBRL: d.priceBRL || undefined,
-        });
-
-        try { window.localStorage.setItem('owner_new_draft', JSON.stringify(d)); } catch {}
-      } catch {}
-    };
-
-    if (typeof window !== 'undefined') {
-      loadDraftFromApi();
-    }
-
-    return () => { cancelled = true; };
-  }, [session]);
 
   // Estados do overlay
   const [overlayId, setOverlayId] = useState<string | null>(null);
@@ -1155,45 +1081,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Rascunho de anúncio em andamento */}
-      {!hasSearched && user && ownerDraft && (
-        <div className="border-b border-teal-100/60 bg-white/80 backdrop-blur-sm">
-          <div className="mx-auto max-w-7xl px-4 py-4 sm:py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-teal-700 uppercase">
-                Anúncio em andamento
-              </p>
-              <p className="mt-1 text-sm text-gray-800">
-                Você começou a cadastrar um imóvel. Continue o preenchimento e finalize o anúncio quando quiser.
-              </p>
-              {(ownerDraft.city || ownerDraft.state || ownerDraft.priceBRL) && (
-                <p className="mt-1 text-xs text-gray-500">
-                  {[ownerDraft.city && ownerDraft.state ? `${ownerDraft.city}/${ownerDraft.state}` : null,
-                    ownerDraft.priceBRL ? `Preço preenchido: R$ ${ownerDraft.priceBRL}` : null]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={clearOwnerDraft}
-                className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs sm:text-sm text-gray-600 hover:bg-gray-50"
-              >
-                Descartar rascunho
-              </button>
-              <Link
-                href="/owner/new"
-                className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-teal-600 text-white text-xs sm:text-sm font-semibold shadow hover:bg-teal-700"
-              >
-                Finalizar anúncio
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
       {!hasSearched && user && <ContinueSearching />}
 
       {/* Perfis principais: comprador, proprietário, corretor */}
@@ -1875,7 +1762,7 @@ export default function Home() {
                           }
                         }}
                         placeholder="Endereço, cidade..."
-                        className="flex-1 outline-none text-sm"
+                        className="flex-1 outline-none text-base md:text-sm"
                       />
                       <button
                         onClick={() => {
@@ -1976,11 +1863,11 @@ export default function Home() {
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'price' ? null : 'price')}
                       data-dropdown="price"
-                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm ${
                         (minPrice || maxPrice)
                           ? 'bg-teal-50 border-teal-200 text-teal-900 hover:border-teal-300'
                           : activeFilterDropdown === 'price'
-                          ? 'border-teal-600 bg-teal-50'
+                          ? 'border-teal-500 bg-teal-50 text-teal-900'
                           : 'bg-white border-gray-300 hover:border-gray-400'
                       }`}
                     >
@@ -1990,7 +1877,7 @@ export default function Home() {
 
                     {/* Price Dropdown */}
                     {activeFilterDropdown === 'price' && (
-                      <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
+                      <div className="absolute top-full left-0 mt-3 w-80 rounded-[28px] border border-gray-200 bg-white p-5 shadow-[0_22px_60px_rgba(15,23,42,0.18)] z-50">
                         <div className="space-y-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Faixa de Preço</label>
@@ -2062,11 +1949,11 @@ export default function Home() {
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'beds' ? null : 'beds')}
                       data-dropdown="beds"
-                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm ${
                         (bedroomsMin || bathroomsMin)
                           ? 'bg-teal-50 border-teal-200 text-teal-900 hover:border-teal-300'
                           : activeFilterDropdown === 'beds'
-                          ? 'border-teal-600 bg-teal-50'
+                          ? 'border-teal-500 bg-teal-50 text-teal-900'
                           : 'bg-white border-gray-300 hover:border-gray-400'
                       }`}
                     >
@@ -2076,7 +1963,7 @@ export default function Home() {
 
                     {/* Beds & Baths Dropdown */}
                     {activeFilterDropdown === 'beds' && (
-                      <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
+                      <div className="absolute top-full left-0 mt-3 w-80 rounded-[28px] border border-gray-200 bg-white p-5 shadow-[0_22px_60px_rgba(15,23,42,0.18)] z-50">
                         <div className="space-y-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Quartos (mínimo)</label>
@@ -2146,11 +2033,11 @@ export default function Home() {
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'type' ? null : 'type')}
                       data-dropdown="type"
-                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm ${
                         type
                           ? 'bg-teal-50 border-teal-200 text-teal-900 hover:border-teal-300'
                           : activeFilterDropdown === 'type'
-                          ? 'border-teal-600 bg-teal-50'
+                          ? 'border-teal-500 bg-teal-50 text-teal-900'
                           : 'bg-white border-gray-300 hover:border-gray-400'
                       }`}
                     >
@@ -2160,7 +2047,7 @@ export default function Home() {
 
                     {/* Type Dropdown */}
                     {activeFilterDropdown === 'type' && (
-                      <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
+                      <div className="absolute top-full left-0 mt-3 w-72 rounded-[28px] border border-gray-200 bg-white p-4 shadow-[0_22px_60px_rgba(15,23,42,0.18)] z-50">
                         <div className="space-y-2">
                           {[
                             { value: '', label: 'Todos' },
@@ -2176,10 +2063,10 @@ export default function Home() {
                                 router.push(`/?${params}`);
                                 setActiveFilterDropdown(null);
                               }}
-                              className={`w-full px-4 py-2 rounded-lg text-left text-sm font-medium ${
+                              className={`w-full px-4 py-3 rounded-2xl text-left text-base font-medium transition-colors ${
                                 type === option.value
-                                  ? 'glass-teal text-white'
-                                  : 'hover:bg-gray-100'
+                                  ? 'bg-[#0b5f5a] text-white shadow-sm'
+                                  : 'text-gray-900 hover:bg-gray-50'
                               }`}
                             >
                               {option.label}
@@ -2195,11 +2082,11 @@ export default function Home() {
                     <button
                       onClick={() => setActiveFilterDropdown(activeFilterDropdown === 'area' ? null : 'area')}
                       data-dropdown="area"
-                      className={`px-3 py-2 border rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                      className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 shadow-sm ${
                         areaMin
                           ? 'bg-teal-50 border-teal-200 text-teal-900 hover:border-teal-300'
                           : activeFilterDropdown === 'area'
-                          ? 'border-teal-600 bg-teal-50'
+                          ? 'border-teal-500 bg-teal-50 text-teal-900'
                           : 'bg-white border-gray-300 hover:border-gray-400'
                       }`}
                     >
@@ -2209,7 +2096,7 @@ export default function Home() {
 
                     {/* Area Dropdown */}
                     {activeFilterDropdown === 'area' && (
-                      <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
+                      <div className="absolute top-full left-0 mt-3 w-72 rounded-[28px] border border-gray-200 bg-white p-5 shadow-[0_22px_60px_rgba(15,23,42,0.18)] z-50">
                         <div className="space-y-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Área Mínima (m²)</label>
@@ -2333,7 +2220,7 @@ export default function Home() {
                             }
                           }}
                           placeholder="Cidade, bairro..."
-                          className="flex-1 outline-none text-sm"
+                          className="flex-1 outline-none text-base"
                         />
                         <button
                           onClick={() => {

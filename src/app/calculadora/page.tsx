@@ -2,7 +2,6 @@
 
 import { ModernNavbar } from "@/components/modern";
 import SiteFooter from "@/components/Footer";
-import Input from "@/components/ui/Input";
 import { useState } from "react";
 import { Calculator, DollarSign, Percent, Calendar, TrendingUp, Info } from "lucide-react";
 
@@ -78,27 +77,27 @@ export default function CalculadoraPage() {
   })();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen overflow-x-hidden bg-gray-50">
       <ModernNavbar forceLight />
       
-      <div className="mt-16 max-w-6xl mx-auto px-4 py-8">
+      <div className="mx-auto mt-16 max-w-6xl px-4 py-8 sm:px-6">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="mb-10 text-center sm:mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl mb-4">
             <Calculator className="w-8 h-8 text-blue-600" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="mb-2 text-3xl font-bold text-gray-900 sm:text-4xl">
             Calculadora de Financiamento
           </h1>
-          <p className="text-gray-600 text-lg">
+          <p className="text-base text-gray-600 sm:text-lg">
             Simule o financiamento do seu imóvel e planeje sua compra
           </p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Formulário */}
-          <div className="bg-white rounded-2xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Dados do Financiamento</h2>
+          <div className="min-w-0 rounded-2xl bg-white p-5 shadow-lg sm:p-8">
+            <h2 className="mb-6 text-2xl font-bold text-gray-900">Dados do Financiamento</h2>
 
             {/* Valor do Imóvel */}
             <div className="mb-6">
@@ -176,12 +175,12 @@ export default function CalculadoraPage() {
                   placeholder="360"
                 />
               </div>
-              <div className="flex gap-2 mt-2">
+              <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {[120, 180, 240, 300, 360, 420].map((m) => (
                   <button
                     key={m}
                     onClick={() => setPrazo(m.toString())}
-                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                    className={`min-w-0 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       prazo === m.toString()
                         ? "glass-teal text-white"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -261,16 +260,16 @@ export default function CalculadoraPage() {
           </div>
 
           {/* Resultados */}
-          <div className="space-y-6">
+          <div className="min-w-0 space-y-6">
             {/* Parcela Mensal */}
-            <div className="bg-gradient-to-br glass-teal rounded-2xl shadow-lg p-8 text-white">
+            <div className="rounded-2xl bg-gradient-to-br glass-teal p-5 text-white shadow-lg sm:p-8">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-5 h-5" />
                 <h3 className="text-lg font-semibold">
                   {sistema === "SAC" ? "Primeira Parcela" : "Parcela Mensal"}
                 </h3>
               </div>
-              <div className="text-4xl font-bold mb-2">
+              <div className="mb-2 break-words text-3xl font-bold sm:text-4xl">
                 R$ {resultado.parcela.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               {sistema === "SAC" && resultado.parcelaFinal && (
@@ -281,48 +280,48 @@ export default function CalculadoraPage() {
             </div>
 
             {/* Detalhes */}
-            <div className="bg-white rounded-2xl shadow-lg p-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">Resumo do Financiamento</h3>
+            <div className="rounded-2xl bg-white p-5 shadow-lg sm:p-8">
+              <h3 className="mb-6 text-xl font-bold text-gray-900">Resumo do Financiamento</h3>
               
               <div className="space-y-4">
-                <div className="flex justify-between pb-4 border-b border-gray-200">
+                <div className="flex items-start justify-between gap-3 border-b border-gray-200 pb-4">
                   <span className="text-gray-600">Valor do Imóvel</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-right font-semibold text-gray-900">
                     R$ {parseFloat(valor).toLocaleString("pt-BR")}
                   </span>
                 </div>
 
-                <div className="flex justify-between pb-4 border-b border-gray-200">
+                <div className="flex items-start justify-between gap-3 border-b border-gray-200 pb-4">
                   <span className="text-gray-600">Entrada ({percentualEntrada}%)</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-right font-semibold text-gray-900">
                     R$ {parseFloat(entrada).toLocaleString("pt-BR")}
                   </span>
                 </div>
 
-                <div className="flex justify-between pb-4 border-b border-gray-200">
+                <div className="flex items-start justify-between gap-3 border-b border-gray-200 pb-4">
                   <span className="text-gray-600">Valor Financiado</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-right font-semibold text-gray-900">
                     R$ {resultado.valorFinanciado.toLocaleString("pt-BR")}
                   </span>
                 </div>
 
-                <div className="flex justify-between pb-4 border-b border-gray-200">
+                <div className="flex items-start justify-between gap-3 border-b border-gray-200 pb-4">
                   <span className="text-gray-600">Total de Juros</span>
-                  <span className="font-semibold text-red-600">
+                  <span className="text-right font-semibold text-red-600">
                     R$ {resultado.totalJuros.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
 
-                <div className="flex justify-between pb-4 border-b-2 border-gray-300">
+                <div className="flex items-start justify-between gap-3 border-b-2 border-gray-300 pb-4">
                   <span className="text-gray-600">Prazo</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-right font-semibold text-gray-900">
                     {prazo} meses ({(parseInt(prazo) / 12).toFixed(1)} anos)
                   </span>
                 </div>
 
-                <div className="flex justify-between pt-2">
+                <div className="flex items-start justify-between gap-3 pt-2">
                   <span className="text-lg font-semibold text-gray-900">Total a Pagar</span>
-                  <span className="text-lg font-bold text-blue-600">
+                  <span className="text-right text-lg font-bold text-blue-600">
                     R$ {resultado.totalPago.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -330,7 +329,7 @@ export default function CalculadoraPage() {
             </div>
 
             {/* Informações */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 sm:p-6">
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-blue-900">

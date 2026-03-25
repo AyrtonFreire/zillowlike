@@ -488,6 +488,8 @@ export default function BrokerDashboard() {
     }
     return true;
   });
+  const draftProperties = properties.filter((property) => property.status === "DRAFT");
+  const draftPropertiesCount = draftProperties.length;
 
   if (loading) {
     return (
@@ -506,6 +508,32 @@ export default function BrokerDashboard() {
         {dashboardError && (
           <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
             {dashboardError}
+          </div>
+        )}
+
+        {draftPropertiesCount > 0 && (
+          <div className="mb-6 rounded-2xl border border-amber-200/80 bg-white px-4 py-4 shadow-sm sm:px-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+                  Painel
+                </p>
+                <p className="mt-1 text-sm font-medium text-gray-900">
+                  {draftPropertiesCount === 1
+                    ? "Você tem 1 anúncio em rascunho para revisar."
+                    : `Você tem ${draftPropertiesCount} anúncios em rascunho para revisar.`}
+                </p>
+                <p className="mt-1 text-sm text-gray-600">
+                  Complete os dados e publique quando quiser, sem precisar voltar para a home.
+                </p>
+              </div>
+              <Link
+                href="/broker/properties"
+                className="inline-flex items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 transition-colors hover:border-amber-300 hover:bg-amber-100"
+              >
+                Ver rascunhos
+              </Link>
+            </div>
           </div>
         )}
 

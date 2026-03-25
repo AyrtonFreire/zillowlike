@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useScroll, AnimatePresence } from "framer-motion";
-import { Menu, X, User, Heart, Bell, MessageCircle, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Users, Wrench, LineChart, Megaphone, Star, Settings, Bookmark, Home, HelpCircle, Building, LandPlot, Trees, Store, ChevronRight, type LucideIcon } from "lucide-react";
+import { Menu, X, User, Heart, Bell, MessageCircle, LogOut, ChevronDown, LayoutDashboard, Building2, ClipboardList, Wrench, LineChart, Megaphone, Home, HelpCircle, Building, LandPlot, Trees, Store, ChevronRight, type LucideIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -462,7 +462,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
         { label: "Guia do comprador", href: "/guia/compra", icon: Home },
         { label: "Guia do inquilino", href: "/guia/locacao", icon: Home },
         { label: "Guia do vendedor", href: "/guia/venda", icon: Megaphone },
-        { label: "Em construção · Dicas de venda rápida", href: "/dicas/venda", icon: Star },
         { label: "Como anunciar", href: "/como-anunciar", icon: HelpCircle },
       ],
     },
@@ -470,24 +469,12 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       title: "Ferramentas",
       items: [
         { label: "Calculadora de financiamento", href: "/calculadora", icon: LineChart },
-        { label: "Em construção · Calculadora de aluguel", href: "/calculadora-aluguel", icon: LineChart },
-        { label: "Em construção · Estimador de valor", href: "/estimador", icon: LineChart },
-        { label: "Em construção · Comparador de preços", href: "/comparador", icon: LineChart },
       ],
     },
     {
       title: "Serviços",
       items: [
         { label: "Financiamento imobiliário", href: "/financing", icon: Building2 },
-        { label: "Análise de mercado", href: "/owner/analytics", icon: LineChart },
-        { label: "Em construção · Contratar fotógrafo", href: "/fotografo", icon: Settings },
-      ],
-    },
-    {
-      title: "Minha conta",
-      items: [
-        { label: "Buscas salvas", href: "/saved-searches", icon: Bookmark },
-        { label: "Meus favoritos", href: "/favorites", icon: Heart },
       ],
     },
   ];
@@ -844,7 +831,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                     <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
                       Central de recursos
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                       {resourceSections.map((section) => (
                         <div key={section.title}>
                           <div className="flex items-center gap-2 px-1 pb-2">
