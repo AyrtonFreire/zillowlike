@@ -26,7 +26,7 @@ import { buildSearchParams as buildSearchParamsBase, parseFiltersFromSearchParam
 import { track } from "@/lib/analytics";
 import PriceRangeSlider from "@/components/PriceRangeSlider";
 import type { ApiProperty } from "@/types/api";
-import { ptBR } from "@/lib/i18n/property";
+import { ACTIVE_PROPERTY_TYPE_OPTIONS, MINIMUM_COUNT_FILTER_OPTIONS, ptBR } from "@/lib/i18n/property";
 
 type Property = ApiProperty;
 const MapWithPriceBubbles = dynamic(() => import("@/components/GoogleMapWithPriceBubbles"), { ssr: false });
@@ -1081,8 +1081,6 @@ export default function Home() {
         </div>
       )}
 
-      {!hasSearched && user && <ContinueSearching />}
-
       {/* Perfis principais: comprador, proprietário, corretor */}
       {!hasSearched && (
         (() => {
@@ -1730,7 +1728,7 @@ export default function Home() {
         })()
       )}
 
-      {/* Continue Searching removido */}
+      {!hasSearched && user && <ContinueSearching />}
 
 
       {/* Search Results - Split Screen Layout */}
@@ -1890,9 +1888,7 @@ export default function Home() {
                       <div className="absolute top-full left-0 z-50 mt-3 w-[22rem] rounded-[30px] border border-gray-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
                         <div className="space-y-4">
                           <div className="border-b border-gray-100 pb-4">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Filtro</p>
-                            <h3 className="mt-1 text-base font-semibold text-gray-900">Preço</h3>
-                            <p className="mt-1 text-sm text-gray-500">Defina um intervalo para refinar os resultados.</p>
+                            <h3 className="text-base font-semibold text-gray-900">Preço</h3>
                           </div>
                           <div>
                             <div className="grid grid-cols-2 gap-3">
@@ -1982,24 +1978,22 @@ export default function Home() {
                       <div className="absolute top-full left-0 z-50 mt-3 w-[22rem] rounded-[30px] border border-gray-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
                         <div className="space-y-4">
                           <div className="border-b border-gray-100 pb-4">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Filtro</p>
-                            <h3 className="mt-1 text-base font-semibold text-gray-900">Quartos e banheiros</h3>
-                            <p className="mt-1 text-sm text-gray-500">Selecione os mínimos desejados.</p>
+                            <h3 className="text-base font-semibold text-gray-900">Quartos e banheiros</h3>
                           </div>
                           <div>
                             <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Quartos</label>
                             <div className="grid grid-cols-3 gap-2">
-                              {['', '1', '2', '3', '4', '5+'].map((num) => (
+                              {MINIMUM_COUNT_FILTER_OPTIONS.map((option) => (
                                 <button
-                                  key={num}
-                                  onClick={() => setBedroomsMin(num)}
+                                  key={option.value || 'any'}
+                                  onClick={() => setBedroomsMin(option.value)}
                                   className={`rounded-full border px-3 py-2.5 text-sm font-medium transition-colors ${
-                                    bedroomsMin === num
+                                    bedroomsMin === option.value
                                       ? 'border-[#0b5f5a] bg-[#0b5f5a] text-white'
                                       : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-white'
                                   }`}
                                 >
-                                  {num || 'Qualquer'}
+                                  {option.label}
                                 </button>
                               ))}
                             </div>
@@ -2007,17 +2001,17 @@ export default function Home() {
                           <div>
                             <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Banheiros</label>
                             <div className="grid grid-cols-3 gap-2">
-                              {['', '1', '2', '3', '4', '5+'].map((num) => (
+                              {MINIMUM_COUNT_FILTER_OPTIONS.map((option) => (
                                 <button
-                                  key={num}
-                                  onClick={() => setBathroomsMin(num)}
+                                  key={option.value || 'any'}
+                                  onClick={() => setBathroomsMin(option.value)}
                                   className={`rounded-full border px-3 py-2.5 text-sm font-medium transition-colors ${
-                                    bathroomsMin === num
+                                    bathroomsMin === option.value
                                       ? 'border-[#0b5f5a] bg-[#0b5f5a] text-white'
                                       : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-white'
                                   }`}
                                 >
-                                  {num || 'Qualquer'}
+                                  {option.label}
                                 </button>
                               ))}
                             </div>
@@ -2071,15 +2065,9 @@ export default function Home() {
                       <div className="absolute top-full left-0 z-50 mt-3 w-[21rem] rounded-[30px] border border-gray-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
                         <div className="space-y-3">
                           <div className="border-b border-gray-100 px-1 pb-4">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Filtro</p>
-                            <h3 className="mt-1 text-base font-semibold text-gray-900">Tipo de imóvel</h3>
+                            <h3 className="text-base font-semibold text-gray-900">Tipo de imóvel</h3>
                           </div>
-                          {[
-                            { value: '', label: 'Todos' },
-                            { value: 'HOUSE', label: 'Casa' },
-                            { value: 'APARTMENT', label: 'Apartamento' },
-                            { value: 'LAND', label: 'Terreno' },
-                          ].map((option) => (
+                          {[{ value: '', label: 'Todos' }, ...ACTIVE_PROPERTY_TYPE_OPTIONS].map((option) => (
                             <button
                               key={option.value}
                               onClick={() => {
@@ -2124,9 +2112,7 @@ export default function Home() {
                       <div className="absolute top-full left-0 z-50 mt-3 w-[21rem] rounded-[30px] border border-gray-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
                         <div className="space-y-4">
                           <div className="border-b border-gray-100 pb-4">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Filtro</p>
-                            <h3 className="mt-1 text-base font-semibold text-gray-900">Área</h3>
-                            <p className="mt-1 text-sm text-gray-500">Defina a metragem mínima ideal.</p>
+                            <h3 className="text-base font-semibold text-gray-900">Área</h3>
                           </div>
                           <div>
                             <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Sugestões rápidas</label>
@@ -2205,8 +2191,7 @@ export default function Home() {
                       <div className="absolute top-full left-0 z-50 mt-3 w-[20rem] rounded-[30px] border border-gray-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
                         <div className="space-y-3">
                           <div className="border-b border-gray-100 px-1 pb-4">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Filtro</p>
-                            <h3 className="mt-1 text-base font-semibold text-gray-900">Vagas</h3>
+                            <h3 className="text-base font-semibold text-gray-900">Vagas</h3>
                           </div>
                           {['1+', '2+', '3+', '4+'].map((spots) => (
                             <button

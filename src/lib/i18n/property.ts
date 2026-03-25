@@ -1,3 +1,19 @@
+export const ACTIVE_PROPERTY_TYPE_OPTIONS = [
+  { value: 'HOUSE', label: 'Casa' },
+  { value: 'APARTMENT', label: 'Apartamento' },
+  { value: 'LAND', label: 'Terreno' },
+  { value: 'RURAL', label: 'Imóvel rural' },
+  { value: 'COMMERCIAL', label: 'Comercial' },
+] as const;
+
+export const MINIMUM_COUNT_FILTER_OPTIONS = [
+  { value: '', label: 'Qualquer' },
+  { value: '1', label: '1' },
+  { value: '2', label: '2' },
+  { value: '3', label: '3' },
+  { value: '4', label: '4+' },
+] as const;
+
 export const ptBR = {
   type: (t?: string) => (
     t === 'HOUSE' ? 'Casa' :

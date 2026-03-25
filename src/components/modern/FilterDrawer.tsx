@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
-import { ptBR } from "@/lib/i18n/property";
+import { ACTIVE_PROPERTY_TYPE_OPTIONS, MINIMUM_COUNT_FILTER_OPTIONS } from "@/lib/i18n/property";
 
 interface FilterDrawerProps {
   onApplyFilters?: (filters: any) => void;
@@ -112,24 +112,17 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
                     Tipo de Imóvel
                   </label>
                   <div className="grid grid-cols-2 gap-3">
-                    {[
-                      "HOUSE",
-                      "APARTMENT",
-                      "CONDO",
-                      "LAND",
-                      "RURAL",
-                      "COMMERCIAL",
-                    ].map((type) => (
+                    {ACTIVE_PROPERTY_TYPE_OPTIONS.map((type) => (
                       <button
-                        key={type}
-                        onClick={() => setFilters({ ...filters, propertyType: type })}
+                        key={type.value}
+                        onClick={() => setFilters({ ...filters, propertyType: type.value })}
                         className={`px-4 py-3 border-2 rounded-xl font-medium transition-all ${
-                          filters.propertyType === type
+                          filters.propertyType === type.value
                             ? "border-teal-600 bg-teal-50 text-teal-700"
                             : "border-gray-200 hover:border-teal-600 hover:bg-teal-50"
                         }`}
                       >
-                        {ptBR.type(type)}
+                        {type.label}
                       </button>
                     ))}
                   </div>
@@ -141,17 +134,17 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
                     Quartos
                   </label>
                   <div className="flex gap-2">
-                    {[1, 2, 3, 4, "5+"].map((num) => (
+                    {MINIMUM_COUNT_FILTER_OPTIONS.filter((option) => option.value).map((option) => (
                       <button
-                        key={num}
-                        onClick={() => setFilters({ ...filters, bedrooms: String(num) })}
+                        key={option.value}
+                        onClick={() => setFilters({ ...filters, bedrooms: option.value })}
                         className={`flex-1 py-3 border-2 rounded-xl font-semibold transition-all ${
-                          filters.bedrooms === String(num)
+                          filters.bedrooms === option.value
                             ? "border-teal-600 bg-teal-50 text-teal-700"
                             : "border-gray-200 hover:border-teal-600 hover:bg-teal-50"
                         }`}
                       >
-                        {num}
+                        {option.label}
                       </button>
                     ))}
                   </div>
@@ -163,17 +156,17 @@ export default function FilterDrawer({ onApplyFilters }: FilterDrawerProps) {
                     Banheiros
                   </label>
                   <div className="flex gap-2">
-                    {[1, 2, 3, "4+"].map((num) => (
+                    {MINIMUM_COUNT_FILTER_OPTIONS.filter((option) => option.value).map((option) => (
                       <button
-                        key={num}
-                        onClick={() => setFilters({ ...filters, bathrooms: String(num) })}
+                        key={option.value}
+                        onClick={() => setFilters({ ...filters, bathrooms: option.value })}
                         className={`flex-1 py-3 border-2 rounded-xl font-semibold transition-all ${
-                          filters.bathrooms === String(num)
+                          filters.bathrooms === option.value
                             ? "border-teal-600 bg-teal-50 text-teal-700"
                             : "border-gray-200 hover:border-teal-600 hover:bg-teal-50"
                         }`}
                       >
-                        {num}
+                        {option.label}
                       </button>
                     ))}
                   </div>

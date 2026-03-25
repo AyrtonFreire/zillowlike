@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ACTIVE_PROPERTY_TYPE_OPTIONS, MINIMUM_COUNT_FILTER_OPTIONS } from "@/lib/i18n/property";
 
 interface SearchFiltersProps {
   onFiltersChange: (filters: any) => void;
@@ -105,14 +106,7 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {}, cl
                     Tipo de imóvel
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { value: 'HOUSE', label: 'Casa' },
-                      { value: 'APARTMENT', label: 'Apartamento' },
-                      { value: 'CONDO', label: 'Condomínio' },
-                      { value: 'LAND', label: 'Terreno' },
-                      { value: 'RURAL', label: 'Imóvel rural' },
-                      { value: 'COMMERCIAL', label: 'Comercial' }
-                    ].map((type) => (
+                    {ACTIVE_PROPERTY_TYPE_OPTIONS.map((type) => (
                       <button
                         key={type.value}
                         onClick={() => updateFilter('type', filters.type === type.value ? '' : type.value)}
@@ -135,17 +129,17 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {}, cl
                       Quartos
                     </label>
                     <div className="flex gap-1">
-                      {[1, 2, 3, 4, '5+'].map((num) => (
+                      {MINIMUM_COUNT_FILTER_OPTIONS.filter((option) => option.value).map((option) => (
                         <button
-                          key={num}
-                          onClick={() => updateFilter('bedrooms', filters.bedrooms === num ? '' : num)}
+                          key={option.value}
+                          onClick={() => updateFilter('bedrooms', filters.bedrooms === option.value ? '' : option.value)}
                           className={`flex-1 px-2 py-2 text-sm font-medium rounded-lg border transition-all ${
-                            filters.bedrooms === num
+                            filters.bedrooms === option.value
                               ? 'bg-primary-50 text-primary-700 border-primary-200'
                               : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                           }`}
                         >
-                          {num}
+                          {option.label}
                         </button>
                       ))}
                     </div>
@@ -156,17 +150,17 @@ export default function SearchFilters({ onFiltersChange, initialFilters = {}, cl
                       Banheiros
                     </label>
                     <div className="flex gap-1">
-                      {[1, 2, 3, '4+'].map((num) => (
+                      {MINIMUM_COUNT_FILTER_OPTIONS.filter((option) => option.value).map((option) => (
                         <button
-                          key={num}
-                          onClick={() => updateFilter('bathrooms', filters.bathrooms === num ? '' : num)}
+                          key={option.value}
+                          onClick={() => updateFilter('bathrooms', filters.bathrooms === option.value ? '' : option.value)}
                           className={`flex-1 px-2 py-2 text-sm font-medium rounded-lg border transition-all ${
-                            filters.bathrooms === num
+                            filters.bathrooms === option.value
                               ? 'bg-primary-50 text-primary-700 border-primary-200'
                               : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                           }`}
                         >
-                          {num}
+                          {option.label}
                         </button>
                       ))}
                     </div>

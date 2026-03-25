@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Home, DollarSign, Bed, Bath, Maximize2, Car, PawPrint, Sofa, Waves, Dumbbell, Building2, MapPin, Sun, Leaf, Accessibility, Sparkles, Mountain, ArrowUpCircle, Wind, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Lightbulb, Droplets, Archive, Gem, Dog, ArrowUp, ArrowDown, DoorOpen } from "lucide-react";
+import { Home, DollarSign, Bed, Bath, Maximize2, Car, PawPrint, Sofa, Waves, Dumbbell, Building2, Sun, Accessibility, Sparkles, Mountain, ArrowUpCircle, Wind, UtensilsCrossed, Baby, PartyPopper, ShieldCheck, Snowflake, Flame, Lightbulb, Droplets, Archive, Gem, Dog, ArrowUp, ArrowDown, DoorOpen } from "lucide-react";
+import { ACTIVE_PROPERTY_TYPE_OPTIONS, MINIMUM_COUNT_FILTER_OPTIONS } from "@/lib/i18n/property";
 import { buildSearchParams } from "@/lib/url";
 import PriceRangeSlider from "@/components/PriceRangeSlider";
 
@@ -222,13 +223,18 @@ export default function SearchFiltersBarZillow({
 
   const resultsLabel = formatResultsLabel(previewTotal, isLoadingPreview);
 
-  const propertyTypes = [
-    { value: "HOUSE", label: "Casa", icon: "🏠" },
-    { value: "APARTMENT", label: "Apartamento", icon: "🏢" },
-    { value: "LAND", label: "Terreno", icon: "🌳" },
-    { value: "RURAL", label: "Imóvel rural", icon: "🌾" },
-    { value: "COMMERCIAL", label: "Comercial", icon: "🏬" },
-  ];
+  const propertyTypeIcons: Record<string, string> = {
+    HOUSE: "🏠",
+    APARTMENT: "🏢",
+    LAND: "🌳",
+    RURAL: "🌾",
+    COMMERCIAL: "🏬",
+  };
+
+  const propertyTypes = ACTIVE_PROPERTY_TYPE_OPTIONS.map((type) => ({
+    ...type,
+    icon: propertyTypeIcons[type.value] || "�️",
+  }));
 
   const formatCurrency = (value: string) => {
     if (!value) return '';
@@ -389,18 +395,18 @@ export default function SearchFiltersBarZillow({
                 <Bed className="w-5 h-5 text-teal-600" />
                 <h3 className="text-sm font-bold text-gray-900">Quartos</h3>
               </div>
-              <div className="grid grid-cols-6 gap-2">
-                {['', '1', '2', '3', '4', '5+'].map((num) => (
+              <div className="grid grid-cols-5 gap-2">
+                {MINIMUM_COUNT_FILTER_OPTIONS.map((option) => (
                   <button
-                    key={num}
-                    onClick={() => updateFilter('bedrooms', num === '5+' ? '5' : num)}
+                    key={option.value || 'any-bedrooms'}
+                    onClick={() => updateFilter('bedrooms', option.value)}
                     className={`py-3 text-sm font-semibold rounded-lg transition-all ${
-                      localFilters.bedrooms === (num === '5+' ? '5' : num)
+                      localFilters.bedrooms === option.value
                         ? 'glass-teal text-white shadow-md'
                         : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                     }`}
                   >
-                    {num || 'Todos'}
+                    {option.value ? option.label : 'Todos'}
                   </button>
                 ))}
               </div>
@@ -413,17 +419,17 @@ export default function SearchFiltersBarZillow({
                 <h3 className="text-sm font-bold text-gray-900">Banheiros</h3>
               </div>
               <div className="grid grid-cols-5 gap-2">
-                {['', '1', '2', '3', '4+'].map((num) => (
+                {MINIMUM_COUNT_FILTER_OPTIONS.map((option) => (
                   <button
-                    key={num}
-                    onClick={() => updateFilter('bathrooms', num === '4+' ? '4' : num)}
+                    key={option.value || 'any-bathrooms'}
+                    onClick={() => updateFilter('bathrooms', option.value)}
                     className={`py-3 text-sm font-semibold rounded-lg transition-all ${
-                      localFilters.bathrooms === (num === '4+' ? '4' : num)
+                      localFilters.bathrooms === option.value
                         ? 'glass-teal text-white shadow-md'
                         : 'bg-white border border-gray-200 text-gray-700 hover:border-teal-dark hover:bg-teal-50'
                     }`}
                   >
-                    {num || 'Todos'}
+                    {option.value ? option.label : 'Todos'}
                   </button>
                 ))}
               </div>
