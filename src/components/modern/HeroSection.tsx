@@ -346,21 +346,13 @@ export default function HeroSection() {
           transition={{ duration: 0.8 }}
           className="text-center text-white max-w-3xl mx-auto"
         >
-          <motion.div
-            className="mb-5 inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/85 backdrop-blur-md"
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.12 }}
-          >
-            OggaHub • Busca inteligente para comprar, alugar ou anunciar
-          </motion.div>
           <motion.h1
             className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-normal mb-6 sm:mb-7 px-2 leading-[1.1] tracking-tight"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            Encontre o imóvel certo com mais confiança desde a primeira busca
+            Descubra onde sua próxima história começa.
           </motion.h1>
           <motion.p
             className="mx-auto mb-6 max-w-2xl px-3 text-sm leading-relaxed text-white/82 sm:text-base md:text-lg"
