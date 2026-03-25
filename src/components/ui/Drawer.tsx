@@ -64,7 +64,7 @@ export default function Drawer({ open, onClose, title, children, side = "right",
   if (!mounted) return null;
 
   return createPortal(
-    <div aria-hidden={!open} className={`fixed inset-0 z-50 ${open ? '' : 'pointer-events-none'}`}>
+    <div aria-hidden={!open} className={`fixed inset-0 z-[400] ${open ? '' : 'pointer-events-none'}`}>
       {/* Backdrop */}
       <div onClick={onClose} className={`absolute inset-0 bg-black/40 transition-opacity ${open ? 'opacity-100' : 'opacity-0'}`} />
       {/* Panel */}

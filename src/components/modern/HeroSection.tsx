@@ -238,7 +238,7 @@ export default function HeroSection() {
 
       params.set('purpose', purpose);
 
-      router.push(`/explore?${params.toString()}`);
+      router.push(`/?${params.toString()}`);
     }
   };
 
@@ -254,7 +254,7 @@ export default function HeroSection() {
       const params = new URLSearchParams();
       params.set('q', suggestion.label);
       params.set('purpose', purpose);
-      router.push(`/explore?${params.toString()}`);
+      router.push(`/?${params.toString()}`);
       return;
     }
 
@@ -283,7 +283,7 @@ export default function HeroSection() {
       localStorage.setItem('lastState', suggestion.state);
     } catch {}
 
-    router.push(`/explore?${params.toString()}`);
+    router.push(`/?${params.toString()}`);
   };
 
   return (

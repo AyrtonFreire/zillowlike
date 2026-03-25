@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Bell, MessageCircle, ChevronDown, Building2, ClipboardList, LineChart, Megaphone, Home, HelpCircle, Building, LandPlot, Trees, Store, ChevronRight, type LucideIcon } from "lucide-react";
+import { Heart, Bell, MessageCircle, ChevronDown, Building2, ClipboardList, LineChart, Megaphone, Home, HelpCircle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -18,8 +18,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const [primary, setPrimary] = useState<"comprar" | "alugar" | "anunciar" | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const [openMenu, setOpenMenu] = useState<"comprar" | "alugar" | "recursos" | null>(null);
-  const buyButtonRef = useRef<HTMLButtonElement | null>(null);
-  const rentButtonRef = useRef<HTMLButtonElement | null>(null);
   const hoverCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
@@ -34,7 +32,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const navVariant = searchParams?.get("nav") ?? "3";
   const enableDropdown = navVariant !== "2";
-  const useCompactPopover = navVariant === "3";
 
   const clearHoverTimeout = () => {
     if (hoverCloseTimeoutRef.current) {
@@ -325,82 +322,24 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       };
     }
   }, [session, role]);
-  // Mega menu Comprar - inspirado em Zillow/Daft/James Edition
-  const buyMenuSections = [
-    {
-      title: "Por tipo de imóvel",
-      items: [
-        { label: "Casas", href: "/explore/buy?type=HOUSE", description: "Casas unifamiliares", icon: Home },
-        { label: "Apartamentos", href: "/explore/buy?type=APARTMENT", description: "Apartamentos e flats", icon: Building },
-        { label: "Condomínios", href: "/explore/buy?type=CONDO", description: "Condomínios fechados", icon: Building2 },
-        { label: "Terrenos", href: "/explore/buy?type=LAND", description: "Lotes e terrenos", icon: LandPlot },
-        { label: "Imóvel rural", href: "/explore/buy?type=RURAL", description: "Fazendas e sítios", icon: Trees },
-        { label: "Comercial", href: "/explore/buy?type=COMMERCIAL", description: "Imóveis comerciais", icon: Store },
-      ],
-    },
+  const buyMenuItems = [
+    { label: "Escolher cidade", href: "/explore/buy" },
+    { label: "Casas", href: "/?purpose=SALE&type=HOUSE" },
+    { label: "Apartamentos", href: "/?purpose=SALE&type=APARTMENT" },
+    { label: "Condomínios", href: "/?purpose=SALE&type=CONDO" },
+    { label: "Terrenos", href: "/?purpose=SALE&type=LAND" },
+    { label: "Imóvel rural", href: "/?purpose=SALE&type=RURAL" },
+    { label: "Comercial", href: "/?purpose=SALE&type=COMMERCIAL" },
   ];
 
-  const buyMenuMedia = [
-    {
-      title: "Casas em destaque",
-      subtitle: "Explore opções para comprar",
-      href: "/explore/buy",
-      image:
-        "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=80",
-    },
-    {
-      title: "Bairros populares",
-      subtitle: "Veja regiões da sua cidade",
-      href: "/explore/buy",
-      image:
-        "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=900&q=80",
-    },
-    {
-      title: "Comparar imóveis",
-      subtitle: "Salve favoritos para decidir",
-      href: "/favorites",
-      image:
-        "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=900&q=80",
-    },
-  ];
-
-  // Mega menu Alugar - inspirado em Zillow/Daft/James Edition
-  const rentMenuSections = [
-    {
-      title: "Por tipo de imóvel",
-      items: [
-        { label: "Casas", href: "/explore/rent?type=HOUSE", description: "Casas para locação", icon: Home },
-        { label: "Apartamentos", href: "/explore/rent?type=APARTMENT", description: "Apartamentos para alugar", icon: Building },
-        { label: "Condomínios", href: "/explore/rent?type=CONDO", description: "Condomínios fechados", icon: Building2 },
-        { label: "Terrenos", href: "/explore/rent?type=LAND", description: "Lotes e terrenos", icon: LandPlot },
-        { label: "Imóvel rural", href: "/explore/rent?type=RURAL", description: "Fazendas e sítios", icon: Trees },
-        { label: "Comercial", href: "/explore/rent?type=COMMERCIAL", description: "Imóveis comerciais", icon: Store },
-      ],
-    },
-  ];
-
-  const rentMenuMedia = [
-    {
-      title: "Apartamentos",
-      subtitle: "Ofertas para alugar",
-      href: "/explore/rent?type=APARTMENT",
-      image:
-        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=900&q=80",
-    },
-    {
-      title: "Casas",
-      subtitle: "Mais espaço para viver",
-      href: "/explore/rent?type=HOUSE",
-      image:
-        "https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&w=900&q=80",
-    },
-    {
-      title: "Favoritos",
-      subtitle: "Salve e compare",
-      href: "/favorites",
-      image:
-        "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=900&q=80",
-    },
+  const rentMenuItems = [
+    { label: "Escolher cidade", href: "/explore/rent" },
+    { label: "Casas", href: "/?purpose=RENT&type=HOUSE" },
+    { label: "Apartamentos", href: "/?purpose=RENT&type=APARTMENT" },
+    { label: "Condomínios", href: "/?purpose=RENT&type=CONDO" },
+    { label: "Terrenos", href: "/?purpose=RENT&type=LAND" },
+    { label: "Imóvel rural", href: "/?purpose=RENT&type=RURAL" },
+    { label: "Comercial", href: "/?purpose=RENT&type=COMMERCIAL" },
   ];
 
   // Recursos consolidados - substitui "Como funciona"
@@ -428,124 +367,34 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     },
   ];
 
-  const megaMenuBaseClass =
-    "absolute top-full left-1/2 z-[300] mt-4 w-[980px] max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-hidden rounded-[30px] border border-gray-200/80 bg-white shadow-[0_40px_120px_rgba(15,23,42,0.24)] ring-1 ring-black/5";
+  const simpleDropdownClass =
+    "absolute top-full left-0 z-[320] mt-3 w-[21rem] rounded-[30px] border border-gray-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.18)]";
 
-  const heroMegaMenuWideClass =
-    "absolute top-full left-1/2 z-[300] mt-3 w-[1040px] max-w-[calc(100vw-32px)] rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
-  const heroMegaMenuCompactClass =
-    "absolute top-full left-1/2 z-[300] mt-3 w-[920px] max-w-[calc(100vw-32px)] rounded-[32px] border border-gray-200/80 bg-white shadow-[0_50px_140px_rgba(15,23,42,0.28)] ring-1 ring-black/5 overflow-hidden";
+  const simpleDropdownRightClass =
+    "absolute top-full right-0 z-[320] mt-3 w-[22rem] rounded-[30px] border border-gray-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.18)]";
 
-  const splitMenuItems = <T,>(items: T[]) => {
-    const mid = Math.ceil(items.length / 2);
-    return [items.slice(0, mid), items.slice(mid)];
-  };
-
-  const renderHeroMegaMenu = (opts: {
-    title: string;
-    sectionTitle: string;
-    items: Array<{ label: string; href: string; description?: string; icon?: LucideIcon }>;
-    media: Array<{ title: string; subtitle: string; href: string; image: string }>;
-    onNavigate: () => void;
-  }) => {
-    const [col1, col2] = splitMenuItems(opts.items);
-
-    return (
-      <div className="p-7">
-        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-          {opts.title}
-        </div>
-        <div className="mt-6 grid grid-cols-[1.1fr_0.9fr] gap-0">
-          <div className="grid grid-cols-2 gap-8 pr-10">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                {opts.sectionTitle}
-              </div>
-              <ul className="mt-4 space-y-2">
-                {col1.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={opts.onNavigate}
-                        className="group flex items-center justify-between gap-4 rounded-2xl px-3 py-3 transition-all hover:bg-gradient-to-r hover:from-teal-50 hover:to-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 ring-1 ring-black/5 text-gray-700 transition-colors group-hover:bg-teal-50 group-hover:text-teal-800">
-                            {Icon ? <Icon className="h-4 w-4" /> : null}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold leading-tight text-gray-900 transition-colors group-hover:text-teal-900 truncate">
-                              {item.label}
-                            </div>
-                            {item.description && <div className="mt-0.5 text-xs text-gray-500 truncate">{item.description}</div>}
-                          </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300 transition-colors group-hover:text-teal-500" />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">Mais opções</div>
-              <ul className="mt-4 space-y-2">
-                {col2.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={opts.onNavigate}
-                        className="group flex items-center justify-between gap-4 rounded-2xl px-3 py-3 transition-all hover:bg-gradient-to-r hover:from-teal-50 hover:to-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 ring-1 ring-black/5 text-gray-700 transition-colors group-hover:bg-teal-50 group-hover:text-teal-800">
-                            {Icon ? <Icon className="h-4 w-4" /> : null}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold leading-tight text-gray-900 transition-colors group-hover:text-teal-900 truncate">
-                              {item.label}
-                            </div>
-                          </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300 transition-colors group-hover:text-teal-500" />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-l border-gray-100 pl-10">
-            <div className="grid grid-cols-3 gap-4">
-              {opts.media.map((card) => (
-                <Link
-                  key={card.title}
-                  href={card.href}
-                  onClick={opts.onNavigate}
-                  className="group relative isolate flex h-[210px] flex-col justify-end overflow-hidden rounded-3xl ring-1 ring-black/5 transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_55px_rgba(15,23,42,0.18)]"
-                >
-                  <div
-                    className="absolute inset-0 bg-cover bg-center"
-                    style={{ backgroundImage: `url('${card.image}')` }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-black/5" />
-                  <div className="relative p-4">
-                    <div className="text-sm font-semibold text-white">{card.title}</div>
-                    <div className="mt-1 text-xs text-white/80">{card.subtitle}</div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
+  const renderSimpleMenu = (
+    title: string,
+    items: Array<{ label: string; href: string }>,
+    onNavigate: () => void
+  ) => (
+    <div className="space-y-3">
+      <div className="border-b border-gray-100 px-1 pb-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Explorar</p>
+        <h3 className="mt-1 text-base font-semibold text-gray-900">{title}</h3>
       </div>
-    );
-  };
+      {items.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={onNavigate}
+          className="block w-full rounded-[22px] border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 transition-colors hover:border-gray-300 hover:bg-white"
+        >
+          {item.label}
+        </Link>
+      ))}
+    </div>
+  );
 
   const isDashboardContext =
     pathname?.startsWith("/admin") ||
@@ -569,22 +418,9 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
             ? "bg-brand-gradient shadow-[0_18px_45px_rgba(2,22,22,0.18)]"
             : forceLight
             ? "border-b border-gray-200/80 bg-white/92 shadow-sm backdrop-blur-xl"
-            : "border-b border-white/10 bg-black/15 backdrop-blur-xl"
+            : "bg-transparent"
         }`}
       >
-        <AnimatePresence>
-          {enableDropdown && (openMenu === "comprar" || openMenu === "alugar") && (
-            <motion.div
-              key="nav-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.16, ease: "easeOut" }}
-              className="fixed left-0 right-0 bottom-0 top-16 z-[250] bg-black/30 backdrop-blur-[1px]"
-              onMouseDown={() => setOpenMenu(null)}
-            />
-          )}
-        </AnimatePresence>
         <div className="mx-auto max-w-7xl px-4 lg:px-6">
           <div className="grid grid-cols-3 items-center h-16">
             {/* Left: Primary tabs with dropdowns (Desktop) */}
@@ -616,7 +452,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               >
                 <button
                   type="button"
-                  ref={buyButtonRef}
                   onClick={() => {
                     setOpenMenu(null);
                     setPrimary('comprar');
@@ -642,12 +477,11 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   {enableDropdown && openMenu === "comprar" && (
                     <motion.div
                       key="buy-menu"
-                      initial={{ opacity: 0, y: -10, scale: 0.985 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.99 }}
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.16, ease: "easeOut" }}
-                      className={useCompactPopover ? heroMegaMenuCompactClass : heroMegaMenuWideClass}
-                      style={{ x: "-50%" }}
+                      className={simpleDropdownClass}
                       onMouseEnter={() => {
                         clearHoverTimeout();
                       }}
@@ -655,15 +489,9 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         scheduleCloseMenu();
                       }}
                     >
-                      {renderHeroMegaMenu({
-                        title: "Explorar para comprar",
-                        sectionTitle: buyMenuSections[0]?.title ?? "",
-                        items: buyMenuSections[0]?.items ?? [],
-                        media: buyMenuMedia,
-                        onNavigate: () => {
-                          setOpenMenu(null);
-                          setPrimary("comprar");
-                        },
+                      {renderSimpleMenu("Comprar", buyMenuItems, () => {
+                        setOpenMenu(null);
+                        setPrimary("comprar");
                       })}
                     </motion.div>
                   )}
@@ -685,7 +513,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               >
                 <button
                   type="button"
-                  ref={rentButtonRef}
                   onClick={() => {
                     setOpenMenu(null);
                     setPrimary('alugar');
@@ -711,12 +538,11 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   {enableDropdown && openMenu === "alugar" && (
                     <motion.div
                       key="rent-menu"
-                      initial={{ opacity: 0, y: -10, scale: 0.985 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.99 }}
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.16, ease: "easeOut" }}
-                      className={useCompactPopover ? heroMegaMenuCompactClass : heroMegaMenuWideClass}
-                      style={{ x: "-50%" }}
+                      className={simpleDropdownClass}
                       onMouseEnter={() => {
                         clearHoverTimeout();
                       }}
@@ -724,15 +550,9 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         scheduleCloseMenu();
                       }}
                     >
-                      {renderHeroMegaMenu({
-                        title: "Explorar para alugar",
-                        sectionTitle: rentMenuSections[0]?.title ?? "",
-                        items: rentMenuSections[0]?.items ?? [],
-                        media: rentMenuMedia,
-                        onNavigate: () => {
-                          setOpenMenu(null);
-                          setPrimary("alugar");
-                        },
+                      {renderSimpleMenu("Alugar", rentMenuItems, () => {
+                        setOpenMenu(null);
+                        setPrimary("alugar");
                       })}
                     </motion.div>
                   )}
@@ -773,40 +593,35 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
               </button>
               {openMenu === "recursos" && (
                 <div
-                  className={megaMenuBaseClass}
+                  className={simpleDropdownRightClass}
                   onMouseLeave={() => setOpenMenu(null)}
                 >
-                  <div className="px-8 py-7">
-                    <div className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-                      Central de recursos
+                  <div className="space-y-4">
+                    <div className="border-b border-gray-100 px-1 pb-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Explorar</p>
+                      <h3 className="mt-1 text-base font-semibold text-gray-900">Recursos</h3>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                      {resourceSections.map((section) => (
-                        <div key={section.title}>
-                          <div className="flex items-center gap-2 px-1 pb-2">
-                            <span className="h-5 w-1 rounded-full bg-teal-500/80" />
-                            <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                              {section.title}
-                            </div>
-                          </div>
-                          <ul className="space-y-1.5">
-                            {section.items.map((item) => (
-                              <li key={item.href}>
-                                <Link
-                                  href={item.href}
-                                  prefetch={false}
-                                  className="flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-gray-800 hover:bg-teal-50 group"
-                                  onClick={() => setOpenMenu(null)}
-                                >
-                                  {item.icon && <item.icon className="w-4 h-4 text-gray-400 group-hover:text-teal-600" />}
-                                  <span className="font-medium text-gray-900 group-hover:text-teal-700">{item.label}</span>
-                                </Link>
-                              </li>
-                            ))}
-                          </ul>
+                    {resourceSections.map((section) => (
+                      <div key={section.title}>
+                        <div className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">
+                          {section.title}
                         </div>
-                      ))}
-                    </div>
+                        <div className="space-y-2">
+                          {section.items.map((item) => (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              prefetch={false}
+                              className="flex items-center gap-3 rounded-[22px] border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 transition-colors hover:border-gray-300 hover:bg-white"
+                              onClick={() => setOpenMenu(null)}
+                            >
+                              {item.icon && <item.icon className="h-4 w-4 text-gray-400" />}
+                              <span>{item.label}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
