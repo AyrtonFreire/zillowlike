@@ -322,80 +322,162 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
       };
     }
   }, [session, role]);
+  const buyMenuEntry = {
+    label: "Escolher cidade",
+    href: "/explore/buy",
+    icon: MapPin,
+    description: "Explore bairros e regiões com uma navegação guiada.",
+  };
+
   const buyMenuItems = [
-    { label: "Escolher cidade", href: "/explore/buy", icon: MapPin, accentClassName: "bg-teal-50 text-teal-700" },
-    { label: "Casas", href: "/?purpose=SALE&type=HOUSE", icon: Home, accentClassName: "bg-sky-50 text-sky-700" },
-    { label: "Apartamentos", href: "/?purpose=SALE&type=APARTMENT", icon: Building, accentClassName: "bg-indigo-50 text-indigo-700" },
-    { label: "Condomínios", href: "/?purpose=SALE&type=CONDO", icon: Building2, accentClassName: "bg-violet-50 text-violet-700" },
-    { label: "Terrenos", href: "/?purpose=SALE&type=LAND", icon: LandPlot, accentClassName: "bg-amber-50 text-amber-700" },
-    { label: "Imóvel rural", href: "/?purpose=SALE&type=RURAL", icon: Trees, accentClassName: "bg-emerald-50 text-emerald-700" },
-    { label: "Comercial", href: "/?purpose=SALE&type=COMMERCIAL", icon: Store, accentClassName: "bg-rose-50 text-rose-700" },
+    { label: "Casas", href: "/?purpose=SALE&type=HOUSE", icon: Home, accentClassName: "bg-sky-50 text-sky-700", description: "Residências e sobrados" },
+    { label: "Apartamentos", href: "/?purpose=SALE&type=APARTMENT", icon: Building, accentClassName: "bg-indigo-50 text-indigo-700", description: "Apartamentos e flats" },
+    { label: "Terrenos", href: "/?purpose=SALE&type=LAND", icon: LandPlot, accentClassName: "bg-amber-50 text-amber-700", description: "Lotes e áreas" },
+    { label: "Condomínios", href: "/?purpose=SALE&type=CONDO", icon: Building2, accentClassName: "bg-violet-50 text-violet-700", description: "Opções em condomínio" },
+    { label: "Imóvel rural", href: "/?purpose=SALE&type=RURAL", icon: Trees, accentClassName: "bg-emerald-50 text-emerald-700", description: "Sítios e fazendas" },
+    { label: "Comercial", href: "/?purpose=SALE&type=COMMERCIAL", icon: Store, accentClassName: "bg-rose-50 text-rose-700", description: "Salas e pontos comerciais" },
   ];
+
+  const rentMenuEntry = {
+    label: "Escolher cidade",
+    href: "/explore/rent",
+    icon: MapPin,
+    description: "Veja cidades, regiões e bairros para locação.",
+  };
 
   const rentMenuItems = [
-    { label: "Escolher cidade", href: "/explore/rent", icon: MapPin, accentClassName: "bg-teal-50 text-teal-700" },
-    { label: "Casas", href: "/?purpose=RENT&type=HOUSE", icon: Home, accentClassName: "bg-sky-50 text-sky-700" },
-    { label: "Apartamentos", href: "/?purpose=RENT&type=APARTMENT", icon: Building, accentClassName: "bg-indigo-50 text-indigo-700" },
-    { label: "Condomínios", href: "/?purpose=RENT&type=CONDO", icon: Building2, accentClassName: "bg-violet-50 text-violet-700" },
-    { label: "Terrenos", href: "/?purpose=RENT&type=LAND", icon: LandPlot, accentClassName: "bg-amber-50 text-amber-700" },
-    { label: "Imóvel rural", href: "/?purpose=RENT&type=RURAL", icon: Trees, accentClassName: "bg-emerald-50 text-emerald-700" },
-    { label: "Comercial", href: "/?purpose=RENT&type=COMMERCIAL", icon: Store, accentClassName: "bg-rose-50 text-rose-700" },
+    { label: "Casas", href: "/?purpose=RENT&type=HOUSE", icon: Home, accentClassName: "bg-sky-50 text-sky-700", description: "Casas para morar" },
+    { label: "Apartamentos", href: "/?purpose=RENT&type=APARTMENT", icon: Building, accentClassName: "bg-indigo-50 text-indigo-700", description: "Locações urbanas" },
+    { label: "Terrenos", href: "/?purpose=RENT&type=LAND", icon: LandPlot, accentClassName: "bg-amber-50 text-amber-700", description: "Áreas e lotes" },
+    { label: "Condomínios", href: "/?purpose=RENT&type=CONDO", icon: Building2, accentClassName: "bg-violet-50 text-violet-700", description: "Conforto e estrutura" },
+    { label: "Imóvel rural", href: "/?purpose=RENT&type=RURAL", icon: Trees, accentClassName: "bg-emerald-50 text-emerald-700", description: "Espaços rurais" },
+    { label: "Comercial", href: "/?purpose=RENT&type=COMMERCIAL", icon: Store, accentClassName: "bg-rose-50 text-rose-700", description: "Imóveis para operação" },
   ];
 
-  // Recursos consolidados - substitui "Como funciona"
-  const resourceSections = [
+  const resourceColumns = [
     {
-      title: "Guias e Dicas",
+      title: "Para compradores",
       items: [
         { label: "Guia do comprador", href: "/guia/compra", icon: Home },
         { label: "Guia do inquilino", href: "/guia/locacao", icon: Home },
+      ],
+    },
+    {
+      title: "Para vendedores",
+      items: [
         { label: "Guia do vendedor", href: "/guia/venda", icon: Megaphone },
-        { label: "Como anunciar", href: "/como-anunciar", icon: HelpCircle },
-      ],
-    },
-    {
-      title: "Ferramentas",
-      items: [
-        { label: "Calculadora de financiamento", href: "/calculadora", icon: LineChart },
-      ],
-    },
-    {
-      title: "Serviços",
-      items: [
         { label: "Financiamento imobiliário", href: "/financing", icon: Building2 },
+      ],
+    },
+    {
+      title: "Para corretores",
+      items: [
+        { label: "Como anunciar", href: "/como-anunciar", icon: HelpCircle },
+        { label: "Calculadora de financiamento", href: "/calculadora", icon: LineChart },
       ],
     },
   ];
 
   const simpleDropdownClass =
-    "absolute top-full left-0 z-[320] mt-3 w-[22rem] rounded-[30px] border border-white/60 bg-white/92 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur-2xl ring-1 ring-black/5";
+    "absolute top-full left-1/2 z-[320] mt-4 w-[34rem] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[34px] border border-white/60 bg-white/92 p-5 shadow-[0_30px_90px_rgba(15,23,42,0.20)] backdrop-blur-2xl ring-1 ring-black/5";
 
   const simpleDropdownRightClass =
-    "absolute top-full left-0 z-[320] mt-3 w-[22rem] rounded-[30px] border border-white/60 bg-white/92 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur-2xl ring-1 ring-black/5";
+    "absolute top-full left-1/2 z-[320] mt-4 w-[46rem] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[34px] border border-white/60 bg-white/92 p-6 shadow-[0_30px_90px_rgba(15,23,42,0.20)] backdrop-blur-2xl ring-1 ring-black/5";
 
-  const renderSimpleMenu = (
+  const renderHeroCategoryMenu = (
     title: string,
-    items: Array<{ label: string; href: string; icon: ComponentType<{ className?: string }>; accentClassName: string }>,
+    locationEntry: { label: string; href: string; icon: ComponentType<{ className?: string }>; description: string },
+    items: Array<{ label: string; href: string; icon: ComponentType<{ className?: string }>; accentClassName: string; description: string }>,
     onNavigate: () => void
   ) => (
-    <div className="space-y-3">
-      <div className="border-b border-gray-100 px-1 pb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Explorar</p>
-        <h3 className="mt-1 text-base font-semibold text-gray-900">{title}</h3>
-      </div>
-      {items.map((item) => (
+    <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Explorar</p>
+          <h3 className="mt-1 text-lg font-semibold text-gray-900">{title}</h3>
+          <p className="mt-1 text-sm text-gray-500">Escolha uma categoria para chegar mais rápido ao recorte ideal.</p>
+        </div>
         <Link
-          key={item.href}
-          href={item.href}
+          href={locationEntry.href}
           onClick={onNavigate}
-          className="group flex w-full items-center gap-3 rounded-[22px] border border-gray-200/90 bg-gradient-to-r from-white to-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 transition-all hover:border-teal-200 hover:from-teal-50/70 hover:to-white hover:shadow-[0_12px_30px_rgba(13,148,136,0.08)]"
+          className="group hidden w-[15rem] flex-shrink-0 items-center gap-3 rounded-[26px] border border-teal-100 bg-gradient-to-r from-teal-50 via-white to-sky-50 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(13,148,136,0.10)] sm:flex"
         >
-          <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ring-1 ring-black/5 transition-transform group-hover:scale-105 ${item.accentClassName}`}>
-            <item.icon className="h-[18px] w-[18px]" />
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-teal-700 ring-1 ring-teal-100 transition-transform group-hover:scale-105">
+            <locationEntry.icon className="h-[18px] w-[18px]" />
           </span>
-          <span>{item.label}</span>
+          <span className="min-w-0">
+            <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-700">Entrada guiada</span>
+            <span className="mt-1 block text-sm font-semibold text-gray-900">{locationEntry.label}</span>
+          </span>
         </Link>
-      ))}
+      </div>
+      <Link
+        href={locationEntry.href}
+        onClick={onNavigate}
+        className="group mt-4 flex items-center gap-3 rounded-[24px] border border-teal-100 bg-gradient-to-r from-teal-50 via-white to-sky-50 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(13,148,136,0.10)] sm:hidden"
+      >
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-teal-700 ring-1 ring-teal-100 transition-transform group-hover:scale-105">
+          <locationEntry.icon className="h-[18px] w-[18px]" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-700">Entrada guiada</span>
+          <span className="mt-1 block text-sm font-semibold text-gray-900">{locationEntry.label}</span>
+        </span>
+      </Link>
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        {items.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            className="group relative overflow-hidden rounded-[26px] border border-gray-200/90 bg-gradient-to-b from-white to-gray-50/90 p-4 transition-all hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-[0_18px_48px_rgba(15,23,42,0.10)]"
+          >
+            <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-teal-300/70 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+            <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ring-1 ring-black/5 transition-transform group-hover:scale-105 ${item.accentClassName}`}>
+              <item.icon className="h-[18px] w-[18px]" />
+            </span>
+            <div className="mt-4">
+              <div className="text-sm font-semibold text-gray-900">{item.label}</div>
+              <div className="mt-1 text-xs leading-relaxed text-gray-500">{item.description}</div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderResourcesMenu = (onNavigate: () => void) => (
+    <div>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Explorar</p>
+          <h3 className="mt-1 text-lg font-semibold text-gray-900">Recursos</h3>
+          <p className="mt-1 text-sm text-gray-500">Guias e ferramentas organizados por perfil para facilitar a descoberta.</p>
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-3 gap-4">
+        {resourceColumns.map((column) => (
+          <div key={column.title} className="rounded-[28px] border border-gray-200/90 bg-gradient-to-b from-white to-gray-50/90 p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">{column.title}</div>
+            <div className="mt-3 space-y-2">
+              {column.items.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  prefetch={false}
+                  className="group flex items-start gap-3 rounded-[20px] px-3 py-2.5 transition-all hover:bg-white hover:shadow-sm"
+                  onClick={onNavigate}
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 ring-1 ring-black/5 transition-transform group-hover:scale-105">
+                    <item.icon className="h-4 w-4" />
+                  </span>
+                  <span className="pt-0.5 text-sm font-semibold text-gray-900 transition-transform group-hover:translate-x-0.5">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 
@@ -492,7 +574,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         scheduleCloseMenu();
                       }}
                     >
-                      {renderSimpleMenu("Comprar", buyMenuItems, () => {
+                      {renderHeroCategoryMenu("Comprar", buyMenuEntry, buyMenuItems, () => {
                         setOpenMenu(null);
                         setPrimary("comprar");
                       })}
@@ -553,7 +635,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         scheduleCloseMenu();
                       }}
                     >
-                      {renderSimpleMenu("Alugar", rentMenuItems, () => {
+                      {renderHeroCategoryMenu("Alugar", rentMenuEntry, rentMenuItems, () => {
                         setOpenMenu(null);
                         setPrimary("alugar");
                       })}
@@ -599,37 +681,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                   className={simpleDropdownRightClass}
                   onMouseLeave={() => setOpenMenu(null)}
                 >
-                  <div className="space-y-4">
-                    <div className="border-b border-gray-100 px-1 pb-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Explorar</p>
-                      <h3 className="mt-1 text-base font-semibold text-gray-900">Recursos</h3>
-                    </div>
-                    {resourceSections.map((section) => (
-                      <div key={section.title}>
-                        <div className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">
-                          {section.title}
-                        </div>
-                        <div className="space-y-2">
-                          {section.items.map((item) => (
-                            <Link
-                              key={item.href}
-                              href={item.href}
-                              prefetch={false}
-                              className="group flex items-center gap-3 rounded-[22px] border border-gray-200/90 bg-gradient-to-r from-white to-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 transition-all hover:border-teal-200 hover:from-teal-50/70 hover:to-white hover:shadow-[0_12px_30px_rgba(13,148,136,0.08)]"
-                              onClick={() => setOpenMenu(null)}
-                            >
-                              {item.icon && (
-                                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 ring-1 ring-black/5 transition-transform group-hover:scale-105">
-                                  <item.icon className="h-4 w-4" />
-                                </span>
-                              )}
-                              <span>{item.label}</span>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {renderResourcesMenu(() => setOpenMenu(null))}
                 </div>
               )}
             </div>
