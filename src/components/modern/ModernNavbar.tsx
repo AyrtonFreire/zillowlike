@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Bell, MessageCircle, ChevronDown, Building2, ClipboardList, LineChart, Megaphone, Home, HelpCircle, Building, LandPlot, Trees, Store, MapPin } from "lucide-react";
+import { Heart, Bell, MessageCircle, ChevronDown, ChevronRight, Building2, ClipboardList, LineChart, Megaphone, Home, HelpCircle, Building, LandPlot, Trees, Store, MapPin } from "lucide-react";
 import { useState, useEffect, useRef, type ComponentType } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -326,158 +326,120 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     label: "Escolher cidade",
     href: "/explore/buy",
     icon: MapPin,
-    description: "Explore bairros e regiões com uma navegação guiada.",
+    accentClassName: "bg-teal-100 text-teal-700",
   };
 
   const buyMenuItems = [
-    { label: "Casas", href: "/?purpose=SALE&type=HOUSE", icon: Home, accentClassName: "bg-sky-50 text-sky-700", description: "Residências e sobrados" },
-    { label: "Apartamentos", href: "/?purpose=SALE&type=APARTMENT", icon: Building, accentClassName: "bg-indigo-50 text-indigo-700", description: "Apartamentos e flats" },
-    { label: "Terrenos", href: "/?purpose=SALE&type=LAND", icon: LandPlot, accentClassName: "bg-amber-50 text-amber-700", description: "Lotes e áreas" },
-    { label: "Condomínios", href: "/?purpose=SALE&type=CONDO", icon: Building2, accentClassName: "bg-violet-50 text-violet-700", description: "Opções em condomínio" },
-    { label: "Imóvel rural", href: "/?purpose=SALE&type=RURAL", icon: Trees, accentClassName: "bg-emerald-50 text-emerald-700", description: "Sítios e fazendas" },
-    { label: "Comercial", href: "/?purpose=SALE&type=COMMERCIAL", icon: Store, accentClassName: "bg-rose-50 text-rose-700", description: "Salas e pontos comerciais" },
+    { label: "Casas", href: "/?purpose=SALE&type=HOUSE", icon: Home, accentClassName: "bg-sky-100 text-sky-700" },
+    { label: "Apartamentos", href: "/?purpose=SALE&type=APARTMENT", icon: Building, accentClassName: "bg-indigo-100 text-indigo-700" },
+    { label: "Terrenos", href: "/?purpose=SALE&type=LAND", icon: LandPlot, accentClassName: "bg-amber-100 text-amber-700" },
+    { label: "Condomínios", href: "/?purpose=SALE&type=CONDO", icon: Building2, accentClassName: "bg-violet-100 text-violet-700" },
+    { label: "Imóvel rural", href: "/?purpose=SALE&type=RURAL", icon: Trees, accentClassName: "bg-emerald-100 text-emerald-700" },
+    { label: "Comercial", href: "/?purpose=SALE&type=COMMERCIAL", icon: Store, accentClassName: "bg-rose-100 text-rose-700" },
   ];
 
   const rentMenuEntry = {
     label: "Escolher cidade",
     href: "/explore/rent",
     icon: MapPin,
-    description: "Veja cidades, regiões e bairros para locação.",
+    accentClassName: "bg-teal-100 text-teal-700",
   };
 
   const rentMenuItems = [
-    { label: "Casas", href: "/?purpose=RENT&type=HOUSE", icon: Home, accentClassName: "bg-sky-50 text-sky-700", description: "Casas para morar" },
-    { label: "Apartamentos", href: "/?purpose=RENT&type=APARTMENT", icon: Building, accentClassName: "bg-indigo-50 text-indigo-700", description: "Locações urbanas" },
-    { label: "Terrenos", href: "/?purpose=RENT&type=LAND", icon: LandPlot, accentClassName: "bg-amber-50 text-amber-700", description: "Áreas e lotes" },
-    { label: "Condomínios", href: "/?purpose=RENT&type=CONDO", icon: Building2, accentClassName: "bg-violet-50 text-violet-700", description: "Conforto e estrutura" },
-    { label: "Imóvel rural", href: "/?purpose=RENT&type=RURAL", icon: Trees, accentClassName: "bg-emerald-50 text-emerald-700", description: "Espaços rurais" },
-    { label: "Comercial", href: "/?purpose=RENT&type=COMMERCIAL", icon: Store, accentClassName: "bg-rose-50 text-rose-700", description: "Imóveis para operação" },
+    { label: "Casas", href: "/?purpose=RENT&type=HOUSE", icon: Home, accentClassName: "bg-sky-100 text-sky-700" },
+    { label: "Apartamentos", href: "/?purpose=RENT&type=APARTMENT", icon: Building, accentClassName: "bg-indigo-100 text-indigo-700" },
+    { label: "Terrenos", href: "/?purpose=RENT&type=LAND", icon: LandPlot, accentClassName: "bg-amber-100 text-amber-700" },
+    { label: "Condomínios", href: "/?purpose=RENT&type=CONDO", icon: Building2, accentClassName: "bg-violet-100 text-violet-700" },
+    { label: "Imóvel rural", href: "/?purpose=RENT&type=RURAL", icon: Trees, accentClassName: "bg-emerald-100 text-emerald-700" },
+    { label: "Comercial", href: "/?purpose=RENT&type=COMMERCIAL", icon: Store, accentClassName: "bg-rose-100 text-rose-700" },
   ];
 
   const resourceColumns = [
     {
       title: "Para compradores",
       items: [
-        { label: "Guia do comprador", href: "/guia/compra", icon: Home },
-        { label: "Guia do inquilino", href: "/guia/locacao", icon: Home },
+        { label: "Guia do comprador", href: "/guia/compra", icon: Home, accentClassName: "bg-sky-100 text-sky-700" },
+        { label: "Guia do inquilino", href: "/guia/locacao", icon: Home, accentClassName: "bg-indigo-100 text-indigo-700" },
       ],
     },
     {
       title: "Para vendedores",
       items: [
-        { label: "Guia do vendedor", href: "/guia/venda", icon: Megaphone },
-        { label: "Financiamento imobiliário", href: "/financing", icon: Building2 },
+        { label: "Guia do vendedor", href: "/guia/venda", icon: Megaphone, accentClassName: "bg-rose-100 text-rose-700" },
+        { label: "Financiamento imobiliário", href: "/financing", icon: Building2, accentClassName: "bg-violet-100 text-violet-700" },
       ],
     },
     {
       title: "Para corretores",
       items: [
-        { label: "Como anunciar", href: "/como-anunciar", icon: HelpCircle },
-        { label: "Calculadora de financiamento", href: "/calculadora", icon: LineChart },
+        { label: "Como anunciar", href: "/como-anunciar", icon: HelpCircle, accentClassName: "bg-amber-100 text-amber-700" },
+        { label: "Calculadora de financiamento", href: "/calculadora", icon: LineChart, accentClassName: "bg-emerald-100 text-emerald-700" },
       ],
     },
   ];
 
   const simpleDropdownClass =
-    "absolute top-full left-1/2 z-[320] mt-4 w-[34rem] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[34px] border border-white/60 bg-white/92 p-5 shadow-[0_30px_90px_rgba(15,23,42,0.20)] backdrop-blur-2xl ring-1 ring-black/5";
+    "absolute top-full left-0 z-[320] mt-3 w-[24rem] max-w-[calc(100vw-32px)] rounded-[28px] border border-gray-200/80 bg-white p-3 shadow-[0_18px_50px_rgba(15,23,42,0.14)] ring-1 ring-black/5";
 
   const simpleDropdownRightClass =
-    "absolute top-full left-1/2 z-[320] mt-4 w-[46rem] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[34px] border border-white/60 bg-white/92 p-6 shadow-[0_30px_90px_rgba(15,23,42,0.20)] backdrop-blur-2xl ring-1 ring-black/5";
+    "absolute top-full right-0 z-[320] mt-3 w-[25rem] max-w-[calc(100vw-32px)] rounded-[28px] border border-gray-200/80 bg-white p-3 shadow-[0_18px_50px_rgba(15,23,42,0.14)] ring-1 ring-black/5";
 
-  const renderHeroCategoryMenu = (
+  const renderMenuList = (
     title: string,
-    locationEntry: { label: string; href: string; icon: ComponentType<{ className?: string }>; description: string },
-    items: Array<{ label: string; href: string; icon: ComponentType<{ className?: string }>; accentClassName: string; description: string }>,
+    entry: { label: string; href: string; icon: ComponentType<{ className?: string }>; accentClassName: string },
+    items: Array<{ label: string; href: string; icon: ComponentType<{ className?: string }>; accentClassName: string }>,
     onNavigate: () => void
   ) => (
-    <div>
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Explorar</p>
-          <h3 className="mt-1 text-lg font-semibold text-gray-900">{title}</h3>
-          <p className="mt-1 text-sm text-gray-500">Escolha uma categoria para chegar mais rápido ao recorte ideal.</p>
-        </div>
-        <Link
-          href={locationEntry.href}
-          onClick={onNavigate}
-          className="group hidden w-[15rem] flex-shrink-0 items-center gap-3 rounded-[26px] border border-teal-100 bg-gradient-to-r from-teal-50 via-white to-sky-50 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(13,148,136,0.10)] sm:flex"
-        >
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-teal-700 ring-1 ring-teal-100 transition-transform group-hover:scale-105">
-            <locationEntry.icon className="h-[18px] w-[18px]" />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-700">Entrada guiada</span>
-            <span className="mt-1 block text-sm font-semibold text-gray-900">{locationEntry.label}</span>
-          </span>
-        </Link>
+    <div className="space-y-1">
+      <div className="px-3 pb-2 pt-1">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">{title}</div>
       </div>
-      <Link
-        href={locationEntry.href}
-        onClick={onNavigate}
-        className="group mt-4 flex items-center gap-3 rounded-[24px] border border-teal-100 bg-gradient-to-r from-teal-50 via-white to-sky-50 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(13,148,136,0.10)] sm:hidden"
-      >
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-teal-700 ring-1 ring-teal-100 transition-transform group-hover:scale-105">
-          <locationEntry.icon className="h-[18px] w-[18px]" />
-        </span>
-        <span className="min-w-0">
-          <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-700">Entrada guiada</span>
-          <span className="mt-1 block text-sm font-semibold text-gray-900">{locationEntry.label}</span>
-        </span>
-      </Link>
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        {items.map((item) => (
+      {[entry, ...items].map((item, index) => (
+        <div key={item.href}>
           <Link
-            key={item.href}
             href={item.href}
             onClick={onNavigate}
-            className="group relative overflow-hidden rounded-[26px] border border-gray-200/90 bg-gradient-to-b from-white to-gray-50/90 p-4 transition-all hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-[0_18px_48px_rgba(15,23,42,0.10)]"
+            className="group flex items-center gap-3 rounded-[22px] px-3 py-3 transition-colors hover:bg-gray-50"
           >
-            <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-teal-300/70 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-            <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ring-1 ring-black/5 transition-transform group-hover:scale-105 ${item.accentClassName}`}>
+            <span className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-transform group-hover:scale-105 ${item.accentClassName}`}>
               <item.icon className="h-[18px] w-[18px]" />
             </span>
-            <div className="mt-4">
-              <div className="text-sm font-semibold text-gray-900">{item.label}</div>
-              <div className="mt-1 text-xs leading-relaxed text-gray-500">{item.description}</div>
-            </div>
+            <span className="min-w-0 flex-1 text-[15px] font-semibold text-gray-900">{item.label}</span>
+            <ChevronRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-400" />
           </Link>
-        ))}
-      </div>
+          {index < items.length && <div className="mx-3 h-px bg-gray-100" />}
+        </div>
+      ))}
     </div>
   );
 
   const renderResourcesMenu = (onNavigate: () => void) => (
-    <div>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Explorar</p>
-          <h3 className="mt-1 text-lg font-semibold text-gray-900">Recursos</h3>
-          <p className="mt-1 text-sm text-gray-500">Guias e ferramentas organizados por perfil para facilitar a descoberta.</p>
-        </div>
-      </div>
-      <div className="mt-5 grid grid-cols-3 gap-4">
-        {resourceColumns.map((column) => (
-          <div key={column.title} className="rounded-[28px] border border-gray-200/90 bg-gradient-to-b from-white to-gray-50/90 p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">{column.title}</div>
-            <div className="mt-3 space-y-2">
-              {column.items.map((item) => (
+    <div className="space-y-3 px-1 py-1">
+      {resourceColumns.map((column, columnIndex) => (
+        <div key={column.title}>
+          <div className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">{column.title}</div>
+          <div className="space-y-0">
+            {column.items.map((item, itemIndex) => (
+              <div key={item.href}>
                 <Link
-                  key={item.href}
                   href={item.href}
                   prefetch={false}
-                  className="group flex items-start gap-3 rounded-[20px] px-3 py-2.5 transition-all hover:bg-white hover:shadow-sm"
+                  className="group flex items-center gap-3 rounded-[22px] px-3 py-3 transition-colors hover:bg-gray-50"
                   onClick={onNavigate}
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 ring-1 ring-black/5 transition-transform group-hover:scale-105">
-                    <item.icon className="h-4 w-4" />
+                  <span className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-transform group-hover:scale-105 ${item.accentClassName}`}>
+                    <item.icon className="h-[18px] w-[18px]" />
                   </span>
-                  <span className="pt-0.5 text-sm font-semibold text-gray-900 transition-transform group-hover:translate-x-0.5">{item.label}</span>
+                  <span className="min-w-0 flex-1 text-[15px] font-semibold text-gray-900">{item.label}</span>
+                  <ChevronRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-400" />
                 </Link>
-              ))}
-            </div>
+                {itemIndex < column.items.length - 1 && <div className="mx-3 h-px bg-gray-100" />}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+          {columnIndex < resourceColumns.length - 1 && <div className="mx-3 mt-3 h-px bg-gray-100" />}
+        </div>
+      ))}
     </div>
   );
 
@@ -574,7 +536,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         scheduleCloseMenu();
                       }}
                     >
-                      {renderHeroCategoryMenu("Comprar", buyMenuEntry, buyMenuItems, () => {
+                      {renderMenuList("Comprar", buyMenuEntry, buyMenuItems, () => {
                         setOpenMenu(null);
                         setPrimary("comprar");
                       })}
@@ -635,7 +597,7 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         scheduleCloseMenu();
                       }}
                     >
-                      {renderHeroCategoryMenu("Alugar", rentMenuEntry, rentMenuItems, () => {
+                      {renderMenuList("Alugar", rentMenuEntry, rentMenuItems, () => {
                         setOpenMenu(null);
                         setPrimary("alugar");
                       })}
