@@ -14,7 +14,6 @@ import {
   CheckCircle,
   XCircle,
   Heart,
-  Bookmark,
   LayoutDashboard,
   Home,
   MessageSquare,
@@ -129,7 +128,7 @@ export default function AccountPage() {
           <User className="w-16 h-16 mx-auto mb-4 text-gray-300" />
           <h1 className="text-3xl font-bold text-gray-900 mb-3">Minha conta</h1>
           <p className="text-gray-600 mb-8">
-            Entre para acessar seus favoritos, buscas salvas e gerenciar seus anúncios.
+            Entre para acessar seus favoritos, newsletter e gerenciar seus anúncios.
           </p>
           <Link href="/auth/signin" className="inline-flex">
             <Button>Fazer login</Button>
@@ -305,13 +304,6 @@ export default function AccountPage() {
                   </div>
                   <div className="mt-2 text-xs text-gray-600">Veja seus imóveis salvos</div>
                 </Link>
-                <Link href="/saved-searches" className="rounded-2xl border border-gray-200 p-4 transition-colors hover:border-gray-300 hover:bg-gray-50">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <Bookmark className="w-4 h-4 text-teal-600" />
-                    Buscas
-                  </div>
-                  <div className="mt-2 text-xs text-gray-600">Acompanhe buscas salvas</div>
-                </Link>
                 <Link href="/account/communication" className="col-span-2 rounded-2xl border border-gray-200 p-4 transition-colors hover:border-gray-300 hover:bg-gray-50">
                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                     <Bell className="w-4 h-4 text-teal-600" />
@@ -356,7 +348,7 @@ export default function AccountPage() {
                 </div>
               ) : roleActions.length === 0 ? (
                 <div className="rounded-2xl bg-gray-50 p-5 text-sm text-gray-700">
-                  Seu perfil ainda não tem atalhos específicos. Use os links de favoritos e buscas salvas, ou edite seu perfil.
+                  Seu perfil ainda não tem atalhos específicos. Use os links principais disponíveis ou edite seu perfil.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

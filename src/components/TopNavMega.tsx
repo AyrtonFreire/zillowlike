@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -282,7 +281,6 @@ export default function TopNavMega() {
                       </svg>
                     }>
                       <Item href="/calculadora">Calculadora de financiamento</Item>
-                      <Item href="/saved-searches">Buscas salvas</Item>
                       <Item href="/favorites">Meus favoritos</Item>
                     </Section>
                   </>
@@ -320,7 +318,6 @@ export default function TopNavMega() {
                       </svg>
                     }>
                       <Item href="/calculadora-aluguel">Calculadora de aluguel</Item>
-                      <Item href="/saved-searches">Buscas salvas</Item>
                       <Item href="/favorites">Meus favoritos</Item>
                     </Section>
                   </>
@@ -418,11 +415,10 @@ function quickLinksByRole(role: string): QuickItem[] {
       { href: "/admin/logs", label: "Logs", icon: ico("M4 4h16v16H4z") },
     ];
   }
-  if (role === "REALTOR") {
+  if (role === "BROKER") {
     return [
       { href: "/broker/dashboard", label: "Painel do corretor", icon: ico("M3 12l2-2 7-7 7 7-2 2v7a1 1 0 01-1 1H6a1 1 0 01-1-1v-7z") },
       { href: "/broker/leads", label: "Leads", icon: ico("M16 12a4 4 0 10-8 0 4 4 0 008 0z M12 14v7") },
-      { href: "/saved-searches", label: "Buscas salvas", icon: ico("M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z") },
       { href: "/favorites", label: "Favoritos", icon: ico("M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364 4.318 12.682z") },
     ];
   }
@@ -443,7 +439,6 @@ function quickLinksByRole(role: string): QuickItem[] {
   // USER (default)
   return [
     { href: "/favorites", label: "Favoritos", icon: ico("M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364 4.318 12.682z") },
-    { href: "/saved-searches", label: "Buscas salvas", icon: ico("M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z") },
     { href: "/start", label: "Anunciar imóvel", icon: ico("M12 4v16m8-8H4") },
     { href: "/dashboard", label: "Meu painel", icon: ico("M4 4h16v16H4z") },
   ];

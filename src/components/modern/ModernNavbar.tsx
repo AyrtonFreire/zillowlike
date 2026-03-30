@@ -607,7 +607,6 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
                         )}
                         <li><Link href="/account" className="block px-4 py-2 hover:bg-gray-50">Minha conta</Link></li>
                         <li><Link href="/favorites" className="block px-4 py-2 hover:bg-gray-50">Favoritos</Link></li>
-                        <li><Link href="/saved-searches" className="block px-4 py-2 hover:bg-gray-50">Buscas salvas</Link></li>
                         <li><hr className="my-1" /></li>
                         <li><button onClick={() => signOut({ callbackUrl: "/" })} className="w-full text-left px-4 py-2 hover:bg-gray-50">Sair</button></li>
                       </ul>

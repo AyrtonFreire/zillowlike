@@ -277,24 +277,6 @@ export default function ExploreCityGate({ mode, variant = "default" }: { mode: M
               </div>
             </div>
 
-            {popular.length > 0 && (
-              <div className="mt-8">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{content.popularLabel}</div>
-                <div className="mt-3 flex flex-wrap gap-2.5">
-                  {popular.slice(0, 8).map((c, idx) => (
-                    <button
-                      key={`${c.city}-${c.state}-${idx}`}
-                      type="button"
-                      onClick={() => selectSuggestion(c)}
-                      className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
-                    >
-                      {c.city}/{c.state}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"

@@ -36,7 +36,6 @@ export default function HomeClient() {
   const [page, setPage] = useState(1);
   const pageSize = viewMode === 'map' ? 500 : 24;
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [savedSearches, setSavedSearches] = useState<Array<{label: string; params: string; ts: number}>>([]);
   const [toast, setToast] = useState<{ message: string; type?: "success" | "error" | "info" } | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -76,32 +75,6 @@ export default function HomeClient() {
     }
   }
 
-  async function saveCurrentSearch() {
-    try {
-      const res = await fetch('/api/saved-searches', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: q ? `Busca: ${q}` : 'Busca', params: queryString }),
-      });
-      if (res.status === 401) {
-        setToast({ message: 'Faça login para salvar buscas.', type: 'info' });
-        return;
-      }
-      if (!res.ok) {
-        setToast({ message: 'Falha ao salvar busca.', type: 'error' });
-        return;
-      }
-      setToast({ message: 'Busca salva!', type: 'success' });
-      // reload list
-      fetch('/api/saved-searches').then(async (r) => {
-        if (r.ok) {
-          const d = await r.json();
-          if (Array.isArray(d.items)) setSavedSearches(d.items);
-        }
-      }).catch(() => {});
-    } catch {}
-  }
-
   async function toggleFavorite(id: string) {
     try {
       const res = await fetch('/api/favorites', {
@@ -139,20 +112,12 @@ export default function HomeClient() {
     if (f.areaMin) setAreaMin(f.areaMin);
     if (f.sort) setSort(f.sort);
     // then trigger a search
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     search();
     // fetch favorites for current user (ignore errors/401)
     fetch('/api/favorites').then(async (r) => {
       if (r.ok) {
         const d: GetFavoritesResponse = await r.json();
         setFavorites(Array.isArray(d.items) ? d.items : []);
-      }
-    }).catch(() => {});
-    // fetch saved searches for current user (ignore errors/401)
-    fetch('/api/saved-searches').then(async (r) => {
-      if (r.ok) {
-        const d = await r.json();
-        if (Array.isArray(d.items)) setSavedSearches(d.items);
       }
     }).catch(() => {});
   }, []);
@@ -381,14 +346,6 @@ export default function HomeClient() {
               disabled={isLoading || (total <= page * pageSize)}
             >
               Próxima →
-            </button>
-            <button
-              className="px-3 py-2 border rounded-lg text-sm disabled:opacity-50"
-              aria-label="Salvar busca"
-              onClick={saveCurrentSearch}
-              disabled={isLoading}
-            >
-              Salvar busca
             </button>
           </div>
         </div>

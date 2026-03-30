@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Heart, Search, User, Home } from "lucide-react";
+import { Heart, Search, Home } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 
 export default function UserDashboard() {
@@ -13,7 +13,6 @@ export default function UserDashboard() {
   const user = (session as any)?.user;
   const role = (session as any)?.user?.role || "USER";
   const [favorites, setFavorites] = useState<any[]>([]);
-  const [savedSearches, setSavedSearches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Force session refresh on mount
@@ -58,16 +57,6 @@ export default function UserDashboard() {
             setFavorites(data.favorites || []);
           }
         })
-        .catch(console.error);
-
-      // Load saved searches
-      fetch("/api/saved-searches")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            setSavedSearches(data.searches || []);
-          }
-        })
         .catch(console.error)
         .finally(() => setLoading(false));
     }
@@ -104,7 +93,7 @@ export default function UserDashboard() {
         {/* Auto-promotion: Users are automatically promoted to OWNER when they post their first property */}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 mb-8">
           {/* Favorites Card */}
           <Link
             href="/favorites"
@@ -123,27 +112,6 @@ export default function UserDashboard() {
             </h3>
             <p className="text-sm text-gray-600">
               Seus imóveis salvos para consulta rápida
-            </p>
-          </Link>
-
-          {/* Saved Searches Card */}
-          <Link
-            href="/saved-searches"
-            className="card p-6 hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <Search className="w-6 h-6 text-blue-600" />
-              </div>
-              <span className="text-3xl font-bold text-gray-900">
-                {savedSearches.length}
-              </span>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              Buscas Salvas
-            </h3>
-            <p className="text-sm text-gray-600">
-              Suas pesquisas favoritas para acompanhamento
             </p>
           </Link>
         </div>
@@ -190,7 +158,7 @@ export default function UserDashboard() {
         )}
 
         {/* Empty State */}
-        {favorites.length === 0 && savedSearches.length === 0 && (
+        {favorites.length === 0 && (
           <div className="card p-12 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Home className="w-8 h-8 text-gray-400" />

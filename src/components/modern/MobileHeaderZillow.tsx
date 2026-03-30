@@ -538,9 +538,6 @@ export default function MobileHeaderZillow({ variant = "solid" }: MobileHeaderZi
                     <Link href="/favorites" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
                       Favoritos
                     </Link>
-                    <Link href="/saved-searches" onClick={() => setIsRightMenuOpen(false)} className="block px-6 py-3 text-base font-semibold text-gray-900 border-b">
-                      Buscas salvas
-                    </Link>
 
                     {role === 'USER' && (
                       <Link
