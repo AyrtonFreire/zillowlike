@@ -4,7 +4,7 @@ import { z } from "zod";
 import { randomBytes } from "crypto";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { getTeamInviteEmail, sendEmail } from "@/lib/email";
 
 const createInviteSchema = z.object({
   email: z.string().trim().email().transform((value) => value.toLowerCase()),
@@ -224,31 +224,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const inviterName = (team.owner?.name || inviterEmail || "OggaHub").toString();
     const teamName = (team.name || "Time").toString();
 
-    const html = `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-  </head>
-  <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827; background: #f3f4f6; padding: 24px;">
-    <div style="max-width: 640px; margin: 0 auto; background: white; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden;">
-      <div style="background: linear-gradient(135deg, #00736E 0%, #021616 100%); color: white; padding: 24px 28px;">
-        <div style="font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.9;">OggaHub</div>
-        <h1 style="margin: 8px 0 0; font-size: 20px;">Convite para entrar em um time</h1>
-      </div>
-      <div style="padding: 22px 28px 26px;">
-        <p style="margin: 0 0 12px;">Você recebeu um convite para entrar no time <strong>${teamName}</strong>.</p>
-        <p style="margin: 0 0 18px; color: #374151;">Enviado por: <strong>${inviterName}</strong></p>
-        <div style="text-align: center; margin: 18px 0 10px;">
-          <a href="${acceptUrl}" style="display: inline-block; background: #00736E; color: white; text-decoration: none; padding: 12px 18px; border-radius: 999px; font-weight: 700;">Aceitar convite</a>
-        </div>
-        <p style="margin: 12px 0 0; font-size: 12px; color: #6b7280;">Se o botão não funcionar, copie e cole este link no navegador:</p>
-        <p style="margin: 6px 0 0; font-size: 12px; word-break: break-all;"><a href="${acceptUrl}">${acceptUrl}</a></p>
-      </div>
-    </div>
-  </body>
-</html>`;
-
-    const subject = `Convite para o time ${teamName} - OggaHub`;
+    const { subject, html } = getTeamInviteEmail({
+      inviterName,
+      teamName,
+      acceptUrl,
+    });
 
     const emailSent = await sendEmail({ to: invitedEmail, subject, html });
 
