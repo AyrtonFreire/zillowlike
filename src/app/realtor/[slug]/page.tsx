@@ -389,7 +389,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
     name,
     url: pageUrl,
     image: realtor.image || undefined,
-    telephone: realtor.publicPhoneOptIn && realtor.phone ? realtor.phone : undefined,
+    telephone: realtor.publicPhoneOptIn && realtor.phoneVerifiedAt && realtor.phone ? realtor.phone : undefined,
     address: locationLabel
       ? {
           "@type": "PostalAddress",
@@ -450,6 +450,7 @@ export default async function RealtorPublicProfilePage({ params }: PageProps) {
             : [],
           publicWhatsApp: realtor.publicWhatsApp || null,
           publicPhoneOptIn: Boolean(realtor.publicPhoneOptIn),
+          phoneVerified: Boolean(realtor.phoneVerifiedAt),
           phone: realtor.phone || null,
           instagram: realtor.publicInstagram || null,
           linkedin: realtor.publicLinkedIn || null,

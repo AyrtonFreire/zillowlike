@@ -106,6 +106,7 @@ type RealtorPublicLandingClientProps = {
     publicServiceAreas: string[];
     publicWhatsApp: string | null;
     publicPhoneOptIn: boolean;
+    phoneVerified: boolean;
     phone: string | null;
     instagram: string | null;
     linkedin: string | null;
@@ -242,12 +243,13 @@ function toDateLabel(value: string) {
 }
 
 export default function RealtorPublicLandingClient({
-  siteUrl: _siteUrl,
+  siteUrl,
   pageUrl,
   realtor,
   properties,
   initialRatingsPreview,
 }: RealtorPublicLandingClientProps) {
+  void siteUrl;
   const { data: session } = useSession();
 
   const [highlight, setHighlight] = useState<string>("featured");
@@ -281,12 +283,12 @@ export default function RealtorPublicLandingClient({
   const whatsappDigits = useMemo(() => {
     const wa = normalizePhone(realtor.publicWhatsApp);
     if (wa) return wa;
-    if (realtor.publicPhoneOptIn) {
+    if (realtor.publicPhoneOptIn && realtor.phoneVerified) {
       const phone = normalizePhone(realtor.phone);
       if (phone) return phone;
     }
     return null;
-  }, [realtor.phone, realtor.publicPhoneOptIn, realtor.publicWhatsApp]);
+  }, [realtor.phone, realtor.phoneVerified, realtor.publicPhoneOptIn, realtor.publicWhatsApp]);
 
   const serviceAreaChips = useMemo(() => {
     const areas = Array.isArray(realtor.publicServiceAreas) ? realtor.publicServiceAreas : [];
@@ -309,9 +311,9 @@ export default function RealtorPublicLandingClient({
   const teamLabel = realtor.team?.name ? realtor.team.name : null;
 
   const telHref = useMemo(() => {
-    if (!realtor.publicPhoneOptIn) return null;
+    if (!realtor.publicPhoneOptIn || !realtor.phoneVerified) return null;
     return formatPhoneForTel(realtor.phone);
-  }, [realtor.phone, realtor.publicPhoneOptIn]);
+  }, [realtor.phone, realtor.phoneVerified, realtor.publicPhoneOptIn]);
 
   const ratingValueLabel = useMemo(() => {
     return realtor.avgRating > 0 ? realtor.avgRating.toFixed(1) : "—";
