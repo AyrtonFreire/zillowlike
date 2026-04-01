@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Heart, Bell, MessageCircle, ChevronDown, ChevronRight, Building2, ClipboardList, LineChart, Megaphone, Home, HelpCircle } from "lucide-react";
+import { Heart, Bell, MessageCircle, ChevronDown, ChevronRight, ClipboardList } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -306,56 +306,31 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
   }, [session, role]);
 
   const resourceColumns = [
-    {
-      title: "Para compradores",
-      items: [
-        { label: "Guia do comprador", href: "/guia/compra", icon: Home },
-        { label: "Guia do inquilino", href: "/guia/locacao", icon: Home },
-      ],
-    },
-    {
-      title: "Para vendedores",
-      items: [
-        { label: "Guia do vendedor", href: "/guia/venda", icon: Megaphone },
-        { label: "Financiamento imobiliário", href: "/financing", icon: Building2 },
-      ],
-    },
-    {
-      title: "Para corretores",
-      items: [
-        { label: "Como anunciar", href: "/como-anunciar", icon: HelpCircle },
-        { label: "Calculadora de financiamento", href: "/calculadora", icon: LineChart },
-      ],
-    },
+    { label: "Guia do comprador", href: "/guia/compra" },
+    { label: "Guia do inquilino", href: "/guia/locacao" },
+    { label: "Guia do vendedor", href: "/guia/venda" },
+    { label: "Financiamento imobiliário", href: "/financing" },
+    { label: "Como anunciar", href: "/como-anunciar" },
+    { label: "Calculadora de financiamento", href: "/calculadora" },
   ];
 
   const simpleDropdownRightClass =
     "absolute top-full right-0 z-[320] mt-3 w-[23.5rem] max-w-[calc(100vw-32px)] rounded-[24px] border border-gray-200/90 bg-white/95 p-3 shadow-[0_20px_60px_rgba(15,23,42,0.16)] backdrop-blur-xl";
 
   const renderResourcesMenu = (onNavigate: () => void) => (
-    <div className="space-y-4 px-1 py-1">
-      {resourceColumns.map((column, columnIndex) => (
-        <div key={column.title}>
-          <div className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-500">{column.title}</div>
-          <div className="space-y-1">
-            {column.items.map((item) => (
-              <div key={item.href}>
-                <Link
-                  href={item.href}
-                  prefetch={false}
-                  className="group flex items-center gap-3 rounded-[18px] px-3 py-3 transition-all duration-200 hover:bg-neutral-50"
-                  onClick={onNavigate}
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-700 transition-colors group-hover:border-neutral-300 group-hover:bg-white">
-                    <item.icon className="h-[18px] w-[18px]" />
-                  </span>
-                  <span className="min-w-0 flex-1 text-[15px] font-medium tracking-[0.01em] text-gray-900">{item.label}</span>
-                  <ChevronRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-500" />
-                </Link>
-              </div>
-            ))}
-          </div>
-          {columnIndex < resourceColumns.length - 1 && <div className="mx-3 mt-4 h-px bg-gray-100" />}
+    <div className="space-y-1 px-1 py-1">
+      {resourceColumns.map((item, index) => (
+        <div key={item.href}>
+          <Link
+            href={item.href}
+            prefetch={false}
+            className="group flex items-center gap-3 rounded-[18px] px-4 py-3.5 transition-all duration-200 hover:bg-neutral-50"
+            onClick={onNavigate}
+          >
+            <span className="min-w-0 flex-1 text-[15px] font-medium tracking-[0.01em] text-gray-900">{item.label}</span>
+            <ChevronRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-500" />
+          </Link>
+          {index < resourceColumns.length - 1 && <div className="mx-4 h-px bg-gray-100" />}
         </div>
       ))}
     </div>
