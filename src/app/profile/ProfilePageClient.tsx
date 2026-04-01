@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/Button";
 import { ProfileIdentitySection } from "./components/ProfileIdentitySection";
 import { InlineFeedbackBanner } from "./components/ProfilePrimitives";
 import { ProfilePublicProfileSection } from "./components/ProfilePublicProfileSection";
-import { ProfileQuickLinksSection } from "./components/ProfileQuickLinksSection";
 import { ProfileSecuritySection } from "./components/ProfileSecuritySection";
 import { ProfileSummaryCard } from "./components/ProfileSummaryCard";
 import { useProfile } from "./useProfile";
@@ -134,7 +133,7 @@ export default function ProfilePageClient() {
   return (
     <DashboardLayout
       title="Meu Perfil"
-      description="Gerencie sua identidade, segurança, perfil público e atalhos operacionais em um só lugar."
+      description="Gerencie sua identidade, segurança e perfil público em um só lugar."
       breadcrumbs={[{ label: "Dashboard", href: "/account" }, { label: "Meu Perfil" }]}
       actions={layoutActions}
     >
@@ -184,7 +183,6 @@ export default function ProfilePageClient() {
                 onOpenPassword={() => openModal("setPassword")}
                 onOpenBackupCodes={() => openModal("backupCodes")}
               />
-              <ProfileQuickLinksSection role={profile.role} />
             </div>
           </div>
         </div>

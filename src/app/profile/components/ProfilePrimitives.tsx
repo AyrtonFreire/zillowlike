@@ -115,18 +115,18 @@ export function SettingRow({
   children?: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm shadow-black/5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div className="rounded-[28px] border border-neutral-200/90 bg-gradient-to-br from-white via-white to-neutral-50/80 p-5 shadow-sm shadow-black/5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-neutral-950">{title}</h3>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h3 className="text-sm font-semibold tracking-[0.01em] text-neutral-950">{title}</h3>
             {status}
           </div>
-          <p className="mt-2 text-sm font-medium text-neutral-800">{value}</p>
-          <p className="mt-1 text-sm leading-relaxed text-neutral-600">{description}</p>
-          {children ? <div className="mt-3">{children}</div> : null}
+          <p className="mt-2 text-[15px] font-medium leading-relaxed text-neutral-800">{value}</p>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-600">{description}</p>
+          {children ? <div className="mt-3.5">{children}</div> : null}
         </div>
-        {action ? <div className="flex shrink-0 items-start">{action}</div> : null}
+        {action ? <div className="flex w-full shrink-0 items-start xl:w-auto xl:justify-end">{action}</div> : null}
       </div>
     </div>
   );
