@@ -53,6 +53,10 @@ export function ProfilePublicProfileSection({
   const phoneCheckboxDescription = hasVerifiedPhone
     ? "Quando ativo, o telefone só aparece no perfil público porque já está verificado."
     : "Verifique seu telefone primeiro para poder exibi-lo no perfil público e nas ações de contato.";
+  const secondaryActionClassName =
+    "inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-neutral-200/90 bg-white px-4.5 py-2.5 text-sm font-semibold text-neutral-900 shadow-sm shadow-black/5 transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/20 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+  const primaryActionClassName =
+    "inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-gradient-to-r from-teal-700 via-teal-700 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-900/15 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-teal-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/30 focus-visible:ring-offset-2";
 
   return (
     <SectionCard
@@ -64,18 +68,25 @@ export function ProfilePublicProfileSection({
           : "Organize como seu perfil público aparece para compradores e locatários, sem prometer contato que ainda não está validado."
       }
       actions={
-        <>
-          <Button type="button" variant="secondary" leftIcon={<Copy className="h-4 w-4" />} onClick={() => void onCopyLink()} disabled={!canOpenPublicProfile}>
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap xl:w-auto xl:justify-end">
+          <Button
+            type="button"
+            variant="secondary"
+            leftIcon={<Copy className="h-4 w-4" />}
+            onClick={() => void onCopyLink()}
+            disabled={!canOpenPublicProfile}
+            className={secondaryActionClassName}
+          >
             Copiar link
           </Button>
           {publicUrl ? (
             <Link href={publicUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
-              <Button type="button" variant="primary" leftIcon={<ExternalLink className="h-4 w-4" />}>
+              <Button type="button" variant="primary" leftIcon={<ExternalLink className="h-4 w-4" />} className={primaryActionClassName}>
                 Abrir perfil público
               </Button>
             </Link>
           ) : null}
-        </>
+        </div>
       }
     >
       {!hasVerifiedPhone && form.publicPhoneOptIn ? (

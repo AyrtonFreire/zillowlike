@@ -44,13 +44,13 @@ export function SectionCard({
 }) {
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
+      <CardHeader className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0 flex-1">
           {eyebrow ? <div className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">{eyebrow}</div> : null}
           <h2 className="mt-1 text-xl font-semibold tracking-tight text-neutral-950">{title}</h2>
           {description ? <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-600">{description}</p> : null}
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
+        {actions ? <div className="flex w-full flex-wrap items-center gap-3 xl:w-auto xl:justify-end">{actions}</div> : null}
       </CardHeader>
       <CardBody className="space-y-5">{children}</CardBody>
     </Card>
@@ -116,17 +116,17 @@ export function SettingRow({
 }) {
   return (
     <div className="rounded-[28px] border border-neutral-200/90 bg-gradient-to-br from-white via-white to-neutral-50/80 p-5 shadow-sm shadow-black/5">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2.5">
             <h3 className="text-sm font-semibold tracking-[0.01em] text-neutral-950">{title}</h3>
             {status}
           </div>
           <p className="mt-2 text-[15px] font-medium leading-relaxed text-neutral-800">{value}</p>
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-600">{description}</p>
+          <p className="mt-1.5 max-w-none text-sm leading-7 text-neutral-600 2xl:max-w-2xl">{description}</p>
           {children ? <div className="mt-3.5">{children}</div> : null}
         </div>
-        {action ? <div className="flex w-full shrink-0 items-start xl:w-auto xl:justify-end">{action}</div> : null}
+        {action ? <div className="flex w-full shrink-0 items-start 2xl:w-auto 2xl:justify-end">{action}</div> : null}
       </div>
     </div>
   );
