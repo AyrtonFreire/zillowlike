@@ -115,7 +115,7 @@ export function ProfileSecuritySection({
           }
         />
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4">
           <SettingRow
             title="Senha"
             value={profile.hasPassword ? "Senha configurada" : "Crie uma senha de acesso"}
