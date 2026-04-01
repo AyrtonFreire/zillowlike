@@ -309,54 +309,53 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     {
       title: "Para compradores",
       items: [
-        { label: "Guia do comprador", href: "/guia/compra", icon: Home, accentClassName: "bg-sky-100 text-sky-700" },
-        { label: "Guia do inquilino", href: "/guia/locacao", icon: Home, accentClassName: "bg-indigo-100 text-indigo-700" },
+        { label: "Guia do comprador", href: "/guia/compra", icon: Home },
+        { label: "Guia do inquilino", href: "/guia/locacao", icon: Home },
       ],
     },
     {
       title: "Para vendedores",
       items: [
-        { label: "Guia do vendedor", href: "/guia/venda", icon: Megaphone, accentClassName: "bg-rose-100 text-rose-700" },
-        { label: "Financiamento imobiliário", href: "/financing", icon: Building2, accentClassName: "bg-violet-100 text-violet-700" },
+        { label: "Guia do vendedor", href: "/guia/venda", icon: Megaphone },
+        { label: "Financiamento imobiliário", href: "/financing", icon: Building2 },
       ],
     },
     {
       title: "Para corretores",
       items: [
-        { label: "Como anunciar", href: "/como-anunciar", icon: HelpCircle, accentClassName: "bg-amber-100 text-amber-700" },
-        { label: "Calculadora de financiamento", href: "/calculadora", icon: LineChart, accentClassName: "bg-emerald-100 text-emerald-700" },
+        { label: "Como anunciar", href: "/como-anunciar", icon: HelpCircle },
+        { label: "Calculadora de financiamento", href: "/calculadora", icon: LineChart },
       ],
     },
   ];
 
   const simpleDropdownRightClass =
-    "absolute top-full right-0 z-[320] mt-3 w-[25rem] max-w-[calc(100vw-32px)] rounded-[28px] border border-gray-200/80 bg-white p-3 shadow-[0_18px_50px_rgba(15,23,42,0.14)] ring-1 ring-black/5";
+    "absolute top-full right-0 z-[320] mt-3 w-[23.5rem] max-w-[calc(100vw-32px)] rounded-[24px] border border-gray-200/90 bg-white/95 p-3 shadow-[0_20px_60px_rgba(15,23,42,0.16)] backdrop-blur-xl";
 
   const renderResourcesMenu = (onNavigate: () => void) => (
-    <div className="space-y-3 px-1 py-1">
+    <div className="space-y-4 px-1 py-1">
       {resourceColumns.map((column, columnIndex) => (
         <div key={column.title}>
-          <div className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">{column.title}</div>
-          <div className="space-y-0">
-            {column.items.map((item, itemIndex) => (
+          <div className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-500">{column.title}</div>
+          <div className="space-y-1">
+            {column.items.map((item) => (
               <div key={item.href}>
                 <Link
                   href={item.href}
                   prefetch={false}
-                  className="group flex items-center gap-3 rounded-[22px] px-3 py-3 transition-colors hover:bg-gray-50"
+                  className="group flex items-center gap-3 rounded-[18px] px-3 py-3 transition-all duration-200 hover:bg-neutral-50"
                   onClick={onNavigate}
                 >
-                  <span className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-transform group-hover:scale-105 ${item.accentClassName}`}>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-700 transition-colors group-hover:border-neutral-300 group-hover:bg-white">
                     <item.icon className="h-[18px] w-[18px]" />
                   </span>
-                  <span className="min-w-0 flex-1 text-[15px] font-semibold text-gray-900">{item.label}</span>
-                  <ChevronRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-400" />
+                  <span className="min-w-0 flex-1 text-[15px] font-medium tracking-[0.01em] text-gray-900">{item.label}</span>
+                  <ChevronRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-500" />
                 </Link>
-                {itemIndex < column.items.length - 1 && <div className="mx-3 h-px bg-gray-100" />}
               </div>
             ))}
           </div>
-          {columnIndex < resourceColumns.length - 1 && <div className="mx-3 mt-3 h-px bg-gray-100" />}
+          {columnIndex < resourceColumns.length - 1 && <div className="mx-3 mt-4 h-px bg-gray-100" />}
         </div>
       ))}
     </div>
@@ -366,7 +365,8 @@ export default function ModernNavbar({ forceLight = false }: ModernNavbarProps =
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/owner") ||
     pathname?.startsWith("/broker") ||
-    pathname?.startsWith("/agency");
+    pathname?.startsWith("/agency") ||
+    pathname?.startsWith("/profile");
 
   const isHome = pathname === "/";
   const mobileVariant = !isDashboardContext && isHome && !forceLight ? "overlay" : "solid";
