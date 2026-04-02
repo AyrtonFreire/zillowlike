@@ -84,14 +84,18 @@ function appendNotes(current: string | null | undefined, nextBlock: string) {
   return merged.slice(0, 5000) || null;
 }
 
-export async function POST(req: NextRequest, context: { params: Promise<{ slug: string }> | { slug: string } }) {
+type RouteContext = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function POST(req: NextRequest, context: RouteContext) {
   try {
     const ip = getIp(req);
     if (!checkRate(ip)) {
       return NextResponse.json({ success: false, error: "Muitas tentativas. Tente novamente em instantes." }, { status: 429 });
     }
 
-    const params = await Promise.resolve(context.params);
+    const params = await context.params;
     const slug = String(params?.slug || "").trim();
     if (!slug) {
       return NextResponse.json({ success: false, error: "Agência inválida." }, { status: 400 });
