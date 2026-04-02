@@ -12,6 +12,17 @@ import PriceRangeSlider from "@/components/PriceRangeSlider";
 import AgencyClientsOnboarding, { resetAgencyClientsOnboarding } from "@/components/onboarding/AgencyClientsOnboarding";
 
 type ClientStatus = "ACTIVE" | "PAUSED";
+type ClientIntent = "BUY" | "RENT" | "LIST" | null;
+type ClientPipelineStage = "NEW" | "CONTACT" | "QUALIFYING" | "MATCHING" | "VISIT" | "NURTURE" | "WON" | "LOST";
+type ClientSlaFilter = "ALL" | "PENDING_REPLY" | "NO_FIRST_CONTACT" | "OVERDUE_NEXT_ACTION" | "UNASSIGNED";
+
+type ClientSla = {
+  level?: "NORMAL" | "ATTENTION" | "CRITICAL";
+  pendingReply?: boolean;
+  missingFirstContact?: boolean;
+  nextActionOverdue?: boolean;
+  needsOwner?: boolean;
+};
 
 type ClientRow = {
   id: string;
@@ -19,9 +30,14 @@ type ClientRow = {
   email: string | null;
   phone: string | null;
   status: ClientStatus;
+  intent: ClientIntent;
+  pipelineStage: ClientPipelineStage;
   notes: string | null;
+  nextActionAt: string | null;
+  assignedTo?: { id: string; name: string | null; email: string | null } | null;
   createdAt: string | null;
   updatedAt: string | null;
+  sla?: ClientSla | null;
   preference: {
     city: string;
     state: string;
@@ -37,6 +53,22 @@ type ApiResponse = {
   page: number;
   pageSize: number;
   total: number;
+  assignableMembers?: Array<{
+    userId: string;
+    name: string | null;
+    email: string | null;
+    queuePosition: number;
+  }>;
+  summary?: {
+    active: number;
+    paused: number;
+    unassigned: number;
+    pendingReply: number;
+    noFirstContact: number;
+    overdueNextAction: number;
+    byStage: Record<string, number>;
+    byIntent: Record<string, number>;
+  };
   error?: string;
 };
 
@@ -108,6 +140,27 @@ function roleFromSession(session: any) {
   return session?.user?.role || session?.role || "USER";
 }
 
+function intentLabel(value: ClientIntent | string | null | undefined) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (normalized === "BUY") return "Compra";
+  if (normalized === "RENT") return "Locação";
+  if (normalized === "LIST") return "Captação";
+  return "Sem intenção";
+}
+
+function stageLabel(value: ClientPipelineStage | string | null | undefined) {
+  const normalized = String(value || "NEW").trim().toUpperCase();
+  if (normalized === "NEW") return "Novo";
+  if (normalized === "CONTACT") return "Contato";
+  if (normalized === "QUALIFYING") return "Qualificação";
+  if (normalized === "MATCHING") return "Matching";
+  if (normalized === "VISIT") return "Visita";
+  if (normalized === "NURTURE") return "Nutrição";
+  if (normalized === "WON") return "Ganho";
+  if (normalized === "LOST") return "Perdido";
+  return "Novo";
+}
+
 export default function AgencyClientsPage() {
   const { data: session, status } = useSession();
 
@@ -127,15 +180,47 @@ export default function AgencyClientsPage() {
   const [page, setPage] = useState<number>(1);
   const [pageSize] = useState<number>(24);
   const [total, setTotal] = useState<number>(0);
+  const [assignableMembers, setAssignableMembers] = useState<ApiResponse["assignableMembers"]>([]);
+  const [summary, setSummary] = useState<NonNullable<ApiResponse["summary"]>>({
+    active: 0,
+    paused: 0,
+    unassigned: 0,
+    pendingReply: 0,
+    noFirstContact: 0,
+    overdueNextAction: 0,
+    byStage: {},
+    byIntent: {},
+  });
 
-  const [qDraft, setQDraft] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<ClientStatus | "ALL">("ALL");
+  const [qDraft, setQDraft] = useState<string>(() => String(searchParams.get("q") || ""));
+  const [statusFilter, setStatusFilter] = useState<ClientStatus | "ALL">(() => {
+    const value = String(searchParams.get("status") || "ALL").trim().toUpperCase();
+    return value === "ACTIVE" || value === "PAUSED" ? (value as ClientStatus) : "ALL";
+  });
+  const [pipelineStageFilter, setPipelineStageFilter] = useState<ClientPipelineStage | "ALL">(() => {
+    const value = String(searchParams.get("pipelineStage") || "ALL").trim().toUpperCase();
+    return ["NEW", "CONTACT", "QUALIFYING", "MATCHING", "VISIT", "NURTURE", "WON", "LOST"].includes(value)
+      ? (value as ClientPipelineStage)
+      : "ALL";
+  });
+  const [intentFilter, setIntentFilter] = useState<ClientIntent | "ALL">(() => {
+    const value = String(searchParams.get("intent") || "ALL").trim().toUpperCase();
+    return value === "BUY" || value === "RENT" || value === "LIST" ? (value as ClientIntent) : "ALL";
+  });
+  const [assignedUserIdFilter, setAssignedUserIdFilter] = useState<string>(() => String(searchParams.get("assignedUserId") || ""));
+  const [slaFilter, setSlaFilter] = useState<ClientSlaFilter>(() => {
+    const value = String(searchParams.get("sla") || "ALL").trim().toUpperCase();
+    return ["PENDING_REPLY", "NO_FIRST_CONTACT", "OVERDUE_NEXT_ACTION", "UNASSIGNED"].includes(value)
+      ? (value as ClientSlaFilter)
+      : "ALL";
+  });
 
   const [creating, setCreating] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
   const [createEmail, setCreateEmail] = useState("");
   const [createPhone, setCreatePhone] = useState("");
+  const [createIntent, setCreateIntent] = useState<"BUY" | "RENT" | "LIST" | "">("");
   const [createNotes, setCreateNotes] = useState("");
   const [prefCity, setPrefCity] = useState("");
   const [prefState, setPrefState] = useState("");
@@ -315,6 +400,10 @@ export default function AgencyClientsPage() {
       qs.set("pageSize", String(pageSize));
       if (qDraft.trim()) qs.set("q", qDraft.trim());
       if (statusFilter !== "ALL") qs.set("status", statusFilter);
+      if (pipelineStageFilter !== "ALL") qs.set("pipelineStage", pipelineStageFilter);
+      if (intentFilter !== "ALL") qs.set("intent", String(intentFilter));
+      if (assignedUserIdFilter) qs.set("assignedUserId", assignedUserIdFilter);
+      if (slaFilter !== "ALL") qs.set("sla", slaFilter);
 
       const res = await fetch(`/api/agency/clients?${qs.toString()}`, { cache: "no-store" });
       const json = (await res.json().catch(() => null)) as ApiResponse | null;
@@ -325,11 +414,33 @@ export default function AgencyClientsPage() {
 
       setTeamName(json.team?.name ? `Clientes — ${json.team.name}` : "Clientes");
       setClients(Array.isArray(json.clients) ? json.clients : []);
+      setAssignableMembers(Array.isArray(json.assignableMembers) ? json.assignableMembers : []);
+      setSummary(json.summary || {
+        active: 0,
+        paused: 0,
+        unassigned: 0,
+        pendingReply: 0,
+        noFirstContact: 0,
+        overdueNextAction: 0,
+        byStage: {},
+        byIntent: {},
+      });
       setTotal(typeof json.total === "number" ? json.total : 0);
       setPage(typeof json.page === "number" ? json.page : p);
     } catch (e: any) {
       setError(e?.message || "Não conseguimos carregar os clientes agora.");
       setClients([]);
+      setAssignableMembers([]);
+      setSummary({
+        active: 0,
+        paused: 0,
+        unassigned: 0,
+        pendingReply: 0,
+        noFirstContact: 0,
+        overdueNextAction: 0,
+        byStage: {},
+        byIntent: {},
+      });
       setTotal(0);
     } finally {
       setLoading(false);
@@ -396,7 +507,7 @@ export default function AgencyClientsPage() {
     }, 350);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qDraft, statusFilter]);
+  }, [qDraft, statusFilter, pipelineStageFilter, intentFilter, assignedUserIdFilter, slaFilter]);
 
   const totalPages = useMemo(() => {
     const safeTotal = Math.max(0, total);
@@ -409,16 +520,11 @@ export default function AgencyClientsPage() {
     return { start, end };
   }, [page, pageSize, total]);
 
-  const statusCounts = useMemo(() => {
-    const active = clients.filter((c) => c.status === "ACTIVE").length;
-    const paused = clients.filter((c) => c.status === "PAUSED").length;
-    return { active, paused };
-  }, [clients]);
-
   const resetCreate = () => {
     setCreateName("");
     setCreateEmail("");
     setCreatePhone("");
+    setCreateIntent("");
     setCreateNotes("");
     setPrefCity("");
     setPrefState("");
@@ -565,6 +671,7 @@ export default function AgencyClientsPage() {
       const payload: any = { name };
       if (createEmail.trim()) payload.email = createEmail.trim();
       if (createPhone.trim()) payload.phone = createPhone.trim();
+      if (createIntent) payload.intent = createIntent;
       if (createNotes.trim()) payload.notes = createNotes.trim();
 
       const res = await fetch("/api/agency/clients", {
@@ -739,8 +846,8 @@ export default function AgencyClientsPage() {
         className="rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft"
         data-onboarding="agency-clients-filters"
       >
-        <div className="flex flex-col lg:flex-row lg:items-end gap-3">
-          <div className="flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+          <div className="xl:col-span-2">
             <label className="block text-xs font-semibold text-gray-700 mb-1">Buscar</label>
             <div className="relative">
               <input
@@ -775,13 +882,82 @@ export default function AgencyClientsPage() {
             </select>
           </div>
 
+          <div className="w-full lg:w-56">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Etapa</label>
+            <select
+              value={pipelineStageFilter}
+              onChange={(e) => setPipelineStageFilter(e.target.value as ClientPipelineStage | "ALL")}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+            >
+              <option value="ALL">Todas</option>
+              <option value="NEW">Novo</option>
+              <option value="CONTACT">Contato</option>
+              <option value="QUALIFYING">Qualificação</option>
+              <option value="MATCHING">Matching</option>
+              <option value="VISIT">Visita</option>
+              <option value="NURTURE">Nutrição</option>
+              <option value="WON">Ganho</option>
+              <option value="LOST">Perdido</option>
+            </select>
+          </div>
+
+          <div className="w-full lg:w-56">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Intenção</label>
+            <select
+              value={intentFilter || "ALL"}
+              onChange={(e) => setIntentFilter(e.target.value === "ALL" ? "ALL" : (e.target.value as ClientIntent))}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+            >
+              <option value="ALL">Todas</option>
+              <option value="BUY">Compra</option>
+              <option value="RENT">Locação</option>
+              <option value="LIST">Captação</option>
+            </select>
+          </div>
+
+          <div className="w-full lg:w-56">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Responsável</label>
+            <select
+              value={assignedUserIdFilter}
+              onChange={(e) => setAssignedUserIdFilter(String(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+            >
+              <option value="">Todos</option>
+              <option value="UNASSIGNED">Sem responsável</option>
+              {(assignableMembers || []).map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.name || member.email || member.userId}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-full lg:w-56">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">SLA</label>
+            <select
+              value={slaFilter}
+              onChange={(e) => setSlaFilter(e.target.value as ClientSlaFilter)}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+            >
+              <option value="ALL">Todos</option>
+              <option value="PENDING_REPLY">Aguardando retorno</option>
+              <option value="NO_FIRST_CONTACT">Sem primeiro contato</option>
+              <option value="OVERDUE_NEXT_ACTION">Próxima ação vencida</option>
+              <option value="UNASSIGNED">Sem responsável</option>
+            </select>
+          </div>
+
           <button
             type="button"
             onClick={() => {
               setQDraft("");
               setStatusFilter("ALL");
+              setPipelineStageFilter("ALL");
+              setIntentFilter("ALL");
+              setAssignedUserIdFilter("");
+              setSlaFilter("ALL");
             }}
-            disabled={!qDraft && statusFilter === "ALL"}
+            disabled={!qDraft && statusFilter === "ALL" && pipelineStageFilter === "ALL" && intentFilter === "ALL" && !assignedUserIdFilter && slaFilter === "ALL"}
             className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm font-semibold text-gray-700 hover:bg-white disabled:opacity-60"
           >
             Limpar
@@ -789,7 +965,7 @@ export default function AgencyClientsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" data-onboarding="agency-clients-metrics">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3" data-onboarding="agency-clients-metrics">
         <div className="rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
           <div className="text-[11px] font-semibold text-gray-500">Clientes</div>
           <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{total}</div>
@@ -797,13 +973,28 @@ export default function AgencyClientsPage() {
         </div>
         <div className="rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
           <div className="text-[11px] font-semibold text-gray-500">Ativos</div>
-          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{statusCounts.active}</div>
-          <div className="mt-1 text-xs text-gray-500">Na página atual</div>
+          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{summary.active}</div>
+          <div className="mt-1 text-xs text-gray-500">Operacionais</div>
         </div>
         <div className="rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
-          <div className="text-[11px] font-semibold text-gray-500">Pausados</div>
-          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{statusCounts.paused}</div>
-          <div className="mt-1 text-xs text-gray-500">Na página atual</div>
+          <div className="text-[11px] font-semibold text-gray-500">Pendentes</div>
+          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{summary.pendingReply}</div>
+          <div className="mt-1 text-xs text-gray-500">Inbound sem retorno</div>
+        </div>
+        <div className="rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
+          <div className="text-[11px] font-semibold text-gray-500">Sem responsável</div>
+          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{summary.unassigned}</div>
+          <div className="mt-1 text-xs text-gray-500">Distribuir no time</div>
+        </div>
+        <div className="rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
+          <div className="text-[11px] font-semibold text-gray-500">Sem 1º contato</div>
+          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{summary.noFirstContact}</div>
+          <div className="mt-1 text-xs text-gray-500">SLA inicial</div>
+        </div>
+        <div className="rounded-3xl border border-gray-200/70 bg-white/70 backdrop-blur p-4 shadow-soft">
+          <div className="text-[11px] font-semibold text-gray-500">Ações vencidas</div>
+          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">{summary.overdueNextAction}</div>
+          <div className="mt-1 text-xs text-gray-500">Próximo passo atrasado</div>
         </div>
       </div>
 
@@ -944,6 +1135,39 @@ export default function AgencyClientsPage() {
                       </div>
                     </div>
 
+                    <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold">
+                      <span className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700">
+                        {stageLabel(c.pipelineStage)}
+                      </span>
+                      <span className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-blue-700">
+                        {intentLabel(c.intent)}
+                      </span>
+                      {c.assignedTo ? (
+                        <span className="inline-flex items-center rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-violet-700">
+                          {c.assignedTo.name || c.assignedTo.email || "Responsável"}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-amber-700">
+                          Sem responsável
+                        </span>
+                      )}
+                      {c.sla?.pendingReply ? (
+                        <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">
+                          Aguardando retorno
+                        </span>
+                      ) : null}
+                      {c.sla?.missingFirstContact ? (
+                        <span className="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-red-700">
+                          Sem 1º contato
+                        </span>
+                      ) : null}
+                      {c.sla?.nextActionOverdue ? (
+                        <span className="inline-flex items-center rounded-lg border border-orange-200 bg-orange-50 px-2 py-1 text-orange-700">
+                          Ação vencida
+                        </span>
+                      ) : null}
+                    </div>
+
                     {c.notes ? <div className="mt-3 text-xs text-gray-500 line-clamp-2">{c.notes}</div> : null}
                   </button>
                 ))}
@@ -1002,6 +1226,21 @@ export default function AgencyClientsPage() {
                   placeholder="(11) 99999-9999"
                   autoComplete="tel"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Intenção operacional</label>
+                <select
+                  value={createIntent}
+                  onChange={(e) => setCreateIntent(e.target.value as any)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200/70 bg-white/80 text-sm"
+                >
+                  <option value="">Definir depois</option>
+                  <option value="BUY">Compra</option>
+                  <option value="RENT">Locação</option>
+                  <option value="LIST">Captação</option>
+                </select>
+                <p className="mt-1 text-[11px] text-gray-500">Usamos essa intenção para sugerir responsável e aplicar o playbook da agência.</p>
               </div>
 
               <div>

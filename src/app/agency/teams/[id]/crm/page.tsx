@@ -66,6 +66,13 @@ type AgencyInsightsResponse = {
     unassigned: number;
     byStage: Record<string, number>;
   };
+  clients?: {
+    activeTotal: number;
+    newLast24h: number;
+    unassigned: number;
+    byStage: Record<string, number>;
+    byIntent: Record<string, number>;
+  };
   sla?: {
     pendingReplyTotal: number;
     pendingReplyLeads: Array<{
@@ -77,6 +84,18 @@ type AgencyInsightsResponse = {
       pipelineStage: string | null;
       lastClientAt: string;
     }>;
+    clientPendingReplyTotal: number;
+    pendingReplyClients: Array<{
+      clientId: string;
+      name: string | null;
+      pipelineStage: string | null;
+      assignedUserId: string | null;
+      assignedUserName: string | null;
+      lastInboundAt: string;
+      lastInboundChannel: string | null;
+    }>;
+    clientNoFirstContact: number;
+    clientOverdueNextAction: number;
   };
 };
 
@@ -401,7 +420,7 @@ export default function AgencyTeamCrmPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
         <div className="rounded-2xl border border-gray-200 bg-white p-4">
           <div className="text-[11px] font-semibold text-gray-500">Leads ativos</div>
           <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">
@@ -424,6 +443,18 @@ export default function AgencyTeamCrmPage() {
           <div className="text-[11px] font-semibold text-gray-500">Pendentes (SLA)</div>
           <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">
             {insights?.sla?.pendingReplyTotal ?? "-"}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+          <div className="text-[11px] font-semibold text-gray-500">Clientes ativos</div>
+          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">
+            {insights?.clients?.activeTotal ?? "-"}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+          <div className="text-[11px] font-semibold text-gray-500">Clientes pendentes</div>
+          <div className="mt-1 text-lg font-semibold text-gray-900 tabular-nums">
+            {insights?.sla?.clientPendingReplyTotal ?? "-"}
           </div>
         </div>
       </div>

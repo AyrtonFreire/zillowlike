@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { errorResponse, successResponse, withErrorHandling } from "@/lib/api-response";
 import { withRateLimit } from "@/lib/rate-limiter";
+import { buildAssistantChatToolContext, persistAssistantChatMemory } from "@/lib/realtor-assistant-chat";
 
 export const runtime = "nodejs";
 
@@ -223,10 +224,39 @@ function buildLeadAccessWhere(userId: string): Prisma.LeadWhereInput {
   };
 }
 
+async function getAccessibleTeamIds(userId: string): Promise<string[]> {
+  const [owned, member] = await Promise.all([
+    (prisma as any).team.findMany({
+      where: { ownerId: String(userId) },
+      select: { id: true },
+    }),
+    (prisma as any).teamMember.findMany({
+      where: { userId: String(userId) },
+      select: { teamId: true },
+    }),
+  ]);
+
+  return Array.from(
+    new Set(
+      [...(Array.isArray(owned) ? owned : []), ...(Array.isArray(member) ? member : [])]
+        .map((row: any) => String(row?.id || row?.teamId || "").trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function buildAccessiblePropertyWhere(userId: string, teamIds: string[]): Prisma.PropertyWhereInput {
+  const orWhere: Prisma.PropertyWhereInput[] = [{ ownerId: String(userId) }, { capturerRealtorId: String(userId) }];
+  if (Array.isArray(teamIds) && teamIds.length > 0) {
+    orWhere.push({ teamId: { in: teamIds } });
+  }
+  return { OR: orWhere };
+}
+
 async function deleteHandler(req: NextRequest) {
-  const { userId, role, email } = await getSessionContext();
+  const { userId, role } = await getSessionContext();
   if (!userId) return errorResponse("Não autenticado", 401);
-  if (role !== "ADMIN" && role !== "REALTOR") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
+  if (role !== "ADMIN" && role !== "REALTOR" && role !== "AGENCY") return errorResponse("Acesso negado", 403, null, "FORBIDDEN");
 
   const url = new URL(req.url);
   const queryParsed = QuerySchema.safeParse({ leadId: url.searchParams.get("leadId") || undefined });
@@ -285,12 +315,6 @@ function tryAnswerDeterministic(input: {
   const asksList =
     /\bquais\b/.test(q) || /\blistar\b/.test(q) || /\bmostre\b/.test(q) || /\bme mostre\b/.test(q);
 
-  const asksPendingReply =
-    /aguardando( uma)? resposta/.test(q) ||
-    /pendente(s)? de resposta/.test(q) ||
-    /pendentes resposta/.test(q) ||
-    /ultima msg( do)? cliente/.test(q);
-
   const asksInAttendance = /em atendimento/.test(q) || /em andamento/.test(q) || /atendimento/.test(q);
   const asksActive = /leads ativos/.test(q) || (/leads/.test(q) && /ativos/.test(q));
 
@@ -303,48 +327,13 @@ function tryAnswerDeterministic(input: {
     (/imoveis/.test(q) && /conversao/.test(q) && /baixa/.test(q));
   const asksNoLeadsProps = /imoveis/.test(q) && (/sem leads/.test(q) || /zero leads/.test(q) || /0 leads/.test(q));
   const asksStaleProps = /imoveis/.test(q) && (/parados/.test(q) || /sem lead ha/.test(q) || /sem leads ha/.test(q));
-
   const asksProperties = /\bimovel\b|\bimoveis\b/.test(q);
   const asksPropertiesActive = asksProperties && (/\bativos\b/.test(q) || /\bativo\b/.test(q));
   const asksPropertiesTotal = asksProperties && (/\btotal\b/.test(q) || /\bno total\b/.test(q) || /\btenho\b/.test(q));
 
-  const asksAgenda = /\bagenda\b|\bvisita\b|\bvisitas\b|\bcompromisso\b|\bcompromissos\b/.test(q);
-  const asksFollowUp =
-    /\bfollow\s*-?up\b/.test(q) ||
-    /\bproxima acao\b/.test(q) ||
-    /\bproximas acoes\b/.test(q) ||
-    /\bretornar\b/.test(q) ||
-    /\blembrete\b/.test(q) ||
-    /\blembretes\b/.test(q);
-
-  const asksToday = /\bhoje\b/.test(q);
-  const asksTomorrow = /\bamanha\b/.test(q);
-  const asksThisWeek = /\bessa semana\b|\besta semana\b/.test(q);
-  const asksDailyPriorities =
-    /\bprioridad/.test(q) ||
-    /\bo que (eu )?faco\b/.test(q) ||
-    /\bo que devo fazer\b/.test(q) ||
-    /\bmeu foco\b/.test(q);
-
   const asksAssistantUpcoming =
     /\blembrete\b|\blembretes\b|\bpendencia\b|\bpendencias\b|\btarefa\b|\btarefas\b/.test(q) &&
     (/\bproxim/.test(q) || /\bvenc/.test(q) || /\bagenda\b/.test(q) || asksList || asksHowMany);
-
-  const makePropertyChecklist = () => [
-    "Revisar título e 1ª foto (mais chamativa)",
-    "Conferir preço vs concorrentes (ajuste fino)",
-    "Melhorar descrição com diferenciais e condições",
-    "Adicionar/atualizar fotos (mín. 10; boa iluminação)",
-    "Confirmar status e disponibilidade (evitar fricção)",
-  ];
-
-  const makePropertyAction = (propertyId: string, title: string, impact: string) => ({
-    type: "PROPERTY_DIAGNOSIS" as const,
-    title,
-    impact,
-    requiresConfirmation: true,
-    payload: { propertyId, checklist: makePropertyChecklist().slice(0, 5) },
-  });
 
   if (asksAssistantUpcoming) {
     const list = Array.isArray(upcomingAssistantItems) ? upcomingAssistantItems.slice() : [];
@@ -504,11 +493,29 @@ const ActionSchema = z
   })
   .strict();
 
+const PropertyCardSchema = z
+  .object({
+    id: z.string().min(1).max(80),
+    title: z.string().min(1).max(160),
+    status: z.string().min(1).max(40),
+    neighborhood: z.string().min(1).max(120).nullable().optional(),
+    city: z.string().min(1).max(120),
+    state: z.string().min(1).max(120),
+    views: z.number().int().nonnegative().optional(),
+    leads: z.number().int().nonnegative().optional(),
+    conversionRatePct: z.number().nullable().optional(),
+    daysSinceLastLead: z.number().int().nullable().optional(),
+    matchScore: z.number().int().nullable().optional(),
+    reasons: z.array(z.string().min(1).max(120)).max(6).optional(),
+  })
+  .strict();
+
 const OutputSchema = z
   .object({
     answer: z.string().min(1).max(1200),
     highlights: z.array(z.string().min(1).max(140)).max(6).optional(),
     suggestedActions: z.array(ActionSchema).max(1).optional(),
+    properties: z.array(PropertyCardSchema).max(6).optional(),
   })
   .strict();
 
@@ -576,6 +583,36 @@ function sanitizeText(raw: string, max: number) {
   return limited.length ? limited : clampText(normalizeWhitespace(stripEmojis(base)), max);
 }
 
+function mapPropertyForAssistantResponse(p: {
+  id: string;
+  title: string;
+  status: string;
+  neighborhood?: string | null;
+  city: string;
+  state: string;
+  views?: number;
+  leads?: number;
+  conversionRatePct?: number | null;
+  daysSinceLastLead?: number | null;
+  matchScore?: number | null;
+  reasons?: string[];
+}) {
+  return {
+    id: String(p.id),
+    title: String(p.title),
+    status: String(p.status),
+    neighborhood: p.neighborhood ?? null,
+    city: String(p.city),
+    state: String(p.state),
+    views: p.views != null ? Number(p.views) : undefined,
+    leads: p.leads != null ? Number(p.leads) : undefined,
+    conversionRatePct: p.conversionRatePct != null ? Number(p.conversionRatePct) : undefined,
+    daysSinceLastLead: p.daysSinceLastLead != null ? Number(p.daysSinceLastLead) : undefined,
+    matchScore: p.matchScore != null ? Number(p.matchScore) : undefined,
+    reasons: Array.isArray(p.reasons) ? p.reasons.map((r) => sanitizeText(String(r || ""), 120)).filter(Boolean).slice(0, 6) : undefined,
+  };
+}
+
 function extractJsonObject(text: string): any | null {
   try {
     return JSON.parse(text);
@@ -626,6 +663,7 @@ function buildSystemPrompt(leadMode: boolean) {
     "- Nunca chute números. Só informe contagens (ex: leads pendentes / em atendimento) quando o contexto trouxer as métricas.\n" +
     "- Nunca use conhecimento externo para afirmar fatos sobre os dados do corretor. Use SOMENTE o que estiver no contexto fornecido.\n" +
     "- Se a pergunta exigir dados que não estão no contexto, responda que você não tem essa informação no momento (não aparece no contexto disponível) e indique qual tela do sistema o corretor pode abrir para ver isso.\n" +
+    "- Quando houver contexto expandido com memória, clientes, retrieval ou matching, priorize esse contexto e cite IDs reais sem inventar valores.\n" +
     "- Seja direto e objetivo.\n" +
     "- Sem emojis, sem links, sem telefone.\n" +
     "- Se sugerir uma ação operacional, ela DEVE exigir confirmação explícita (requiresConfirmation=true).\n" +
@@ -633,7 +671,7 @@ function buildSystemPrompt(leadMode: boolean) {
     "- Se você incluir suggestedActions, finalize a resposta perguntando se o corretor quer executar a ação sugerida.\n" +
     "\n" +
     "Responda SOMENTE com JSON válido, sem markdown.\n" +
-    "Formato: { answer: string, highlights?: string[], suggestedActions?: { type, title, impact, requiresConfirmation, payload }[] }\n" +
+    "Formato: { answer: string, highlights?: string[], suggestedActions?: { type, title, impact, requiresConfirmation, payload }[], properties?: { id, title, status, neighborhood?, city, state, views?, leads?, conversionRatePct?, daysSinceLastLead?, matchScore?, reasons? }[] }\n" +
     "\n" +
     "Se você sugerir ações, use payloads estruturados assim:\n" +
     "- DRAFT_MESSAGE: payload = { leadId: string, content: string } (rascunho para o cliente; não enviar)\n" +
@@ -654,6 +692,7 @@ function buildUserPrompt(input: {
   propertiesSummary?: PropertySummary[];
   leadMetrics?: LeadMetrics | null;
   propertyMetrics?: PropertyMetrics | null;
+  toolContextSummary?: string | null;
 }) {
   const out: string[] = [];
   out.push("Pedido do corretor:");
@@ -710,7 +749,7 @@ function buildUserPrompt(input: {
     out.push(`- Conversas aguardando sua resposta (última msg do cliente): ${m.pendingReplyTotal}`);
     const stages = Object.entries(m.byStage)
       .filter(([, v]) => (Number(v) || 0) > 0)
-      .sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0))
+      .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([k, v]) => `${k}:${v}`)
       .join(", ");
@@ -726,6 +765,11 @@ function buildUserPrompt(input: {
     }
   }
 
+  if (input.toolContextSummary) {
+    out.push("\nContexto expandido do assistente (memória, roteamento, retrieval, clientes e matching):");
+    out.push(input.toolContextSummary);
+  }
+
   out.push("\nInstrução:");
   out.push(
     "Responda com diagnóstico curto, sugestão prática e próximo passo acionável.\n" +
@@ -734,13 +778,11 @@ function buildUserPrompt(input: {
   return out.join("\n");
 }
 
-async function getPropertiesSummaryForUser(userId: string): Promise<PropertySummary[]> {
+async function getPropertiesSummaryForUser(userId: string, teamIds: string[] = []): Promise<PropertySummary[]> {
   const now = new Date();
 
   const properties = await prisma.property.findMany({
-    where: {
-      ownerId: String(userId),
-    },
+    where: buildAccessiblePropertyWhere(userId, teamIds),
     select: {
       id: true,
       title: true,
@@ -815,12 +857,12 @@ async function getPropertiesSummaryForUser(userId: string): Promise<PropertySumm
   return summaries.slice(0, 12);
 }
 
-async function getPropertyMetricsForUser(userId: string): Promise<PropertyMetrics> {
+async function getPropertyMetricsForUser(userId: string, teamIds: string[] = []): Promise<PropertyMetrics> {
   let rows: Array<{ status: any; _count: { _all: number } }> = [];
   try {
     rows = (await (prisma.property as any).groupBy({
       by: ["status"],
-      where: { ownerId: String(userId) },
+      where: buildAccessiblePropertyWhere(userId, teamIds),
       _count: { _all: true },
     })) as Array<{ status: any; _count: { _all: number } }>;
   } catch (e) {
@@ -1044,6 +1086,7 @@ function parseAi(content: string, params?: { leadId?: string | null; allowedProp
         ? salvage.data.highlights.map((h) => sanitizeText(h, 140)).filter(Boolean).slice(0, 6)
         : undefined,
       suggestedActions: undefined,
+      properties: undefined,
     };
   }
 
@@ -1112,6 +1155,36 @@ function parseAi(content: string, params?: { leadId?: string | null; allowedProp
           .filter(Boolean)
           .slice(0, 1)
       : undefined,
+    properties: parsed.data.properties
+      ? parsed.data.properties
+          .map((p) => {
+            const pid = String(p.id || "").trim();
+            if (pid && allowedPropertyIds.size > 0 && !allowedPropertyIds.has(pid)) {
+              return null;
+            }
+            return {
+              id: pid,
+              title: sanitizeText(p.title, 160),
+              status: sanitizeText(p.status, 40),
+              neighborhood: p.neighborhood ? sanitizeText(p.neighborhood, 120) : null,
+              city: sanitizeText(p.city, 120),
+              state: sanitizeText(p.state, 120),
+              views: p.views != null ? Number(p.views) : undefined,
+              leads: p.leads != null ? Number(p.leads) : undefined,
+              conversionRatePct: p.conversionRatePct != null ? Number(p.conversionRatePct) : undefined,
+              daysSinceLastLead: p.daysSinceLastLead != null ? Number(p.daysSinceLastLead) : undefined,
+              matchScore: p.matchScore != null ? Number(p.matchScore) : undefined,
+              reasons: p.reasons
+                ? p.reasons
+                    .map((r: any) => sanitizeText(String(r || ""), 120))
+                    .filter(Boolean)
+                    .slice(0, 6)
+                : undefined,
+            };
+          })
+          .filter((p): p is NonNullable<typeof p> => Boolean(p))
+          .slice(0, 6)
+      : undefined,
   };
 
   return safe;
@@ -1175,6 +1248,15 @@ async function postHandler(req: NextRequest) {
   let upcomingAssistantItems: AssistantUpcomingItem[] = [];
   let upcomingLeadActions: UpcomingLeadActionItem[] = [];
   let upcomingVisits: UpcomingVisitItem[] = [];
+  let assistantTeamIds: string[] = [];
+  let assistantTeamId: string | null = null;
+
+  try {
+    assistantTeamIds = await getAccessibleTeamIds(String(userId));
+  } catch (e) {
+    console.error("assistant/chat: failed to resolve accessible teams", e);
+    assistantTeamIds = [];
+  }
 
   if (leadId) {
     lead = await (prisma as any).lead.findUnique({
@@ -1214,11 +1296,13 @@ async function postHandler(req: NextRequest) {
     if (lead?.property?.id) {
       allowedPropertyIds = [String(lead.property.id)];
     }
+
+    assistantTeamId = lead?.teamId ? String(lead.teamId) : role === "AGENCY" ? assistantTeamIds[0] || null : null;
   }
 
   if (!leadId) {
     try {
-      propertiesSummary = await getPropertiesSummaryForUser(String(userId));
+      propertiesSummary = await getPropertiesSummaryForUser(String(userId), assistantTeamIds);
       allowedPropertyIds = propertiesSummary.map((p) => p.id);
     } catch (e) {
       console.error("assistant/chat: failed to load properties summary", e);
@@ -1226,7 +1310,7 @@ async function postHandler(req: NextRequest) {
     }
 
     try {
-      propertyMetrics = await getPropertyMetricsForUser(String(userId));
+      propertyMetrics = await getPropertyMetricsForUser(String(userId), assistantTeamIds);
     } catch (e) {
       console.error("assistant/chat: failed to load property metrics", e);
       propertyMetrics = null;
@@ -1241,13 +1325,22 @@ async function postHandler(req: NextRequest) {
 
     try {
       const now = new Date();
+      const assistantWhere =
+        role === "AGENCY"
+          ? {
+              context: "AGENCY",
+              teamId: assistantTeamId || assistantTeamIds[0] || "__missing__",
+              status: { in: ["ACTIVE", "SNOOZED"] },
+              OR: [{ dueAt: { not: null } }, { snoozedUntil: { not: null } }],
+            }
+          : {
+              context: "REALTOR",
+              ownerId: String(userId),
+              status: { in: ["ACTIVE", "SNOOZED"] },
+              OR: [{ dueAt: { not: null } }, { snoozedUntil: { not: null } }],
+            };
       const rows = await (prisma as any).assistantItem.findMany({
-        where: {
-          context: "REALTOR",
-          ownerId: String(userId),
-          status: { in: ["ACTIVE", "SNOOZED"] },
-          OR: [{ dueAt: { not: null } }, { snoozedUntil: { not: null } }],
-        },
+        where: assistantWhere,
         select: {
           id: true,
           title: true,
@@ -1417,6 +1510,35 @@ async function postHandler(req: NextRequest) {
     },
   });
 
+  const threadHistoryRows = await (prisma as any).realtorAssistantChatMessage.findMany({
+    where: {
+      threadId: thread.id,
+      role: { in: ["USER", "ASSISTANT"] },
+    },
+    orderBy: { createdAt: "asc" },
+    take: 20,
+  });
+
+  const threadHistory = (Array.isArray(threadHistoryRows) ? threadHistoryRows : []).map((msg: any) => ({
+    role: (String(msg.role || "USER") === "ASSISTANT" ? "ASSISTANT" : "USER") as "USER" | "ASSISTANT",
+    content: String(msg.content || ""),
+    createdAt: String(msg.createdAt || new Date().toISOString()),
+  }));
+
+  const toolContext = await buildAssistantChatToolContext({
+    threadId: thread.id,
+    userId: String(userId),
+    role: role || null,
+    teamId: assistantTeamId,
+    leadId: leadId ? String(leadId) : null,
+    lead,
+    userMessage: parsedBody.data.content.trim(),
+    threadHistory,
+    leadMetrics,
+    propertyMetrics,
+    propertiesSummary,
+  });
+
   const deterministic = !leadId
     ? tryAnswerDeterministic({
         message: parsedBody.data.content.trim(),
@@ -1429,6 +1551,9 @@ async function postHandler(req: NextRequest) {
       })
     : null;
   if (deterministic) {
+    if (!Array.isArray((deterministic as any).properties) && Array.isArray(toolContext.properties) && toolContext.properties.length > 0) {
+      (deterministic as any).properties = toolContext.properties.slice(0, 4).map(mapPropertyForAssistantResponse);
+    }
     const assistantMessage = await (prisma as any).realtorAssistantChatMessage.create({
       data: {
         threadId: thread.id,
@@ -1436,6 +1561,15 @@ async function postHandler(req: NextRequest) {
         content: deterministic.answer,
         data: deterministic,
       },
+    });
+
+    await persistAssistantChatMemory({
+      threadId: thread.id,
+      previousMemory: toolContext.memory,
+      toolContext,
+      userMessage: parsedBody.data.content.trim(),
+      assistantAnswer: deterministic.answer,
+      leadId: leadId ? String(leadId) : null,
     });
 
     return successResponse({ threadId: thread.id, messages: [userMessage, assistantMessage] });
@@ -1449,10 +1583,11 @@ async function postHandler(req: NextRequest) {
     propertiesSummary,
     leadMetrics,
     propertyMetrics,
+    toolContextSummary: toolContext.toolSummary,
   });
 
   const effectiveContext = role === "AGENCY" ? "AGENCY" : "REALTOR";
-  const effectiveTeamId = role === "AGENCY" ? String(lead?.teamId || "") || null : null;
+  const effectiveTeamId = role === "AGENCY" ? assistantTeamId || assistantTeamIds[0] || null : null;
   if (role === "AGENCY" && !effectiveTeamId) {
     return errorResponse("Não foi possível identificar o time da agência.", 400, null, "TEAM_ID_MISSING");
   }
@@ -1478,6 +1613,7 @@ async function postHandler(req: NextRequest) {
             context: effectiveContext,
             teamId: effectiveContext === "AGENCY" ? effectiveTeamId : null,
             leadId: leadId ? String(leadId) : null,
+            intent: toolContext.intent,
           },
         },
       });
@@ -1503,6 +1639,10 @@ async function postHandler(req: NextRequest) {
     );
   }
 
+  if ((!Array.isArray(parsedAi.properties) || parsedAi.properties.length === 0) && Array.isArray(toolContext.properties) && toolContext.properties.length > 0) {
+    parsedAi.properties = toolContext.properties.slice(0, 4).map(mapPropertyForAssistantResponse);
+  }
+
   if (!Array.isArray(parsedAi.suggestedActions) || parsedAi.suggestedActions.length === 0) {
     parsedAi.suggestedActions = buildFallbackSuggestedActions({
       message: parsedBody.data.content.trim(),
@@ -1517,6 +1657,15 @@ async function postHandler(req: NextRequest) {
       content: parsedAi.answer,
       data: parsedAi,
     },
+  });
+
+  await persistAssistantChatMemory({
+    threadId: thread.id,
+    previousMemory: toolContext.memory,
+    toolContext,
+    userMessage: parsedBody.data.content.trim(),
+    assistantAnswer: parsedAi.answer,
+    leadId: leadId ? String(leadId) : null,
   });
 
   return successResponse({ threadId: thread.id, messages: [userMessage, assistantMessage] });

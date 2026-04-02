@@ -12,18 +12,20 @@ import {
   X,
 } from "lucide-react";
 import { getPusherClient } from "@/lib/pusher-client";
-import { ptBR } from "@/lib/i18n/property";
+import { getRealtorAssistantTaskLabel } from "@/lib/realtor-assistant-ai";
 
 type AssistantAction = {
   type: string;
   url?: string;
   leadId?: string;
+  clientId?: string;
   [key: string]: any;
 };
 
 type AssistantItem = {
   id: string;
   leadId?: string | null;
+  clientId?: string | null;
   type: string;
   priority: "LOW" | "MEDIUM" | "HIGH";
   status: "ACTIVE" | "SNOOZED" | "RESOLVED" | "DISMISSED";
@@ -37,6 +39,20 @@ type AssistantItem = {
   secondaryAction?: AssistantAction | null;
   createdAt: string;
   updatedAt: string;
+  impactScore?: number;
+  client?: {
+    id: string;
+    name: string | null;
+    intent: string | null;
+    pipelineStage: string | null;
+    assignedTo?: { id: string; name: string | null; email: string | null } | null;
+    sla?: {
+      pendingReply?: boolean;
+      missingFirstContact?: boolean;
+      nextActionOverdue?: boolean;
+      needsOwner?: boolean;
+    } | null;
+  } | null;
 };
 
 type AiAssistResult = {
@@ -79,7 +95,7 @@ export function AgencyAssistantFeed(props: {
 }) {
   const router = useRouter();
 
-  const aiEnabled = false;
+  const aiEnabled = true;
 
   const [items, setItems] = useState<AssistantItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -247,6 +263,11 @@ export function AgencyAssistantFeed(props: {
         return;
       }
 
+      if (item.clientId) {
+        router.push(`/agency/clients/${encodeURIComponent(String(item.clientId))}`);
+        return;
+      }
+
       router.push(`/agency/teams/${encodeURIComponent(props.teamId)}/crm`);
     },
     [router, props.teamId]
@@ -361,8 +382,13 @@ export function AgencyAssistantFeed(props: {
           {visibleItems.map((item) => {
             const isBusy = actingId === item.id;
             const isReminder =
-              item.type === "REMINDER_TODAY" || item.type === "REMINDER_OVERDUE" || item.type === "WEEKLY_SUMMARY";
+              item.type === "REMINDER_TODAY" ||
+              item.type === "REMINDER_OVERDUE" ||
+              item.type === "WEEKLY_SUMMARY" ||
+              item.type === "CLIENT_OVERDUE_NEXT_ACTION" ||
+              item.type === "CLIENT_UNASSIGNED";
             const showAiBox = aiEnabled && aiForId === item.id && (aiError || (aiResult && aiResult.itemId === item.id));
+            const taskLabel = getRealtorAssistantTaskLabel(item.type);
             return (
               <div
                 key={item.id}
@@ -372,6 +398,54 @@ export function AgencyAssistantFeed(props: {
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-gray-900 truncate">{item.title}</div>
                     <div className="mt-1 text-sm text-gray-700">{item.message}</div>
+                    {(item.client || item.impactScore != null) && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+                        {item.client?.name ? (
+                          <span className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700">
+                            {item.client.name}
+                          </span>
+                        ) : null}
+                        {item.client?.pipelineStage ? (
+                          <span className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-blue-700">
+                            {item.client.pipelineStage}
+                          </span>
+                        ) : null}
+                        {item.client?.intent ? (
+                          <span className="inline-flex items-center rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-violet-700">
+                            {item.client.intent}
+                          </span>
+                        ) : null}
+                        {item.client?.assignedTo ? (
+                          <span className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">
+                            {item.client.assignedTo.name || item.client.assignedTo.email || "Responsável"}
+                          </span>
+                        ) : item.client ? (
+                          <span className="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-amber-700">
+                            Sem responsável
+                          </span>
+                        ) : null}
+                        {item.client?.sla?.pendingReply ? (
+                          <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-rose-700">
+                            Aguardando retorno
+                          </span>
+                        ) : null}
+                        {item.client?.sla?.missingFirstContact ? (
+                          <span className="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-red-700">
+                            Sem 1º contato
+                          </span>
+                        ) : null}
+                        {item.client?.sla?.nextActionOverdue ? (
+                          <span className="inline-flex items-center rounded-lg border border-orange-200 bg-orange-50 px-2 py-1 text-orange-700">
+                            Ação vencida
+                          </span>
+                        ) : null}
+                        {typeof item.impactScore === "number" ? (
+                          <span className="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-gray-700">
+                            Impacto {item.impactScore}
+                          </span>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
 
                   <button
@@ -431,7 +505,7 @@ export function AgencyAssistantFeed(props: {
                   {item.type && (
                     <div className="ml-auto inline-flex items-center gap-2 text-[11px] font-semibold text-gray-500">
                       <Sparkles className="w-4 h-4" />
-                      {ptBR.type(item.type)}
+                      {taskLabel}
                     </div>
                   )}
                 </div>

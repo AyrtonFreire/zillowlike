@@ -13,6 +13,29 @@ import { buildPropertyPath } from "@/lib/slug";
 import { ArrowLeft, Copy, ExternalLink, RefreshCw, Save, UserRound, X } from "lucide-react";
 
 type ClientStatus = "ACTIVE" | "PAUSED";
+type ClientSource = "MANUAL" | "AGENCY_PUBLIC_PROFILE";
+type ClientIntent = "BUY" | "RENT" | "LIST" | null;
+type ClientPipelineStage = "NEW" | "CONTACT" | "QUALIFYING" | "MATCHING" | "VISIT" | "NURTURE" | "WON" | "LOST";
+
+type AssignableMember = {
+  userId: string;
+  name: string | null;
+  email: string | null;
+  queuePosition: number;
+};
+
+type ClientAssignedTo = {
+  id: string;
+  name: string | null;
+  email: string | null;
+} | null;
+
+type ClientSla = {
+  isUnassigned?: boolean;
+  noFirstContact?: boolean;
+  overdueNextAction?: boolean;
+  pendingReply?: boolean;
+};
 
 type ClientPreference = {
   id?: string;
@@ -51,21 +74,39 @@ type Client = {
   email: string | null;
   phone: string | null;
   status: ClientStatus;
+  source: ClientSource;
+  intent: ClientIntent;
+  pipelineStage: ClientPipelineStage;
   notes: string | null;
+  assignedAt: string | null;
+  firstContactAt: string | null;
+  lastContactAt: string | null;
+  lastInboundAt: string | null;
+  lastInboundChannel: string | null;
+  nextActionAt: string | null;
+  nextActionNote: string | null;
+  consentAcceptedAt: string | null;
+  consentText: string | null;
+  sourceSlug: string | null;
+  playbookSnapshot: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  assignedTo: ClientAssignedTo;
   preference: ClientPreference | null;
+  sla?: ClientSla | null;
 };
 
 type ClientGetResponse = {
   success: boolean;
   client?: Client;
+  assignableMembers?: AssignableMember[];
   error?: string;
 };
 
 type ClientPatchResponse = {
   success: boolean;
   client?: Client;
+  assignableMembers?: AssignableMember[];
   error?: string;
 };
 
@@ -179,6 +220,14 @@ function formatDatePt(value: string | null | undefined) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function toDateTimeLocalValue(value: string | null | undefined) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function brlFromCents(cents: number | null | undefined) {
   if (cents == null) return "";
   const v = Number(cents);
@@ -236,12 +285,13 @@ export default function AgencyClientDetailPage() {
 
   const { data: session, status } = useSession();
   const role = useMemo(() => roleFromSession(session as any), [session]);
-  const canUse = role === "AGENCY" || role === "ADMIN";
+  const canUse = role === "AGENCY" || role === "ADMIN" || role === "REALTOR";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [client, setClient] = useState<Client | null>(null);
+  const [assignableMembers, setAssignableMembers] = useState<AssignableMember[]>([]);
 
   const [editing, setEditing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -249,6 +299,12 @@ export default function AgencyClientDetailPage() {
   const [emailDraft, setEmailDraft] = useState("");
   const [phoneDraft, setPhoneDraft] = useState("");
   const [statusDraft, setStatusDraft] = useState<ClientStatus>("ACTIVE");
+  const [sourceDraft, setSourceDraft] = useState<ClientSource>("MANUAL");
+  const [intentDraft, setIntentDraft] = useState<ClientIntent>(null);
+  const [pipelineStageDraft, setPipelineStageDraft] = useState<ClientPipelineStage>("NEW");
+  const [assignedUserIdDraft, setAssignedUserIdDraft] = useState("");
+  const [nextActionAtDraft, setNextActionAtDraft] = useState("");
+  const [nextActionNoteDraft, setNextActionNoteDraft] = useState("");
   const [notesDraft, setNotesDraft] = useState("");
 
   const [prefLoading, setPrefLoading] = useState(false);
@@ -309,14 +365,22 @@ export default function AgencyClientDetailPage() {
         throw new Error(json?.error || "Não conseguimos carregar o cliente agora.");
       }
       setClient(json.client);
+      setAssignableMembers(Array.isArray(json.assignableMembers) ? json.assignableMembers : []);
       setNameDraft(json.client.name || "");
       setEmailDraft(json.client.email || "");
       setPhoneDraft(json.client.phone || "");
       setStatusDraft(json.client.status || "ACTIVE");
+      setSourceDraft(json.client.source || "MANUAL");
+      setIntentDraft(json.client.intent ?? null);
+      setPipelineStageDraft(json.client.pipelineStage || "NEW");
+      setAssignedUserIdDraft(json.client.assignedTo?.id ? String(json.client.assignedTo.id) : "");
+      setNextActionAtDraft(toDateTimeLocalValue(json.client.nextActionAt));
+      setNextActionNoteDraft(json.client.nextActionNote || "");
       setNotesDraft(json.client.notes || "");
     } catch (e: any) {
       setError(e?.message || "Não conseguimos carregar o cliente agora.");
       setClient(null);
+      setAssignableMembers([]);
     } finally {
       setLoading(false);
     }
@@ -495,6 +559,12 @@ export default function AgencyClientDetailPage() {
         email: emailDraft.trim() ? emailDraft.trim() : null,
         phone: phoneDraft.trim() ? phoneDraft.trim() : null,
         status: statusDraft,
+        source: sourceDraft,
+        intent: intentDraft,
+        pipelineStage: pipelineStageDraft,
+        assignedUserId: assignedUserIdDraft || null,
+        nextActionAt: nextActionAtDraft ? new Date(nextActionAtDraft).toISOString() : null,
+        nextActionNote: nextActionNoteDraft.trim() ? nextActionNoteDraft.trim() : null,
         notes: notesDraft.trim() ? notesDraft.trim() : null,
       };
 
@@ -509,10 +579,17 @@ export default function AgencyClientDetailPage() {
       }
 
       setClient(json.client);
+      setAssignableMembers(Array.isArray(json.assignableMembers) ? json.assignableMembers : assignableMembers);
       setNameDraft(json.client.name || "");
       setEmailDraft(json.client.email || "");
       setPhoneDraft(json.client.phone || "");
       setStatusDraft(json.client.status || "ACTIVE");
+      setSourceDraft(json.client.source || "MANUAL");
+      setIntentDraft(json.client.intent ?? null);
+      setPipelineStageDraft(json.client.pipelineStage || "NEW");
+      setAssignedUserIdDraft(json.client.assignedTo?.id ? String(json.client.assignedTo.id) : "");
+      setNextActionAtDraft(toDateTimeLocalValue(json.client.nextActionAt));
+      setNextActionNoteDraft(json.client.nextActionNote || "");
       setNotesDraft(json.client.notes || "");
     } catch (e: any) {
       setSaveError(e?.message || "Não conseguimos salvar o cliente agora.");
@@ -637,7 +714,7 @@ export default function AgencyClientDetailPage() {
     return (
       <EmptyState
         title="Acesso restrito"
-        description="Somente contas de agência podem acessar esta área."
+        description="Somente contas de agência, administradores e corretores do time podem acessar esta área."
         action={
           <Link
             href="/"
@@ -671,6 +748,13 @@ export default function AgencyClientDetailPage() {
     client.status === "ACTIVE"
       ? "border-emerald-200 bg-emerald-50 text-emerald-800"
       : "border-amber-200 bg-amber-50 text-amber-800";
+
+  const slaBadges = [
+    client.sla?.isUnassigned ? "Sem responsável" : null,
+    client.sla?.noFirstContact ? "Sem primeiro contato" : null,
+    client.sla?.overdueNextAction ? "Próxima ação vencida" : null,
+    client.sla?.pendingReply ? "Aguardando resposta ao inbound" : null,
+  ].filter(Boolean) as string[];
 
   const tabItems = [
     {
@@ -1305,6 +1389,16 @@ export default function AgencyClientDetailPage() {
             <div className="mt-1 text-xs text-gray-500">
               Criado em {formatDatePt(client.createdAt)} · Atualizado em {formatDatePt(client.updatedAt)}
             </div>
+            <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
+              <span className="px-2 py-1 rounded-lg bg-gray-100 border border-gray-200">Funil: {client.pipelineStage}</span>
+              <span className="px-2 py-1 rounded-lg bg-gray-100 border border-gray-200">Origem: {client.source}</span>
+              <span className="px-2 py-1 rounded-lg bg-gray-100 border border-gray-200">Responsável: {client.assignedTo?.name || client.assignedTo?.email || "Não atribuído"}</span>
+              {slaBadges.map((badge) => (
+                <span key={badge} className="px-2 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+                  SLA: {badge}
+                </span>
+              ))}
+            </div>
           </div>
 
           <button
@@ -1339,6 +1433,30 @@ export default function AgencyClientDetailPage() {
             </select>
           </div>
           <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Origem</label>
+            <select
+              value={sourceDraft}
+              onChange={(e) => setSourceDraft(e.target.value as ClientSource)}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+            >
+              <option value="MANUAL">Manual</option>
+              <option value="AGENCY_PUBLIC_PROFILE">Perfil público da imobiliária</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Intenção</label>
+            <select
+              value={intentDraft || ""}
+              onChange={(e) => setIntentDraft((e.target.value || null) as ClientIntent)}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+            >
+              <option value="">Não definido</option>
+              <option value="BUY">Compra</option>
+              <option value="RENT">Locação</option>
+              <option value="LIST">Captação</option>
+            </select>
+          </div>
+          <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail</label>
             <input
               value={emailDraft}
@@ -1354,6 +1472,56 @@ export default function AgencyClientDetailPage() {
               onChange={(e) => setPhoneDraft(String(e.target.value))}
               className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
               placeholder="(opcional)"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Etapa do funil</label>
+            <select
+              value={pipelineStageDraft}
+              onChange={(e) => setPipelineStageDraft(e.target.value as ClientPipelineStage)}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+            >
+              <option value="NEW">Novo</option>
+              <option value="CONTACT">Contato</option>
+              <option value="QUALIFYING">Qualificação</option>
+              <option value="MATCHING">Matching</option>
+              <option value="VISIT">Visita</option>
+              <option value="NURTURE">Nutrição</option>
+              <option value="WON">Ganho</option>
+              <option value="LOST">Perdido</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Responsável</label>
+            <select
+              value={assignedUserIdDraft}
+              onChange={(e) => setAssignedUserIdDraft(String(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+            >
+              <option value="">Não atribuído</option>
+              {assignableMembers.map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.name || member.email || member.userId}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Próxima ação em</label>
+            <input
+              type="datetime-local"
+              value={nextActionAtDraft}
+              onChange={(e) => setNextActionAtDraft(String(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Próxima ação</label>
+            <input
+              value={nextActionNoteDraft}
+              onChange={(e) => setNextActionNoteDraft(String(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+              placeholder="Ex.: ligar amanhã, enviar imóveis, confirmar visita"
             />
           </div>
           <div className="md:col-span-2">

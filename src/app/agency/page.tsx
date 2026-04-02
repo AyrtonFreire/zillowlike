@@ -32,6 +32,14 @@ type AgencyInsightsResponse = {
     unassigned: number;
     byStage: Record<string, number>;
   };
+  clients: {
+    total: number;
+    activeTotal: number;
+    newLast24h: number;
+    unassigned: number;
+    byStage: Record<string, number>;
+    byIntent: Record<string, number>;
+  };
   sla: {
     pendingReplyTotal: number;
     pendingReplyLeads: Array<{
@@ -43,6 +51,18 @@ type AgencyInsightsResponse = {
       realtorName: string | null;
       lastClientAt: string;
     }>;
+    clientPendingReplyTotal: number;
+    pendingReplyClients: Array<{
+      clientId: string;
+      name: string | null;
+      pipelineStage: string | null;
+      assignedUserId: string | null;
+      assignedUserName: string | null;
+      lastInboundAt: string;
+      lastInboundChannel: string | null;
+    }>;
+    clientNoFirstContact: number;
+    clientOverdueNextAction: number;
   };
   members: Array<{
     userId: string;
@@ -52,6 +72,9 @@ type AgencyInsightsResponse = {
     activeLeads: number;
     pendingReply: number;
     stalledLeads: number;
+    activeClients?: number;
+    clientPendingReply?: number;
+    clientNoFirstContact?: number;
   }>;
   highlights: AgencyInsight[];
 };
@@ -359,7 +382,7 @@ export default function AgencyDashboardPage() {
 
       {insights?.team ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-6">
             <MetricCard
               title="Leads ativos"
               value={insights.funnel.activeTotal}
@@ -377,12 +400,28 @@ export default function AgencyDashboardPage() {
               iconBgColor="bg-amber-50"
             />
             <MetricCard
-              title="Pendentes (SLA)"
+              title="Leads pendentes (SLA)"
               value={insights.sla.pendingReplyTotal}
               icon={AlertTriangle}
               subtitle="Cliente aguardando resposta"
               iconColor="text-rose-700"
               iconBgColor="bg-rose-50"
+            />
+            <MetricCard
+              title="Clientes ativos"
+              value={insights.clients.activeTotal}
+              icon={Users}
+              subtitle="Carteira institucional"
+              iconColor="text-violet-700"
+              iconBgColor="bg-violet-50"
+            />
+            <MetricCard
+              title="Clientes pendentes"
+              value={insights.sla.clientPendingReplyTotal}
+              icon={AlertTriangle}
+              subtitle="Inbound sem retorno"
+              iconColor="text-orange-700"
+              iconBgColor="bg-orange-50"
             />
           </div>
 

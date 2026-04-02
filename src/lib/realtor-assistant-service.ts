@@ -297,6 +297,10 @@ function impactScoreForItem(item: any, now: Date): number {
   const type = String(item?.type || "");
   let typeWeight = 0;
   if (type === "UNANSWERED_CLIENT_MESSAGE") typeWeight = 30;
+  else if (type === "CLIENT_PENDING_REPLY") typeWeight = 32;
+  else if (type === "CLIENT_UNASSIGNED") typeWeight = 30;
+  else if (type === "CLIENT_NO_FIRST_CONTACT") typeWeight = 26;
+  else if (type === "CLIENT_OVERDUE_NEXT_ACTION") typeWeight = 20;
   else if (type === "VISIT_REQUESTED") typeWeight = 28;
   else if (type === "VISIT_TODAY") typeWeight = 25;
   else if (type === "OWNER_APPROVAL_PENDING") typeWeight = 22;
@@ -320,6 +324,48 @@ function impactScoreForItem(item: any, now: Date): number {
   else if (type === "WEEKLY_SUMMARY") typeWeight = 0;
 
   return base + urgency + typeWeight;
+}
+
+function computeClientOperationalSignals(client: any, now: Date) {
+  const status = safeString(client?.status).toUpperCase();
+  const pipelineStage = safeString(client?.pipelineStage).toUpperCase();
+  const activeOperational = status === "ACTIVE" && pipelineStage !== "WON" && pipelineStage !== "LOST";
+
+  const createdAt = safeDate(client?.createdAt);
+  const firstContactAt = safeDate(client?.firstContactAt);
+  const lastInboundAt = safeDate(client?.lastInboundAt);
+  const lastContactAt = safeDate(client?.lastContactAt);
+  const nextActionAt = safeDate(client?.nextActionAt);
+  const firstContactDueAt = createdAt ? addMinutes(createdAt, 30) : null;
+
+  const missingFirstContact = !!(activeOperational && !firstContactAt && firstContactDueAt && firstContactDueAt.getTime() <= now.getTime());
+  const pendingReply = !!(
+    activeOperational &&
+    lastInboundAt &&
+    (!lastContactAt || Number.isNaN(lastContactAt.getTime()) || lastInboundAt.getTime() > lastContactAt.getTime())
+  );
+  const nextActionOverdue = !!(activeOperational && nextActionAt && nextActionAt.getTime() <= now.getTime());
+  const needsOwner = !!(activeOperational && !client?.assignedUserId);
+
+  let score = 0;
+  if (needsOwner) score += 75;
+  if (pendingReply) score += 70;
+  if (missingFirstContact) score += 62;
+  if (nextActionOverdue) score += 55;
+  if (pipelineStage === "VISIT") score += 12;
+  else if (pipelineStage === "MATCHING") score += 10;
+  else if (pipelineStage === "QUALIFYING") score += 8;
+
+  return {
+    activeOperational,
+    pipelineStage,
+    firstContactDueAt,
+    missingFirstContact,
+    pendingReply,
+    nextActionOverdue,
+    needsOwner,
+    priorityScore: score,
+  };
 }
 
 function clampNumber(value: number, min: number, max: number) {
@@ -582,6 +628,13 @@ export class RealtorAssistantService {
           .filter(Boolean)
       )
     ) as string[];
+    const clientIds = Array.from(
+      new Set(
+        normalized
+          .map((i: any) => (i?.clientId ? String(i.clientId) : null))
+          .filter(Boolean)
+      )
+    ) as string[];
 
     const leadAccessWhere: any =
       context === "AGENCY"
@@ -589,8 +642,14 @@ export class RealtorAssistantService {
           ? { teamId }
           : { id: { in: [] } }
         : { realtorId: ownerId };
+    const clientAccessWhere: any =
+      context === "AGENCY"
+        ? teamId
+          ? { teamId }
+          : { id: { in: [] } }
+        : { assignedUserId: ownerId };
 
-    const [leadRows, lastClientMessages, lastProMessages] = await Promise.all([
+    const [leadRows, lastClientMessages, lastProMessages, clientRows] = await Promise.all([
       leadIds.length
         ? prisma.lead.findMany({
             where: { id: { in: leadIds }, ...leadAccessWhere },
@@ -648,6 +707,47 @@ export class RealtorAssistantService {
             orderBy: { createdAt: "desc" },
             select: { leadId: true, createdAt: true },
             take: Math.max(100, leadIds.length * 10),
+          })
+        : [],
+      clientIds.length
+        ? (prisma as any).client.findMany({
+            where: { id: { in: clientIds }, ...clientAccessWhere },
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              intent: true,
+              pipelineStage: true,
+              assignedUserId: true,
+              createdAt: true,
+              updatedAt: true,
+              firstContactAt: true,
+              lastContactAt: true,
+              lastInboundAt: true,
+              lastInboundChannel: true,
+              nextActionAt: true,
+              nextActionNote: true,
+              notes: true,
+              assignedTo: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+              preference: {
+                select: {
+                  city: true,
+                  state: true,
+                  neighborhoods: true,
+                  purpose: true,
+                  types: true,
+                  minPrice: true,
+                  maxPrice: true,
+                  scope: true,
+                },
+              },
+            },
           })
         : [],
     ]);
@@ -776,9 +876,51 @@ export class RealtorAssistantService {
       ])
     );
 
+    const clientMap = new Map<string, any>(
+      (clientRows || []).map((client: any) => {
+        const id = String(client.id);
+        const signals = computeClientOperationalSignals(client, now);
+        return [
+          id,
+          {
+            id,
+            name: client?.name ? String(client.name) : null,
+            status: client?.status ? String(client.status) : null,
+            intent: client?.intent ? String(client.intent) : null,
+            pipelineStage: client?.pipelineStage ? String(client.pipelineStage) : null,
+            assignedUserId: client?.assignedUserId ? String(client.assignedUserId) : null,
+            assignedTo: client?.assignedTo
+              ? {
+                  id: String(client.assignedTo.id),
+                  name: client.assignedTo.name ? String(client.assignedTo.name) : null,
+                  email: client.assignedTo.email ? String(client.assignedTo.email) : null,
+                }
+              : null,
+            createdAt: client?.createdAt ? new Date(client.createdAt).toISOString() : null,
+            updatedAt: client?.updatedAt ? new Date(client.updatedAt).toISOString() : null,
+            lastInboundAt: client?.lastInboundAt ? new Date(client.lastInboundAt).toISOString() : null,
+            lastInboundChannel: client?.lastInboundChannel ? String(client.lastInboundChannel) : null,
+            nextActionAt: client?.nextActionAt ? new Date(client.nextActionAt).toISOString() : null,
+            nextActionNote: client?.nextActionNote ? String(client.nextActionNote) : null,
+            notes: client?.notes ? String(client.notes).slice(0, 240) : null,
+            preference: client?.preference || null,
+            sla: {
+              pendingReply: signals.pendingReply,
+              missingFirstContact: signals.missingFirstContact,
+              nextActionOverdue: signals.nextActionOverdue,
+              needsOwner: signals.needsOwner,
+            },
+            priorityScore: signals.priorityScore,
+          },
+        ];
+      })
+    );
+
     const enriched = normalized.map((item: any) => {
       const leadId = item?.leadId ? String(item.leadId) : "";
       const lead = leadId ? leadMap.get(leadId) || null : null;
+      const clientId = item?.clientId ? String(item.clientId) : "";
+      const client = clientId ? clientMap.get(clientId) || null : null;
       const impactScore = impactScoreForItem(item, now);
 
       return {
@@ -786,6 +928,7 @@ export class RealtorAssistantService {
         realtorId: context === "REALTOR" ? String(ownerId) : undefined,
         impactScore,
         lead,
+        client,
       };
     });
 
@@ -1331,8 +1474,6 @@ export class RealtorAssistantService {
       const firstClient = firstClientMsgMap.get(lead.id) as any;
       const lastClient = lastClientMsgMap.get(lead.id) as any;
 
-      const hasClientMessage = !!firstClient?.createdAt;
-
       const isFormLead = leadSource === "CONTACT_FORM" || leadSource === "VISIT_REQUEST";
 
       const isFirstClientForm =
@@ -1659,6 +1800,45 @@ export class RealtorAssistantService {
   static async recalculateForAgencyTeam(ownerId: string, teamId: string) {
     const now = new Date();
     const today = startOfDay(now);
+    const openClientUrl = (clientId?: string | null) =>
+      clientId ? `/agency/clients/${encodeURIComponent(String(clientId))}` : `/agency/clients`;
+
+    const clients = await (prisma as any).client.findMany({
+      where: {
+        teamId,
+        status: "ACTIVE",
+        pipelineStage: { notIn: ["WON", "LOST"] },
+      },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        intent: true,
+        pipelineStage: true,
+        assignedUserId: true,
+        createdAt: true,
+        firstContactAt: true,
+        lastContactAt: true,
+        lastInboundAt: true,
+        lastInboundChannel: true,
+        nextActionAt: true,
+        nextActionNote: true,
+        notes: true,
+        playbookSnapshot: true,
+        preference: {
+          select: {
+            city: true,
+            state: true,
+            neighborhoods: true,
+            purpose: true,
+            types: true,
+            minPrice: true,
+            maxPrice: true,
+            scope: true,
+          },
+        },
+      },
+    });
 
     const leads = await (prisma as any).lead.findMany({
       where: {
@@ -1933,6 +2113,120 @@ export class RealtorAssistantService {
       FORM: "Formulário",
       WHATSAPP: "WhatsApp",
     };
+
+    for (const client of clients || []) {
+      const clientName = client?.name ? String(client.name) : "Cliente";
+      const intent = safeString(client?.intent).toUpperCase();
+      const signals = computeClientOperationalSignals(client, now);
+      const preferredLocation = [safeString(client?.preference?.city), safeString(client?.preference?.state)].filter(Boolean).join("/");
+      const playbookSummary = safeString(client?.playbookSnapshot).slice(0, 180);
+
+      if (signals.needsOwner) {
+        const key = `CLIENT_UNASSIGNED:${client.id}`;
+        dedupeKeys.add(key);
+        await this.upsertFromRule({
+          context: "AGENCY",
+          ownerId,
+          teamId,
+          clientId: client.id,
+          type: "CLIENT_UNASSIGNED",
+          priority: "HIGH",
+          title: "Cliente sem responsável",
+          message: `${clientName} está em ${safeString(client.pipelineStage || "novo").toLowerCase()}${intent ? ` (${intent})` : ""} e precisa de responsável.`,
+          dueAt: null,
+          dedupeKey: key,
+          primaryAction: { type: "OPEN_PAGE", url: openClientUrl(client.id) },
+          secondaryAction: null,
+          metadata: {
+            intent: intent || null,
+            pipelineStage: client?.pipelineStage || null,
+            preferredLocation: preferredLocation || null,
+            playbookSummary: playbookSummary || null,
+          },
+        });
+      }
+
+      if (signals.pendingReply && client?.lastInboundAt) {
+        const dueAt = addMinutes(new Date(client.lastInboundAt), 60);
+        const msToDue = dueAt.getTime() - now.getTime();
+        const priority: "LOW" | "MEDIUM" | "HIGH" = msToDue <= 0 ? "HIGH" : msToDue <= 30 * 60 * 1000 ? "MEDIUM" : "LOW";
+        const key = `CLIENT_PENDING_REPLY:${client.id}`;
+        dedupeKeys.add(key);
+        await this.upsertFromRule({
+          context: "AGENCY",
+          ownerId,
+          teamId,
+          clientId: client.id,
+          type: "CLIENT_PENDING_REPLY",
+          priority,
+          title: "Cliente aguardando retorno",
+          message: `${clientName} enviou uma interação${client?.lastInboundChannel ? ` via ${String(client.lastInboundChannel).toLowerCase()}` : ""} e não há retorno registrado.`,
+          dueAt,
+          dedupeKey: key,
+          primaryAction: { type: "OPEN_PAGE", url: openClientUrl(client.id) },
+          secondaryAction: null,
+          metadata: {
+            intent: intent || null,
+            pipelineStage: client?.pipelineStage || null,
+            lastInboundAt: new Date(client.lastInboundAt).toISOString(),
+            lastInboundChannel: client?.lastInboundChannel || null,
+            preferredLocation: preferredLocation || null,
+          },
+        });
+      }
+
+      if (signals.missingFirstContact && signals.firstContactDueAt) {
+        const key = `CLIENT_NO_FIRST_CONTACT:${client.id}`;
+        dedupeKeys.add(key);
+        await this.upsertFromRule({
+          context: "AGENCY",
+          ownerId,
+          teamId,
+          clientId: client.id,
+          type: "CLIENT_NO_FIRST_CONTACT",
+          priority: "HIGH",
+          title: "Falta registrar o primeiro contato",
+          message: `${clientName} entrou na carteira e ainda não recebeu um primeiro contato registrado.`,
+          dueAt: signals.firstContactDueAt,
+          dedupeKey: key,
+          primaryAction: { type: "OPEN_PAGE", url: openClientUrl(client.id) },
+          secondaryAction: null,
+          metadata: {
+            intent: intent || null,
+            pipelineStage: client?.pipelineStage || null,
+            preferredLocation: preferredLocation || null,
+          },
+        });
+      }
+
+      if (signals.nextActionOverdue && client?.nextActionAt) {
+        const dueAt = new Date(client.nextActionAt);
+        const key = `CLIENT_OVERDUE_NEXT_ACTION:${client.id}:${startOfDay(dueAt).toISOString().slice(0, 10)}`;
+        dedupeKeys.add(key);
+        await this.upsertFromRule({
+          context: "AGENCY",
+          ownerId,
+          teamId,
+          clientId: client.id,
+          type: "CLIENT_OVERDUE_NEXT_ACTION",
+          priority: "HIGH",
+          title: "Próxima ação vencida",
+          message: client?.nextActionNote
+            ? `Próximo passo pendente: ${String(client.nextActionNote).slice(0, 180)}`
+            : `${clientName} está com uma próxima ação vencida no CRM.`,
+          dueAt,
+          dedupeKey: key,
+          primaryAction: { type: "OPEN_PAGE", url: openClientUrl(client.id) },
+          secondaryAction: null,
+          metadata: {
+            intent: intent || null,
+            pipelineStage: client?.pipelineStage || null,
+            preferredLocation: preferredLocation || null,
+            playbookSummary: playbookSummary || null,
+          },
+        });
+      }
+    }
 
     for (const lead of leads) {
       const propertyTitle = lead.property?.title || "Imóvel";

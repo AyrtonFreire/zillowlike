@@ -78,6 +78,28 @@ enum ClientStatus {
   PAUSED
 }
 
+enum ClientIntent {
+  BUY
+  RENT
+  LIST
+}
+
+enum ClientPipelineStage {
+  NEW
+  CONTACT
+  QUALIFYING
+  MATCHING
+  VISIT
+  NURTURE
+  WON
+  LOST
+}
+
+enum ClientSource {
+  MANUAL
+  AGENCY_PUBLIC_PROFILE
+}
+
 enum ClientMatchScope {
   PORTFOLIO
   MARKET
@@ -554,6 +576,7 @@ model User {
   teamChatReadReceipts     TeamChatReadReceipt[]
 
   clientsCreated Client[] @relation("ClientCreatedBy")
+  assignedClients Client[] @relation("ClientAssignedTo")
   clientRecommendationListsCreated ClientRecommendationList[] @relation("ClientRecommendationListCreatedBy")
 
   autoReplySettings RealtorAutoReplySettings?
@@ -1458,12 +1481,30 @@ model Client {
   createdBy User?        @relation("ClientCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   createdByUserId String?
 
+  assignedTo User?      @relation("ClientAssignedTo", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  assignedUserId String?
+
   name      String
   email     String?
   phone     String?
   phoneNormalized String?
   status    ClientStatus @default(ACTIVE)
+  source    ClientSource @default(MANUAL)
+  intent    ClientIntent?
+  pipelineStage ClientPipelineStage @default(NEW)
   notes     String?
+
+  assignedAt DateTime?
+  firstContactAt DateTime?
+  lastContactAt DateTime?
+  lastInboundAt DateTime?
+  lastInboundChannel String?
+  nextActionAt DateTime?
+  nextActionNote String?
+  consentAcceptedAt DateTime?
+  consentText String?
+  sourceSlug String?
+  playbookSnapshot String?
 
   preference ClientPreference?
   matches   ClientPropertyMatch[]
@@ -1476,8 +1517,13 @@ model Client {
 
   @@index([teamId, status])
   @@index([teamId, createdAt])
+  @@index([teamId, pipelineStage])
+  @@index([teamId, assignedUserId, status])
+  @@index([assignedUserId, status])
+  @@index([nextActionAt])
+  @@index([lastInboundAt])
+  @@index([source, intent])
   @@unique([teamId, email])
-  @@unique([teamId, phoneNormalized])
   @@map("clients")
 }
 

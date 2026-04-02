@@ -53,6 +53,11 @@ function normalizeStage(pipelineStage: LeadPipelineStage | null, status: LeadSta
   return "NEW";
 }
 
+function isOperationalClientStage(stage: string | null | undefined) {
+  const value = String(stage || "NEW").toUpperCase();
+  return value !== "WON" && value !== "LOST";
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { userId, role } = await getSessionContext();
@@ -110,9 +115,21 @@ export async function GET(req: NextRequest) {
           unassigned: 0,
           byStage: {},
         },
+        clients: {
+          total: 0,
+          activeTotal: 0,
+          newLast24h: 0,
+          unassigned: 0,
+          byStage: {},
+          byIntent: {},
+        },
         sla: {
           pendingReplyTotal: 0,
           pendingReplyLeads: [],
+          clientPendingReplyTotal: 0,
+          pendingReplyClients: [],
+          clientNoFirstContact: 0,
+          clientOverdueNextAction: 0,
         },
         members: [],
         highlights: [],
@@ -169,14 +186,68 @@ export async function GET(req: NextRequest) {
       take: 2500,
     });
 
+    const clients = await (prisma as any).client.findMany({
+      where: { teamId: String(teamId) },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        intent: true,
+        pipelineStage: true,
+        createdAt: true,
+        updatedAt: true,
+        assignedUserId: true,
+        firstContactAt: true,
+        lastContactAt: true,
+        lastInboundAt: true,
+        lastInboundChannel: true,
+        nextActionAt: true,
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 2500,
+    });
+
     const now = new Date();
     const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const firstContactThreshold = new Date(now.getTime() - 30 * 60 * 1000);
     const activeLeadIds = new Set<string>();
     const byStageActive: Record<string, number> = {};
+    const clientByStageActive: Record<string, number> = {};
+    const clientByIntentActive: Record<string, number> = {};
 
     let activeTotal = 0;
     let newLast24h = 0;
     let unassigned = 0;
+    let clientActiveTotal = 0;
+    let clientNewLast24h = 0;
+    let clientUnassigned = 0;
+    let clientPendingReplyTotal = 0;
+    let clientNoFirstContact = 0;
+    let clientOverdueNextAction = 0;
+    const clientPendingReplyRows: Array<{
+      clientId: string;
+      name: string | null;
+      pipelineStage: string | null;
+      assignedUserId: string | null;
+      assignedUserName: string | null;
+      lastInboundAt: string;
+      lastInboundChannel: string | null;
+    }> = [];
+
+    const isClientPendingReply = (client: any) => {
+      const lastInboundAt = client?.lastInboundAt ? new Date(client.lastInboundAt) : null;
+      if (!lastInboundAt || Number.isNaN(lastInboundAt.getTime())) return false;
+      const lastContactAt = client?.lastContactAt ? new Date(client.lastContactAt) : null;
+      if (!lastContactAt || Number.isNaN(lastContactAt.getTime())) return true;
+      return lastInboundAt.getTime() > lastContactAt.getTime();
+    };
 
     for (const lead of leads) {
       const stage = normalizeStage((lead.pipelineStage as LeadPipelineStage | null) ?? null, lead.status as LeadStatus);
@@ -191,6 +262,51 @@ export async function GET(req: NextRequest) {
         if (lead.createdAt && new Date(lead.createdAt).getTime() >= last24h.getTime()) newLast24h += 1;
       }
     }
+
+    for (const client of clients as any[]) {
+      const stage = String(client.pipelineStage || "NEW");
+      const isActive = String(client.status || "ACTIVE") === "ACTIVE" && isOperationalClientStage(stage);
+      if (!isActive) continue;
+
+      clientActiveTotal += 1;
+      clientByStageActive[stage] = Number(clientByStageActive[stage] || 0) + 1;
+
+      const intent = client.intent ? String(client.intent) : "UNKNOWN";
+      clientByIntentActive[intent] = Number(clientByIntentActive[intent] || 0) + 1;
+
+      if (!client.assignedUserId) clientUnassigned += 1;
+      if (client.createdAt && new Date(client.createdAt).getTime() >= last24h.getTime()) clientNewLast24h += 1;
+
+      const createdAt = client.createdAt ? new Date(client.createdAt) : null;
+      if ((!client.firstContactAt || Number.isNaN(new Date(client.firstContactAt).getTime())) && createdAt && createdAt <= firstContactThreshold) {
+        clientNoFirstContact += 1;
+      }
+
+      const nextActionAt = client.nextActionAt ? new Date(client.nextActionAt) : null;
+      if (nextActionAt && !Number.isNaN(nextActionAt.getTime()) && nextActionAt <= now) {
+        clientOverdueNextAction += 1;
+      }
+
+      if (isClientPendingReply(client)) {
+        clientPendingReplyTotal += 1;
+        const lastInboundAt = new Date(client.lastInboundAt);
+        clientPendingReplyRows.push({
+          clientId: String(client.id),
+          name: client.name ? String(client.name) : null,
+          pipelineStage: client.pipelineStage ? String(client.pipelineStage) : null,
+          assignedUserId: client.assignedUserId ? String(client.assignedUserId) : null,
+          assignedUserName: client.assignedTo?.name
+            ? String(client.assignedTo.name)
+            : client.assignedTo?.email
+              ? String(client.assignedTo.email)
+              : null,
+          lastInboundAt: Number.isNaN(lastInboundAt.getTime()) ? now.toISOString() : lastInboundAt.toISOString(),
+          lastInboundChannel: client.lastInboundChannel ? String(client.lastInboundChannel) : null,
+        });
+      }
+    }
+
+    clientPendingReplyRows.sort((a, b) => new Date(b.lastInboundAt).getTime() - new Date(a.lastInboundAt).getTime());
 
     const activeLeadIdsList = Array.from(activeLeadIds);
 
@@ -283,7 +399,18 @@ export async function GET(req: NextRequest) {
         const activeLeads = (leads as any[]).filter(
           (l: any) => activeLeadIds.has(String(l.id)) && String(l.realtorId || "") === mid,
         );
+        const activeClients = (clients as any[]).filter((c: any) => {
+          const stage = String(c.pipelineStage || "NEW");
+          return String(c.assignedUserId || "") === mid && String(c.status || "ACTIVE") === "ACTIVE" && isOperationalClientStage(stage);
+        });
         const pending = activeLeads.filter((l: any) => pendingIdSet.has(String(l.id)));
+        const pendingClients = activeClients.filter((c: any) => isClientPendingReply(c));
+        const noFirstContactClients = activeClients.filter((c: any) => {
+          if (c.firstContactAt && !Number.isNaN(new Date(c.firstContactAt).getTime())) return false;
+          const createdAt = c.createdAt ? new Date(c.createdAt) : null;
+          if (!createdAt || Number.isNaN(createdAt.getTime())) return false;
+          return createdAt <= firstContactThreshold;
+        });
         const stalled = activeLeads.filter((l: any) => {
           const u = l.updatedAt ? new Date(l.updatedAt) : null;
           if (!u || Number.isNaN(u.getTime())) return false;
@@ -329,6 +456,9 @@ export async function GET(req: NextRequest) {
           activeLeads: activeLeads.length,
           pendingReply: pending.length,
           stalledLeads: stalled.length,
+          activeClients: activeClients.length,
+          clientPendingReply: pendingClients.length,
+          clientNoFirstContact: noFirstContactClients.length,
           wonLeads: won.length,
           lostLeads: lost.length,
           avgFirstResponseMinutes,
@@ -392,6 +522,46 @@ export async function GET(req: NextRequest) {
           hrefLabel: "Distribuir agora",
         });
       }
+    }
+
+    if (clientPendingReplyTotal > 0) {
+      highlights.push({
+        title: "Clientes institucionais aguardando retorno",
+        detail: `${clientPendingReplyTotal} cliente${clientPendingReplyTotal === 1 ? "" : "s"} com inbound sem retorno registrado.`,
+        severity: clientPendingReplyTotal >= 10 ? "critical" : "warning",
+        href: `/agency/clients?sla=PENDING_REPLY`,
+        hrefLabel: "Abrir clientes",
+      });
+    }
+
+    if (clientNoFirstContact > 0) {
+      highlights.push({
+        title: "Clientes sem primeiro contato",
+        detail: `${clientNoFirstContact} cliente${clientNoFirstContact === 1 ? "" : "s"} ativo${clientNoFirstContact === 1 ? "" : "s"} sem primeiro contato registrado.`,
+        severity: clientNoFirstContact >= 8 ? "critical" : "warning",
+        href: `/agency/clients?sla=NO_FIRST_CONTACT`,
+        hrefLabel: "Ver clientes",
+      });
+    }
+
+    if (clientOverdueNextAction > 0) {
+      highlights.push({
+        title: "Próximas ações de clientes vencidas",
+        detail: `${clientOverdueNextAction} cliente${clientOverdueNextAction === 1 ? "" : "s"} com próxima ação vencida.`,
+        severity: clientOverdueNextAction >= 8 ? "warning" : "info",
+        href: `/agency/clients?sla=OVERDUE_NEXT_ACTION`,
+        hrefLabel: "Priorizar agora",
+      });
+    }
+
+    if (clientUnassigned > 0) {
+      highlights.push({
+        title: "Clientes sem responsável",
+        detail: `${clientUnassigned} cliente${clientUnassigned === 1 ? "" : "s"} ativo${clientUnassigned === 1 ? "" : "s"} sem responsável atribuído.`,
+        severity: clientUnassigned >= 5 ? "warning" : "info",
+        href: `/agency/clients?sla=UNASSIGNED`,
+        hrefLabel: "Distribuir clientes",
+      });
     }
 
     if (newLast24h > 0) {
@@ -560,8 +730,11 @@ export async function GET(req: NextRequest) {
     const summary = (() => {
       const parts: string[] = [];
       parts.push(`Leads ativos: ${activeTotal}`);
+      parts.push(`clientes ativos: ${clientActiveTotal}`);
       if (pendingReplyTotal > 0) parts.push(`pendentes de resposta: ${pendingReplyTotal}`);
+      if (clientPendingReplyTotal > 0) parts.push(`clientes aguardando retorno: ${clientPendingReplyTotal}`);
       if (unassigned > 0) parts.push(`sem responsável: ${unassigned}`);
+      if (clientUnassigned > 0) parts.push(`clientes sem responsável: ${clientUnassigned}`);
       if (newLast24h > 0) parts.push(`novos 24h: ${newLast24h}`);
       return parts.join(" • ");
     })();
@@ -581,9 +754,21 @@ export async function GET(req: NextRequest) {
         unassigned,
         byStage: byStageActive,
       },
+      clients: {
+        total: clients.length,
+        activeTotal: clientActiveTotal,
+        newLast24h: clientNewLast24h,
+        unassigned: clientUnassigned,
+        byStage: clientByStageActive,
+        byIntent: clientByIntentActive,
+      },
       sla: {
         pendingReplyTotal,
         pendingReplyLeads,
+        clientPendingReplyTotal,
+        pendingReplyClients: clientPendingReplyRows.slice(0, 25),
+        clientNoFirstContact,
+        clientOverdueNextAction,
       },
       members: memberStats,
       highlights: highlights.slice(0, 8),

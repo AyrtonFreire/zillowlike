@@ -16,15 +16,6 @@ type TeamMember = {
   role: string;
 };
 
-function formatMinutes(value: number | null | undefined) {
-  if (value == null || Number.isNaN(Number(value))) return "-";
-  const minutes = Math.max(0, Math.round(Number(value)));
-  if (minutes < 60) return `${minutes} min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${h}h ${m.toString().padStart(2, "0")}m`;
-}
-
 type TeamMemberRole = "OWNER" | "AGENT" | "ASSISTANT";
 
 type Team = {
@@ -174,6 +165,14 @@ type AgencyInsights = {
     unassigned: number;
     byStage: Record<string, number>;
   };
+  clients: {
+    total: number;
+    activeTotal: number;
+    newLast24h: number;
+    unassigned: number;
+    byStage: Record<string, number>;
+    byIntent: Record<string, number>;
+  };
   sla: {
     pendingReplyTotal: number;
     pendingReplyLeads: Array<{
@@ -185,6 +184,18 @@ type AgencyInsights = {
       realtorName: string | null;
       lastClientAt: string;
     }>;
+    clientPendingReplyTotal: number;
+    pendingReplyClients: Array<{
+      clientId: string;
+      name: string | null;
+      pipelineStage: string | null;
+      assignedUserId: string | null;
+      assignedUserName: string | null;
+      lastInboundAt: string;
+      lastInboundChannel: string | null;
+    }>;
+    clientNoFirstContact: number;
+    clientOverdueNextAction: number;
   };
   members: Array<{
     userId: string;
@@ -198,6 +209,9 @@ type AgencyInsights = {
     wonLeads?: number;
     lostLeads?: number;
     avgFirstResponseMinutes?: number | null;
+    activeClients?: number;
+    clientPendingReply?: number;
+    clientNoFirstContact?: number;
   }>;
   highlights: Array<{
     title: string;
@@ -287,7 +301,6 @@ export default function AgencyTeamPage() {
     apply();
     window.addEventListener("hashchange", apply);
     return () => window.removeEventListener("hashchange", apply);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [insights, setInsights] = useState<AgencyInsights | null>(null);
@@ -786,7 +799,7 @@ export default function AgencyTeamPage() {
 
                 {insights?.team && (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6">
                       <MetricCard
                         title="Leads ativos"
                         value={insights.funnel.activeTotal}
@@ -810,6 +823,22 @@ export default function AgencyTeamPage() {
                         subtitle="Cliente aguardando"
                         iconColor="text-rose-700"
                         iconBgColor="bg-rose-50"
+                      />
+                      <MetricCard
+                        title="Clientes ativos"
+                        value={insights.clients.activeTotal}
+                        icon={Users}
+                        subtitle="Carteira institucional"
+                        iconColor="text-violet-700"
+                        iconBgColor="bg-violet-50"
+                      />
+                      <MetricCard
+                        title="Clientes pendentes"
+                        value={insights.sla.clientPendingReplyTotal}
+                        icon={AlertTriangle}
+                        subtitle="Inbound sem retorno"
+                        iconColor="text-orange-700"
+                        iconBgColor="bg-orange-50"
                       />
                       <MetricCard
                         title="Novos 24h"
@@ -840,8 +869,14 @@ export default function AgencyTeamPage() {
                                   <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-semibold text-gray-700">
                                     Ativos: <span className="ml-1 tabular-nums text-gray-900">{m.activeLeads}</span>
                                   </span>
+                                  <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 font-semibold text-violet-700">
+                                    Clientes: <span className="ml-1 tabular-nums">{m.activeClients ?? 0}</span>
+                                  </span>
                                   <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
                                     Pendentes: <span className="ml-1 tabular-nums">{m.pendingReply}</span>
+                                  </span>
+                                  <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 font-semibold text-orange-700">
+                                    SLA clientes: <span className="ml-1 tabular-nums">{m.clientPendingReply ?? 0}</span>
                                   </span>
                                   <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700">
                                     Parados: <span className="ml-1 tabular-nums">{m.stalledLeads}</span>

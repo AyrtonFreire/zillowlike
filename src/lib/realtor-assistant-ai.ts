@@ -1,6 +1,10 @@
 export type RealtorAssistantItemType =
   | "NEW_LEAD"
   | "UNANSWERED_CLIENT_MESSAGE"
+  | "CLIENT_PENDING_REPLY"
+  | "CLIENT_NO_FIRST_CONTACT"
+  | "CLIENT_OVERDUE_NEXT_ACTION"
+  | "CLIENT_UNASSIGNED"
   | "VISIT_REQUESTED"
   | "LEAD_NO_FIRST_CONTACT"
   | "STALE_LEAD"
@@ -54,6 +58,45 @@ const SPECS: Partial<Record<RealtorAssistantItemType, RealtorAssistantAiSpec>> =
       "  2) RISCOS/ALERTAS (2-4 bullets) — cada bullet deve citar leadId e o risco concreto.\n" +
       "  3) PLANO DE 3 DIAS (3-6 passos) — cada passo deve citar leadId e uma ação objetiva (ex.: 'ligar', 'agendar', 'confirmar visita', 'enviar opções') + uma janela de horário sugerida.\n" +
       "- No summary (curto), cite pelo menos 1 leadId OU 1 propertyId como exemplo do foco da semana.",
+  },
+  CLIENT_PENDING_REPLY: {
+    category: "Leads",
+    taskLabel: "Criar resposta",
+    typeInstructions:
+      "Este é um cliente institucional com inbound sem retorno registrado. Gere uma resposta curta, consultiva e objetiva.\n" +
+      "- Confirme entendimento da necessidade\n" +
+      "- Faça 1 a 3 perguntas de qualificação se necessário\n" +
+      "- Sugira um próximo passo claro (ex.: enviar opções, alinhar visita, confirmar faixa ou prazo)\n" +
+      "- Use o contexto do CRM e das preferências quando disponível",
+  },
+  CLIENT_NO_FIRST_CONTACT: {
+    category: "Leads",
+    taskLabel: "Fazer primeiro contato",
+    typeInstructions:
+      "O cliente entrou na carteira mas ainda não teve primeiro contato registrado. Gere uma primeira mensagem curta, acolhedora e profissional.\n" +
+      "- Se apresente rapidamente\n" +
+      "- Confirme a intenção principal (compra, locação ou captação)\n" +
+      "- Sugira 2 próximos passos objetivos\n" +
+      "- Pergunte disponibilidade ou prioridade atual",
+  },
+  CLIENT_OVERDUE_NEXT_ACTION: {
+    category: "Lembretes",
+    taskLabel: "Gerar checklist",
+    typeInstructions:
+      "Existe uma próxima ação vencida para este cliente. Gere um checklist curto de execução (3 a 6 passos) e, se fizer sentido, inclua um roteiro breve de contato.\n" +
+      "- Não escreva como se fosse enviar uma mensagem automaticamente\n" +
+      "- Use a anotação da próxima ação e o estágio do cliente\n" +
+      "- Priorize destravar o atendimento hoje",
+  },
+  CLIENT_UNASSIGNED: {
+    category: "Outros",
+    taskLabel: "Definir responsável",
+    typeInstructions:
+      "Este cliente institucional está sem responsável. Gere um plano curto para a agência decidir a melhor distribuição e o primeiro próximo passo.\n" +
+      "- Não escreva mensagem ao cliente\n" +
+      "- Considere intenção, estágio e preferências\n" +
+      "- Indique critérios práticos para escolher o responsável\n" +
+      "- Feche com o próximo passo operacional no CRM",
   },
   UNANSWERED_CLIENT_MESSAGE: {
     category: "Leads",
